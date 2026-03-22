@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
 import type { Project, ProjectStatus, LineItem } from '@/lib/types'
 import { formatZAR, computeTotals } from '@/lib/quoting'
@@ -15,6 +16,7 @@ interface Props {
 export function ProjectsTable({ projects }: Props) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
+  const router = useRouter()
 
   const filtered = projects.filter(p => {
     const matchStatus = statusFilter === 'All' || p.status === statusFilter
@@ -80,37 +82,16 @@ export function ProjectsTable({ projects }: Props) {
               {filtered.map((p, i) => (
                 <tr
                   key={p.id}
+                  onClick={() => router.push(`/projects/${p.id}`)}
                   className={`border-b border-[#EDE9E1] hover:bg-[#F5F2EC] cursor-pointer transition-colors ${i === filtered.length - 1 ? 'border-0' : ''}`}
                 >
-                  <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="block text-[#8A877F] font-mono text-xs">
-                      {p.project_number}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">
-                      {p.project_name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="block text-[#8A877F]">
-                      {p.client?.client_name ?? '—'}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="block text-[#8A877F]">
-                      {new Date(p.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="block">
-                      <StatusBadge status={p.status as any} />
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/projects/${p.id}`} className="block font-medium text-[#2C2C2A] whitespace-nowrap">
-                      {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, 15).grand_total)}
-                    </Link>
+                  <td className="px-4 py-3 text-[#8A877F] font-mono text-xs">{p.project_number}</td>
+                  <td className="px-4 py-3 font-medium text-[#2C2C2A]">{p.project_name}</td>
+                  <td className="px-4 py-3 text-[#8A877F]">{p.client?.client_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-[#8A877F]">{new Date(p.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  <td className="px-4 py-3"><StatusBadge status={p.status as any} /></td>
+                  <td className="px-4 py-3 text-right font-medium text-[#2C2C2A] whitespace-nowrap">
+                    {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, 15).grand_total)}
                   </td>
                 </tr>
               ))}

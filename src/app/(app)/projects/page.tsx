@@ -16,7 +16,7 @@ export default async function ProjectsPage() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Projects"
-        subtitle={`${projects?.length ?? 0} total`}
+        count={projects?.length ?? 0}
         actions={
           <Link
             href="/projects/new"
