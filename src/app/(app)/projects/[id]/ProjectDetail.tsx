@@ -15,11 +15,12 @@ interface Props {
   project: Project & { client: { client_name: string; company: string | null } | null }
   initialLineItems: LineItem[]
   clients: { id: string; client_name: string; company: string | null }[]
-  suppliers: { id: string; supplier_name: string; markup_percentage: number }[]
+  suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }[]
   items: { id: string; item_name: string }[]
+  officeAddress: { name: string; address: string }
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [designFee, setDesignFee] = useState(initial.design_fee)
@@ -128,6 +129,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           lineItems={lineItems}
           suppliers={suppliers}
           items={items}
+          officeAddress={officeAddress}
           onChange={setLineItems}
         />
 

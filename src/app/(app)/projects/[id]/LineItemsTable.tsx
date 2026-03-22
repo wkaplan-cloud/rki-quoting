@@ -9,8 +9,9 @@ import toast from 'react-hot-toast'
 interface Props {
   projectId: string
   lineItems: LineItem[]
-  suppliers: { id: string; supplier_name: string; markup_percentage: number }[]
+  suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }[]
   items: { id: string; item_name: string }[]
+  officeAddress: { name: string; address: string }
   onChange: (items: LineItem[]) => void
 }
 
@@ -50,7 +51,7 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
   )
 }
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, onChange }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange }: Props) {
   const supabase = createClient()
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
@@ -71,7 +72,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
       supplier_id: supplierId || null,
       supplier_name: supplier?.supplier_name ?? null,
     }
-    if (supplier) updates.markup_percentage = supplier.markup_percentage
+    if (supplier) {
+      updates.markup_percentage = supplier.markup_percentage
+      if (supplier.delivery_address) updates.delivery_address = supplier.delivery_address
+    }
     onChange(lineItems.map(item => item.id === id ? { ...item, ...updates } : item))
     await supabase.from('line_items').update(updates).eq('id', id)
   }, [lineItems, suppliers, onChange, supabase])
@@ -85,7 +89,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
       quantity: 1,
       cost_price: 0,
       markup_percentage: 40,
-      delivery: 0,
+      delivery_address: null,
       sort_order,
       row_type: 'item',
       indent_level: 0,
@@ -155,7 +159,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
               <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Qty</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
-              <th className="text-right px-2 py-2 min-w-[80px] whitespace-nowrap">Delivery</th>
+              <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
               <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Cost</th>
               <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Mkup%</th>
               <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Sale</th>
@@ -293,15 +297,29 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
                     </select>
                   </td>
 
-                  {/* Delivery */}
+                  {/* Deliver To */}
                   <td className={COL}>
-                    <input
-                      type="number" min="0" step="0.01"
-                      value={item.delivery}
-                      onChange={e => updateLocal(item.id, 'delivery', parseFloat(e.target.value) || 0)}
-                      onBlur={e => saveField(item.id, 'delivery', parseFloat(e.target.value) || 0)}
-                      className={NUM_INPUT}
-                    />
+                    <select
+                      value={item.delivery_address ?? ''}
+                      onChange={e => {
+                        updateLocal(item.id, 'delivery_address', e.target.value)
+                        saveField(item.id, 'delivery_address', e.target.value)
+                      }}
+                      className={INPUT + ' cursor-pointer'}
+                    >
+                      <option value="">— Deliver to —</option>
+                      {suppliers
+                        .filter(s => s.delivery_address)
+                        .map(s => (
+                          <option key={s.id} value={s.delivery_address!}>
+                            {s.supplier_name}
+                          </option>
+                        ))
+                      }
+                      {officeAddress.address && (
+                        <option value={officeAddress.address}>{officeAddress.name}</option>
+                      )}
+                    </select>
                   </td>
 
                   {/* Cost Price */}

@@ -52,7 +52,7 @@ export interface LineItem {
   quantity: number
   supplier_id: string | null
   supplier_name: string | null
-  delivery: number
+  delivery_address: string | null
   cost_price: number
   markup_percentage: number
   sort_order: number
