@@ -8,11 +8,14 @@ interface Props {
   lineItems: LineItem[]
   suppliers: Supplier[]
   supplierId?: string
+  vatRate?: number
 }
 
-function POPage({ project, items, supplier }: { project: Project; items: LineItem[]; supplier: Supplier | null }) {
+function POPage({ project, items, supplier, vatRate = 15 }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number }) {
   const itemRows = items.filter(i => i.row_type !== 'section')
-  const total = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
+  const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
+  const vatAmount = subtotal * (vatRate / 100)
+  const grandTotal = subtotal + vatAmount
   const poNumber = `${project.project_number}-${supplier?.supplier_name.slice(0, 3).toUpperCase() ?? 'GEN'}`
 
   return (
@@ -34,9 +37,9 @@ function POPage({ project, items, supplier }: { project: Project; items: LineIte
       {supplier && (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>SUPPLIER</Text>
-          <View style={styles.infoBlock}>
-            <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{supplier.supplier_name}</Text>
-            {supplier.contact_person && <Text style={styles.infoVal}>{supplier.contact_person}</Text>}
+          <View style={{ flexDirection: 'column' }}>
+            <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold', marginBottom: 2 }]}>{supplier.supplier_name}</Text>
+            {supplier.contact_person && <Text style={[styles.infoVal, { marginBottom: 2 }]}>{supplier.contact_person}</Text>}
             {supplier.email && <Text style={styles.infoVal}>{supplier.email}</Text>}
           </View>
         </View>
@@ -85,9 +88,18 @@ function POPage({ project, items, supplier }: { project: Project; items: LineIte
       {/* PO Total */}
       <View style={styles.totalsContainer}>
         <View style={styles.totalsBox}>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>Subtotal</Text>
+            <Text style={styles.totalsVal}>{formatZAR(subtotal)}</Text>
+          </View>
+          <View style={styles.totalsRow}>
+            <Text style={styles.totalsLabel}>VAT ({vatRate}%)</Text>
+            <Text style={styles.totalsVal}>{formatZAR(vatAmount)}</Text>
+          </View>
+          <View style={styles.totalsDivider} />
           <View style={styles.totalsBig}>
             <Text style={styles.totalsBigLabel}>TOTAL COST</Text>
-            <Text style={styles.totalsBigVal}>{formatZAR(total)}</Text>
+            <Text style={styles.totalsBigVal}>{formatZAR(grandTotal)}</Text>
           </View>
         </View>
       </View>
@@ -103,7 +115,7 @@ function POPage({ project, items, supplier }: { project: Project; items: LineIte
   )
 }
 
-export function POPDF({ project, lineItems, suppliers, supplierId }: Props) {
+export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15 }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
 
   // Single supplier mode — lineItems already filtered by API
@@ -111,7 +123,7 @@ export function POPDF({ project, lineItems, suppliers, supplierId }: Props) {
     const supplier = supplierMap[supplierId] ?? null
     return (
       <Document>
-        <POPage project={project} items={lineItems} supplier={supplier} />
+        <POPage project={project} items={lineItems} supplier={supplier} vatRate={vatRate} />
       </Document>
     )
   }
@@ -128,7 +140,7 @@ export function POPDF({ project, lineItems, suppliers, supplierId }: Props) {
     <Document>
       {Object.entries(grouped).map(([sid, items]) => {
         const supplier = sid !== '__none__' ? (supplierMap[sid] ?? null) : null
-        return <POPage key={sid} project={project} items={items} supplier={supplier} />
+        return <POPage key={sid} project={project} items={items} supplier={supplier} vatRate={vatRate} />
       })}
     </Document>
   )

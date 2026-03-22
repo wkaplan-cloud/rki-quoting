@@ -11,10 +11,11 @@ export async function GET(req: NextRequest) {
   const supplierId = req.nextUrl.searchParams.get('supplierId')
 
   const supabase = await createClient()
-  const [{ data: project }, { data: allLineItems }, { data: suppliers }] = await Promise.all([
+  const [{ data: project }, { data: allLineItems }, { data: suppliers }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
     supabase.from('suppliers').select('*'),
+    supabase.from('settings').select('vat_rate').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined }) as any
+    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: settings?.vat_rate ?? 15 }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {
