@@ -5,12 +5,12 @@ export const styles = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
   brandName: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#1A1A18', letterSpacing: 0.5 },
-  brandSub: { fontSize: 7, color: '#9A7B4F', letterSpacing: 2, marginTop: 2 },
+  brandSub: { fontSize: 7, color: '#9A7B4F', marginTop: 2 },
   docTitle: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#1A1A18', textAlign: 'right' },
   docMeta: { fontSize: 8, color: '#8A877F', textAlign: 'right', marginTop: 4 },
   // Section
   section: { marginBottom: 20 },
-  sectionLabel: { fontSize: 7, color: '#9A7B4F', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 },
+  sectionLabel: { fontSize: 7, color: '#9A7B4F', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 },
   // Client/supplier info
   infoGrid: { flexDirection: 'row', gap: 24 },
   infoBlock: { flex: 1 },
@@ -21,7 +21,9 @@ export const styles = StyleSheet.create({
   tableHeader: { flexDirection: 'row', backgroundColor: '#F5F2EC', paddingVertical: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#D8D3C8' },
   tableRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   tableRowAlt: { backgroundColor: '#FDFCF9' },
-  th: { fontSize: 7, color: '#8A877F', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', letterSpacing: 0.5 },
+  th: { fontSize: 7, color: '#8A877F', fontFamily: 'Helvetica-Bold' },
+  tableSectionRow: { flexDirection: 'row', backgroundColor: '#F5F2EC', paddingVertical: 4, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8' },
+  tableSectionLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#9A7B4F' },
   td: { fontSize: 8.5, color: '#2C2C2A' },
   tdRight: { textAlign: 'right' },
   tdMuted: { color: '#8A877F' },

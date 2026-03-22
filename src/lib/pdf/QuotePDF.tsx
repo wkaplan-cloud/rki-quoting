@@ -58,26 +58,43 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
 
         {/* Line items */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Items</Text>
+          <Text style={styles.sectionLabel}>ITEMS</Text>
           <View style={styles.table}>
+            {/* Header */}
             <View style={styles.tableHeader}>
-              <Text style={[styles.th, { flex: 2 }]}>Item</Text>
-              <Text style={[styles.th, { flex: 3 }]}>Description</Text>
-              <Text style={[styles.th, { width: 30, textAlign: 'right' }]}>Qty</Text>
-              <Text style={[styles.th, { flex: 1.5 }]}>Supplier</Text>
-              <Text style={[styles.th, { width: 70, textAlign: 'right' }]}>Sale Price</Text>
-              <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>Total</Text>
+              <Text style={[styles.th, { flex: 2 }]}>ITEM</Text>
+              <Text style={[styles.th, { flex: 3 }]}>DESCRIPTION</Text>
+              <Text style={[styles.th, { width: 44, textAlign: 'right' }]}>QTY</Text>
+              <Text style={[styles.th, { flex: 1.5 }]}>SUPPLIER</Text>
+              <Text style={[styles.th, { width: 72, textAlign: 'right' }]}>SALE PRICE</Text>
+              <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>TOTAL</Text>
             </View>
-            {computed.map((item, i) => (
-              <View key={item.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
-                <Text style={[styles.td, { flex: 2 }]}>{item.item_name}</Text>
-                <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
-                <Text style={[styles.td, { width: 30, textAlign: 'right' }]}>{item.quantity}</Text>
-                <Text style={[styles.td, styles.tdMuted, { flex: 1.5 }]}>{item.supplier_name ?? ''}</Text>
-                <Text style={[styles.td, { width: 70, textAlign: 'right' }]}>{formatZAR(item.sale_price)}</Text>
-                <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.total_price)}</Text>
-              </View>
-            ))}
+            {/* Rows — sections + items */}
+            {(() => {
+              let itemIndex = 0
+              return lineItems.map(item => {
+                if (item.row_type === 'section') {
+                  return (
+                    <View key={item.id} style={styles.tableSectionRow}>
+                      <Text style={styles.tableSectionLabel}>{item.item_name || 'Section'}</Text>
+                    </View>
+                  )
+                }
+                const c = computed.find(ci => ci.id === item.id)
+                if (!c) return null
+                const alt = itemIndex++ % 2 === 1
+                return (
+                  <View key={item.id} style={[styles.tableRow, alt ? styles.tableRowAlt : {}]}>
+                    <Text style={[styles.td, { flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{item.item_name}</Text>
+                    <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
+                    <Text style={[styles.td, { width: 44, textAlign: 'right' }]}>{item.quantity}</Text>
+                    <Text style={[styles.td, styles.tdMuted, { flex: 1.5 }]}>{item.supplier_name ?? ''}</Text>
+                    <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(c.sale_price)}</Text>
+                    <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(c.total_price)}</Text>
+                  </View>
+                )
+              })
+            })()}
           </View>
         </View>
 
