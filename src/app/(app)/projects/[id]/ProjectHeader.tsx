@@ -66,6 +66,9 @@ export function ProjectHeader({ project, clients, onStatusChange, onProjectUpdat
               {project.client && <><span>·</span><span>{project.client.client_name}</span></>}
               <span>·</span>
               <span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                <Pencil size={12} />
+              </button>
             </div>
           </div>
         )}
@@ -77,24 +80,19 @@ export function ProjectHeader({ project, clients, onStatusChange, onProjectUpdat
               <button onClick={cancel} className="p-1.5 rounded bg-white border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"><X size={14} /></button>
             </>
           ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#8A877F] font-medium">Status</span>
-                <Select
-                  value={project.status}
-                  onChange={e => onStatusChange(e.target.value as ProjectStatus)}
-                  className="text-xs py-1.5 !w-auto"
-                >
-                  <option value="Quote">Quoting</option>
-                  <option value="Invoice">Invoiced</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </Select>
-              </div>
-              <button onClick={() => setEditing(true)} className="p-1.5 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
-                <Pencil size={14} />
-              </button>
-            </>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#8A877F] font-medium">Status</span>
+              <Select
+                value={project.status}
+                onChange={e => onStatusChange(e.target.value as ProjectStatus)}
+                className="text-xs py-1.5 !w-auto"
+              >
+                <option value="Quote">Quoting</option>
+                <option value="Invoice">Invoiced</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </Select>
+            </div>
           )}
         </div>
       </div>

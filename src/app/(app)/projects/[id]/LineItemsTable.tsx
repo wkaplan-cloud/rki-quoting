@@ -1,11 +1,29 @@
 'use client'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
 import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import toast from 'react-hot-toast'
+
+function CurrencyInput({ value, onChange, onBlur, className }: { value: number; onChange: (v: number) => void; onBlur: (v: number) => void; className: string }) {
+  const [focused, setFocused] = useState(false)
+  if (focused) return (
+    <input
+      type="number" min="0" step="0.01" autoFocus
+      value={value}
+      onChange={e => onChange(parseFloat(e.target.value) || 0)}
+      onBlur={e => { setFocused(false); onBlur(parseFloat(e.target.value) || 0) }}
+      className={className}
+    />
+  )
+  return (
+    <button onClick={() => setFocused(true)} className="w-full text-right text-sm tabular-nums text-[#2C2C2A] whitespace-nowrap cursor-text">
+      {formatZAR(value)}
+    </button>
+  )
+}
 
 interface Props {
   projectId: string
@@ -334,11 +352,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
                   {/* Cost Price */}
                   <td className={COL}>
-                    <input
-                      type="number" min="0" step="0.01"
+                    <CurrencyInput
                       value={item.cost_price}
-                      onChange={e => updateLocal(item.id, 'cost_price', parseFloat(e.target.value) || 0)}
-                      onBlur={e => saveField(item.id, 'cost_price', parseFloat(e.target.value) || 0)}
+                      onChange={v => updateLocal(item.id, 'cost_price', v)}
+                      onBlur={v => saveField(item.id, 'cost_price', v)}
                       className={NUM_INPUT}
                     />
                   </td>
