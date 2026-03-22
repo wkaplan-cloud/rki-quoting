@@ -28,7 +28,6 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
             <Text style={styles.docMeta}>{project.project_number}</Text>
             <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
-            <Text style={styles.docMeta}>Status: {project.status}</Text>
           </View>
         </View>
 
@@ -42,9 +41,9 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
                 {client.company && <Text style={styles.infoVal}>{client.company}</Text>}
                 {client.address && <Text style={styles.infoVal}>{client.address}</Text>}
               </View>
-              <View style={styles.infoBlock}>
-                {client.vat_number && <><Text style={styles.infoKey}>VAT Number</Text><Text style={styles.infoVal}>{client.vat_number}</Text></>}
-                {client.contact_number && <><Text style={[styles.infoKey, { marginTop: 4 }]}>Contact</Text><Text style={styles.infoVal}>{client.contact_number}</Text></>}
+              <View style={[styles.infoBlock, { alignItems: 'flex-end' }]}>
+                {client.vat_number && <><Text style={[styles.infoKey, { textAlign: 'right' }]}>VAT Number</Text><Text style={[styles.infoVal, { textAlign: 'right' }]}>{client.vat_number}</Text></>}
+                {client.contact_number && <><Text style={[styles.infoKey, { marginTop: 4, textAlign: 'right' }]}>Contact</Text><Text style={[styles.infoVal, { textAlign: 'right' }]}>{client.contact_number}</Text></>}
               </View>
             </View>
           </View>
