@@ -24,7 +24,7 @@ export function NewProjectForm({ clients }: Props) {
     project_number: '',
     project_name: '',
     date: new Date().toISOString().split('T')[0],
-    status: 'Quote',
+    status: 'Draft',
     design_fee: '0',
     notes: '',
   })

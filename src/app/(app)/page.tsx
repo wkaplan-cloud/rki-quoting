@@ -28,6 +28,7 @@ export default async function DashboardPage() {
   // Summary metrics
   const activeProjects = ps.filter(p => p.status !== 'Cancelled' && p.status !== 'Completed')
   const completedProjects = ps.filter(p => p.status === 'Completed')
+  const drafts = ps.filter(p => p.status === 'Draft').length
   const openQuotes = ps.filter(p => p.status === 'Quote').length
   const activeInvoices = ps.filter(p => p.status === 'Invoice').length
 
@@ -59,7 +60,7 @@ export default async function DashboardPage() {
   }, 0)
 
   const summaryCards = [
-    { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${openQuotes} quotes · ${activeInvoices} invoices`, alert: false },
+    { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoices`, alert: false },
     { label: 'Pipeline Value', value: formatZAR(activeRevenuePipeline), sub: 'active projects', alert: false },
     { label: 'Awaiting Deposit', value: awaitingDeposit.toString(), sub: 'quote sent, not paid', alert: awaitingDeposit > 0 },
     { label: 'In Production', value: inProduction.toString(), sub: 'deposit received', alert: false },

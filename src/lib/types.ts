@@ -28,7 +28,7 @@ export interface Item {
   created_at: string
 }
 
-export type ProjectStatus = 'Quote' | 'Invoice' | 'Completed' | 'Cancelled'
+export type ProjectStatus = 'Draft' | 'Quote' | 'Invoice' | 'Completed' | 'Cancelled'
 
 export interface Project {
   id: string

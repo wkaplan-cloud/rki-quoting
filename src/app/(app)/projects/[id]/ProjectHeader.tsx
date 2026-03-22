@@ -87,6 +87,7 @@ export function ProjectHeader({ project, clients, onStatusChange, onProjectUpdat
                 onChange={e => onStatusChange(e.target.value as ProjectStatus)}
                 className="text-xs py-1.5 !w-auto"
               >
+                <option value="Draft">Draft</option>
                 <option value="Quote">Quoting</option>
                 <option value="Invoice">Invoiced</option>
                 <option value="Completed">Completed</option>
