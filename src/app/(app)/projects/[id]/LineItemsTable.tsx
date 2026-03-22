@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -77,7 +77,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
   }, [lineItems, suppliers, onChange, supabase])
 
   const addRow = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
     const sort_order = lineItems.length
     const { data, error } = await supabase.from('line_items').insert({
       project_id: projectId,
@@ -88,10 +87,36 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
       markup_percentage: 40,
       delivery: 0,
       sort_order,
+      row_type: 'item',
+      indent_level: 0,
     }).select().single()
     if (error) { toast.error('Failed to add row'); return }
     onChange([...lineItems, data])
   }, [projectId, lineItems, onChange, supabase])
+
+  const addSection = useCallback(async () => {
+    const sort_order = lineItems.length
+    const { data, error } = await supabase.from('line_items').insert({
+      project_id: projectId,
+      item_name: '',
+      description: '',
+      quantity: 0,
+      cost_price: 0,
+      markup_percentage: 0,
+      delivery: 0,
+      sort_order,
+      row_type: 'section',
+      indent_level: 0,
+    }).select().single()
+    if (error) { toast.error('Failed to add section'); return }
+    onChange([...lineItems, data])
+  }, [projectId, lineItems, onChange, supabase])
+
+  const toggleIndent = useCallback(async (id: string, currentLevel: number) => {
+    const indent_level = currentLevel > 0 ? 0 : 1
+    onChange(lineItems.map(item => item.id === id ? { ...item, indent_level } : item))
+    await supabase.from('line_items').update({ indent_level }).eq('id', id)
+  }, [lineItems, onChange, supabase])
 
   const deleteRow = useCallback(async (id: string) => {
     await supabase.from('line_items').delete().eq('id', id)
@@ -107,17 +132,18 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
     onChange(updated)
     dragItem.current = null
     dragOver.current = null
-    // persist sort order
     await Promise.all(updated.map(item =>
       supabase.from('line_items').update({ sort_order: item.sort_order }).eq('id', item.id)
     ))
   }, [lineItems, onChange, supabase])
 
+  const itemCount = lineItems.filter(i => i.row_type === 'item').length
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Line Items</h2>
-        <span className="text-xs text-[#8A877F]">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-[#8A877F]">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
       </div>
 
       <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
@@ -141,7 +167,50 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
           </thead>
           <tbody>
             {lineItems.map((item, index) => {
+
+              // ── Section header row ──────────────────────────────────────
+              if (item.row_type === 'section') {
+                return (
+                  <tr
+                    key={item.id}
+                    draggable
+                    onDragStart={() => { dragItem.current = index }}
+                    onDragEnter={() => { dragOver.current = index }}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={e => e.preventDefault()}
+                    className="border-b border-[#D8D3C8] bg-[#F5F2EC] group"
+                  >
+                    <td className="px-1.5 py-2 text-[#C4BFB5] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
+                      <GripVertical size={14} />
+                    </td>
+                    <td colSpan={11} className="px-2 py-2 border-r border-[#EDE9E1]">
+                      <div className="flex items-center gap-2">
+                        <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
+                        <input
+                          value={item.item_name}
+                          onChange={e => updateLocal(item.id, 'item_name', e.target.value)}
+                          onBlur={e => saveField(item.id, 'item_name', e.target.value)}
+                          className="flex-1 bg-transparent outline-none text-xs font-semibold text-[#5A5750] uppercase tracking-widest placeholder-[#C4BFB5] focus:text-[#2C2C2A]"
+                          placeholder="Room / Section name…"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-2">
+                      <button
+                        onClick={() => deleteRow(item.id)}
+                        className="text-[#D8D3C8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              }
+
+              // ── Item row ────────────────────────────────────────────────
               const c = computeLineItem(item)
+              const indented = item.indent_level > 0
+
               return (
                 <tr
                   key={item.id}
@@ -150,26 +219,44 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
                   onDragEnter={() => { dragOver.current = index }}
                   onDragEnd={handleDragEnd}
                   onDragOver={e => e.preventDefault()}
-                  className="border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9] group"
+                  className={`border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9] group ${indented ? 'bg-[#FDFCF9]' : ''}`}
                 >
                   {/* Drag handle */}
                   <td className="px-1.5 py-1 text-[#D8D3C8] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
                     <GripVertical size={14} />
                   </td>
 
-                  {/* Item name */}
+                  {/* Item name — with indent toggle + visual indent */}
                   <td className={COL}>
-                    <input
-                      list={`items-${item.id}`}
-                      value={item.item_name}
-                      onChange={e => updateLocal(item.id, 'item_name', e.target.value)}
-                      onBlur={e => saveField(item.id, 'item_name', e.target.value)}
-                      className={INPUT}
-                      placeholder="Item name"
-                    />
-                    <datalist id={`items-${item.id}`}>
-                      {items.map(i => <option key={i.id} value={i.item_name} />)}
-                    </datalist>
+                    <div className={`flex items-center gap-1 ${indented ? 'pl-4' : ''}`}>
+                      {indented && (
+                        <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <input
+                          list={`items-${item.id}`}
+                          value={item.item_name}
+                          onChange={e => updateLocal(item.id, 'item_name', e.target.value)}
+                          onBlur={e => saveField(item.id, 'item_name', e.target.value)}
+                          className={INPUT}
+                          placeholder="Item name"
+                        />
+                        <datalist id={`items-${item.id}`}>
+                          {items.map(i => <option key={i.id} value={i.item_name} />)}
+                        </datalist>
+                      </div>
+                      <button
+                        onClick={() => toggleIndent(item.id, item.indent_level)}
+                        title={indented ? 'Remove indent' : 'Attach to item above'}
+                        className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
+                          ${indented
+                            ? 'text-[#9A7B4F] opacity-100'
+                            : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
+                          }`}
+                      >
+                        <CornerDownRight size={12} />
+                      </button>
+                    </div>
                   </td>
 
                   {/* Description */}
@@ -275,12 +362,20 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
         )}
       </div>
 
-      <button
-        onClick={addRow}
-        className="mt-2 flex items-center gap-1.5 text-sm text-[#9A7B4F] hover:text-[#7d6340] transition-colors cursor-pointer"
-      >
-        <Plus size={14} /> Add item
-      </button>
+      <div className="mt-2 flex items-center gap-4">
+        <button
+          onClick={addRow}
+          className="flex items-center gap-1.5 text-sm text-[#9A7B4F] hover:text-[#7d6340] transition-colors cursor-pointer"
+        >
+          <Plus size={14} /> Add item
+        </button>
+        <button
+          onClick={addSection}
+          className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+        >
+          <LayoutList size={14} /> Add room / section
+        </button>
+      </div>
     </div>
   )
 }

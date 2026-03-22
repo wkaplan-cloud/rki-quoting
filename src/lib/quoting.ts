@@ -12,7 +12,7 @@ export function computeLineItem(item: LineItem): LineItemComputed {
 }
 
 export function computeLineItems(items: LineItem[]): LineItemComputed[] {
-  return items.map(computeLineItem)
+  return items.filter(i => i.row_type !== 'section').map(computeLineItem)
 }
 
 // ─── Project totals ───────────────────────────────────────────────────────────

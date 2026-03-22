@@ -56,6 +56,8 @@ export interface LineItem {
   cost_price: number
   markup_percentage: number
   sort_order: number
+  row_type: 'item' | 'section'
+  indent_level: number
   created_at: string
 }
 
