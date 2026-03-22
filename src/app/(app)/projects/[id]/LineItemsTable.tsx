@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
@@ -17,6 +17,38 @@ interface Props {
 const COL = 'px-2 py-1.5 border-r border-[#EDE9E1] last:border-0'
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
+
+function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
+  value: string
+  onChange: (v: string) => void
+  onBlur: (v: string) => void
+  placeholder?: string
+  className?: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  const resize = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [])
+
+  useEffect(() => { resize() }, [value, resize])
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={e => { onChange(e.target.value); resize() }}
+      onBlur={e => onBlur(e.target.value)}
+      placeholder={placeholder}
+      className={className + ' resize-none overflow-hidden leading-snug'}
+      style={{ minHeight: '26px' }}
+    />
+  )
+}
 
 export function LineItemsTable({ projectId, lineItems, suppliers, items, onChange }: Props) {
   const supabase = createClient()
@@ -89,22 +121,22 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
       </div>
 
       <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
-        <table className="w-full text-sm min-w-[1100px]">
+        <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
-              <th className="text-right px-2 py-2 w-14">Qty</th>
-              <th className="text-left px-2 py-2 min-w-[130px]">Supplier</th>
-              <th className="text-right px-2 py-2 w-20">Delivery</th>
-              <th className="text-right px-2 py-2 w-24">Cost Price</th>
-              <th className="text-right px-2 py-2 w-16">Markup %</th>
-              <th className="text-right px-2 py-2 w-24">Sale Price</th>
-              <th className="text-right px-2 py-2 w-20">Profit</th>
-              <th className="text-right px-2 py-2 w-24">Total Cost</th>
-              <th className="text-right px-2 py-2 w-24">Total Price</th>
-              <th className="w-8 px-2 py-2" />
+              <th className="text-right px-2 py-2 w-10 whitespace-nowrap">Qty</th>
+              <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
+              <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Delivery</th>
+              <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Cost</th>
+              <th className="text-right px-2 py-2 w-14 whitespace-nowrap">Mkup%</th>
+              <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Sale</th>
+              <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Profit</th>
+              <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Tot. Cost</th>
+              <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Tot. Price</th>
+              <th className="w-7 px-2 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -141,13 +173,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
                   </td>
 
                   {/* Description */}
-                  <td className={COL}>
-                    <input
+                  <td className={COL + ' align-top'}>
+                    <AutoTextarea
                       value={item.description ?? ''}
-                      onChange={e => updateLocal(item.id, 'description', e.target.value)}
-                      onBlur={e => saveField(item.id, 'description', e.target.value)}
-                      className={INPUT}
+                      onChange={v => updateLocal(item.id, 'description', v)}
+                      onBlur={v => saveField(item.id, 'description', v)}
                       placeholder="Description"
+                      className={INPUT}
                     />
                   </td>
 
