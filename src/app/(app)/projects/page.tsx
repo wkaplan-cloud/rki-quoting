@@ -9,7 +9,7 @@ export default async function ProjectsPage() {
   const supabase = await createClient()
   const { data: projects } = await supabase
     .from('projects')
-    .select('*, client:clients(client_name, company)')
+    .select('*, client:clients(client_name, company), line_items(*)')
     .order('created_at', { ascending: false })
 
   return (

@@ -2,14 +2,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
-import type { Project, ProjectStatus } from '@/lib/types'
-import { formatZAR } from '@/lib/quoting'
+import type { Project, ProjectStatus, LineItem } from '@/lib/types'
+import { formatZAR, computeTotals } from '@/lib/quoting'
 import { FolderOpen } from 'lucide-react'
 
 const STATUSES: ProjectStatus[] = ['Quote', 'Invoice', 'Completed', 'Cancelled']
 
 interface Props {
-  projects: (Project & { client: { client_name: string; company: string | null } | null })[]
+  projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[] })[]
 }
 
 export function ProjectsTable({ projects }: Props) {
@@ -108,8 +108,8 @@ export function ProjectsTable({ projects }: Props) {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/projects/${p.id}`} className="block font-medium text-[#2C2C2A]">
-                      {formatZAR(p.design_fee ?? 0)}
+                    <Link href={`/projects/${p.id}`} className="block font-medium text-[#2C2C2A] whitespace-nowrap">
+                      {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0).grand_total)}
                     </Link>
                   </td>
                 </tr>
