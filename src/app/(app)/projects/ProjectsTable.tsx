@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { StatusBadge } from '@/components/ui/StatusBadge'
+import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
 import type { Project, ProjectStatus } from '@/lib/types'
 import { formatZAR } from '@/lib/quoting'
 import { FolderOpen } from 'lucide-react'
@@ -48,7 +48,7 @@ export function ProjectsTable({ projects }: Props) {
                   : 'bg-white border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
                 }`}
             >
-              {s}
+              {s === 'All' ? 'All' : STATUS_LABELS[s]}
             </button>
           ))}
         </div>

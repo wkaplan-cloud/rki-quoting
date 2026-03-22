@@ -8,10 +8,17 @@ const styles: Record<ProjectStatus, string> = {
   Cancelled: 'bg-red-100 text-red-800 border border-red-200',
 }
 
+export const STATUS_LABELS: Record<ProjectStatus, string> = {
+  Quote:     'Quoting',
+  Invoice:   'Invoiced',
+  Completed: 'Completed',
+  Cancelled: 'Cancelled',
+}
+
 export function StatusBadge({ status }: { status: ProjectStatus }) {
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium tracking-wide ${styles[status]}`}>
-      {status}
+      {STATUS_LABELS[status]}
     </span>
   )
 }

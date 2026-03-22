@@ -78,16 +78,19 @@ export function ProjectHeader({ project, clients, onStatusChange, onProjectUpdat
             </>
           ) : (
             <>
-              <Select
-                value={project.status}
-                onChange={e => onStatusChange(e.target.value as ProjectStatus)}
-                className="text-xs py-1.5 !w-auto"
-              >
-                <option>Quote</option>
-                <option>Invoice</option>
-                <option>Completed</option>
-                <option>Cancelled</option>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#8A877F] font-medium">Status</span>
+                <Select
+                  value={project.status}
+                  onChange={e => onStatusChange(e.target.value as ProjectStatus)}
+                  className="text-xs py-1.5 !w-auto"
+                >
+                  <option value="Quote">Quoting</option>
+                  <option value="Invoice">Invoiced</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </Select>
+              </div>
               <button onClick={() => setEditing(true)} className="p-1.5 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
                 <Pencil size={14} />
               </button>
