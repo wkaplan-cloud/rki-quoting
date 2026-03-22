@@ -69,6 +69,9 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig 
       await supabase.from('projects').update({ status: newStatus }).eq('id', projectId)
       setLocalProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p))
     }
+
+    // Refresh server data so summary cards update
+    router.refresh()
   }
 
   // Short labels for column headers
