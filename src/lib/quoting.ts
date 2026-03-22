@@ -4,9 +4,9 @@ import type { LineItem, LineItemComputed, ProjectTotals } from './types'
 
 export function computeLineItem(item: LineItem): LineItemComputed {
   const sale_price = item.cost_price * (1 + item.markup_percentage / 100)
-  const profit = sale_price - item.cost_price
-  const total_cost = item.cost_price * item.quantity
+  const total_cost = (item.cost_price * item.quantity) + item.delivery
   const total_price = sale_price * item.quantity
+  const profit = total_price - total_cost
 
   return { ...item, sale_price, profit, total_cost, total_price }
 }
