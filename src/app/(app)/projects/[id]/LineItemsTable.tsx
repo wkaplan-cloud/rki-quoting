@@ -72,10 +72,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       supplier_id: supplierId || null,
       supplier_name: supplier?.supplier_name ?? null,
     }
-    if (supplier) {
-      updates.markup_percentage = supplier.markup_percentage
-      if (supplier.delivery_address) updates.delivery_address = supplier.delivery_address
-    }
+    if (supplier) updates.markup_percentage = supplier.markup_percentage
     onChange(lineItems.map(item => item.id === id ? { ...item, ...updates } : item))
     await supabase.from('line_items').update(updates).eq('id', id)
   }, [lineItems, suppliers, onChange, supabase])
@@ -89,7 +86,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       quantity: 1,
       cost_price: 0,
       markup_percentage: 40,
-      delivery_address: null,
+      delivery_address: officeAddress.address || null,
       sort_order,
       row_type: 'item',
       indent_level: 0,
@@ -308,6 +305,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       className={INPUT + ' cursor-pointer'}
                     >
                       <option value="">— Deliver to —</option>
+                      {officeAddress.address && (
+                        <option value={officeAddress.address}>{officeAddress.name}</option>
+                      )}
                       {suppliers
                         .filter(s => s.delivery_address)
                         .map(s => (
@@ -316,9 +316,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           </option>
                         ))
                       }
-                      {officeAddress.address && (
-                        <option value={officeAddress.address}>{officeAddress.name}</option>
-                      )}
                     </select>
                   </td>
 
