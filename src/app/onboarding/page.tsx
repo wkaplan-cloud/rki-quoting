@@ -38,34 +38,47 @@ export default function OnboardingPage() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Create org
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({ name: form.business_name })
-      .select()
-      .single()
-    if (orgError) { toast.error(orgError.message); setSaving(false); return }
+    // Check if org already exists for this user
+    const { data: existingOrgId } = await supabase.rpc('get_current_org_id')
 
-    // Add user as admin member
-    const { error: memberError } = await supabase.from('org_members').insert({
-      org_id: org.id,
-      user_id: user!.id,
-      invited_email: user!.email!,
-      role: 'admin',
-      status: 'active',
-      joined_at: new Date().toISOString(),
-    })
-    if (memberError) { toast.error(memberError.message); setSaving(false); return }
+    let orgId = existingOrgId
 
-    // Save settings with org_id
-    const { error: settingsError } = await supabase.from('settings').insert({
-      user_id: user!.id,
-      org_id: org.id,
-      ...form,
-      vat_rate: 15,
-      deposit_percentage: 70,
-    })
-    if (settingsError) { toast.error(settingsError.message); setSaving(false); return }
+    if (!orgId) {
+      // Create org
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .insert({ name: form.business_name })
+        .select()
+        .single()
+      if (orgError) { toast.error(orgError.message); setSaving(false); return }
+      orgId = org.id
+
+      // Add user as admin member
+      const { error: memberError } = await supabase.from('org_members').insert({
+        org_id: orgId,
+        user_id: user!.id,
+        invited_email: user!.email!,
+        role: 'admin',
+        status: 'active',
+        joined_at: new Date().toISOString(),
+      })
+      if (memberError) { toast.error(memberError.message); setSaving(false); return }
+    }
+
+    // Upsert settings
+    const { data: existingSettings } = await supabase.from('settings').select('id').maybeSingle()
+    if (existingSettings) {
+      await supabase.from('settings').update({ ...form }).eq('id', existingSettings.id)
+    } else {
+      const { error: settingsError } = await supabase.from('settings').insert({
+        user_id: user!.id,
+        org_id: orgId,
+        ...form,
+        vat_rate: 15,
+        deposit_percentage: 70,
+      })
+      if (settingsError) { toast.error(settingsError.message); setSaving(false); return }
+    }
 
     router.push('/')
   }
