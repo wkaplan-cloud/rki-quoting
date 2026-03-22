@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
@@ -28,6 +28,29 @@ export function NewProjectForm({ clients }: Props) {
     design_fee: '0',
     notes: '',
   })
+
+  useEffect(() => {
+    async function loadNextNumber() {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data } = await supabase
+        .from('projects')
+        .select('project_number')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (!data?.project_number) return
+      const last = data.project_number
+      // Find trailing digits and increment, preserving prefix and zero-padding
+      const match = last.match(/^(.*?)(\d+)$/)
+      if (!match) return
+      const prefix = match[1]
+      const digits = match[2]
+      const next = String(parseInt(digits) + 1).padStart(digits.length, '0')
+      setForm(f => ({ ...f, project_number: prefix + next }))
+    }
+    loadNextNumber()
+  }, [])
 
   function set(key: string, value: string) {
     setForm(f => ({ ...f, [key]: value }))
@@ -113,7 +136,7 @@ export function NewProjectForm({ clients }: Props) {
           required
         />
         <Input
-          label="Design Fee (R)"
+          label="Design Fee (%)"
           type="number"
           min="0"
           step="0.01"
