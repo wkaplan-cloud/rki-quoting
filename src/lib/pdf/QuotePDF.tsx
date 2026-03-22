@@ -24,7 +24,7 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
             <Text style={styles.brandName}>R Kaplan Interiors</Text>
             <Text style={styles.brandSub}>INTERIOR DESIGN</Text>
           </View>
-          <View>
+          <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
             <Text style={styles.docMeta}>{project.project_number}</Text>
             <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
