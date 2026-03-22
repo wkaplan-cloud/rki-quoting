@@ -76,7 +76,7 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
                 if (item.row_type === 'section') {
                   return (
                     <View key={item.id} style={styles.tableSectionRow}>
-                      <Text style={styles.tableSectionLabel}>{item.item_name || 'Section'}</Text>
+                      <Text style={styles.tableSectionLabel}>{(item.item_name || 'Section').toUpperCase()}</Text>
                     </View>
                   )
                 }
