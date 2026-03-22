@@ -117,7 +117,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       quantity: 0,
       cost_price: 0,
       markup_percentage: 0,
-      delivery: 0,
       sort_order,
       row_type: 'section',
       indent_level: 0,
