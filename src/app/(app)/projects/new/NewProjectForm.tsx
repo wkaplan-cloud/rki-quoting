@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { Combobox } from '@/components/ui/Combobox'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -16,11 +17,12 @@ export function NewProjectForm({ clients }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
+  const [clientId, setClientId] = useState('')
+  const [clientName, setClientName] = useState('')
 
   const [form, setForm] = useState({
     project_number: '',
     project_name: '',
-    client_id: '',
     date: new Date().toISOString().split('T')[0],
     status: 'Quote',
     design_fee: '0',
@@ -31,6 +33,17 @@ export function NewProjectForm({ clients }: Props) {
     setForm(f => ({ ...f, [key]: value }))
   }
 
+  async function handleCreateClient(name: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase.from('clients').insert({
+      user_id: user!.id,
+      client_name: name,
+    }).select().single()
+    if (error) { toast.error('Failed to create client'); return { id: '' } }
+    toast.success(`Client "${name}" created`)
+    return { id: data.id }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -38,7 +51,7 @@ export function NewProjectForm({ clients }: Props) {
     const { data, error } = await supabase.from('projects').insert({
       ...form,
       user_id: user!.id,
-      client_id: form.client_id || null,
+      client_id: clientId || null,
       design_fee: parseFloat(form.design_fee) || 0,
     }).select().single()
 
@@ -71,19 +84,23 @@ export function NewProjectForm({ clients }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Select label="Client" value={form.client_id} onChange={e => set('client_id', e.target.value)}>
-          <option value="">— Select client —</option>
-          {clients.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.client_name}{c.company ? ` — ${c.company}` : ''}
-            </option>
-          ))}
-        </Select>
+        <Combobox
+          label="Client"
+          options={clients.map(c => ({
+            id: c.id,
+            label: c.client_name + (c.company ? ` — ${c.company}` : ''),
+          }))}
+          value={clientId}
+          inputValue={clientName}
+          onChange={(id, label) => { setClientId(id); setClientName(label) }}
+          onCreate={handleCreateClient}
+          placeholder="Type to search or create…"
+        />
         <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)}>
-          <option>Quote</option>
-          <option>Invoice</option>
-          <option>Completed</option>
-          <option>Cancelled</option>
+          <option value="Quote">Quoting</option>
+          <option value="Invoice">Invoiced</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
         </Select>
       </div>
 

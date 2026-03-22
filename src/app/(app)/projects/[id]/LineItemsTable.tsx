@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
 import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList } from 'lucide-react'
+import { Combobox } from '@/components/ui/Combobox'
 import toast from 'react-hot-toast'
 
 interface Props {
@@ -66,16 +67,28 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     await supabase.from('line_items').update({ [field]: value }).eq('id', id)
   }, [supabase])
 
-  const handleSupplierChange = useCallback(async (id: string, supplierId: string) => {
+  const handleSupplierChange = useCallback(async (lineItemId: string, supplierId: string, supplierName: string) => {
     const supplier = suppliers.find(s => s.id === supplierId)
     const updates: Partial<LineItem> = {
       supplier_id: supplierId || null,
-      supplier_name: supplier?.supplier_name ?? null,
+      supplier_name: supplierName || null,
     }
     if (supplier) updates.markup_percentage = supplier.markup_percentage
-    onChange(lineItems.map(item => item.id === id ? { ...item, ...updates } : item))
-    await supabase.from('line_items').update(updates).eq('id', id)
+    onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
+    await supabase.from('line_items').update(updates).eq('id', lineItemId)
   }, [lineItems, suppliers, onChange, supabase])
+
+  const createSupplier = useCallback(async (name: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase.from('suppliers').insert({
+      user_id: user!.id,
+      supplier_name: name,
+      markup_percentage: 0,
+    }).select().single()
+    if (error) { toast.error('Failed to create supplier'); return { id: '' } }
+    toast.success(`Supplier "${name}" created`)
+    return { id: data.id }
+  }, [supabase])
 
   const addRow = useCallback(async () => {
     const sort_order = lineItems.length
@@ -147,7 +160,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         <span className="text-xs text-[#8A877F]">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
       </div>
 
-      <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
+      <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto overflow-y-visible">
         <table className="w-full text-sm min-w-[1000px]">
           <thead>
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
@@ -283,15 +296,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Supplier */}
-                  <td className={COL}>
-                    <select
+                  <td className={COL + ' overflow-visible'}>
+                    <Combobox
+                      options={suppliers.map(s => ({ id: s.id, label: s.supplier_name }))}
                       value={item.supplier_id ?? ''}
-                      onChange={e => handleSupplierChange(item.id, e.target.value)}
-                      className={INPUT + ' cursor-pointer'}
-                    >
-                      <option value="">— Supplier —</option>
-                      {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}
-                    </select>
+                      inputValue={item.supplier_name ?? ''}
+                      onChange={(id, label) => handleSupplierChange(item.id, id, label)}
+                      onCreate={createSupplier}
+                      placeholder="Supplier…"
+                      className="min-w-[120px]"
+                    />
                   </td>
 
                   {/* Deliver To */}
