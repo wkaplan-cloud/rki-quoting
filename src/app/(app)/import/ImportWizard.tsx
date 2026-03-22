@@ -297,16 +297,42 @@ function ItemsImport({ supabase, existingItems }: { supabase: any; existingItems
 }
 
 // ─── Quote Lines Import ───────────────────────────────────────────────────────
-function LinesImport({ supabase, projects, existingSuppliers }: {
+function LinesImport({ supabase, projects: initialProjects, existingSuppliers }: {
   supabase: any
   projects: Props['projects']
   existingSuppliers: Props['existingSuppliers']
 }) {
+  const [projects, setProjects] = useState(initialProjects)
   const [projectId, setProjectId] = useState('')
+  const [creatingProject, setCreatingProject] = useState(false)
+  const [newProjectForm, setNewProjectForm] = useState({ project_name: '', project_number: '', date: new Date().toISOString().split('T')[0] })
+  const [savingProject, setSavingProject] = useState(false)
   const [rows, setRows] = useState<any[]>([])
   const [missingSuppliers, setMissingSuppliers] = useState<{ name: string; markup: number; include: boolean }[]>([])
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
+
+  async function handleCreateProject() {
+    if (!newProjectForm.project_name.trim()) { toast.error('Project name is required'); return }
+    setSavingProject(true)
+    const { data: orgData } = await supabase.rpc('get_current_org_id')
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase.from('projects').insert({
+      project_name: newProjectForm.project_name,
+      project_number: newProjectForm.project_number || newProjectForm.project_name.slice(0, 6).toUpperCase(),
+      date: newProjectForm.date,
+      status: 'Draft',
+      org_id: orgData,
+      user_id: user.id,
+      design_fee: 0,
+    }).select('id, project_name, project_number').single()
+    if (error) { toast.error(error.message); setSavingProject(false); return }
+    setProjects(prev => [data, ...prev])
+    setProjectId(data.id)
+    setCreatingProject(false)
+    setSavingProject(false)
+    toast.success('Project created')
+  }
 
   function handleFile(text: string) {
     const csv = parseCSV(text)
@@ -427,16 +453,56 @@ function LinesImport({ supabase, projects, existingSuppliers }: {
       {/* Project selector */}
       <div>
         <label className="text-xs font-medium text-[#8A877F] uppercase tracking-wider block mb-1.5">Select Project</label>
-        <select
-          value={projectId}
-          onChange={e => setProjectId(e.target.value)}
-          className="px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] bg-white w-72"
-        >
-          <option value="">— Choose a project —</option>
-          {projects.map(p => (
-            <option key={p.id} value={p.id}>{p.project_number} – {p.project_name}</option>
-          ))}
-        </select>
+        {!creatingProject ? (
+          <div className="flex items-center gap-3">
+            <select
+              value={projectId}
+              onChange={e => setProjectId(e.target.value)}
+              className="px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] bg-white w-72"
+            >
+              <option value="">— Choose a project —</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.project_number} – {p.project_name}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setCreatingProject(true)}
+              className="text-sm text-[#9A7B4F] hover:underline cursor-pointer"
+            >
+              + Create new project
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white border border-[#D8D3C8] rounded p-4 space-y-3 max-w-md">
+            <p className="text-xs font-medium text-[#2C2C2A]">New Project</p>
+            <input
+              placeholder="Project name *"
+              value={newProjectForm.project_name}
+              onChange={e => setNewProjectForm(f => ({ ...f, project_name: e.target.value }))}
+              className="w-full px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F]"
+            />
+            <div className="flex gap-2">
+              <input
+                placeholder="Project number"
+                value={newProjectForm.project_number}
+                onChange={e => setNewProjectForm(f => ({ ...f, project_number: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F]"
+              />
+              <input
+                type="date"
+                value={newProjectForm.date}
+                onChange={e => setNewProjectForm(f => ({ ...f, date: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F]"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleCreateProject} disabled={savingProject}>
+                {savingProject ? 'Creating…' : 'Create & Select'}
+              </Button>
+              <button onClick={() => setCreatingProject(false)} className="text-sm text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <FileUpload onFile={(t) => handleFile(t)} label="Upload Quote-Working CSV" />
