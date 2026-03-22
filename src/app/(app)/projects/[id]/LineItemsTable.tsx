@@ -121,20 +121,20 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
       </div>
 
       <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
-        <table className="w-full text-sm min-w-[900px]">
+        <table className="w-full text-sm min-w-[1000px]">
           <thead>
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
-              <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Qty</th>
+              <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Qty</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
-              <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Delivery</th>
-              <th className="text-right px-2 py-2 w-28 whitespace-nowrap">Cost</th>
-              <th className="text-right px-2 py-2 w-14 whitespace-nowrap">Mkup%</th>
-              <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Sale</th>
-              <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Profit</th>
-              <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Tot. Cost</th>
+              <th className="text-right px-2 py-2 min-w-[80px] whitespace-nowrap">Delivery</th>
+              <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Cost</th>
+              <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Mkup%</th>
+              <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Sale</th>
+              <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Profit</th>
+              <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Tot. Cost</th>
               <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Tot. Price</th>
               <th className="w-7 px-2 py-2" />
             </tr>
