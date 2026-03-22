@@ -14,8 +14,6 @@ function POPage({ project, items, supplier }: { project: Project; items: LineIte
   const itemRows = items.filter(i => i.row_type !== 'section')
   const total = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const poNumber = `${project.project_number}-${supplier?.supplier_name.slice(0, 3).toUpperCase() ?? 'GEN'}`
-  // Delivery address comes from the first item that has one set
-  const deliveryAddress = itemRows.find(i => i.delivery_address)?.delivery_address ?? null
 
   return (
     <Page size="A4" style={styles.page}>
@@ -36,20 +34,10 @@ function POPage({ project, items, supplier }: { project: Project; items: LineIte
       {supplier && (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>SUPPLIER</Text>
-          <View style={styles.infoGrid}>
-            <View style={styles.infoBlock}>
-              <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{supplier.supplier_name}</Text>
-              {supplier.contact_person && <Text style={styles.infoVal}>{supplier.contact_person}</Text>}
-              {supplier.email && <Text style={styles.infoVal}>{supplier.email}</Text>}
-            </View>
-            <View style={[styles.infoBlock, { alignItems: 'flex-end' }]}>
-              {deliveryAddress && (
-                <>
-                  <Text style={[styles.infoKey, { textAlign: 'right' }]}>Deliver To</Text>
-                  <Text style={[styles.infoVal, { textAlign: 'right' }]}>{deliveryAddress}</Text>
-                </>
-              )}
-            </View>
+          <View style={styles.infoBlock}>
+            <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{supplier.supplier_name}</Text>
+            {supplier.contact_person && <Text style={styles.infoVal}>{supplier.contact_person}</Text>}
+            {supplier.email && <Text style={styles.infoVal}>{supplier.email}</Text>}
           </View>
         </View>
       )}
@@ -67,9 +55,10 @@ function POPage({ project, items, supplier }: { project: Project; items: LineIte
           <View style={styles.tableHeader}>
             <Text style={[styles.th, { flex: 2 }]}>ITEM</Text>
             <Text style={[styles.th, { flex: 3 }]}>DESCRIPTION</Text>
+            <Text style={[styles.th, { flex: 2 }]}>DELIVER TO</Text>
             <Text style={[styles.th, { width: 44, textAlign: 'right', paddingRight: 8 }]}>QTY</Text>
-            <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>COST PRICE</Text>
-            <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>TOTAL COST</Text>
+            <Text style={[styles.th, { width: 72, textAlign: 'right' }]}>COST</Text>
+            <Text style={[styles.th, { width: 72, textAlign: 'right' }]}>TOTAL</Text>
           </View>
           {items.map((item, i) => {
             if (item.row_type === 'section') {
@@ -83,9 +72,10 @@ function POPage({ project, items, supplier }: { project: Project; items: LineIte
               <View key={item.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.td, { flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{item.item_name}</Text>
                 <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
+                <Text style={[styles.td, styles.tdMuted, { flex: 2 }]}>{item.delivery_address ?? ''}</Text>
                 <Text style={[styles.td, { width: 44, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}</Text>
-                <Text style={[styles.td, { width: 80, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
-                <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.cost_price * item.quantity)}</Text>
+                <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
+                <Text style={[styles.td, { width: 72, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.cost_price * item.quantity)}</Text>
               </View>
             )
           })}
