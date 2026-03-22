@@ -135,8 +135,6 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('invoice')}>
           <FileText size={13} /> Invoice PDF
         </Button>
-        {/* debug */}
-        <span className="text-xs text-red-500">{[...new Set(lineItems.filter(i => i.supplier_id).map(i => i.supplier_id))].length} suppliers</span>
         {/* Purchase Orders dropdown */}
         {(() => {
           const poSupplierIds = [...new Set(
