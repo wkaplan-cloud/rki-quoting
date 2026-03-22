@@ -8,30 +8,14 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Check if user has an active org membership
-  const { data: membership } = await supabase
-    .from('org_members')
-    .select('org_id, status')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .maybeSingle()
+  // Try to accept any pending invite first (security definer bypasses RLS)
+  await supabase.rpc('accept_org_invite')
 
-  if (!membership) {
-    // Check if they were invited by email — auto-accept
-    const { data: pending } = await supabase
-      .from('org_members')
-      .select('id')
-      .eq('invited_email', user.email!)
-      .eq('status', 'pending')
-      .maybeSingle()
+  // Check org membership via RPC (security definer — bypasses RLS circular dependency)
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
 
-    if (pending) {
-      // Accept invite via security-definer function
-      await supabase.rpc('accept_org_invite')
-    } else {
-      // Brand new user — send to onboarding
-      redirect('/onboarding')
-    }
+  if (!orgId) {
+    redirect('/onboarding')
   }
 
   return <AppLayout>{children}</AppLayout>
