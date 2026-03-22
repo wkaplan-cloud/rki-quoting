@@ -1,0 +1,34 @@
+export const dynamic = 'force-dynamic'
+import { createClient } from '@/lib/supabase/server'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { ProjectsTable } from './ProjectsTable'
+import Link from 'next/link'
+import { Plus } from 'lucide-react'
+
+export default async function ProjectsPage() {
+  const supabase = await createClient()
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('*, client:clients(client_name, company)')
+    .order('created_at', { ascending: false })
+
+  return (
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Projects"
+        subtitle={`${projects?.length ?? 0} total`}
+        actions={
+          <Link
+            href="/projects/new"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-medium rounded hover:bg-[#9A7B4F] transition-colors"
+          >
+            <Plus size={15} /> New Project
+          </Link>
+        }
+      />
+      <div className="flex-1 p-8">
+        <ProjectsTable projects={projects ?? []} />
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,129 @@
+import { Document, Page, Text, View } from '@react-pdf/renderer'
+import { styles } from './styles'
+import { computeLineItems, computeTotals, formatZAR } from '../quoting'
+import type { Project, LineItem, Client } from '../types'
+
+interface Props {
+  project: Project
+  client: Client | null
+  lineItems: LineItem[]
+  type: 'quote' | 'invoice'
+  footerText?: string
+}
+
+export function QuotePDF({ project, client, lineItems, type, footerText }: Props) {
+  const computed = computeLineItems(lineItems)
+  const totals = computeTotals(lineItems, project.design_fee)
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.brandName}>R Kaplan Interiors</Text>
+            <Text style={styles.brandSub}>INTERIOR DESIGN</Text>
+          </View>
+          <View>
+            <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
+            <Text style={styles.docMeta}>{project.project_number}</Text>
+            <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            <Text style={styles.docMeta}>Status: {project.status}</Text>
+          </View>
+        </View>
+
+        {/* Client */}
+        {client && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Client</Text>
+            <View style={styles.infoGrid}>
+              <View style={styles.infoBlock}>
+                <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{client.client_name}</Text>
+                {client.company && <Text style={styles.infoVal}>{client.company}</Text>}
+                {client.address && <Text style={styles.infoVal}>{client.address}</Text>}
+              </View>
+              <View style={styles.infoBlock}>
+                {client.vat_number && <><Text style={styles.infoKey}>VAT Number</Text><Text style={styles.infoVal}>{client.vat_number}</Text></>}
+                {client.contact_number && <><Text style={[styles.infoKey, { marginTop: 4 }]}>Contact</Text><Text style={styles.infoVal}>{client.contact_number}</Text></>}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Project info */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Project</Text>
+          <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{project.project_name}</Text>
+        </View>
+
+        {/* Line items */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Items</Text>
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.th, { flex: 2 }]}>Item</Text>
+              <Text style={[styles.th, { flex: 3 }]}>Description</Text>
+              <Text style={[styles.th, { width: 30, textAlign: 'right' }]}>Qty</Text>
+              <Text style={[styles.th, { flex: 1.5 }]}>Supplier</Text>
+              <Text style={[styles.th, { width: 70, textAlign: 'right' }]}>Sale Price</Text>
+              <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>Total</Text>
+            </View>
+            {computed.map((item, i) => (
+              <View key={item.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <Text style={[styles.td, { flex: 2 }]}>{item.item_name}</Text>
+                <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
+                <Text style={[styles.td, { width: 30, textAlign: 'right' }]}>{item.quantity}</Text>
+                <Text style={[styles.td, styles.tdMuted, { flex: 1.5 }]}>{item.supplier_name ?? ''}</Text>
+                <Text style={[styles.td, { width: 70, textAlign: 'right' }]}>{formatZAR(item.sale_price)}</Text>
+                <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.total_price)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Totals */}
+        <View style={styles.totalsContainer}>
+          <View style={styles.totalsBox}>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Subtotal</Text>
+              <Text style={styles.totalsVal}>{formatZAR(totals.subtotal)}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>Design Fee</Text>
+              <Text style={styles.totalsVal}>{formatZAR(totals.design_fee)}</Text>
+            </View>
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>VAT (15%)</Text>
+              <Text style={styles.totalsVal}>{formatZAR(totals.vat_amount)}</Text>
+            </View>
+            <View style={styles.totalsDivider} />
+            <View style={styles.totalsBig}>
+              <Text style={styles.totalsBigLabel}>TOTAL</Text>
+              <Text style={styles.totalsBigVal}>{formatZAR(totals.grand_total)}</Text>
+            </View>
+            <View style={styles.totalsDeposit}>
+              <Text style={styles.totalsDepositLabel}>70% Deposit Required</Text>
+              <Text style={styles.totalsDepositVal}>{formatZAR(totals.deposit_70)}</Text>
+            </View>
+            {type === 'invoice' && (
+              <View style={[styles.totalsRow, { marginTop: 4 }]}>
+                <Text style={styles.totalsLabel}>Balance Due</Text>
+                <Text style={[styles.totalsVal, { fontFamily: 'Helvetica-Bold' }]}>{formatZAR(totals.balance_due)}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>
+            {footerText ?? 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.'}
+          </Text>
+          <View style={styles.footerSig}>
+            <View style={styles.sigLine}><Text>Authorised Signature</Text></View>
+          </View>
+        </View>
+      </Page>
+    </Document>
+  )
+}
