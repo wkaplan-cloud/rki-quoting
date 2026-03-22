@@ -127,10 +127,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
               <th className="w-6 px-2 py-2" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
-              <th className="text-right px-2 py-2 w-10 whitespace-nowrap">Qty</th>
+              <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Qty</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Delivery</th>
-              <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Cost</th>
+              <th className="text-right px-2 py-2 w-28 whitespace-nowrap">Cost</th>
               <th className="text-right px-2 py-2 w-14 whitespace-nowrap">Mkup%</th>
               <th className="text-right px-2 py-2 w-20 whitespace-nowrap">Sale</th>
               <th className="text-right px-2 py-2 w-16 whitespace-nowrap">Profit</th>
