@@ -1,10 +1,13 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { ProjectStages, StageKey, STAGE_CONFIG } from '@/lib/types'
+import type { ProjectStages, StageKey } from '@/lib/types'
+import { STAGE_CONFIG } from '@/lib/types'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import toast from 'react-hot-toast'
+import { Check } from 'lucide-react'
 
 type StageConfigItem = typeof STAGE_CONFIG[number]
 
@@ -22,20 +25,10 @@ interface Props {
   stageConfig: readonly StageConfigItem[]
 }
 
-// Determine which kanban column a project belongs to
-// = the LAST completed stage, or "Not Started" if none
-function getProjectColumn(stages: ProjectStages | undefined, stageConfig: readonly StageConfigItem[]): number {
-  if (!stages) return -1
-  let last = -1
-  stageConfig.forEach((s, i) => {
-    if (stages[s.key as StageKey]) last = i
-  })
-  return last
-}
-
 export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
   const [localStages, setLocalStages] = useState<Record<string, ProjectStages>>(stagesMap)
   const supabase = createClient()
+  const router = useRouter()
 
   async function toggleStage(projectId: string, key: StageKey, currentVal: boolean) {
     const now = new Date().toISOString()
@@ -45,7 +38,6 @@ export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
       [dateKey]: !currentVal ? now : null,
     }
 
-    // Upsert the stage row
     const { error } = await supabase
       .from('project_stages')
       .upsert({ project_id: projectId, ...update }, { onConflict: 'project_id' })
@@ -55,132 +47,136 @@ export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
     setLocalStages(prev => ({
       ...prev,
       [projectId]: {
-        ...(prev[projectId] ?? { id: '', project_id: projectId, quote_sent: false, quote_sent_at: null, deposit_received: false, deposit_received_at: null, pos_sent: false, pos_sent_at: null, fabrics_received: false, fabrics_received_at: null, fabrics_sent: false, fabrics_sent_at: null, final_invoice_sent: false, final_invoice_sent_at: null, final_invoice_paid: false, final_invoice_paid_at: null, delivered_installed: false, delivered_installed_at: null }),
+        ...(prev[projectId] ?? {
+          id: '', project_id: projectId,
+          quote_sent: false, quote_sent_at: null,
+          deposit_received: false, deposit_received_at: null,
+          pos_sent: false, pos_sent_at: null,
+          fabrics_received: false, fabrics_received_at: null,
+          fabrics_sent: false, fabrics_sent_at: null,
+          final_invoice_sent: false, final_invoice_sent_at: null,
+          final_invoice_paid: false, final_invoice_paid_at: null,
+          delivered_installed: false, delivered_installed_at: null,
+        }),
         ...update,
       } as ProjectStages,
     }))
-
-    toast.success(!currentVal ? `✓ ${stageConfig.find(s => s.key === key)!.label}` : `Unmarked`)
   }
 
-  // Column 0 = Not Started, columns 1-7 = each stage
-  const columns = [
-    { label: 'Not Started', index: -1 },
-    ...stageConfig.map((s, i) => ({ label: s.label, index: i })),
-  ]
+  // Short labels for column headers
+  const shortLabels: Record<string, string> = {
+    quote_sent: 'Quote Sent',
+    deposit_received: 'Deposit',
+    pos_sent: 'POs Sent',
+    fabrics_received: 'Fabrics In',
+    fabrics_sent: 'Fabrics Out',
+    final_invoice_sent: 'Invoice Sent',
+    final_invoice_paid: 'Invoice Paid',
+    delivered_installed: 'Delivered',
+  }
 
-  return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
-      {columns.map(col => {
-        const colProjects = projects.filter(p => getProjectColumn(localStages[p.id], stageConfig) === col.index)
-
-        return (
-          <div key={col.label} className="flex-shrink-0 w-52">
-            {/* Column header */}
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider truncate">{col.label}</h3>
-              {colProjects.length > 0 && (
-                <span className="text-xs bg-[#E5DFD5] text-[#8A877F] rounded-full px-1.5 py-0.5 ml-1 flex-shrink-0">{colProjects.length}</span>
-              )}
-            </div>
-
-            {/* Cards */}
-            <div className="space-y-2 min-h-[100px]">
-              {colProjects.length === 0 && (
-                <div className="border-2 border-dashed border-[#E5DFD5] rounded h-16" />
-              )}
-              {colProjects.map(p => (
-                <ProjectCard
-                  key={p.id}
-                  project={p}
-                  stages={localStages[p.id]}
-                  stageConfig={stageConfig}
-                  onToggle={toggleStage}
-                />
-              ))}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function ProjectCard({ project, stages, stageConfig, onToggle }: {
-  project: Project
-  stages: ProjectStages | undefined
-  stageConfig: readonly StageConfigItem[]
-  onToggle: (projectId: string, key: StageKey, current: boolean) => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-
-  const completedCount = stages
-    ? stageConfig.filter(s => stages[s.key as StageKey]).length
-    : 0
-  const progress = Math.round((completedCount / stageConfig.length) * 100)
-
-  return (
-    <div className="bg-white border border-[#D8D3C8] rounded p-3 shadow-sm hover:border-[#9A7B4F] transition-colors">
-      {/* Project name + link */}
-      <Link href={`/projects/${project.id}`} className="block font-medium text-[#2C2C2A] text-sm leading-tight hover:text-[#9A7B4F] transition-colors">
-        {project.project_name}
-      </Link>
-      {project.client && (
-        <p className="text-xs text-[#8A877F] mt-0.5">{project.client.client_name}</p>
-      )}
-      <p className="text-xs text-[#8A877F] font-mono mt-0.5">{project.project_number}</p>
-
-      {/* Progress bar */}
-      <div className="mt-2 h-1 bg-[#EDE9E1] rounded-full overflow-hidden">
-        <div
-          className="h-full bg-[#9A7B4F] rounded-full transition-all duration-500"
-          style={{ width: `${progress}%` }}
-        />
+  if (projects.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <p className="text-[#8A877F] text-sm">No active projects</p>
+        <Link href="/projects/new" className="mt-2 text-sm text-[#9A7B4F] hover:underline">
+          Create your first project →
+        </Link>
       </div>
-      <p className="text-xs text-[#8A877F] mt-1">{completedCount}/{stageConfig.length} stages</p>
+    )
+  }
 
-      {/* Expand toggle */}
-      <button
-        onClick={() => setExpanded(e => !e)}
-        className="mt-2 text-xs text-[#9A7B4F] hover:underline cursor-pointer"
-      >
-        {expanded ? 'Hide stages ↑' : 'Update stages ↓'}
-      </button>
+  return (
+    <div className="bg-white border border-[#D8D3C8] rounded overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
+              <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Project</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Client</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
+              {stageConfig.map(s => (
+                <th key={s.key} className="px-3 py-3 text-center text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap min-w-[80px]">
+                  {shortLabels[s.key] ?? s.label}
+                </th>
+              ))}
+              <th className="px-4 py-3 text-center text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Progress</th>
+            </tr>
+          </thead>
+          <tbody>
+            {projects.map((p, i) => {
+              const stages = localStages[p.id]
+              const completedCount = stages ? stageConfig.filter(s => stages[s.key as StageKey]).length : 0
+              const progress = Math.round((completedCount / stageConfig.length) * 100)
 
-      {/* Stage toggles */}
-      {expanded && (
-        <div className="mt-2 space-y-1.5 border-t border-[#EDE9E1] pt-2">
-          {stageConfig.map(s => {
-            const done = stages?.[s.key as StageKey] ?? false
-            const date = stages?.[s.dateKey as keyof ProjectStages] as string | null
-
-            return (
-              <div key={s.key} className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className={`text-xs truncate ${done ? 'text-[#2C2C2A] font-medium' : 'text-[#8A877F]'}`}>
-                    {s.label}
-                  </p>
-                  {done && date && (
-                    <p className="text-xs text-[#8A877F]">
-                      {new Date(date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
-                    </p>
-                  )}
-                </div>
-                {/* Toggle switch */}
-                <button
-                  onClick={() => onToggle(project.id, s.key as StageKey, done)}
-                  className={`relative flex-shrink-0 w-8 h-4 rounded-full transition-colors duration-200 cursor-pointer focus:outline-none
-                    ${done ? 'bg-[#9A7B4F]' : 'bg-[#D8D3C8]'}`}
+              return (
+                <tr
+                  key={p.id}
+                  className={`border-b border-[#EDE9E1] hover:bg-[#FDFCF9] transition-colors ${i === projects.length - 1 ? 'border-0' : ''}`}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform duration-200
-                    ${done ? 'translate-x-4' : 'translate-x-0'}`}
-                  />
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
+                  {/* Project info */}
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/projects/${p.id}`}
+                      className="font-medium text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors block leading-tight"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {p.project_name}
+                    </Link>
+                    <span className="text-xs text-[#8A877F] font-mono">{p.project_number}</span>
+                  </td>
+                  <td className="px-4 py-3 text-[#8A877F] text-sm whitespace-nowrap">
+                    {p.client?.client_name ?? '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={p.status as any} />
+                  </td>
+
+                  {/* Stage cells */}
+                  {stageConfig.map(s => {
+                    const done = stages?.[s.key as StageKey] ?? false
+                    const dateVal = stages?.[s.dateKey as keyof ProjectStages] as string | null
+
+                    return (
+                      <td key={s.key} className="px-3 py-3 text-center">
+                        <button
+                          onClick={() => toggleStage(p.id, s.key as StageKey, done)}
+                          title={done && dateVal ? new Date(dateVal).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : `Mark ${s.label}`}
+                          className={`inline-flex flex-col items-center gap-0.5 group cursor-pointer rounded p-1 transition-colors
+                            ${done ? 'text-[#9A7B4F]' : 'text-[#D8D3C8] hover:text-[#9A7B4F]/50'}`}
+                        >
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors
+                            ${done ? 'bg-[#9A7B4F]/10' : 'bg-[#F5F2EC] group-hover:bg-[#9A7B4F]/5'}`}>
+                            <Check size={12} strokeWidth={done ? 3 : 2} />
+                          </span>
+                          {done && dateVal && (
+                            <span className="text-[10px] text-[#9A7B4F] leading-none">
+                              {new Date(dateVal).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                        </button>
+                      </td>
+                    )
+                  })}
+
+                  {/* Progress */}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="w-16 h-1.5 bg-[#EDE9E1] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#9A7B4F] rounded-full transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-[#8A877F]">{completedCount}/{stageConfig.length}</span>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

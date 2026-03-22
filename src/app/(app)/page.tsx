@@ -12,7 +12,7 @@ export default async function DashboardPage() {
 
   const [{ data: projects }, { data: allLineItems }, { data: stages }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
-    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity'),
+    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type, design_fee'),
     supabase.from('project_stages').select('*'),
   ])
 
@@ -25,21 +25,47 @@ export default async function DashboardPage() {
     return acc
   }, {})
 
-  const totalProjects = ps.length
+  // Summary metrics
+  const activeProjects = ps.filter(p => p.status !== 'Cancelled' && p.status !== 'Completed')
+  const completedProjects = ps.filter(p => p.status === 'Completed')
   const openQuotes = ps.filter(p => p.status === 'Quote').length
+  const activeInvoices = ps.filter(p => p.status === 'Invoice').length
+
   const awaitingDeposit = ps.filter(p => {
     const s = stagesMap[p.id]
-    return s?.quote_sent && !s?.deposit_received
+    return s?.quote_sent && !s?.deposit_received && p.status !== 'Cancelled' && p.status !== 'Completed'
   }).length
-  const completedProjects = ps.filter(p => p.status === 'Completed')
+
+  const invoicesOutstanding = ps.filter(p => {
+    const s = stagesMap[p.id]
+    return s?.final_invoice_sent && !s?.final_invoice_paid && p.status !== 'Cancelled'
+  }).length
+
+  const inProduction = ps.filter(p => {
+    const s = stagesMap[p.id]
+    return s?.deposit_received && !s?.delivered_installed && p.status !== 'Cancelled' && p.status !== 'Completed'
+  }).length
+
   const totalRevenue = completedProjects.reduce((sum, p) => {
     const items = lineItemsByProject[p.id] ?? []
     const totals = computeTotals(items as any, p.design_fee ?? 0)
     return sum + totals.grand_total
   }, 0)
 
-  // Active projects for kanban (not cancelled/completed)
-  const activeProjects = ps.filter(p => p.status !== 'Cancelled' && p.status !== 'Completed')
+  const activeRevenuePipeline = activeProjects.reduce((sum, p) => {
+    const items = lineItemsByProject[p.id] ?? []
+    const totals = computeTotals(items as any, p.design_fee ?? 0)
+    return sum + totals.grand_total
+  }, 0)
+
+  const summaryCards = [
+    { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${openQuotes} quotes · ${activeInvoices} invoices`, alert: false },
+    { label: 'Pipeline Value', value: formatZAR(activeRevenuePipeline), sub: 'active projects', alert: false },
+    { label: 'Awaiting Deposit', value: awaitingDeposit.toString(), sub: 'quote sent, not paid', alert: awaitingDeposit > 0 },
+    { label: 'In Production', value: inProduction.toString(), sub: 'deposit received', alert: false },
+    { label: 'Invoices Outstanding', value: invoicesOutstanding.toString(), sub: 'final invoice sent', alert: invoicesOutstanding > 0 },
+    { label: 'Total Revenue', value: formatZAR(totalRevenue), sub: `${completedProjects.length} completed projects`, alert: false },
+  ]
 
   return (
     <div className="flex flex-col h-full">
@@ -53,32 +79,28 @@ export default async function DashboardPage() {
       />
 
       <div className="p-8 space-y-8">
-        {/* Stat tiles */}
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: 'Total Projects', value: totalProjects, sub: null },
-            { label: 'Open Quotes', value: openQuotes, sub: null },
-            { label: 'Awaiting Deposit', value: awaitingDeposit, sub: 'quote sent, not paid' },
-            { label: 'Total Revenue', value: formatZAR(totalRevenue), sub: `${completedProjects.length} completed` },
-          ].map(({ label, value, sub }) => (
-            <div key={label} className="bg-white border border-[#D8D3C8] rounded p-5">
-              <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">{label}</p>
-              <p className="font-serif text-2xl text-[#1A1A18] mt-2">{value}</p>
-              {sub && <p className="text-xs text-[#8A877F] mt-1">{sub}</p>}
-            </div>
-          ))}
+        {/* Summary cards */}
+        <div>
+          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Overview</h2>
+          <div className="grid grid-cols-3 xl:grid-cols-6 gap-4">
+            {summaryCards.map(({ label, value, sub, alert }) => (
+              <div key={label} className={`bg-white border rounded p-5 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
+                <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider leading-tight">{label}</p>
+                <p className={`font-serif text-2xl mt-2 ${alert ? 'text-[#9A7B4F]' : 'text-[#1A1A18]'}`}>{value}</p>
+                {sub && <p className="text-xs text-[#8A877F] mt-1">{sub}</p>}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Kanban */}
+        {/* Pipeline list */}
         <div>
-          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-4">Project Pipeline</h2>
-          <div className="overflow-x-auto -mx-8 px-8">
-            <KanbanBoard
-              projects={activeProjects}
-              stagesMap={stagesMap}
-              stageConfig={STAGE_CONFIG}
-            />
-          </div>
+          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Project Pipeline</h2>
+          <KanbanBoard
+            projects={activeProjects}
+            stagesMap={stagesMap}
+            stageConfig={STAGE_CONFIG}
+          />
         </div>
       </div>
     </div>
