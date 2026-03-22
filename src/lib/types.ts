@@ -66,6 +66,37 @@ export interface LineItemComputed extends LineItem {
   total_price: number
 }
 
+export interface ProjectStages {
+  id: string
+  project_id: string
+  quote_sent: boolean
+  quote_sent_at: string | null
+  deposit_received: boolean
+  deposit_received_at: string | null
+  pos_sent: boolean
+  pos_sent_at: string | null
+  items_received: boolean
+  items_received_at: string | null
+  fabrics_sent: boolean
+  fabrics_sent_at: string | null
+  final_invoice_sent: boolean
+  final_invoice_sent_at: string | null
+  delivered_installed: boolean
+  delivered_installed_at: string | null
+}
+
+export const STAGE_CONFIG = [
+  { key: 'quote_sent',         label: 'Quote Sent',         dateKey: 'quote_sent_at' },
+  { key: 'deposit_received',   label: 'Deposit Received',   dateKey: 'deposit_received_at' },
+  { key: 'pos_sent',           label: 'POs Sent',           dateKey: 'pos_sent_at' },
+  { key: 'items_received',     label: 'Items Received',     dateKey: 'items_received_at' },
+  { key: 'fabrics_sent',       label: 'Fabrics Sent',       dateKey: 'fabrics_sent_at' },
+  { key: 'final_invoice_sent', label: 'Final Invoice Sent', dateKey: 'final_invoice_sent_at' },
+  { key: 'delivered_installed',label: 'Delivered & Installed', dateKey: 'delivered_installed_at' },
+] as const
+
+export type StageKey = typeof STAGE_CONFIG[number]['key']
+
 export interface ProjectTotals {
   subtotal: number
   design_fee: number
