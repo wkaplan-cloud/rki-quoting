@@ -55,7 +55,7 @@ export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
     setLocalStages(prev => ({
       ...prev,
       [projectId]: {
-        ...(prev[projectId] ?? { id: '', project_id: projectId, quote_sent: false, quote_sent_at: null, deposit_received: false, deposit_received_at: null, pos_sent: false, pos_sent_at: null, items_received: false, items_received_at: null, fabrics_sent: false, fabrics_sent_at: null, final_invoice_sent: false, final_invoice_sent_at: null, delivered_installed: false, delivered_installed_at: null }),
+        ...(prev[projectId] ?? { id: '', project_id: projectId, quote_sent: false, quote_sent_at: null, deposit_received: false, deposit_received_at: null, pos_sent: false, pos_sent_at: null, fabrics_received: false, fabrics_received_at: null, fabrics_sent: false, fabrics_sent_at: null, final_invoice_sent: false, final_invoice_sent_at: null, final_invoice_paid: false, final_invoice_paid_at: null, delivered_installed: false, delivered_installed_at: null }),
         ...update,
       } as ProjectStages,
     }))
