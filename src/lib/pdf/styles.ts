@@ -21,10 +21,10 @@ export const styles = StyleSheet.create({
   tableHeader: { flexDirection: 'row', backgroundColor: '#F5F2EC', paddingVertical: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#D8D3C8' },
   tableRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   tableRowAlt: { backgroundColor: '#FDFCF9' },
-  th: { fontSize: 7, color: '#8A877F', fontFamily: 'Helvetica-Bold' },
+  th: { fontSize: 8.5, color: '#8A877F', fontFamily: 'Helvetica-Bold' },
   tableSectionRow: { flexDirection: 'row', backgroundColor: '#F5F2EC', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', marginTop: 4 },
-  tableSectionLabel: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
-  td: { fontSize: 8.5, color: '#2C2C2A' },
+  tableSectionLabel: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#8A877F' },
+  td: { fontSize: 7.5, color: '#2C2C2A' },
   tdRight: { textAlign: 'right' },
   tdMuted: { color: '#8A877F' },
   // Totals
