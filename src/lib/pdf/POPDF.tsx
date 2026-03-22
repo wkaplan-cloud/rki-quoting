@@ -7,10 +7,126 @@ interface Props {
   project: Project
   lineItems: LineItem[]
   suppliers: Supplier[]
+  supplierId?: string
 }
 
-export function POPDF({ project, lineItems, suppliers }: Props) {
-  // Group line items by supplier
+function POPage({ project, items, supplier }: { project: Project; items: LineItem[]; supplier: Supplier | null }) {
+  const itemRows = items.filter(i => i.row_type !== 'section')
+  const total = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
+  const poNumber = `${project.project_number}-${supplier?.supplier_name.slice(0, 3).toUpperCase() ?? 'GEN'}`
+  // Delivery address comes from the first item that has one set
+  const deliveryAddress = itemRows.find(i => i.delivery_address)?.delivery_address ?? null
+
+  return (
+    <Page size="A4" style={styles.page}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.brandName}>R Kaplan Interiors</Text>
+          <Text style={styles.brandSub}>INTERIOR DESIGN</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={styles.docTitle}>PURCHASE ORDER</Text>
+          <Text style={styles.docMeta}>{poNumber}</Text>
+          <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+        </View>
+      </View>
+
+      {/* Supplier details */}
+      {supplier && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>SUPPLIER</Text>
+          <View style={styles.infoGrid}>
+            <View style={styles.infoBlock}>
+              <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{supplier.supplier_name}</Text>
+              {supplier.contact_person && <Text style={styles.infoVal}>{supplier.contact_person}</Text>}
+              {supplier.email && <Text style={styles.infoVal}>{supplier.email}</Text>}
+            </View>
+            <View style={[styles.infoBlock, { alignItems: 'flex-end' }]}>
+              {deliveryAddress && (
+                <>
+                  <Text style={[styles.infoKey, { textAlign: 'right' }]}>Deliver To</Text>
+                  <Text style={[styles.infoVal, { textAlign: 'right' }]}>{deliveryAddress}</Text>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Project ref */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>PROJECT REFERENCE</Text>
+        <Text style={styles.infoVal}>{project.project_name} ({project.project_number})</Text>
+      </View>
+
+      {/* Items */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>ITEMS TO ORDER</Text>
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <Text style={[styles.th, { flex: 2 }]}>ITEM</Text>
+            <Text style={[styles.th, { flex: 3 }]}>DESCRIPTION</Text>
+            <Text style={[styles.th, { width: 44, textAlign: 'right', paddingRight: 8 }]}>QTY</Text>
+            <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>COST PRICE</Text>
+            <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>TOTAL COST</Text>
+          </View>
+          {items.map((item, i) => {
+            if (item.row_type === 'section') {
+              return (
+                <View key={item.id} style={styles.tableSectionRow}>
+                  <Text style={styles.tableSectionLabel}>{(item.item_name || 'Section').toUpperCase()}</Text>
+                </View>
+              )
+            }
+            return (
+              <View key={item.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <Text style={[styles.td, { flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{item.item_name}</Text>
+                <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
+                <Text style={[styles.td, { width: 44, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}</Text>
+                <Text style={[styles.td, { width: 80, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
+                <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.cost_price * item.quantity)}</Text>
+              </View>
+            )
+          })}
+        </View>
+      </View>
+
+      {/* PO Total */}
+      <View style={styles.totalsContainer}>
+        <View style={styles.totalsBox}>
+          <View style={styles.totalsBig}>
+            <Text style={styles.totalsBigLabel}>TOTAL COST</Text>
+            <Text style={styles.totalsBigVal}>{formatZAR(total)}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Footer */}
+      <View style={styles.footer} fixed>
+        <Text style={styles.footerText}>Please reference PO number {poNumber} on all correspondence and delivery notes.</Text>
+        <View style={styles.footerSig}>
+          <View style={styles.sigLine}><Text>Authorised Signature</Text></View>
+        </View>
+      </View>
+    </Page>
+  )
+}
+
+export function POPDF({ project, lineItems, suppliers, supplierId }: Props) {
+  const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
+
+  // Single supplier mode — lineItems already filtered by API
+  if (supplierId) {
+    const supplier = supplierMap[supplierId] ?? null
+    return (
+      <Document>
+        <POPage project={project} items={lineItems} supplier={supplier} />
+      </Document>
+    )
+  }
+
+  // All suppliers mode — group by supplier
   const grouped = lineItems.reduce<Record<string, LineItem[]>>((acc, item) => {
     const key = item.supplier_id ?? '__none__'
     if (!acc[key]) acc[key] = []
@@ -18,100 +134,11 @@ export function POPDF({ project, lineItems, suppliers }: Props) {
     return acc
   }, {})
 
-  const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
-
   return (
     <Document>
-      {Object.entries(grouped).map(([supplierId, items]) => {
-        const supplier = supplierId !== '__none__' ? supplierMap[supplierId] : null
-        const total = items.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
-        const poNumber = `${project.project_number}-${supplier?.supplier_name.slice(0, 3).toUpperCase() ?? 'GEN'}`
-
-        return (
-          <Page key={supplierId} size="A4" style={styles.page}>
-            {/* Header */}
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.brandName}>R Kaplan Interiors</Text>
-                <Text style={styles.brandSub}>INTERIOR DESIGN</Text>
-              </View>
-              <View>
-                <Text style={styles.docTitle}>PURCHASE ORDER</Text>
-                <Text style={styles.docMeta}>{poNumber}</Text>
-                <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
-              </View>
-            </View>
-
-            {/* Supplier details */}
-            {supplier && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Supplier</Text>
-                <View style={styles.infoGrid}>
-                  <View style={styles.infoBlock}>
-                    <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{supplier.supplier_name}</Text>
-                    {supplier.contact_person && <Text style={styles.infoVal}>{supplier.contact_person}</Text>}
-                    {supplier.email && <Text style={styles.infoVal}>{supplier.email}</Text>}
-                  </View>
-                  <View style={styles.infoBlock}>
-                    {supplier.delivery_address && (
-                      <>
-                        <Text style={styles.infoKey}>Delivery Address</Text>
-                        <Text style={styles.infoVal}>{supplier.delivery_address}</Text>
-                      </>
-                    )}
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Project ref */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Project Reference</Text>
-              <Text style={styles.infoVal}>{project.project_name} ({project.project_number})</Text>
-            </View>
-
-            {/* Items */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Items to Order</Text>
-              <View style={styles.table}>
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.th, { flex: 2 }]}>Item</Text>
-                  <Text style={[styles.th, { flex: 3 }]}>Description</Text>
-                  <Text style={[styles.th, { width: 40, textAlign: 'right' }]}>Qty</Text>
-                  <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>Cost Price</Text>
-                  <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>Total Cost</Text>
-                </View>
-                {items.map((item, i) => (
-                  <View key={item.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
-                    <Text style={[styles.td, { flex: 2 }]}>{item.item_name}</Text>
-                    <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
-                    <Text style={[styles.td, { width: 40, textAlign: 'right' }]}>{item.quantity}</Text>
-                    <Text style={[styles.td, { width: 80, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
-                    <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.cost_price * item.quantity)}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            {/* PO Total */}
-            <View style={styles.totalsContainer}>
-              <View style={styles.totalsBox}>
-                <View style={styles.totalsBig}>
-                  <Text style={styles.totalsBigLabel}>TOTAL COST</Text>
-                  <Text style={styles.totalsBigVal}>{formatZAR(total)}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Footer */}
-            <View style={styles.footer} fixed>
-              <Text style={styles.footerText}>Please reference PO number {poNumber} on all correspondence and delivery notes.</Text>
-              <View style={styles.footerSig}>
-                <View style={styles.sigLine}><Text>Authorised Signature</Text></View>
-              </View>
-            </View>
-          </Page>
-        )
+      {Object.entries(grouped).map(([sid, items]) => {
+        const supplier = sid !== '__none__' ? (supplierMap[sid] ?? null) : null
+        return <POPage key={sid} project={project} items={items} supplier={supplier} />
       })}
     </Document>
   )

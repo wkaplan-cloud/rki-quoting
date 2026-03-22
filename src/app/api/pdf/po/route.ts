@@ -8,8 +8,10 @@ export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('projectId')
   if (!projectId) return NextResponse.json({ error: 'Missing projectId' }, { status: 400 })
 
+  const supplierId = req.nextUrl.searchParams.get('supplierId')
+
   const supabase = await createClient()
-  const [{ data: project }, { data: lineItems }, { data: suppliers }] = await Promise.all([
+  const [{ data: project }, { data: allLineItems }, { data: suppliers }] = await Promise.all([
     supabase.from('projects').select('*').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
     supabase.from('suppliers').select('*'),
@@ -17,15 +19,39 @@ export async function GET(req: NextRequest) {
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const lineItems = supplierId
+    ? (() => {
+        // Include section rows only if they have at least one item for this supplier beneath them
+        const all = allLineItems ?? []
+        const result: typeof all = []
+        let pendingSection: typeof all[number] | null = null
+        for (const item of all) {
+          if (item.row_type === 'section') {
+            pendingSection = item
+          } else if (item.supplier_id === supplierId) {
+            if (pendingSection) { result.push(pendingSection); pendingSection = null }
+            result.push(item)
+          }
+        }
+        return result
+      })()
+    : (allLineItems ?? [])
+
+  const supplier = supplierId ? (suppliers ?? []).find(s => s.id === supplierId) ?? null : null
+  const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_')
+  const filename = supplier
+    ? `${slug(project.project_number)}_PO_${slug(supplier.supplier_name)}.pdf`
+    : `${project.project_number}-po.pdf`
+
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(POPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [] }) as any
+    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${project.project_number}-po.pdf"`,
+      'Content-Disposition': `attachment; filename="${filename}"`,
     },
   })
 }
