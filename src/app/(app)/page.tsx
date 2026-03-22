@@ -63,7 +63,7 @@ export default async function DashboardPage() {
           ].map(({ label, value, sub }) => (
             <div key={label} className="bg-white border border-[#D8D3C8] rounded p-5">
               <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">{label}</p>
-              <p className="font-serif text-3xl text-[#1A1A18] mt-2">{value}</p>
+              <p className="font-serif text-2xl text-[#1A1A18] mt-2">{value}</p>
               {sub && <p className="text-xs text-[#8A877F] mt-1">{sub}</p>}
             </div>
           ))}
@@ -72,11 +72,13 @@ export default async function DashboardPage() {
         {/* Kanban */}
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-4">Project Pipeline</h2>
-          <KanbanBoard
-            projects={activeProjects}
-            stagesMap={stagesMap}
-            stageConfig={STAGE_CONFIG}
-          />
+          <div className="overflow-x-auto -mx-8 px-8">
+            <KanbanBoard
+              projects={activeProjects}
+              stagesMap={stagesMap}
+              stageConfig={STAGE_CONFIG}
+            />
+          </div>
         </div>
       </div>
     </div>
