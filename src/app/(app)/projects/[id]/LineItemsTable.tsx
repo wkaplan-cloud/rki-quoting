@@ -286,7 +286,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   {/* Qty */}
                   <td className={COL}>
                     <input
-                      type="number" min="0" step="0.01"
+                      type="number" min="0" step="1"
                       value={item.quantity}
                       onChange={e => updateLocal(item.id, 'quantity', parseFloat(e.target.value) || 0)}
                       onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value) || 0)}
