@@ -11,7 +11,7 @@ const styles: Record<ProjectStatus, string> = {
 
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   Draft:     'Draft',
-  Quote:     'Quoting',
+  Quote:     'Quoted',
   Invoice:   'Invoiced',
   Completed: 'Completed',
   Cancelled: 'Cancelled',

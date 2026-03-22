@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { ProjectStages, StageKey } from '@/lib/types'
-import { STAGE_CONFIG } from '@/lib/types'
+import { STAGE_CONFIG, statusFromStages } from '@/lib/types'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import toast from 'react-hot-toast'
 import { Check } from 'lucide-react'
@@ -20,13 +20,14 @@ interface Project {
 }
 
 interface Props {
-  projects: Project[]
+  projects: Project[]  // passed as initialProjects internally
   stagesMap: Record<string, ProjectStages>
   stageConfig: readonly StageConfigItem[]
 }
 
-export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
+export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig }: Props) {
   const [localStages, setLocalStages] = useState<Record<string, ProjectStages>>(stagesMap)
+  const [localProjects, setLocalProjects] = useState<Project[]>(initialProjects)
   const supabase = createClient()
   const router = useRouter()
 
@@ -44,23 +45,30 @@ export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
 
     if (error) { toast.error('Failed to update stage'); return }
 
-    setLocalStages(prev => ({
-      ...prev,
-      [projectId]: {
-        ...(prev[projectId] ?? {
-          id: '', project_id: projectId,
-          quote_sent: false, quote_sent_at: null,
-          deposit_received: false, deposit_received_at: null,
-          pos_sent: false, pos_sent_at: null,
-          fabrics_received: false, fabrics_received_at: null,
-          fabrics_sent: false, fabrics_sent_at: null,
-          final_invoice_sent: false, final_invoice_sent_at: null,
-          final_invoice_paid: false, final_invoice_paid_at: null,
-          delivered_installed: false, delivered_installed_at: null,
-        }),
-        ...update,
-      } as ProjectStages,
-    }))
+    const newStages = {
+      ...(localStages[projectId] ?? {
+        id: '', project_id: projectId,
+        quote_sent: false, quote_sent_at: null,
+        deposit_received: false, deposit_received_at: null,
+        pos_sent: false, pos_sent_at: null,
+        fabrics_received: false, fabrics_received_at: null,
+        fabrics_sent: false, fabrics_sent_at: null,
+        final_invoice_sent: false, final_invoice_sent_at: null,
+        final_invoice_paid: false, final_invoice_paid_at: null,
+        delivered_installed: false, delivered_installed_at: null,
+      }),
+      ...update,
+    } as ProjectStages
+
+    setLocalStages(prev => ({ ...prev, [projectId]: newStages }))
+
+    // Auto-update project status
+    const proj = localProjects.find(p => p.id === projectId)
+    if (proj && proj.status !== 'Cancelled') {
+      const newStatus = statusFromStages(newStages)
+      await supabase.from('projects').update({ status: newStatus }).eq('id', projectId)
+      setLocalProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p))
+    }
   }
 
   // Short labels for column headers
@@ -75,7 +83,7 @@ export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
     delivered_installed: 'Delivered',
   }
 
-  if (projects.length === 0) {
+  if (localProjects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <p className="text-[#8A877F] text-sm">No active projects</p>
@@ -104,7 +112,7 @@ export function KanbanBoard({ projects, stagesMap, stageConfig }: Props) {
             </tr>
           </thead>
           <tbody>
-            {projects.map((p, i) => {
+            {localProjects.map((p, i) => {
               const stages = localStages[p.id]
               const completedCount = stages ? stageConfig.filter(s => stages[s.key as StageKey]).length : 0
               const progress = Math.round((completedCount / stageConfig.length) * 100)

@@ -2,20 +2,34 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { Select } from '@/components/ui/Select'
-import type { Project, ProjectStatus } from '@/lib/types'
+import type { Project, ProjectStages, StageKey } from '@/lib/types'
+import { STAGE_CONFIG } from '@/lib/types'
 import toast from 'react-hot-toast'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, Ban } from 'lucide-react'
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null } | null }
   clients: { id: string; client_name: string; company: string | null }[]
-  onStatusChange: (status: ProjectStatus) => void
+  stages: ProjectStages | null
   onProjectUpdate: (p: any) => void
+  onStagesUpdate: (s: ProjectStages) => void
 }
 
-export function ProjectHeader({ project, clients, onStatusChange, onProjectUpdate }: Props) {
+const EMPTY_STAGES: ProjectStages = {
+  id: '', project_id: '',
+  quote_sent: false, quote_sent_at: null,
+  deposit_received: false, deposit_received_at: null,
+  pos_sent: false, pos_sent_at: null,
+  fabrics_received: false, fabrics_received_at: null,
+  fabrics_sent: false, fabrics_sent_at: null,
+  final_invoice_sent: false, final_invoice_sent_at: null,
+  final_invoice_paid: false, final_invoice_paid_at: null,
+  delivered_installed: false, delivered_installed_at: null,
+}
+
+export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate }: Props) {
   const [editing, setEditing] = useState(false)
+  const [togglingStage, setTogglingStage] = useState<string | null>(null)
   const [form, setForm] = useState({
     project_name: project.project_name,
     project_number: project.project_number,
@@ -41,8 +55,46 @@ export function ProjectHeader({ project, clients, onStatusChange, onProjectUpdat
     setEditing(false)
   }
 
+  async function handleCancel() {
+    if (!confirm('Cancel this project?')) return
+    const { error } = await supabase.from('projects').update({ status: 'Cancelled' }).eq('id', project.id)
+    if (error) { toast.error(error.message); return }
+    onProjectUpdate({ ...project, status: 'Cancelled' })
+    toast.success('Project cancelled')
+  }
+
+  async function toggleStage(key: StageKey, currentVal: boolean) {
+    setTogglingStage(key)
+    const now = new Date().toISOString()
+    const stageCfg = STAGE_CONFIG.find(s => s.key === key)!
+    const update = {
+      [key]: !currentVal,
+      [stageCfg.dateKey]: !currentVal ? now : null,
+    }
+
+    const { error } = await supabase
+      .from('project_stages')
+      .upsert({ project_id: project.id, ...update }, { onConflict: 'project_id' })
+
+    if (error) { toast.error('Failed to update stage'); setTogglingStage(null); return }
+
+    const newStages = { ...(stages ?? { ...EMPTY_STAGES, project_id: project.id }), ...update } as ProjectStages
+    onStagesUpdate(newStages)
+
+    // Auto-derive and save status (don't override Cancelled)
+    if (project.status !== 'Cancelled') {
+      const { statusFromStages } = await import('@/lib/types')
+      const newStatus = statusFromStages(newStages)
+      await supabase.from('projects').update({ status: newStatus }).eq('id', project.id)
+      onProjectUpdate({ ...project, status: newStatus })
+    }
+
+    setTogglingStage(null)
+  }
+
   return (
     <div className="px-8 py-5 border-b border-[#D8D3C8] bg-[#F5F2EC]">
+      {/* Top row: project info + status/cancel */}
       <div className="flex items-start justify-between gap-4">
         {editing ? (
           <div className="flex-1 grid grid-cols-2 gap-3">
@@ -80,23 +132,51 @@ export function ProjectHeader({ project, clients, onStatusChange, onProjectUpdat
               <button onClick={cancel} className="p-1.5 rounded bg-white border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"><X size={14} /></button>
             </>
           ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[#8A877F] font-medium">Status</span>
-              <Select
-                value={project.status}
-                onChange={e => onStatusChange(e.target.value as ProjectStatus)}
-                className="text-xs py-1.5 !w-auto"
-              >
-                <option value="Draft">Draft</option>
-                <option value="Quote">Quoting</option>
-                <option value="Invoice">Invoiced</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </Select>
-            </div>
+            <>
+              <StatusBadge status={project.status as any} />
+              {project.status !== 'Cancelled' && project.status !== 'Completed' && (
+                <button
+                  onClick={handleCancel}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer"
+                >
+                  <Ban size={11} /> Cancel
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
+
+      {/* Stage pipeline strip */}
+      {project.status !== 'Cancelled' && (
+        <div className="mt-4 flex items-center gap-1 flex-wrap">
+          {STAGE_CONFIG.map((s, i) => {
+            const done = stages?.[s.key as StageKey] ?? false
+            const toggling = togglingStage === s.key
+            return (
+              <div key={s.key} className="flex items-center gap-1">
+                <button
+                  onClick={() => toggleStage(s.key as StageKey, done)}
+                  disabled={toggling}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors cursor-pointer border
+                    ${done
+                      ? 'bg-[#9A7B4F] text-white border-[#9A7B4F]'
+                      : 'bg-white text-[#8A877F] border-[#D8D3C8] hover:border-[#9A7B4F] hover:text-[#9A7B4F]'
+                    } ${toggling ? 'opacity-50' : ''}`}
+                >
+                  <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center flex-shrink-0 ${done ? 'border-white bg-white/20' : 'border-[#D8D3C8]'}`}>
+                    {done && <Check size={9} strokeWidth={3} className="text-white" />}
+                  </span>
+                  {s.label}
+                </button>
+                {i < STAGE_CONFIG.length - 1 && (
+                  <span className="text-[#D8D3C8] text-xs">›</span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItems, computeTotals, formatZAR } from '@/lib/quoting'
-import type { Project, LineItem, ProjectStatus } from '@/lib/types'
+import type { Project, LineItem, ProjectStages } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
@@ -19,12 +19,13 @@ interface Props {
   officeAddress: { name: string; address: string }
   businessName: string
   vatRate: number
-  depositPaid: boolean
+  initialStages: ProjectStages | null
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPaid }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
+  const [stages, setStages] = useState<ProjectStages | null>(initialStages)
   const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
   const [vatRate, setVatRate] = useState(initialVatRate)
   const [poMenuOpen, setPoMenuOpen] = useState(false)
@@ -42,13 +43,6 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, designFeePct, vatRate)
-
-  const handleStatusChange = useCallback(async (status: ProjectStatus) => {
-    const { error } = await supabase.from('projects').update({ status }).eq('id', project.id)
-    if (error) { toast.error('Failed to update status'); return }
-    setProject(p => ({ ...p, status }))
-    toast.success(`Status updated to ${status}`)
-  }, [project.id, supabase])
 
   const handleDesignFeeChange = useCallback(async (pct: number) => {
     setDesignFeePct(pct)
@@ -124,8 +118,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       <ProjectHeader
         project={project}
         clients={clients}
-        onStatusChange={handleStatusChange}
+        stages={stages}
         onProjectUpdate={setProject}
+        onStagesUpdate={setStages}
       />
 
       {/* Action bar */}
@@ -249,7 +244,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               <span>70% Deposit</span>
               <span className="font-medium">{formatZAR(totals.deposit_70)}</span>
             </div>
-            {depositPaid && (
+            {stages?.deposit_received && (
               <div className="flex justify-between text-sm text-[#8A877F]">
                 <span>30% Balance</span>
                 <span className="font-medium">{formatZAR(totals.balance_due)}</span>

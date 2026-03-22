@@ -102,6 +102,14 @@ export const STAGE_CONFIG = [
 
 export type StageKey = typeof STAGE_CONFIG[number]['key']
 
+export function statusFromStages(stages: ProjectStages | null | undefined): ProjectStatus {
+  if (!stages) return 'Draft'
+  if (stages.delivered_installed) return 'Completed'
+  if (stages.final_invoice_sent) return 'Invoice'
+  if (stages.quote_sent) return 'Quote'
+  return 'Draft'
+}
+
 export interface ProjectTotals {
   subtotal: number
   design_fee: number
