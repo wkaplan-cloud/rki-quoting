@@ -146,7 +146,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         />
 
         {/* Totals */}
-        <div className="mt-8 flex justify-end">
+        <div className="mt-8 flex justify-end gap-4 items-end">
+          {/* Profit box */}
+          <div className="bg-green-50 border border-green-200 rounded p-5 text-center">
+            <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Gross Profit</p>
+            <p className="text-xl font-semibold text-green-700">
+              {formatZAR(computed.reduce((sum, i) => sum + i.profit, 0) + totals.design_fee)}
+            </p>
+            <p className="text-xs text-green-500 mt-1">excl. VAT</p>
+          </div>
+
           <div className="w-80 bg-white border border-[#D8D3C8] rounded p-5 space-y-2">
             <div className="flex justify-between text-sm text-[#8A877F]">
               <span>Subtotal</span>
