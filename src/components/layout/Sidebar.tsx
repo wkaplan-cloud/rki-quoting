@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck
+  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck, Upload
 } from 'lucide-react'
 
 const mainLinks = [
@@ -68,6 +68,10 @@ export function Sidebar() {
             {label}
           </Link>
         ))}
+        <Link href="/import" className={`flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150 ${isActive('/import') ? 'text-white/80' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}>
+          <Upload size={14} className={isActive('/import') ? 'text-[#C4A46B]' : 'opacity-60'} />
+          Import
+        </Link>
         <div className="border-t border-white/10 my-1" />
         <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
           <ShieldCheck size={14} />
