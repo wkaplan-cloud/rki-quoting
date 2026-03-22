@@ -18,9 +18,10 @@ interface Props {
   suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }[]
   items: { id: string; item_name: string }[]
   officeAddress: { name: string; address: string }
+  businessName: string
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [designFee, setDesignFee] = useState(initial.design_fee)
@@ -74,9 +75,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${project.project_number}-${type}.pdf`
+    const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
+    const clientPart = project.client?.client_name ? `_${slug(project.client.client_name)}` : ''
+    a.download = `${slug(businessName)}${clientPart}_${slug(project.project_name)}_${type}.pdf`
     a.click()
-  }, [project.id, project.project_number])
+  }, [project.id, project.project_name, project.client, businessName])
 
   const handleSendEmail = useCallback(async (type: 'quote' | 'invoice') => {
     const res = await fetch('/api/email/send', {
