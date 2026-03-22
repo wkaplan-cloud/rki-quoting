@@ -19,13 +19,15 @@ export function computeLineItems(items: LineItem[]): LineItemComputed[] {
 
 export function computeTotals(
   items: LineItem[],
-  design_fee: number
+  design_fee_pct: number,
+  vat_rate: number = 15
 ): ProjectTotals {
   const computed = computeLineItems(items)
   const subtotal = computed.reduce((sum, i) => sum + i.total_price, 0)
+  const design_fee = subtotal * (design_fee_pct / 100)
   const vat_base = subtotal + design_fee
-  const vat_amount = vat_base * 0.15
-  const grand_total = subtotal + design_fee + vat_amount
+  const vat_amount = vat_base * (vat_rate / 100)
+  const grand_total = vat_base + vat_amount
   const deposit_70 = grand_total * 0.7
   const balance_due = grand_total - deposit_70
 

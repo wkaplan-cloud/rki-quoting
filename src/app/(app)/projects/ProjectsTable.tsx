@@ -109,7 +109,7 @@ export function ProjectsTable({ projects }: Props) {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link href={`/projects/${p.id}`} className="block font-medium text-[#2C2C2A] whitespace-nowrap">
-                      {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0).grand_total)}
+                      {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, 15).grand_total)}
                     </Link>
                   </td>
                 </tr>

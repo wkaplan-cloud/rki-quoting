@@ -19,17 +19,19 @@ interface Props {
   items: { id: string; item_name: string }[]
   officeAddress: { name: string; address: string }
   businessName: string
+  vatRate: number
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
-  const [designFee, setDesignFee] = useState(initial.design_fee)
+  const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
+  const [vatRate, setVatRate] = useState(initialVatRate)
   const router = useRouter()
   const supabase = createClient()
 
   const computed = computeLineItems(lineItems)
-  const totals = computeTotals(lineItems, designFee)
+  const totals = computeTotals(lineItems, designFeePct, vatRate)
 
   const handleStatusChange = useCallback(async (status: ProjectStatus) => {
     const { error } = await supabase.from('projects').update({ status }).eq('id', project.id)
@@ -38,10 +40,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     toast.success(`Status updated to ${status}`)
   }, [project.id, supabase])
 
-  const handleDesignFeeChange = useCallback(async (fee: number) => {
-    setDesignFee(fee)
-    await supabase.from('projects').update({ design_fee: fee }).eq('id', project.id)
+  const handleDesignFeeChange = useCallback(async (pct: number) => {
+    setDesignFeePct(pct)
+    await supabase.from('projects').update({ design_fee: pct }).eq('id', project.id)
   }, [project.id, supabase])
+
+  const handleVatRateChange = useCallback(async (rate: number) => {
+    setVatRate(rate)
+    const { data: { user } } = await supabase.auth.getUser()
+    await supabase.from('settings').upsert({ user_id: user!.id, vat_rate: rate }, { onConflict: 'user_id' })
+  }, [supabase])
 
   const handleDuplicate = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -143,19 +151,32 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               <span>Subtotal</span>
               <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.subtotal)}</span>
             </div>
+            {/* Design fee — editable % */}
             <div className="flex justify-between text-sm text-[#8A877F] items-center">
-              <span>Design Fee</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={designFee}
-                onChange={e => handleDesignFeeChange(parseFloat(e.target.value) || 0)}
-                className="w-32 text-right text-sm font-medium text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent"
-              />
+              <span className="flex items-center gap-0.5">
+                Design Fee (
+                <input
+                  type="number" min="0" max="100" step="0.5"
+                  value={designFeePct}
+                  onChange={e => handleDesignFeeChange(parseFloat(e.target.value) || 0)}
+                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent"
+                />
+                %)
+              </span>
+              <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.design_fee)}</span>
             </div>
-            <div className="flex justify-between text-sm text-[#8A877F]">
-              <span>VAT (15%)</span>
+            {/* VAT — editable % */}
+            <div className="flex justify-between text-sm text-[#8A877F] items-center">
+              <span className="flex items-center gap-0.5">
+                VAT (
+                <input
+                  type="number" min="0" max="100" step="0.5"
+                  value={vatRate}
+                  onChange={e => handleVatRateChange(parseFloat(e.target.value) || 0)}
+                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent"
+                />
+                %)
+              </span>
               <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.vat_amount)}</span>
             </div>
             <div className="border-t border-[#D8D3C8] pt-2 flex justify-between font-semibold text-[#2C2C2A]">
