@@ -37,17 +37,36 @@ export default function OnboardingPage() {
   async function finish() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('settings').upsert({
+
+    // Create org
+    const { data: org, error: orgError } = await supabase
+      .from('organizations')
+      .insert({ name: form.business_name })
+      .select()
+      .single()
+    if (orgError) { toast.error(orgError.message); setSaving(false); return }
+
+    // Add user as admin member
+    const { error: memberError } = await supabase.from('org_members').insert({
+      org_id: org.id,
       user_id: user!.id,
+      invited_email: user!.email!,
+      role: 'admin',
+      status: 'active',
+      joined_at: new Date().toISOString(),
+    })
+    if (memberError) { toast.error(memberError.message); setSaving(false); return }
+
+    // Save settings with org_id
+    const { error: settingsError } = await supabase.from('settings').insert({
+      user_id: user!.id,
+      org_id: org.id,
       ...form,
       vat_rate: 15,
       deposit_percentage: 70,
-    }, { onConflict: 'user_id' })
-    if (error) {
-      toast.error(error.message)
-      setSaving(false)
-      return
-    }
+    })
+    if (settingsError) { toast.error(settingsError.message); setSaving(false); return }
+
     router.push('/')
   }
 

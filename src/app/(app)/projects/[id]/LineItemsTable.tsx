@@ -98,8 +98,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
   const createSupplier = useCallback(async (name: string) => {
     const { data: { user } } = await supabase.auth.getUser()
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
     const { data, error } = await supabase.from('suppliers').insert({
       user_id: user!.id,
+      org_id: orgId,
       supplier_name: name,
       markup_percentage: 0,
     }).select().single()

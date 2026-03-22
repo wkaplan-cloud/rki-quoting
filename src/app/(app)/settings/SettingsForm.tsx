@@ -22,7 +22,7 @@ interface Settings {
   footer_text?: string | null
 }
 
-export function SettingsForm({ settings, userId }: { settings: Settings | null; userId: string }) {
+export function SettingsForm({ settings }: { settings: Settings | null }) {
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -45,12 +45,11 @@ export function SettingsForm({ settings, userId }: { settings: Settings | null; 
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const { error } = await supabase.from('settings').upsert({
+    const { error } = await supabase.from('settings').update({
       ...form,
-      user_id: userId,
       vat_rate: parseFloat(form.vat_rate),
       deposit_percentage: parseFloat(form.deposit_percentage),
-    }, { onConflict: 'user_id' })
+    }).eq('id', settings!.id)
     if (error) { toast.error(error.message) } else { toast.success('Settings saved') }
     setSaving(false)
   }

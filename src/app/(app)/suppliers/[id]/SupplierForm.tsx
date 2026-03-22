@@ -36,7 +36,8 @@ export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
       router.refresh()
     } else {
       const { data: { user } } = await supabase.auth.getUser()
-      const { data, error } = await supabase.from('suppliers').insert({ ...payload, user_id: user!.id }).select().single()
+      const { data: orgId } = await supabase.rpc('get_current_org_id')
+      const { data, error } = await supabase.from('suppliers').insert({ ...payload, user_id: user!.id, org_id: orgId }).select().single()
       if (error) { toast.error(error.message); setSaving(false); return }
       toast.success('Supplier created')
       router.push(`/suppliers/${data.id}`)

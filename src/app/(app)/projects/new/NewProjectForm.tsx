@@ -58,8 +58,10 @@ export function NewProjectForm({ clients }: Props) {
 
   async function handleCreateClient(name: string) {
     const { data: { user } } = await supabase.auth.getUser()
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
     const { data, error } = await supabase.from('clients').insert({
       user_id: user!.id,
+      org_id: orgId,
       client_name: name,
     }).select().single()
     if (error) { toast.error('Failed to create client'); return { id: '' } }
@@ -71,9 +73,11 @@ export function NewProjectForm({ clients }: Props) {
     e.preventDefault()
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
     const { data, error } = await supabase.from('projects').insert({
       ...form,
       user_id: user!.id,
+      org_id: orgId,
       client_id: clientId || null,
       design_fee: parseFloat(form.design_fee) || 0,
     }).select().single()

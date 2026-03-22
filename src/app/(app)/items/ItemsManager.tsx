@@ -15,7 +15,8 @@ export function ItemsManager({ items: initial }: { items: Item[] }) {
   async function add() {
     if (!newName.trim()) return
     const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase.from('items').insert({ item_name: newName.trim(), user_id: user!.id }).select().single()
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    const { data, error } = await supabase.from('items').insert({ item_name: newName.trim(), user_id: user!.id, org_id: orgId }).select().single()
     if (error) { toast.error(error.message); return }
     setItems(i => [...i, data].sort((a, b) => a.item_name.localeCompare(b.item_name)))
     setNewName('')

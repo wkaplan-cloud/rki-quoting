@@ -39,7 +39,8 @@ export function ClientForm({ client, projects }: Props) {
       router.refresh()
     } else {
       const { data: { user } } = await supabase.auth.getUser()
-      const { data, error } = await supabase.from('clients').insert({ ...form, user_id: user!.id }).select().single()
+      const { data: orgId } = await supabase.rpc('get_current_org_id')
+      const { data, error } = await supabase.from('clients').insert({ ...form, user_id: user!.id, org_id: orgId }).select().single()
       if (error) { toast.error(error.message); setSaving(false); return }
       toast.success('Client created')
       router.push(`/clients/${data.id}`)

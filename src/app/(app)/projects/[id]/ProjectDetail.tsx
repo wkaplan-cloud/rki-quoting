@@ -57,14 +57,15 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
   const handleVatRateChange = useCallback(async (rate: number) => {
     setVatRate(rate)
-    const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('settings').upsert({ user_id: user!.id, vat_rate: rate }, { onConflict: 'user_id' })
+    await supabase.from('settings').update({ vat_rate: rate })
   }, [supabase])
 
   const handleDuplicate = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
     const { data: newProject, error } = await supabase.from('projects').insert({
       user_id: user!.id,
+      org_id: orgId,
       project_number: project.project_number + '-COPY',
       project_name: project.project_name + ' (Copy)',
       client_id: project.client_id,
