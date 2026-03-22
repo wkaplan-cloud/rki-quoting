@@ -20,9 +20,10 @@ interface Props {
   officeAddress: { name: string; address: string }
   businessName: string
   vatRate: number
+  depositPaid: boolean
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPaid }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
@@ -187,10 +188,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               <span>70% Deposit</span>
               <span className="font-medium">{formatZAR(totals.deposit_70)}</span>
             </div>
-            <div className="flex justify-between text-sm text-[#8A877F]">
-              <span>Balance Due</span>
-              <span className="font-medium">{formatZAR(totals.balance_due)}</span>
-            </div>
+            {depositPaid && (
+              <div className="flex justify-between text-sm text-[#8A877F]">
+                <span>30% Balance</span>
+                <span className="font-medium">{formatZAR(totals.balance_due)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
