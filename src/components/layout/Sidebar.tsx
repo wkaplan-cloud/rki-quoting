@@ -5,12 +5,15 @@ import {
   LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck
 } from 'lucide-react'
 
-const links = [
-  { href: '/',           label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/projects',   label: 'Projects',   icon: FolderOpen },
-  { href: '/clients',    label: 'Clients',    icon: Users },
-  { href: '/suppliers',  label: 'Suppliers',  icon: Truck },
-  { href: '/items',      label: 'Items',      icon: Package },
+const mainLinks = [
+  { href: '/',         label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/projects', label: 'Projects',  icon: FolderOpen },
+]
+
+const secondaryLinks = [
+  { href: '/clients',   label: 'Clients',   icon: Users },
+  { href: '/suppliers', label: 'Suppliers', icon: Truck },
+  { href: '/items',     label: 'Items',     icon: Package },
 ]
 
 export function Sidebar() {
@@ -31,9 +34,9 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Nav */}
+      {/* Main nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {links.map(({ href, label, icon: Icon }) => (
+        {mainLinks.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -51,6 +54,21 @@ export function Sidebar() {
 
       {/* Bottom */}
       <div className="px-3 py-3 border-t border-white/10 space-y-0.5">
+        {secondaryLinks.map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150
+              ${isActive(href)
+                ? 'text-white/80'
+                : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+              }`}
+          >
+            <Icon size={14} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
+            {label}
+          </Link>
+        ))}
+        <div className="border-t border-white/10 my-1" />
         <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
           <ShieldCheck size={14} />
           Admin
