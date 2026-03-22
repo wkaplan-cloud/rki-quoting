@@ -65,7 +65,6 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
               <Text style={[styles.th, { flex: 2 }]}>ITEM</Text>
               <Text style={[styles.th, { flex: 3 }]}>DESCRIPTION</Text>
               <Text style={[styles.th, { width: 44, textAlign: 'right', paddingRight: 8 }]}>QTY</Text>
-              <Text style={[styles.th, { flex: 1.5 }]}>SUPPLIER</Text>
               <Text style={[styles.th, { width: 72, textAlign: 'right' }]}>SALE PRICE</Text>
               <Text style={[styles.th, { width: 80, textAlign: 'right' }]}>TOTAL</Text>
             </View>
@@ -88,7 +87,6 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
                     <Text style={[styles.td, { flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{item.item_name}</Text>
                     <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
                     <Text style={[styles.td, { width: 44, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}</Text>
-                    <Text style={[styles.td, styles.tdMuted, { flex: 1.5 }]}>{item.supplier_name ?? ''}</Text>
                     <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(c.sale_price)}</Text>
                     <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(c.total_price)}</Text>
                   </View>
