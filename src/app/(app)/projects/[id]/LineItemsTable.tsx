@@ -240,16 +240,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, onChang
                   </td>
 
                   {/* Computed — readonly */}
-                  <td className="px-2 py-1.5 text-right text-sm tabular-nums text-[#2C2C2A] font-medium">
+                  <td className="px-2 py-1.5 text-right text-sm tabular-nums text-[#2C2C2A] font-medium whitespace-nowrap">
                     {formatZAR(c.sale_price)}
                   </td>
-                  <td className={`px-2 py-1.5 text-right text-sm tabular-nums ${c.profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                  <td className={`px-2 py-1.5 text-right text-sm tabular-nums whitespace-nowrap ${c.profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                     {formatZAR(c.profit)}
                   </td>
-                  <td className="px-2 py-1.5 text-right text-sm tabular-nums text-[#8A877F]">
+                  <td className="px-2 py-1.5 text-right text-sm tabular-nums text-[#8A877F] whitespace-nowrap">
                     {formatZAR(c.total_cost)}
                   </td>
-                  <td className="px-2 py-1.5 text-right text-sm tabular-nums text-[#2C2C2A] font-semibold">
+                  <td className="px-2 py-1.5 text-right text-sm tabular-nums text-[#2C2C2A] font-semibold whitespace-nowrap">
                     {formatZAR(c.total_price)}
                   </td>
 
