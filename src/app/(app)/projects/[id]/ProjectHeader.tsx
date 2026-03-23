@@ -150,14 +150,12 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
                   <Ban size={11} /> Cancel
                 </button>
               )}
-              {project.status === 'Cancelled' && (
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 border border-red-300 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                >
-                  <Trash2 size={11} /> Delete
-                </button>
-              )}
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 border border-red-300 rounded hover:bg-red-50 transition-colors cursor-pointer"
+              >
+                <Trash2 size={11} /> Delete
+              </button>
             </>
           )}
         </div>
