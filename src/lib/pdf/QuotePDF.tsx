@@ -32,12 +32,19 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
         <View style={styles.header}>
           <View>
             {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain', marginBottom: 6 }} />
-              : <Text style={[styles.brandName, { marginBottom: 6 }]}>{businessName || 'R Kaplan Interiors'}</Text>
+              ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain', marginBottom: 8 }} />
+              : <Text style={[styles.brandName, { marginBottom: 8 }]}>{businessName || 'R Kaplan Interiors'}</Text>
             }
-            {businessAddress ? <Text style={[styles.docMeta, { textAlign: 'left', marginBottom: 2 }]}>{businessAddress}</Text> : null}
-            {vatNumber ? <Text style={[styles.docMeta, { textAlign: 'left', marginBottom: 2 }]}>VAT: {vatNumber}</Text> : null}
-            {companyReg ? <Text style={[styles.docMeta, { textAlign: 'left' }]}>Reg: {companyReg}</Text> : null}
+            {businessAddress ? (
+              <Text style={{ fontSize: 7, color: '#8A877F', marginBottom: 3, lineHeight: 1.4 }}>
+                {businessAddress.replace(/\n/g, ', ')}
+              </Text>
+            ) : null}
+            {(vatNumber || companyReg) ? (
+              <Text style={{ fontSize: 7, color: '#8A877F' }}>
+                {[vatNumber ? `VAT: ${vatNumber}` : null, companyReg ? `Reg: ${companyReg}` : null].filter(Boolean).join('  ·  ')}
+              </Text>
+            ) : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
