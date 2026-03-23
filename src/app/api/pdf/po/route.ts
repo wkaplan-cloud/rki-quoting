@@ -3,6 +3,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { POPDF } from '@/lib/pdf/POPDF'
+import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('projectId')
@@ -44,9 +45,11 @@ export async function GET(req: NextRequest) {
     ? `${slug(project.project_number)}_PO_${slug(supplier.supplier_name)}.pdf`
     : `${project.project_number}-po.pdf`
 
+  const logoUrl = await fetchLogoBase64(settings?.logo_url)
+
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: settings?.vat_rate ?? 15, logoUrl: settings?.logo_url, businessName: settings?.business_name }) as any
+    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {

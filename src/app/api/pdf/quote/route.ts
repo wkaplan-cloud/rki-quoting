@@ -3,6 +3,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
+import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get('projectId')
@@ -17,9 +18,11 @@ export async function GET(req: NextRequest) {
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  const logoUrl = await fetchLogoBase64(settings?.logo_url)
+
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', logoUrl: settings?.logo_url, businessName: settings?.business_name, footerText: settings?.footer_text }) as any
+    createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', logoUrl, businessName: settings?.business_name, footerText: settings?.footer_text }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {
