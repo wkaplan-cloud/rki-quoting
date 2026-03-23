@@ -347,6 +347,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
     const iDelivery = colIdx(headers, 'delivery')
     const iCost = colIdx(headers, 'cost price')
     const iMarkup = colIdx(headers, 'mark up', 'markup')
+    const iSale = colIdx(headers, 'sale price', 'sell price')
 
     const supplierMap = new Map(existingSuppliers.map(s => [s.supplier_name.toLowerCase(), s]))
     const missing = new Map<string, number>()
@@ -376,6 +377,14 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
         missing.set(supplierLower, parsePct(markupRaw))
       }
 
+      // Back-calculate markup from sale price if available, for exact totals
+      let markup = iMarkup >= 0 ? parsePct(r[iMarkup]) : 40
+      if (iSale >= 0 && cost > 0) {
+        const saleRaw = r[iSale]
+        const sale = parseFloat(saleRaw.replace(/[R,\s]/g, '')) || 0
+        if (sale > 0) markup = ((sale / cost) - 1) * 100
+      }
+
       return {
         item_name: r[iItem],
         description: iDesc >= 0 ? r[iDesc] : '',
@@ -384,7 +393,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
         supplier_id: matchedSupplier?.id ?? null,
         delivery_address: iDelivery >= 0 ? r[iDelivery] : '',
         cost_price: cost,
-        markup_percentage: iMarkup >= 0 ? parsePct(r[iMarkup]) : 40,
+        markup_percentage: markup,
         row_type: isSection ? 'section' : 'item',
         sort_order: idx,
       }
@@ -427,19 +436,23 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
     const { data: existing } = await supabase.from('line_items').select('sort_order').eq('project_id', projectId).order('sort_order', { ascending: false }).limit(1)
     const baseOrder = (existing?.[0]?.sort_order ?? -1) + 1
 
-    const lineItems = rows.map((r, i) => ({
-      project_id: projectId,
-      row_type: r.row_type,
-      item_name: r.item_name,
-      description: r.description,
-      quantity: r.quantity,
-      cost_price: r.cost_price,
-      markup_percentage: r.markup_percentage,
-      delivery_address: r.delivery_address,
-      supplier_id: supplierMap.get(r.supplier_name.toLowerCase()) ?? null,
-      sort_order: baseOrder + i,
-      indent_level: 0,
-    }))
+    const lineItems = rows.map((r, i) => {
+      const resolvedSupplierId = r.supplier_name ? supplierMap.get(r.supplier_name.toLowerCase()) ?? null : null
+      return {
+        project_id: projectId,
+        row_type: r.row_type,
+        item_name: r.item_name,
+        description: r.description,
+        quantity: r.quantity,
+        cost_price: r.cost_price,
+        markup_percentage: r.markup_percentage,
+        delivery_address: r.delivery_address,
+        supplier_id: resolvedSupplierId,
+        supplier_name: resolvedSupplierId ? r.supplier_name : null,
+        sort_order: baseOrder + i,
+        indent_level: 0,
+      }
+    })
 
     const { error } = await supabase.from('line_items').insert(lineItems)
     if (error) { toast.error(error.message); setImporting(false); return }
