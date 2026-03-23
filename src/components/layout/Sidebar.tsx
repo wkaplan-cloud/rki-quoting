@@ -25,9 +25,9 @@ export function Sidebar() {
   return (
     <aside className="w-44 flex-shrink-0 bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50">
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-white/10">
+      <div className="px-4 py-6 border-b border-white/10 flex justify-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain" style={{ filter: 'invert(1)' }} />
+        <img src="/logo.png" alt="QuotingHub" className="w-28 object-contain" style={{ filter: 'invert(1)' }} />
       </div>
 
       {/* Main nav */}
