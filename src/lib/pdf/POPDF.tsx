@@ -132,19 +132,25 @@ export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15,
     )
   }
 
-  // All suppliers mode — group by supplier
-  const grouped = lineItems.reduce<Record<string, LineItem[]>>((acc, item) => {
-    const key = item.supplier_id ?? '__none__'
-    if (!acc[key]) acc[key] = []
-    acc[key]!.push(item)
-    return acc
-  }, {})
+  // All suppliers mode — one page per supplier with section inheritance
+  const supplierIds = [...new Set(
+    lineItems.filter(i => i.row_type !== 'section' && i.supplier_id).map(i => i.supplier_id!)
+  )]
 
   return (
     <Document>
-      {Object.entries(grouped).map(([sid, items]) => {
-        const supplier = sid !== '__none__' ? (supplierMap[sid] ?? null) : null
-        return <POPage key={sid} project={project} items={items} supplier={supplier} vatRate={vatRate} logoUrl={logoUrl} businessName={businessName} />
+      {supplierIds.map(sid => {
+        const supplier = supplierMap[sid] ?? null
+        const result: LineItem[] = []
+        let pendingSection: LineItem | null = null
+        for (const item of lineItems) {
+          if (item.row_type === 'section') { pendingSection = item }
+          else if (item.supplier_id === sid) {
+            if (pendingSection) { result.push(pendingSection); pendingSection = null }
+            result.push(item)
+          }
+        }
+        return <POPage key={sid} project={project} items={result} supplier={supplier} vatRate={vatRate} logoUrl={logoUrl} businessName={businessName} />
       })}
     </Document>
   )

@@ -154,6 +154,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               </Button>
               {poMenuOpen && (
                 <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded shadow-lg min-w-[180px]">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2 border-b border-[#EDE9E1] font-medium"
+                    onClick={() => { handleGeneratePDF('po'); setPoMenuOpen(false) }}
+                  >
+                    <FileText size={12} className="text-[#9A7B4F]" /> All POs (combined)
+                  </button>
                   {poSuppliers.map(s => (
                     <button
                       key={s.id}
