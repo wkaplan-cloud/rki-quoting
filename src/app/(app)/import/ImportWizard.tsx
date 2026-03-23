@@ -50,6 +50,8 @@ function parsePct(val: string): number {
   return parseFloat(val.replace('%', '').trim()) || 40
 }
 
+const toTitleCase = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Props {
   projects: { id: string; project_name: string; project_number: string }[]
@@ -420,7 +422,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
     if (toCreate.length > 0) {
       const { error } = await supabase.from('suppliers')
         .upsert(toCreate.map(s => ({
-          supplier_name: s.name,
+          supplier_name: toTitleCase(s.name),
           markup_percentage: s.markup,
           org_id: orgData,
           user_id: user.id,
@@ -448,7 +450,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
         markup_percentage: r.markup_percentage,
         delivery_address: r.delivery_address,
         supplier_id: resolvedSupplierId,
-        supplier_name: resolvedSupplierId ? r.supplier_name : null,
+        supplier_name: resolvedSupplierId ? toTitleCase(r.supplier_name) : null,
         sort_order: baseOrder + i,
         indent_level: 0,
       }

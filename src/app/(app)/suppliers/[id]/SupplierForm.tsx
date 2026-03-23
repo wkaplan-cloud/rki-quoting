@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button'
 import type { Supplier } from '@/lib/types'
 import toast from 'react-hot-toast'
 
+const toTitleCase = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
+
 export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
   const router = useRouter()
   const supabase = createClient()
@@ -28,7 +30,7 @@ export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const payload = { ...form, markup_percentage: parseFloat(form.markup_percentage) || 40 }
+    const payload = { ...form, supplier_name: toTitleCase(form.supplier_name), markup_percentage: parseFloat(form.markup_percentage) || 40 }
     if (supplier) {
       const { error } = await supabase.from('suppliers').update(payload).eq('id', supplier.id)
       if (error) { toast.error(error.code === '23505' ? 'A supplier with this name already exists' : error.message); setSaving(false); return }
