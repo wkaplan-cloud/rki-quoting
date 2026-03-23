@@ -1,4 +1,4 @@
-import { Document, Page, Text, View } from '@react-pdf/renderer'
+import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
 import { styles } from './styles'
 import { formatZAR } from '../quoting'
 import type { Project, LineItem, Supplier } from '../types'
@@ -9,9 +9,11 @@ interface Props {
   suppliers: Supplier[]
   supplierId?: string
   vatRate?: number
+  logoUrl?: string | null
+  businessName?: string | null
 }
 
-function POPage({ project, items, supplier, vatRate = 15 }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number }) {
+function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null }) {
   const itemRows = items.filter(i => i.row_type !== 'section')
   const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const vatAmount = subtotal * (vatRate / 100)
@@ -22,9 +24,11 @@ function POPage({ project, items, supplier, vatRate = 15 }: { project: Project; 
     <Page size="A4" style={styles.page}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.brandName}>R Kaplan Interiors</Text>
-          <Text style={styles.brandSub}>INTERIOR DESIGN</Text>
+        <View style={{ justifyContent: 'center' }}>
+          {logoUrl
+            ? <Image src={logoUrl} style={{ height: 48, objectFit: 'contain' }} />
+            : <><Text style={styles.brandName}>{businessName ?? 'R Kaplan Interiors'}</Text><Text style={styles.brandSub}>INTERIOR DESIGN</Text></>
+          }
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={styles.docTitle}>PURCHASE ORDER</Text>
@@ -115,7 +119,7 @@ function POPage({ project, items, supplier, vatRate = 15 }: { project: Project; 
   )
 }
 
-export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15 }: Props) {
+export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
 
   // Single supplier mode — lineItems already filtered by API
@@ -123,7 +127,7 @@ export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15 
     const supplier = supplierMap[supplierId] ?? null
     return (
       <Document>
-        <POPage project={project} items={lineItems} supplier={supplier} vatRate={vatRate} />
+        <POPage project={project} items={lineItems} supplier={supplier} vatRate={vatRate} logoUrl={logoUrl} businessName={businessName} />
       </Document>
     )
   }
@@ -140,7 +144,7 @@ export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15 
     <Document>
       {Object.entries(grouped).map(([sid, items]) => {
         const supplier = sid !== '__none__' ? (supplierMap[sid] ?? null) : null
-        return <POPage key={sid} project={project} items={items} supplier={supplier} vatRate={vatRate} />
+        return <POPage key={sid} project={project} items={items} supplier={supplier} vatRate={vatRate} logoUrl={logoUrl} businessName={businessName} />
       })}
     </Document>
   )

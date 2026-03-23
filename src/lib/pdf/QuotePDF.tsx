@@ -1,4 +1,4 @@
-import { Document, Page, Text, View } from '@react-pdf/renderer'
+import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
 import { styles } from './styles'
 import { computeLineItems, computeTotals, formatZAR } from '../quoting'
 import type { Project, LineItem, Client } from '../types'
@@ -9,9 +9,11 @@ interface Props {
   lineItems: LineItem[]
   type: 'quote' | 'invoice'
   footerText?: string
+  logoUrl?: string | null
+  businessName?: string | null
 }
 
-export function QuotePDF({ project, client, lineItems, type, footerText }: Props) {
+export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl, businessName }: Props) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee)
 
@@ -20,9 +22,11 @@ export function QuotePDF({ project, client, lineItems, type, footerText }: Props
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.brandName}>R Kaplan Interiors</Text>
-            <Text style={styles.brandSub}>INTERIOR DESIGN</Text>
+          <View style={{ justifyContent: 'center' }}>
+            {logoUrl
+              ? <Image src={logoUrl} style={{ height: 48, objectFit: 'contain' }} />
+              : <><Text style={styles.brandName}>{businessName ?? 'R Kaplan Interiors'}</Text><Text style={styles.brandSub}>INTERIOR DESIGN</Text></>
+            }
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
