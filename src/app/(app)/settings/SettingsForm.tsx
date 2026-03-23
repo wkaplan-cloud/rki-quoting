@@ -1,14 +1,16 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { Upload, X } from 'lucide-react'
+import { Upload, X, CheckCircle, Link } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Settings {
   id?: string
+  sage_access_token?: string | null
   business_name?: string | null
   business_address?: string | null
   vat_number?: string | null
@@ -27,9 +29,27 @@ interface Settings {
 
 export function SettingsForm({ settings }: { settings: Settings | null }) {
   const supabase = createClient()
+  const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [sageConnected, setSageConnected] = useState(!!settings?.sage_access_token)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const sage = searchParams.get('sage')
+    if (sage === 'connected') { toast.success('Sage connected successfully'); setSageConnected(true) }
+    if (sage === 'error') toast.error('Failed to connect Sage — please try again')
+  }, [searchParams])
+
+  async function disconnectSage() {
+    await supabase.from('settings').update({
+      sage_access_token: null,
+      sage_refresh_token: null,
+      sage_token_expires_at: null,
+    }).eq('id', settings!.id)
+    setSageConnected(false)
+    toast.success('Sage disconnected')
+  }
   const [form, setForm] = useState({
     business_name:       settings?.business_name ?? '',
     business_address:    settings?.business_address ?? '',
@@ -154,6 +174,42 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         </div>
         <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
         <Textarea label="Terms & Conditions (shown on quote PDF alongside totals)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={6} placeholder="1. Prices are valid for 30 days.&#10;2. A 70% deposit is required to confirm the order.&#10;3. ..." />
+      </section>
+
+      {/* Sage Integration */}
+      <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
+        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage Accounting</h2>
+        {sageConnected ? (
+          <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded">
+            <div className="flex items-center gap-2">
+              <CheckCircle size={16} className="text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-green-800">Connected to Sage</p>
+                <p className="text-xs text-green-600">You can push invoices from project pages</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={disconnectSage}
+              className="text-xs text-red-500 hover:text-red-700 underline"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-4 bg-[#FDFCF9] border border-[#D8D3C8] rounded">
+            <div>
+              <p className="text-sm font-medium text-[#2C2C2A]">Not connected</p>
+              <p className="text-xs text-[#8A877F]">Connect your Sage Business Cloud account to push invoices</p>
+            </div>
+            <a
+              href="/api/sage/connect"
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors"
+            >
+              <Link size={13} /> Connect Sage
+            </a>
+          </div>
+        )}
       </section>
 
       <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Settings'}</Button>

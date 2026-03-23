@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import toast from 'react-hot-toast'
-import { FileText, Send, Copy, ChevronDown } from 'lucide-react'
+import { FileText, Send, Copy, ChevronDown, RefreshCw, Upload } from 'lucide-react'
+
+interface SageCustomer { id: string; name: string; reference?: string }
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null } | null }
@@ -20,9 +22,10 @@ interface Props {
   businessName: string
   vatRate: number
   initialStages: ProjectStages | null
+  sageConnected: boolean
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, sageConnected }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [stages, setStages] = useState<ProjectStages | null>(initialStages)
@@ -30,6 +33,15 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [vatRate, setVatRate] = useState(initialVatRate)
   const [poMenuOpen, setPoMenuOpen] = useState(false)
   const poMenuRef = useRef<HTMLDivElement>(null)
+  // Sage state
+  const [sageModalOpen, setSageModalOpen] = useState(false)
+  const [sageCustomers, setSageCustomers] = useState<SageCustomer[]>([])
+  const [sageCustomerSearch, setSageCustomerSearch] = useState('')
+  const [sageSelectedCustomer, setSageSelectedCustomer] = useState<SageCustomer | null>(null)
+  const [sagePushing, setSagePushing] = useState(false)
+  const [sageSyncing, setSageSyncing] = useState(false)
+  const [sageInvoiceId, setSageInvoiceId] = useState(initial.sage_invoice_id ?? null)
+  const [sageInvoiceStatus, setSageInvoiceStatus] = useState(initial.sage_invoice_status ?? null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -112,6 +124,72 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     toast.success(`${type === 'quote' ? 'Quote' : 'Invoice'} sent to client`)
   }, [project.id])
 
+  const openSageModal = useCallback(async () => {
+    setSageModalOpen(true)
+    setSageSelectedCustomer(null)
+    setSageCustomerSearch('')
+    setSageCustomers([])
+    try {
+      const res = await fetch('/api/sage/customers')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setSageCustomers(Array.isArray(data) ? data : [])
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : 'Failed to load Sage customers'))
+      setSageModalOpen(false)
+    }
+  }, [])
+
+  const handlePushToSage = useCallback(async () => {
+    if (!sageSelectedCustomer) return
+    setSagePushing(true)
+    try {
+      const res = await fetch('/api/sage/push-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, sageContactId: sageSelectedCustomer.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setSageInvoiceId(data.sage_invoice_id)
+      setSageInvoiceStatus(data.status ?? 'DRAFT')
+      setSageModalOpen(false)
+      toast.success('Invoice pushed to Sage')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to push to Sage')
+    } finally {
+      setSagePushing(false)
+    }
+  }, [project.id, sageSelectedCustomer])
+
+  const handleSyncSageStatus = useCallback(async () => {
+    setSageSyncing(true)
+    try {
+      const res = await fetch('/api/sage/sync-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setSageInvoiceStatus(data.status)
+      if (data.status === 'PAID') {
+        toast.success('Invoice marked as paid — stages updated')
+        router.refresh()
+      } else {
+        toast.success(`Sage status: ${data.status}`)
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to sync')
+    } finally {
+      setSageSyncing(false)
+    }
+  }, [project.id, router])
+
+  const filteredSageCustomers = sageCustomers.filter(c =>
+    c.name.toLowerCase().includes(sageCustomerSearch.toLowerCase())
+  )
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -178,6 +256,25 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             </div>
           )
         })()}
+        <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
+        {/* Sage */}
+        {sageConnected && (
+          sageInvoiceId ? (
+            <div className="flex items-center gap-1.5">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sageInvoiceStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                Sage: {sageInvoiceStatus ?? 'Pushed'}
+              </span>
+              <Button size="sm" variant="ghost" onClick={handleSyncSageStatus} disabled={sageSyncing}>
+                <RefreshCw size={12} className={sageSyncing ? 'animate-spin' : ''} />
+                {sageSyncing ? 'Syncing…' : 'Sync'}
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="secondary" onClick={openSageModal}>
+              <Upload size={13} /> Push to Sage
+            </Button>
+          )
+        )}
         <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
         <div className="flex-1" />
         <Button size="sm" variant="secondary" onClick={() => handleSendEmail('quote')}>
@@ -264,6 +361,56 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           </div>
         </div>
       </div>
+
+      {/* Sage customer selection modal */}
+      {sageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSageModalOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-[420px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-[#EDE9E1]">
+              <h2 className="text-sm font-semibold text-[#1A1A18]">Push Invoice to Sage</h2>
+              <p className="text-xs text-[#8A877F] mt-0.5">Select the Sage customer to attach this invoice to</p>
+            </div>
+            <div className="px-5 py-3 border-b border-[#EDE9E1]">
+              <input
+                type="text"
+                placeholder="Search customers…"
+                value={sageCustomerSearch}
+                onChange={e => setSageCustomerSearch(e.target.value)}
+                className="w-full text-sm border border-[#D8D3C8] rounded px-3 py-1.5 outline-none focus:border-[#9A7B4F]"
+                autoFocus
+              />
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {sageCustomers.length === 0 ? (
+                <p className="text-xs text-[#8A877F] text-center py-6">Loading customers…</p>
+              ) : filteredSageCustomers.length === 0 ? (
+                <p className="text-xs text-[#8A877F] text-center py-6">No customers match</p>
+              ) : (
+                filteredSageCustomers.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSageSelectedCustomer(c)}
+                    className={`w-full text-left px-5 py-2.5 text-sm border-b border-[#F5F2EC] hover:bg-[#F5F2EC] transition-colors ${sageSelectedCustomer?.id === c.id ? 'bg-[#F5F2EC] text-[#9A7B4F] font-medium' : 'text-[#2C2C2A]'}`}
+                  >
+                    {c.name}
+                    {c.reference && <span className="text-xs text-[#8A877F] ml-2">{c.reference}</span>}
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-[#EDE9E1] flex items-center justify-between">
+              <button onClick={() => setSageModalOpen(false)} className="text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
+              <Button
+                size="sm"
+                onClick={handlePushToSage}
+                disabled={!sageSelectedCustomer || sagePushing}
+              >
+                {sagePushing ? 'Pushing…' : `Push Invoice`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

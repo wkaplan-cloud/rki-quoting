@@ -41,6 +41,9 @@ export interface Project {
   notes: string | null
   created_at: string
   user_id: string | null
+  sage_invoice_id: string | null
+  sage_invoice_status: string | null
+  sage_pushed_at: string | null
   // joined
   client?: Client | null
 }

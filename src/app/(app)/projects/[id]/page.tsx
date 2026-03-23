@@ -14,7 +14,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('clients').select('id, client_name, company').order('client_name'),
       supabase.from('suppliers').select('id, supplier_name, markup_percentage, delivery_address').order('supplier_name'),
       supabase.from('items').select('id, item_name').order('item_name'),
-      supabase.from('settings').select('business_name, business_address, vat_rate').maybeSingle(),
+      supabase.from('settings').select('business_name, business_address, vat_rate, sage_access_token').maybeSingle(),
       supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
     ])
 
@@ -31,6 +31,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       businessName={settings?.business_name ?? 'R Kaplan Interiors'}
       vatRate={settings?.vat_rate ?? 15}
       initialStages={stages ?? null}
+      sageConnected={!!settings?.sage_access_token}
     />
   )
 }
