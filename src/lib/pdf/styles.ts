@@ -3,7 +3,7 @@ import { StyleSheet } from '@react-pdf/renderer'
 export const styles = StyleSheet.create({
   page: { fontFamily: 'Helvetica', fontSize: 9, color: '#2C2C2A', padding: 48 },
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   brandName: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#1A1A18', letterSpacing: 0.5 },
   brandSub: { fontSize: 7, color: '#9A7B4F', marginTop: 2 },
   docTitle: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#1A1A18', textAlign: 'right' },
