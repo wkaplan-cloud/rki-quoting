@@ -305,7 +305,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
   const [projects, setProjects] = useState(initialProjects)
   const [projectId, setProjectId] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
-  const [newProjectForm, setNewProjectForm] = useState({ project_name: '', project_number: '', date: new Date().toISOString().split('T')[0] })
+  const [newProjectForm, setNewProjectForm] = useState({ project_name: '', project_number: '', date: new Date().toISOString().split('T')[0], design_fee: '20' })
   const [savingProject, setSavingProject] = useState(false)
   const [rows, setRows] = useState<any[]>([])
   const [missingSuppliers, setMissingSuppliers] = useState<{ name: string; markup: number; include: boolean }[]>([])
@@ -324,7 +324,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
       status: 'Draft',
       org_id: orgData,
       user_id: user.id,
-      design_fee: 0,
+      design_fee: parseFloat(newProjectForm.design_fee) || 0,
     }).select('id, project_name, project_number').single()
     if (error) { toast.error(error.message); setSavingProject(false); return }
     setProjects(prev => [data, ...prev])
@@ -406,27 +406,26 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
     const { data: orgData } = await supabase.rpc('get_current_org_id')
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Create missing suppliers the user approved
-    const newSupplierMap = new Map<string, string>()
+    // Create missing suppliers the user approved (upsert to handle already-existing ones gracefully)
     const toCreate = missingSuppliers.filter(s => s.include)
     if (toCreate.length > 0) {
-      const { data: created, error } = await supabase.from('suppliers')
-        .insert(toCreate.map(s => ({
+      const { error } = await supabase.from('suppliers')
+        .upsert(toCreate.map(s => ({
           supplier_name: s.name,
           markup_percentage: s.markup,
           org_id: orgData,
           user_id: user.id,
-        })))
-        .select('id, supplier_name')
+        })), { onConflict: 'org_id,supplier_name', ignoreDuplicates: true })
       if (error) { toast.error('Failed to create suppliers: ' + error.message); setImporting(false); return }
-      created?.forEach((s: any) => newSupplierMap.set(s.supplier_name.toLowerCase(), s.id))
     }
+
+    // Re-fetch ALL suppliers fresh from DB — captures suppliers imported earlier this session
+    const { data: freshSuppliers } = await supabase.from('suppliers').select('id, supplier_name').eq('org_id', orgData)
+    const supplierMap = new Map((freshSuppliers ?? []).map((s: any) => [s.supplier_name.toLowerCase(), s.id]))
 
     // Get max sort_order for this project
     const { data: existing } = await supabase.from('line_items').select('sort_order').eq('project_id', projectId).order('sort_order', { ascending: false }).limit(1)
     const baseOrder = (existing?.[0]?.sort_order ?? -1) + 1
-
-    const supplierMap = new Map(existingSuppliers.map(s => [s.supplier_name.toLowerCase(), s.id]))
 
     const lineItems = rows.map((r, i) => ({
       project_id: projectId,
@@ -437,10 +436,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
       cost_price: r.cost_price,
       markup_percentage: r.markup_percentage,
       delivery_address: r.delivery_address,
-      supplier_id: r.supplier_id
-        ?? supplierMap.get(r.supplier_name.toLowerCase())
-        ?? newSupplierMap.get(r.supplier_name.toLowerCase())
-        ?? null,
+      supplier_id: supplierMap.get(r.supplier_name.toLowerCase()) ?? null,
       sort_order: baseOrder + i,
       indent_level: 0,
     }))
@@ -505,6 +501,15 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
                 onChange={e => setNewProjectForm(f => ({ ...f, date: e.target.value }))}
                 className="flex-1 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F]"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number" min="0" step="0.5" placeholder="Design fee %"
+                value={newProjectForm.design_fee}
+                onChange={e => setNewProjectForm(f => ({ ...f, design_fee: e.target.value }))}
+                className="w-36 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F]"
+              />
+              <span className="text-xs text-[#8A877F]">% design fee</span>
             </div>
             <div className="flex gap-2">
               <Button onClick={handleCreateProject} disabled={savingProject}>
