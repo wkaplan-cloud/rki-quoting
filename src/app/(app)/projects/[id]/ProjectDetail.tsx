@@ -81,7 +81,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     router.push(`/projects/${newProject.id}`)
   }, [project, lineItems, supabase, router])
 
-  const handleGeneratePDF = useCallback(async (type: 'quote' | 'invoice' | 'po', supplierIdParam?: string) => {
+  const handleGeneratePDF = useCallback(async (type: 'quote' | 'invoice' | 'po' | 'production', supplierIdParam?: string) => {
     const url = type === 'po'
       ? `/api/pdf/po?projectId=${project.id}${supplierIdParam ? `&supplierId=${supplierIdParam}` : ''}`
       : `/api/pdf/${type}?projectId=${project.id}`
@@ -130,6 +130,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         </Button>
         <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('invoice')}>
           <FileText size={13} /> Invoice PDF
+        </Button>
+        <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('production')}>
+          <FileText size={13} /> Production PDF
         </Button>
         {/* Purchase Orders dropdown */}
         {(() => {
