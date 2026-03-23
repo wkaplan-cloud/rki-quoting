@@ -40,6 +40,7 @@ export interface Project {
   design_fee: number
   notes: string | null
   created_at: string
+  user_id: string | null
   // joined
   client?: Client | null
 }
