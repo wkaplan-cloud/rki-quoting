@@ -266,17 +266,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <input
-                          list={`items-${item.id}`}
+                        <AutoTextarea
                           value={item.item_name}
-                          onChange={e => updateLocal(item.id, 'item_name', e.target.value)}
-                          onBlur={e => saveField(item.id, 'item_name', e.target.value)}
-                          className={INPUT}
+                          onChange={v => updateLocal(item.id, 'item_name', v)}
+                          onBlur={v => saveField(item.id, 'item_name', v)}
                           placeholder="Item name"
+                          className={INPUT}
                         />
-                        <datalist id={`items-${item.id}`}>
-                          {items.map(i => <option key={i.id} value={i.item_name} />)}
-                        </datalist>
                       </div>
                       <button
                         onClick={() => toggleIndent(item.id, item.indent_level)}
