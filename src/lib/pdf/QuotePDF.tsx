@@ -46,14 +46,10 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
               </Text>
             ) : null}
           </View>
-          <View style={{ flexDirection: 'column', alignItems: 'flex-end' }}>
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
-              <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.docMeta}>{project.project_number}</Text>
-              <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
-            </View>
+          <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+            <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
+            <Text style={styles.docMeta}>{`#${project.project_number}`}</Text>
+            <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           </View>
         </View>
 
