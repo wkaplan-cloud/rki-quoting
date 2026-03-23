@@ -62,7 +62,7 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
               {filtered.map((s, i) => (
                 <tr key={s.id} className={`group relative border-b border-[#EDE9E1] hover:bg-[#F5F2EC] ${i === filtered.length - 1 ? 'border-0' : ''}`}>
                   <td className="px-4 py-3"><Link href={`/suppliers/${s.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">{s.supplier_name}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.category ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F] max-w-[140px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.category ?? '—'}</Link></td>
                   <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.contact_person ?? '—'}</Link></td>
                   <td className="px-4 py-3 text-[#8A877F] max-w-[240px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email ?? '—'}</Link></td>
                   <td className="px-4 py-3">
