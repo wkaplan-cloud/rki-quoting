@@ -6,6 +6,7 @@ import type { Project, ProjectStages, StageKey } from '@/lib/types'
 import { STAGE_CONFIG } from '@/lib/types'
 import toast from 'react-hot-toast'
 import { Pencil, Check, X, Ban, Trash2 } from 'lucide-react'
+import { Combobox } from '@/components/ui/Combobox'
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null } | null }
@@ -37,7 +38,17 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     date: project.date,
     notes: project.notes ?? '',
   })
+  const [clientName, setClientName] = useState(project.client?.client_name ?? '')
   const supabase = createClient()
+
+  async function handleCreateClient(name: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    const { data, error } = await supabase.from('clients').insert({ user_id: user!.id, org_id: orgId, client_name: name }).select().single()
+    if (error) { toast.error('Failed to create client'); return { id: '' } }
+    toast.success(`Client "${name}" created`)
+    return { id: data.id }
+  }
 
   async function save() {
     const { error } = await supabase.from('projects').update({
@@ -112,11 +123,16 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
               className="px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white" placeholder="Project #" />
             <input type="date" value={form.date} onChange={e => setForm(f => ({...f, date: e.target.value}))}
               className="px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white" />
-            <select value={form.client_id} onChange={e => setForm(f => ({...f, client_id: e.target.value}))}
-              className="px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white col-span-2">
-              <option value="">— No client —</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}</option>)}
-            </select>
+            <div className="col-span-2">
+              <Combobox
+                options={clients.map(c => ({ id: c.id, label: c.client_name + (c.company ? ` — ${c.company}` : '') }))}
+                value={form.client_id}
+                inputValue={clientName}
+                onChange={(id, label) => { setForm(f => ({ ...f, client_id: id })); setClientName(label) }}
+                onCreate={handleCreateClient}
+                placeholder="Type to search or create client…"
+              />
+            </div>
           </div>
         ) : (
           <div className="flex-1">

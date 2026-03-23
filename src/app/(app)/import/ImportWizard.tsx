@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
+import { Combobox } from '@/components/ui/Combobox'
 import toast from 'react-hot-toast'
 import { Upload, Check, AlertTriangle, X } from 'lucide-react'
 
@@ -114,7 +115,7 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
       {tab === 'suppliers' && <SuppliersImport supabase={supabase} existingSuppliers={existingSuppliers} />}
       {tab === 'clients'  && <ClientsImport  supabase={supabase} existingClients={existingClients} />}
       {tab === 'items'    && <ItemsImport    supabase={supabase} existingItems={existingItems} />}
-      {tab === 'lines'    && <LinesImport    supabase={supabase} projects={projects} existingSuppliers={existingSuppliers} />}
+      {tab === 'lines'    && <LinesImport    supabase={supabase} projects={projects} existingSuppliers={existingSuppliers} existingClients={existingClients} />}
     </div>
   )
 }
@@ -300,20 +301,34 @@ function ItemsImport({ supabase, existingItems }: { supabase: any; existingItems
 }
 
 // ─── Quote Lines Import ───────────────────────────────────────────────────────
-function LinesImport({ supabase, projects: initialProjects, existingSuppliers }: {
+function LinesImport({ supabase, projects: initialProjects, existingSuppliers, existingClients }: {
   supabase: any
   projects: Props['projects']
   existingSuppliers: Props['existingSuppliers']
+  existingClients: Props['existingClients']
 }) {
   const [projects, setProjects] = useState(initialProjects)
+  const [clients, setClients] = useState(existingClients)
   const [projectId, setProjectId] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
   const [newProjectForm, setNewProjectForm] = useState({ project_name: '', project_number: '', date: new Date().toISOString().split('T')[0], design_fee: '20' })
+  const [newProjectClientId, setNewProjectClientId] = useState('')
+  const [newProjectClientName, setNewProjectClientName] = useState('')
   const [savingProject, setSavingProject] = useState(false)
   const [rows, setRows] = useState<any[]>([])
   const [missingSuppliers, setMissingSuppliers] = useState<{ name: string; markup: number; include: boolean }[]>([])
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
+
+  async function handleCreateClient(name: string) {
+    const { data: orgData } = await supabase.rpc('get_current_org_id')
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase.from('clients').insert({ user_id: user.id, org_id: orgData, client_name: name }).select().single()
+    if (error) { toast.error('Failed to create client'); return { id: '' } }
+    setClients(prev => [...prev, { id: data.id, client_name: data.client_name }])
+    toast.success(`Client "${name}" created`)
+    return { id: data.id }
+  }
 
   async function handleCreateProject() {
     if (!newProjectForm.project_name.trim()) { toast.error('Project name is required'); return }
@@ -328,6 +343,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
       org_id: orgData,
       user_id: user.id,
       design_fee: parseFloat(newProjectForm.design_fee) || 0,
+      client_id: newProjectClientId || null,
     }).select('id, project_name, project_number').single()
     if (error) { toast.error(error.message); setSavingProject(false); return }
     setProjects(prev => [data, ...prev])
@@ -503,6 +519,14 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
               value={newProjectForm.project_name}
               onChange={e => setNewProjectForm(f => ({ ...f, project_name: e.target.value }))}
               className="w-full px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F]"
+            />
+            <Combobox
+              options={clients.map(c => ({ id: c.id, label: c.client_name }))}
+              value={newProjectClientId}
+              inputValue={newProjectClientName}
+              onChange={(id, label) => { setNewProjectClientId(id); setNewProjectClientName(label) }}
+              onCreate={handleCreateClient}
+              placeholder="Select or create client…"
             />
             <div className="flex gap-2">
               <input
