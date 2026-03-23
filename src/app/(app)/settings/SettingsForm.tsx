@@ -25,6 +25,7 @@ interface Settings {
 export function SettingsForm({ settings }: { settings: Settings | null }) {
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
+  const [logoError, setLogoError] = useState(false)
   const [form, setForm] = useState({
     business_name:       settings?.business_name ?? '',
     business_address:    settings?.business_address ?? '',
@@ -72,9 +73,16 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
       {/* Branding */}
       <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
         <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Branding</h2>
-        <Input label="Logo URL" value={form.logo_url} onChange={e => set('logo_url', e.target.value)} placeholder="https://yourdomain.co.za/logo.png" />
+        <Input label="Logo URL" value={form.logo_url} onChange={e => { set('logo_url', e.target.value); setLogoError(false) }} placeholder="https://yourdomain.co.za/logo.png" />
         {form.logo_url && (
-          <img src={form.logo_url} alt="Logo preview" className="h-12 object-contain rounded border border-[#EDE9E1] p-1" />
+          logoError ? (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 space-y-1">
+              <p className="font-medium">Image couldn't load — the URL must be a direct link to the image file.</p>
+              <p className="text-red-500">Google Drive / Dropbox share links won't work. Right-click your image online → "Copy image address" to get a direct URL ending in .png, .jpg, or .svg.</p>
+            </div>
+          ) : (
+            <img src={form.logo_url} alt="Logo preview" onError={() => setLogoError(true)} className="h-12 object-contain rounded border border-[#EDE9E1] p-1" />
+          )
         )}
       </section>
 
