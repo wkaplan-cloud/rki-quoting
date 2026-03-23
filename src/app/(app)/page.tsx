@@ -87,11 +87,11 @@ export default async function DashboardPage() {
         {/* Summary cards */}
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Overview</h2>
-          <div className="grid grid-cols-6 gap-4">
+          <div className="grid grid-cols-3 xl:grid-cols-6 gap-4">
             {summaryCards.map(({ label, value, sub, alert }) => (
-              <div key={label} className={`bg-white border rounded p-5 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
+              <div key={label} className={`bg-white border rounded p-4 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
                 <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider leading-tight">{label}</p>
-                <p className={`font-serif text-2xl mt-2 ${alert ? 'text-[#9A7B4F]' : 'text-[#1A1A18]'}`}>{value}</p>
+                <p className={`font-serif mt-2 leading-tight break-all ${alert ? 'text-[#9A7B4F]' : 'text-[#1A1A18]'} ${value.length > 10 ? 'text-lg' : 'text-2xl'}`}>{value}</p>
                 {sub && <p className="text-xs text-[#8A877F] mt-1">{sub}</p>}
               </div>
             ))}
