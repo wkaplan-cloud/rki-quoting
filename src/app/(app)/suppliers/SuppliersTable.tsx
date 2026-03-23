@@ -64,7 +64,7 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
                   <td className="px-4 py-3"><Link href={`/suppliers/${s.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">{s.supplier_name}</Link></td>
                   <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.category ?? '—'}</Link></td>
                   <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.contact_person ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.email ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F] max-w-[240px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email ?? '—'}</Link></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <Link href={`/suppliers/${s.id}`} className="block">
