@@ -21,6 +21,7 @@ interface Settings {
   vat_rate?: number | null
   deposit_percentage?: number | null
   footer_text?: string | null
+  terms_conditions?: string | null
 }
 
 export function SettingsForm({ settings }: { settings: Settings | null }) {
@@ -41,6 +42,7 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
     vat_rate:            String(settings?.vat_rate ?? 15),
     deposit_percentage:  String(settings?.deposit_percentage ?? 70),
     footer_text:         settings?.footer_text ?? 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.',
+    terms_conditions:    settings?.terms_conditions ?? '',
   })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -146,6 +148,7 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
           <Input label="Deposit (%)" type="number" min="0" max="100" step="1" value={form.deposit_percentage} onChange={e => set('deposit_percentage', e.target.value)} />
         </div>
         <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
+        <Textarea label="Terms & Conditions (shown on quote PDF alongside totals)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={6} placeholder="1. Prices are valid for 30 days.&#10;2. A 70% deposit is required to confirm the order.&#10;3. ..." />
       </section>
 
       <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Settings'}</Button>

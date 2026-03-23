@@ -11,9 +11,10 @@ interface Props {
   footerText?: string
   logoUrl?: string | null
   businessName?: string | null
+  termsConditions?: string | null
 }
 
-export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl, businessName }: Props) {
+export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl, businessName, termsConditions }: Props) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee)
 
@@ -99,8 +100,16 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
           </View>
         </View>
 
-        {/* Totals */}
-        <View style={styles.totalsContainer}>
+        {/* Totals + Terms row */}
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 16 }}>
+          {/* Terms & Conditions */}
+          {termsConditions ? (
+            <View style={{ flex: 1, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12 }}>
+              <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 }}>TERMS &amp; CONDITIONS</Text>
+              <Text style={{ fontSize: 7, color: '#2C2C2A', lineHeight: 1.5 }}>{termsConditions}</Text>
+            </View>
+          ) : null}
+          {/* Totals */}
           <View style={styles.totalsBox}>
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>

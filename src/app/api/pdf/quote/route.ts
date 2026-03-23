@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-    supabase.from('settings').select('logo_url, business_name, footer_text').maybeSingle(),
+    supabase.from('settings').select('logo_url, business_name, footer_text, terms_conditions').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', logoUrl, businessName: settings?.business_name, footerText: settings?.footer_text }) as any
+    createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', logoUrl, businessName: settings?.business_name, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {
