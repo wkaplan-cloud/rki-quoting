@@ -31,11 +31,9 @@ export function NewProjectForm({ clients }: Props) {
 
   useEffect(() => {
     async function loadNextNumber() {
-      const { data: { user } } = await supabase.auth.getUser()
       const { data } = await supabase
         .from('projects')
         .select('project_number')
-        .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()

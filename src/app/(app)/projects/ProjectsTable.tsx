@@ -11,9 +11,10 @@ const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Completed', 'Ca
 
 interface Props {
   projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[] })[]
+  userEmailMap: Record<string, string>
 }
 
-export function ProjectsTable({ projects }: Props) {
+export function ProjectsTable({ projects, userEmailMap }: Props) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
   const router = useRouter()
@@ -75,6 +76,7 @@ export function ProjectsTable({ projects }: Props) {
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Client</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Date</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Created By</th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Total</th>
               </tr>
             </thead>
@@ -90,6 +92,9 @@ export function ProjectsTable({ projects }: Props) {
                   <td className="px-4 py-3 text-[#8A877F]">{p.client?.client_name ?? '—'}</td>
                   <td className="px-4 py-3 text-[#8A877F]">{new Date(p.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                   <td className="px-4 py-3"><StatusBadge status={p.status as any} /></td>
+                  <td className="px-4 py-3 text-[#8A877F] text-xs">
+                    {p.user_id ? (userEmailMap[p.user_id]?.split('@')[0] ?? '—') : '—'}
+                  </td>
                   <td className="px-4 py-3 text-right font-medium text-[#2C2C2A] whitespace-nowrap">
                     {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, 15).grand_total)}
                   </td>
