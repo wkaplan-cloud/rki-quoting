@@ -71,7 +71,7 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
                   <td className="px-4 py-3 w-10 text-right">
                     <button
                       onClick={e => { e.preventDefault(); setConfirmId(s.id) }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-[#D8D3C8] hover:text-red-500 cursor-pointer"
+                      className="opacity-30 hover:opacity-100 hover:text-red-500 text-[#8A877F] transition-all cursor-pointer"
                     >
                       <Trash2 size={15} />
                     </button>
