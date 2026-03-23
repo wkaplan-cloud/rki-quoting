@@ -24,7 +24,7 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
         <View style={styles.header}>
           <View style={{ justifyContent: 'center' }}>
             {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 400, objectFit: 'contain' }} />
+              ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain' }} />
               : <Text style={styles.brandName}>{businessName || 'R Kaplan Interiors'}</Text>
             }
           </View>
