@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatZAR, computeTotals } from '@/lib/quoting'
 import { STAGE_CONFIG } from '@/lib/types'
@@ -9,11 +10,14 @@ import { Plus } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
 
   const [{ data: projects }, { data: allLineItems }, { data: stages }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
     supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
-    supabase.from('project_stages').select('*'),
+    supabaseAdmin.from('project_stages').select('*').in('project_id',
+      (await supabase.from('projects').select('id')).data?.map(p => p.id) ?? []
+    ),
   ])
 
   const ps = projects ?? []
