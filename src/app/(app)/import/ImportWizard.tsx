@@ -478,6 +478,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
     setDone(lineItems.length)
     setRows([])
     setMissingSuppliers([])
+    setProjectId('')
     toast.success(`Imported ${lineItems.length} line items`)
     setImporting(false)
   }
