@@ -5,7 +5,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import type { Project, ProjectStages, StageKey } from '@/lib/types'
 import { STAGE_CONFIG } from '@/lib/types'
 import toast from 'react-hot-toast'
-import { Pencil, Check, X, Ban } from 'lucide-react'
+import { Pencil, Check, X, Ban, Trash2 } from 'lucide-react'
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null } | null }
@@ -61,6 +61,14 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     if (error) { toast.error(error.message); return }
     onProjectUpdate({ ...project, status: 'Cancelled' })
     toast.success('Project cancelled')
+  }
+
+  async function handleDelete() {
+    if (!confirm('Permanently delete this project and all its line items? This cannot be undone.')) return
+    await supabase.from('line_items').delete().eq('project_id', project.id)
+    const { error } = await supabase.from('projects').delete().eq('id', project.id)
+    if (error) { toast.error(error.message); return }
+    window.location.href = '/projects'
   }
 
   async function toggleStage(key: StageKey, currentVal: boolean) {
@@ -140,6 +148,14 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
                   className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer"
                 >
                   <Ban size={11} /> Cancel
+                </button>
+              )}
+              {project.status === 'Cancelled' && (
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 border border-red-300 rounded hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <Trash2 size={11} /> Delete
                 </button>
               )}
             </>
