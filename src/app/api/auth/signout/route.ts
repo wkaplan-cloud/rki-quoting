@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const supabase = await createClient()
   await supabase.auth.signOut()
-  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:3000'), {
-    status: 302,
-  })
+  const host = req.headers.get('host') ?? 'quotinghub.co.za'
+  const protocol = host.includes('localhost') ? 'http' : 'https'
+  return NextResponse.redirect(`${protocol}://${host}/login`, { status: 302 })
 }
