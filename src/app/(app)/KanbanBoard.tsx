@@ -123,7 +123,7 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig 
               return (
                 <tr
                   key={p.id}
-                  className={`border-b border-[#EDE9E1] hover:bg-[#FDFCF9] transition-colors ${i === localProjects.length - 1 ? 'border-0' : ''}`}
+                  className={`border-b border-[#EDE9E1] transition-colors ${i === localProjects.length - 1 ? 'border-0' : ''} ${p.status === 'Completed' ? 'bg-green-50/50 opacity-70 hover:opacity-100' : 'hover:bg-[#FDFCF9]'}`}
                 >
                   {/* Project info */}
                   <td className="px-4 py-3">
