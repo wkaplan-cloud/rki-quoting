@@ -125,14 +125,15 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
       {/* Action bar */}
       <div className="flex items-center gap-2 px-8 py-3 border-b border-[#D8D3C8] bg-[#F5F2EC] flex-wrap justify-between">
+        <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('production')}>
+          <FileText size={13} /> Production PDF
+        </Button>
+        <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
         <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('quote')}>
           <FileText size={13} /> Quote PDF
         </Button>
         <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('invoice')}>
           <FileText size={13} /> Invoice PDF
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('production')}>
-          <FileText size={13} /> Production PDF
         </Button>
         {/* Purchase Orders dropdown */}
         {(() => {
