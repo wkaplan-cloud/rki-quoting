@@ -127,7 +127,7 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
             </View>
             {type === 'invoice' && (
               <View style={[styles.totalsRow, { marginTop: 4 }]}>
-                <Text style={styles.totalsLabel}>30% Balance</Text>
+                <Text style={styles.totalsLabel}>30% Due Before Delivery</Text>
                 <Text style={[styles.totalsVal, { fontFamily: 'Helvetica-Bold' }]}>{formatZAR(totals.balance_due)}</Text>
               </View>
             )}
