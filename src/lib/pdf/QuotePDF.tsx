@@ -46,40 +46,32 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
               </Text>
             ) : null}
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ alignItems: 'flex-end', justifyContent: 'flex-end' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
             <Text style={styles.docMeta}>{project.project_number}</Text>
             <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           </View>
         </View>
 
-        {/* Client */}
-        {client && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Client</Text>
-            <View style={styles.infoGrid}>
-              <View style={styles.infoBlock}>
-                <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{client.client_name}</Text>
-                {client.company && <Text style={styles.infoVal}>{client.company}</Text>}
-                {client.address && <Text style={styles.infoVal}>{client.address}</Text>}
-              </View>
-              <View style={[styles.infoBlock, { alignItems: 'flex-end' }]}>
-                {client.vat_number && <><Text style={[styles.infoKey, { textAlign: 'right' }]}>VAT Number</Text><Text style={[styles.infoVal, { textAlign: 'right' }]}>{client.vat_number}</Text></>}
-                {client.contact_number && <><Text style={[styles.infoKey, { marginTop: 4, textAlign: 'right' }]}>Contact</Text><Text style={[styles.infoVal, { textAlign: 'right' }]}>{client.contact_number}</Text></>}
-              </View>
+        {/* Client + Project row */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 8 }}>
+          {client ? (
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sectionLabel}>Client</Text>
+              <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{client.client_name}</Text>
+              {client.company && <Text style={styles.infoVal}>{client.company}</Text>}
+              {client.address && <Text style={styles.infoVal}>{client.address}</Text>}
+              {client.contact_number && <Text style={[styles.infoVal, { color: '#8A877F' }]}>{client.contact_number}</Text>}
             </View>
+          ) : <View style={{ flex: 1 }} />}
+          <View style={{ flex: 1, alignItems: 'flex-end' }}>
+            <Text style={[styles.sectionLabel, { textAlign: 'right' }]}>Project</Text>
+            <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold', textAlign: 'right' }]}>{project.project_name}</Text>
           </View>
-        )}
-
-        {/* Project info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Project</Text>
-          <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{project.project_name}</Text>
         </View>
 
         {/* Line items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>ITEMS</Text>
+        <View style={{ marginBottom: 20 }}>
           <View style={styles.table}>
             {/* Header */}
             <View style={styles.tableHeader}>
