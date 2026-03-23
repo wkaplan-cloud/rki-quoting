@@ -190,7 +190,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
               <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Cost</th>
-              <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Mkup%</th>
+              <th className="text-right px-2 py-2 min-w-[80px] whitespace-nowrap">Mkup%</th>
               <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Sale</th>
               <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Profit</th>
               <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Tot. Cost</th>
