@@ -47,7 +47,8 @@ function colIdx(headers: string[], ...names: string[]): number {
 }
 
 function parsePct(val: string): number {
-  return parseFloat(val.replace('%', '').trim()) || 40
+  const raw = parseFloat(val.replace('%', '').trim())
+  return Math.round((raw || 40) * 100) / 100
 }
 
 const toTitleCase = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
