@@ -109,7 +109,7 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
               <Text style={styles.totalsVal}>{formatZAR(totals.subtotal)}</Text>
             </View>
             <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Design Fee</Text>
+              <Text style={styles.totalsLabel}>Design Fee ({project.design_fee ?? 0}%)</Text>
               <Text style={styles.totalsVal}>{formatZAR(totals.design_fee)}</Text>
             </View>
             <View style={styles.totalsRow}>
