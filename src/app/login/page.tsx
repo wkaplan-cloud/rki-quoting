@@ -33,9 +33,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex bg-[#F5F2EC]">
       {/* Left panel */}
       <div className="hidden lg:flex w-1/2 bg-[#1A1A18] flex-col justify-between p-12">
-        <div className="bg-white rounded px-3 py-2 inline-block">
+        <div className="bg-white rounded-lg px-5 py-4 inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain" />
+          <img src="/logo.png" alt="QuotingHub" className="h-20 w-auto object-contain" />
         </div>
         <div>
           <p className="font-serif text-white/80 text-3xl leading-snug">
