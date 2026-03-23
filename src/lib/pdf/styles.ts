@@ -41,7 +41,7 @@ export const styles = StyleSheet.create({
   totalsDepositLabel: { fontSize: 8, color: '#9A7B4F' },
   totalsDepositVal: { fontSize: 8, color: '#9A7B4F', fontFamily: 'Helvetica-Bold' },
   // Footer
-  footer: { position: 'absolute', bottom: 32, left: 48, right: 48, borderTopWidth: 0.5, borderTopColor: '#D8D3C8', paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
+  footer: { marginTop: 24, borderTopWidth: 0.5, borderTopColor: '#D8D3C8', paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
   footerText: { fontSize: 7, color: '#8A877F', flex: 1 },
   footerSig: { width: 140, textAlign: 'right' },
   sigLine: { borderTopWidth: 0.5, borderTopColor: '#2C2C2A', marginTop: 24, paddingTop: 4, fontSize: 7, color: '#8A877F' },

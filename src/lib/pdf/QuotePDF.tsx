@@ -20,7 +20,8 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={{ ...styles.page, flexDirection: 'column' }}>
+        <View style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
           <View style={{ justifyContent: 'center' }}>
@@ -140,9 +141,10 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
             <Text style={{ fontSize: 7, color: '#2C2C2A', lineHeight: 1.5 }}>{termsConditions}</Text>
           </View>
         ) : null}
+        </View>
 
         {/* Footer */}
-        <View style={styles.footer} fixed>
+        <View style={styles.footer}>
           <Text style={styles.footerText}>
             {footerText ?? 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.'}
           </Text>
