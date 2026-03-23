@@ -35,15 +35,15 @@ export default function LoginPage() {
       <div
         className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg, #0f0e0c 0%, #1e1c17 40%, #252218 70%, #1a1814 100%)',
+          backgroundImage: 'url(https://images.unsplash.com/photo-1616137466211-f939a420be84?auto=format&fit=crop&w=1400&q=80)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
       >
-        {/* Subtle warm glow */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse at 30% 60%, rgba(180,140,80,0.07) 0%, transparent 55%), radial-gradient(ellipse at 80% 20%, rgba(100,90,70,0.08) 0%, transparent 50%)',
-        }} />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(10,9,8,0.82) 0%, rgba(20,18,14,0.75) 100%)' }} />
         {/* Grain overlay */}
-        <svg className="absolute inset-0 w-full h-full opacity-[0.06] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+        <svg className="absolute inset-0 w-full h-full opacity-[0.04] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
           <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
           <rect width="100%" height="100%" filter="url(#grain)" />
         </svg>
@@ -71,7 +71,7 @@ export default function LoginPage() {
 
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm bg-white rounded-2xl p-8" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div className="w-full max-w-sm bg-white rounded-2xl p-8" style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)' }}>
           <div className="mb-8">
             <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Welcome back</h1>
             <p className="text-sm text-[#8A877F] mt-1.5">Sign in to your account</p>
