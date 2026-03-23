@@ -46,7 +46,7 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
               </Text>
             ) : null}
           </View>
-          <View style={{ alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+          <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
             <Text style={styles.docMeta}>{project.project_number}</Text>
             <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
@@ -64,9 +64,9 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
               {client.contact_number && <Text style={[styles.infoVal, { color: '#8A877F' }]}>{client.contact_number}</Text>}
             </View>
           ) : <View style={{ flex: 1 }} />}
-          <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={[styles.sectionLabel, { textAlign: 'right' }]}>Project</Text>
-            <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold', textAlign: 'right' }]}>{project.project_name}</Text>
+          <View style={{ flex: 1, paddingLeft: 24 }}>
+            <Text style={styles.sectionLabel}>Project</Text>
+            <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{project.project_name}</Text>
           </View>
         </View>
 
