@@ -29,8 +29,8 @@ const s = StyleSheet.create({
 
 // Column widths
 const W = {
-  item:     80,
-  desc:     100,
+  item:     130,
+  desc:     165,
   qty:      28,
   supplier: 60,
   deliver:  60,
