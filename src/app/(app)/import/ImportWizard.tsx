@@ -160,7 +160,7 @@ function SuppliersImport({ supabase, existingSuppliers }: { supabase: any; exist
     const { data: { user } } = await supabase.auth.getUser()
     const toInsert = rows.filter(r => !r.exists).map(({ exists: _e, ...r }) => ({ ...r, org_id: orgData, user_id: user.id }))
     if (toInsert.length === 0) { toast.success('Nothing new to import'); setImporting(false); return }
-    const { error } = await supabase.from('suppliers').insert(toInsert)
+    const { error } = await supabase.from('suppliers').upsert(toInsert, { onConflict: 'org_id,supplier_name', ignoreDuplicates: true })
     if (error) { toast.error(error.message); setImporting(false); return }
     setDone(toInsert.length)
     setRows([])
@@ -221,7 +221,7 @@ function ClientsImport({ supabase, existingClients }: { supabase: any; existingC
     const { data: { user } } = await supabase.auth.getUser()
     const toInsert = rows.filter(r => !r.exists).map(({ exists: _e, ...r }) => ({ ...r, org_id: orgData, user_id: user.id }))
     if (toInsert.length === 0) { toast.success('Nothing new to import'); setImporting(false); return }
-    const { error } = await supabase.from('clients').insert(toInsert)
+    const { error } = await supabase.from('clients').upsert(toInsert, { onConflict: 'org_id,client_name', ignoreDuplicates: true })
     if (error) { toast.error(error.message); setImporting(false); return }
     setDone(toInsert.length)
     setRows([])
@@ -271,7 +271,7 @@ function ItemsImport({ supabase, existingItems }: { supabase: any; existingItems
     const { data: { user } } = await supabase.auth.getUser()
     const toInsert = rows.filter(r => !r.exists).map(({ exists: _e, ...r }) => ({ ...r, org_id: orgData, user_id: user.id }))
     if (toInsert.length === 0) { toast.success('Nothing new to import'); setImporting(false); return }
-    const { error } = await supabase.from('items').insert(toInsert)
+    const { error } = await supabase.from('items').upsert(toInsert, { onConflict: 'org_id,item_name', ignoreDuplicates: true })
     if (error) { toast.error(error.message); setImporting(false); return }
     setDone(toInsert.length)
     setRows([])

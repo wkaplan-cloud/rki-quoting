@@ -17,7 +17,7 @@ export function ItemsManager({ items: initial }: { items: Item[] }) {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     const { data, error } = await supabase.from('items').insert({ item_name: newName.trim(), user_id: user!.id, org_id: orgId }).select().single()
-    if (error) { toast.error(error.message); return }
+    if (error) { toast.error(error.code === '23505' ? 'An item with this name already exists' : error.message); return }
     setItems(i => [...i, data].sort((a, b) => a.item_name.localeCompare(b.item_name)))
     setNewName('')
     toast.success('Item added')

@@ -31,14 +31,14 @@ export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
     const payload = { ...form, markup_percentage: parseFloat(form.markup_percentage) || 40 }
     if (supplier) {
       const { error } = await supabase.from('suppliers').update(payload).eq('id', supplier.id)
-      if (error) { toast.error(error.message); setSaving(false); return }
+      if (error) { toast.error(error.code === '23505' ? 'A supplier with this name already exists' : error.message); setSaving(false); return }
       toast.success('Supplier saved')
       router.refresh()
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: orgId } = await supabase.rpc('get_current_org_id')
       const { data, error } = await supabase.from('suppliers').insert({ ...payload, user_id: user!.id, org_id: orgId }).select().single()
-      if (error) { toast.error(error.message); setSaving(false); return }
+      if (error) { toast.error(error.code === '23505' ? 'A supplier with this name already exists' : error.message); setSaving(false); return }
       toast.success('Supplier created')
       router.push(`/suppliers/${data.id}`)
     }

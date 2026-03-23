@@ -34,14 +34,14 @@ export function ClientForm({ client, projects }: Props) {
     setSaving(true)
     if (client) {
       const { error } = await supabase.from('clients').update(form).eq('id', client.id)
-      if (error) { toast.error(error.message); setSaving(false); return }
+      if (error) { toast.error(error.code === '23505' ? 'A client with this name already exists' : error.message); setSaving(false); return }
       toast.success('Client saved')
       router.refresh()
     } else {
       const { data: { user } } = await supabase.auth.getUser()
       const { data: orgId } = await supabase.rpc('get_current_org_id')
       const { data, error } = await supabase.from('clients').insert({ ...form, user_id: user!.id, org_id: orgId }).select().single()
-      if (error) { toast.error(error.message); setSaving(false); return }
+      if (error) { toast.error(error.code === '23505' ? 'A client with this name already exists' : error.message); setSaving(false); return }
       toast.success('Client created')
       router.push(`/clients/${data.id}`)
     }
