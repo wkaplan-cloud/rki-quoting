@@ -34,7 +34,7 @@ export default function LoginPage() {
       {/* Left panel */}
       <div className="hidden lg:flex w-1/2 bg-[#1A1A18] flex-col justify-between p-12">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-40 w-auto object-contain" style={{ filter: 'invert(1)' }} />
+        <img src="/logo.png" alt="QuotingHub" className="h-40 w-auto object-contain self-start" style={{ filter: 'invert(1)' }} />
         <div>
           <p className="font-serif text-white/80 text-3xl leading-snug">
             Every project,<br />
