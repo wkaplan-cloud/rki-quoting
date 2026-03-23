@@ -108,13 +108,13 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
         </View>
 
         {/* Totals row: banking left + totals right */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 16 }}>
           {/* Banking details */}
           {bankName || bankAccount ? (
             <View style={{ borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12, width: 200 }}>
               <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 }}>BANKING DETAILS</Text>
               {bankName ? <Text style={{ fontSize: 7, color: '#2C2C2A', marginBottom: 3 }}>{bankName}</Text> : null}
-              {bankAccount ? <><Text style={{ fontSize: 6, color: '#8A877F', marginBottom: 1 }}>Account</Text><Text style={{ fontSize: 7, color: '#2C2C2A', marginBottom: 3 }}>{bankAccount}</Text></> : null}
+              {bankAccount ? <><Text style={{ fontSize: 6, color: '#8A877F', marginBottom: 1 }}>Account Number</Text><Text style={{ fontSize: 7, color: '#2C2C2A', marginBottom: 3 }}>{bankAccount}</Text></> : null}
               {bankBranch ? <><Text style={{ fontSize: 6, color: '#8A877F', marginBottom: 1 }}>Branch Code</Text><Text style={{ fontSize: 7, color: '#2C2C2A' }}>{bankBranch}</Text></> : null}
             </View>
           ) : <View />}
