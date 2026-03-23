@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Settings {
@@ -25,7 +26,8 @@ interface Settings {
 export function SettingsForm({ settings }: { settings: Settings | null }) {
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
-  const [logoError, setLogoError] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     business_name:       settings?.business_name ?? '',
     business_address:    settings?.business_address ?? '',
@@ -42,6 +44,21 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
   })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  async function uploadLogo(file: File) {
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `logo.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('branding')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadError) { toast.error('Upload failed: ' + uploadError.message); setUploading(false); return }
+    const { data } = supabase.storage.from('branding').getPublicUrl(path)
+    // Bust cache so the new logo shows immediately
+    set('logo_url', data.publicUrl + '?t=' + Date.now())
+    toast.success('Logo uploaded')
+    setUploading(false)
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -73,17 +90,42 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
       {/* Branding */}
       <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
         <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Branding</h2>
-        <Input label="Logo URL" value={form.logo_url} onChange={e => { set('logo_url', e.target.value); setLogoError(false) }} placeholder="https://yourdomain.co.za/logo.png" />
-        {form.logo_url && (
-          logoError ? (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 space-y-1">
-              <p className="font-medium">Image couldn't load — the URL must be a direct link to the image file.</p>
-              <p className="text-red-500">Google Drive / Dropbox share links won't work. Right-click your image online → "Copy image address" to get a direct URL ending in .png, .jpg, or .svg.</p>
+        <div>
+          <label className="text-xs font-medium text-[#8A877F] block mb-2">Logo</label>
+          <div className="flex items-center gap-4">
+            {form.logo_url && (
+              <div className="relative group">
+                <img src={form.logo_url} alt="Logo" className="h-14 max-w-[180px] object-contain rounded border border-[#D8D3C8] p-2 bg-white" />
+                <button
+                  type="button"
+                  onClick={() => set('logo_url', '')}
+                  className="absolute -top-1.5 -right-1.5 bg-white border border-[#D8D3C8] rounded-full p-0.5 text-[#8A877F] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            )}
+            <div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = '' }}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#D8D3C8] rounded text-sm text-[#8A877F] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Upload size={14} />
+                {uploading ? 'Uploading…' : form.logo_url ? 'Replace logo' : 'Upload logo'}
+              </button>
+              <p className="text-xs text-[#8A877F] mt-1.5">PNG, JPG, or SVG — recommended min. 400px wide</p>
             </div>
-          ) : (
-            <img src={form.logo_url} alt="Logo preview" onError={() => setLogoError(true)} className="h-12 object-contain rounded border border-[#EDE9E1] p-1" />
-          )
-        )}
+          </div>
+        </div>
       </section>
 
       {/* Banking */}
