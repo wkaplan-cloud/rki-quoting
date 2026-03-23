@@ -61,8 +61,8 @@ export default function LoginPage() {
             <em className="text-[#C4A46B]">perfectly quoted.</em>
           </p>
           <p className="text-white/35 text-sm mt-5 font-light leading-relaxed">
-            Quoting, invoicing, and procurement —<br />
-            built for interior design studios.
+            Manage quotes, invoices, and purchase orders<br />
+            for your interior design projects.
           </p>
         </div>
 
