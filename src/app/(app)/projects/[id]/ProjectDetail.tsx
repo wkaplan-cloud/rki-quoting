@@ -124,7 +124,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       />
 
       {/* Action bar */}
-      <div className="flex items-center gap-2 px-8 py-3 border-b border-[#D8D3C8] bg-[#F5F2EC] flex-wrap">
+      <div className="flex items-center gap-2 px-8 py-3 border-b border-[#D8D3C8] bg-[#F5F2EC] flex-wrap justify-between">
         <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('quote')}>
           <FileText size={13} /> Quote PDF
         </Button>
@@ -175,6 +175,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           )
         })()}
         <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
+        <div className="flex-1" />
         <Button size="sm" variant="secondary" onClick={() => handleSendEmail('quote')}>
           <Send size={13} /> Send Quote
         </Button>
