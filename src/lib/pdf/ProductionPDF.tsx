@@ -80,16 +80,16 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
 
         {/* Table header */}
         <View style={s.tableHeader}>
-          <Text style={[s.th, { width: W.item }]}>Item</Text>
-          <Text style={[s.th, { width: W.desc }]}>Description</Text>
-          <Text style={[s.th, { width: W.qty, textAlign: 'right' }]}>Qty</Text>
-          <Text style={[s.th, { width: W.supplier }]}>Supplier</Text>
-          <Text style={[s.th, { width: W.deliver }]}>Deliver To</Text>
-          <Text style={[s.th, { width: W.cost, textAlign: 'right' }]}>Cost</Text>
-          <Text style={[s.th, { width: W.mkup, textAlign: 'right' }]}>Mkup%</Text>
-          <Text style={[s.th, { width: W.sale, textAlign: 'right' }]}>Sale</Text>
-          <Text style={[s.th, { width: W.profit, textAlign: 'right' }]}>Profit</Text>
-          <Text style={[s.th, { width: W.totCost, textAlign: 'right' }]}>Tot. Cost</Text>
+          <Text style={[s.th, { width: W.item, paddingRight: 6 }]}>Item</Text>
+          <Text style={[s.th, { width: W.desc, paddingRight: 6 }]}>Description</Text>
+          <Text style={[s.th, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>Qty</Text>
+          <Text style={[s.th, { width: W.supplier, paddingRight: 6 }]}>Supplier</Text>
+          <Text style={[s.th, { width: W.deliver, paddingRight: 6 }]}>Deliver To</Text>
+          <Text style={[s.th, { width: W.cost, textAlign: 'right', paddingRight: 6 }]}>Cost</Text>
+          <Text style={[s.th, { width: W.mkup, textAlign: 'right', paddingRight: 6 }]}>Mkup%</Text>
+          <Text style={[s.th, { width: W.sale, textAlign: 'right', paddingRight: 6 }]}>Sale</Text>
+          <Text style={[s.th, { width: W.profit, textAlign: 'right', paddingRight: 6 }]}>Profit</Text>
+          <Text style={[s.th, { width: W.totCost, textAlign: 'right', paddingRight: 6 }]}>Tot. Cost</Text>
           <Text style={[s.th, { width: W.totPrice, textAlign: 'right' }]}>Tot. Price</Text>
         </View>
 
@@ -106,16 +106,16 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
           const alt = itemIndex++ % 2 === 1
           return (
             <View key={item.id} style={[s.row, alt ? s.rowAlt : {}]}>
-              <Text style={[s.td, { width: W.item, paddingLeft: item.indent_level > 0 ? 6 : 0 }]}>{item.item_name}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.desc }]}>{item.description ?? ''}</Text>
-              <Text style={[s.td, { width: W.qty, textAlign: 'right' }]}>{item.quantity}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.supplier }]}>{supplierMap[item.supplier_id ?? ''] ?? ''}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.deliver }]}>{item.delivery_address ?? ''}</Text>
-              <Text style={[s.td, { width: W.cost, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.mkup, textAlign: 'right' }]}>{item.markup_percentage}%</Text>
-              <Text style={[s.td, { width: W.sale, textAlign: 'right' }]}>{formatZAR(c.sale_price)}</Text>
-              <Text style={[s.td, { width: W.profit, textAlign: 'right', color: c.profit >= 0 ? '#15803d' : '#dc2626' }]}>{formatZAR(c.profit)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.totCost, textAlign: 'right' }]}>{formatZAR(c.total_cost)}</Text>
+              <Text style={[s.td, { width: W.item, paddingRight: 6, paddingLeft: item.indent_level > 0 ? 6 : 0 }]}>{item.item_name}</Text>
+              <Text style={[s.td, s.tdMuted, { width: W.desc, paddingRight: 6 }]}>{item.description ?? ''}</Text>
+              <Text style={[s.td, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>{item.quantity}</Text>
+              <Text style={[s.td, s.tdMuted, { width: W.supplier, paddingRight: 6 }]}>{supplierMap[item.supplier_id ?? ''] ?? ''}</Text>
+              <Text style={[s.td, s.tdMuted, { width: W.deliver, paddingRight: 6 }]}>{item.delivery_address ?? ''}</Text>
+              <Text style={[s.td, { width: W.cost, textAlign: 'right', paddingRight: 6 }]}>{formatZAR(item.cost_price)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: W.mkup, textAlign: 'right', paddingRight: 6 }]}>{item.markup_percentage}%</Text>
+              <Text style={[s.td, { width: W.sale, textAlign: 'right', paddingRight: 6 }]}>{formatZAR(c.sale_price)}</Text>
+              <Text style={[s.td, { width: W.profit, textAlign: 'right', paddingRight: 6, color: c.profit >= 0 ? '#15803d' : '#dc2626' }]}>{formatZAR(c.profit)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: W.totCost, textAlign: 'right', paddingRight: 6 }]}>{formatZAR(c.total_cost)}</Text>
               <Text style={[s.td, { width: W.totPrice, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(c.total_price)}</Text>
             </View>
           )
