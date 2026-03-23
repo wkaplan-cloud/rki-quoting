@@ -149,7 +149,6 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
             )}
           </View>
         </View>
-        </View>
 
         {/* Terms & Conditions */}
         {termsConditions ? (
