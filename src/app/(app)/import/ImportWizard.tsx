@@ -348,10 +348,14 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
     const iCost = colIdx(headers, 'cost price')
     const iMarkup = colIdx(headers, 'mark up', 'markup')
 
+    // Footer keywords to ignore — these are summary rows at the bottom of the sheet
+    const FOOTER_KEYWORDS = ['deposit required', 'balance before', 'profit incl', 'subtotal', 'total', 'vat', 'grand total']
+    const isFooterRow = (val: string) => FOOTER_KEYWORDS.some(k => val.toLowerCase().includes(k))
+
     const supplierMap = new Map(existingSuppliers.map(s => [s.supplier_name.toLowerCase(), s]))
     const missing = new Map<string, number>()
 
-    const parsed = csv.slice(hi + 1).filter(r => r[iItem]).map((r, idx) => {
+    const parsed = csv.slice(hi + 1).filter(r => r[iItem] && !isFooterRow(r[iItem])).map((r, idx) => {
       const costRaw = iCost >= 0 ? r[iCost] : ''
       const cost = parseFloat(costRaw.replace(/[R,\s]/g, '')) || 0
       const isSection = !cost && costRaw === ''
@@ -418,7 +422,6 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
 
     const lineItems = rows.map((r, i) => ({
       project_id: projectId,
-      org_id: orgData,
       row_type: r.row_type,
       item_name: r.item_name,
       description: r.description,
