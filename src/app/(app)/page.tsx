@@ -87,7 +87,7 @@ export default async function DashboardPage() {
         {/* Summary cards */}
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Overview</h2>
-          <div className="grid grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-6 gap-4">
             {summaryCards.map(({ label, value, sub, alert }) => (
               <div key={label} className={`bg-white border rounded p-5 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
                 <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider leading-tight">{label}</p>
