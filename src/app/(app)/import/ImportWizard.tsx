@@ -184,7 +184,7 @@ function SuppliersImport({ supabase, existingSuppliers }: { supabase: any; exist
       newCount={rows.filter(r => !r.exists).length}
       skipCount={rows.filter(r => r.exists).length}
       headers={['Supplier', 'Category', 'Contact Person', 'Markup %', 'Delivery Address']}
-      renderRow={r => [r.supplier_name, r.category, r.contact_person, `${r.markup_percentage}%`, r.delivery_address]}
+      renderRow={r => [r.supplier_name, r.category, r.contact_person, `${Number(r.markup_percentage).toFixed(2)}%`, r.delivery_address]}
     />
   )
 }
@@ -623,7 +623,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
                     </td>
                     <td className="px-3 py-2 text-[#8A877F]">{r.row_type === 'section' ? '—' : r.quantity}</td>
                     <td className="px-3 py-2 text-[#8A877F]">{r.row_type === 'section' ? '—' : `R${r.cost_price}`}</td>
-                    <td className="px-3 py-2 text-[#8A877F]">{r.row_type === 'section' ? '—' : `${r.markup_percentage}%`}</td>
+                    <td className="px-3 py-2 text-[#8A877F]">{r.row_type === 'section' ? '—' : `${Number(r.markup_percentage).toFixed(2)}%`}</td>
                     <td className="px-3 py-2">
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${r.row_type === 'section' ? 'bg-[#EDE9E1] text-[#8A877F]' : 'bg-blue-50 text-blue-600'}`}>
                         {r.row_type}
