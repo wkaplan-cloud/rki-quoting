@@ -11,10 +11,16 @@ interface Props {
   footerText?: string
   logoUrl?: string | null
   businessName?: string | null
+  businessAddress?: string | null
+  vatNumber?: string | null
+  companyReg?: string | null
+  bankName?: string | null
+  bankAccount?: string | null
+  bankBranch?: string | null
   termsConditions?: string | null
 }
 
-export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl, businessName, termsConditions }: Props) {
+export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions }: Props) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee)
 
@@ -24,11 +30,14 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
         <View style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ justifyContent: 'center' }}>
+          <View>
             {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain' }} />
-              : <Text style={styles.brandName}>{businessName || 'R Kaplan Interiors'}</Text>
+              ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain', marginBottom: 6 }} />
+              : <Text style={[styles.brandName, { marginBottom: 6 }]}>{businessName || 'R Kaplan Interiors'}</Text>
             }
+            {businessAddress ? <Text style={[styles.docMeta, { textAlign: 'left', marginBottom: 2 }]}>{businessAddress}</Text> : null}
+            {vatNumber ? <Text style={[styles.docMeta, { textAlign: 'left', marginBottom: 2 }]}>VAT: {vatNumber}</Text> : null}
+            {companyReg ? <Text style={[styles.docMeta, { textAlign: 'left' }]}>Reg: {companyReg}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
@@ -99,8 +108,17 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
           </View>
         </View>
 
-        {/* Totals */}
-        <View style={styles.totalsContainer}>
+        {/* Totals row: banking left + totals right */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 16 }}>
+          {/* Banking details */}
+          {bankName || bankAccount ? (
+            <View style={{ borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12, width: 200 }}>
+              <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 }}>BANKING DETAILS</Text>
+              {bankName ? <Text style={{ fontSize: 7, color: '#2C2C2A', marginBottom: 3 }}>{bankName}</Text> : null}
+              {bankAccount ? <><Text style={{ fontSize: 6, color: '#8A877F', marginBottom: 1 }}>Account</Text><Text style={{ fontSize: 7, color: '#2C2C2A', marginBottom: 3 }}>{bankAccount}</Text></> : null}
+              {bankBranch ? <><Text style={{ fontSize: 6, color: '#8A877F', marginBottom: 1 }}>Branch Code</Text><Text style={{ fontSize: 7, color: '#2C2C2A' }}>{bankBranch}</Text></> : null}
+            </View>
+          ) : <View />}
           <View style={styles.totalsBox}>
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>
@@ -130,6 +148,7 @@ export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl
               </View>
             )}
           </View>
+        </View>
         </View>
 
         {/* Terms & Conditions */}

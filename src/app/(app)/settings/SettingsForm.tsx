@@ -22,6 +22,7 @@ interface Settings {
   deposit_percentage?: number | null
   footer_text?: string | null
   terms_conditions?: string | null
+  company_registration?: string | null
 }
 
 export function SettingsForm({ settings }: { settings: Settings | null }) {
@@ -43,6 +44,7 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
     deposit_percentage:  String(settings?.deposit_percentage ?? 70),
     footer_text:         settings?.footer_text ?? 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.',
     terms_conditions:    settings?.terms_conditions ?? '',
+    company_registration: settings?.company_registration ?? '',
   })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -84,6 +86,9 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         <Textarea label="Business Address" value={form.business_address} onChange={e => set('business_address', e.target.value)} rows={3} />
         <div className="grid grid-cols-2 gap-4">
           <Input label="VAT Number" value={form.vat_number} onChange={e => set('vat_number', e.target.value)} placeholder="4xxxxxxxxx" />
+          <Input label="Company Registration" value={form.company_registration} onChange={e => set('company_registration', e.target.value)} placeholder="2005/xxxxxx/xx" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
           <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+27 11 xxx xxxx" />
         </div>
         <Input label="Email (for sending quotes)" type="email" value={form.email_from} onChange={e => set('email_from', e.target.value)} />
