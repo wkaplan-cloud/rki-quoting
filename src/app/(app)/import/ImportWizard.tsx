@@ -351,10 +351,15 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers }:
     const supplierMap = new Map(existingSuppliers.map(s => [s.supplier_name.toLowerCase(), s]))
     const missing = new Map<string, number>()
 
-    // Only take rows until the first completely empty row — stops before banking/footer sections
+    // Footer/summary keywords — rows containing these in any column are skipped
+    const FOOTER_KEYWORDS = ['deposit required', 'balance before', 'profit incl', 'banking detail', 'bank name', 'account', 'branch code', 'subtotal', 'grand total', 'design fee', 'vat 15', 'r.kaplan', 'rkaplan', 'investec', 'fnb', 'nedbank', 'standard bank']
+    const isFooter = (r: string[]) => FOOTER_KEYWORDS.some(k => r.some(c => c.toLowerCase().includes(k)))
+
+    // Stop at first completely empty row OR once we hit footer content
     const dataRows: string[][] = []
     for (const r of csv.slice(hi + 1)) {
       if (r.every(c => !c.trim())) break
+      if (isFooter(r)) break
       if (r[iItem]) dataRows.push(r)
     }
 
