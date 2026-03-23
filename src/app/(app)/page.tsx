@@ -12,7 +12,7 @@ export default async function DashboardPage() {
 
   const [{ data: projects }, { data: allLineItems }, { data: stages }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
-    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type, design_fee'),
+    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
     supabase.from('project_stages').select('*'),
   ])
 
