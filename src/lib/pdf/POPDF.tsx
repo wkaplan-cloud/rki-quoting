@@ -27,7 +27,7 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName 
         <View style={{ justifyContent: 'center' }}>
           {logoUrl
             ? <Image src={logoUrl} style={{ height: 48, maxWidth: 160, objectFit: 'contain' }} />
-            : <Text style={styles.brandName}>{businessName ?? 'R Kaplan Interiors'}</Text>
+            : <Text style={styles.brandName}>{businessName || 'R Kaplan Interiors'}</Text>
           }
         </View>
         <View style={{ alignItems: 'flex-end' }}>
