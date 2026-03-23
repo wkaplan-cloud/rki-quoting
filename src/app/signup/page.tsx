@@ -37,11 +37,9 @@ export default function SignupPage() {
     <div className="min-h-screen flex bg-[#F5F2EC]">
       {/* Left panel */}
       <div className="hidden lg:flex w-1/2 bg-[#1A1A18] flex-col justify-between p-12">
-        <div className="font-serif text-white text-xl">
-          Quoting Studio
-          <span className="block text-[#C4A46B] text-xs font-sans font-normal tracking-widest uppercase mt-1">
-            For Interior Designers
-          </span>
+        <div className="bg-white rounded px-3 py-2 inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain" />
         </div>
         <div>
           <p className="font-serif text-white/80 text-3xl leading-snug">
@@ -61,7 +59,7 @@ export default function SignupPage() {
             ))}
           </ul>
         </div>
-        <p className="text-white/20 text-xs">Powered by RKI</p>
+        <p className="text-white/20 text-xs">© QuotingHub · quotinghub.co.za</p>
       </div>
 
       {/* Right panel */}

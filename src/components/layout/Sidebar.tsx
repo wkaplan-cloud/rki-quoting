@@ -25,12 +25,10 @@ export function Sidebar() {
   return (
     <aside className="w-44 flex-shrink-0 bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50">
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-white/10">
-        <div className="font-serif text-lg text-white tracking-tight leading-tight">
-          R Kaplan
-          <span className="block text-[#C4A46B] text-xs font-sans font-normal tracking-widest uppercase mt-0.5">
-            Interiors
-          </span>
+      <div className="px-4 py-4 border-b border-white/10">
+        <div className="bg-white rounded px-2 py-1.5 inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="QuotingHub" className="h-7 w-auto object-contain" />
         </div>
       </div>
 

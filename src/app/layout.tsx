@@ -3,8 +3,8 @@ import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'RKI Quoting',
-  description: 'R Kaplan Interiors — Quoting & Invoice System',
+  title: 'QuotingHub',
+  description: 'QuotingHub — Quoting, Invoicing & Purchase Orders for Interior Designers',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
