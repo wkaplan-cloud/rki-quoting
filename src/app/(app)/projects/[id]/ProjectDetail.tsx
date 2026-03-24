@@ -13,7 +13,7 @@ import { FileText, Send, Copy, ChevronDown, RefreshCw, Upload } from 'lucide-rea
 interface SageCustomer { id: string; name: string; reference?: string }
 
 interface Props {
-  project: Project & { client: { client_name: string; company: string | null } | null }
+  project: Project & { client: { client_name: string; company: string | null; email: string | null } | null }
   initialLineItems: LineItem[]
   clients: { id: string; client_name: string; company: string | null }[]
   suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }[]
@@ -42,6 +42,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sageSyncing, setSageSyncing] = useState(false)
   const [sageInvoiceId, setSageInvoiceId] = useState(initial.sage_invoice_id ?? null)
   const [sageInvoiceStatus, setSageInvoiceStatus] = useState(initial.sage_invoice_status ?? null)
+  // Email modal state
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [emailModalType, setEmailModalType] = useState<'quote' | 'invoice'>('quote')
+  const [emailInput, setEmailInput] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -114,15 +119,33 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     a.click()
   }, [project.id, project.project_number, project.project_name, project.client, businessName, suppliers])
 
-  const handleSendEmail = useCallback(async (type: 'quote' | 'invoice') => {
-    const res = await fetch('/api/email/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId: project.id, type }),
-    })
-    if (!res.ok) { toast.error('Failed to send email'); return }
-    toast.success(`${type === 'quote' ? 'Quote' : 'Invoice'} sent to client`)
-  }, [project.id])
+  const handleOpenEmailModal = useCallback((type: 'quote' | 'invoice') => {
+    setEmailModalType(type)
+    setEmailInput(project.client?.email ?? '')
+    setEmailModalOpen(true)
+  }, [project.client])
+
+  const handleConfirmSend = useCallback(async () => {
+    if (!emailInput.trim()) { toast.error('Please enter an email address'); return }
+    setEmailSending(true)
+    try {
+      // If email changed or was missing, save it to the client record
+      if (emailInput.trim() !== (project.client?.email ?? '') && project.client_id) {
+        const { error } = await supabase.from('clients').update({ email: emailInput.trim() }).eq('id', project.client_id)
+        if (error) { toast.error('Failed to save email'); setEmailSending(false); return }
+      }
+      const res = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, type: emailModalType }),
+      })
+      if (!res.ok) { toast.error('Failed to send email'); return }
+      toast.success(`${emailModalType === 'quote' ? 'Quote' : 'Invoice'} sent to ${emailInput.trim()}`)
+      setEmailModalOpen(false)
+    } finally {
+      setEmailSending(false)
+    }
+  }, [emailInput, emailModalType, project.client, project.client_id, project.id, supabase])
 
   const openSageModal = useCallback(async () => {
     setSageModalOpen(true)
@@ -277,10 +300,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         )}
         <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
         <div className="flex-1" />
-        <Button size="sm" variant="secondary" onClick={() => handleSendEmail('quote')}>
+        <Button size="sm" variant="secondary" onClick={() => handleOpenEmailModal('quote')}>
           <Send size={13} /> Send Quote
         </Button>
-        <Button size="sm" variant="secondary" onClick={() => handleSendEmail('invoice')}>
+        <Button size="sm" variant="secondary" onClick={() => handleOpenEmailModal('invoice')}>
           <Send size={13} /> Send Invoice
         </Button>
         <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
@@ -361,6 +384,48 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           </div>
         </div>
       </div>
+
+      {/* Email send modal */}
+      {emailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEmailModalOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-sm font-semibold text-[#1A1A18] mb-1">
+              Send {emailModalType === 'quote' ? 'Quotation' : 'Invoice'}
+            </h2>
+            <p className="text-sm text-[#8A877F] mb-5">
+              The PDF will be attached and sent to the email address below.
+            </p>
+            <div>
+              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">
+                Client Email
+              </label>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                placeholder="client@example.com"
+                autoFocus
+                className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
+              />
+              {!project.client?.email && (
+                <p className="text-xs text-[#9A7B4F] mt-1.5">This email will be saved to the client record.</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => setEmailModalOpen(false)} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSend}
+                disabled={emailSending || !emailInput.trim()}
+                className="px-5 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer font-medium"
+              >
+                {emailSending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sage customer selection modal */}
       {sageModalOpen && (
