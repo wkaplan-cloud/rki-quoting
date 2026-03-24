@@ -67,17 +67,17 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
           </Link>
         </div>
       ) : (
-        <div className="bg-white border border-[#D8D3C8] rounded overflow-auto max-h-[calc(100vh-180px)]">
+        <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#D8D3C8]">
-                <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Project #</th>
-                <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Name</th>
-                <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Client</th>
-                <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Date</th>
-                <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
-                <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Created By</th>
-                <th className="sticky top-0 z-10 bg-[#F5F2EC] text-right px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Total</th>
+              <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Project #</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Client</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Date</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Created By</th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Total</th>
               </tr>
             </thead>
             <tbody>
