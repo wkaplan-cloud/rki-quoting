@@ -30,24 +30,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F0EDE8]">
-      {/* Left panel — narrower, darker */}
-      <div
-        className="hidden lg:flex w-2/5 flex-col justify-between p-12 relative overflow-hidden"
-        style={{
-          backgroundImage: 'url(https://images.unsplash.com/photo-1616137466211-f939a420be84?auto=format&fit=crop&w=1400&q=80)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Dark overlay — heavier */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(5,4,3,0.93) 0%, rgba(12,10,8,0.90) 100%)' }} />
-        {/* Grain overlay */}
-        <svg className="absolute inset-0 w-full h-full opacity-[0.04] pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
-          <rect width="100%" height="100%" filter="url(#grain)" />
-        </svg>
-
+    <div
+      className="min-h-screen flex"
+      style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
+      {/* Left panel — transparent overlay on dark half */}
+      <div className="hidden lg:flex w-2/5 flex-col justify-between p-12 relative">
         {/* Logo */}
         <div className="relative z-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -60,18 +48,18 @@ export default function LoginPage() {
             Every project,<br />
             <em className="text-[#C4A46B]">perfectly quoted.</em>
           </p>
-          <p className="text-white/35 text-sm mt-5 font-light leading-relaxed">
+          <p className="text-white/40 text-sm mt-5 font-light leading-relaxed">
             Manage quotes, invoices, and purchase orders<br />
             for your interior design projects.
           </p>
         </div>
 
-        <p className="relative z-10 text-white/15 text-xs">© QuotingHub · quotinghub.co.za</p>
+        <p className="relative z-10 text-white/20 text-xs">© QuotingHub · quotinghub.co.za</p>
       </div>
 
-      {/* Right panel — wider */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-[#EEEAE4]">
-        <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)', transform: 'translateY(-4px)' }}>
+      {/* Right panel — transparent overlay on light half */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }}>
           <div className="mb-8">
             <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Welcome back</h1>
             <p className="text-sm text-[#8A877F] mt-1.5">Sign in to your account</p>
