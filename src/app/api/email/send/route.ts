@@ -53,11 +53,16 @@ export async function POST(req: NextRequest) {
     const studioName = settings?.business_name ?? 'Your Studio'
     const studioReplyTo = settings?.email_from
 
+    const plainText = customBody
+      ? customBody
+      : `Dear ${project.client?.client_name ?? 'Client'},\n\nPlease find attached your ${label.toLowerCase()} for ${project.project_name}.\n\nReference: ${project.project_number}\n\nKind regards,\n${studioName}${studioReplyTo ? `\n${studioReplyTo}` : ''}`
+
     const { error: resendError } = await resend.emails.send({
       from: `${studioName} <quotes@quotinghub.co.za>`,
       ...(studioReplyTo ? { replyTo: studioReplyTo } : {}),
       to: clientEmail,
       subject,
+      text: plainText,
       html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
