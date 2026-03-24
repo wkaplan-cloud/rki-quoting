@@ -7,7 +7,7 @@ import { QuotePDF } from '@/lib/pdf/QuotePDF'
 
 export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY)
-  const { projectId, type } = await req.json() as { projectId: string; type: 'quote' | 'invoice' }
+  const { projectId, type, overrideEmail } = await req.json() as { projectId: string; type: 'quote' | 'invoice'; overrideEmail?: string }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -19,9 +19,10 @@ export async function POST(req: NextRequest) {
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-  if (!project.client?.email && !(project.client as any)?.contact_number) {
-    return NextResponse.json({ error: 'Client has no email address' }, { status: 400 })
-  }
+
+  // Use override email from modal, or fall back to what's saved on the client
+  const clientEmail = overrideEmail?.trim() || (project.client as any)?.email
+  if (!clientEmail) return NextResponse.json({ error: 'Client email not set' }, { status: 400 })
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,10 +39,6 @@ export async function POST(req: NextRequest) {
   const subject = `${label} - ${project.project_name} - ${project.project_number}`
   const studioName = settings?.business_name ?? 'Your Studio'
   const studioReplyTo = settings?.email_from
-
-  // Get client email
-  const clientEmail = (project.client as any)?.email
-  if (!clientEmail) return NextResponse.json({ error: 'Client email not set' }, { status: 400 })
 
   await resend.emails.send({
     from: `${studioName} via QuotingHub <quotes@quotinghub.co.za>`,

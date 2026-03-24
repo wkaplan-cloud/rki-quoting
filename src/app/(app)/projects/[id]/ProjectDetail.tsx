@@ -137,9 +137,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: project.id, type: emailModalType }),
+        body: JSON.stringify({ projectId: project.id, type: emailModalType, overrideEmail: emailInput.trim() }),
       })
-      if (!res.ok) { toast.error('Failed to send email'); return }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error ?? 'Failed to send email')
+        return
+      }
       toast.success(`${emailModalType === 'quote' ? 'Quote' : 'Invoice'} sent to ${emailInput.trim()}`)
       setEmailModalOpen(false)
     } finally {
