@@ -123,18 +123,21 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig 
                   className={`border-b border-[#EDE9E1] transition-colors ${i === localProjects.length - 1 ? 'border-0' : ''} ${p.status === 'Completed' ? 'bg-green-50/50 opacity-70 hover:opacity-100' : 'hover:bg-[#FDFCF9]'}`}
                 >
                   {/* Project info */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 max-w-[220px]">
                     <Link
                       href={`/projects/${p.id}`}
-                      className="font-medium text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors block leading-tight"
+                      className="font-medium text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors block leading-tight truncate"
                       onClick={e => e.stopPropagation()}
+                      title={p.project_name}
                     >
                       {p.project_name}
                     </Link>
                     <span className="text-xs text-[#8A877F] font-mono">{p.project_number}</span>
                   </td>
-                  <td className="px-4 py-3 text-[#8A877F] text-sm whitespace-nowrap">
-                    {p.client?.client_name ?? '—'}
+                  <td className="px-4 py-3 max-w-[140px]">
+                    <span className="text-[#8A877F] text-sm truncate block" title={p.client?.client_name ?? ''}>
+                      {p.client?.client_name ?? '—'}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={p.status as any} />
