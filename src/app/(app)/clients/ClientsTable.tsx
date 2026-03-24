@@ -8,7 +8,8 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
   const [search, setSearch] = useState('')
   const filtered = clients.filter(c =>
     !search || c.client_name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.company ?? '').toLowerCase().includes(search.toLowerCase())
+    (c.company ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.email ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -26,10 +27,16 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
         </div>
       ) : (
         <div className="bg-white border border-[#D8D3C8] rounded overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-44" />
+              <col className="w-36" />
+              <col className="w-52" />
+              <col className="w-32" />
+            </colgroup>
             <thead>
               <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
-                {['Name', 'Company', 'VAT Number', 'Contact'].map(h => (
+                {['Name', 'Company', 'Email', 'Contact'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -37,10 +44,10 @@ export function ClientsTable({ clients }: { clients: Client[] }) {
             <tbody>
               {filtered.map((c, i) => (
                 <tr key={c.id} className={`border-b border-[#EDE9E1] hover:bg-[#F5F2EC] cursor-pointer ${i === filtered.length - 1 ? 'border-0' : ''}`}>
-                  <td className="px-4 py-3"><Link href={`/clients/${c.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">{c.client_name}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/clients/${c.id}`} className="block">{c.company ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/clients/${c.id}`} className="block">{c.vat_number ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/clients/${c.id}`} className="block">{c.contact_number ?? '—'}</Link></td>
+                  <td className="px-4 py-3 truncate"><Link href={`/clients/${c.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F] truncate">{c.client_name}</Link></td>
+                  <td className="px-4 py-3 truncate text-[#8A877F]"><Link href={`/clients/${c.id}`} className="block truncate">{c.company ?? '—'}</Link></td>
+                  <td className="px-4 py-3 truncate text-[#8A877F]"><Link href={`/clients/${c.id}`} className="block truncate">{c.email ?? '—'}</Link></td>
+                  <td className="px-4 py-3 truncate text-[#8A877F]"><Link href={`/clients/${c.id}`} className="block truncate">{c.contact_number ?? '—'}</Link></td>
                 </tr>
               ))}
             </tbody>
