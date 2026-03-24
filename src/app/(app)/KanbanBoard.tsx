@@ -98,19 +98,19 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig 
   }
 
   return (
-    <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
+    <div className="bg-white border border-[#D8D3C8] rounded overflow-auto max-h-[calc(100vh-280px)]">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
-              <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Project</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Client</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
+            <tr className="border-b border-[#D8D3C8]">
+              <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Project</th>
+              <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Client</th>
+              <th className="sticky top-0 z-10 bg-[#F5F2EC] text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
               {stageConfig.map(s => (
-                <th key={s.key} className="px-3 py-3 text-center text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap min-w-[80px]">
+                <th key={s.key} className="sticky top-0 z-10 bg-[#F5F2EC] px-3 py-3 text-center text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap min-w-[80px]">
                   {shortLabels[s.key] ?? s.label}
                 </th>
               ))}
-              <th className="px-4 py-3 text-center text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Progress</th>
+              <th className="sticky top-0 z-10 bg-[#F5F2EC] px-4 py-3 text-center text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Progress</th>
             </tr>
           </thead>
           <tbody>
