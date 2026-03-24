@@ -400,7 +400,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
       {/* Email log */}
       {emailLogs.length > 0 && (
-        <div className="mt-8 border-t border-[#EDE9E1] pt-6">
+        <div className="px-8 mt-6 border-t border-[#EDE9E1] pt-6">
           <h3 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3 flex items-center gap-2">
             <Mail size={13} /> Email History
           </h3>
