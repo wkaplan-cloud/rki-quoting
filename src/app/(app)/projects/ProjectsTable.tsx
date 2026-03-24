@@ -67,7 +67,7 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
           </Link>
         </div>
       ) : (
-        <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
+        <div className="bg-white border border-[#D8D3C8] rounded overflow-auto max-h-[calc(100vh-180px)]">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#D8D3C8]">
