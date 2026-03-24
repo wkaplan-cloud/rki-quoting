@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import toast from 'react-hot-toast'
-import { FileText, Send, Copy, ChevronDown, RefreshCw, Upload } from 'lucide-react'
+import { FileText, Send, Copy, ChevronDown, RefreshCw, Upload, Mail } from 'lucide-react'
 
 interface SageCustomer { id: string; name: string; reference?: string }
+interface EmailLog { id: string; type: string; sent_to: string; sent_at: string }
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null; email: string | null } | null }
@@ -22,10 +23,11 @@ interface Props {
   businessName: string
   vatRate: number
   initialStages: ProjectStages | null
+  initialEmailLogs: EmailLog[]
   sageConnected: boolean
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, sageConnected }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, initialEmailLogs, sageConnected }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [stages, setStages] = useState<ProjectStages | null>(initialStages)
@@ -47,6 +49,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [emailModalType, setEmailModalType] = useState<'quote' | 'invoice'>('quote')
   const [emailInput, setEmailInput] = useState('')
   const [emailSending, setEmailSending] = useState(false)
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>(initialEmailLogs)
   const router = useRouter()
   const supabase = createClient()
 
@@ -145,6 +148,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         return
       }
       toast.success(`${emailModalType === 'quote' ? 'Quote' : 'Invoice'} sent to ${emailInput.trim()}`)
+      setEmailLogs(prev => [{
+        id: crypto.randomUUID(),
+        type: emailModalType,
+        sent_to: emailInput.trim(),
+        sent_at: new Date().toISOString(),
+      }, ...prev])
       setEmailModalOpen(false)
     } finally {
       setEmailSending(false)
@@ -388,6 +397,38 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           </div>
         </div>
       </div>
+
+      {/* Email log */}
+      {emailLogs.length > 0 && (
+        <div className="mt-8 border-t border-[#EDE9E1] pt-6">
+          <h3 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Mail size={13} /> Email History
+          </h3>
+          <div className="space-y-1">
+            {emailLogs.map(log => (
+              <div key={log.id} className="flex items-center justify-between px-4 py-2.5 bg-white border border-[#EDE9E1] rounded text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-[#9A7B4F]/10 text-[#9A7B4F] text-xs font-medium capitalize">
+                    {log.type}
+                  </span>
+                  <span className="text-[#2C2C2A]">{log.sent_to}</span>
+                  <span className="text-[#C4BFB5] text-xs">
+                    {new Date(log.sent_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {' '}
+                    {new Date(log.sent_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => { setEmailModalType(log.type as 'quote' | 'invoice'); setEmailInput(log.sent_to); setEmailModalOpen(true) }}
+                  className="text-xs text-[#9A7B4F] hover:underline cursor-pointer"
+                >
+                  Resend
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Email send modal */}
       {emailModalOpen && (

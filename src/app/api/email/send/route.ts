@@ -80,6 +80,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: resendError.message }, { status: 500 })
     }
 
+    // Log the send
+    await supabase.from('email_logs').insert({
+      project_id: projectId,
+      type,
+      sent_to: clientEmail,
+      sent_by: user.id,
+    })
+
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unexpected error'

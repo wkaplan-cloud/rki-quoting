@@ -7,7 +7,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: project }, { data: lineItems }, { data: clients }, { data: suppliers }, { data: items }, { data: settings }, { data: stages }] =
+  const [{ data: project }, { data: lineItems }, { data: clients }, { data: suppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }] =
     await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
       supabase.from('line_items').select('*').eq('project_id', id).order('sort_order'),
@@ -16,6 +16,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('items').select('id, item_name').order('item_name'),
       supabase.from('settings').select('business_name, business_address, vat_rate, sage_access_token').maybeSingle(),
       supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
+      supabase.from('email_logs').select('*').eq('project_id', id).order('sent_at', { ascending: false }),
     ])
 
   if (!project) notFound()
@@ -31,6 +32,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       businessName={settings?.business_name ?? 'R Kaplan Interiors'}
       vatRate={settings?.vat_rate ?? 15}
       initialStages={stages ?? null}
+      initialEmailLogs={emailLogs ?? []}
       sageConnected={!!settings?.sage_access_token}
     />
   )
