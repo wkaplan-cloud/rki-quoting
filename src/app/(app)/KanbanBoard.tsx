@@ -78,11 +78,9 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig 
   const shortLabels: Record<string, string> = {
     quote_sent: 'Quote Sent',
     deposit_received: 'Deposit',
-    pos_sent: 'POs Sent',
     fabrics_received: 'Fabrics In',
-    fabrics_sent: 'Fabrics Out',
-    final_invoice_sent: 'Invoice Sent',
-    final_invoice_paid: 'Invoice Paid',
+    final_invoice_sent: 'Balance Due',
+    final_invoice_paid: 'Paid in Full',
     delivered_installed: 'Delivered',
   }
 
