@@ -8,7 +8,7 @@ import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 
 export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY)
-  const { projectId, type, overrideEmail } = await req.json() as { projectId: string; type: 'quote' | 'invoice'; overrideEmail?: string }
+  const { projectId, type, overrideEmail, customBody } = await req.json() as { projectId: string; type: 'quote' | 'invoice'; overrideEmail?: string; customBody?: string }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -62,9 +62,12 @@ export async function POST(req: NextRequest) {
         <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; color: #2C2C2A;">
           <h2 style="font-size: 24px; margin-bottom: 8px;">${studioName}</h2>
           <hr style="border: none; border-top: 1px solid #D8D3C8; margin: 24px 0;" />
-          <p>Dear ${project.client?.client_name ?? 'Client'},</p>
-          <p>Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>
-          <p>Reference: <strong>${project.project_number}</strong></p>
+          ${customBody
+            ? customBody.split('\n').map(line => line.trim() === '' ? '<br/>' : `<p style="margin: 0 0 8px 0;">${line}</p>`).join('')
+            : `<p>Dear ${project.client?.client_name ?? 'Client'},</p>
+               <p>Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>
+               <p>Reference: <strong>${project.project_number}</strong></p>`
+          }
           <hr style="border: none; border-top: 1px solid #D8D3C8; margin: 24px 0;" />
           <p style="color: #8A877F; font-size: 12px;">${studioName}${studioReplyTo ? ` · ${studioReplyTo}` : ''}</p>
           <p style="color: #C4BFB5; font-size: 11px; margin-top: 4px;">Sent via QuotingHub · quotinghub.co.za</p>

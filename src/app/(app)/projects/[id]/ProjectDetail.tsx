@@ -24,10 +24,12 @@ interface Props {
   vatRate: number
   initialStages: ProjectStages | null
   initialEmailLogs: EmailLog[]
+  emailTemplateQuote: string | null
+  emailTemplateInvoice: string | null
   sageConnected: boolean
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, initialEmailLogs, sageConnected }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [stages, setStages] = useState<ProjectStages | null>(initialStages)
@@ -49,6 +51,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [emailModalType, setEmailModalType] = useState<'quote' | 'invoice'>('quote')
   const [emailInput, setEmailInput] = useState('')
   const [emailSending, setEmailSending] = useState(false)
+  const [emailBody, setEmailBody] = useState('')
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>(initialEmailLogs)
   const router = useRouter()
   const supabase = createClient()
@@ -122,11 +125,22 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     a.click()
   }, [project.id, project.project_number, project.project_name, project.client, businessName, suppliers])
 
+  const resolveTemplate = useCallback((template: string | null) => {
+    const defaults = `Dear {{client_name}},\n\nPlease find attached your ${emailModalType === 'quote' ? 'quotation' : 'invoice'} for {{project_name}}.\n\nReference: {{project_number}}\n\nKind regards,\n{{studio_name}}`
+    return (template ?? defaults)
+      .replace(/\{\{client_name\}\}/g, project.client?.client_name ?? 'Client')
+      .replace(/\{\{project_name\}\}/g, project.project_name)
+      .replace(/\{\{project_number\}\}/g, project.project_number)
+      .replace(/\{\{studio_name\}\}/g, businessName)
+  }, [project, businessName, emailModalType])
+
   const handleOpenEmailModal = useCallback((type: 'quote' | 'invoice') => {
     setEmailModalType(type)
     setEmailInput(project.client?.email ?? '')
+    const template = type === 'quote' ? emailTemplateQuote : emailTemplateInvoice
+    setEmailBody(resolveTemplate(template))
     setEmailModalOpen(true)
-  }, [project.client])
+  }, [project.client, project, emailTemplateQuote, emailTemplateInvoice, resolveTemplate])
 
   const handleConfirmSend = useCallback(async () => {
     if (!emailInput.trim()) { toast.error('Please enter an email address'); return }
@@ -140,7 +154,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: project.id, type: emailModalType, overrideEmail: emailInput.trim() }),
+        body: JSON.stringify({ projectId: project.id, type: emailModalType, overrideEmail: emailInput.trim(), customBody: emailBody }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -419,7 +433,14 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   </span>
                 </div>
                 <button
-                  onClick={() => { setEmailModalType(log.type as 'quote' | 'invoice'); setEmailInput(log.sent_to); setEmailModalOpen(true) }}
+                  onClick={() => {
+                    const t = log.type as 'quote' | 'invoice'
+                    setEmailModalType(t)
+                    setEmailInput(log.sent_to)
+                    const template = t === 'quote' ? emailTemplateQuote : emailTemplateInvoice
+                    setEmailBody(resolveTemplate(template))
+                    setEmailModalOpen(true)
+                  }}
                   className="text-xs text-[#9A7B4F] hover:underline cursor-pointer"
                 >
                   Resend
@@ -456,7 +477,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 <p className="text-xs text-[#9A7B4F] mt-1.5">This email will be saved to the client record.</p>
               )}
             </div>
-            <div className="flex justify-end gap-2 mt-6">
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Message</label>
+              <textarea
+                value={emailBody}
+                onChange={e => setEmailBody(e.target.value)}
+                rows={9}
+                className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors resize-none leading-relaxed"
+              />
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
               <button onClick={() => setEmailModalOpen(false)} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">
                 Cancel
               </button>

@@ -25,6 +25,8 @@ interface Settings {
   footer_text?: string | null
   terms_conditions?: string | null
   company_registration?: string | null
+  email_template_quote?: string | null
+  email_template_invoice?: string | null
 }
 
 export function SettingsForm({ settings }: { settings: Settings | null }) {
@@ -65,6 +67,8 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
     footer_text:         settings?.footer_text ?? 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.',
     terms_conditions:    settings?.terms_conditions ?? '',
     company_registration: settings?.company_registration ?? '',
+    email_template_quote: settings?.email_template_quote ?? `Dear {{client_name}},\n\nPlease find attached your quotation for {{project_name}}.\n\nReference: {{project_number}}\n\nPlease don't hesitate to contact us should you have any questions or require any amendments.\n\nKind regards,\n{{studio_name}}`,
+    email_template_invoice: settings?.email_template_invoice ?? `Dear {{client_name}},\n\nPlease find attached your invoice for {{project_name}}.\n\nReference: {{project_number}}\n\nKindly arrange payment at your earliest convenience.\n\nKind regards,\n{{studio_name}}`,
   })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -174,6 +178,16 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         </div>
         <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
         <Textarea label="Terms & Conditions (shown on quote PDF alongside totals)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={6} placeholder="1. Prices are valid for 30 days.&#10;2. A 70% deposit is required to confirm the order.&#10;3. ..." />
+      </section>
+
+      {/* Email Templates */}
+      <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
+        <div>
+          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Email Templates</h2>
+          <p className="text-xs text-[#8A877F] mt-1">Use <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{client_name}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{project_name}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{project_number}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{studio_name}}'}</span> as placeholders.</p>
+        </div>
+        <Textarea label="Quote Email Body" value={form.email_template_quote} onChange={e => set('email_template_quote', e.target.value)} rows={7} />
+        <Textarea label="Invoice Email Body" value={form.email_template_invoice} onChange={e => set('email_template_invoice', e.target.value)} rows={7} />
       </section>
 
       {/* Sage Integration */}
