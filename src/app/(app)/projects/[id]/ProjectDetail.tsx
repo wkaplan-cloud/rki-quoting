@@ -125,20 +125,20 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     a.click()
   }, [project.id, project.project_number, project.project_name, project.client, businessName, suppliers])
 
-  const resolveTemplate = useCallback((template: string | null) => {
-    const defaults = `Dear {{client_name}},\n\nPlease find attached your ${emailModalType === 'quote' ? 'quotation' : 'invoice'} for {{project_name}}.\n\nReference: {{project_number}}\n\nKind regards,\n{{studio_name}}`
+  const resolveTemplate = useCallback((template: string | null, type: 'quote' | 'invoice') => {
+    const defaults = `Dear {{client_name}},\n\nPlease find attached your ${type === 'quote' ? 'quotation' : 'invoice'} for {{project_name}}.\n\nReference: {{project_number}}\n\nKind regards,\n{{studio_name}}`
     return (template ?? defaults)
       .replace(/\{\{client_name\}\}/g, project.client?.client_name ?? 'Client')
       .replace(/\{\{project_name\}\}/g, project.project_name)
       .replace(/\{\{project_number\}\}/g, project.project_number)
       .replace(/\{\{studio_name\}\}/g, businessName)
-  }, [project, businessName, emailModalType])
+  }, [project, businessName])
 
   const handleOpenEmailModal = useCallback((type: 'quote' | 'invoice') => {
     setEmailModalType(type)
     setEmailInput(project.client?.email ?? '')
     const template = type === 'quote' ? emailTemplateQuote : emailTemplateInvoice
-    setEmailBody(resolveTemplate(template))
+    setEmailBody(resolveTemplate(template, type))
     setEmailModalOpen(true)
   }, [project.client, project, emailTemplateQuote, emailTemplateInvoice, resolveTemplate])
 
@@ -438,7 +438,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                     setEmailModalType(t)
                     setEmailInput(log.sent_to)
                     const template = t === 'quote' ? emailTemplateQuote : emailTemplateInvoice
-                    setEmailBody(resolveTemplate(template))
+                    setEmailBody(resolveTemplate(template, t))
                     setEmailModalOpen(true)
                   }}
                   className="text-xs text-[#9A7B4F] hover:underline cursor-pointer"

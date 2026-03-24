@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
         <tr>
           <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:20px 40px;">
             <p style="margin:0;font-size:12px;color:#8A877F;">${studioName}${studioReplyTo ? ` &middot; <a href="mailto:${studioReplyTo}" style="color:#8A877F;text-decoration:none;">${studioReplyTo}</a>` : ''}</p>
-            <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Sent via <a href="https://quotinghub.co.za" style="color:#C4BFB5;text-decoration:none;">QuotingHub</a></p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Sent via QuotingHub</p>
           </td>
         </tr>
 
