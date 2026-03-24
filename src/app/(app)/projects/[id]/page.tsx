@@ -14,7 +14,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('clients').select('id, client_name, company').order('client_name'),
       supabase.from('suppliers').select('id, supplier_name, markup_percentage, delivery_address').order('supplier_name'),
       supabase.from('items').select('id, item_name').order('item_name'),
-      supabase.from('settings').select('business_name, business_address, vat_rate, sage_access_token, email_template_quote, email_template_invoice').maybeSingle(),
+      supabase.from('settings').select('business_name, business_address, vat_rate, sage_api_key, sage_username, sage_password, sage_company_id, email_template_quote, email_template_invoice').maybeSingle(),
       supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
       supabase.from('email_logs').select('*').eq('project_id', id).order('sent_at', { ascending: false }),
     ])
@@ -35,7 +35,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       initialEmailLogs={emailLogs ?? []}
       emailTemplateQuote={settings?.email_template_quote ?? null}
       emailTemplateInvoice={settings?.email_template_invoice ?? null}
-      sageConnected={!!settings?.sage_access_token}
+      sageConnected={!!(settings?.sage_api_key && settings?.sage_username && settings?.sage_password && settings?.sage_company_id)}
     />
   )
 }

@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { data: project } = await supabase
       .from('projects')
       .select('sage_invoice_id')
@@ -20,13 +21,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No Sage invoice linked to this project' }, { status: 400 })
     }
 
-    const invoice = await sageGet(`/sales_invoices/${project.sage_invoice_id}`)
-    const status: string = invoice.status?.id ?? 'UNKNOWN'
+    const invoice = await sageGet(`/TaxInvoice/Get/${project.sage_invoice_id}`)
+    // SA API status field
+    const status: string = invoice.Status ?? invoice.status ?? 'UNKNOWN'
 
     await supabase.from('projects').update({ sage_invoice_status: status }).eq('id', projectId)
 
-    // If fully paid in Sage → mark final_invoice_paid in project_stages
-    if (status === 'PAID') {
+    // If fully paid → mark paid in full in project_stages
+    if (status === 'Paid' || status === 'PAID') {
       const { data: stages } = await supabase
         .from('project_stages')
         .select('id, final_invoice_paid')

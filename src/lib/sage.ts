@@ -1,85 +1,58 @@
 import { createClient } from '@/lib/supabase/server'
 
-const SAGE_TOKEN_URL = 'https://oauth.accounting.sage.com/token'
-export const SAGE_API_BASE = 'https://api.accounting.sage.com/v3.1'
-export const SAGE_AUTH_URL = 'https://www.sageone.com/oauth2/auth/central'
+const SA_API_BASE = 'https://resellers.accounting.sageone.co.za/api/2.0.0'
 
-interface SageTokens {
-  sage_access_token: string | null
-  sage_refresh_token: string | null
-  sage_token_expires_at: string | null
+interface SageCredentials {
+  sage_api_key: string
+  sage_username: string
+  sage_password: string
+  sage_company_id: string
 }
 
-async function refreshAccessToken(tokens: SageTokens): Promise<string> {
-  if (!tokens.sage_refresh_token) throw new Error('No refresh token — please reconnect Sage')
-
-  const res = await fetch(SAGE_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: tokens.sage_refresh_token,
-      client_id: process.env.SAGE_CLIENT_ID!,
-      client_secret: process.env.SAGE_CLIENT_SECRET!,
-    }),
-  })
-
-  if (!res.ok) throw new Error('Failed to refresh Sage token — please reconnect in Settings')
-  const data = await res.json()
-
-  const supabase = await createClient()
-  await supabase.from('settings').update({
-    sage_access_token: data.access_token,
-    sage_refresh_token: data.refresh_token ?? tokens.sage_refresh_token,
-    sage_token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
-  })
-
-  return data.access_token as string
+function authHeader(username: string, password: string) {
+  return 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64')
 }
 
-export async function getSageToken(): Promise<string> {
+async function getCredentials(): Promise<SageCredentials> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('settings')
-    .select('sage_access_token, sage_refresh_token, sage_token_expires_at')
+    .select('sage_api_key, sage_username, sage_password, sage_company_id')
     .maybeSingle()
 
-  if (!data?.sage_access_token) throw new Error('Sage not connected — go to Settings to connect')
-
-  // Return existing token if not expiring within 5 minutes
-  if (data.sage_token_expires_at) {
-    const expiresAt = new Date(data.sage_token_expires_at).getTime()
-    if (Date.now() < expiresAt - 5 * 60 * 1000) {
-      return data.sage_access_token
-    }
+  if (!data?.sage_api_key || !data?.sage_username || !data?.sage_password || !data?.sage_company_id) {
+    throw new Error('Sage not configured — add your Sage credentials in Settings')
   }
+  return data as SageCredentials
+}
 
-  return refreshAccessToken(data as SageTokens)
+function buildUrl(creds: SageCredentials, path: string) {
+  return `${SA_API_BASE}${path}?apikey=${creds.sage_api_key}&CompanyId=${creds.sage_company_id}`
 }
 
 export async function sageGet(path: string) {
-  const token = await getSageToken()
-  const res = await fetch(`${SAGE_API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+  const creds = await getCredentials()
+  const res = await fetch(buildUrl(creds, path), {
+    headers: {
+      Authorization: authHeader(creds.sage_username, creds.sage_password),
+      Accept: 'application/json',
+    },
   })
-  if (!res.ok) throw new Error(`Sage API error ${res.status}`)
+  if (!res.ok) throw new Error(`Sage API error ${res.status}: ${await res.text()}`)
   return res.json()
 }
 
 export async function sagePost(path: string, body: object) {
-  const token = await getSageToken()
-  const res = await fetch(`${SAGE_API_BASE}${path}`, {
+  const creds = await getCredentials()
+  const res = await fetch(buildUrl(creds, path), {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: authHeader(creds.sage_username, creds.sage_password),
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
     body: JSON.stringify(body),
   })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Sage API error ${res.status}: ${err}`)
-  }
+  if (!res.ok) throw new Error(`Sage API error ${res.status}: ${await res.text()}`)
   return res.json()
 }

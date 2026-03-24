@@ -5,12 +5,15 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { Upload, X, CheckCircle, Link } from 'lucide-react'
+import { Upload, X, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Settings {
   id?: string
-  sage_access_token?: string | null
+  sage_api_key?: string | null
+  sage_username?: string | null
+  sage_password?: string | null
+  sage_company_id?: string | null
   business_name?: string | null
   business_address?: string | null
   vat_number?: string | null
@@ -34,22 +37,32 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
   const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [sageConnected, setSageConnected] = useState(!!settings?.sage_access_token)
+  const [savingSage, setSavingSage] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [sageForm, setSageForm] = useState({
+    sage_api_key: settings?.sage_api_key ?? '',
+    sage_username: settings?.sage_username ?? '',
+    sage_password: settings?.sage_password ?? '',
+    sage_company_id: settings?.sage_company_id ?? '',
+  })
+  const sageConnected = !!(settings?.sage_api_key && settings?.sage_username && settings?.sage_password && settings?.sage_company_id)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    const sage = searchParams.get('sage')
-    if (sage === 'connected') { toast.success('Sage connected successfully'); setSageConnected(true) }
-    if (sage === 'error') toast.error('Failed to connect Sage — please try again')
-  }, [searchParams])
+  useEffect(() => { void searchParams }, [searchParams])
+
+  const setSage = (k: string, v: string) => setSageForm(f => ({ ...f, [k]: v }))
+
+  async function saveSageCredentials() {
+    setSavingSage(true)
+    const { error } = await supabase.from('settings').update(sageForm).eq('id', settings!.id)
+    if (error) { toast.error(error.message) } else { toast.success('Sage credentials saved') }
+    setSavingSage(false)
+  }
 
   async function disconnectSage() {
-    await supabase.from('settings').update({
-      sage_access_token: null,
-      sage_refresh_token: null,
-      sage_token_expires_at: null,
-    }).eq('id', settings!.id)
-    setSageConnected(false)
+    const cleared = { sage_api_key: null, sage_username: null, sage_password: null, sage_company_id: null }
+    await supabase.from('settings').update(cleared).eq('id', settings!.id)
+    setSageForm({ sage_api_key: '', sage_username: '', sage_password: '', sage_company_id: '' })
     toast.success('Sage disconnected')
   }
   const [form, setForm] = useState({
@@ -192,38 +205,38 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
 
       {/* Sage Integration */}
       <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
-        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage Accounting</h2>
-        {sageConnected ? (
-          <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage One SA Integration</h2>
+          {sageConnected && (
             <div className="flex items-center gap-2">
-              <CheckCircle size={16} className="text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-green-800">Connected to Sage</p>
-                <p className="text-xs text-green-600">You can push invoices from project pages</p>
-              </div>
+              <CheckCircle size={13} className="text-green-600" />
+              <span className="text-xs text-green-700 font-medium">Connected</span>
+              <button type="button" onClick={disconnectSage} className="text-xs text-red-400 hover:text-red-600 underline ml-1">Clear</button>
             </div>
-            <button
-              type="button"
-              onClick={disconnectSage}
-              className="text-xs text-red-500 hover:text-red-700 underline"
-            >
-              Disconnect
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between p-4 bg-[#FDFCF9] border border-[#D8D3C8] rounded">
-            <div>
-              <p className="text-sm font-medium text-[#2C2C2A]">Not connected</p>
-              <p className="text-xs text-[#8A877F]">Connect your Sage Business Cloud account to push invoices</p>
-            </div>
-            <a
-              href="/api/sage/connect"
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors"
-            >
-              <Link size={13} /> Connect Sage
-            </a>
-          </div>
-        )}
+          )}
+        </div>
+        <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
+        <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}" />
+        <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} placeholder="you@example.co.za" />
+        <div className="relative">
+          <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
+          <button
+            type="button"
+            onClick={() => setShowPassword(v => !v)}
+            className="absolute right-3 top-[30px] text-[#8A877F] hover:text-[#2C2C2A]"
+          >
+            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        </div>
+        <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} placeholder="Found in your Sage One account URL or settings" />
+        <button
+          type="button"
+          onClick={saveSageCredentials}
+          disabled={savingSage}
+          className="px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50"
+        >
+          {savingSage ? 'Saving…' : 'Save Sage Credentials'}
+        </button>
       </section>
 
       <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Settings'}</Button>

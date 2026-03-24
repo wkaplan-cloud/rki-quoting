@@ -8,9 +8,10 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const data = await sageGet('/contacts?contact_type_id=CUSTOMER&items_per_page=200&attributes=id,name,reference')
-    const items = data.$items ?? data.items ?? []
-    return NextResponse.json(items)
+    const data = await sageGet('/Customer/Get')
+    // SA API returns array directly or wrapped in Results
+    const items: { ID: number; Name: string }[] = Array.isArray(data) ? data : (data.Results ?? [])
+    return NextResponse.json(items.map(c => ({ id: c.ID, name: c.Name })))
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const [{ data: project }, { data: lineItems }] = await Promise.all([
       supabase.from('projects').select('*').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
@@ -23,17 +24,15 @@ export async function POST(req: NextRequest) {
     const computed = computeLineItems(lineItems ?? [])
 
     // Build invoice lines — items only, skip section rows
-    const invoiceLines = (lineItems ?? [])
+    const lines = (lineItems ?? [])
       .filter(item => item.row_type === 'item')
       .map(item => {
         const c = computed.find(ci => ci.id === item.id)
-        const description = item.description
-          ? `${item.item_name} — ${item.description}`
-          : item.item_name
         return {
-          description,
-          quantity: String(item.quantity),
-          unit_price: String(c?.sale_price ?? 0),
+          Description: item.description ? `${item.item_name} — ${item.description}` : item.item_name,
+          Quantity: item.quantity,
+          UnitPrice: c?.sale_price ?? 0,
+          TaxType: { ID: 1 }, // Standard rate (15% VAT)
         }
       })
 
@@ -41,31 +40,33 @@ export async function POST(req: NextRequest) {
     if (project.design_fee > 0) {
       const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
       const designFeeAmount = (subtotal * project.design_fee) / 100
-      invoiceLines.push({
-        description: `Design Fee (${project.design_fee}%)`,
-        quantity: '1',
-        unit_price: String(designFeeAmount.toFixed(2)),
+      lines.push({
+        Description: `Design Fee (${project.design_fee}%)`,
+        Quantity: 1,
+        UnitPrice: parseFloat(designFeeAmount.toFixed(2)),
+        TaxType: { ID: 1 },
       })
     }
 
-    const invoice = await sagePost('/sales_invoices', {
-      sales_invoice: {
-        contact_id: sageContactId,
-        date: project.date,
-        reference: project.project_number,
-        notes: project.project_name,
-        invoice_lines: invoiceLines,
-      },
+    const invoice = await sagePost('/TaxInvoice/Save', {
+      Customer: { ID: Number(sageContactId) },
+      DocumentDate: project.date,
+      Reference: project.project_number,
+      Description: project.project_name,
+      Lines: lines,
     })
 
-    // Save Sage invoice ID back to project
+    // SA API returns the saved invoice — grab ID
+    const sageId = invoice.ID ?? invoice.id
+    const sageStatus = invoice.Status ?? invoice.status ?? 'DRAFT'
+
     await supabase.from('projects').update({
-      sage_invoice_id: invoice.id,
-      sage_invoice_status: invoice.status?.id ?? 'DRAFT',
+      sage_invoice_id: String(sageId),
+      sage_invoice_status: String(sageStatus),
       sage_pushed_at: new Date().toISOString(),
     }).eq('id', projectId)
 
-    return NextResponse.json({ success: true, sage_invoice_id: invoice.id, status: invoice.status?.id })
+    return NextResponse.json({ success: true, sage_invoice_id: sageId, status: sageStatus })
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })
