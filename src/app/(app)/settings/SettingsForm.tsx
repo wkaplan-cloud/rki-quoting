@@ -41,8 +41,8 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
   const [showPassword, setShowPassword] = useState(false)
   const [sageForm, setSageForm] = useState({
     sage_api_key: settings?.sage_api_key ?? '',
-    sage_username: settings?.sage_username ?? '',
-    sage_password: settings?.sage_password ?? '',
+    sage_username: '',
+    sage_password: '',
     sage_company_id: settings?.sage_company_id ?? '',
   })
   const sageConnected = !!(settings?.sage_api_key && settings?.sage_username && settings?.sage_password && settings?.sage_company_id)
@@ -54,7 +54,13 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
 
   async function saveSageCredentials() {
     setSavingSage(true)
-    const { error } = await supabase.from('settings').update(sageForm).eq('id', settings!.id)
+    const update: Record<string, string> = {
+      sage_api_key: sageForm.sage_api_key,
+      sage_company_id: sageForm.sage_company_id,
+    }
+    if (sageForm.sage_username) update.sage_username = sageForm.sage_username
+    if (sageForm.sage_password) update.sage_password = sageForm.sage_password
+    const { error } = await supabase.from('settings').update(update).eq('id', settings!.id)
     if (error) { toast.error(error.message) } else { toast.success('Sage credentials saved') }
     setSavingSage(false)
   }
