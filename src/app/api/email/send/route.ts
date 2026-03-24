@@ -4,6 +4,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
+import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 
 export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY)
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-    supabase.from('settings').select('*').maybeSingle(),
+    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, email_from').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -25,6 +26,8 @@ export async function POST(req: NextRequest) {
   if (!clientEmail) return NextResponse.json({ error: 'Client email not set' }, { status: 400 })
 
   try {
+    const logoUrl = await fetchLogoBase64(settings?.logo_url)
+
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(QuotePDF, {
@@ -32,7 +35,16 @@ export async function POST(req: NextRequest) {
         client: project.client ?? null,
         lineItems: lineItems ?? [],
         type,
+        logoUrl,
+        businessName: settings?.business_name,
+        businessAddress: settings?.business_address,
+        vatNumber: settings?.vat_number,
+        companyReg: settings?.company_registration,
+        bankName: settings?.bank_name,
+        bankAccount: settings?.bank_account_number,
+        bankBranch: settings?.bank_branch_code,
         footerText: settings?.footer_text,
+        termsConditions: settings?.terms_conditions,
       }) as any
     )
 
