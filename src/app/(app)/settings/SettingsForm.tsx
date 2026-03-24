@@ -223,9 +223,9 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         </div>
         <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
         <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}" />
-        <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} placeholder="you@example.co.za" />
+        <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} placeholder={settings?.sage_username ? '••••••••' : 'you@example.co.za'} />
         <div className="relative">
-          <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
+          <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} placeholder={settings?.sage_password ? '••••••••' : ''} />
           <button
             type="button"
             onClick={() => setShowPassword(v => !v)}
