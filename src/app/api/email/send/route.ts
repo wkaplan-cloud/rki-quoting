@@ -34,26 +34,28 @@ export async function POST(req: NextRequest) {
 
   const label = type === 'quote' ? 'Quotation' : 'Invoice'
   const subject = `${label} - ${project.project_name} - ${project.project_number}`
-  const fromEmail = settings?.email_from ?? 'quotes@rkaplaninteriors.co.za'
+  const studioName = settings?.business_name ?? 'Your Studio'
+  const studioReplyTo = settings?.email_from
 
-  // Get client email — stored on client record if available
+  // Get client email
   const clientEmail = (project.client as any)?.email
   if (!clientEmail) return NextResponse.json({ error: 'Client email not set' }, { status: 400 })
 
   await resend.emails.send({
-    from: `R Kaplan Interiors <${fromEmail}>`,
+    from: `${studioName} via QuotingHub <quotes@quotinghub.co.za>`,
+    ...(studioReplyTo ? { replyTo: studioReplyTo } : {}),
     to: clientEmail,
     subject,
     html: `
       <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; color: #2C2C2A;">
-        <h2 style="font-size: 24px; margin-bottom: 8px;">R Kaplan Interiors</h2>
-        <p style="color: #9A7B4F; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-top: 0;">Interior Design</p>
+        <h2 style="font-size: 24px; margin-bottom: 8px;">${studioName}</h2>
         <hr style="border: none; border-top: 1px solid #D8D3C8; margin: 24px 0;" />
         <p>Dear ${project.client?.client_name ?? 'Client'},</p>
         <p>Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>
         <p>Reference: <strong>${project.project_number}</strong></p>
         <hr style="border: none; border-top: 1px solid #D8D3C8; margin: 24px 0;" />
-        <p style="color: #8A877F; font-size: 12px;">R Kaplan Interiors · quotes@rkaplaninteriors.co.za</p>
+        <p style="color: #8A877F; font-size: 12px;">${studioName}${studioReplyTo ? ` · ${studioReplyTo}` : ''}</p>
+        <p style="color: #C4BFB5; font-size: 11px; margin-top: 4px;">Sent via QuotingHub · quotinghub.co.za</p>
       </div>
     `,
     attachments: [{
