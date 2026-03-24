@@ -19,15 +19,22 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
   const router = useRouter()
 
-  const filtered = projects.filter(p => {
-    const matchStatus = statusFilter === 'All' || p.status === statusFilter
-    const q = search.toLowerCase()
-    const matchSearch = !q ||
-      p.project_name.toLowerCase().includes(q) ||
-      p.project_number.toLowerCase().includes(q) ||
-      (p.client?.client_name ?? '').toLowerCase().includes(q)
-    return matchStatus && matchSearch
-  })
+  const filtered = projects
+    .filter(p => {
+      const matchStatus = statusFilter === 'All' || p.status === statusFilter
+      const q = search.toLowerCase()
+      const matchSearch = !q ||
+        p.project_name.toLowerCase().includes(q) ||
+        p.project_number.toLowerCase().includes(q) ||
+        (p.client?.client_name ?? '').toLowerCase().includes(q)
+      return matchStatus && matchSearch
+    })
+    .sort((a, b) => {
+      const aComp = a.status === 'Completed'
+      const bComp = b.status === 'Completed'
+      if (aComp !== bComp) return aComp ? 1 : -1
+      return new Date(b.date).getTime() - new Date(a.date).getTime()
+    })
 
   return (
     <div className="space-y-4">
