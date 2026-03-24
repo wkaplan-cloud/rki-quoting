@@ -58,21 +58,62 @@ export async function POST(req: NextRequest) {
       ...(studioReplyTo ? { replyTo: studioReplyTo } : {}),
       to: clientEmail,
       subject,
-      html: `
-        <div style="font-family: Georgia, serif; max-width: 560px; margin: 0 auto; color: #2C2C2A;">
-          <h2 style="font-size: 24px; margin-bottom: 8px;">${studioName}</h2>
-          <hr style="border: none; border-top: 1px solid #D8D3C8; margin: 24px 0;" />
-          ${customBody
-            ? customBody.split('\n').map(line => line.trim() === '' ? '<br/>' : `<p style="margin: 0 0 8px 0;">${line}</p>`).join('')
-            : `<p>Dear ${project.client?.client_name ?? 'Client'},</p>
-               <p>Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>
-               <p>Reference: <strong>${project.project_number}</strong></p>`
-          }
-          <hr style="border: none; border-top: 1px solid #D8D3C8; margin: 24px 0;" />
-          <p style="color: #8A877F; font-size: 12px;">${studioName}${studioReplyTo ? ` · ${studioReplyTo}` : ''}</p>
-          <p style="color: #C4BFB5; font-size: 11px; margin-top: 4px;">Sent via QuotingHub · quotinghub.co.za</p>
-        </div>
-      `,
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
+<body style="margin:0;padding:0;background-color:#F5F2EC;font-family:Georgia,serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F2EC;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background-color:#1A1A18;padding:32px 40px;border-radius:8px 8px 0 0;">
+            <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:normal;color:#F5F2EC;letter-spacing:0.02em;">${studioName}</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#9A7B4F;letter-spacing:0.08em;text-transform:uppercase;">${label}</p>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
+            ${customBody
+              ? customBody.split('\n').map(line =>
+                  line.trim() === ''
+                    ? '<div style="height:12px;"></div>'
+                    : `<p style="margin:0 0 4px;font-size:15px;line-height:1.7;color:#2C2C2A;">${line}</p>`
+                ).join('')
+              : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;">Dear ${project.client?.client_name ?? 'Client'},</p>
+                 <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;">Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>`
+            }
+
+            <!-- Reference box -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;">
+              <tr>
+                <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-left:3px solid #C4A46B;border-radius:4px;padding:14px 18px;">
+                  <p style="margin:0;font-size:11px;color:#8A877F;text-transform:uppercase;letter-spacing:0.08em;">Reference</p>
+                  <p style="margin:4px 0 0;font-size:16px;color:#1A1A18;font-family:Georgia,serif;letter-spacing:0.02em;">${project.project_number}</p>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:28px 0 0;font-size:13px;color:#8A877F;line-height:1.6;">The PDF is attached to this email. Please don't hesitate to reach out if you have any questions.</p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:20px 40px;">
+            <p style="margin:0;font-size:12px;color:#8A877F;">${studioName}${studioReplyTo ? ` &middot; <a href="mailto:${studioReplyTo}" style="color:#8A877F;text-decoration:none;">${studioReplyTo}</a>` : ''}</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Sent via <a href="https://quotinghub.co.za" style="color:#C4BFB5;text-decoration:none;">QuotingHub</a></p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
       attachments: [{
         filename: `${project.project_number}-${type}.pdf`,
         content: Buffer.from(buffer),
