@@ -104,7 +104,15 @@ export default async function DashboardPage() {
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Project Pipeline</h2>
           <KanbanBoard
-            projects={ps.filter(p => p.status !== 'Cancelled')}
+            projects={ps
+              .filter(p => p.status !== 'Cancelled')
+              .sort((a, b) => {
+                const aComp = a.status === 'Completed'
+                const bComp = b.status === 'Completed'
+                if (aComp !== bComp) return aComp ? 1 : -1
+                return new Date(b.date).getTime() - new Date(a.date).getTime()
+              })
+            }
             stagesMap={stagesMap}
             stageConfig={STAGE_CONFIG}
           />
