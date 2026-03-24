@@ -22,6 +22,7 @@ export function ClientForm({ client, projects }: Props) {
   const [form, setForm] = useState({
     client_name: client?.client_name ?? '',
     company: client?.company ?? '',
+    email: client?.email ?? '',
     vat_number: client?.vat_number ?? '',
     contact_number: client?.contact_number ?? '',
     address: client?.address ?? '',
@@ -64,8 +65,11 @@ export function ClientForm({ client, projects }: Props) {
           <Input label="Company" value={form.company} onChange={e => set('company', e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Input label="VAT Number" value={form.vat_number} onChange={e => set('vat_number', e.target.value)} />
+          <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
           <Input label="Contact Number" value={form.contact_number} onChange={e => set('contact_number', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="VAT Number" value={form.vat_number} onChange={e => set('vat_number', e.target.value)} />
         </div>
         <Textarea label="Address" value={form.address} onChange={e => set('address', e.target.value)} rows={2} />
         <div className="flex items-center gap-3 pt-2">

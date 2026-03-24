@@ -2,6 +2,7 @@ export interface Client {
   id: string
   client_name: string
   company: string | null
+  email: string | null
   vat_number: string | null
   contact_number: string | null
   address: string | null
