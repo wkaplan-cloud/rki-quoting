@@ -10,6 +10,8 @@ export async function POST(req: NextRequest) {
   const { projectId, type } = await req.json() as { projectId: string; type: 'quote' | 'invoice' }
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),

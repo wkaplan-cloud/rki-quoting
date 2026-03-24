@@ -1,11 +1,7 @@
 'use client'
-export const dynamic = 'force-dynamic'
-
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
 
 export default function SignupPage() {
@@ -34,17 +30,25 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F5F2EC]">
+    <div
+      className="min-h-screen flex"
+      style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+    >
       {/* Left panel */}
-      <div className="hidden lg:flex w-1/2 bg-[#1A1A18] flex-col justify-between p-12">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-40 w-auto object-contain" style={{ filter: 'invert(1)' }} />
-        <div>
-          <p className="font-serif text-white/80 text-3xl leading-snug">
+      <div className="hidden lg:flex w-2/5 flex-col justify-between p-12 relative">
+        {/* Logo */}
+        <div className="relative z-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="QuotingHub" className="h-28 w-auto object-contain" style={{ filter: 'invert(1)' }} />
+        </div>
+
+        {/* Tagline */}
+        <div className="relative z-10">
+          <p className="font-serif text-white/85 text-4xl leading-snug tracking-tight">
             Quotes, invoices<br />
             <em className="text-[#C4A46B]">& purchase orders.</em>
           </p>
-          <p className="text-white/40 text-sm mt-4 font-light leading-relaxed">
+          <p className="text-white/40 text-sm mt-5 font-light leading-relaxed">
             Built for interior designers who are done<br />
             fighting with spreadsheets.
           </p>
@@ -57,14 +61,15 @@ export default function SignupPage() {
             ))}
           </ul>
         </div>
-        <p className="text-white/20 text-xs">© QuotingHub · quotinghub.co.za</p>
+
+        <p className="relative z-10 text-white/20 text-xs">© QuotingHub · quotinghub.co.za</p>
       </div>
 
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }}>
           {done ? (
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-4 py-4">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto">
                 <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -82,41 +87,58 @@ export default function SignupPage() {
           ) : (
             <>
               <div className="mb-8">
-                <h1 className="font-serif text-2xl text-[#1A1A18]">Create your account</h1>
-                <p className="text-sm text-[#8A877F] mt-1">Start quoting in minutes</p>
+                <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Create your account</h1>
+                <p className="text-sm text-[#8A877F] mt-1.5">Start quoting in minutes</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@yourstudio.com"
-                  required
-                />
-                <Input
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Min. 8 characters"
-                  required
-                />
-                <Input
-                  label="Confirm Password"
-                  type="password"
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                  placeholder="Repeat password"
-                  required
-                />
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="you@yourstudio.com"
+                    required
+                    className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    required
+                    className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={confirm}
+                    onChange={e => setConfirm(e.target.value)}
+                    placeholder="Repeat password"
+                    required
+                    className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
+                  />
+                </div>
+
                 {error && (
-                  <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>
+                  <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
                 )}
-                <Button type="submit" disabled={loading} className="w-full justify-center py-2.5 mt-2">
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer mt-1"
+                >
                   {loading ? 'Creating account…' : 'Create Account'}
-                </Button>
+                </button>
               </form>
 
               <p className="text-center text-sm text-[#8A877F] mt-6">

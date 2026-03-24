@@ -8,6 +8,8 @@ export async function POST(req: NextRequest) {
     if (!projectId) return NextResponse.json({ error: 'Missing projectId' }, { status: 400 })
 
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { data: project } = await supabase
       .from('projects')
       .select('sage_invoice_id')

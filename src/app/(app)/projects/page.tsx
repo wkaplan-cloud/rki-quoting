@@ -8,12 +8,16 @@ import { Plus } from 'lucide-react'
 
 export default async function ProjectsPage() {
   const supabase = await createClient()
-  const { data: orgId } = await supabase.rpc('get_current_org_id')
-
-  const [{ data: projects }, { data: members }] = await Promise.all([
+  const [{ data: projects }, { data: orgIdResult }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name, company), line_items(*)').order('created_at', { ascending: false }),
-    supabaseAdmin.from('org_members').select('user_id, invited_email').eq('org_id', orgId).eq('status', 'active'),
+    supabase.rpc('get_current_org_id'),
   ])
+
+  const { data: members } = await supabaseAdmin
+    .from('org_members')
+    .select('user_id, invited_email')
+    .eq('org_id', orgIdResult)
+    .eq('status', 'active')
 
   const userEmailMap: Record<string, string> = {}
   for (const m of members ?? []) {

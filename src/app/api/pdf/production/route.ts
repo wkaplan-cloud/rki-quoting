@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
   if (!projectId) return NextResponse.json({ error: 'Missing projectId' }, { status: 400 })
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const [{ data: project }, { data: lineItems }, { data: suppliers }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),

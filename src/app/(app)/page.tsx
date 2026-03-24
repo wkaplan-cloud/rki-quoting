@@ -10,21 +10,17 @@ import { Plus } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: orgId } = await supabase.rpc('get_current_org_id')
 
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('*, client:clients(client_name)')
-    .order('created_at', { ascending: false })
+  const [{ data: projects }, { data: allLineItems }] = await Promise.all([
+    supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
+    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
+  ])
 
   const projectIds = (projects ?? []).map(p => p.id)
 
-  const [{ data: allLineItems }, { data: stages }] = await Promise.all([
-    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
-    projectIds.length > 0
-      ? supabaseAdmin.from('project_stages').select('*').in('project_id', projectIds)
-      : Promise.resolve({ data: [], error: null }),
-  ])
+  const { data: stages } = await (projectIds.length > 0
+    ? supabaseAdmin.from('project_stages').select('*').in('project_id', projectIds)
+    : Promise.resolve({ data: [], error: null }))
 
   const ps = projects ?? []
   const stagesMap = Object.fromEntries((stages ?? []).map(s => [s.project_id, s]))

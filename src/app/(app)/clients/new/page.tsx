@@ -1,4 +1,3 @@
-export const dynamic = 'force-dynamic'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ClientForm } from '../[id]/ClientForm'
 
