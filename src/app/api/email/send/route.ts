@@ -66,16 +66,16 @@ export async function POST(req: NextRequest) {
       html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
-<body style="margin:0;padding:0;background-color:#F5F2EC;font-family:Georgia,serif;">
+<body style="margin:0;padding:0;background-color:#F5F2EC;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F2EC;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
 
         <!-- Header -->
         <tr>
-          <td style="background-color:#1A1A18;padding:32px 40px;border-radius:8px 8px 0 0;">
-            <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:normal;color:#F5F2EC;letter-spacing:0.02em;">${studioName}</p>
-            <p style="margin:6px 0 0;font-size:11px;color:#9A7B4F;letter-spacing:0.08em;text-transform:uppercase;">${label}</p>
+          <td style="background-color:#4A4A47;padding:32px 40px;border-radius:8px 8px 0 0;">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:600;color:#F5F2EC;letter-spacing:0.01em;">${studioName}</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4A46B;letter-spacing:0.08em;text-transform:uppercase;">${label}</p>
           </td>
         </tr>
 
@@ -86,10 +86,10 @@ export async function POST(req: NextRequest) {
               ? customBody.split('\n').map(line =>
                   line.trim() === ''
                     ? '<div style="height:12px;"></div>'
-                    : `<p style="margin:0 0 4px;font-size:15px;line-height:1.7;color:#2C2C2A;">${line}</p>`
+                    : `<p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">${line}</p>`
                 ).join('')
-              : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;">Dear ${project.client?.client_name ?? 'Client'},</p>
-                 <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;">Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>`
+              : `<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Dear ${project.client?.client_name ?? 'Client'},</p>
+                 <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>`
             }
 
             <!-- Reference box -->
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
               <tr>
                 <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-left:3px solid #C4A46B;border-radius:4px;padding:14px 18px;">
                   <p style="margin:0;font-size:11px;color:#8A877F;text-transform:uppercase;letter-spacing:0.08em;">Reference</p>
-                  <p style="margin:4px 0 0;font-size:16px;color:#1A1A18;font-family:Georgia,serif;letter-spacing:0.02em;">${project.project_number}</p>
+                  <p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;color:#1A1A18;">${project.project_number}</p>
                 </td>
               </tr>
             </table>
