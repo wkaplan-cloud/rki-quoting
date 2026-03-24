@@ -39,7 +39,7 @@ export function Sidebar() {
             className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-colors duration-150
               ${isActive(href)
                 ? 'bg-[#9A7B4F]/20 text-white'
-                : 'text-white/50 hover:text-white/80 hover:bg-white/5'
+                : 'text-white/70 hover:text-white hover:bg-white/5'
               }`}
           >
             <Icon size={16} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
@@ -57,28 +57,28 @@ export function Sidebar() {
             className={`flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150
               ${isActive(href)
                 ? 'text-white/80'
-                : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
               }`}
           >
             <Icon size={14} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
             {label}
           </Link>
         ))}
-        <Link href="/import" className={`flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150 ${isActive('/import') ? 'text-white/80' : 'text-white/30 hover:text-white/60 hover:bg-white/5'}`}>
+        <Link href="/import" className={`flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150 ${isActive('/import') ? 'text-white/80' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
           <Upload size={14} className={isActive('/import') ? 'text-[#C4A46B]' : 'opacity-60'} />
           Import
         </Link>
         <div className="border-t border-white/10 my-1" />
-        <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+        <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
           <ShieldCheck size={14} />
           Admin
         </Link>
-        <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors">
+        <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
           <Settings size={14} />
           Settings
         </Link>
         <form action="/api/auth/signout" method="post">
-          <button type="submit" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors w-full text-left cursor-pointer">
+          <button type="submit" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors w-full text-left cursor-pointer">
             <LogOut size={14} />
             Sign Out
           </button>
