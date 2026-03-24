@@ -98,10 +98,10 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig 
   }
 
   return (
-    <div className="bg-white border border-[#D8D3C8] rounded overflow-hidden">
+    <div className="bg-white border border-[#D8D3C8] rounded overflow-auto">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
               <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Project</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap">Client</th>
