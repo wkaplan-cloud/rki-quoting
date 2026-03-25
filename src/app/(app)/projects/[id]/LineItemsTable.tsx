@@ -394,7 +394,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Supplier */}
-                  <td className={COL + ' overflow-visible'}>
+                  <td className={COL}>
                     <Combobox
                       options={suppliers.map(s => ({ id: s.id, label: s.supplier_name }))}
                       value={item.supplier_id ?? ''}
@@ -407,28 +407,28 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Deliver To */}
-                  <td className={COL}>
-                    <select
-                      value={item.delivery_address ?? ''}
-                      onChange={e => {
-                        updateLocal(item.id, 'delivery_address', e.target.value)
-                        saveField(item.id, 'delivery_address', e.target.value)
-                      }}
-                      className={INPUT + ' cursor-pointer'}
-                    >
-                      <option value="">— Deliver to —</option>
-                      {officeAddress.address && (
-                        <option value={officeAddress.address}>{officeAddress.name}</option>
-                      )}
-                      {suppliers
-                        .filter(s => s.delivery_address)
-                        .map(s => (
-                          <option key={s.id} value={s.delivery_address!}>
-                            {s.supplier_name}
-                          </option>
-                        ))
-                      }
-                    </select>
+                  <td className={COL + ' overflow-visible'}>
+                    {(() => {
+                      const deliveryOptions = [
+                        ...(officeAddress.address ? [{ id: officeAddress.address, label: officeAddress.name }] : []),
+                        ...suppliers.filter(s => s.delivery_address).map(s => ({ id: s.delivery_address!, label: s.supplier_name })),
+                      ]
+                      const selected = deliveryOptions.find(o => o.id === item.delivery_address)
+                      return (
+                        <Combobox
+                          options={deliveryOptions}
+                          value={item.delivery_address ?? ''}
+                          inputValue={selected?.label ?? item.delivery_address ?? ''}
+                          onChange={(id, label) => {
+                            const addr = id || label
+                            updateLocal(item.id, 'delivery_address', addr)
+                            saveField(item.id, 'delivery_address', addr)
+                          }}
+                          placeholder="Deliver to…"
+                          className="min-w-[120px]"
+                        />
+                      )
+                    })()}
                   </td>
 
                   {/* Cost Price */}
