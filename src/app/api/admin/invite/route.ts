@@ -31,11 +31,22 @@ export async function POST(req: NextRequest) {
   const businessName = settings?.business_name ?? 'our team'
   const roleLabel = (role ?? 'designer') === 'admin' ? 'Admin' : 'Designer'
 
-  // If a stale unconfirmed auth user exists for this email (e.g. from a previously cancelled
-  // invite), delete them first so generateLink doesn't fail with "already registered"
+  // If a stale auth user exists for this email with no active org membership
+  // (e.g. from a previously cancelled invite), delete them so generateLink doesn't fail
   const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-  const stale = users.find(u => u.email?.toLowerCase() === email.toLowerCase() && !u.last_sign_in_at)
-  if (stale) await supabaseAdmin.auth.admin.deleteUser(stale.id)
+  const existingAuthUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+  if (existingAuthUser) {
+    const { data: existingMember } = await supabaseAdmin
+      .from('org_members')
+      .select('id')
+      .eq('user_id', existingAuthUser.id)
+      .maybeSingle()
+    if (!existingMember) {
+      await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id)
+    } else {
+      return NextResponse.json({ error: 'This user already has an account in your organisation' }, { status: 400 })
+    }
+  }
 
   // Generate invite link (does not send Supabase's default email)
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
