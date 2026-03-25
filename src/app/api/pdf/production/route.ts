@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: settings?.vat_rate ?? 15 }) as any
+    createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15 }) as any
   )
 
   const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')

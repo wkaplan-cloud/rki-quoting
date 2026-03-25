@@ -8,6 +8,7 @@ interface Props {
   client: Client | null
   lineItems: LineItem[]
   type: 'quote' | 'invoice'
+  vatRate?: number
   footerText?: string
   logoUrl?: string | null
   businessName?: string | null
@@ -20,9 +21,9 @@ interface Props {
   termsConditions?: string | null
 }
 
-export function QuotePDF({ project, client, lineItems, type, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions }: Props) {
+export function QuotePDF({ project, client, lineItems, type, vatRate = 15, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions }: Props) {
   const computed = computeLineItems(lineItems)
-  const totals = computeTotals(lineItems, project.design_fee)
+  const totals = computeTotals(lineItems, project.design_fee, vatRate)
 
   return (
     <Document>

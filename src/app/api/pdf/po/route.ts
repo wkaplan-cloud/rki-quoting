@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name }) as any
+    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {

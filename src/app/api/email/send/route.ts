@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, email_from').maybeSingle(),
+    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, email_from').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
         client: project.client ?? null,
         lineItems: lineItems ?? [],
         type,
+        vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15,
         logoUrl,
         businessName: settings?.business_name,
         businessAddress: settings?.business_address,
