@@ -96,7 +96,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }
     if (supplier) updates.markup_percentage = supplier.markup_percentage
     onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
-    await supabase.from('line_items').update(updates).eq('id', lineItemId)
+    // Skip DB write while user is mid-typing (supplierId empty but name has text)
+    // to avoid race condition where typing nulls overwrite the final supplier ID write
+    if (supplierId || !supplierName) {
+      await supabase.from('line_items').update(updates).eq('id', lineItemId)
+    }
   }, [lineItems, suppliers, onChange, supabase])
 
   const createSupplier = useCallback(async (name: string) => {
