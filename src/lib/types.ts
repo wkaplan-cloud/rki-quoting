@@ -64,6 +64,7 @@ export interface LineItem {
   sort_order: number
   row_type: 'item' | 'section'
   indent_level: number
+  received: boolean
   created_at: string
 }
 

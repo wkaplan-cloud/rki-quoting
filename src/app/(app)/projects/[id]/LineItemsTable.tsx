@@ -153,6 +153,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     onChange([...lineItems, data])
   }, [projectId, lineItems, onChange, supabase])
 
+  const toggleReceived = useCallback(async (id: string, current: boolean) => {
+    const received = !current
+    onChange(lineItems.map(item => item.id === id ? { ...item, received } : item))
+    await supabase.from('line_items').update({ received }).eq('id', id)
+  }, [lineItems, onChange, supabase])
+
   const toggleIndent = useCallback(async (id: string, currentLevel: number) => {
     const indent_level = currentLevel > 0 ? 0 : 1
     onChange(lineItems.map(item => item.id === id ? { ...item, indent_level } : item))
@@ -192,6 +198,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
           <thead>
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2" />
+              <th className="w-7 px-2 py-2" title="Received" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
               <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Qty</th>
@@ -224,6 +231,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     <td className="px-1.5 py-2 text-[#C4BFB5] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
                       <GripVertical size={14} />
                     </td>
+                    <td />
                     <td colSpan={11} className="px-2 py-2 border-r border-[#EDE9E1]">
                       <div className="flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
@@ -260,11 +268,34 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   onDragEnter={() => { dragOver.current = index }}
                   onDragEnd={handleDragEnd}
                   onDragOver={e => e.preventDefault()}
-                  className={`border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9] group ${indented ? 'bg-[#FDFCF9]' : ''}`}
+                  className={`border-b border-[#EDE9E1] last:border-0 group transition-colors
+                    ${item.received
+                      ? 'bg-blue-50 hover:bg-blue-50'
+                      : indented ? 'bg-[#FDFCF9] hover:bg-[#FDFCF9]' : 'hover:bg-[#FDFCF9]'
+                    }`}
                 >
                   {/* Drag handle */}
                   <td className="px-1.5 py-1 text-[#D8D3C8] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
                     <GripVertical size={14} />
+                  </td>
+
+                  {/* Received checkbox */}
+                  <td className="px-1.5 py-1">
+                    <button
+                      onClick={() => toggleReceived(item.id, item.received)}
+                      title={item.received ? 'Mark as not received' : 'Mark as received'}
+                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer flex-shrink-0
+                        ${item.received
+                          ? 'bg-blue-500 border-blue-500 text-white'
+                          : 'border-[#D8D3C8] hover:border-blue-400 opacity-0 group-hover:opacity-100'
+                        }`}
+                    >
+                      {item.received && (
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                          <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
                   </td>
 
                   {/* Item name — with indent toggle + visual indent */}
