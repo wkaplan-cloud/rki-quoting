@@ -7,8 +7,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Check caller is an admin
-  const { data: membership } = await supabase
+  // Check caller is an admin (use admin client to bypass RLS, same as admin page)
+  const { data: membership } = await supabaseAdmin
     .from('org_members')
     .select('org_id, role')
     .eq('user_id', user.id)
