@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -44,7 +43,6 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
   const [inviteRole, setInviteRole] = useState('designer')
   const [inviting, setInviting] = useState(false)
   const [tab, setTab] = useState<'users' | 'audit'>('users')
-  const supabase = createClient()
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
@@ -76,23 +74,23 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
 
   async function handleDeactivate(id: string) {
     if (!confirm('Deactivate this user? They will lose access immediately.')) return
-    const { error } = await supabase.from('org_members').update({ status: 'inactive' }).eq('id', id)
-    if (error) { toast.error(error.message); return }
+    const res = await fetch('/api/admin/members', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'inactive' }) })
+    if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
     setMembers(m => m.map(mem => mem.id === id ? { ...mem, status: 'inactive' } : mem))
     toast.success('User deactivated')
   }
 
   async function handleDelete(id: string) {
     if (!confirm('Cancel this invite? The invite link will no longer work.')) return
-    const { error } = await supabase.from('org_members').delete().eq('id', id)
-    if (error) { toast.error(error.message); return }
+    const res = await fetch('/api/admin/members', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
     setMembers(m => m.filter(mem => mem.id !== id))
     toast.success('Invite cancelled')
   }
 
   async function handleReactivate(id: string) {
-    const { error } = await supabase.from('org_members').update({ status: 'active' }).eq('id', id)
-    if (error) { toast.error(error.message); return }
+    const res = await fetch('/api/admin/members', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'active' }) })
+    if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
     setMembers(m => m.map(mem => mem.id === id ? { ...mem, status: 'active' } : mem))
     toast.success('User reactivated')
   }
