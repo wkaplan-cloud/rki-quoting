@@ -53,7 +53,7 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
-                {['Supplier', 'Category', 'Contact Person', 'Email', 'Default Markup'].map(h => (
+                {['Supplier', 'Category', 'Contact Person', 'Email', 'CC Email', 'Default Markup'].map(h => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -64,7 +64,8 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
                   <td className="px-4 py-3"><Link href={`/suppliers/${s.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">{s.supplier_name}</Link></td>
                   <td className="px-4 py-3 text-[#8A877F] max-w-[140px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.category ?? '—'}</Link></td>
                   <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.contact_person ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F] max-w-[240px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email_cc ?? '—'}</Link></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <Link href={`/suppliers/${s.id}`} className="block">
