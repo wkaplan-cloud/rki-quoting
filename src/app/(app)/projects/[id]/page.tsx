@@ -30,7 +30,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       items={items ?? []}
       officeAddress={{ name: settings?.business_name ?? 'RKI Office', address: settings?.business_address ?? '' }}
       businessName={settings?.business_name ?? 'R Kaplan Interiors'}
-      vatRate={settings?.vat_rate ?? 15}
+      vatRate={project.vat_rate ?? settings?.vat_rate ?? 15}
       initialStages={stages ?? null}
       initialEmailLogs={emailLogs ?? []}
       emailTemplateQuote={settings?.email_template_quote ?? null}

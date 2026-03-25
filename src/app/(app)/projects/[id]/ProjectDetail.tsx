@@ -75,8 +75,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
   const handleVatRateChange = useCallback(async (rate: number) => {
     setVatRate(rate)
-    await supabase.from('settings').update({ vat_rate: rate })
-  }, [supabase])
+    await supabase.from('projects').update({ vat_rate: rate }).eq('id', project.id)
+  }, [project.id, supabase])
 
   const handleDuplicate = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
