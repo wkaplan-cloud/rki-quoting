@@ -216,7 +216,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2" />
               <th className="w-7 px-2 py-2" title="Received" />
-              <th className="w-10 px-2 py-2" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
               <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Qty</th>
@@ -249,7 +248,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     <td className="px-1.5 py-2 text-[#C4BFB5] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
                       <GripVertical size={14} />
                     </td>
-                    <td /><td />
+                    <td />
                     <td colSpan={11} className="px-2 py-2 border-r border-[#EDE9E1]">
                       <div className="flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
@@ -314,21 +313,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         </svg>
                       )}
                     </button>
-                  </td>
-
-                  {/* Fabric thumbnail */}
-                  <td className="px-1 py-1">
-                    {item.fabric_image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.fabric_image_url}
-                        alt="fabric"
-                        className="w-7 h-7 rounded object-cover border border-[#D8D3C8]"
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-                      />
-                    ) : (
-                      <div className="w-7 h-7" />
-                    )}
                   </td>
 
                   {/* Item name — with indent toggle + visual indent */}
