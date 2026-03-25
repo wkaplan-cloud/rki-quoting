@@ -29,9 +29,10 @@ interface Props {
   sageConnected: boolean
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
+  const [suppliers, setSuppliers] = useState(initialSuppliers)
   const [stages, setStages] = useState<ProjectStages | null>(initialStages)
   const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
   const [vatRate, setVatRate] = useState(initialVatRate)
@@ -348,6 +349,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           items={items}
           officeAddress={officeAddress}
           onChange={setLineItems}
+          onSupplierCreated={s => setSuppliers(prev => [...prev, s])}
         />
 
         {/* Totals */}

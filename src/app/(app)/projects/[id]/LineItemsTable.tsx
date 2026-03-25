@@ -25,13 +25,16 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
   )
 }
 
+type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }
+
 interface Props {
   projectId: string
   lineItems: LineItem[]
-  suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }[]
+  suppliers: Supplier[]
   items: { id: string; item_name: string }[]
   officeAddress: { name: string; address: string }
   onChange: (items: LineItem[]) => void
+  onSupplierCreated: (supplier: Supplier) => void
 }
 
 const COL = 'px-2 py-1.5 border-r border-[#EDE9E1] last:border-0'
@@ -70,7 +73,7 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
   )
 }
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated }: Props) {
   const supabase = createClient()
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
@@ -107,8 +110,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }).select().single()
     if (error) { toast.error('Failed to create supplier'); return { id: '' } }
     toast.success(`Supplier "${name}" created`)
+    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null })
     return { id: data.id }
-  }, [supabase])
+  }, [supabase, onSupplierCreated])
 
   const addRow = useCallback(async () => {
     const sort_order = lineItems.length
