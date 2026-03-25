@@ -65,6 +65,7 @@ export interface LineItem {
   row_type: 'item' | 'section'
   indent_level: number
   received: boolean
+  fabric_image_url: string | null
   created_at: string
 }
 

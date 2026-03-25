@@ -3,8 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
+import { FabricSearch } from '@/components/ui/FabricSearch'
 import toast from 'react-hot-toast'
 
 function CurrencyInput({ value, onChange, onBlur, className }: { value: number; onChange: (v: number) => void; onBlur: (v: number) => void; className: string }) {
@@ -159,6 +160,22 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     await supabase.from('line_items').update({ received }).eq('id', id)
   }, [lineItems, onChange, supabase])
 
+  const handleFabricSelect = useCallback(async (lineItemId: string, fabric: {
+    design: string | null; collection: string | null; colour: string | null
+    sku: string | null; brand: string | null; price_zar: number | null; image_url: string | null
+  }) => {
+    const description = [fabric.brand, fabric.collection, fabric.design, fabric.colour, fabric.sku]
+      .filter(Boolean).join(' · ')
+    const updates = {
+      item_name: 'Fabric',
+      description,
+      cost_price: fabric.price_zar ?? 0,
+      fabric_image_url: fabric.image_url ?? null,
+    }
+    onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
+    await supabase.from('line_items').update(updates).eq('id', lineItemId)
+  }, [lineItems, onChange, supabase])
+
   const toggleIndent = useCallback(async (id: string, currentLevel: number) => {
     const indent_level = currentLevel > 0 ? 0 : 1
     onChange(lineItems.map(item => item.id === id ? { ...item, indent_level } : item))
@@ -199,6 +216,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2" />
               <th className="w-7 px-2 py-2" title="Received" />
+              <th className="w-10 px-2 py-2" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
               <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Qty</th>
@@ -231,7 +249,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     <td className="px-1.5 py-2 text-[#C4BFB5] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
                       <GripVertical size={14} />
                     </td>
-                    <td />
+                    <td /><td />
                     <td colSpan={11} className="px-2 py-2 border-r border-[#EDE9E1]">
                       <div className="flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
@@ -298,6 +316,21 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     </button>
                   </td>
 
+                  {/* Fabric thumbnail */}
+                  <td className="px-1 py-1">
+                    {item.fabric_image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.fabric_image_url}
+                        alt="fabric"
+                        className="w-7 h-7 rounded object-cover border border-[#D8D3C8]"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="w-7 h-7" />
+                    )}
+                  </td>
+
                   {/* Item name — with indent toggle + visual indent */}
                   <td className={COL}>
                     <div className={`flex items-center gap-1 ${indented ? 'pl-4' : ''}`}>
@@ -305,13 +338,24 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <AutoTextarea
-                          value={item.item_name}
-                          onChange={v => updateLocal(item.id, 'item_name', v)}
-                          onBlur={v => saveField(item.id, 'item_name', v)}
-                          placeholder="Item name"
-                          className={INPUT}
-                        />
+                        {item.supplier_name?.toLowerCase().includes('home fabrics') ? (
+                          <FabricSearch
+                            value={item.item_name}
+                            onChange={v => updateLocal(item.id, 'item_name', v)}
+                            onBlur={v => saveField(item.id, 'item_name', v)}
+                            onSelect={fabric => handleFabricSelect(item.id, fabric)}
+                            placeholder="Search fabric…"
+                            className={INPUT}
+                          />
+                        ) : (
+                          <AutoTextarea
+                            value={item.item_name}
+                            onChange={v => updateLocal(item.id, 'item_name', v)}
+                            onBlur={v => saveField(item.id, 'item_name', v)}
+                            placeholder="Item name"
+                            className={INPUT}
+                          />
+                        )}
                       </div>
                       <button
                         onClick={() => toggleIndent(item.id, item.indent_level)}

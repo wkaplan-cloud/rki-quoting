@@ -10,7 +10,7 @@ export default async function PriceListDetailPage({ params }: { params: Promise<
 
   const [{ data: priceList }, { data: items }] = await Promise.all([
     supabase.from('price_lists').select('*').eq('id', id).single(),
-    supabase.from('price_list_items').select('*').eq('price_list_id', id).order('brand').order('collection').order('design'),
+    supabase.from('price_list_items').select('*').eq('price_list_id', id).order('brand').order('collection').order('design').limit(50000),
   ])
 
   if (!priceList) notFound()

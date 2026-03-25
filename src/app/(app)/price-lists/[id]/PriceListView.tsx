@@ -1,6 +1,6 @@
 'use client'
-import { useState, useMemo } from 'react'
-import { Search, ImageOff } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Search, ImageOff, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface PriceListItem {
   id: string
@@ -13,6 +13,8 @@ interface PriceListItem {
   price_zar: number | null
   image_url: string | null
 }
+
+const PAGE_SIZE = 120
 
 function formatPrice(n: number | null) {
   if (n == null) return '–'
@@ -43,6 +45,7 @@ export function PriceListView({ items }: { items: PriceListItem[] }) {
   const [search, setSearch] = useState('')
   const [brandFilter, setBrandFilter] = useState('')
   const [collectionFilter, setCollectionFilter] = useState('')
+  const [page, setPage] = useState(1)
 
   const brands = useMemo(() => {
     const s = new Set(items.map(i => i.brand).filter(Boolean) as string[])
@@ -72,10 +75,19 @@ export function PriceListView({ items }: { items: PriceListItem[] }) {
     })
   }, [items, search, brandFilter, collectionFilter])
 
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setPage(1) }, [search, brandFilter, collectionFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   function handleBrandChange(brand: string) {
     setBrandFilter(brand)
     setCollectionFilter('')
   }
+
+  const from = filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const to = Math.min(page * PAGE_SIZE, filtered.length)
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -123,33 +135,58 @@ export function PriceListView({ items }: { items: PriceListItem[] }) {
             <p className="text-sm text-[#8A877F]">No items match your search</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filtered.map(item => (
-              <div key={item.id} className="bg-white border border-[#D8D3C8] rounded-lg overflow-hidden group hover:border-[#C4A46B] transition-colors">
-                <div className="aspect-square overflow-hidden bg-[#EDE9E1]">
-                  <ItemImage url={item.image_url} alt={[item.design, item.colour].filter(Boolean).join(' ')} />
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {paginated.map(item => (
+                <div key={item.id} className="bg-white border border-[#D8D3C8] rounded-lg overflow-hidden group hover:border-[#C4A46B] transition-colors">
+                  <div className="aspect-square overflow-hidden bg-[#EDE9E1]">
+                    <ItemImage url={item.image_url} alt={[item.design, item.colour].filter(Boolean).join(' ')} />
+                  </div>
+                  <div className="p-2.5 space-y-1">
+                    {item.brand && (
+                      <p className="text-[10px] font-medium text-[#C4A46B] uppercase tracking-wide truncate">{item.brand}</p>
+                    )}
+                    {item.collection && (
+                      <p className="text-[10px] text-[#8A877F] truncate">{item.collection}</p>
+                    )}
+                    {item.design && (
+                      <p className="text-xs font-medium text-[#2C2C2A] truncate">{item.design}</p>
+                    )}
+                    {item.colour && (
+                      <p className="text-[10px] text-[#8A877F] truncate">{item.colour}</p>
+                    )}
+                    {item.sku && (
+                      <p className="text-[10px] text-[#8A877F] truncate font-mono">{item.sku}</p>
+                    )}
+                    <p className="text-xs font-semibold text-[#1A1A18] pt-0.5">{formatPrice(item.price_zar)}</p>
+                  </div>
                 </div>
-                <div className="p-2.5 space-y-1">
-                  {item.brand && (
-                    <p className="text-[10px] font-medium text-[#C4A46B] uppercase tracking-wide truncate">{item.brand}</p>
-                  )}
-                  {item.collection && (
-                    <p className="text-[10px] text-[#8A877F] truncate">{item.collection}</p>
-                  )}
-                  {item.design && (
-                    <p className="text-xs font-medium text-[#2C2C2A] truncate">{item.design}</p>
-                  )}
-                  {item.colour && (
-                    <p className="text-[10px] text-[#8A877F] truncate">{item.colour}</p>
-                  )}
-                  {item.sku && (
-                    <p className="text-[10px] text-[#8A877F] truncate font-mono">{item.sku}</p>
-                  )}
-                  <p className="text-xs font-semibold text-[#1A1A18] pt-0.5">{formatPrice(item.price_zar)}</p>
-                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-8">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-1.5 rounded border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] hover:border-[#9A7B4F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-xs text-[#8A877F]">
+                  {from.toLocaleString()}–{to.toLocaleString()} of {filtered.length.toLocaleString()}
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-1.5 rounded border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] hover:border-[#9A7B4F] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                >
+                  <ChevronRight size={14} />
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
