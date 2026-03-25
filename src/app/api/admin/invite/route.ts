@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   // If a stale unconfirmed auth user exists for this email (e.g. from a previously cancelled
   // invite), delete them first so generateLink doesn't fail with "already registered"
   const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-  const stale = users.find(u => u.email?.toLowerCase() === email.toLowerCase() && !u.email_confirmed_at)
+  const stale = users.find(u => u.email?.toLowerCase() === email.toLowerCase() && !u.last_sign_in_at)
   if (stale) await supabaseAdmin.auth.admin.deleteUser(stale.id)
 
   // Generate invite link (does not send Supabase's default email)
