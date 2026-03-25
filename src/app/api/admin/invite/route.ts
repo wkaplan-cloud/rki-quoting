@@ -31,20 +31,30 @@ export async function POST(req: NextRequest) {
   const businessName = settings?.business_name ?? 'our team'
   const roleLabel = (role ?? 'designer') === 'admin' ? 'Admin' : 'Designer'
 
-  // If a stale auth user exists for this email with no active org membership
-  // (e.g. from a previously cancelled invite), delete them so generateLink doesn't fail
+  // If a stale auth user exists for this email with no org membership anywhere
+  // (e.g. from a previously cancelled invite), delete them so generateLink doesn't fail.
+  // Safety: never delete the currently authenticated admin, and never delete if the
+  // org_members lookup itself errors (treat errors as "user exists, don't touch").
   const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
   const existingAuthUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
   if (existingAuthUser) {
-    const { data: existingMember } = await supabaseAdmin
+    // Never delete yourself
+    if (existingAuthUser.id === user.id) {
+      return NextResponse.json({ error: 'You cannot invite yourself' }, { status: 400 })
+    }
+    const { data: existingMember, error: memberLookupError } = await supabaseAdmin
       .from('org_members')
       .select('id')
       .eq('user_id', existingAuthUser.id)
       .maybeSingle()
-    if (!existingMember) {
+    // Only delete if the lookup succeeded AND found no membership record
+    if (!memberLookupError && !existingMember) {
       await supabaseAdmin.auth.admin.deleteUser(existingAuthUser.id)
-    } else {
+    } else if (existingMember) {
       return NextResponse.json({ error: 'This user already has an account in your organisation' }, { status: 400 })
+    } else {
+      // Lookup errored — be safe, don't delete, surface the error
+      return NextResponse.json({ error: 'Could not verify user status, please try again' }, { status: 500 })
     }
   }
 
