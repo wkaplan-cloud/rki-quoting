@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 
@@ -14,9 +15,14 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // Check org membership via RPC (security definer — bypasses RLS circular dependency)
   const { data: orgId } = await supabase.rpc('get_current_org_id')
 
-  if (!orgId) {
-    redirect('/onboarding')
-  }
+  if (!orgId) redirect('/onboarding')
 
-  return <AppLayout>{children}</AppLayout>
+  const { data: membership } = await supabaseAdmin
+    .from('org_members')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  return <AppLayout isAdmin={membership?.role === 'admin'}>{children}</AppLayout>
 }

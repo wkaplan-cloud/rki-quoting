@@ -21,12 +21,16 @@ export async function PATCH(req: NextRequest) {
   const membership = await getAdminMembership(user.id)
   if (!membership) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id, status } = await req.json()
-  if (!id || !status) return NextResponse.json({ error: 'id and status required' }, { status: 400 })
+  const { id, status, role } = await req.json()
+  if (!id || (!status && !role)) return NextResponse.json({ error: 'id and status or role required' }, { status: 400 })
+
+  const updates: Record<string, string> = {}
+  if (status) updates.status = status
+  if (role) updates.role = role
 
   const { error } = await supabaseAdmin
     .from('org_members')
-    .update({ status })
+    .update(updates)
     .eq('id', id)
     .eq('org_id', membership.org_id)
 

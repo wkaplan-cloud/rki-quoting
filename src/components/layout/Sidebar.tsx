@@ -16,7 +16,7 @@ const secondaryLinks = [
   { href: '/items',     label: 'Items',     icon: Package },
 ]
 
-export function Sidebar() {
+export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   const path = usePathname()
 
   const isActive = (href: string) =>
@@ -69,10 +69,12 @@ export function Sidebar() {
           Import
         </Link>
         <div className="border-t border-white/10 my-1" />
-        <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
-          <ShieldCheck size={14} />
-          Admin
-        </Link>
+        {isAdmin && (
+          <Link href="/admin" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
+            <ShieldCheck size={14} />
+            Admin
+          </Link>
+        )}
         <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
           <Settings size={14} />
           Settings

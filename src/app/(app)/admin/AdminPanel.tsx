@@ -161,10 +161,26 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
                   <tr key={m.id} className="border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9]">
                     <td className="px-4 py-3 text-[#2C2C2A] font-medium">{m.invited_email}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${m.role === 'admin' ? 'bg-[#9A7B4F]/10 text-[#9A7B4F]' : 'bg-[#F5F2EC] text-[#8A877F]'}`}>
-                        {m.role === 'admin' ? <ShieldCheck size={11} /> : <User size={11} />}
-                        {m.role}
-                      </span>
+                      {isAdmin && m.status !== 'pending' ? (
+                        <select
+                          value={m.role}
+                          onChange={async e => {
+                            const role = e.target.value
+                            const res = await fetch('/api/admin/members', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: m.id, role }) })
+                            if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
+                            setMembers(prev => prev.map(mem => mem.id === m.id ? { ...mem, role } : mem))
+                          }}
+                          className="text-xs border border-[#D8D3C8] rounded px-2 py-0.5 bg-white outline-none focus:border-[#9A7B4F] cursor-pointer"
+                        >
+                          <option value="designer">Designer</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${m.role === 'admin' ? 'bg-[#9A7B4F]/10 text-[#9A7B4F]' : 'bg-[#F5F2EC] text-[#8A877F]'}`}>
+                          {m.role === 'admin' ? <ShieldCheck size={11} /> : <User size={11} />}
+                          {m.role}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
