@@ -17,7 +17,7 @@ const secondaryLinks = [
   { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
 ]
 
-export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
+export function Sidebar({ isAdmin, businessName }: { isAdmin: boolean; businessName: string }) {
   const path = usePathname()
 
   const isActive = (href: string) =>
@@ -26,9 +26,14 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   return (
     <aside className="w-44 flex-shrink-0 bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50">
       {/* Logo */}
-      <div className="px-4 py-6 border-b border-white/10 flex justify-center">
+      <div className="px-4 py-5 border-b border-white/10 flex flex-col items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="QuotingHub" className="w-28 object-contain" style={{ filter: 'invert(1)' }} />
+        {businessName && (
+          <span className="text-[10px] font-medium text-[#C4A46B] uppercase tracking-widest text-center leading-tight">
+            {businessName}
+          </span>
+        )}
       </div>
 
       {/* Main nav */}
