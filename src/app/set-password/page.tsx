@@ -19,8 +19,17 @@ export default function SetPasswordPage() {
     if (password !== confirm) { toast.error('Passwords do not match'); return }
     if (password.length < 8) { toast.error('Password must be at least 8 characters'); return }
     setSaving(true)
-    const { error } = await supabase.auth.updateUser({ password })
-    if (error) { toast.error(error.message); setSaving(false); return }
+    const res = await fetch('/api/auth/set-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json()
+      toast.error(error ?? 'Failed to set password')
+      setSaving(false)
+      return
+    }
     toast.success('Password set — welcome!')
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     router.push(orgId ? '/' : '/onboarding')
