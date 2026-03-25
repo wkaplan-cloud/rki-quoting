@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('price_lists')
-    .insert({ name, supplier_name: supplier_name ?? 'Home Fabrics', created_by: user.id, item_count: 0 })
+    .insert({ name, supplier_name: supplier_name ?? 'Home Fabrics', item_count: 0 })
     .select()
     .single()
 
