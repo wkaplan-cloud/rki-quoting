@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { ImageOff } from 'lucide-react'
 
 interface FabricResult {
@@ -22,6 +23,13 @@ interface Props {
   className?: string
 }
 
+interface DropdownPos {
+  top?: number
+  bottom?: number
+  left: number
+  width: number
+}
+
 function Thumb({ url }: { url: string | null }) {
   const [errored, setErrored] = useState(false)
   if (!url || errored) return (
@@ -39,9 +47,21 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
   const [results, setResults] = useState<FabricResult[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [dropUp, setDropUp] = useState(false)
+  const [pos, setPos] = useState<DropdownPos | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const calcPos = useCallback(() => {
+    if (!inputRef.current) return null
+    const rect = inputRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const dropdownHeight = 288 // max-h-72
+    if (spaceBelow < dropdownHeight) {
+      // open upward
+      return { bottom: window.innerHeight - rect.top + 4, left: rect.left, width: 288 }
+    }
+    return { top: rect.bottom + 4, left: rect.left, width: 288 }
+  }, [])
 
   const search = useCallback((q: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -52,21 +72,17 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
         const res = await fetch(`/api/fabric-search?q=${encodeURIComponent(q)}`)
         const data = await res.json()
         setResults(data ?? [])
-        // Decide whether to open up or down
-        if (containerRef.current) {
-          const rect = containerRef.current.getBoundingClientRect()
-          setDropUp(window.innerHeight - rect.bottom < 300)
-        }
+        setPos(calcPos())
         setOpen(true)
       } finally {
         setLoading(false)
       }
     }, 250)
-  }, [])
+  }, [calcPos])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (inputRef.current && !inputRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
@@ -80,9 +96,48 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
     onSelect(fabric)
   }
 
+  const dropdown = open && results.length > 0 && pos ? createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        top: pos.top,
+        bottom: pos.bottom,
+        left: pos.left,
+        width: pos.width,
+        zIndex: 9999,
+      }}
+      className="bg-white border border-[#D8D3C8] rounded-lg shadow-xl max-h-72 overflow-y-auto"
+    >
+      {results.map(fabric => (
+        <button
+          key={fabric.id}
+          type="button"
+          onMouseDown={() => handleSelect(fabric)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[#F5F2EC] transition-colors text-left cursor-pointer"
+        >
+          <Thumb url={fabric.image_url} />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-[#2C2C2A] truncate">{fabric.design || '—'}</p>
+            <p className="text-[10px] text-[#8A877F] truncate">
+              {[fabric.collection, fabric.colour].filter(Boolean).join(' · ')}
+            </p>
+            {fabric.sku && <p className="text-[10px] text-[#8A877F] font-mono truncate">{fabric.sku}</p>}
+          </div>
+          {fabric.price_zar != null && (
+            <span className="text-xs font-semibold text-[#2C2C2A] flex-shrink-0">
+              R {fabric.price_zar.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>,
+    document.body
+  ) : null
+
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <input
+        ref={inputRef}
         value={value}
         onChange={e => { onChange(e.target.value); search(e.target.value) }}
         onBlur={e => onBlur(e.target.value)}
@@ -92,32 +147,7 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
       {loading && (
         <div className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 border border-[#9A7B4F] border-t-transparent rounded-full animate-spin" />
       )}
-      {open && results.length > 0 && (
-        <div className={`absolute left-0 z-50 bg-white border border-[#D8D3C8] rounded-lg shadow-lg w-72 max-h-72 overflow-y-auto ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
-          {results.map(fabric => (
-            <button
-              key={fabric.id}
-              type="button"
-              onMouseDown={() => handleSelect(fabric)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[#F5F2EC] transition-colors text-left cursor-pointer"
-            >
-              <Thumb url={fabric.image_url} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-[#2C2C2A] truncate">{fabric.design || '—'}</p>
-                <p className="text-[10px] text-[#8A877F] truncate">
-                  {[fabric.collection, fabric.colour].filter(Boolean).join(' · ')}
-                </p>
-                {fabric.sku && <p className="text-[10px] text-[#8A877F] font-mono truncate">{fabric.sku}</p>}
-              </div>
-              {fabric.price_zar != null && (
-                <span className="text-xs font-semibold text-[#2C2C2A] flex-shrink-0">
-                  R {fabric.price_zar.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
+      {dropdown}
     </div>
   )
 }
