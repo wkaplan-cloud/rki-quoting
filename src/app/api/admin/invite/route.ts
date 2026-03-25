@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'invite',
     email,
-    options: { redirectTo: 'https://quotinghub.co.za' },
+    options: { redirectTo: 'https://quotinghub.co.za/auth/callback' },
   })
 
   if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 })
