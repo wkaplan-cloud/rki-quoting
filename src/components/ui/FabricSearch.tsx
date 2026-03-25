@@ -39,6 +39,7 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
   const [results, setResults] = useState<FabricResult[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [dropUp, setDropUp] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -51,6 +52,11 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
         const res = await fetch(`/api/fabric-search?q=${encodeURIComponent(q)}`)
         const data = await res.json()
         setResults(data ?? [])
+        // Decide whether to open up or down
+        if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect()
+          setDropUp(window.innerHeight - rect.bottom < 300)
+        }
         setOpen(true)
       } finally {
         setLoading(false)
@@ -87,7 +93,7 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
         <div className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 border border-[#9A7B4F] border-t-transparent rounded-full animate-spin" />
       )}
       {open && results.length > 0 && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded-lg shadow-lg w-72 max-h-72 overflow-y-auto">
+        <div className={`absolute left-0 z-50 bg-white border border-[#D8D3C8] rounded-lg shadow-lg w-72 max-h-72 overflow-y-auto ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
           {results.map(fabric => (
             <button
               key={fabric.id}
