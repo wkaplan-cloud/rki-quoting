@@ -11,9 +11,12 @@ interface Props {
   vatRate?: number
   logoUrl?: string | null
   businessName?: string | null
+  businessAddress?: string | null
+  vatNumber?: string | null
+  companyReg?: string | null
 }
 
-function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null }) {
+function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null }) {
   const itemRows = items.filter(i => i.row_type !== 'section')
   const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const vatAmount = subtotal * (vatRate / 100)
@@ -24,13 +27,23 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName 
     <Page size="A4" style={styles.page}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={{ justifyContent: 'center' }}>
+        <View>
           {logoUrl
-            ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain' }} />
-            : <Text style={styles.brandName}>{businessName || 'R Kaplan Interiors'}</Text>
+            ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain', marginBottom: 8 }} />
+            : <Text style={[styles.brandName, { marginBottom: 8 }]}>{businessName || 'R Kaplan Interiors'}</Text>
           }
+          {businessAddress ? (
+            <Text style={{ fontSize: 7, color: '#8A877F', marginBottom: 3, lineHeight: 1.4 }}>
+              {businessAddress.replace(/\n/g, ', ')}
+            </Text>
+          ) : null}
+          {(vatNumber || companyReg) ? (
+            <Text style={{ fontSize: 7, color: '#8A877F' }}>
+              {[vatNumber ? `VAT: ${vatNumber}` : null, companyReg ? `Reg: ${companyReg}` : null].filter(Boolean).join('  ·  ')}
+            </Text>
+          ) : null}
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
+        <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
           <Text style={styles.docTitle}>PURCHASE ORDER</Text>
           <Text style={styles.docMeta}>{poNumber}</Text>
           <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
@@ -119,15 +132,16 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName 
   )
 }
 
-export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName }: Props) {
+export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
+  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg }
 
   // Single supplier mode — lineItems already filtered by API
   if (supplierId) {
     const supplier = supplierMap[supplierId] ?? null
     return (
       <Document>
-        <POPage project={project} items={lineItems} supplier={supplier} vatRate={vatRate} logoUrl={logoUrl} businessName={businessName} />
+        <POPage project={project} items={lineItems} supplier={supplier} {...pageProps} />
       </Document>
     )
   }
@@ -150,7 +164,7 @@ export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15,
             result.push(item)
           }
         }
-        return <POPage key={sid} project={project} items={result} supplier={supplier} vatRate={vatRate} logoUrl={logoUrl} businessName={businessName} />
+        return <POPage key={sid} project={project} items={result} supplier={supplier} {...pageProps} />
       })}
     </Document>
   )
