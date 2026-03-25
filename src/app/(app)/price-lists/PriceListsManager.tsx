@@ -85,6 +85,7 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
   const [parseError, setParseError] = useState('')
   const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -129,21 +130,41 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
   async function handleImport() {
     if (!name.trim() || !parsedItems?.length) return
     setLoading(true)
+    setProgress(0)
     try {
-      const res = await fetch('/api/price-lists', {
+      // Step 1: create the price list record
+      const createRes = await fetch('/api/price-lists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), supplier_name: supplierName, items: parsedItems }),
+        body: JSON.stringify({ name: name.trim(), supplier_name: supplierName }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      const createData = await createRes.json()
+      if (!createRes.ok) throw new Error(createData.error)
+
+      // Step 2: send items in batches of 200
+      const BATCH = 200
+      const total = parsedItems.length
+      for (let i = 0; i < total; i += BATCH) {
+        const batch = parsedItems.slice(i, i + BATCH)
+        const isLast = i + BATCH >= total
+        const itemsRes = await fetch(`/api/price-lists/${createData.id}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: batch, total_count: isLast ? total : null }),
+        })
+        const itemsData = await itemsRes.json()
+        if (!itemsRes.ok) throw new Error(itemsData.error)
+        setProgress(Math.round(((i + batch.length) / total) * 100))
+      }
+
       setShowImport(false)
       resetForm()
-      router.push(`/price-lists/${data.id}`)
+      router.push(`/price-lists/${createData.id}`)
     } catch (err) {
       setParseError(err instanceof Error ? err.message : 'Import failed')
     } finally {
       setLoading(false)
+      setProgress(0)
     }
   }
 
@@ -162,6 +183,7 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
     setParsedItems(null)
     setParseError('')
     setFileName('')
+    setProgress(0)
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -314,12 +336,22 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
             {/* Footer */}
             <div className="px-6 py-4 border-t border-[#D8D3C8] flex justify-end gap-2">
               <Button variant="secondary" onClick={() => { setShowImport(false); resetForm() }}>Cancel</Button>
-              <Button
-                onClick={handleImport}
-                disabled={!name.trim() || !parsedItems?.length || loading}
-              >
-                {loading ? 'Importing…' : `Import ${parsedItems ? parsedItems.length.toLocaleString() + ' items' : ''}`}
-              </Button>
+              <div className="flex items-center gap-3">
+                {loading && progress > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-1.5 bg-[#EDE9E1] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#C4A46B] rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                    </div>
+                    <span className="text-xs text-[#8A877F]">{progress}%</span>
+                  </div>
+                )}
+                <Button
+                  onClick={handleImport}
+                  disabled={!name.trim() || !parsedItems?.length || loading}
+                >
+                  {loading ? 'Importing…' : `Import ${parsedItems ? parsedItems.length.toLocaleString() + ' items' : ''}`}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
