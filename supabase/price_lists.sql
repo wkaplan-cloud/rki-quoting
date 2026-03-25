@@ -1,15 +1,17 @@
 -- ─── price_lists ──────────────────────────────────────────────────────────────
 create table if not exists price_lists (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid references auth.users(id) on delete cascade not null,
+  org_id uuid not null,
+  created_by uuid references auth.users(id) on delete set null,
   name text not null,
   supplier_name text not null default 'Home Fabrics',
   item_count integer not null default 0,
   created_at timestamptz default now()
 );
 alter table price_lists enable row level security;
-create policy "Users manage own price lists" on price_lists
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Org members manage price lists" on price_lists
+  using (org_id = get_current_org_id())
+  with check (org_id = get_current_org_id());
 
 -- ─── price_list_items ─────────────────────────────────────────────────────────
 create table if not exists price_list_items (
@@ -26,18 +28,18 @@ create table if not exists price_list_items (
   created_at timestamptz default now()
 );
 alter table price_list_items enable row level security;
-create policy "Users manage price list items via price list" on price_list_items
+create policy "Org members manage price list items" on price_list_items
   using (
     exists (
       select 1 from price_lists pl
       where pl.id = price_list_items.price_list_id
-        and pl.user_id = auth.uid()
+        and pl.org_id = get_current_org_id()
     )
   )
   with check (
     exists (
       select 1 from price_lists pl
       where pl.id = price_list_items.price_list_id
-        and pl.user_id = auth.uid()
+        and pl.org_id = get_current_org_id()
     )
   );

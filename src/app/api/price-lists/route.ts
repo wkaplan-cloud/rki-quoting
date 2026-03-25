@@ -7,12 +7,15 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
   const { name, supplier_name } = await req.json()
   if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })
 
   const { data, error } = await supabase
     .from('price_lists')
-    .insert({ name, supplier_name: supplier_name ?? 'Home Fabrics', user_id: user.id, item_count: 0 })
+    .insert({ name, supplier_name: supplier_name ?? 'Home Fabrics', org_id: orgId, created_by: user.id, item_count: 0 })
     .select()
     .single()
 
@@ -26,10 +29,13 @@ export async function DELETE(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
-  const { error } = await supabase.from('price_lists').delete().eq('id', id).eq('user_id', user.id)
+  const { error } = await supabase.from('price_lists').delete().eq('id', id).eq('org_id', orgId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

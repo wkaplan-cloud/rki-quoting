@@ -8,12 +8,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verify ownership
+  // Verify org membership (RLS will enforce this too, but explicit check gives a clean 404)
   const { data: pl } = await supabase
     .from('price_lists')
     .select('id')
     .eq('id', id)
-    .eq('user_id', user.id)
     .single()
 
   if (!pl) return NextResponse.json({ error: 'Not found' }, { status: 404 })
