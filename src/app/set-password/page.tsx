@@ -22,7 +22,8 @@ export default function SetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password })
     if (error) { toast.error(error.message); setSaving(false); return }
     toast.success('Password set — welcome!')
-    router.push('/onboarding')
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    router.push(orgId ? '/' : '/onboarding')
   }
 
   return (
