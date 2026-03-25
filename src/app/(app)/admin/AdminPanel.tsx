@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
-import { UserPlus, ShieldCheck, User, Ban, Clock } from 'lucide-react'
+import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 
 interface Member {
@@ -80,6 +80,14 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
     if (error) { toast.error(error.message); return }
     setMembers(m => m.map(mem => mem.id === id ? { ...mem, status: 'inactive' } : mem))
     toast.success('User deactivated')
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Cancel this invite? The invite link will no longer work.')) return
+    const { error } = await supabase.from('org_members').delete().eq('id', id)
+    if (error) { toast.error(error.message); return }
+    setMembers(m => m.filter(mem => mem.id !== id))
+    toast.success('Invite cancelled')
   }
 
   async function handleReactivate(id: string) {
@@ -178,6 +186,11 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
                         {m.status === 'active' && (
                           <button onClick={() => handleDeactivate(m.id)} className="text-xs text-[#8A877F] hover:text-red-500 transition-colors flex items-center gap-1 ml-auto cursor-pointer">
                             <Ban size={12} /> Deactivate
+                          </button>
+                        )}
+                        {m.status === 'pending' && (
+                          <button onClick={() => handleDelete(m.id)} className="text-xs text-[#8A877F] hover:text-red-500 transition-colors flex items-center gap-1 ml-auto cursor-pointer">
+                            <Trash2 size={12} /> Cancel
                           </button>
                         )}
                         {m.status === 'inactive' && (
