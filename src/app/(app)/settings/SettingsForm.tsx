@@ -30,6 +30,7 @@ interface Settings {
   company_registration?: string | null
   email_template_quote?: string | null
   email_template_invoice?: string | null
+  accounts_email?: string | null
 }
 
 export function SettingsForm({ settings }: { settings: Settings | null }) {
@@ -88,6 +89,7 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
     company_registration: settings?.company_registration ?? '',
     email_template_quote: settings?.email_template_quote ?? `Dear {{client_name}},\n\nPlease find attached your quotation for {{project_name}}.\n\nReference: {{project_number}}\n\nPlease don't hesitate to contact us should you have any questions or require any amendments.\n\nKind regards,\n{{studio_name}}`,
     email_template_invoice: settings?.email_template_invoice ?? `Dear {{client_name}},\n\nPlease find attached your invoice for {{project_name}}.\n\nReference: {{project_number}}\n\nKindly arrange payment at your earliest convenience.\n\nKind regards,\n{{studio_name}}`,
+    accounts_email: settings?.accounts_email ?? '',
   })
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -134,7 +136,8 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
         <div className="grid grid-cols-2 gap-4">
           <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+27 11 xxx xxxx" />
         </div>
-        <Input label="Email (for sending quotes)" type="email" value={form.email_from} onChange={e => set('email_from', e.target.value)} />
+        <Input label="Reply-to Email (for quotes)" type="email" value={form.email_from} onChange={e => set('email_from', e.target.value)} />
+        <Input label="Accounts Email (BCC on all POs)" type="email" value={form.accounts_email} onChange={e => set('accounts_email', e.target.value)} placeholder="accounts@yourstudio.co.za" />
       </section>
 
       {/* Branding */}

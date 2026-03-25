@@ -22,6 +22,7 @@ export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
     rep_name: supplier?.rep_name ?? '',
     rep_number: supplier?.rep_number ?? '',
     email: supplier?.email ?? '',
+    email_cc: supplier?.email_cc ?? '',
     delivery_address: supplier?.delivery_address ?? '',
     markup_percentage: String(supplier?.markup_percentage ?? 40),
   })
@@ -82,7 +83,10 @@ export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
         <Input label="Rep Name" value={form.rep_name} onChange={e => set('rep_name', e.target.value)} />
         <Input label="Rep Number" value={form.rep_number} onChange={e => set('rep_number', e.target.value)} />
       </div>
-      <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+      <div className="grid grid-cols-2 gap-4">
+        <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+        <Input label="CC Email (PO copies)" type="email" value={form.email_cc} onChange={e => set('email_cc', e.target.value)} placeholder="e.g. accounts@supplier.co.za" />
+      </div>
       <Textarea label="Delivery Address" value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)} rows={2} />
 
       <div className="flex gap-3 pt-2">

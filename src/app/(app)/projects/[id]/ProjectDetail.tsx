@@ -38,6 +38,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [vatRate, setVatRate] = useState(initialVatRate)
   const [poMenuOpen, setPoMenuOpen] = useState(false)
   const poMenuRef = useRef<HTMLDivElement>(null)
+  const [sendPoMenuOpen, setSendPoMenuOpen] = useState(false)
+  const sendPoMenuRef = useRef<HTMLDivElement>(null)
+  const [sendPoSending, setSendPoSending] = useState(false)
   // Sage state
   const [sageModalOpen, setSageModalOpen] = useState(false)
   const [sageCustomers, setSageCustomers] = useState<SageCustomer[]>([])
@@ -60,6 +63,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (poMenuRef.current && !poMenuRef.current.contains(e.target as Node)) setPoMenuOpen(false)
+      if (sendPoMenuRef.current && !sendPoMenuRef.current.contains(e.target as Node)) setSendPoMenuOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -134,6 +138,36 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       .replace(/\{\{project_number\}\}/g, project.project_number)
       .replace(/\{\{studio_name\}\}/g, businessName)
   }, [project, businessName])
+
+  const handleSendPO = useCallback(async (supplierIdParam?: string) => {
+    setSendPoSending(true)
+    setSendPoMenuOpen(false)
+    try {
+      const res = await fetch('/api/email/po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, supplierId: supplierIdParam }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok && res.status !== 207) {
+        toast.error(data.error ?? 'Failed to send PO')
+        return
+      }
+      const results: { supplierName: string; success: boolean; error?: string }[] = data.results ?? []
+      const failed = results.filter(r => !r.success)
+      const succeeded = results.filter(r => r.success)
+      if (succeeded.length > 0) {
+        toast.success(succeeded.length === 1 ? `PO sent to ${succeeded[0].supplierName}` : `POs sent to ${succeeded.length} suppliers`)
+      }
+      if (failed.length > 0) {
+        failed.forEach(f => toast.error(`${f.supplierName}: ${f.error}`))
+      }
+    } catch {
+      toast.error('Failed to send PO')
+    } finally {
+      setSendPoSending(false)
+    }
+  }, [project.id])
 
   const handleOpenEmailModal = useCallback((type: 'quote' | 'invoice') => {
     setEmailModalType(type)
@@ -328,6 +362,49 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         )}
         <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
         <div className="flex-1" />
+        {/* Send PO dropdown */}
+        {(() => {
+          const poSupplierIds = [...new Set(
+            lineItems.filter(i => i.row_type !== 'section' && i.supplier_id).map(i => i.supplier_id!)
+          )]
+          const poSuppliers = poSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean) as typeof suppliers
+          if (poSuppliers.length === 0) return (
+            <Button size="sm" variant="secondary" disabled>
+              <Send size={13} /> Send PO
+            </Button>
+          )
+          if (poSuppliers.length === 1) return (
+            <Button size="sm" variant="secondary" onClick={() => handleSendPO(poSuppliers[0]!.id)} disabled={sendPoSending}>
+              <Send size={13} /> {sendPoSending ? 'Sending…' : `Send PO – ${poSuppliers[0]!.supplier_name}`}
+            </Button>
+          )
+          return (
+            <div className="relative" ref={sendPoMenuRef}>
+              <Button size="sm" variant="secondary" onClick={() => setSendPoMenuOpen(v => !v)} disabled={sendPoSending}>
+                <Send size={13} /> {sendPoSending ? 'Sending…' : 'Send PO'} <ChevronDown size={12} />
+              </Button>
+              {sendPoMenuOpen && (
+                <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded shadow-lg min-w-[180px]">
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2 border-b border-[#EDE9E1] font-medium"
+                    onClick={() => handleSendPO()}
+                  >
+                    <Send size={12} className="text-[#9A7B4F]" /> Send All POs
+                  </button>
+                  {poSuppliers.map(s => (
+                    <button
+                      key={s.id}
+                      className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2"
+                      onClick={() => handleSendPO(s.id)}
+                    >
+                      <Send size={12} className="text-[#9A7B4F]" /> {s.supplier_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
         <Button size="sm" variant="secondary" onClick={() => handleOpenEmailModal('quote')}>
           <Send size={13} /> Send Quote
         </Button>

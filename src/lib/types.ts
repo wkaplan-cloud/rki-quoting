@@ -18,6 +18,7 @@ export interface Supplier {
   rep_name: string | null
   rep_number: string | null
   email: string | null
+  email_cc: string | null
   delivery_address: string | null
   markup_percentage: number
   created_at: string
