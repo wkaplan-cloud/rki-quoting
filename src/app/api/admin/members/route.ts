@@ -46,6 +46,14 @@ export async function DELETE(req: NextRequest) {
   const { id } = await req.json()
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
+  // Fetch the member first so we can clean up their auth user if still pending
+  const { data: member } = await supabaseAdmin
+    .from('org_members')
+    .select('user_id, status')
+    .eq('id', id)
+    .eq('org_id', membership.org_id)
+    .maybeSingle()
+
   const { error } = await supabaseAdmin
     .from('org_members')
     .delete()
@@ -53,5 +61,11 @@ export async function DELETE(req: NextRequest) {
     .eq('org_id', membership.org_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // If invite was pending, delete the auth user so the email can be re-invited
+  if (member?.status === 'pending' && member.user_id) {
+    await supabaseAdmin.auth.admin.deleteUser(member.user_id)
+  }
+
   return NextResponse.json({ ok: true })
 }

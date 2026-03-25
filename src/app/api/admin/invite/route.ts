@@ -31,18 +31,6 @@ export async function POST(req: NextRequest) {
   const businessName = settings?.business_name ?? 'our team'
   const roleLabel = (role ?? 'designer') === 'admin' ? 'Admin' : 'Designer'
 
-  // Create pending org_members record
-  const { error: memberError } = await supabaseAdmin
-    .from('org_members')
-    .insert({
-      org_id: membership.org_id,
-      invited_email: email.toLowerCase(),
-      role: role ?? 'designer',
-      status: 'pending',
-    })
-
-  if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
-
   // Generate invite link (does not send Supabase's default email)
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'invite',
@@ -51,6 +39,19 @@ export async function POST(req: NextRequest) {
   })
 
   if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 })
+
+  // Create pending org_members record — store user_id so we can clean up auth if invite is cancelled
+  const { error: memberError } = await supabaseAdmin
+    .from('org_members')
+    .insert({
+      org_id: membership.org_id,
+      user_id: linkData.user.id,
+      invited_email: email.toLowerCase(),
+      role: role ?? 'designer',
+      status: 'pending',
+    })
+
+  if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
 
   const inviteUrl = linkData.properties.action_link
 
