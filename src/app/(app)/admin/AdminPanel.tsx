@@ -161,7 +161,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
                   <tr key={m.id} className="border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9]">
                     <td className="px-4 py-3 text-[#2C2C2A] font-medium">{m.invited_email}</td>
                     <td className="px-4 py-3">
-                      {isAdmin && m.status !== 'pending' ? (
+                      {isAdmin ? (
                         <select
                           value={m.role}
                           onChange={async e => {
