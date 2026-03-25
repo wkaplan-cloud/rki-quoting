@@ -75,7 +75,7 @@ function mapHeaders(headers: string[]): (keyof ParsedItem | null)[] {
   return headers.map(h => COLUMN_MAP[h.toLowerCase().trim()] ?? null)
 }
 
-export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
+export function PriceListsManager({ priceLists, canManage }: { priceLists: PriceList[]; canManage: boolean }) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [showImport, setShowImport] = useState(false)
@@ -191,11 +191,13 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
     <>
       {/* List */}
       <div className="max-w-3xl space-y-4">
-        <div className="flex justify-end mb-2">
-          <Button onClick={() => setShowImport(true)}>
-            <Plus size={14} /> Import Price List
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex justify-end mb-2">
+            <Button onClick={() => setShowImport(true)}>
+              <Plus size={14} /> Import Price List
+            </Button>
+          </div>
+        )}
 
         {priceLists.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-[#D8D3C8] rounded-lg bg-white/50">
@@ -222,7 +224,7 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {deleteId === pl.id ? (
+                  {canManage && deleteId === pl.id ? (
                     <>
                       <span className="text-xs text-[#8A877F]">Delete?</span>
                       <Button size="sm" variant="danger" onClick={() => handleDelete(pl.id)}>Yes</Button>
@@ -230,9 +232,11 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
                     </>
                   ) : (
                     <>
-                      <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
-                        <Trash2 size={13} />
-                      </Button>
+                      {canManage && (
+                        <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
+                          <Trash2 size={13} />
+                        </Button>
+                      )}
                       <Button size="sm" variant="secondary" onClick={() => router.push(`/price-lists/${pl.id}`)}>
                         View <ChevronRight size={13} />
                       </Button>
@@ -245,8 +249,8 @@ export function PriceListsManager({ priceLists }: { priceLists: PriceList[] }) {
         )}
       </div>
 
-      {/* Import Modal */}
-      {showImport && (
+      {/* Import Modal — only visible to admin org */}
+      {canManage && showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             {/* Header */}

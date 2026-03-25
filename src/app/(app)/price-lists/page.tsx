@@ -1,24 +1,36 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PriceListsManager } from './PriceListsManager'
 
 export default async function PriceListsPage() {
   const supabase = await createClient()
-  const { data: priceLists } = await supabase
-    .from('price_lists')
-    .select('*')
-    .order('created_at', { ascending: false })
+
+  const [{ data: priceLists }, { data: orgId }] = await Promise.all([
+    supabase.from('price_lists').select('*').order('created_at', { ascending: false }),
+    supabase.rpc('get_current_org_id'),
+  ])
+
+  let canManage = false
+  if (orgId) {
+    const { data: org } = await supabaseAdmin
+      .from('organizations')
+      .select('is_price_list_admin')
+      .eq('id', orgId)
+      .single()
+    canManage = org?.is_price_list_admin === true
+  }
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title="Price Lists"
-        subtitle="Import and manage supplier price lists"
+        subtitle="Browse supplier price lists"
         count={priceLists?.length}
       />
       <div className="p-8">
-        <PriceListsManager priceLists={priceLists ?? []} />
+        <PriceListsManager priceLists={priceLists ?? []} canManage={canManage} />
       </div>
     </div>
   )
