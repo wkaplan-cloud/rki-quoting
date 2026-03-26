@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: '%s | QuotingHub',
   },
   description:
-    'QuotingHub helps South African interior designers create professional quotes, invoices, and purchase orders with real-time pricing, automatic VAT calculations, and PDF generation. No more spreadsheets.',
+    'QuotingHub helps South African interior designers create professional quotes, invoices, and purchase orders with real-time pricing, automatic VAT calculations, PDF generation, and supplier management. No more spreadsheets.',
   keywords: [
     'quoting software interior designers',
     'interior design quotes South Africa',
