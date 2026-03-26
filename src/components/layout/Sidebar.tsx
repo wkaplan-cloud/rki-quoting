@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 
 const mainLinks = [
-  { href: '/',         label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/projects', label: 'Projects',  icon: FolderOpen },
 ]
 
@@ -28,7 +28,7 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose }: Props) {
   const path = usePathname()
 
   const isActive = (href: string) =>
-    href === '/' ? path === '/' : path.startsWith(href)
+    href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
 
   return (
     <>

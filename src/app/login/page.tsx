@@ -32,7 +32,7 @@ export default function LoginPage() {
         localStorage.removeItem('rki_remember_until')
         sessionStorage.setItem('rki_session_only', '1')
       }
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     }
   }

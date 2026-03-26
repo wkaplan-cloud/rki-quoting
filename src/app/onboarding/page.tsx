@@ -80,7 +80,7 @@ export default function OnboardingPage() {
       if (settingsError) { toast.error(settingsError.message); setSaving(false); return }
     }
 
-    router.push('/')
+    router.push('/dashboard')
   }
 
   return (

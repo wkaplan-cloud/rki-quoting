@@ -34,7 +34,7 @@ export default function SetPasswordPage() {
     }
     toast.success('Welcome!')
     const { data: orgId } = await supabase.rpc('get_current_org_id')
-    router.push(orgId ? '/' : '/onboarding')
+    router.push(orgId ? '/dashboard' : '/onboarding')
   }
 
   return (
