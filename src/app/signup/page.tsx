@@ -98,7 +98,7 @@ export default function SignupPage() {
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="you@yourstudio.com"
+                    placeholder=""
                     required
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
@@ -110,7 +110,7 @@ export default function SignupPage() {
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="Min. 8 characters"
+                    placeholder=""
                     required
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
@@ -122,7 +122,7 @@ export default function SignupPage() {
                     type="password"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
-                    placeholder="Repeat password"
+                    placeholder=""
                     required
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
