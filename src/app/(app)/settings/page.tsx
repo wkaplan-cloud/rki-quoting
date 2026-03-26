@@ -8,11 +8,17 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: settings } = await supabase.from('settings').select('*').maybeSingle()
 
+  const { data: member } = await supabase
+    .from('org_members')
+    .select('full_name')
+    .eq('user_id', user!.id)
+    .maybeSingle()
+
   return (
     <div>
       <PageHeader title="Settings" subtitle="Configure your business details and defaults" />
       <div className="p-8 max-w-xl">
-        <SettingsForm settings={settings} />
+        <SettingsForm settings={settings} currentFullName={member?.full_name ?? ''} />
       </div>
     </div>
   )

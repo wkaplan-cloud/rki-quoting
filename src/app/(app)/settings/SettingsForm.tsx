@@ -33,10 +33,25 @@ interface Settings {
   accounts_email?: string | null
 }
 
-export function SettingsForm({ settings }: { settings: Settings | null }) {
+export function SettingsForm({ settings, currentFullName }: { settings: Settings | null; currentFullName: string }) {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
+  const [fullName, setFullName] = useState(currentFullName)
+  const [savingName, setSavingName] = useState(false)
+
+  async function saveProfile() {
+    if (!fullName.trim()) { toast.error('Please enter your name'); return }
+    setSavingName(true)
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name: fullName.trim() }),
+    })
+    if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); }
+    else toast.success('Name saved')
+    setSavingName(false)
+  }
   const [uploading, setUploading] = useState(false)
   const [savingSage, setSavingSage] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -123,6 +138,24 @@ export function SettingsForm({ settings }: { settings: Settings | null }) {
 
   return (
     <form onSubmit={save} className="space-y-8">
+
+      {/* Profile */}
+      <section className="space-y-4">
+        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Your Profile</h2>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <Input label="Full Name" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" />
+          </div>
+          <button
+            type="button"
+            onClick={saveProfile}
+            disabled={savingName}
+            className="px-4 py-2 bg-[#2C2C2A] text-white text-sm rounded hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 mb-0.5"
+          >
+            {savingName ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </section>
 
       {/* Business */}
       <section className="space-y-4">
