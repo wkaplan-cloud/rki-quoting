@@ -15,19 +15,160 @@ export default async function OGImage() {
           background: '#1A1A18',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '24px',
+          justifyContent: 'space-between',
+          padding: '64px 80px 60px 80px',
         }}
       >
-        <div style={{ fontSize: '72px', color: '#C4A46B', display: 'flex' }}>
-          QuotingHub
+        {/* Gold top bar */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '0px',
+            left: '0px',
+            width: '1200px',
+            height: '4px',
+            background: '#C4A46B',
+            display: 'flex',
+          }}
+        />
+
+        {/* Soft glow circle — top right */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '-100px',
+            right: '-100px',
+            width: '500px',
+            height: '500px',
+            borderRadius: '500px',
+            background: '#2A2318',
+            display: 'flex',
+          }}
+        />
+
+        {/* Soft glow circle — bottom left */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '-80px',
+            left: '-80px',
+            width: '340px',
+            height: '340px',
+            borderRadius: '340px',
+            background: '#221E14',
+            display: 'flex',
+          }}
+        />
+
+        {/* Top: wordmark + url */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '10px',
+                background: '#C4A46B',
+                display: 'flex',
+              }}
+            />
+            <div
+              style={{
+                fontSize: '26px',
+                fontWeight: '700',
+                color: '#F5F2EC',
+                letterSpacing: '-0.5px',
+                display: 'flex',
+              }}
+            >
+              QuotingHub
+            </div>
+          </div>
+          <div
+            style={{
+              width: '1px',
+              height: '20px',
+              background: 'rgba(255,255,255,0.15)',
+              display: 'flex',
+            }}
+          />
+          <div
+            style={{
+              fontSize: '14px',
+              color: 'rgba(255,255,255,0.35)',
+              display: 'flex',
+            }}
+          >
+            quotinghub.co.za
+          </div>
         </div>
-        <div style={{ fontSize: '28px', color: 'rgba(255,255,255,0.6)', display: 'flex' }}>
-          Quoting software for interior designers
+
+        {/* Centre: headline */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '72px',
+                fontWeight: '400',
+                color: '#F5F2EC',
+                lineHeight: '1.1',
+                letterSpacing: '-2px',
+                display: 'flex',
+              }}
+            >
+              Every project,
+            </div>
+            <div
+              style={{
+                fontSize: '72px',
+                fontWeight: '400',
+                color: '#C4A46B',
+                lineHeight: '1.1',
+                letterSpacing: '-2px',
+                fontStyle: 'italic',
+                display: 'flex',
+              }}
+            >
+              perfectly quoted.
+            </div>
+          </div>
+          <div
+            style={{
+              fontSize: '22px',
+              color: 'rgba(255,255,255,0.45)',
+              fontWeight: '300',
+              display: 'flex',
+            }}
+          >
+            Quoting · Invoicing · Purchase Orders for Interior Designers
+          </div>
         </div>
-        <div style={{ fontSize: '18px', color: 'rgba(255,255,255,0.3)', display: 'flex' }}>
-          quotinghub.co.za
+
+        {/* Bottom: feature pills */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {['Real-time pricing', 'PDF generation', 'Supplier management', 'Built for SA'].map(
+            (label) => (
+              <div
+                key={label}
+                style={{
+                  padding: '9px 20px',
+                  border: '1px solid rgba(196,164,107,0.4)',
+                  borderRadius: '100px',
+                  fontSize: '14px',
+                  color: 'rgba(255,255,255,0.55)',
+                  display: 'flex',
+                }}
+              >
+                {label}
+              </div>
+            )
+          )}
         </div>
       </div>
     ),
