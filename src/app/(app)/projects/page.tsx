@@ -15,13 +15,13 @@ export default async function ProjectsPage() {
 
   const { data: members } = await supabaseAdmin
     .from('org_members')
-    .select('user_id, invited_email')
+    .select('user_id, invited_email, full_name')
     .eq('org_id', orgIdResult)
     .eq('status', 'active')
 
   const userEmailMap: Record<string, string> = {}
   for (const m of members ?? []) {
-    if (m.user_id) userEmailMap[m.user_id] = m.invited_email
+    if (m.user_id) userEmailMap[m.user_id] = m.full_name ?? m.invited_email.split('@')[0]
   }
 
   return (

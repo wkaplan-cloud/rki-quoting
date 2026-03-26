@@ -8,6 +8,7 @@ interface Member {
   id: string
   user_id: string | null
   invited_email: string
+  full_name: string | null
   role: string
   status: string
   invited_at: string
@@ -149,6 +150,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
+                  <th className="text-left px-4 py-3">Name</th>
                   <th className="text-left px-4 py-3">Email</th>
                   <th className="text-left px-4 py-3">Role</th>
                   <th className="text-left px-4 py-3">Status</th>
@@ -159,7 +161,8 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
               <tbody>
                 {members.map(m => (
                   <tr key={m.id} className="border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9]">
-                    <td className="px-4 py-3 text-[#2C2C2A] font-medium">{m.invited_email}</td>
+                    <td className="px-4 py-3 text-[#2C2C2A] font-medium">{m.full_name ?? <span className="text-[#C4BFB5] italic text-xs">Not set</span>}</td>
+                    <td className="px-4 py-3 text-[#8A877F]">{m.invited_email}</td>
                     <td className="px-4 py-3">
                       {isAdmin && m.status !== 'pending' ? (
                         <select
