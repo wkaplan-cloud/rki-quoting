@@ -44,7 +44,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-lg md:text-xl text-[#8A877F] max-w-2xl mx-auto leading-relaxed mb-10">
-            QuotingHub replaces the spreadsheets. Create professional quotes, invoices, and purchase orders in minutes — with real-time pricing, automatic VAT, and instant PDFs.
+            QuotingHub replaces the other software. Create professional quotes, invoices, and purchase orders in minutes — with real-time pricing, automatic calculations, and instant PDFs.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -69,7 +69,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
           {[
             'Real-time supplier pricing',
-            'Automatic VAT calculations',
+            'Automatic deposit calculations',
             'Instant PDF generation',
             'Purchase orders per supplier',
             'Multi-user studios',
@@ -219,7 +219,7 @@ export default function LandingPage() {
             Ready to quote smarter?
           </h2>
           <p className="text-[#8A877F] text-lg mb-10">
-            Join interior designers across South Africa who&apos;ve left the spreadsheets behind.
+            Join interior designers across South Africa who&apos;ve switched from other software.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
