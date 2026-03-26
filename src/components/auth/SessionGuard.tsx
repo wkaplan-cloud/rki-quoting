@@ -26,14 +26,9 @@ export function SessionGuard() {
         return
       }
 
-      if (sessionOnly) {
-        // Session-only: valid as long as sessionStorage key exists (cleared on tab/browser close)
-        return
-      }
-
-      // No flags at all — sign out for safety (e.g. new tab after browser reopen with no sessionStorage)
-      await supabase.auth.signOut()
-      router.push('/login')
+      // Session-only or no flags: valid for this browser session
+      // Set the flag so future checks don't sign the user out
+      sessionStorage.setItem('rki_session_only', '1')
     }
 
     check()
