@@ -104,16 +104,16 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose }: Props) {
             Import
           </Link>
           <div className="border-t border-white/10 my-1" />
+          <Link href="/settings" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
+            <Settings size={14} />
+            Profile
+          </Link>
           {isAdmin && (
             <Link href="/admin" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
               <ShieldCheck size={14} />
               Admin
             </Link>
           )}
-          <Link href="/settings" onClick={onClose} className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
-            <Settings size={14} />
-            Profile
-          </Link>
           <form action="/api/auth/signout" method="post">
             <button type="submit" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors w-full text-left cursor-pointer">
               <LogOut size={14} />
