@@ -34,21 +34,12 @@ export const metadata: Metadata = {
     title: 'QuotingHub — Quoting Software for Interior Designers',
     description:
       'Create professional quotes, invoices, and purchase orders. Built for South African interior designers.',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'QuotingHub — Quoting Software for Interior Designers',
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'QuotingHub — Quoting Software for Interior Designers',
     description:
       'Professional quoting, invoicing, and purchase orders for South African interior designers.',
-    images: ['/og-image.png'],
   },
   robots: {
     index: true,
