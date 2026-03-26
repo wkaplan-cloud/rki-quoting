@@ -6,9 +6,6 @@ export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function OGImage() {
-  const logoData = await fetch('https://quotinghub.co.za/logo.png').then(r => r.arrayBuffer())
-  const logoBase64 = `data:image/png;base64,${Buffer.from(logoData).toString('base64')}`
-
   return new ImageResponse(
     (
       <div
@@ -76,7 +73,7 @@ export default async function OGImage() {
             }}
           >
             <img
-              src={logoBase64}
+              src="https://quotinghub.co.za/logo.png"
               style={{ height: '36px', objectFit: 'contain' }}
             />
           </div>
