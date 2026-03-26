@@ -115,14 +115,12 @@ export default function OnboardingPage() {
                   label="Studio / Business Name"
                   value={form.business_name}
                   onChange={e => set('business_name', e.target.value)}
-                  placeholder="R Kaplan Interiors"
                   required
                 />
                 <Textarea
                   label="Business Address"
                   value={form.business_address}
                   onChange={e => set('business_address', e.target.value)}
-                  placeholder={"12 Design Street\nSandton, 2196\nJohannesburg"}
                   rows={3}
                 />
                 <div className="grid grid-cols-2 gap-4">
@@ -130,13 +128,11 @@ export default function OnboardingPage() {
                     label="VAT Number"
                     value={form.vat_number}
                     onChange={e => set('vat_number', e.target.value)}
-                    placeholder="4xxxxxxxxx"
                   />
                   <Input
                     label="Phone"
                     value={form.phone}
                     onChange={e => set('phone', e.target.value)}
-                    placeholder="+27 11 xxx xxxx"
                   />
                 </div>
                 <Input
@@ -144,7 +140,6 @@ export default function OnboardingPage() {
                   type="email"
                   value={form.email_from}
                   onChange={e => set('email_from', e.target.value)}
-                  placeholder="quotes@yourstudio.co.za"
                 />
               </div>
 
@@ -166,7 +161,6 @@ export default function OnboardingPage() {
                   label="Logo URL"
                   value={form.logo_url}
                   onChange={e => set('logo_url', e.target.value)}
-                  placeholder="https://yourdomain.co.za/logo.png"
                 />
                 <p className="text-xs text-[#8A877F] -mt-2">Paste a direct link to your logo image. You can update this later.</p>
 
@@ -177,20 +171,17 @@ export default function OnboardingPage() {
                       label="Bank Name"
                       value={form.bank_name}
                       onChange={e => set('bank_name', e.target.value)}
-                      placeholder="FNB / Standard Bank / Nedbank…"
                     />
                     <div className="grid grid-cols-2 gap-4">
                       <Input
                         label="Account Number"
                         value={form.bank_account_number}
                         onChange={e => set('bank_account_number', e.target.value)}
-                        placeholder="62xxxxxxxxx"
                       />
                       <Input
                         label="Branch Code"
                         value={form.bank_branch_code}
                         onChange={e => set('bank_branch_code', e.target.value)}
-                        placeholder="250655"
                       />
                     </div>
                   </div>

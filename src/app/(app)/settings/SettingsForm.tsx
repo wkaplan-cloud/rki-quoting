@@ -27,7 +27,6 @@ export function SettingsForm({ currentFullName }: { currentFullName: string }) {
         label="Full Name"
         value={fullName}
         onChange={e => setFullName(e.target.value)}
-        placeholder="Jane Smith"
         required
       />
       <button

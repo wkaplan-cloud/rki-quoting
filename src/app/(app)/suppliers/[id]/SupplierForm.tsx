@@ -73,7 +73,7 @@ export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
 
       <div className="grid grid-cols-2 gap-4">
         <Input label="Supplier Name" value={form.supplier_name} onChange={e => set('supplier_name', e.target.value)} required />
-        <Input label="Category" value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Furniture, Lighting" />
+        <Input label="Category" value={form.category} onChange={e => set('category', e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Input label="Contact Person" value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
@@ -85,7 +85,7 @@ export function SupplierForm({ supplier }: { supplier: Supplier | null }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-        <Input label="CC Email (PO copies)" type="email" value={form.email_cc} onChange={e => set('email_cc', e.target.value)} placeholder="e.g. accounts@supplier.co.za" />
+        <Input label="CC Email (PO copies)" type="email" value={form.email_cc} onChange={e => set('email_cc', e.target.value)} />
       </div>
       <Textarea label="Delivery Address" value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)} rows={2} />
 

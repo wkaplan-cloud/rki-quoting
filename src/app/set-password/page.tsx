@@ -49,7 +49,6 @@ export default function SetPasswordPage() {
               type="text"
               value={fullName}
               onChange={e => setFullName(e.target.value)}
-              placeholder="Jane Smith"
               required
             />
             <Input
@@ -57,7 +56,6 @@ export default function SetPasswordPage() {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
               required
             />
             <Input
@@ -65,7 +63,6 @@ export default function SetPasswordPage() {
               type="password"
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
-              placeholder="Repeat password"
               required
             />
             <Button type="submit" disabled={saving} className="w-full">

@@ -96,14 +96,12 @@ export function NewProjectForm({ clients }: Props) {
           label="Project Number"
           value={form.project_number}
           onChange={e => set('project_number', e.target.value)}
-          placeholder="RKI-001"
           required
         />
         <Input
           label="Project Name"
           value={form.project_name}
           onChange={e => set('project_name', e.target.value)}
-          placeholder="Smith Living Room"
           required
         />
       </div>
@@ -152,7 +150,6 @@ export function NewProjectForm({ clients }: Props) {
         value={form.notes}
         onChange={e => set('notes', e.target.value)}
         rows={3}
-        placeholder="Any project notes…"
       />
 
       <div className="flex gap-3 pt-2">
