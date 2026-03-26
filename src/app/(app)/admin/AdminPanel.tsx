@@ -63,6 +63,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
         id: crypto.randomUUID(),
         user_id: null,
         invited_email: inviteEmail.trim(),
+        full_name: null,
         role: inviteRole,
         status: 'pending',
         invited_at: new Date().toISOString(),
