@@ -60,10 +60,12 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, foote
             <View style={{ flex: 1 }}>
               <Text style={styles.sectionLabel}>Client</Text>
               <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold' }]}>{client.client_name}</Text>
-              {client.company && <Text style={styles.infoVal}>{client.company}</Text>}
+              {client.company && (
+                <Text style={styles.infoVal}>{client.company}{client.vat_number ? `  ·  VAT: ${client.vat_number}` : ''}</Text>
+              )}
+              {!client.company && client.vat_number && <Text style={styles.infoVal}>VAT: {client.vat_number}</Text>}
               {client.address && <Text style={styles.infoVal}>{client.address}</Text>}
               {client.contact_number && <Text style={[styles.infoVal, { color: '#8A877F' }]}>{client.contact_number}</Text>}
-              {client.vat_number && <Text style={[styles.infoVal, { color: '#8A877F' }]}>VAT: {client.vat_number}</Text>}
             </View>
           ) : <View style={{ flex: 1 }} />}
           <View style={{ flex: 1, paddingLeft: 24 }}>
