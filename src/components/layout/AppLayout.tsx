@@ -21,6 +21,7 @@ export function AppLayout({ children, isAdmin, businessName }: { children: React
         </button>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="QuotingHub" className="h-10 object-contain" style={{ filter: 'invert(1)' }} />
+        <div className="flex-1" />
         {businessName && (
           <span className="text-[10px] font-medium text-[#C4A46B] uppercase tracking-widest truncate">
             {businessName}
