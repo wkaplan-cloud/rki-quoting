@@ -12,7 +12,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-9 w-auto object-contain" />
+          <img src="/logo.png" alt="QuotingHub" className="h-14 w-auto object-contain" />
           <div className="flex items-center gap-3">
             <Link
               href="/login"
@@ -242,7 +242,7 @@ export default function LandingPage() {
       <footer className="border-t border-[#D8D3C8] py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-7 w-auto object-contain" />
+          <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto object-contain" />
           <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
           <div className="flex items-center gap-5">
             <Link href="/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Log in</Link>
