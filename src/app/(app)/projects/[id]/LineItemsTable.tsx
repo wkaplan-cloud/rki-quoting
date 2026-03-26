@@ -356,7 +356,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Description */}
-                  <td className={COL + ' align-top'}>
+                  <td className={COL + ' align-top pr-4'}>
                     <AutoTextarea
                       value={item.description ?? ''}
                       onChange={v => updateLocal(item.id, 'description', v)}
