@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatZAR, computeTotals } from '@/lib/quoting'
 import { STAGE_CONFIG } from '@/lib/types'
-import { KanbanBoard } from './KanbanBoard'
+import { KanbanBoard } from '../KanbanBoard'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 
