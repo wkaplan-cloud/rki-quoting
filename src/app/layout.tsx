@@ -36,7 +36,7 @@ export const metadata: Metadata = {
       'Create professional quotes, invoices, and purchase orders. Built for South African interior designers.',
     images: [
       {
-        url: 'https://quotinghub.co.za/og-image.png',
+        url: 'https://quotinghub.co.za/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'QuotingHub — Quoting Software for Interior Designers',
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     title: 'QuotingHub — Quoting Software for Interior Designers',
     description:
       'Professional quoting, invoicing, and purchase orders for South African interior designers.',
-    images: ['https://quotinghub.co.za/og-image.png'],
+    images: ['https://quotinghub.co.za/og-image.jpg'],
   },
   robots: {
     index: true,
