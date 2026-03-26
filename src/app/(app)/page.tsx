@@ -85,23 +85,23 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="p-8 space-y-8">
+      <div className="p-4 md:p-8 space-y-8">
         {/* Summary cards */}
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Overview</h2>
-          <div className="grid grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
             {summaryCards.map(({ label, value, sub, alert }) => (
-              <div key={label} className={`bg-white border rounded p-4 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
+              <div key={label} className={`bg-white border rounded p-3 md:p-4 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
                 <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider leading-tight">{label}</p>
-                <p className={`font-serif text-2xl mt-2 ${alert ? 'text-[#9A7B4F]' : 'text-[#1A1A18]'}`}>{value}</p>
-                {sub && <p className="text-xs text-[#8A877F] mt-1">{sub}</p>}
+                <p className={`font-serif text-xl md:text-2xl mt-2 ${alert ? 'text-[#9A7B4F]' : 'text-[#1A1A18]'}`}>{value}</p>
+                {sub && <p className="text-xs text-[#8A877F] mt-1 hidden sm:block">{sub}</p>}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Pipeline list */}
-        <div>
+        {/* Pipeline list — desktop only */}
+        <div className="hidden md:block">
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Project Pipeline</h2>
           <KanbanBoard
             projects={ps
