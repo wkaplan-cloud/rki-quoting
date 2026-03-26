@@ -65,7 +65,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, foote
               )}
               {!client.company && client.vat_number && <Text style={styles.infoVal}>VAT: {client.vat_number}</Text>}
               {client.address && <Text style={styles.infoVal}>{client.address}</Text>}
-              {client.contact_number && <Text style={[styles.infoVal, { color: '#8A877F' }]}>{client.contact_number}</Text>}
+              {client.contact_number && <Text style={styles.infoVal}>{client.contact_number}</Text>}
             </View>
           ) : <View style={{ flex: 1 }} />}
           <View style={{ flex: 1, paddingLeft: 24 }}>
