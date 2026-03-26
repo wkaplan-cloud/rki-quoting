@@ -100,8 +100,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Pipeline list — desktop only */}
-        <div className="hidden md:block">
+        {/* Pipeline list */}
+        <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Project Pipeline</h2>
           <KanbanBoard
             projects={ps
