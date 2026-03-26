@@ -6,6 +6,9 @@ export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function OGImage() {
+  const logoData = await fetch('https://quotinghub.co.za/logo.png').then(r => r.arrayBuffer())
+  const logoBase64 = `data:image/png;base64,${Buffer.from(logoData).toString('base64')}`
+
   return new ImageResponse(
     (
       <div
@@ -32,7 +35,7 @@ export default async function OGImage() {
           }}
         />
 
-        {/* Soft glow circle — top right */}
+        {/* Soft glow — top right */}
         <div
           style={{
             position: 'absolute',
@@ -46,7 +49,7 @@ export default async function OGImage() {
           }}
         />
 
-        {/* Soft glow circle — bottom left */}
+        {/* Soft glow — bottom left */}
         <div
           style={{
             position: 'absolute',
@@ -60,29 +63,22 @@ export default async function OGImage() {
           }}
         />
 
-        {/* Top: wordmark + url */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '10px',
-                background: '#C4A46B',
-                display: 'flex',
-              }}
+        {/* Top: logo + url */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          {/* Logo on light pill */}
+          <div
+            style={{
+              background: '#F5F2EC',
+              borderRadius: '10px',
+              padding: '10px 20px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <img
+              src={logoBase64}
+              style={{ height: '36px', objectFit: 'contain' }}
             />
-            <div
-              style={{
-                fontSize: '26px',
-                fontWeight: '700',
-                color: '#F5F2EC',
-                letterSpacing: '-0.5px',
-                display: 'flex',
-              }}
-            >
-              QuotingHub
-            </div>
           </div>
           <div
             style={{
@@ -105,13 +101,7 @@ export default async function OGImage() {
 
         {/* Centre: headline */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
-            }}
-          >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <div
               style={{
                 fontSize: '72px',
