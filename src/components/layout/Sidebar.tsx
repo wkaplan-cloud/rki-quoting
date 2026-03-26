@@ -13,7 +13,7 @@ const mainLinks = [
 const secondaryLinks = [
   { href: '/clients',     label: 'Clients',     icon: Users,     mobileHidden: true },
   { href: '/suppliers',   label: 'Suppliers',   icon: Truck,     mobileHidden: true },
-  { href: '/items',       label: 'Items',       icon: Package,   mobileHidden: false },
+  { href: '/items',       label: 'Items',       icon: Package,   mobileHidden: true },
   { href: '/price-lists', label: 'Price Lists', icon: BookOpen,  mobileHidden: true },
 ]
 
