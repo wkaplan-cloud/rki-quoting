@@ -11,10 +11,10 @@ const mainLinks = [
 ]
 
 const secondaryLinks = [
-  { href: '/clients',     label: 'Clients',     icon: Users },
-  { href: '/suppliers',   label: 'Suppliers',   icon: Truck },
-  { href: '/items',       label: 'Items',       icon: Package },
-  { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
+  { href: '/clients',     label: 'Clients',     icon: Users,     mobileHidden: true },
+  { href: '/suppliers',   label: 'Suppliers',   icon: Truck,     mobileHidden: true },
+  { href: '/items',       label: 'Items',       icon: Package,   mobileHidden: false },
+  { href: '/price-lists', label: 'Price Lists', icon: BookOpen,  mobileHidden: true },
 ]
 
 interface Props {
@@ -83,12 +83,13 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose }: Props) {
 
         {/* Bottom */}
         <div className="px-3 py-3 border-t border-white/10 space-y-0.5">
-          {secondaryLinks.map(({ href, label, icon: Icon }) => (
+          {secondaryLinks.map(({ href, label, icon: Icon, mobileHidden }) => (
             <Link
               key={href}
               href={href}
               onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150
+                ${mobileHidden ? 'hidden md:flex' : 'flex'}
                 ${isActive(href)
                   ? 'text-white/80'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -98,7 +99,7 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose }: Props) {
               {label}
             </Link>
           ))}
-          <Link href="/import" onClick={onClose} className={`flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150 ${isActive('/import') ? 'text-white/80' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+          <Link href="/import" onClick={onClose} className={`hidden md:flex items-center gap-3 px-3 py-2 rounded text-xs transition-colors duration-150 ${isActive('/import') ? 'text-white/80' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
             <Upload size={14} className={isActive('/import') ? 'text-[#C4A46B]' : 'opacity-60'} />
             Import
           </Link>
