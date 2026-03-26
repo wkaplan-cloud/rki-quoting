@@ -14,12 +14,17 @@ export default async function PriceListsPage() {
 
   let canManage = false
   if (orgId) {
-    const { data: org } = await supabaseAdmin
-      .from('organizations')
-      .select('is_price_list_admin')
-      .eq('id', orgId)
-      .single()
-    canManage = org?.is_price_list_admin === true
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { data: membership } = await supabaseAdmin
+        .from('org_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('org_id', orgId)
+        .eq('status', 'active')
+        .maybeSingle()
+      canManage = membership?.role === 'admin'
+    }
   }
 
   return (
