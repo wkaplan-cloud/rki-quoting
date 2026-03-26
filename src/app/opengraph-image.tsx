@@ -1,11 +1,16 @@
 import { ImageResponse } from 'next/og'
+import fs from 'fs'
+import path from 'path'
 
-export const runtime = 'edge'
 export const alt = 'QuotingHub — Quoting Software for Interior Designers'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
 export default async function OGImage() {
+  const logoPath = path.join(process.cwd(), 'public', 'logo.png')
+  const logoData = fs.readFileSync(logoPath)
+  const logoBase64 = `data:image/png;base64,${logoData.toString('base64')}`
+
   return new ImageResponse(
     (
       <div
@@ -60,21 +65,20 @@ export default async function OGImage() {
           }}
         />
 
-        {/* Top: logo + url */}
+        {/* Top: logo on cream pill + url */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          {/* Logo on light pill */}
           <div
             style={{
               background: '#F5F2EC',
-              borderRadius: '10px',
-              padding: '10px 20px',
+              borderRadius: '12px',
+              padding: '14px 28px',
               display: 'flex',
               alignItems: 'center',
             }}
           >
             <img
-              src="https://quotinghub.co.za/logo.png"
-              style={{ height: '36px', objectFit: 'contain' }}
+              src={logoBase64}
+              style={{ height: '108px', objectFit: 'contain' }}
             />
           </div>
           <div
