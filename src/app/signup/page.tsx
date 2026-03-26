@@ -114,6 +114,7 @@ export default function SignupPage() {
                     required
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
+                  <p className="text-xs text-[#C4BFB5] mt-1.5">Minimum 8 characters</p>
                 </div>
 
                 <div>

@@ -2,12 +2,14 @@
 import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './Sidebar'
+import { SessionGuard } from '@/components/auth/SessionGuard'
 
 export function AppLayout({ children, isAdmin, businessName }: { children: React.ReactNode; isAdmin: boolean; businessName: string }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="flex min-h-screen bg-[#F5F2EC]">
+      <SessionGuard />
       <Sidebar isAdmin={isAdmin} businessName={businessName} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Mobile top bar */}

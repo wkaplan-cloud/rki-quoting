@@ -117,99 +117,108 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
   }
 
   return (
-    <form onSubmit={save} className="space-y-8 max-w-xl">
+    <form onSubmit={save} className="space-y-8">
 
-      {/* Business */}
-      <section className="space-y-4">
-        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Business Details</h2>
-        <Input label="Studio / Business Name" value={form.business_name} onChange={e => set('business_name', e.target.value)} />
-        <Textarea label="Business Address" value={form.business_address} onChange={e => set('business_address', e.target.value)} rows={3} />
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="VAT Number" value={form.vat_number} onChange={e => set('vat_number', e.target.value)} placeholder="4xxxxxxxxx" />
-          <Input label="Company Registration" value={form.company_registration} onChange={e => set('company_registration', e.target.value)} placeholder="2005/xxxxxx/xx" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+27 11 xxx xxxx" />
-        </div>
-        <Input label="Reply-to Email (for quotes)" type="email" value={form.email_from} onChange={e => set('email_from', e.target.value)} />
-        <Input label="Accounts Email (BCC on all POs)" type="email" value={form.accounts_email} onChange={e => set('accounts_email', e.target.value)} placeholder="accounts@yourstudio.co.za" />
-      </section>
+      {/* Row 1: Business Details + Branding & Contact */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-      {/* Branding */}
-      <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
-        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Branding</h2>
-        <div>
-          <label className="text-xs font-medium text-[#8A877F] block mb-2">Logo</label>
-          <div className="flex items-center gap-4">
-            {form.logo_url && (
-              <div className="relative group">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.logo_url} alt="Logo" className="h-14 max-w-[180px] object-contain rounded border border-[#D8D3C8] p-2 bg-white" />
-                <button
-                  type="button"
-                  onClick={() => set('logo_url', '')}
-                  className="absolute -top-1.5 -right-1.5 bg-white border border-[#D8D3C8] rounded-full p-0.5 text-[#8A877F] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <X size={11} />
-                </button>
-              </div>
-            )}
-            <div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = '' }}
-              />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#D8D3C8] rounded text-sm text-[#8A877F] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <Upload size={14} />
-                {uploading ? 'Uploading…' : form.logo_url ? 'Replace logo' : 'Upload logo'}
-              </button>
-              <p className="text-xs text-[#8A877F] mt-1.5">PNG, JPG, or SVG — recommended min. 400px wide</p>
-            </div>
+        {/* Business Details */}
+        <section className="space-y-4">
+          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Business Details</h2>
+          <Input label="Studio / Business Name" value={form.business_name} onChange={e => set('business_name', e.target.value)} />
+          <Textarea label="Business Address" value={form.business_address} onChange={e => set('business_address', e.target.value)} rows={3} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="VAT Number" value={form.vat_number} onChange={e => set('vat_number', e.target.value)} />
+            <Input label="Company Registration" value={form.company_registration} onChange={e => set('company_registration', e.target.value)} />
           </div>
-        </div>
-      </section>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} />
+            <Input label="Reply-to Email" type="email" value={form.email_from} onChange={e => set('email_from', e.target.value)} />
+          </div>
+          <Input label="Accounts Email (BCC on all POs)" type="email" value={form.accounts_email} onChange={e => set('accounts_email', e.target.value)} />
+        </section>
 
-      {/* Banking */}
-      <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
-        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Banking Details</h2>
-        <Input label="Bank Name" value={form.bank_name} onChange={e => set('bank_name', e.target.value)} placeholder="FNB / Standard Bank…" />
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Account Number" value={form.bank_account_number} onChange={e => set('bank_account_number', e.target.value)} />
-          <Input label="Branch Code" value={form.bank_branch_code} onChange={e => set('bank_branch_code', e.target.value)} />
-        </div>
-      </section>
+        {/* Branding + Banking */}
+        <div className="space-y-8">
+          <section className="space-y-4">
+            <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Branding</h2>
+            <div>
+              <label className="text-xs font-medium text-[#8A877F] block mb-2">Logo</label>
+              <div className="flex items-center gap-4">
+                {form.logo_url && (
+                  <div className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.logo_url} alt="Logo" className="h-14 max-w-[180px] object-contain rounded border border-[#D8D3C8] p-2 bg-white" />
+                    <button
+                      type="button"
+                      onClick={() => set('logo_url', '')}
+                      className="absolute -top-1.5 -right-1.5 bg-white border border-[#D8D3C8] rounded-full p-0.5 text-[#8A877F] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                )}
+                <div>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = '' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#D8D3C8] rounded text-sm text-[#8A877F] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Upload size={14} />
+                    {uploading ? 'Uploading…' : form.logo_url ? 'Replace logo' : 'Upload logo'}
+                  </button>
+                  <p className="text-xs text-[#8A877F] mt-1.5">PNG, JPG, or SVG — recommended min. 400px wide</p>
+                </div>
+              </div>
+            </div>
+          </section>
 
-      {/* Defaults */}
-      <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
-        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Quote Defaults</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="VAT Rate (%)" type="number" min="0" step="0.1" value={form.vat_rate} onChange={e => set('vat_rate', e.target.value)} />
-          <Input label="Deposit (%)" type="number" min="0" max="100" step="1" value={form.deposit_percentage} onChange={e => set('deposit_percentage', e.target.value)} />
+          <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
+            <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Banking Details</h2>
+            <Input label="Bank Name" value={form.bank_name} onChange={e => set('bank_name', e.target.value)} />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Account Number" value={form.bank_account_number} onChange={e => set('bank_account_number', e.target.value)} />
+              <Input label="Branch Code" value={form.bank_branch_code} onChange={e => set('bank_branch_code', e.target.value)} />
+            </div>
+          </section>
         </div>
-        <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
-        <Textarea label="Terms & Conditions (shown on quote PDF alongside totals)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={6} placeholder="1. Prices are valid for 30 days.&#10;2. A 70% deposit is required to confirm the order.&#10;3. ..." />
-      </section>
+      </div>
 
-      {/* Email Templates */}
-      <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
-        <div>
-          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Email Templates</h2>
-          <p className="text-xs text-[#8A877F] mt-1">Use <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{client_name}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{project_name}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{project_number}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{studio_name}}'}</span> as placeholders.</p>
-        </div>
-        <Textarea label="Quote Email Body" value={form.email_template_quote} onChange={e => set('email_template_quote', e.target.value)} rows={7} />
-        <Textarea label="Invoice Email Body" value={form.email_template_invoice} onChange={e => set('email_template_invoice', e.target.value)} rows={7} />
-      </section>
+      {/* Row 2: Quote Defaults + Email Templates */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 border-t border-[#EDE9E1] pt-8">
 
-      {/* Sage Integration */}
-      <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
+        {/* Quote Defaults */}
+        <section className="space-y-4">
+          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Quote Defaults</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="VAT Rate (%)" type="number" min="0" step="0.1" value={form.vat_rate} onChange={e => set('vat_rate', e.target.value)} />
+            <Input label="Deposit (%)" type="number" min="0" max="100" step="1" value={form.deposit_percentage} onChange={e => set('deposit_percentage', e.target.value)} />
+          </div>
+          <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
+          <Textarea label="Terms & Conditions (shown on quote PDF)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={7} />
+        </section>
+
+        {/* Email Templates */}
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Email Templates</h2>
+            <p className="text-xs text-[#8A877F] mt-1">Use <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{client_name}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{project_name}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{project_number}}'}</span>, <span className="font-mono bg-[#F5F2EC] px-1 rounded">{'{{studio_name}}'}</span> as placeholders.</p>
+          </div>
+          <Textarea label="Quote Email Body" value={form.email_template_quote} onChange={e => set('email_template_quote', e.target.value)} rows={7} />
+          <Textarea label="Invoice Email Body" value={form.email_template_invoice} onChange={e => set('email_template_invoice', e.target.value)} rows={7} />
+        </section>
+      </div>
+
+      {/* Row 3: Sage Integration (full width) */}
+      <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage One SA Integration</h2>
           {sageConnected && (
@@ -221,19 +230,21 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
           )}
         </div>
         <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
-        <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}" />
-        <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} placeholder={settings?.sage_username ? '••••••••' : 'you@example.co.za'} />
-        <div className="relative">
-          <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} placeholder={settings?.sage_password ? '••••••••' : ''} />
-          <button
-            type="button"
-            onClick={() => setShowPassword(v => !v)}
-            className="absolute right-3 top-[30px] text-[#8A877F] hover:text-[#2C2C2A]"
-          >
-            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} />
+          <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} />
+          <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} />
+          <div className="relative">
+            <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              className="absolute right-3 top-[30px] text-[#8A877F] hover:text-[#2C2C2A]"
+            >
+              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
         </div>
-        <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} placeholder="Found in your Sage One account URL or settings" />
         <button
           type="button"
           onClick={saveSageCredentials}
@@ -244,7 +255,9 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
         </button>
       </section>
 
-      <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Studio Settings'}</Button>
+      <div className="border-t border-[#EDE9E1] pt-6">
+        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Studio Settings'}</Button>
+      </div>
     </form>
   )
 }

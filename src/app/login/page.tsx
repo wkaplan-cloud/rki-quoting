@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const router = useRouter()
   const supabase = createClient()
 
@@ -23,6 +24,14 @@ export default function LoginPage() {
       setError(error.message)
       setLoading(false)
     } else {
+      if (rememberMe) {
+        const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+        localStorage.setItem('rki_remember_until', String(expiry))
+        sessionStorage.removeItem('rki_session_only')
+      } else {
+        localStorage.removeItem('rki_remember_until')
+        sessionStorage.setItem('rki_session_only', '1')
+      }
       router.push('/')
       router.refresh()
     }
@@ -100,7 +109,7 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 text-sm text-[#8A877F] cursor-pointer select-none">
-                <input type="checkbox" className="rounded border-[#D8D3C8] accent-[#9A7B4F]" />
+                <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="rounded border-[#D8D3C8] accent-[#9A7B4F]" />
                 Remember me
               </label>
               <Link href="/forgot-password" className="text-sm text-[#9A7B4F] hover:underline">Forgot password?</Link>
