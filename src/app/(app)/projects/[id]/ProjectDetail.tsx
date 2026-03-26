@@ -286,8 +286,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         onStagesUpdate={setStages}
       />
 
-      {/* Action bar */}
-      <div className="flex items-center gap-2 px-8 py-3 border-b border-[#D8D3C8] bg-[#F5F2EC] flex-wrap justify-between">
+      {/* Action bar — desktop only */}
+      <div className="hidden md:flex items-center gap-2 px-8 py-3 border-b border-[#D8D3C8] bg-[#F5F2EC] flex-wrap justify-between">
         <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('production')}>
           <FileText size={13} /> Production PDF
         </Button>
@@ -417,8 +417,76 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         </Button>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 p-8 overflow-auto">
+      {/* Mobile read-only view */}
+      <div className="md:hidden flex-1 overflow-y-auto">
+        {/* Line items */}
+        <div className="px-4 py-4 space-y-2">
+          {lineItems.filter(i => i.row_type !== 'section').length === 0 ? (
+            <p className="text-sm text-[#8A877F] text-center py-8">No items yet</p>
+          ) : (
+            lineItems.map(item => {
+              if (item.row_type === 'section') {
+                return (
+                  <div key={item.id} className="pt-3 pb-1">
+                    <p className="text-[10px] font-semibold text-[#5A5750] uppercase tracking-widest flex items-center gap-2">
+                      <span className="w-0.5 h-3 bg-[#9A7B4F] rounded-full inline-block" />
+                      {item.item_name || 'Section'}
+                    </p>
+                  </div>
+                )
+              }
+              const c = computed.find(x => x.id === item.id)
+              return (
+                <div key={item.id} className={`bg-white border rounded-lg px-4 py-3 ${item.received ? 'border-blue-200 bg-blue-50' : 'border-[#D8D3C8]'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.item_name || '—'}</p>
+                      {item.description && <p className="text-xs text-[#8A877F] mt-0.5 line-clamp-2">{item.description}</p>}
+                      {item.supplier_name && <p className="text-[10px] text-[#C4A46B] mt-1 truncate">{item.supplier_name}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      {item.received && (
+                        <span className="text-[10px] font-medium text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">Received</span>
+                      )}
+                      <p className="text-sm font-semibold text-[#2C2C2A]">{formatZAR(c?.total_price ?? 0)}</p>
+                      <p className="text-[10px] text-[#8A877F]">qty {item.quantity ?? 1}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Totals summary */}
+        <div className="mx-4 mb-6 bg-white border border-[#D8D3C8] rounded-lg p-4 space-y-2">
+          <div className="flex justify-between text-sm text-[#8A877F]">
+            <span>Subtotal</span>
+            <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.subtotal)}</span>
+          </div>
+          {totals.design_fee > 0 && (
+            <div className="flex justify-between text-sm text-[#8A877F]">
+              <span>Design Fee ({designFeePct}%)</span>
+              <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.design_fee)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm text-[#8A877F]">
+            <span>VAT ({vatRate}%)</span>
+            <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.vat_amount)}</span>
+          </div>
+          <div className="border-t border-[#D8D3C8] pt-2 flex justify-between font-semibold text-[#2C2C2A]">
+            <span>Total</span>
+            <span>{formatZAR(totals.grand_total)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-[#9A7B4F]">
+            <span>70% Deposit</span>
+            <span className="font-medium">{formatZAR(totals.deposit_70)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Body — desktop only */}
+      <div className="hidden md:block flex-1 p-8 overflow-auto">
         <LineItemsTable
           projectId={project.id}
           lineItems={lineItems}

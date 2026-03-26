@@ -112,7 +112,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
   }
 
   return (
-    <div className="px-8 py-5 border-b border-[#D8D3C8] bg-[#F5F2EC]">
+    <div className="px-4 md:px-8 py-4 md:py-5 border-b border-[#D8D3C8] bg-[#F5F2EC]">
       {/* Top row: project info + status/cancel */}
       <div className="flex items-start justify-between gap-4">
         {editing ? (
@@ -136,7 +136,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
           </div>
         ) : (
           <div className="flex-1">
-            <h1 className="font-serif text-2xl text-[#1A1A18] font-medium">{project.project_name}</h1>
+            <h1 className="font-serif text-xl md:text-2xl text-[#1A1A18] font-medium">{project.project_name}</h1>
             <div className="flex items-center gap-3 mt-1 text-sm text-[#8A877F]">
               <span className="font-mono">{project.project_number}</span>
               {project.client && <><span>·</span><span>{project.client.client_name}</span></>}
@@ -179,7 +179,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
 
       {/* Stage pipeline strip */}
       {project.status !== 'Cancelled' && (
-        <div className="mt-4 flex items-center gap-1 flex-wrap">
+        <div className="mt-3 flex items-center gap-1 overflow-x-auto pb-1 flex-nowrap md:flex-wrap">
           {STAGE_CONFIG.map((s, i) => {
             const done = stages?.[s.key as StageKey] ?? false
             const toggling = togglingStage === s.key

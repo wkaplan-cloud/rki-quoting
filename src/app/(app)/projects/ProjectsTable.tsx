@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
 import type { Project, ProjectStatus, LineItem } from '@/lib/types'
 import { formatZAR, computeTotals } from '@/lib/quoting'
-import { FolderOpen } from 'lucide-react'
+import { FolderOpen, ChevronRight } from 'lucide-react'
 
 const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Completed', 'Cancelled']
 
@@ -39,15 +39,15 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
         <input
           type="text"
           placeholder="Search projects…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="px-3 py-2 bg-white border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] w-64"
+          className="px-3 py-2 bg-white border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] w-full sm:w-64"
         />
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap">
           {(['All', ...STATUSES] as const).map(s => (
             <button
               key={s}
@@ -74,7 +74,34 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
           </Link>
         </div>
       ) : (
-        <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto">
+        <>
+        {/* Mobile cards */}
+        <div className="md:hidden space-y-2">
+          {filtered.map(p => {
+            const total = formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, 15).grand_total)
+            return (
+              <Link
+                key={p.id}
+                href={`/projects/${p.id}`}
+                className="flex items-center gap-3 bg-white border border-[#D8D3C8] rounded-lg px-4 py-3 active:bg-[#F5F2EC] transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-[#2C2C2A] truncate">{p.project_name}</p>
+                  <p className="text-xs text-[#8A877F] truncate mt-0.5">{p.client?.client_name ?? '—'}</p>
+                  <p className="text-[10px] text-[#8A877F] font-mono mt-1">{p.project_number}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                  <StatusBadge status={p.status as any} />
+                  <p className="text-sm font-semibold text-[#2C2C2A]">{total}</p>
+                </div>
+                <ChevronRight size={16} className="text-[#C4BFB5] flex-shrink-0" />
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-white border border-[#D8D3C8] rounded overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
@@ -110,6 +137,7 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   )
