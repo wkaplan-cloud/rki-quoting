@@ -25,19 +25,21 @@ export default async function AdminPage() {
   // Non-admins and unauthenticated users get a 404
   if (membership?.role !== 'admin') notFound()
 
-  const [{ data: members }, { data: auditLogs }] = await Promise.all([
+  const [{ data: members }, { data: auditLogs }, { data: settings }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
     supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(100),
+    supabase.from('settings').select('*').maybeSingle(),
   ])
 
   return (
     <div>
-      <PageHeader title="Admin" subtitle="Manage your team and view activity" />
+      <PageHeader title="Admin" subtitle="Manage your team, studio settings and activity" />
       <div className="p-8">
         <AdminPanel
           members={members ?? []}
           auditLogs={auditLogs ?? []}
           isAdmin={true}
+          settings={settings}
         />
       </div>
     </div>

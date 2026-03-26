@@ -6,7 +6,6 @@ import { SettingsForm } from './SettingsForm'
 export default async function SettingsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const { data: settings } = await supabase.from('settings').select('*').maybeSingle()
 
   const { data: member } = await supabase
     .from('org_members')
@@ -16,9 +15,9 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" subtitle="Configure your business details and defaults" />
-      <div className="p-8 max-w-xl">
-        <SettingsForm settings={settings} currentFullName={member?.full_name ?? ''} />
+      <PageHeader title="Profile" subtitle="Your personal account details" />
+      <div className="p-8 max-w-sm">
+        <SettingsForm currentFullName={member?.full_name ?? ''} />
       </div>
     </div>
   )

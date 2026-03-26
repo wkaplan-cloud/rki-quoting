@@ -3,6 +3,7 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { StudioSettingsForm } from './StudioSettingsForm'
 
 interface Member {
   id: string
@@ -30,6 +31,7 @@ interface Props {
   members: Member[]
   auditLogs: AuditLog[]
   isAdmin: boolean
+  settings: Record<string, unknown> | null
 }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -38,12 +40,12 @@ const ACTION_COLOR: Record<string, string> = {
   deleted: 'text-red-600 bg-red-50',
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings }: Props) {
   const [members, setMembers] = useState(initial)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('designer')
   const [inviting, setInviting] = useState(false)
-  const [tab, setTab] = useState<'users' | 'audit'>('users')
+  const [tab, setTab] = useState<'users' | 'studio' | 'audit'>('users')
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
@@ -103,13 +105,13 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
     <div>
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
-        {(['users', 'audit'] as const).map(t => (
+        {(['users', 'studio', 'audit'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${tab === t ? 'border-b-2 border-[#9A7B4F] text-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
           >
-            {t === 'users' ? 'Team Members' : 'Audit Log'}
+            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : 'Audit Log'}
           </button>
         ))}
       </div>
@@ -224,6 +226,10 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin }: Props) {
             </table>
           </div>
         </div>
+      )}
+
+      {tab === 'studio' && (
+        <StudioSettingsForm settings={settings as any} />
       )}
 
       {tab === 'audit' && (
