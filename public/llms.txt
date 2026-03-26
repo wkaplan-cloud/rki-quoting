@@ -1,0 +1,36 @@
+# QuotingHub
+
+QuotingHub is quoting and project management software built specifically for interior designers and design studios in South Africa.
+
+## What QuotingHub Does
+
+QuotingHub helps interior designers create professional quotes, invoices, and purchase orders without spreadsheets. It handles real-time supplier pricing, automatic VAT and deposit calculations, PDF generation, and email delivery — all in one place.
+
+## Key Features
+
+- Itemised quote and invoice creation with real-time pricing
+- Automatic VAT (15%) and deposit calculations
+- Professionally branded PDF generation for quotes, invoices, and purchase orders
+- Supplier management with per-supplier markup settings
+- Client management with full contact and VAT details
+- Purchase orders generated per supplier from a single project
+- Team collaboration with role-based access (admin and designer roles)
+- Project pipeline with kanban-style status tracking
+- Price list import and management
+- Email delivery of quotes and invoices directly to clients
+
+## Who It Is For
+
+Interior designers, interior decorators, and design studios based in South Africa who need to manage client projects, create accurate quotes, and send professional documents to clients and suppliers.
+
+## Pages
+
+- [Home](https://quotinghub.co.za): Overview of the product
+- [Sign Up](https://quotinghub.co.za/signup): Create a new account
+- [Log In](https://quotinghub.co.za/login): Access your studio
+
+## About
+
+QuotingHub is built and maintained in South Africa. It is designed for the local interior design market with ZAR pricing, VAT-compliant invoicing, and South African banking detail fields on all documents.
+
+Contact: quotinghub.co.za
