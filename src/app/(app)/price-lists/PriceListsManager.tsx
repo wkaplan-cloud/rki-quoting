@@ -11,7 +11,6 @@ interface PriceList {
   supplier_name: string
   item_count: number
   created_at: string
-  org_id: string
   is_global: boolean
 }
 
@@ -77,7 +76,7 @@ function mapHeaders(headers: string[]): (keyof ParsedItem | null)[] {
   return headers.map(h => COLUMN_MAP[h.toLowerCase().trim()] ?? null)
 }
 
-export function PriceListsManager({ priceLists, canManage, userOrgId }: { priceLists: PriceList[]; canManage: boolean; userOrgId: string }) {
+export function PriceListsManager({ priceLists, canManage }: { priceLists: PriceList[]; canManage: boolean }) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [showImport, setShowImport] = useState(false)
@@ -235,7 +234,7 @@ export function PriceListsManager({ priceLists, canManage, userOrgId }: { priceL
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {canManage && pl.org_id === userOrgId && deleteId === pl.id ? (
+                  {canManage && deleteId === pl.id ? (
                     <>
                       <span className="text-xs text-[#8A877F]">Delete?</span>
                       <Button size="sm" variant="danger" onClick={() => handleDelete(pl.id)}>Yes</Button>
@@ -243,7 +242,7 @@ export function PriceListsManager({ priceLists, canManage, userOrgId }: { priceL
                     </>
                   ) : (
                     <>
-                      {canManage && pl.org_id === userOrgId && (
+                      {canManage && (
                         <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
                           <Trash2 size={13} />
                         </Button>

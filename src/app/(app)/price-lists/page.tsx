@@ -8,7 +8,7 @@ export default async function PriceListsPage() {
   const supabase = await createClient()
 
   const [{ data: priceLists }, { data: orgId }] = await Promise.all([
-    supabase.from('price_lists').select('id, name, supplier_name, item_count, created_at, org_id, is_global').order('is_global', { ascending: false }).order('created_at', { ascending: false }),
+    supabase.from('price_lists').select('id, name, supplier_name, item_count, created_at, is_global').order('created_at', { ascending: false }),
     supabase.rpc('get_current_org_id'),
   ])
 
@@ -24,7 +24,7 @@ export default async function PriceListsPage() {
         count={priceLists?.length}
       />
       <div className="p-8">
-        <PriceListsManager priceLists={priceLists ?? []} canManage={canManage} userOrgId={orgId ?? ''} />
+        <PriceListsManager priceLists={priceLists ?? []} canManage={canManage} />
       </div>
     </div>
   )
