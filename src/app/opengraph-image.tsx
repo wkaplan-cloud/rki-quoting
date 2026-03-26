@@ -16,62 +16,72 @@ export default async function OGImage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '72px 80px',
-          fontFamily: 'Georgia, serif',
-          position: 'relative',
-          overflow: 'hidden',
+          padding: '64px 80px 60px 80px',
         }}
       >
-        {/* Subtle grid texture overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage:
-              'radial-gradient(circle at 80% 20%, rgba(196,164,107,0.12) 0%, transparent 55%), radial-gradient(circle at 10% 80%, rgba(196,164,107,0.07) 0%, transparent 45%)',
-            display: 'flex',
-          }}
-        />
-
-        {/* Gold top accent line */}
+        {/* Gold top bar */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
-            right: 0,
-            height: '3px',
-            background: 'linear-gradient(90deg, #C4A46B 0%, #9A7B4F 100%)',
+            width: '1200px',
+            height: '4px',
+            background: '#C4A46B',
             display: 'flex',
           }}
         />
 
-        {/* Top: wordmark */}
+        {/* Gold glow circle top-right */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '-120px',
+            right: '-120px',
+            width: '480px',
+            height: '480px',
+            borderRadius: '480px',
+            background: 'rgba(196,164,107,0.10)',
+            display: 'flex',
+          }}
+        />
+
+        {/* Top: wordmark + url */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div
-            style={{
-              fontSize: '28px',
-              fontWeight: '700',
-              color: '#F5F2EC',
-              letterSpacing: '-0.5px',
-              display: 'flex',
-            }}
-          >
-            QuotingHub
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '10px',
+                background: '#C4A46B',
+                display: 'flex',
+              }}
+            />
+            <div
+              style={{
+                fontSize: '26px',
+                fontWeight: '700',
+                color: '#F5F2EC',
+                letterSpacing: '-0.5px',
+                display: 'flex',
+              }}
+            >
+              QuotingHub
+            </div>
           </div>
           <div
             style={{
               width: '1px',
-              height: '24px',
-              background: 'rgba(255,255,255,0.2)',
+              height: '20px',
+              background: 'rgba(255,255,255,0.15)',
               display: 'flex',
             }}
           />
           <div
             style={{
               fontSize: '14px',
-              color: 'rgba(255,255,255,0.45)',
-              letterSpacing: '0.5px',
+              color: 'rgba(255,255,255,0.35)',
               display: 'flex',
             }}
           >
@@ -80,60 +90,53 @@ export default async function OGImage() {
         </div>
 
         {/* Centre: headline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div
             style={{
-              fontSize: '64px',
+              fontSize: '68px',
               fontWeight: '400',
               color: '#F5F2EC',
               lineHeight: '1.1',
-              letterSpacing: '-1.5px',
+              letterSpacing: '-2px',
               display: 'flex',
               flexDirection: 'column',
+              gap: '4px',
             }}
           >
             <span style={{ display: 'flex' }}>Every project,</span>
-            <span style={{ color: '#C4A46B', fontStyle: 'italic', display: 'flex' }}>
-              perfectly quoted.
-            </span>
+            <span style={{ color: '#C4A46B', display: 'flex' }}>perfectly quoted.</span>
           </div>
           <div
             style={{
               fontSize: '22px',
-              color: 'rgba(255,255,255,0.5)',
-              fontFamily: 'system-ui, sans-serif',
+              color: 'rgba(255,255,255,0.45)',
               fontWeight: '300',
-              letterSpacing: '0.2px',
               display: 'flex',
             }}
           >
-            Quoting · Invoicing · Purchase Orders
+            Quoting · Invoicing · Purchase Orders for Interior Designers
           </div>
         </div>
 
-        {/* Bottom: feature pills */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {[
-            'Real-time pricing',
-            'PDF generation',
-            'Supplier management',
-            'Built for SA designers',
-          ].map((label) => (
-            <div
-              key={label}
-              style={{
-                padding: '8px 16px',
-                border: '1px solid rgba(196,164,107,0.35)',
-                borderRadius: '100px',
-                fontSize: '13px',
-                color: 'rgba(255,255,255,0.6)',
-                fontFamily: 'system-ui, sans-serif',
-                display: 'flex',
-              }}
-            >
-              {label}
-            </div>
-          ))}
+        {/* Bottom: pills */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {['Real-time pricing', 'PDF generation', 'Supplier management', 'Built for SA'].map(
+            (label) => (
+              <div
+                key={label}
+                style={{
+                  padding: '8px 18px',
+                  border: '1px solid rgba(196,164,107,0.4)',
+                  borderRadius: '100px',
+                  fontSize: '14px',
+                  color: 'rgba(255,255,255,0.55)',
+                  display: 'flex',
+                }}
+              >
+                {label}
+              </div>
+            )
+          )}
         </div>
       </div>
     ),
