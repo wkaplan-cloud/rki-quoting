@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, Trash2, Upload, X, ChevronRight, AlertCircle } from 'lucide-react'
+import { Plus, BookOpen, Trash2, Upload, X, ChevronRight, AlertCircle, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
@@ -11,6 +11,8 @@ interface PriceList {
   supplier_name: string
   item_count: number
   created_at: string
+  org_id: string
+  is_global: boolean
 }
 
 interface ParsedItem {
@@ -75,12 +77,13 @@ function mapHeaders(headers: string[]): (keyof ParsedItem | null)[] {
   return headers.map(h => COLUMN_MAP[h.toLowerCase().trim()] ?? null)
 }
 
-export function PriceListsManager({ priceLists, canManage }: { priceLists: PriceList[]; canManage: boolean }) {
+export function PriceListsManager({ priceLists, canManage, userOrgId }: { priceLists: PriceList[]; canManage: boolean; userOrgId: string }) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [showImport, setShowImport] = useState(false)
   const [name, setName] = useState('')
   const [supplierName, setSupplierName] = useState('Home Fabrics')
+  const [isGlobal, setIsGlobal] = useState(false)
   const [parsedItems, setParsedItems] = useState<ParsedItem[] | null>(null)
   const [parseError, setParseError] = useState('')
   const [fileName, setFileName] = useState('')
@@ -136,7 +139,7 @@ export function PriceListsManager({ priceLists, canManage }: { priceLists: Price
       const createRes = await fetch('/api/price-lists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), supplier_name: supplierName }),
+        body: JSON.stringify({ name: name.trim(), supplier_name: supplierName, is_global: isGlobal }),
       })
       const createData = await createRes.json()
       if (!createRes.ok) throw new Error(createData.error)
@@ -180,6 +183,7 @@ export function PriceListsManager({ priceLists, canManage }: { priceLists: Price
   function resetForm() {
     setName('')
     setSupplierName('Home Fabrics')
+    setIsGlobal(false)
     setParsedItems(null)
     setParseError('')
     setFileName('')
@@ -213,18 +217,25 @@ export function PriceListsManager({ priceLists, canManage }: { priceLists: Price
                 className="flex items-center justify-between bg-white border border-[#D8D3C8] rounded-lg px-5 py-4 group"
               >
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-[#EDE9E1] flex items-center justify-center flex-shrink-0">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${pl.is_global ? 'bg-[#9A7B4F]/10' : 'bg-[#EDE9E1]'}`}>
                     <BookOpen size={16} className="text-[#C4A46B]" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#2C2C2A] truncate">{pl.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-[#2C2C2A] truncate">{pl.name}</p>
+                      {pl.is_global && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#9A7B4F] bg-[#9A7B4F]/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                          <Globe size={9} /> Platform
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-[#8A877F] mt-0.5">
                       {pl.supplier_name} · {pl.item_count.toLocaleString()} items · {new Date(pl.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {canManage && deleteId === pl.id ? (
+                  {canManage && pl.org_id === userOrgId && deleteId === pl.id ? (
                     <>
                       <span className="text-xs text-[#8A877F]">Delete?</span>
                       <Button size="sm" variant="danger" onClick={() => handleDelete(pl.id)}>Yes</Button>
@@ -232,7 +243,7 @@ export function PriceListsManager({ priceLists, canManage }: { priceLists: Price
                     </>
                   ) : (
                     <>
-                      {canManage && (
+                      {canManage && pl.org_id === userOrgId && (
                         <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
                           <Trash2 size={13} />
                         </Button>
@@ -275,6 +286,19 @@ export function PriceListsManager({ priceLists, canManage }: { priceLists: Price
                 value={supplierName}
                 onChange={e => setSupplierName(e.target.value)}
               />
+
+              <label className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isGlobal}
+                  onChange={e => setIsGlobal(e.target.checked)}
+                  className="mt-0.5 rounded border-[#D8D3C8] accent-[#9A7B4F]"
+                />
+                <div>
+                  <p className="text-sm font-medium text-[#2C2C2A]">Make available to all studios</p>
+                  <p className="text-xs text-[#8A877F] mt-0.5">This price list will appear in every studio&apos;s Price Lists. Only you can delete it.</p>
+                </div>
+              </label>
 
               {/* File upload */}
               <div>

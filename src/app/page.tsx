@@ -12,7 +12,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-14 w-auto object-contain" />
+          <img src="/logo.png" alt="QuotingHub" className="h-20 w-auto object-contain" />
           <div className="flex items-center gap-3">
             <Link
               href="/login"
@@ -38,10 +38,14 @@ export default function LandingPage() {
             <span className="text-xs font-medium text-[#9A7B4F] tracking-wide">Built for interior designers in South Africa</span>
           </div>
 
-          <h1 className="font-serif text-5xl md:text-7xl text-[#1A1A18] leading-[1.05] tracking-tight mb-6">
+          <h1 className="font-serif text-5xl md:text-7xl text-[#1A1A18] leading-[1.05] tracking-tight mb-4">
             The smartest way to<br />
             <em className="text-[#C4A46B] not-italic">quote your projects.</em>
           </h1>
+
+          <p className="font-serif text-xl md:text-2xl text-[#9A7B4F] italic mb-8 tracking-tight">
+            Every project, perfectly quoted.
+          </p>
 
           <p className="text-lg md:text-xl text-[#8A877F] max-w-2xl mx-auto leading-relaxed mb-10">
             QuotingHub replaces the other software. Create professional quotes, invoices, and purchase orders in minutes — with real-time pricing, automatic calculations, and instant PDFs.
@@ -123,7 +127,7 @@ export default function LandingPage() {
                 Stop losing money on inaccurate quotes. QuotingHub does the maths so you stay focused on the design.
               </p>
               <ul className="space-y-2 relative z-10">
-                {['Supplier markups built in', 'VAT-compliant documents', 'Send quotes by email'].map(i => (
+                {['Supplier markups built in', 'Professional documents', 'Send quotes by email'].map(i => (
                   <li key={i} className="flex items-center gap-2 text-sm text-white/80">
                     <Check size={13} className="text-[#C4A46B] flex-shrink-0" />
                     {i}
@@ -177,7 +181,7 @@ export default function LandingPage() {
               {
                 icon: FileText,
                 title: 'Quotes & invoices',
-                desc: 'Generate professional, branded PDF quotes and invoices with one click. VAT and deposits calculated automatically.',
+                desc: 'Generate professional, branded PDF quotes and invoices with one click. Totals and deposits calculated automatically.',
               },
               {
                 icon: ShoppingCart,
@@ -187,7 +191,7 @@ export default function LandingPage() {
               {
                 icon: Users,
                 title: 'Client management',
-                desc: 'Keep all your client details, project history, and VAT numbers in one organised place.',
+                desc: 'Keep all your client details, project history, and contact information in one organised place.',
               },
               {
                 icon: Receipt,

@@ -8,24 +8,13 @@ export default async function PriceListsPage() {
   const supabase = await createClient()
 
   const [{ data: priceLists }, { data: orgId }] = await Promise.all([
-    supabase.from('price_lists').select('*').order('created_at', { ascending: false }),
+    supabase.from('price_lists').select('id, name, supplier_name, item_count, created_at, org_id, is_global').order('is_global', { ascending: false }).order('created_at', { ascending: false }),
     supabase.rpc('get_current_org_id'),
   ])
 
-  let canManage = false
-  if (orgId) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: membership } = await supabaseAdmin
-        .from('org_members')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('org_id', orgId)
-        .eq('status', 'active')
-        .maybeSingle()
-      canManage = membership?.role === 'admin'
-    }
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+  const platformAdmin = process.env.PLATFORM_ADMIN_EMAIL
+  const canManage = !!(user && platformAdmin && user.email === platformAdmin)
 
   return (
     <div className="flex flex-col h-full">
@@ -35,7 +24,7 @@ export default async function PriceListsPage() {
         count={priceLists?.length}
       />
       <div className="p-8">
-        <PriceListsManager priceLists={priceLists ?? []} canManage={canManage} />
+        <PriceListsManager priceLists={priceLists ?? []} canManage={canManage} userOrgId={orgId ?? ''} />
       </div>
     </div>
   )
