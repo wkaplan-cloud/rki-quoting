@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_')
   const filename = supplier
     ? `${slug(project.project_number)}_PO_${slug(supplier.supplier_name)}.pdf`
-    : `${project.project_number}-po.pdf`
+    : `${slug(project.project_number)}_PO.pdf`
 
   const logoUrl = await fetchLogoBase64(settings?.logo_url)
 
