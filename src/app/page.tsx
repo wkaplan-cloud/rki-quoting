@@ -31,39 +31,54 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="pt-48 pb-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 rounded-full px-4 py-1.5 mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#C4A46B]" />
-            <span className="text-xs font-medium text-[#9A7B4F] tracking-wide">Built for interior designers in South Africa</span>
-          </div>
+      <section className="pt-48 pb-16 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+            {/* Text side */}
+            <div className="flex-1 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 rounded-full px-4 py-1.5 mb-8">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C4A46B]" />
+                <span className="text-xs font-medium text-[#9A7B4F] tracking-wide">Built for interior designers in South Africa</span>
+              </div>
 
-          <h1 className="font-serif text-5xl md:text-7xl text-[#1A1A18] leading-[1.05] tracking-tight mb-4">
-            The smartest way to<br />
-            <em className="text-[#C4A46B] not-italic">quote your projects.</em>
-          </h1>
+              <h1 className="font-serif text-5xl md:text-6xl text-[#1A1A18] leading-[1.05] tracking-tight mb-4">
+                The smartest way to<br />
+                <em className="text-[#C4A46B] not-italic">quote your projects.</em>
+              </h1>
 
-          <p className="font-serif text-xl md:text-2xl text-[#9A7B4F] italic mb-8 tracking-tight">
-            Every project, perfectly quoted.
-          </p>
+              <p className="font-serif text-xl text-[#9A7B4F] italic mb-6 tracking-tight">
+                Every project, perfectly quoted.
+              </p>
 
-          <p className="text-lg md:text-xl text-[#8A877F] max-w-2xl mx-auto leading-relaxed mb-10">
-            QuotingHub replaces the other software. Create professional quotes, invoices, and purchase orders in minutes — with real-time pricing, automatic calculations, and instant PDFs.
-          </p>
+              <p className="text-lg text-[#8A877F] max-w-xl leading-relaxed mb-10">
+                QuotingHub replaces the other software. Create professional quotes, invoices, and purchase orders in minutes — with real-time pricing, automatic calculations, and instant PDFs.
+              </p>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/signup"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors"
-            >
-              Start for free <ArrowRight size={15} />
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-[#D8D3C8] text-[#2C2C2A] text-sm font-medium rounded-lg hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors bg-white"
-            >
-              Log in to your studio
-            </Link>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+                <Link
+                  href="/signup"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors"
+                >
+                  Start for free <ArrowRight size={15} />
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-[#D8D3C8] text-[#2C2C2A] text-sm font-medium rounded-lg hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors bg-white"
+                >
+                  Log in to your studio
+                </Link>
+              </div>
+            </div>
+
+            {/* Mockup side */}
+            <div className="flex-1 w-full lg:w-auto">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/hero-mockup.png"
+                alt="QuotingHub dashboard"
+                className="w-full max-w-xl mx-auto lg:mx-0 rounded-2xl shadow-[0_24px_80px_-12px_rgba(26,26,24,0.18)]"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -98,7 +113,10 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Interior Designers */}
-            <div className="bg-white border border-[#D8D3C8] rounded-2xl p-8 hover:border-[#C4A46B]/50 hover:shadow-lg transition-all duration-300">
+            <div className="rounded-2xl overflow-hidden border border-[#D8D3C8] hover:border-[#C4A46B]/50 hover:shadow-lg transition-all duration-300 relative">
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/who-designers.jpg)' }} />
+              <div className="absolute inset-0 bg-[#F5F2EC]/88" />
+              <div className="relative p-8">
               <div className="w-11 h-11 rounded-xl bg-[#9A7B4F]/10 flex items-center justify-center mb-5">
                 <FileText size={20} className="text-[#9A7B4F]" />
               </div>
@@ -114,11 +132,15 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
+              </div>
             </div>
 
             {/* Decorators */}
-            <div className="bg-[#1A1A18] border border-[#1A1A18] rounded-2xl p-8 relative overflow-hidden">
+            <div className="rounded-2xl overflow-hidden border border-[#1A1A18] relative">
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/who-decorators.jpg)' }} />
+              <div className="absolute inset-0 bg-[#1A1A18]/82" />
               <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-[#C4A46B]/10 -translate-y-1/2 translate-x-1/2" />
+              <div className="relative p-8">
               <div className="w-11 h-11 rounded-xl bg-[#C4A46B]/20 flex items-center justify-center mb-5 relative z-10">
                 <Users size={20} className="text-[#C4A46B]" />
               </div>
@@ -134,10 +156,14 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
+              </div>
             </div>
 
             {/* Suppliers - Coming Soon */}
-            <div className="bg-white border border-dashed border-[#D8D3C8] rounded-2xl p-8 relative">
+            <div className="rounded-2xl overflow-hidden border border-dashed border-[#D8D3C8] relative">
+              <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: 'url(/who-suppliers.jpg)' }} />
+              <div className="absolute inset-0 bg-[#F5F2EC]/80" />
+              <div className="relative p-8">
               <div className="absolute top-4 right-4 bg-[#C4A46B]/15 text-[#9A7B4F] text-xs font-medium px-3 py-1 rounded-full">
                 Coming soon
               </div>
@@ -156,13 +182,15 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="py-24 px-6 bg-white border-y border-[#D8D3C8]">
+      <section className="py-24 px-6 bg-white border-y border-[#D8D3C8] relative overflow-hidden">
+        <div className="absolute inset-0 bg-cover bg-center opacity-[0.04] pointer-events-none" style={{ backgroundImage: 'url(/feature-texture.png)' }} />
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">Features</p>
