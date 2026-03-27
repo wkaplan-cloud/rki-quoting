@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-const ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL ?? 'warren@kaplan.co.za'
+const NOTIFICATION_EMAIL = process.env.CONTACT_NOTIFICATION_EMAIL ?? 'wkaplan@gmail.com'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   try {
     await resend.emails.send({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
-      to: ADMIN_EMAIL,
+      to: NOTIFICATION_EMAIL,
       replyTo: email,
       subject,
       html: `
