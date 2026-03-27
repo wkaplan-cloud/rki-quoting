@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import toast from 'react-hot-toast'
@@ -74,10 +74,25 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
   )
 }
 
+const LINE_ITEM_TIPS = [
+  { col: 'Item', tip: 'The name of the product or service. Type to search your saved items library or enter a new name.' },
+  { col: 'Description', tip: 'Optional detail shown on the quote/invoice PDF — fabric code, finish, dimensions, etc.' },
+  { col: 'Qty', tip: 'Number of units. Used to calculate totals.' },
+  { col: 'Supplier', tip: 'Select the supplier for this item. Their default markup % will be applied automatically.' },
+  { col: 'Deliver To', tip: 'Where this item should be delivered. Defaults to your office address.' },
+  { col: 'Cost', tip: 'Your cost price from the supplier (ex VAT). This is never shown to the client.' },
+  { col: 'Mkup %', tip: 'Your markup percentage. Defaults to the supplier\'s markup. Edit per line if needed.' },
+  { col: 'Sale', tip: 'The selling price shown to the client — calculated automatically from Cost + Markup.' },
+  { col: 'Profit', tip: 'Your profit per unit (Sale minus Cost). Shown for your reference only.' },
+  { col: 'Tot. Cost', tip: 'Total cost for this line (Cost × Qty).' },
+  { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
+]
+
 export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated }: Props) {
   const supabase = createClient()
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
+  const [showTips, setShowTips] = useState(false)
 
   const updateLocal = useCallback((id: string, field: string, value: string | number) => {
     onChange(lineItems.map(item =>
@@ -485,7 +500,29 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         >
           <LayoutList size={14} /> Add room / section
         </button>
+        <button
+          onClick={() => setShowTips(v => !v)}
+          className="flex items-center gap-1.5 text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors cursor-pointer ml-auto"
+        >
+          <HelpCircle size={13} />
+          How do line items work?
+          {showTips ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
       </div>
+
+      {showTips && (
+        <div className="mt-3 bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg p-4">
+          <p className="text-xs font-medium text-[#2C2C2A] mb-3">Column guide</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+            {LINE_ITEM_TIPS.map(({ col, tip }) => (
+              <div key={col} className="flex gap-2">
+                <span className="text-xs font-medium text-[#9A7B4F] w-16 flex-shrink-0">{col}</span>
+                <span className="text-xs text-[#8A877F] leading-relaxed">{tip}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
