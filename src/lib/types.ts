@@ -21,6 +21,8 @@ export interface Supplier {
   email_cc: string | null
   delivery_address: string | null
   markup_percentage: number
+  is_platform: boolean
+  price_list_id: string | null
   created_at: string
 }
 
@@ -66,6 +68,10 @@ export interface LineItem {
   indent_level: number
   received: boolean
   fabric_image_url: string | null
+  unit: string | null
+  lead_time_weeks: number | null
+  dimensions: string | null
+  colour_finish: string | null
   created_at: string
 }
 

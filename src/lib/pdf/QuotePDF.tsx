@@ -101,7 +101,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, foote
                 return (
                   <View key={item.id} style={[styles.tableRow, alt ? styles.tableRowAlt : {}]}>
                     <Text style={[styles.td, { flex: 1, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{item.item_name}</Text>
-                    <Text style={[styles.td, { width: 44, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}</Text>
+                    <Text style={[styles.td, { width: 44, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                     <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(c.sale_price)}</Text>
                     <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(c.total_price)}</Text>
                   </View>

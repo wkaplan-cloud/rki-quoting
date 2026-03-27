@@ -27,13 +27,14 @@ const s = StyleSheet.create({
   divider: { borderTopWidth: 0.5, borderTopColor: '#D8D3C8', marginVertical: 4 },
 })
 
-// Column widths
+// Column widths (landscape A4 usable ~778px)
 const W = {
   item:     130,
-  desc:     165,
-  qty:      28,
+  desc:     150,
+  qty:      40,
+  lead:     36,
   supplier: 60,
-  deliver:  60,
+  deliver:  54,
   cost:     52,
   mkup:     36,
   sale:     52,
@@ -82,9 +83,10 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
         <View style={s.tableHeader}>
           <Text style={[s.th, { width: W.item, paddingRight: 6 }]}>Item</Text>
           <Text style={[s.th, { width: W.desc, paddingRight: 6 }]}>Description</Text>
-          <Text style={[s.th, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>Qty</Text>
+          <Text style={[s.th, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>Qty / Unit</Text>
           <Text style={[s.th, { width: W.supplier, paddingRight: 6 }]}>Supplier</Text>
           <Text style={[s.th, { width: W.deliver, paddingRight: 6 }]}>Deliver To</Text>
+          <Text style={[s.th, { width: W.lead, textAlign: 'right', paddingRight: 6 }]}>Lead</Text>
           <Text style={[s.th, { width: W.cost, textAlign: 'right', paddingRight: 6 }]}>Cost</Text>
           <Text style={[s.th, { width: W.mkup, textAlign: 'right', paddingRight: 6 }]}>Mkup%</Text>
           <Text style={[s.th, { width: W.sale, textAlign: 'right', paddingRight: 6 }]}>Sale</Text>
@@ -106,11 +108,19 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
           const alt = itemIndex++ % 2 === 1
           return (
             <View key={item.id} style={[s.row, alt ? s.rowAlt : {}]}>
-              <Text style={[s.td, { width: W.item, paddingRight: 6, paddingLeft: item.indent_level > 0 ? 6 : 0 }]}>{item.item_name}</Text>
+              <View style={[{ width: W.item, paddingRight: 6, paddingLeft: item.indent_level > 0 ? 6 : 0 }]}>
+                <Text style={s.td}>{item.item_name}</Text>
+                {(item.dimensions || item.colour_finish) ? (
+                  <Text style={[s.td, s.tdMuted, { fontSize: 5.5, marginTop: 1 }]}>
+                    {[item.dimensions, item.colour_finish].filter(Boolean).join(' · ')}
+                  </Text>
+                ) : null}
+              </View>
               <Text style={[s.td, s.tdMuted, { width: W.desc, paddingRight: 6 }]}>{item.description ?? ''}</Text>
-              <Text style={[s.td, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>{item.quantity}</Text>
+              <Text style={[s.td, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
               <Text style={[s.td, s.tdMuted, { width: W.supplier, paddingRight: 6 }]}>{supplierMap[item.supplier_id ?? ''] ?? ''}</Text>
               <Text style={[s.td, s.tdMuted, { width: W.deliver, paddingRight: 6 }]}>{item.delivery_address ?? ''}</Text>
+              <Text style={[s.td, s.tdMuted, { width: W.lead, textAlign: 'right', paddingRight: 6 }]}>{item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
               <Text style={[s.td, { width: W.cost, textAlign: 'right', paddingRight: 6 }]}>{formatZAR(item.cost_price)}</Text>
               <Text style={[s.td, s.tdMuted, { width: W.mkup, textAlign: 'right', paddingRight: 6 }]}>{item.markup_percentage}%</Text>
               <Text style={[s.td, { width: W.sale, textAlign: 'right', paddingRight: 6 }]}>{formatZAR(c.sale_price)}</Text>

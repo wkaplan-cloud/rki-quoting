@@ -26,7 +26,7 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
   )
 }
 
-type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }
+type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; is_platform: boolean; price_list_id: string | null }
 
 interface Props {
   projectId: string
@@ -76,10 +76,13 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
 
 const LINE_ITEM_TIPS = [
   { col: 'Item', tip: 'The name of the product or service. Type to search your saved items or enter a new name. Select a supplier with a price list first to enable fabric/product lookup.' },
-  { col: 'Description', tip: 'Optional detail shown on the Purchase Order PDF — fabric code, finish, dimensions, SKU, etc. Not shown on quotes or invoices.' },
-  { col: 'Qty', tip: 'Number of units. Used to calculate totals.' },
+  { col: 'Dimensions', tip: 'Width × height or other measurements (e.g. 2400 × 800). Shown on the Production Sheet. Not visible to the client.' },
+  { col: 'Colour', tip: 'Colour, finish, or colourway of the item. Shown on the Production Sheet. Not visible to the client.' },
+  { col: 'Description', tip: 'Optional detail shown on the Purchase Order PDF — fabric code, SKU, etc. Not shown on quotes or invoices.' },
+  { col: 'Qty / Unit', tip: 'Quantity and unit of measure (e.g. 2 m², 4 each). Unit is shown alongside quantity on all documents.' },
   { col: 'Supplier', tip: 'Select the supplier for this item. Their default markup % will be applied automatically.' },
   { col: 'Deliver To', tip: 'Where this item should be delivered. Defaults to your office address.' },
+  { col: 'Lead', tip: 'Estimated delivery time in weeks. Shown on Purchase Orders only — useful for tracking what to chase.' },
   { col: 'Cost', tip: 'Your cost price from the supplier (ex VAT). This is never shown to the client.' },
   { col: 'Mkup %', tip: 'Your markup percentage. Defaults to the supplier\'s markup. Edit per line if needed.' },
   { col: 'Sale', tip: 'The selling price shown to the client — calculated automatically from Cost + Markup.' },
@@ -94,13 +97,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const dragOver = useRef<number | null>(null)
   const [showTips, setShowTips] = useState(false)
 
-  const updateLocal = useCallback((id: string, field: string, value: string | number) => {
+  const updateLocal = useCallback((id: string, field: string, value: string | number | null) => {
     onChange(lineItems.map(item =>
       item.id === id ? { ...item, [field]: value } : item
     ))
   }, [lineItems, onChange])
 
-  const saveField = useCallback(async (id: string, field: string, value: string | number) => {
+  const saveField = useCallback(async (id: string, field: string, value: string | number | null) => {
     await supabase.from('line_items').update({ [field]: value }).eq('id', id)
   }, [supabase])
 
@@ -186,6 +189,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       description,
       cost_price: fabric.price_zar ?? 0,
       fabric_image_url: fabric.image_url ?? null,
+      colour_finish: fabric.colour ?? null,
     }
     onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
     await supabase.from('line_items').update(updates).eq('id', lineItemId)
@@ -226,16 +230,17 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       </div>
 
       <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto overflow-y-visible">
-        <table className="w-full text-sm min-w-[1000px]">
+        <table className="w-full text-sm min-w-[1120px]">
           <thead>
             <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2" />
               <th className="w-7 px-2 py-2" title="Received" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
-              <th className="text-right px-2 py-2 min-w-[64px] whitespace-nowrap">Qty</th>
+              <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
+              <th className="text-right px-2 py-2 min-w-[70px] whitespace-nowrap">Lead</th>
               <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Cost</th>
               <th className="text-right px-2 py-2 min-w-[80px] whitespace-nowrap">Mkup%</th>
               <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Sale</th>
@@ -264,7 +269,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       <GripVertical size={14} />
                     </td>
                     <td />
-                    <td colSpan={11} className="px-2 py-2 border-r border-[#EDE9E1]">
+                    <td colSpan={12} className="px-2 py-2 border-r border-[#EDE9E1]">
                       <div className="flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
                         <input
@@ -330,43 +335,61 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     </button>
                   </td>
 
-                  {/* Item name — with indent toggle + visual indent */}
+                  {/* Item name — with indent toggle + visual indent + dimensions/colour */}
                   <td className={COL}>
-                    <div className={`flex items-center gap-1 ${indented ? 'pl-4' : ''}`}>
-                      {indented && (
-                        <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {item.supplier_name?.toLowerCase().includes('home fabrics') ? (
-                          <FabricSearch
-                            value={item.item_name}
-                            onChange={v => updateLocal(item.id, 'item_name', v)}
-                            onBlur={v => saveField(item.id, 'item_name', v)}
-                            onSelect={fabric => handleFabricSelect(item.id, fabric)}
-                            placeholder="Search fabric…"
-                            className={INPUT}
-                          />
-                        ) : (
-                          <AutoTextarea
-                            value={item.item_name}
-                            onChange={v => updateLocal(item.id, 'item_name', v)}
-                            onBlur={v => saveField(item.id, 'item_name', v)}
-                            placeholder="Item name"
-                            className={INPUT}
-                          />
+                    <div className={indented ? 'pl-4' : ''}>
+                      <div className="flex items-center gap-1">
+                        {indented && (
+                          <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
+                        <div className="flex-1 min-w-0">
+                          {suppliers.find(s => s.id === item.supplier_id)?.price_list_id ? (
+                            <FabricSearch
+                              value={item.item_name}
+                              onChange={v => updateLocal(item.id, 'item_name', v)}
+                              onBlur={v => saveField(item.id, 'item_name', v)}
+                              onSelect={fabric => handleFabricSelect(item.id, fabric)}
+                              placeholder="Search fabric…"
+                              className={INPUT}
+                            />
+                          ) : (
+                            <AutoTextarea
+                              value={item.item_name}
+                              onChange={v => updateLocal(item.id, 'item_name', v)}
+                              onBlur={v => saveField(item.id, 'item_name', v)}
+                              placeholder="Item name"
+                              className={INPUT}
+                            />
+                          )}
+                        </div>
+                        <button
+                          onClick={() => toggleIndent(item.id, item.indent_level)}
+                          title={indented ? 'Remove indent' : 'Attach to item above'}
+                          className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
+                            ${indented
+                              ? 'text-[#9A7B4F] opacity-100'
+                              : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
+                            }`}
+                        >
+                          <CornerDownRight size={12} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => toggleIndent(item.id, item.indent_level)}
-                        title={indented ? 'Remove indent' : 'Attach to item above'}
-                        className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
-                          ${indented
-                            ? 'text-[#9A7B4F] opacity-100'
-                            : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
-                          }`}
-                      >
-                        <CornerDownRight size={12} />
-                      </button>
+                      <div className="flex gap-1 mt-0.5">
+                        <input
+                          value={item.dimensions ?? ''}
+                          onChange={e => updateLocal(item.id, 'dimensions', e.target.value)}
+                          onBlur={e => saveField(item.id, 'dimensions', e.target.value)}
+                          placeholder="Dimensions…"
+                          className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
+                        />
+                        <input
+                          value={item.colour_finish ?? ''}
+                          onChange={e => updateLocal(item.id, 'colour_finish', e.target.value)}
+                          onBlur={e => saveField(item.id, 'colour_finish', e.target.value)}
+                          placeholder="Colour/finish…"
+                          className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
+                        />
+                      </div>
                     </div>
                   </td>
 
@@ -381,15 +404,28 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     />
                   </td>
 
-                  {/* Qty */}
+                  {/* Qty + Unit */}
                   <td className={COL}>
-                    <input
-                      type="number" min="0" step="1"
-                      value={item.quantity}
-                      onChange={e => updateLocal(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                      onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                      className={NUM_INPUT}
-                    />
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number" min="0" step="1"
+                        value={item.quantity}
+                        onChange={e => updateLocal(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                        onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                        className={NUM_INPUT + ' flex-1'}
+                      />
+                      <input
+                        list={`units-${item.id}`}
+                        value={item.unit ?? ''}
+                        onChange={e => updateLocal(item.id, 'unit', e.target.value)}
+                        onBlur={e => saveField(item.id, 'unit', e.target.value)}
+                        placeholder="unit"
+                        className="w-12 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                      />
+                      <datalist id={`units-${item.id}`}>
+                        {['each','m','m²','lm','pair','set','roll','kg'].map(u => <option key={u} value={u} />)}
+                      </datalist>
+                    </div>
                   </td>
 
                   {/* Supplier */}
@@ -428,6 +464,21 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         />
                       )
                     })()}
+                  </td>
+
+                  {/* Lead time */}
+                  <td className={COL}>
+                    <div className="flex items-center gap-0.5 justify-end">
+                      <input
+                        type="number" min="0" step="1"
+                        value={item.lead_time_weeks ?? ''}
+                        onChange={e => updateLocal(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
+                        onBlur={e => saveField(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
+                        className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                        placeholder="–"
+                      />
+                      <span className="text-xs text-[#8A877F] flex-shrink-0">wks</span>
+                    </div>
                   </td>
 
                   {/* Cost Price */}

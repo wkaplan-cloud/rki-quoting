@@ -76,7 +76,8 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
             <Text style={[styles.th, { flex: 2 }]}>ITEM</Text>
             <Text style={[styles.th, { flex: 3 }]}>DESCRIPTION</Text>
             <Text style={[styles.th, { flex: 2 }]}>DELIVER TO</Text>
-            <Text style={[styles.th, { width: 44, textAlign: 'right', paddingRight: 8 }]}>QTY</Text>
+            <Text style={[styles.th, { width: 36, textAlign: 'right', paddingRight: 4 }]}>LEAD</Text>
+            <Text style={[styles.th, { width: 52, textAlign: 'right', paddingRight: 8 }]}>QTY</Text>
             <Text style={[styles.th, { width: 72, textAlign: 'right' }]}>COST</Text>
             <Text style={[styles.th, { width: 72, textAlign: 'right' }]}>TOTAL</Text>
           </View>
@@ -90,10 +91,18 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
             }
             return (
               <View key={item.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
-                <Text style={[styles.td, { flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{item.item_name}</Text>
+                <View style={[{ flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>
+                  <Text style={styles.td}>{item.item_name}</Text>
+                  {(item.dimensions || item.colour_finish) ? (
+                    <Text style={[styles.td, styles.tdMuted, { fontSize: 6, marginTop: 1 }]}>
+                      {[item.dimensions, item.colour_finish].filter(Boolean).join(' · ')}
+                    </Text>
+                  ) : null}
+                </View>
                 <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
                 <Text style={[styles.td, styles.tdMuted, { flex: 2 }]}>{item.delivery_address ?? ''}</Text>
-                <Text style={[styles.td, { width: 44, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}</Text>
+                <Text style={[styles.td, styles.tdMuted, { width: 36, textAlign: 'right', paddingRight: 4 }]}>{item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
+                <Text style={[styles.td, { width: 52, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                 <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
                 <Text style={[styles.td, { width: 72, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.cost_price * item.quantity)}</Text>
               </View>
