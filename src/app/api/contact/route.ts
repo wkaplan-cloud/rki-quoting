@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
           ${type ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Type:</strong> ${type}</p>` : ''}
           <p style="margin:16px 0 4px;font-size:14px;color:#8A877F;"><strong>Message:</strong></p>
           <p style="margin:0;font-size:15px;color:#1A1A18;white-space:pre-wrap;background:#fff;border:1px solid #D8D3C8;border-radius:6px;padding:12px 16px;">${message}</p>
+          <hr style="border:none;border-top:1px solid #D8D3C8;margin:24px 0 16px;" />
+          <a href="https://quotinghub.co.za/platform/messages" style="display:inline-block;padding:10px 20px;background:#1A1A18;color:#F5F2EC;text-decoration:none;border-radius:6px;font-size:13px;font-weight:500;">View in Platform Admin →</a>
         </div>
       `,
     })
