@@ -120,7 +120,7 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick
             className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors w-full text-left cursor-pointer"
           >
             <MessageSquare size={14} />
-            Contact & Feedback
+            Contact
           </button>
           <form action="/api/auth/signout" method="post">
             <button type="submit" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors w-full text-left cursor-pointer">

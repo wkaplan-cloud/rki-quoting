@@ -45,7 +45,7 @@ export function FeedbackModal({ userEmail, userName, onClose }: Props) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#D8D3C8]">
           <div className="flex items-center gap-2">
             <MessageSquare size={16} className="text-[#C4A46B]" />
-            <h2 className="font-serif text-base font-medium text-[#1A1A18]">Contact & Feedback</h2>
+            <h2 className="font-serif text-base font-medium text-[#1A1A18]">Contact</h2>
           </div>
           <button onClick={onClose} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
             <X size={17} />
