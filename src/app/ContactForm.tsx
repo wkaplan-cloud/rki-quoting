@@ -1,16 +1,7 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Send, CheckCircle } from 'lucide-react'
-
-declare global {
-  interface Window {
-    turnstile?: {
-      render: (el: HTMLElement, options: Record<string, unknown>) => string
-      reset: (widgetId: string) => void
-      getResponse: (widgetId: string) => string | undefined
-    }
-  }
-}
+import Script from 'next/script'
 
 export function ContactForm() {
   const [name, setName] = useState('')
@@ -20,38 +11,25 @@ export function ContactForm() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const turnstileRef = useRef<HTMLDivElement>(null)
-  const widgetId = useRef<string | null>(null)
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
+  // Reset widget after failed submit
   useEffect(() => {
-    if (!siteKey || !turnstileRef.current) return
-
-    const script = document.createElement('script')
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    script.async = true
-    script.defer = true
-    script.onload = () => {
-      if (window.turnstile && turnstileRef.current) {
-        widgetId.current = window.turnstile.render(turnstileRef.current, {
-          sitekey: siteKey,
-          theme: 'light',
-          size: 'normal',
-        })
-      }
+    if (error && siteKey && (window as any).turnstile) {
+      (window as any).turnstile.reset()
     }
-    document.head.appendChild(script)
-    return () => { document.head.removeChild(script) }
-  }, [siteKey])
+  }, [error, siteKey])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const cfToken = siteKey && widgetId.current
-      ? window.turnstile?.getResponse(widgetId.current)
+    // Get token from the hidden input Turnstile injects
+    const form = e.target as HTMLFormElement
+    const cfToken = siteKey
+      ? (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
       : undefined
 
     if (siteKey && !cfToken) {
@@ -68,7 +46,6 @@ export function ContactForm() {
       })
       if (!res.ok) {
         const d = await res.json()
-        if (widgetId.current) window.turnstile?.reset(widgetId.current)
         throw new Error(d.error || 'Failed to send')
       }
       setSent(true)
@@ -90,6 +67,10 @@ export function ContactForm() {
   }
 
   return (
+    <>
+      {siteKey && (
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" />
+      )}
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Honeypot — hidden from humans */}
       <input
@@ -135,8 +116,14 @@ export function ContactForm() {
         />
       </div>
 
-      {/* Turnstile widget — only renders when site key is configured */}
-      {siteKey && <div ref={turnstileRef} />}
+      {/* Turnstile widget — auto-renders when site key is configured */}
+      {siteKey && (
+        <div
+          className="cf-turnstile"
+          data-sitekey={siteKey}
+          data-theme="light"
+        />
+      )}
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
@@ -148,5 +135,6 @@ export function ContactForm() {
         {loading ? 'Sending…' : <><Send size={14} /> Send message</>}
       </button>
     </form>
+    </>
   )
 }
