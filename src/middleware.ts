@@ -23,6 +23,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Platform admin routes — handled by their own layout auth check
+  if (request.nextUrl.pathname.startsWith('/platform')) {
+    return supabaseResponse
+  }
+
   const isPublic = request.nextUrl.pathname === '/' ||
     request.nextUrl.pathname.startsWith('/login') ||
     request.nextUrl.pathname.startsWith('/signup') ||

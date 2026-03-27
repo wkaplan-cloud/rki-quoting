@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const ADMIN_EMAIL = process.env.PLATFORM_ADMIN_EMAIL ?? 'warren@kaplan.co.za'
 
@@ -21,6 +22,9 @@ export async function POST(req: NextRequest) {
   if (!email || !message?.trim()) {
     return NextResponse.json({ error: 'Email and message are required' }, { status: 400 })
   }
+
+  // Save to database
+  await supabaseAdmin.from('contact_submissions').insert({ name, email, type: type ?? null, message })
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   const subject = type
