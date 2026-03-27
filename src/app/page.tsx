@@ -73,14 +73,12 @@ export default function LandingPage() {
 
             {/* Mockup side */}
             <div className="flex-1 w-full lg:w-auto">
-              <div className="w-full max-w-xl mx-auto lg:mx-0 rounded-2xl overflow-hidden bg-[#F5F2EC] shadow-[0_24px_80px_-12px_rgba(26,26,24,0.18)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/hero-mockup.png"
-                  alt="QuotingHub dashboard"
-                  className="w-full"
-                />
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/hero-mockup.png"
+                alt="QuotingHub dashboard"
+                className="w-full max-w-xl mx-auto lg:mx-0 block drop-shadow-[0_24px_60px_rgba(26,26,24,0.15)]"
+              />
             </div>
           </div>
         </div>
