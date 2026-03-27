@@ -17,7 +17,7 @@ interface Props {
   project: Project & { client: { client_name: string; company: string | null; email: string | null } | null }
   initialLineItems: LineItem[]
   clients: { id: string; client_name: string; company: string | null }[]
-  suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null }[]
+  suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; is_platform: boolean; price_list_id: string | null }[]
   items: { id: string; item_name: string }[]
   officeAddress: { name: string; address: string }
   businessName: string
