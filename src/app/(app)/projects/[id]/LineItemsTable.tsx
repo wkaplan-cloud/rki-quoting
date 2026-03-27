@@ -133,7 +133,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }).select().single()
     if (error) { toast.error('Failed to create supplier'); return { id: '' } }
     toast.success(`Supplier "${name}" created`)
-    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null })
+    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, is_platform: false, price_list_id: null })
     return { id: data.id }
   }, [supabase, onSupplierCreated])
 
