@@ -57,6 +57,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [emailSending, setEmailSending] = useState(false)
   const [emailBody, setEmailBody] = useState('')
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>(initialEmailLogs)
+  const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -562,9 +563,15 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       {/* Email log */}
       {emailLogs.length > 0 && (
         <div className="px-8 mt-6 border-t border-[#EDE9E1] pt-6">
-          <h3 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3 flex items-center gap-2">
+          <button
+            onClick={() => setEmailHistoryOpen(v => !v)}
+            className="flex items-center gap-2 text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3 hover:text-[#2C2C2A] transition-colors cursor-pointer w-full"
+          >
             <Mail size={13} /> Email History
-          </h3>
+            <span className="ml-1 bg-[#EDE9E1] text-[#8A877F] rounded-full px-1.5 py-0.5 normal-case tracking-normal font-normal">{emailLogs.length}</span>
+            <ChevronDown size={12} className={`ml-auto transition-transform ${emailHistoryOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {emailHistoryOpen && (
           <div className="space-y-1">
             {emailLogs.map(log => (
               <div key={log.id} className="flex items-center justify-between px-4 py-2.5 bg-white border border-[#EDE9E1] rounded text-sm">
@@ -595,6 +602,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 

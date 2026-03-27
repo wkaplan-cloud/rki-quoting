@@ -75,8 +75,8 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
 }
 
 const LINE_ITEM_TIPS = [
-  { col: 'Item', tip: 'The name of the product or service. Type to search your saved items library or enter a new name.' },
-  { col: 'Description', tip: 'Optional detail shown on the quote/invoice PDF — fabric code, finish, dimensions, etc.' },
+  { col: 'Item', tip: 'The name of the product or service. Type to search your saved items or enter a new name. Select a supplier with a price list first to enable fabric/product lookup.' },
+  { col: 'Description', tip: 'Optional detail shown on the Purchase Order PDF — fabric code, finish, dimensions, SKU, etc. Not shown on quotes or invoices.' },
   { col: 'Qty', tip: 'Number of units. Used to calculate totals.' },
   { col: 'Supplier', tip: 'Select the supplier for this item. Their default markup % will be applied automatically.' },
   { col: 'Deliver To', tip: 'Where this item should be delivered. Defaults to your office address.' },
