@@ -29,6 +29,7 @@ export function AppLayout({ children, isAdmin, businessName, userEmail, userName
         <FeedbackModal
           userEmail={userEmail}
           userName={userName}
+          companyName={businessName}
           onClose={() => setFeedbackOpen(false)}
         />
       )}

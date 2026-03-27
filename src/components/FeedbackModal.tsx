@@ -7,10 +7,11 @@ const TYPES = ['Feedback', 'Help & Support', 'Feature Request'] as const
 interface Props {
   userEmail: string
   userName: string
+  companyName: string
   onClose: () => void
 }
 
-export function FeedbackModal({ userEmail, userName, onClose }: Props) {
+export function FeedbackModal({ userEmail, userName, companyName, onClose }: Props) {
   const [type, setType] = useState<typeof TYPES[number]>('Feedback')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -25,7 +26,7 @@ export function FeedbackModal({ userEmail, userName, onClose }: Props) {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: userName, email: userEmail, type, message }),
+        body: JSON.stringify({ name: userName, email: userEmail, type, message, company: companyName }),
       })
       if (!res.ok) {
         const d = await res.json()

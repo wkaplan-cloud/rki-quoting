@@ -12,11 +12,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }) // silently succeed
   }
 
-  const { name, email, type, message } = body as {
+  const { name, email, type, message, company } = body as {
     name?: string
     email?: string
     type?: string
     message?: string
+    company?: string
   }
 
   if (!email || !message?.trim()) {
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#F5F2EC;border-radius:8px;">
           <h2 style="margin:0 0 4px;font-size:20px;color:#1A1A18;">${subject}</h2>
           <hr style="border:none;border-top:1px solid #D8D3C8;margin:16px 0;" />
+          ${company ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Studio:</strong> ${company}</p>` : ''}
           ${name ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Name:</strong> ${name}</p>` : ''}
           <p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Email:</strong> ${email}</p>
           ${type ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Type:</strong> ${type}</p>` : ''}
