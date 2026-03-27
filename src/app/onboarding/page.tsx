@@ -106,7 +106,7 @@ export default function OnboardingPage() {
         {step === 0 && (
           <div className="bg-white border border-[#D8D3C8] rounded-xl p-10 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="h-16 w-auto object-contain mx-auto mb-8" />
+            <img src="/logo.png" alt="QuotingHub" className="h-28 w-auto object-contain mx-auto mb-8" />
             <h1 className="font-serif text-3xl text-[#1A1A18] mb-3">Welcome to QuotingHub</h1>
             <p className="text-[#8A877F] leading-relaxed mb-2">
               Let&apos;s get your studio set up. It only takes a couple of minutes.
