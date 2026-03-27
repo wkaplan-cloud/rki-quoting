@@ -14,11 +14,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data: project }, { data: allLineItems }, { data: allSuppliers }, { data: settings }] = await Promise.all([
+  const [{ data: project }, { data: allLineItems }, { data: allSuppliers }, { data: settings }, { data: platformContacts }] = await Promise.all([
     supabase.from('projects').select('*').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
     supabase.from('suppliers').select('*'),
     supabase.from('settings').select('vat_rate, logo_url, business_name, business_address, vat_number, company_registration, accounts_email, email_from').maybeSingle(),
+    supabase.from('platform_supplier_contacts').select('*'),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -47,8 +48,16 @@ export async function POST(req: NextRequest) {
 
   for (const sid of supplierIds) {
     const supplier = (allSuppliers ?? []).find(s => s.id === sid)
-    if (!supplier?.email) {
-      results.push({ supplierId: sid, supplierName: supplier?.supplier_name ?? sid, success: false, error: 'No email address on supplier' })
+    // For platform suppliers, merge in this org's rep contact (email takes priority)
+    const orgContact = supplier?.is_platform
+      ? (platformContacts ?? []).find(c => c.supplier_id === sid)
+      : null
+    const effectiveEmail = orgContact?.email || supplier?.email
+    const effectiveEmailCc = orgContact?.email_cc || supplier?.email_cc
+    const effectiveContactPerson = orgContact?.rep_name || supplier?.contact_person || supplier?.supplier_name
+
+    if (!effectiveEmail) {
+      results.push({ supplierId: sid, supplierName: supplier?.supplier_name ?? sid, success: false, error: supplier?.is_platform ? 'No rep email set — go to Suppliers → Home Fabrics to add your studio\'s rep email' : 'No email address on supplier' })
       continue
     }
 
@@ -88,11 +97,11 @@ export async function POST(req: NextRequest) {
     const { error: resendError } = await resend.emails.send({
       from: `${studioName} <quotes@quotinghub.co.za>`,
       ...(replyTo ? { replyTo } : {}),
-      to: supplier.email,
-      ...(supplier.email_cc ? { cc: supplier.email_cc } : {}),
+      to: effectiveEmail,
+      ...(effectiveEmailCc ? { cc: effectiveEmailCc } : {}),
       ...(accountsEmail ? { bcc: accountsEmail } : {}),
       subject,
-      text: `Dear ${supplier.contact_person || supplier.supplier_name},\n\nPlease find attached Purchase Order ${poNumber} for ${project.project_name}.\n\nKindly acknowledge receipt and confirm availability.\n\nKind regards,\n${studioName}`,
+      text: `Dear ${effectiveContactPerson},\n\nPlease find attached Purchase Order ${poNumber} for ${project.project_name}.\n\nKindly acknowledge receipt and confirm availability.\n\nKind regards,\n${studioName}`,
       html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
@@ -108,7 +117,7 @@ export async function POST(req: NextRequest) {
         </tr>
         <tr>
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
-            <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Dear ${supplier.contact_person || supplier.supplier_name},</p>
+            <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Dear ${effectiveContactPerson},</p>
             <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Please find attached Purchase Order for <strong>${project.project_name}</strong>. Kindly acknowledge receipt and confirm availability.</p>
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;">
               <tr>

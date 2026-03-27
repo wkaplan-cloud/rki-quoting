@@ -63,11 +63,7 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
                 <tr key={s.id} className={`group relative border-b border-[#EDE9E1] hover:bg-[#F5F2EC] ${i === filtered.length - 1 ? 'border-0' : ''}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      {s.is_platform ? (
-                        <span className="font-medium text-[#2C2C2A]">{s.supplier_name}</span>
-                      ) : (
-                        <Link href={`/suppliers/${s.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">{s.supplier_name}</Link>
-                      )}
+                      <Link href={`/suppliers/${s.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">{s.supplier_name}</Link>
                       {s.is_platform && (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#9A7B4F]/10 text-[#9A7B4F]">
                           <Globe size={9} /> Platform
