@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 const NOTIFICATION_EMAIL = process.env.CONTACT_NOTIFICATION_EMAIL ?? 'wkaplan@gmail.com'
 
@@ -25,9 +26,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email and message are required' }, { status: 400 })
   }
 
-  // Verify Turnstile token if secret key is configured
+  // Verify Turnstile token for unauthenticated (public) submissions only
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   const turnstileSecret = process.env.TURNSTILE_SECRET_KEY
-  if (turnstileSecret) {
+  if (turnstileSecret && !user) {
     if (!cf_token) {
       return NextResponse.json({ error: 'Security check required' }, { status: 400 })
     }
