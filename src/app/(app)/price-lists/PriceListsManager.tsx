@@ -76,7 +76,7 @@ function mapHeaders(headers: string[]): (keyof ParsedItem | null)[] {
   return headers.map(h => COLUMN_MAP[h.toLowerCase().trim()] ?? null)
 }
 
-export function PriceListsManager({ priceLists, canManage }: { priceLists: PriceList[]; canManage: boolean }) {
+export function PriceListsManager({ priceLists, canManage, basePath = '/price-lists' }: { priceLists: PriceList[]; canManage: boolean; basePath?: string }) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [showImport, setShowImport] = useState(false)
@@ -161,7 +161,7 @@ export function PriceListsManager({ priceLists, canManage }: { priceLists: Price
 
       setShowImport(false)
       resetForm()
-      router.push(`/price-lists/${createData.id}`)
+      router.push(`${basePath}/${createData.id}`)
     } catch (err) {
       setParseError(err instanceof Error ? err.message : 'Import failed')
     } finally {
@@ -247,7 +247,7 @@ export function PriceListsManager({ priceLists, canManage }: { priceLists: Price
                           <Trash2 size={13} />
                         </Button>
                       )}
-                      <Button size="sm" variant="secondary" onClick={() => router.push(`/price-lists/${pl.id}`)}>
+                      <Button size="sm" variant="secondary" onClick={() => router.push(`${basePath}/${pl.id}`)}>
                         View <ChevronRight size={13} />
                       </Button>
                     </>
