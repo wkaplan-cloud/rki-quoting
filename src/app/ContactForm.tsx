@@ -1,6 +1,16 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Send, CheckCircle } from 'lucide-react'
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, options: Record<string, unknown>) => string
+      reset: (widgetId: string) => void
+      getResponse: (widgetId: string) => string | undefined
+    }
+  }
+}
 
 export function ContactForm() {
   const [name, setName] = useState('')
@@ -10,19 +20,55 @@ export function ContactForm() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+  const turnstileRef = useRef<HTMLDivElement>(null)
+  const widgetId = useRef<string | null>(null)
+
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+  useEffect(() => {
+    if (!siteKey || !turnstileRef.current) return
+
+    const script = document.createElement('script')
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      if (window.turnstile && turnstileRef.current) {
+        widgetId.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: siteKey,
+          theme: 'light',
+          size: 'normal',
+        })
+      }
+    }
+    document.head.appendChild(script)
+    return () => { document.head.removeChild(script) }
+  }, [siteKey])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    const cfToken = siteKey && widgetId.current
+      ? window.turnstile?.getResponse(widgetId.current)
+      : undefined
+
+    if (siteKey && !cfToken) {
+      setError('Please complete the security check.')
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message, _trap: trap }),
+        body: JSON.stringify({ name, email, message, _trap: trap, cf_token: cfToken }),
       })
       if (!res.ok) {
         const d = await res.json()
+        if (widgetId.current) window.turnstile?.reset(widgetId.current)
         throw new Error(d.error || 'Failed to send')
       }
       setSent(true)
@@ -88,6 +134,9 @@ export function ContactForm() {
           className="w-full px-3 py-2.5 text-sm border border-[#D8D3C8] rounded-lg bg-white text-[#1A1A18] focus:outline-none focus:border-[#9A7B4F] transition-colors resize-none"
         />
       </div>
+
+      {/* Turnstile widget — only renders when site key is configured */}
+      {siteKey && <div ref={turnstileRef} />}
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 

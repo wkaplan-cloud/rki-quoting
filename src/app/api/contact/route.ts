@@ -12,16 +12,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }) // silently succeed
   }
 
-  const { name, email, type, message, company } = body as {
+  const { name, email, type, message, company, cf_token } = body as {
     name?: string
     email?: string
     type?: string
     message?: string
     company?: string
+    cf_token?: string
   }
 
   if (!email || !message?.trim()) {
     return NextResponse.json({ error: 'Email and message are required' }, { status: 400 })
+  }
+
+  // Verify Turnstile token if secret key is configured
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY
+  if (turnstileSecret) {
+    if (!cf_token) {
+      return NextResponse.json({ error: 'Security check required' }, { status: 400 })
+    }
+    const verify = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: turnstileSecret, response: cf_token }),
+    })
+    const verifyData = await verify.json()
+    if (!verifyData.success) {
+      return NextResponse.json({ error: 'Security check failed. Please try again.' }, { status: 400 })
+    }
   }
 
   // Save to database
