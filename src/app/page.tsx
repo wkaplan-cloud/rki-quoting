@@ -3,6 +3,7 @@ import {
   FileText, Receipt, ShoppingCart, Users, Zap, Download,
   ChevronRight, Check, ArrowRight
 } from 'lucide-react'
+import { ContactForm } from './ContactForm'
 
 export default function LandingPage() {
   return (
@@ -72,12 +73,14 @@ export default function LandingPage() {
 
             {/* Mockup side */}
             <div className="flex-1 w-full lg:w-auto">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/hero-mockup.png"
-                alt="QuotingHub dashboard"
-                className="w-full max-w-xl mx-auto lg:mx-0 rounded-2xl shadow-[0_24px_80px_-12px_rgba(26,26,24,0.18)]"
-              />
+              <div className="w-full max-w-xl mx-auto lg:mx-0 rounded-2xl overflow-hidden bg-[#F5F2EC] shadow-[0_24px_80px_-12px_rgba(26,26,24,0.18)]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/hero-mockup.png"
+                  alt="QuotingHub dashboard"
+                  className="w-full"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -267,6 +270,20 @@ export default function LandingPage() {
               Log in
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Contact */}
+      <section className="py-24 px-6 bg-white border-t border-[#D8D3C8]">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">Get in touch</p>
+            <h2 className="font-serif text-4xl md:text-5xl text-[#1A1A18] tracking-tight mb-4">
+              We&apos;d love to hear from you
+            </h2>
+            <p className="text-[#8A877F]">Questions, feedback, or just want to learn more — send us a message.</p>
+          </div>
+          <ContactForm />
         </div>
       </section>
 

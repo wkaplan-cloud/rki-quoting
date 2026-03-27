@@ -34,7 +34,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === '/opengraph-image' ||
     request.nextUrl.pathname === '/sitemap.xml' ||
     request.nextUrl.pathname === '/robots.txt' ||
-    request.nextUrl.pathname === '/llms.txt'
+    request.nextUrl.pathname === '/llms.txt' ||
+    request.nextUrl.pathname.startsWith('/api/contact')
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))

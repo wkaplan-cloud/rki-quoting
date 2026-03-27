@@ -3,14 +3,35 @@ import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { SessionGuard } from '@/components/auth/SessionGuard'
+import { FeedbackModal } from '@/components/FeedbackModal'
 
-export function AppLayout({ children, isAdmin, businessName }: { children: React.ReactNode; isAdmin: boolean; businessName: string }) {
+export function AppLayout({ children, isAdmin, businessName, userEmail, userName }: {
+  children: React.ReactNode
+  isAdmin: boolean
+  businessName: string
+  userEmail: string
+  userName: string
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   return (
     <div className="flex min-h-screen bg-[#F5F2EC]">
       <SessionGuard />
-      <Sidebar isAdmin={isAdmin} businessName={businessName} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        isAdmin={isAdmin}
+        businessName={businessName}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onContactClick={() => setFeedbackOpen(true)}
+      />
+      {feedbackOpen && (
+        <FeedbackModal
+          userEmail={userEmail}
+          userName={userName}
+          onClose={() => setFeedbackOpen(false)}
+        />
+      )}
 
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-[#1A1A18] px-4 py-2 flex items-center gap-3 h-16">

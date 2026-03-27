@@ -17,13 +17,19 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   if (!orgId) redirect('/onboarding')
 
-  const [{ data: membership }, { data: settings }] = await Promise.all([
+  const [{ data: membership }, { data: settings }, { data: member }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
     supabase.from('settings').select('business_name').maybeSingle(),
+    supabaseAdmin.from('org_members').select('full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
   ])
 
   return (
-    <AppLayout isAdmin={membership?.role === 'admin'} businessName={settings?.business_name ?? ''}>
+    <AppLayout
+      isAdmin={membership?.role === 'admin'}
+      businessName={settings?.business_name ?? ''}
+      userEmail={user.email ?? ''}
+      userName={member?.full_name ?? ''}
+    >
       {children}
     </AppLayout>
   )
