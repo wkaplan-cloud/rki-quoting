@@ -410,7 +410,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       <input
                         type="text" inputMode="decimal"
                         value={item.quantity}
-                        onChange={e => updateLocal(item.id, 'quantity', e.target.value.replace(',', '.') as unknown as number)}
+                        onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'quantity', v as unknown as number) }}
                         onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value.replace(',', '.')) || 0)}
                         className={NUM_INPUT + ' flex-1'}
                       />
@@ -496,7 +496,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     <input
                       type="text" inputMode="decimal"
                       value={item.markup_percentage}
-                      onChange={e => updateLocal(item.id, 'markup_percentage', e.target.value.replace(',', '.') as unknown as number)}
+                      onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'markup_percentage', v as unknown as number) }}
                       onBlur={e => saveField(item.id, 'markup_percentage', parseFloat(e.target.value.replace(',', '.')) || 0)}
                       className={NUM_INPUT}
                     />
