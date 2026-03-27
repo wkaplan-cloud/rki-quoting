@@ -12,10 +12,10 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
   const [focused, setFocused] = useState(false)
   if (focused) return (
     <input
-      type="number" min="0" step="0.01" autoFocus
-      value={value}
-      onChange={e => onChange(parseFloat(e.target.value) || 0)}
-      onBlur={e => { setFocused(false); onBlur(parseFloat(e.target.value) || 0) }}
+      type="text" inputMode="decimal" autoFocus
+      defaultValue={value}
+      onChange={e => onChange(parseFloat(e.target.value.replace(',', '.')) || 0)}
+      onBlur={e => { setFocused(false); onBlur(parseFloat(e.target.value.replace(',', '.')) || 0) }}
       className={className}
     />
   )
@@ -408,10 +408,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   <td className={COL}>
                     <div className="flex items-center gap-1">
                       <input
-                        type="number" min="0" step="1"
+                        type="text" inputMode="decimal"
                         value={item.quantity}
-                        onChange={e => updateLocal(item.id, 'quantity', parseFloat(e.target.value) || 0)}
-                        onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value) || 0)}
+                        onChange={e => updateLocal(item.id, 'quantity', e.target.value.replace(',', '.') as unknown as number)}
+                        onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value.replace(',', '.')) || 0)}
                         className={NUM_INPUT + ' flex-1'}
                       />
                       <input
@@ -494,10 +494,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   {/* Markup % */}
                   <td className={COL}>
                     <input
-                      type="number" min="0" step="0.1"
+                      type="text" inputMode="decimal"
                       value={item.markup_percentage}
-                      onChange={e => updateLocal(item.id, 'markup_percentage', parseFloat(e.target.value) || 0)}
-                      onBlur={e => saveField(item.id, 'markup_percentage', parseFloat(e.target.value) || 0)}
+                      onChange={e => updateLocal(item.id, 'markup_percentage', e.target.value.replace(',', '.') as unknown as number)}
+                      onBlur={e => saveField(item.id, 'markup_percentage', parseFloat(e.target.value.replace(',', '.')) || 0)}
                       className={NUM_INPUT}
                     />
                   </td>
