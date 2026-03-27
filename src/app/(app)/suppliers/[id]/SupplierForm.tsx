@@ -19,6 +19,7 @@ interface PlatformContact {
   email_cc: string | null
   rep_name: string | null
   rep_number: string | null
+  markup_percentage: number | null
 }
 
 export function SupplierForm({ supplier, platformContact }: { supplier: Supplier | null; platformContact: PlatformContact | null }) {
@@ -32,6 +33,7 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
     email_cc: platformContact?.email_cc ?? '',
     rep_name: platformContact?.rep_name ?? '',
     rep_number: platformContact?.rep_number ?? '',
+    markup_percentage: String(platformContact?.markup_percentage ?? supplier?.markup_percentage ?? 40),
   })
   const setC = (k: string, v: string) => setContact(f => ({ ...f, [k]: v }))
 
@@ -43,7 +45,7 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     if (!user || !orgId) { toast.error('Session error'); setSaving(false); return }
 
-    const payload = { org_id: orgId, supplier_id: supplier.id, ...contact }
+    const payload = { org_id: orgId, supplier_id: supplier.id, ...contact, markup_percentage: parseFloat(contact.markup_percentage) || null }
     const { error } = platformContact
       ? await supabase.from('platform_supplier_contacts').update(payload).eq('id', platformContact.id)
       : await supabase.from('platform_supplier_contacts').insert(payload)
@@ -126,8 +128,20 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
         {/* Editable org contact */}
         <form onSubmit={savePlatformContact} className="space-y-5">
           <div>
-            <h3 className="text-sm font-semibold text-[#2C2C2A] mb-1">Your Studio's Rep Contact</h3>
+            <h3 className="text-sm font-semibold text-[#2C2C2A] mb-1">Your Studio's Settings</h3>
             <p className="text-xs text-[#8A877F]">These details are specific to your studio and will be used when sending purchase orders to {supplier.supplier_name}.</p>
+          </div>
+          <div className="bg-[#9A7B4F]/8 border border-[#9A7B4F]/30 rounded p-4">
+            <label className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider block mb-2">Default Markup %</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text" inputMode="decimal"
+                value={contact.markup_percentage}
+                onChange={e => setC('markup_percentage', e.target.value.replace(',', '.'))}
+                className="w-28 px-3 py-2 bg-white border border-[#D8D3C8] rounded text-xl font-semibold text-[#9A7B4F] text-center outline-none focus:border-[#9A7B4F]"
+              />
+              <span className="text-[#8A877F] text-sm">% — auto-fills into new line items</span>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Rep Name" value={contact.rep_name} onChange={e => setC('rep_name', e.target.value)} />

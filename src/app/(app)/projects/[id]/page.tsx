@@ -7,7 +7,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: project }, { data: lineItems }, { data: clients }, { data: suppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }] =
+  const [{ data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }, { data: platformContacts }] =
     await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
       supabase.from('line_items').select('*').eq('project_id', id).order('sort_order'),
@@ -17,16 +17,25 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('settings').select('business_name, business_address, vat_rate, sage_api_key, sage_username, sage_password, sage_company_id, email_template_quote, email_template_invoice').maybeSingle(),
       supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
       supabase.from('email_logs').select('*').eq('project_id', id).order('sent_at', { ascending: false }),
+      supabase.from('platform_supplier_contacts').select('supplier_id, markup_percentage'),
     ])
 
   if (!project) notFound()
+
+  // For platform suppliers, override markup_percentage with the studio's own setting if set
+  const suppliers = (rawSuppliers ?? []).map(s => {
+    if (!s.is_platform) return s
+    const contact = (platformContacts ?? []).find(c => c.supplier_id === s.id)
+    if (contact?.markup_percentage != null) return { ...s, markup_percentage: contact.markup_percentage }
+    return s
+  })
 
   return (
     <ProjectDetail
       project={project}
       initialLineItems={lineItems ?? []}
       clients={clients ?? []}
-      suppliers={suppliers ?? []}
+      suppliers={suppliers}
       items={items ?? []}
       officeAddress={{ name: settings?.business_name ?? 'RKI Office', address: settings?.business_address ?? '' }}
       businessName={settings?.business_name ?? 'R Kaplan Interiors'}
