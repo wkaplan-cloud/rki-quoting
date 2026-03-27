@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
 
   const vatRate = project.vat_rate ?? settings?.vat_rate ?? 15
   const logoUrl = await fetchLogoBase64(settings?.logo_url)

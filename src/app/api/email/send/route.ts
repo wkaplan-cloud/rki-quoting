@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
 
   // Use override email from modal, or fall back to what's saved on the client
   const clientEmail = overrideEmail?.trim() || (project.client as any)?.email
