@@ -14,6 +14,17 @@ export default async function PlatformLayout({ children }: { children: React.Rea
     redirect('/login')
   }
 
+  // Require MFA (aal2) for platform admin access
+  const { data: mfa } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  if (!mfa || mfa.nextLevel === 'aal1') {
+    // No MFA factor enrolled yet — force setup
+    redirect('/mfa/enroll')
+  }
+  if (mfa.currentLevel !== 'aal2') {
+    // MFA enrolled but not yet verified this session
+    redirect('/mfa/challenge')
+  }
+
   const navItems = [
     { href: '/platform', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { href: '/platform/studios', label: 'Studios', icon: Building2 },
