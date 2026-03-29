@@ -1,9 +1,10 @@
 'use client'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2 } from 'lucide-react'
+import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
+import Link from 'next/link'
 
 interface Member {
   id: string
@@ -32,6 +33,8 @@ interface Props {
   auditLogs: AuditLog[]
   isAdmin: boolean
   settings: Record<string, unknown> | null
+  plan: string
+  subscriptionStatus: string
 }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -40,7 +43,8 @@ const ACTION_COLOR: Record<string, string> = {
   deleted: 'text-red-600 bg-red-50',
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin, settings }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus }: Props) {
+  const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('designer')
@@ -57,8 +61,8 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings }: P
       body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
     })
     if (!res.ok) {
-      const { error } = await res.json()
-      toast.error(error ?? 'Failed to send invite')
+      const data = await res.json()
+      toast.error(data.error ?? 'Failed to send invite', { duration: data.upgrade ? 6000 : 4000 })
     } else {
       toast.success(`Invite sent to ${inviteEmail}`)
       setMembers(m => [...m, {
@@ -124,6 +128,20 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings }: P
               <h3 className="text-sm font-medium text-[#2C2C2A] mb-4 flex items-center gap-2">
                 <UserPlus size={15} className="text-[#9A7B4F]" /> Invite a team member
               </h3>
+              {isSoloActive ? (
+                <div className="flex items-center justify-between bg-[#9A7B4F]/8 border border-[#9A7B4F]/25 rounded-lg px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#2C2C2A]">Solo plan — 1 user only</p>
+                    <p className="text-xs text-[#8A877F] mt-0.5">Upgrade to Studio to add team members.</p>
+                  </div>
+                  <Link
+                    href="/subscribe"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-[#9A7B4F] text-white text-xs font-medium rounded-lg hover:bg-[#B8956A] transition-colors flex-shrink-0 ml-4"
+                  >
+                    Upgrade <ArrowRight size={12} />
+                  </Link>
+                </div>
+              ) : (
               <form onSubmit={handleInvite} className="flex gap-3">
                 <input
                   type="email"
@@ -145,6 +163,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings }: P
                   {inviting ? 'Sending…' : 'Send Invite'}
                 </Button>
               </form>
+              )}
             </div>
           )}
 

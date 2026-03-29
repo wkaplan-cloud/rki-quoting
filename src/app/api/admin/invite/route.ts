@@ -18,6 +18,24 @@ export async function POST(req: NextRequest) {
 
   if (membership?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
+  // Solo plan active subscribers are limited to 1 user
+  const { data: org } = await supabaseAdmin
+    .from('organizations')
+    .select('plan, subscription_status')
+    .eq('id', membership.org_id)
+    .single()
+
+  if (org?.plan === 'solo' && org?.subscription_status === 'active') {
+    const { count } = await supabaseAdmin
+      .from('org_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', membership.org_id)
+      .eq('status', 'active')
+    if ((count ?? 0) >= 1) {
+      return NextResponse.json({ error: 'Solo plan is limited to 1 user. Upgrade to Studio to add team members.', upgrade: true }, { status: 403 })
+    }
+  }
+
   const { email, role } = await req.json()
   if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 

@@ -25,10 +25,11 @@ export default async function AdminPage() {
   // Non-admins and unauthenticated users get a 404
   if (membership?.role !== 'admin') notFound()
 
-  const [{ data: members }, { data: auditLogs }, { data: settings }] = await Promise.all([
+  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
     supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(100),
     supabase.from('settings').select('*').maybeSingle(),
+    supabaseAdmin.from('organizations').select('plan, subscription_status').eq('id', orgId).single(),
   ])
 
   return (
@@ -40,6 +41,8 @@ export default async function AdminPage() {
           auditLogs={auditLogs ?? []}
           isAdmin={true}
           settings={settings}
+          plan={org?.plan ?? 'trial'}
+          subscriptionStatus={org?.subscription_status ?? 'trialing'}
         />
       </div>
     </div>
