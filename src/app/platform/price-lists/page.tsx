@@ -11,7 +11,7 @@ export default async function PlatformPriceListsPage() {
       .order('created_at', { ascending: false }),
     supabaseAdmin
       .from('price_list_access')
-      .select('id, org_id, price_list_id, status, requested_at, orgs(name)')
+      .select('id, org_id, price_list_id, status, requested_at, organizations(name)')
       .eq('status', 'pending')
       .order('requested_at', { ascending: true }),
   ])
