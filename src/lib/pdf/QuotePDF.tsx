@@ -19,9 +19,10 @@ interface Props {
   bankAccount?: string | null
   bankBranch?: string | null
   termsConditions?: string | null
+  printDate?: string | null
 }
 
-export function QuotePDF({ project, client, lineItems, type, vatRate = 15, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions }: Props) {
+export function QuotePDF({ project, client, lineItems, type, vatRate = 15, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, printDate }: Props) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate)
 
@@ -50,7 +51,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, foote
           <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
             <Text style={styles.docMeta}>{`#${project.project_number}`}</Text>
-            <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            <Text style={styles.docMeta}>{new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           </View>
         </View>
 

@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
         businessAddress: settings?.business_address,
         vatNumber: settings?.vat_number,
         companyReg: settings?.company_registration,
+        printDate: new Date().toISOString(),
       }) as any
     )
 

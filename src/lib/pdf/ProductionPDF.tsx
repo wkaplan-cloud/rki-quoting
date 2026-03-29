@@ -50,9 +50,10 @@ interface Props {
   logoUrl?: string | null
   businessName?: string | null
   vatRate?: number
+  printDate?: string | null
 }
 
-export function ProductionPDF({ project, lineItems, suppliers, logoUrl, businessName, vatRate = 15 }: Props) {
+export function ProductionPDF({ project, lineItems, suppliers, logoUrl, businessName, vatRate = 15, printDate }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.supplier_name]))
   const totals = computeTotals(lineItems, project.design_fee, vatRate)
   let itemIndex = 0
@@ -71,7 +72,7 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
           <View style={{ alignItems: 'center' }}>
             <Text style={s.title}>PRODUCTION SHEET</Text>
             <Text style={s.meta}>{project.project_name}  ·  {project.project_number}</Text>
-            <Text style={s.meta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            <Text style={s.meta}>{new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.meta}>Total (incl. VAT)</Text>

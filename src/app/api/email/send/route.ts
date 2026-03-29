@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
         bankBranch: settings?.bank_branch_code,
         footerText: settings?.footer_text,
         termsConditions: settings?.terms_conditions,
+        printDate: new Date().toISOString(),
       }) as any
     )
 

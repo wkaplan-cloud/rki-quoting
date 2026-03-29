@@ -14,9 +14,10 @@ interface Props {
   businessAddress?: string | null
   vatNumber?: string | null
   companyReg?: string | null
+  printDate?: string | null
 }
 
-function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null }) {
+function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null; printDate?: string | null }) {
   const itemRows = items.filter(i => i.row_type !== 'section')
   const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const vatAmount = subtotal * (vatRate / 100)
@@ -46,7 +47,7 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
         <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
           <Text style={styles.docTitle}>PURCHASE ORDER</Text>
           <Text style={styles.docMeta}>{poNumber}</Text>
-          <Text style={styles.docMeta}>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+          <Text style={styles.docMeta}>{new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
         </View>
       </View>
 
@@ -141,9 +142,9 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
   )
 }
 
-export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg }: Props) {
+export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
-  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg }
+  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate }
 
   // Single supplier mode — lineItems already filtered by API
   if (supplierId) {
