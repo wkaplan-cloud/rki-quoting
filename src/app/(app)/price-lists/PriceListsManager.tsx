@@ -257,8 +257,8 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                       <Button size="sm" variant="secondary" onClick={() => setDeleteId(null)}>No</Button>
                     </>
                   ) : (() => {
-                    // For global price lists, check access state (platform admin always has access)
-                    if (pl.is_global && !canManage) {
+                    // For global price lists in studio context, always check org-level access
+                    if (pl.is_global && basePath === '/price-lists') {
                       const access = localAccess.find(a => a.price_list_id === pl.id)
                       if (!access) {
                         return (
@@ -282,7 +282,7 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                         )
                       }
                     }
-                    // Active or platform admin or non-global
+                    // Active access, platform admin view, or non-global
                     return (
                       <>
                         {canManage && (

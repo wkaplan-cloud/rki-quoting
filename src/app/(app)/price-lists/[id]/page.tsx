@@ -18,11 +18,8 @@ export default async function PriceListDetailPage({ params }: { params: Promise<
 
   if (!priceList) notFound()
 
-  const platformAdmin = process.env.PLATFORM_ADMIN_EMAIL
-  const isAdmin = user?.email === platformAdmin
-
-  // For global price lists, check the org has active access (admins bypass)
-  if (priceList.is_global && !isAdmin && orgId) {
+  // For global price lists, check the org has active access regardless of who is logged in
+  if (priceList.is_global && orgId) {
     const { data: access } = await supabaseAdmin
       .from('price_list_access')
       .select('status')
