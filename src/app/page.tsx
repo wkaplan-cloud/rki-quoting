@@ -16,6 +16,12 @@ export default function LandingPage() {
           <img src="/logo.png" alt="QuotingHub" className="h-28 w-auto object-contain" />
           <div className="flex items-center gap-3">
             <Link
+              href="/pricing"
+              className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium"
+            >
+              Pricing
+            </Link>
+            <Link
               href="/login"
               className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium"
             >

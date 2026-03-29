@@ -17,6 +17,23 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   if (!orgId) redirect('/onboarding')
 
+  // Check subscription / trial status
+  const { data: org } = await supabaseAdmin
+    .from('organizations')
+    .select('subscription_status, trial_ends_at')
+    .eq('id', orgId)
+    .single()
+
+  if (org) {
+    const isActive = org.subscription_status === 'active'
+    const isTrialing = org.subscription_status === 'trialing'
+    const trialExpired = isTrialing && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()
+    const isCancelled = org.subscription_status === 'cancelled'
+    if (!isActive && (trialExpired || isCancelled)) {
+      redirect('/subscribe')
+    }
+  }
+
   const [{ data: membership }, { data: settings }, { data: member }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
     supabase.from('settings').select('business_name').maybeSingle(),

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Users, FolderOpen, Mail, Phone, MapPin, Calendar } from 'lucide-react'
 import Link from 'next/link'
+import { SubscriptionPanel } from './SubscriptionPanel'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -94,6 +95,14 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
       </div>
+
+      {/* Subscription management */}
+      <SubscriptionPanel
+        orgId={id}
+        plan={org.plan ?? 'trial'}
+        status={org.subscription_status ?? 'trialing'}
+        trialEndsAt={org.trial_ends_at ?? null}
+      />
 
       {/* Members */}
       <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
