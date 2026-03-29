@@ -65,14 +65,24 @@ export async function GET(req: NextRequest) {
   const logId = logRow?.id
 
   try {
-    // Load all product IDs + current prices from price_list_items
-    const { data: items, error: fetchErr } = await supabase
-      .from('price_list_items')
-      .select('id, product_id, price_zar')
-      .not('product_id', 'is', null)
+    // Load all product IDs + current prices from price_list_items (paginate past 1000 row limit)
+    const items: { id: string; product_id: string; price_zar: number | null }[] = []
+    const PAGE = 1000
+    let from = 0
+    while (true) {
+      const { data, error: fetchErr } = await supabase
+        .from('price_list_items')
+        .select('id, product_id, price_zar')
+        .not('product_id', 'is', null)
+        .range(from, from + PAGE - 1)
+      if (fetchErr) throw new Error(fetchErr.message)
+      if (!data?.length) break
+      items.push(...data)
+      if (data.length < PAGE) break
+      from += PAGE
+    }
 
-    if (fetchErr) throw new Error(fetchErr.message)
-    if (!items?.length) {
+    if (!items.length) {
       await supabase.from('twinbru_sync_log').update({
         status: 'ok', completed_at: new Date().toISOString(),
         items_checked: 0, items_changed: 0,
