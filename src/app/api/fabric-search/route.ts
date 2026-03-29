@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   // Search across design, colour, collection, sku — return top 20
   const { data, error } = await supabase
     .from('price_list_items')
-    .select('id, brand, collection, design, colour, sku, price_zar, image_url')
+    .select('id, brand, collection, design, colour, sku, product_id, price_zar, image_url')
     .or(`design.ilike.%${q}%,colour.ilike.%${q}%,collection.ilike.%${q}%,sku.ilike.%${q}%`)
     .limit(20)
 

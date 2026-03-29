@@ -10,6 +10,7 @@ interface FabricResult {
   design: string | null
   colour: string | null
   sku: string | null
+  product_id: string | null
   price_zar: number | null
   image_url: string | null
 }

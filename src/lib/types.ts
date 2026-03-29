@@ -72,6 +72,8 @@ export interface LineItem {
   lead_time_weeks: number | null
   dimensions: string | null
   colour_finish: string | null
+  twinbru_product_id: number | null
+  twinbru_cost_price: number | null
   created_at: string
 }
 

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PriceListsManager } from '@/app/(app)/price-lists/PriceListsManager'
 import { PlatformAccessRequests } from './PlatformAccessRequests'
 import { PlatformActiveAccess } from './PlatformActiveAccess'
+import { TwinbruSyncPanel } from './TwinbruSyncPanel'
 
 export default async function PlatformPriceListsPage() {
   const [{ data: priceLists }, { data: allAccess }] = await Promise.all([
@@ -31,12 +32,39 @@ export default async function PlatformPriceListsPage() {
   const pendingRequests = withOrgName.filter(r => r.status === 'pending')
   const activeAccess = withOrgName.filter(r => r.status === 'active')
 
+  // Twinbru sync status — ignore errors, panel degrades gracefully
+  const syncLogsRes = await supabaseAdmin
+    .from('twinbru_sync_log')
+    .select('id, sync_type, started_at, completed_at, status, items_checked, items_changed, items_added, error_message, triggered_by')
+    .in('sync_type', ['prices', 'catalogue'])
+    .order('completed_at', { ascending: false })
+    .limit(10)
+
+  const catalogueCountRes = await supabaseAdmin
+    .from('price_list_items')
+    .select('id', { count: 'exact', head: true })
+    .not('product_id', 'is', null)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const syncLogs: any[] = syncLogsRes.data ?? []
+  const lastPriceSync = syncLogs.find(l => l.sync_type === 'prices') ?? null
+  const lastCatalogueSync = syncLogs.find(l => l.sync_type === 'catalogue') ?? null
+  const catalogueCount = catalogueCountRes.count ?? 0
+
   return (
     <div className="p-8 space-y-10">
       <div>
         <h1 className="text-xl font-semibold text-white">Price Lists</h1>
         <p className="text-sm text-white/50 mt-0.5">Manage platform-wide price lists available to all studios</p>
       </div>
+
+      {/* Twinbru Sync */}
+      <TwinbruSyncPanel
+        lastPriceSync={lastPriceSync}
+        lastCatalogueSync={lastCatalogueSync}
+        catalogueCount={catalogueCount}
+        cronSecret={process.env.CRON_SECRET ?? ''}
+      />
 
       {/* Pending requests */}
       <div>

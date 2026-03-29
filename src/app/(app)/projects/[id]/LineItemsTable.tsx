@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import toast from 'react-hot-toast'
@@ -97,6 +97,30 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
   const [showTips, setShowTips] = useState(false)
+  // Map of twinbru_product_id → current catalogue price (for stale price detection)
+  const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
+
+  useEffect(() => {
+    const ids = lineItems
+      .map(i => i.twinbru_product_id)
+      .filter((id): id is number => id != null)
+    if (ids.length === 0) return
+    supabase
+      .from('price_list_items')
+      .select('product_id, price_zar')
+      .in('product_id', ids.map(String))
+      .then(({ data }) => {
+        if (!data) return
+        const map: Record<number, number | null> = {}
+        for (const row of data) {
+          const pid = parseInt(row.product_id, 10)
+          if (!isNaN(pid)) map[pid] = row.price_zar
+        }
+        setCataloguePrices(map)
+      })
+  // Only re-run when the set of twinbru product IDs changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems.map(i => i.twinbru_product_id).join(',')])
 
   const updateLocal = useCallback((id: string, field: string, value: string | number | null) => {
     onChange(lineItems.map(item =>
@@ -181,16 +205,20 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
   const handleFabricSelect = useCallback(async (lineItemId: string, fabric: {
     design: string | null; collection: string | null; colour: string | null
-    sku: string | null; brand: string | null; price_zar: number | null; image_url: string | null
+    sku: string | null; brand: string | null; product_id: string | null
+    price_zar: number | null; image_url: string | null
   }) => {
     const description = [fabric.brand, fabric.collection, fabric.design, fabric.colour, fabric.sku]
       .filter(Boolean).join(' · ')
+    const twinbru_product_id = fabric.product_id ? parseInt(fabric.product_id, 10) || null : null
     const updates = {
       item_name: 'Fabric',
       description,
       cost_price: fabric.price_zar ?? 0,
       fabric_image_url: fabric.image_url ?? null,
       colour_finish: fabric.colour ?? null,
+      twinbru_product_id,
+      twinbru_cost_price: fabric.price_zar ?? null,
     }
     onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
     await supabase.from('line_items').update(updates).eq('id', lineItemId)
@@ -484,12 +512,33 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
                   {/* Cost Price */}
                   <td className={COL}>
-                    <CurrencyInput
-                      value={item.cost_price}
-                      onChange={v => updateLocal(item.id, 'cost_price', v)}
-                      onBlur={v => saveField(item.id, 'cost_price', v)}
-                      className={NUM_INPUT}
-                    />
+                    {(() => {
+                      const pid = item.twinbru_product_id
+                      const currentCataloguePrice = pid != null ? cataloguePrices[pid] : undefined
+                      const priceChanged = pid != null
+                        && currentCataloguePrice !== undefined
+                        && currentCataloguePrice !== null
+                        && item.twinbru_cost_price !== null
+                        && item.twinbru_cost_price !== currentCataloguePrice
+                      return (
+                        <div className="relative">
+                          <CurrencyInput
+                            value={item.cost_price}
+                            onChange={v => updateLocal(item.id, 'cost_price', v)}
+                            onBlur={v => saveField(item.id, 'cost_price', v)}
+                            className={NUM_INPUT}
+                          />
+                          {priceChanged && (
+                            <div
+                              title={`Twinbru price updated to R${currentCataloguePrice?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} — verify before sending`}
+                              className="absolute -top-1 -right-1 text-amber-500 cursor-help"
+                            >
+                              <AlertTriangle size={11} />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </td>
 
                   {/* Markup % */}
