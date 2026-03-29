@@ -9,7 +9,7 @@ interface Request {
   price_list_id: string
   status: string
   requested_at: string
-  orgs: { name: string } | null
+  orgs: { name: string }[] | { name: string } | null
 }
 
 interface PriceList {
@@ -44,7 +44,7 @@ export function PlatformAccessRequests({ requests, priceLists }: { requests: Req
                 <Building2 size={14} className="text-white/40" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{req.orgs?.name ?? req.org_id}</p>
+                <p className="text-sm font-medium text-white truncate">{(Array.isArray(req.orgs) ? req.orgs[0]?.name : req.orgs?.name) ?? req.org_id}</p>
                 <p className="text-xs text-white/40 mt-0.5">
                   Requesting access to <span className="text-white/60">{pl?.name ?? req.price_list_id}</span>
                   {' · '}
