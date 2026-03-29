@@ -38,6 +38,29 @@ const plans = [
 
 export function SubscribeClient({ trialExpired, daysLeft }: { trialExpired: boolean; daysLeft: number }) {
   const [loading, setLoading] = useState<string | null>(null)
+  const [extensionRequested, setExtensionRequested] = useState(false)
+
+  async function handleExtensionRequest() {
+    setLoading('extend')
+    try {
+      await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'Trial extension request',
+          message: 'A studio is requesting a trial extension. Please review in the platform admin and extend if appropriate.',
+          email: 'trial@quotinghub.co.za',
+          name: 'Trial Extension Request',
+        }),
+      })
+      setExtensionRequested(true)
+      toast.success("Request sent! We'll review and extend your trial within 24 hours.")
+    } catch {
+      toast.error('Something went wrong. Please email us at hello@quotinghub.co.za')
+    } finally {
+      setLoading(null)
+    }
+  }
 
   async function handleSubscribe(planId: string) {
     setLoading(planId)
@@ -143,8 +166,28 @@ export function SubscribeClient({ trialExpired, daysLeft }: { trialExpired: bool
           </a>
         </p>
 
+        {/* Trial extension request */}
+        <div className="mt-6 border-t border-[#D8D3C8] pt-6 text-center">
+          {extensionRequested ? (
+            <p className="text-sm text-[#9A7B4F]">
+              Request received — we&apos;ll extend your trial within 24 hours.
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-[#8A877F] mb-2">Need more time to evaluate?</p>
+              <button
+                onClick={handleExtensionRequest}
+                disabled={loading !== null}
+                className="text-xs text-[#9A7B4F] hover:underline disabled:opacity-50 cursor-pointer"
+              >
+                {loading === 'extend' ? 'Sending…' : 'Request a trial extension'}
+              </button>
+            </>
+          )}
+        </div>
+
         {!trialExpired && (
-          <p className="text-center text-xs text-[#C4BFB5] mt-3">
+          <p className="text-center text-xs text-[#C4BFB5] mt-4">
             <Link href="/dashboard" className="hover:text-[#8A877F] transition-colors">
               ← Continue using my trial
             </Link>
