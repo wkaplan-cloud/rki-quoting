@@ -59,7 +59,7 @@ export function AppLayout({ children, isAdmin, businessName, userEmail, userName
         )}
       </div>
 
-      <main className="md:ml-44 flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip pt-16 md:pt-0">
+      <main className="md:ml-12 flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip pt-16 md:pt-0">
         {children}
       </main>
     </div>
