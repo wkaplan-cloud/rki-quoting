@@ -38,7 +38,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       <aside className="w-52 flex-shrink-0 bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 border-r border-white/10">
         <div className="px-5 py-6 border-b border-white/10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto object-contain mb-1" style={{ filter: 'invert(1)' }} />
+          <img src="/logo.png" alt="QuotingHub" className="h-12 w-auto object-contain mb-1" style={{ filter: 'invert(1)' }} />
           <span className="text-[10px] font-medium text-[#C4A46B] uppercase tracking-widest">Platform Admin</span>
         </div>
 
