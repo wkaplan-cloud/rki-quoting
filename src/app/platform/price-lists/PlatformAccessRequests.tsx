@@ -9,7 +9,7 @@ interface Request {
   price_list_id: string
   status: string
   requested_at: string
-  organizations: { name: string }[] | { name: string } | null
+  orgName: string
 }
 
 interface PriceList {
@@ -44,7 +44,7 @@ export function PlatformAccessRequests({ requests, priceLists }: { requests: Req
                 <Building2 size={14} className="text-white/40" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{(Array.isArray(req.organizations) ? req.organizations[0]?.name : req.organizations?.name) ?? req.org_id}</p>
+                <p className="text-sm font-medium text-white truncate">{req.orgName}</p>
                 <p className="text-xs text-white/40 mt-0.5">
                   Requesting access to <span className="text-white/60">{pl?.name ?? req.price_list_id}</span>
                   {' · '}
@@ -56,7 +56,6 @@ export function PlatformAccessRequests({ requests, priceLists }: { requests: Req
               <button
                 onClick={() => act(req, 'rejected')}
                 disabled={acting === req.id}
-                title="Reject"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-900/50 rounded hover:bg-red-950/40 transition-colors disabled:opacity-40 cursor-pointer"
               >
                 <XCircle size={13} /> Reject
@@ -64,7 +63,6 @@ export function PlatformAccessRequests({ requests, priceLists }: { requests: Req
               <button
                 onClick={() => act(req, 'active')}
                 disabled={acting === req.id}
-                title="Approve"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-400 border border-emerald-900/50 rounded hover:bg-emerald-950/40 transition-colors disabled:opacity-40 cursor-pointer"
               >
                 <CheckCircle size={13} /> Approve
