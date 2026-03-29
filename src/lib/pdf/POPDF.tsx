@@ -99,7 +99,7 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
                     </Text>
                   ) : null}
                 </View>
-                <Text style={[styles.td, styles.tdMuted, { flex: 3 }]}>{item.description ?? ''}</Text>
+                <Text style={[styles.td, styles.tdMuted, { flex: 3, paddingLeft: 6, paddingRight: 8 }]}>{item.description ?? ''}</Text>
                 <Text style={[styles.td, styles.tdMuted, { flex: 2 }]}>{item.delivery_address ?? ''}</Text>
                 <Text style={[styles.td, styles.tdMuted, { width: 36, textAlign: 'right', paddingRight: 4 }]}>{item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
                 <Text style={[styles.td, { width: 52, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
