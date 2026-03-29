@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import { ProjectDetail } from './ProjectDetail'
 
@@ -7,7 +8,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }, { data: platformContacts }] =
+  const [{ data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }, { data: platformContacts }, { data: orgId }] =
     await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
       supabase.from('line_items').select('*').eq('project_id', id).order('sort_order'),
@@ -18,9 +19,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
       supabase.from('email_logs').select('*').eq('project_id', id).order('sent_at', { ascending: false }),
       supabase.from('platform_supplier_contacts').select('supplier_id, markup_percentage'),
+      supabase.rpc('get_current_org_id'),
     ])
 
   if (!project) notFound()
+
+  // Fetch active price list access for this org
+  const { data: activeAccess } = orgId
+    ? await supabaseAdmin.from('price_list_access').select('price_list_id').eq('org_id', orgId).eq('status', 'active')
+    : { data: [] }
+  const activePriceListIds = new Set((activeAccess ?? []).map(a => a.price_list_id))
 
   // For platform suppliers, override markup_percentage with the studio's own setting if set
   const suppliers = (rawSuppliers ?? []).map(s => {
@@ -45,6 +53,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       emailTemplateQuote={settings?.email_template_quote ?? null}
       emailTemplateInvoice={settings?.email_template_invoice ?? null}
       sageConnected={!!(settings?.sage_api_key && settings?.sage_username && settings?.sage_password && settings?.sage_company_id)}
+      activePriceListIds={[...activePriceListIds]}
     />
   )
 }

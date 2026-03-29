@@ -36,6 +36,7 @@ interface Props {
   officeAddress: { name: string; address: string }
   onChange: (items: LineItem[]) => void
   onSupplierCreated: (supplier: Supplier) => void
+  activePriceListIds: string[]
 }
 
 const COL = 'px-2 py-1.5 border-r border-[#EDE9E1] last:border-0'
@@ -91,7 +92,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds }: Props) {
   const supabase = createClient()
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
@@ -343,7 +344,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
                         <div className="flex-1 min-w-0">
-                          {suppliers.find(s => s.id === item.supplier_id)?.price_list_id ? (
+                          {(() => { const pl = suppliers.find(s => s.id === item.supplier_id)?.price_list_id; return pl && activePriceListIds.includes(pl) })() ? (
                             <FabricSearch
                               value={item.item_name}
                               onChange={v => updateLocal(item.id, 'item_name', v)}

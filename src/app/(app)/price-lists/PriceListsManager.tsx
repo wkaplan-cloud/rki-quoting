@@ -1,9 +1,14 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, Trash2, Upload, X, ChevronRight, AlertCircle, Globe } from 'lucide-react'
+import { Plus, BookOpen, Trash2, Upload, X, ChevronRight, AlertCircle, Globe, Lock, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+
+interface AccessRecord {
+  price_list_id: string
+  status: 'pending' | 'active' | 'rejected'
+}
 
 interface PriceList {
   id: string
@@ -76,7 +81,7 @@ function mapHeaders(headers: string[]): (keyof ParsedItem | null)[] {
   return headers.map(h => COLUMN_MAP[h.toLowerCase().trim()] ?? null)
 }
 
-export function PriceListsManager({ priceLists, canManage, basePath = '/price-lists' }: { priceLists: PriceList[]; canManage: boolean; basePath?: string }) {
+export function PriceListsManager({ priceLists, canManage, basePath = '/price-lists', accessRecords = [] }: { priceLists: PriceList[]; canManage: boolean; basePath?: string; accessRecords?: AccessRecord[] }) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [showImport, setShowImport] = useState(false)
@@ -89,6 +94,8 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [requestingId, setRequestingId] = useState<string | null>(null)
+  const [localAccess, setLocalAccess] = useState<AccessRecord[]>(accessRecords)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -179,6 +186,15 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
     if (res.ok) { setDeleteId(null); router.refresh() }
   }
 
+  async function handleRequestAccess(priceListId: string) {
+    setRequestingId(priceListId)
+    const res = await fetch(`/api/price-lists/${priceListId}/request-access`, { method: 'POST' })
+    if (res.ok) {
+      setLocalAccess(prev => [...prev, { price_list_id: priceListId, status: 'pending' }])
+    }
+    setRequestingId(null)
+  }
+
   function resetForm() {
     setName('')
     setSupplierName('Home Fabrics')
@@ -240,18 +256,46 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                       <Button size="sm" variant="danger" onClick={() => handleDelete(pl.id)}>Yes</Button>
                       <Button size="sm" variant="secondary" onClick={() => setDeleteId(null)}>No</Button>
                     </>
-                  ) : (
-                    <>
-                      {canManage && (
-                        <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
-                          <Trash2 size={13} />
+                  ) : (() => {
+                    // For global price lists, check access state (platform admin always has access)
+                    if (pl.is_global && !canManage) {
+                      const access = localAccess.find(a => a.price_list_id === pl.id)
+                      if (!access) {
+                        return (
+                          <Button size="sm" onClick={() => handleRequestAccess(pl.id)} disabled={requestingId === pl.id}>
+                            <Lock size={12} /> {requestingId === pl.id ? 'Requesting…' : 'Request Access'}
+                          </Button>
+                        )
+                      }
+                      if (access.status === 'pending') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-[#8A877F] bg-[#F5F2EC] border border-[#D8D3C8] rounded px-3 py-1.5">
+                            <Clock size={11} /> Pending Approval
+                          </span>
+                        )
+                      }
+                      if (access.status === 'rejected') {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-red-500 bg-red-50 border border-red-200 rounded px-3 py-1.5">
+                            Access Denied
+                          </span>
+                        )
+                      }
+                    }
+                    // Active or platform admin or non-global
+                    return (
+                      <>
+                        {canManage && (
+                          <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
+                            <Trash2 size={13} />
+                          </Button>
+                        )}
+                        <Button size="sm" variant="secondary" onClick={() => router.push(`${basePath}/${pl.id}`)}>
+                          View <ChevronRight size={13} />
                         </Button>
-                      )}
-                      <Button size="sm" variant="secondary" onClick={() => router.push(`${basePath}/${pl.id}`)}>
-                        View <ChevronRight size={13} />
-                      </Button>
-                    </>
-                  )}
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             ))}

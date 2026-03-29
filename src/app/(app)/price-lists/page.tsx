@@ -16,6 +16,11 @@ export default async function PriceListsPage() {
   const platformAdmin = process.env.PLATFORM_ADMIN_EMAIL
   const canManage = !!(user && platformAdmin && user.email === platformAdmin)
 
+  // Fetch this org's access records for global price lists
+  const { data: accessRecords } = orgId
+    ? await supabaseAdmin.from('price_list_access').select('price_list_id, status').eq('org_id', orgId)
+    : { data: [] }
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -24,7 +29,11 @@ export default async function PriceListsPage() {
         count={priceLists?.length}
       />
       <div className="p-8">
-        <PriceListsManager priceLists={priceLists ?? []} canManage={canManage} />
+        <PriceListsManager
+          priceLists={priceLists ?? []}
+          canManage={canManage}
+          accessRecords={accessRecords ?? []}
+        />
       </div>
     </div>
   )
