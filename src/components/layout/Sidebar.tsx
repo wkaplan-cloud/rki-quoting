@@ -56,7 +56,7 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick
         </div>
 
         {/* Logo */}
-        <div className="flex-shrink-0 flex items-center h-14 border-b border-white/10 overflow-hidden">
+        <div className="flex-shrink-0 flex items-center h-16 border-b border-white/10 overflow-hidden">
           {/* Collapsed mark — desktop only */}
           <span className="hidden md:flex md:group-hover:hidden items-center justify-center w-12 flex-shrink-0 text-[#C4A46B] font-bold text-sm select-none">
             Q
@@ -64,7 +64,7 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick
           {/* Full logo — mobile always, desktop on hover */}
           <div className="flex flex-col px-4 overflow-hidden md:hidden md:group-hover:flex">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="h-6 object-contain" style={{ filter: 'invert(1)' }} />
+            <img src="/logo.png" alt="QuotingHub" className="h-9 object-contain" style={{ filter: 'invert(1)' }} />
             {businessName && (
               <span className="text-[9px] font-medium text-[#C4A46B] uppercase tracking-widest whitespace-nowrap mt-0.5">
                 {businessName}
