@@ -40,7 +40,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === '/sitemap.xml' ||
     request.nextUrl.pathname === '/robots.txt' ||
     request.nextUrl.pathname === '/llms.txt' ||
-    request.nextUrl.pathname.startsWith('/api/contact')
+    request.nextUrl.pathname.startsWith('/api/contact') ||
+    request.nextUrl.pathname.endsWith('.xml')
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
