@@ -56,27 +56,25 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick
         </div>
 
         {/* Logo */}
-        <div className="flex-shrink-0 relative h-20 border-b border-white/10">
+        <div className="flex-shrink-0 relative border-b border-white/10">
           {/* Q mark: desktop collapsed only — fades out on expand */}
           <span className="hidden md:flex md:group-hover:opacity-0 absolute inset-0 items-center justify-center text-[#C4A46B] font-bold text-base select-none transition-opacity duration-150 pointer-events-none">
             Q
           </span>
           {/* Full logo: always on mobile, fades in on desktop hover */}
-          <div className="flex items-center h-full px-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
-            <div className="flex flex-col">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="QuotingHub" className="w-24 h-auto object-contain" style={{ filter: 'invert(1)' }} />
-              {businessName && (
-                <span className="text-[9px] font-medium text-[#C4A46B] uppercase tracking-widest whitespace-nowrap mt-1">
-                  {businessName}
-                </span>
-              )}
-            </div>
+          <div className="px-4 py-5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="QuotingHub" className="w-24 h-auto object-contain" style={{ filter: 'invert(1)' }} />
+            {businessName && (
+              <span className="text-[9px] font-medium text-[#C4A46B] uppercase tracking-widest whitespace-nowrap block mt-2">
+                {businessName}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Main nav */}
-        <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
+        <nav className="flex-1 pt-4 pb-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
           {mainLinks.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
