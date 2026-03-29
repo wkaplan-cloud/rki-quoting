@@ -147,6 +147,15 @@ export async function POST(req: NextRequest) {
     if (resendError) {
       return { supplierId: sid, supplierName: supplier.supplier_name, success: false, error: resendError.message }
     }
+
+    // Log the send
+    await supabase.from('email_logs').insert({
+      project_id: projectId,
+      type: 'po',
+      sent_to: effectiveEmail,
+      supplier_name: supplier.supplier_name,
+    })
+
     return { supplierId: sid, supplierName: supplier.supplier_name, success: true }
   }))
 

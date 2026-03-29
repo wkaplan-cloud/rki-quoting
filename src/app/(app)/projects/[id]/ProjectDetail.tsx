@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 import { FileText, Send, Copy, ChevronDown, RefreshCw, Upload, Mail } from 'lucide-react'
 
 interface SageCustomer { id: string; name: string; reference?: string }
-interface EmailLog { id: string; type: string; sent_to: string; sent_at: string }
+interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null; email: string | null } | null }
@@ -204,6 +204,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         type: emailModalType,
         sent_to: emailInput.trim(),
         sent_at: new Date().toISOString(),
+        supplier_name: null,
       }, ...prev])
       setEmailModalOpen(false)
     } finally {
@@ -577,11 +578,20 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           <div className="space-y-1">
             {emailLogs.map(log => (
               <div key={log.id} className="flex items-center justify-between px-4 py-2.5 bg-white border border-[#EDE9E1] rounded text-sm">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-[#9A7B4F]/10 text-[#9A7B4F] text-xs font-medium capitalize">
-                    {log.type}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${
+                    log.type === 'po' ? 'bg-blue-50 text-blue-600' :
+                    log.type === 'invoice' ? 'bg-amber-50 text-amber-600' :
+                    'bg-[#9A7B4F]/10 text-[#9A7B4F]'
+                  }`}>
+                    {log.type === 'po' ? 'Purchase Order' : log.type}
                   </span>
-                  <span className="text-[#2C2C2A]">{log.sent_to}</span>
+                  <span className="text-[#2C2C2A]">
+                    {log.type === 'po' && log.supplier_name ? log.supplier_name : log.sent_to}
+                  </span>
+                  {log.type === 'po' && log.sent_to && (
+                    <span className="text-[#C4BFB5] text-xs">{log.sent_to}</span>
+                  )}
                   <span className="text-[#C4BFB5] text-xs">
                     {new Date(log.sent_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
                     {' '}
