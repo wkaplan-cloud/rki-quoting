@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 function isPlatformAdmin(email: string | undefined) {
-  return !!(email && process.env.PLATFORM_ADMIN_EMAIL && email === process.env.PLATFORM_ADMIN_EMAIL)
+  return !!(email && process.env.PLATFORM_ADMIN_EMAIL && email.toLowerCase() === process.env.PLATFORM_ADMIN_EMAIL.toLowerCase())
 }
 
 // POST — create a new price list (metadata only, no items)

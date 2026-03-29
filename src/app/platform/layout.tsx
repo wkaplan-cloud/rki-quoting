@@ -10,7 +10,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user || user.email !== PLATFORM_ADMIN) {
+  if (!user || user.email?.toLowerCase() !== PLATFORM_ADMIN?.toLowerCase()) {
     redirect('/login')
   }
 

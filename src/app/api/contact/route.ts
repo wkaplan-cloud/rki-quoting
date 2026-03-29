@@ -3,7 +3,8 @@ import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
-const NOTIFICATION_EMAIL = process.env.CONTACT_NOTIFICATION_EMAIL ?? 'wkaplan@gmail.com'
+const NOTIFICATION_EMAIL = process.env.CONTACT_NOTIFICATION_EMAIL
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
     cf_token?: string
   }
 
+  if (!NOTIFICATION_EMAIL) return NextResponse.json({ error: 'Contact form not configured' }, { status: 500 })
   if (!email || !message?.trim()) {
     return NextResponse.json({ error: 'Email and message are required' }, { status: 400 })
   }
@@ -61,14 +63,14 @@ export async function POST(req: NextRequest) {
       subject,
       html: `
         <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#F5F2EC;border-radius:8px;">
-          <h2 style="margin:0 0 4px;font-size:20px;color:#1A1A18;">${subject}</h2>
+          <h2 style="margin:0 0 4px;font-size:20px;color:#1A1A18;">${esc(subject)}</h2>
           <hr style="border:none;border-top:1px solid #D8D3C8;margin:16px 0;" />
-          ${company ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Studio:</strong> ${company}</p>` : ''}
-          ${name ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Name:</strong> ${name}</p>` : ''}
-          <p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Email:</strong> ${email}</p>
-          ${type ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Type:</strong> ${type}</p>` : ''}
+          ${company ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Studio:</strong> ${esc(company)}</p>` : ''}
+          ${name ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Name:</strong> ${esc(name)}</p>` : ''}
+          <p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Email:</strong> ${esc(email)}</p>
+          ${type ? `<p style="margin:0 0 8px;font-size:14px;color:#8A877F;"><strong>Type:</strong> ${esc(type)}</p>` : ''}
           <p style="margin:16px 0 4px;font-size:14px;color:#8A877F;"><strong>Message:</strong></p>
-          <p style="margin:0;font-size:15px;color:#1A1A18;white-space:pre-wrap;background:#fff;border:1px solid #D8D3C8;border-radius:6px;padding:12px 16px;">${message}</p>
+          <p style="margin:0;font-size:15px;color:#1A1A18;white-space:pre-wrap;background:#fff;border:1px solid #D8D3C8;border-radius:6px;padding:12px 16px;">${esc(message!)}</p>
           <hr style="border:none;border-top:1px solid #D8D3C8;margin:24px 0 16px;" />
           <table cellpadding="0" cellspacing="0" border="0">
             <tr>

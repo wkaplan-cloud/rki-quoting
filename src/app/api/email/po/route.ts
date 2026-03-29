@@ -14,19 +14,16 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [{ data: project }, { data: allLineItems }, { data: allSuppliers }, { data: settings }, { data: platformContacts }] = await Promise.all([
+  const [{ data: project }, { data: allLineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-    supabase.from('suppliers').select('*'),
     supabase.from('settings').select('vat_rate, logo_url, business_name, business_address, vat_number, company_registration, accounts_email, email_from').maybeSingle(),
-    supabase.from('platform_supplier_contacts').select('*'),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
 
   const vatRate = project.vat_rate ?? settings?.vat_rate ?? 15
-  const logoUrl = await fetchLogoBase64(settings?.logo_url)
   const studioName = settings?.business_name ?? 'Your Studio'
   const accountsEmail = settings?.accounts_email?.trim() || null
   const replyTo = settings?.email_from?.trim() || null
@@ -42,13 +39,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No suppliers with line items found' }, { status: 400 })
   }
 
+  // Fetch only the suppliers referenced in this project's line items, and logo in parallel
+  const [{ data: allSuppliers }, { data: platformContacts }, logoUrl] = await Promise.all([
+    supabase.from('suppliers').select('*').in('id', supplierIds),
+    supabase.from('platform_supplier_contacts').select('*'),
+    fetchLogoBase64(settings?.logo_url),
+  ])
+
   const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
 
-  const results: { supplierId: string; supplierName: string; success: boolean; error?: string }[] = []
-
-  for (const sid of supplierIds) {
+  const settled = await Promise.allSettled(supplierIds.map(async (sid) => {
     const supplier = (allSuppliers ?? []).find(s => s.id === sid)
-    // For platform suppliers, merge in this org's rep contact (email takes priority)
     const orgContact = supplier?.is_platform
       ? (platformContacts ?? []).find(c => c.supplier_id === sid)
       : null
@@ -57,11 +58,10 @@ export async function POST(req: NextRequest) {
     const effectiveContactPerson = orgContact?.rep_name || supplier?.contact_person || supplier?.supplier_name
 
     if (!effectiveEmail) {
-      results.push({ supplierId: sid, supplierName: supplier?.supplier_name ?? sid, success: false, error: supplier?.is_platform ? 'No rep email set — go to Suppliers → Home Fabrics to add your studio\'s rep email' : 'No email address on supplier' })
-      continue
+      const err = supplier?.is_platform ? 'No rep email set — go to Suppliers → Home Fabrics to add your studio\'s rep email' : 'No email address on supplier'
+      return { supplierId: sid, supplierName: supplier?.supplier_name ?? sid, success: false, error: err }
     }
 
-    // Filter line items for this supplier (include section rows that have items beneath them)
     const all = allLineItems ?? []
     const items: typeof all = []
     let pendingSection: typeof all[number] | null = null
@@ -145,11 +145,14 @@ export async function POST(req: NextRequest) {
     })
 
     if (resendError) {
-      results.push({ supplierId: sid, supplierName: supplier.supplier_name, success: false, error: resendError.message })
-    } else {
-      results.push({ supplierId: sid, supplierName: supplier.supplier_name, success: true })
+      return { supplierId: sid, supplierName: supplier.supplier_name, success: false, error: resendError.message }
     }
-  }
+    return { supplierId: sid, supplierName: supplier.supplier_name, success: true }
+  }))
+
+  const results = settled.map(s =>
+    s.status === 'fulfilled' ? s.value : { supplierId: '', supplierName: 'Unknown', success: false, error: (s.reason as Error)?.message ?? 'Unknown error' }
+  )
 
   const allOk = results.every(r => r.success)
   const anyOk = results.some(r => r.success)
