@@ -20,7 +20,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // Check subscription / trial status
   const { data: org } = await supabaseAdmin
     .from('organizations')
-    .select('subscription_status, trial_ends_at')
+    .select('plan, subscription_status, trial_ends_at')
     .eq('id', orgId)
     .single()
 
@@ -40,12 +40,19 @@ export default async function Layout({ children }: { children: React.ReactNode }
     supabaseAdmin.from('org_members').select('full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
   ])
 
+  const daysLeft = org?.trial_ends_at
+    ? Math.max(0, Math.ceil((new Date(org.trial_ends_at).getTime() - Date.now()) / 86400000))
+    : null
+
   return (
     <AppLayout
       isAdmin={membership?.role === 'admin'}
       businessName={settings?.business_name ?? ''}
       userEmail={user.email ?? ''}
       userName={member?.full_name ?? ''}
+      plan={org?.plan ?? 'trial'}
+      subscriptionStatus={org?.subscription_status ?? 'trialing'}
+      trialDaysLeft={daysLeft}
     >
       {children}
     </AppLayout>

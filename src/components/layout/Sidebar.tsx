@@ -23,9 +23,12 @@ interface Props {
   isOpen: boolean
   onClose: () => void
   onContactClick: () => void
+  plan: string
+  subscriptionStatus: string
+  trialDaysLeft: number | null
 }
 
-export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick }: Props) {
+export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft }: Props) {
   const path = usePathname()
 
   const isActive = (href: string) =>
@@ -122,6 +125,27 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick
             <MessageSquare size={14} />
             Contact
           </button>
+          {/* Subscription status */}
+          <div className="border-t border-white/10 my-1 pt-2">
+            {subscriptionStatus === 'active' ? (
+              <div className="px-3 py-1.5 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                <span className="text-[10px] text-white/40 uppercase tracking-wider capitalize">{plan} plan</span>
+              </div>
+            ) : subscriptionStatus === 'trialing' && trialDaysLeft !== null ? (
+              <Link
+                href="/subscribe"
+                onClick={onClose}
+                className={`px-3 py-1.5 flex items-center gap-2 rounded hover:bg-white/5 transition-colors ${trialDaysLeft <= 5 ? 'text-amber-400' : 'text-white/40'}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${trialDaysLeft <= 5 ? 'bg-amber-400' : 'bg-[#C4A46B]'}`} />
+                <span className="text-[10px] uppercase tracking-wider">
+                  {trialDaysLeft === 0 ? 'Trial ended' : `Trial · ${trialDaysLeft}d left`}
+                </span>
+              </Link>
+            ) : null}
+          </div>
+
           <form action="/api/auth/signout" method="post">
             <button type="submit" className="flex items-center gap-3 px-3 py-2 rounded text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors w-full text-left cursor-pointer">
               <LogOut size={14} />

@@ -5,12 +5,15 @@ import { Sidebar } from './Sidebar'
 import { SessionGuard } from '@/components/auth/SessionGuard'
 import { FeedbackModal } from '@/components/FeedbackModal'
 
-export function AppLayout({ children, isAdmin, businessName, userEmail, userName }: {
+export function AppLayout({ children, isAdmin, businessName, userEmail, userName, plan, subscriptionStatus, trialDaysLeft }: {
   children: React.ReactNode
   isAdmin: boolean
   businessName: string
   userEmail: string
   userName: string
+  plan: string
+  subscriptionStatus: string
+  trialDaysLeft: number | null
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -24,6 +27,9 @@ export function AppLayout({ children, isAdmin, businessName, userEmail, userName
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onContactClick={() => setFeedbackOpen(true)}
+        plan={plan}
+        subscriptionStatus={subscriptionStatus}
+        trialDaysLeft={trialDaysLeft}
       />
       {feedbackOpen && (
         <FeedbackModal
