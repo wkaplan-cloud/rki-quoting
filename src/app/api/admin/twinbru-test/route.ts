@@ -8,12 +8,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const BASE    = process.env.TWINBRU_BASE_URL ?? 'https://api.twinbru.com'
-  const SUB_KEY = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
-  const BEARER  = process.env.TWINBRU_BEARER_TOKEN ?? ''
+  const BASE      = process.env.TWINBRU_BASE_URL ?? 'https://api.twinbru.com'
+  const SUB_KEY   = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
+  const STOCK_KEY = process.env.TWINBRU_STOCK_KEY ?? ''
+  const BEARER    = process.env.TWINBRU_BEARER_TOKEN ?? ''
 
-  const headers = {
+  const productHeaders = {
     'Ocp-Apim-Subscription-Key': SUB_KEY,
+    'Authorization': `Bearer ${BEARER}`,
+    'Api-Version': 'v1',
+    'Accept': 'application/json',
+  }
+
+  const stockHeaders = {
+    'Ocp-Apim-Subscription-Key': STOCK_KEY,
     'Authorization': `Bearer ${BEARER}`,
     'Api-Version': 'v1',
     'Accept': 'application/json',
@@ -21,13 +29,13 @@ export async function GET(req: NextRequest) {
 
   // Test 1: GET single product by ID
   const productId = req.nextUrl.searchParams.get('productId') ?? '35250'
-  const getRes = await fetch(`${BASE}/products/${productId}`, { headers })
+  const getRes = await fetch(`${BASE}/products/${productId}`, { headers: productHeaders })
   const getText = await getRes.text()
   let getJson = null
   try { getJson = JSON.parse(getText) } catch { /* not json */ }
 
   // Test 2: GET stock for that product (quantity=10 as a test)
-  const stockRes = await fetch(`${BASE}/stock/${productId}?quantity=10`, { headers })
+  const stockRes = await fetch(`${BASE}/stock/${productId}?quantity=10`, { headers: stockHeaders })
   const stockText = await stockRes.text()
   let stockJson = null
   try { stockJson = JSON.parse(stockText) } catch { /* not json */ }
