@@ -209,12 +209,14 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
       const res = await fetch('/api/cron/sync-catalogue?trigger=manual&backfill=true', {
         headers: { Authorization: `Bearer ${cronSecret}` },
       })
-      const data = await res.json()
+      const text = await res.text()
+      let data: Record<string, unknown> = {}
+      try { data = JSON.parse(text) } catch { /* non-JSON timeout response */ }
       if (!res.ok) {
-        setResult({ type: 'err', msg: data.error ?? 'Backfill failed' })
+        setResult({ type: 'err', msg: String(data.error ?? `Server error ${res.status} — backfill may have timed out, check DB`) })
         return
       }
-      setResult({ type: 'ok', msg: `Backfill done — ${data.checked?.toLocaleString()} products updated with widths` })
+      setResult({ type: 'ok', msg: `Backfill done — ${String(data.checked ?? '?')} products updated with widths` })
     } catch (e) {
       setResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
     } finally {

@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
         from += 1000
       }
 
-      const CONCURRENCY = 30
+      const CONCURRENCY = 50
       let updated = 0
 
       for (let i = 0; i < allProductIds.length; i += CONCURRENCY) {
