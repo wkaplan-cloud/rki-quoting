@@ -6,15 +6,18 @@ export const maxDuration = 300
 const TWINBRU_BASE = process.env.TWINBRU_BASE_URL ?? 'https://api.twinbru.com'
 const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
 const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
-const PAGE_SIZE    = 50
 
-function twinbruHeaders() {
+// Date of the original CSV import — only look for fabrics added after this
+const CSV_EXPORT_DATE = '2026-03-19T00:00:00Z'
+
+function twinbruHeaders(extra: Record<string, string> = {}) {
   return {
     'Ocp-Apim-Subscription-Key': SUB_KEY,
     'Authorization': `Bearer ${BEARER}`,
     'Api-Version': 'v1',
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    ...extra,
   }
 }
 
@@ -29,27 +32,20 @@ function buildRecord(item: Record<string, unknown>) {
   }
 }
 
-function unwrap(data: Record<string, unknown>): { items: Record<string, unknown>[]; total: number } {
-  const total = Number(
-    data.totalItemCount ?? data.total ?? data.totalItems ?? data.count ?? 0
-  )
+function extractItems(data: Record<string, unknown>): Record<string, unknown>[] {
   const results = data.results
   if (Array.isArray(results)) {
-    return {
-      items: results.map((r: Record<string, unknown>) =>
-        (r && typeof r === 'object' && 'item' in r) ? (r.item as Record<string, unknown>) : r
-      ),
-      total,
-    }
+    return results.map((r: Record<string, unknown>) =>
+      (r && typeof r === 'object' && 'item' in r) ? (r.item as Record<string, unknown>) : r
+    )
   }
   for (const key of ['items', 'data', 'products', 'values']) {
-    if (Array.isArray(data[key])) return { items: data[key] as Record<string, unknown>[], total }
+    if (Array.isArray(data[key])) return data[key] as Record<string, unknown>[]
   }
-  return { items: [], total }
+  return []
 }
 
 export async function GET(req: NextRequest) {
-  // Accepts both cron (Authorization header) and manual admin trigger (same header)
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -72,7 +68,7 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (!priceList) {
-    return NextResponse.json({ error: 'No global price list found. Create one first.' }, { status: 400 })
+    return NextResponse.json({ error: 'No global price list found.' }, { status: 400 })
   }
   const priceListId = priceList.id
 
@@ -85,42 +81,70 @@ export async function GET(req: NextRequest) {
   const logId = logRow?.id
 
   try {
-    // Load existing product_ids so we can skip already-known products
-    const { data: existing } = await supabase
-      .from('price_list_items')
-      .select('product_id')
-      .eq('price_list_id', priceListId)
-      .not('product_id', 'is', null)
+    // Use the last successful catalogue sync date so we only fetch new products.
+    // Falls back to the CSV export date so we don't re-import what we already have.
+    const { data: lastSync } = await supabase
+      .from('twinbru_sync_log')
+      .select('completed_at')
+      .eq('sync_type', 'catalogue')
+      .eq('status', 'ok')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single()
 
-    const knownIds = new Set((existing ?? []).map(r => r.product_id))
+    const sinceDate = lastSync?.completed_at ?? CSV_EXPORT_DATE
 
-    let page = 1
+    // ── Changefeed: only returns products added/changed since sinceDate ──────
+    let token: string | null = null
     let totalFetched = 0
     let added = 0
-    let hasMore = true
     const newItems: Record<string, unknown>[] = []
 
-    while (hasMore) {
-      // Retry up to 3 times on 500
-      let res: Response | null = null
-      for (let attempt = 0; attempt < 3; attempt++) {
-        res = await fetch(`${TWINBRU_BASE}/products/`, {
-          method: 'POST',
-          headers: twinbruHeaders(),
-          body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
-        })
-        if (res.status !== 500) break
-        await new Promise(r => setTimeout(r, 1500))
-      }
-      if (!res || !res.ok) {
-        const body = res ? await res.text().then(t => t.slice(0, 200)) : 'no response'
-        throw new Error(`Twinbru products API ${res?.status ?? 0}: ${body}`)
+    // Load existing product_ids to skip duplicates (paginated past 1000-row limit)
+    const knownIds = new Set<string>()
+    let from = 0
+    while (true) {
+      const { data: existing } = await supabase
+        .from('price_list_items')
+        .select('product_id')
+        .eq('price_list_id', priceListId)
+        .not('product_id', 'is', null)
+        .range(from, from + 999)
+      if (!existing?.length) break
+      for (const r of existing) knownIds.add(r.product_id)
+      if (existing.length < 1000) break
+      from += 1000
+    }
+
+    // Page through changefeed
+    while (true) {
+      const hdrs = twinbruHeaders(token ? { 'ODS-Continuation': token } : {})
+      const res = await fetch(`${TWINBRU_BASE}/changefeed`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({ date: sinceDate, pageSize: 500 }),
+      })
+
+      if (res.status === 404) {
+        // Changefeed not available on this account — return informative message
+        await supabase.from('twinbru_sync_log').update({
+          status: 'error',
+          completed_at: new Date().toISOString(),
+          error_message: 'Changefeed endpoint not available (404). Contact Twinbru to enable it.',
+        }).eq('id', logId)
+        return NextResponse.json({
+          error: 'Changefeed not available on this API account. Contact Twinbru support to enable the changefeed endpoint.',
+        }, { status: 400 })
       }
 
+      if (!res.ok) {
+        throw new Error(`Changefeed API ${res.status}: ${await res.text().then(t => t.slice(0, 200))}`)
+      }
+
+      const newToken = res.headers.get('ODS-Continuation') ?? res.headers.get('ods-continuation')
       const data = await res.json()
-      const { items, total } = unwrap(data)
+      const items = extractItems(data)
 
-      if (items.length === 0) break
       totalFetched += items.length
 
       for (const item of items) {
@@ -131,32 +155,23 @@ export async function GET(req: NextRequest) {
         added++
       }
 
-      // Flush to DB every 500 new items to avoid huge payloads
-      if (newItems.length >= 500) {
-        await supabase.from('price_list_items').insert(newItems.splice(0))
-      }
-
-      hasMore = items.length === PAGE_SIZE && totalFetched < (total || Infinity)
-      page++
-
-      if (hasMore) await new Promise(r => setTimeout(r, 120))
+      if (!newToken || items.length === 0) break
+      token = newToken
+      await new Promise(r => setTimeout(r, 100))
     }
 
-    // Insert any remaining
+    // Insert new fabrics
     if (newItems.length > 0) {
-      await supabase.from('price_list_items').insert(newItems)
+      for (let i = 0; i < newItems.length; i += 500) {
+        await supabase.from('price_list_items').insert(newItems.slice(i, i + 500))
+      }
+      // Update item_count
+      const { count } = await supabase
+        .from('price_list_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('price_list_id', priceListId)
+      await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
     }
-
-    // Update item_count on the price list
-    const { count } = await supabase
-      .from('price_list_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('price_list_id', priceListId)
-
-    await supabase
-      .from('price_lists')
-      .update({ item_count: count ?? 0 })
-      .eq('id', priceListId)
 
     await supabase.from('twinbru_sync_log').update({
       status: 'ok',
@@ -165,7 +180,12 @@ export async function GET(req: NextRequest) {
       items_added: added,
     }).eq('id', logId)
 
-    return NextResponse.json({ ok: true, checked: totalFetched, added })
+    return NextResponse.json({
+      ok: true,
+      since: sinceDate,
+      checked: totalFetched,
+      added,
+    })
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
