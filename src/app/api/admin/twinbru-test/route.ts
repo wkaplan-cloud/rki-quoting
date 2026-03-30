@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Temporary debug route — tests a single Twinbru /products/ call and returns the raw response
+// Debug route — fetches a single product by ID and returns all raw fields
+// Usage: GET /api/admin/twinbru-test?productId=35250
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -15,40 +16,15 @@ export async function GET(req: NextRequest) {
     'Ocp-Apim-Subscription-Key': SUB_KEY,
     'Authorization': `Bearer ${BEARER}`,
     'Api-Version': 'v1',
-    'Content-Type': 'application/json',
     'Accept': 'application/json',
   }
 
-  // Try 3 variations to find what works
-  const variants = [
-    { page: 1, pageSize: 5, filter: '' },
-    { page: 1, pageSize: 5 },
-    { page: 1, pageSize: 5, filter: null },
-  ]
+  const productId = req.nextUrl.searchParams.get('productId') ?? '35250'
 
-  const results = []
-  for (const body of variants) {
-    try {
-      const res = await fetch(`${BASE}/products/`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      })
-      const text = await res.text()
-      let json = null
-      try { json = JSON.parse(text) } catch { /* not json */ }
-      results.push({
-        body_sent: body,
-        status: res.status,
-        ok: res.ok,
-        response_preview: text.slice(0, 500),
-        response_json: json ? { totalItemCount: json.totalItemCount, resultCount: json.results?.length ?? json.items?.length } : null,
-      })
-      if (res.ok) break // stop at first success
-    } catch (e) {
-      results.push({ body_sent: body, error: e instanceof Error ? e.message : String(e) })
-    }
-  }
+  const res = await fetch(`${BASE}/products/${productId}`, { headers })
+  const text = await res.text()
+  let json = null
+  try { json = JSON.parse(text) } catch { /* not json */ }
 
-  return NextResponse.json({ results })
+  return NextResponse.json({ status: res.status, ok: res.ok, raw: json ?? text })
 }
