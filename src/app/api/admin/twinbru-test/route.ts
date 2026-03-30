@@ -26,18 +26,14 @@ export async function GET(req: NextRequest) {
   let getJson = null
   try { getJson = JSON.parse(getText) } catch { /* not json */ }
 
-  // Test 2: POST /products/ search (same call as backfill)
-  const postRes = await fetch(`${BASE}/products/`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ page: 1, pageSize: 50, filter: '' }),
-  })
-  const postText = await postRes.text()
-  let postJson = null
-  try { postJson = JSON.parse(postText) } catch { /* not json */ }
+  // Test 2: GET stock for that product (quantity=10 as a test)
+  const stockRes = await fetch(`${BASE}/stock/${productId}?quantity=10`, { headers })
+  const stockText = await stockRes.text()
+  let stockJson = null
+  try { stockJson = JSON.parse(stockText) } catch { /* not json */ }
 
   return NextResponse.json({
-    get: { status: getRes.status, ok: getRes.ok, raw: getJson ?? getText.slice(0, 500) },
-    post: { status: postRes.status, ok: postRes.ok, raw: postJson ?? postText.slice(0, 500) },
+    get:   { status: getRes.status,   ok: getRes.ok,   raw: getJson   ?? getText.slice(0, 500) },
+    stock: { status: stockRes.status, ok: stockRes.ok, raw: stockJson ?? stockText.slice(0, 500) },
   })
 }
