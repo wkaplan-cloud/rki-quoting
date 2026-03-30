@@ -37,13 +37,14 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [savingSage, setSavingSage] = useState(false)
+  const [fetchingCompany, setFetchingCompany] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [sageForm, setSageForm] = useState({
     sage_api_key: settings?.sage_api_key ?? '',
-    sage_username: '',
-    sage_password: '',
+    sage_username: settings?.sage_username ?? '',
+    sage_password: settings?.sage_password ?? '',
     sage_company_id: settings?.sage_company_id ?? '',
   })
   const sageConnected = !!(settings?.sage_api_key && settings?.sage_username && settings?.sage_password && settings?.sage_company_id)
@@ -86,15 +87,47 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
 
   async function saveSageCredentials() {
     setSavingSage(true)
-    const update: Record<string, string> = {
+    const { error } = await supabase.from('settings').update({
       sage_api_key: sageForm.sage_api_key,
+      sage_username: sageForm.sage_username,
+      sage_password: sageForm.sage_password,
       sage_company_id: sageForm.sage_company_id,
-    }
-    if (sageForm.sage_username) update.sage_username = sageForm.sage_username
-    if (sageForm.sage_password) update.sage_password = sageForm.sage_password
-    const { error } = await supabase.from('settings').update(update).eq('id', settings!.id)
+    }).eq('id', settings!.id)
     if (error) { toast.error(error.message) } else { toast.success('Sage credentials saved') }
     setSavingSage(false)
+  }
+
+  async function fetchCompanyId() {
+    if (!sageForm.sage_api_key || !sageForm.sage_username || !sageForm.sage_password) {
+      toast.error('Enter your API key, username and password first')
+      return
+    }
+    setFetchingCompany(true)
+    try {
+      const res = await fetch('/api/sage/fetch-company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: sageForm.sage_api_key,
+          username: sageForm.sage_username,
+          password: sageForm.sage_password,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to fetch company'); return }
+      if (data.length === 1) {
+        setSage('sage_company_id', data[0].id)
+        toast.success(`Company ID found: ${data[0].id} (${data[0].name})`)
+      } else if (data.length > 1) {
+        toast.error(`Multiple companies found — pick one: ${data.map((c: { id: string; name: string }) => `${c.name} (${c.id})`).join(', ')}`)
+      } else {
+        toast.error('No companies found for these credentials')
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setFetchingCompany(false)
+    }
   }
 
   async function disconnectSage() {
@@ -232,7 +265,17 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
         <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} />
-          <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} />
+          <div>
+            <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} />
+            <button
+              type="button"
+              onClick={fetchCompanyId}
+              disabled={fetchingCompany}
+              className="mt-1.5 text-xs text-[#9A7B4F] hover:underline disabled:opacity-50"
+            >
+              {fetchingCompany ? 'Looking up…' : 'Fetch Company ID from Sage →'}
+            </button>
+          </div>
           <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} />
           <div className="relative">
             <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
