@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
     // Loads all product_ids from DB, fetches each via GET /products/{id}
     // concurrently (30 at a time), upserts width fields back.
     if (isBackfill) {
-      // Load all product_ids from DB
+      // Load only product_ids that still need widths populated
       const allProductIds: string[] = []
       let from = 0
       while (true) {
@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
           .select('product_id')
           .eq('price_list_id', priceListId)
           .not('product_id', 'is', null)
+          .is('full_width_cm', null)
           .range(from, from + 999)
         if (!rows?.length) break
         for (const r of rows) allProductIds.push(r.product_id)
