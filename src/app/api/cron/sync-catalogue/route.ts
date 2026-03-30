@@ -20,13 +20,17 @@ function twinbruHeaders(extra: Record<string, string> = {}) {
 }
 
 function buildRecord(item: Record<string, unknown>) {
+  const fullWidth    = item.selvedge_full_width_cm    ?? item.selvedgeFullWidthCm    ?? null
+  const useableWidth = item.selvedge_useable_width_cm ?? item.selvedgeUseableWidthCm ?? null
   return {
-    brand:       String(item.brand        ?? item.brandName        ?? '').trim() || null,
-    collection:  String(item.collectionName ?? '').trim() || null,
-    design:      String(item.designName   ?? '').trim() || null,
-    colour:      String(item.productName  ?? '').trim() || null,
-    sku:         String(item.sku          ?? item.productId ?? '').trim() || null,
-    product_id:  String(item.productId    ?? '').trim() || null,
+    brand:            String(item.brand        ?? item.brandName        ?? '').trim() || null,
+    collection:       String(item.collectionName ?? '').trim() || null,
+    design:           String(item.designName   ?? '').trim() || null,
+    colour:           String(item.productName  ?? '').trim() || null,
+    sku:              String(item.sku          ?? item.productId ?? '').trim() || null,
+    product_id:       String(item.productId    ?? '').trim() || null,
+    full_width_cm:    fullWidth    != null ? Number(fullWidth)    : null,
+    useable_width_cm: useableWidth != null ? Number(useableWidth) : null,
   }
 }
 
@@ -50,6 +54,8 @@ export async function GET(req: NextRequest) {
   }
 
   const triggeredBy = req.nextUrl.searchParams.get('trigger') ?? 'cron'
+  // backfill=true → fetch all products from the beginning and upsert widths
+  const isBackfill  = req.nextUrl.searchParams.get('backfill') === 'true'
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,41 +85,47 @@ export async function GET(req: NextRequest) {
   const logId = logRow?.id
 
   try {
-    // Use last successful sync date so we only fetch products modified since then.
-    // Falls back to the CSV export date on first run.
-    const { data: lastSync } = await supabase
-      .from('twinbru_sync_log')
-      .select('completed_at')
-      .eq('sync_type', 'catalogue')
-      .eq('status', 'ok')
-      .order('completed_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    const sinceDate = lastSync?.completed_at ?? '2026-03-19T00:00:00Z'
-
-    // Load existing product_ids to skip duplicates (paginated past 1000-row limit)
-    const knownIds = new Set<string>()
-    let from = 0
-    while (true) {
-      const { data: existing } = await supabase
-        .from('price_list_items')
-        .select('product_id')
-        .eq('price_list_id', priceListId)
-        .not('product_id', 'is', null)
-        .range(from, from + 999)
-      if (!existing?.length) break
-      for (const r of existing) knownIds.add(r.product_id)
-      if (existing.length < 1000) break
-      from += 1000
+    let sinceDate: string
+    if (isBackfill) {
+      // Go back far enough to get every product ever added
+      sinceDate = '2000-01-01T00:00:00Z'
+    } else {
+      const { data: lastSync } = await supabase
+        .from('twinbru_sync_log')
+        .select('completed_at')
+        .eq('sync_type', 'catalogue')
+        .eq('status', 'ok')
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .single()
+      sinceDate = lastSync?.completed_at ?? '2026-03-19T00:00:00Z'
     }
 
-    // ODS Changefeed — GET /ods/item-read/v1/api/items/product/changes
-    // Returns only products modified since sinceDate. Paginated via ODS-Continuation header.
+    // For normal sync: load known IDs to skip inserts for existing products
+    // For backfill: skip this — we upsert everything to update width fields
+    const knownIds = new Set<string>()
+    if (!isBackfill) {
+      let from = 0
+      while (true) {
+        const { data: existing } = await supabase
+          .from('price_list_items')
+          .select('product_id')
+          .eq('price_list_id', priceListId)
+          .not('product_id', 'is', null)
+          .range(from, from + 999)
+        if (!existing?.length) break
+        for (const r of existing) knownIds.add(r.product_id)
+        if (existing.length < 1000) break
+        from += 1000
+      }
+    }
+
+    // ODS Changefeed — paginated via ODS-Continuation header
     let continuation: string | null = null
     let totalFetched = 0
     let added = 0
-    const newItems: Record<string, unknown>[] = []
+    let updated = 0
+    const batch: Record<string, unknown>[] = []
 
     while (true) {
       const url = new URL(`${TWINBRU_BASE}/ods/item-read/v1/api/items/product/changes`)
@@ -139,15 +151,28 @@ export async function GET(req: NextRequest) {
 
       for (const item of items) {
         const pid = String(item.productId ?? item.id ?? '').trim()
-        if (!pid || knownIds.has(pid)) continue
-        knownIds.add(pid)
-        newItems.push({ ...buildRecord(item), price_list_id: priceListId })
-        added++
+        if (!pid) continue
+
+        if (isBackfill) {
+          // Upsert — updates width on existing rows, inserts new ones
+          batch.push({ ...buildRecord(item), price_list_id: priceListId })
+          updated++
+        } else {
+          if (knownIds.has(pid)) continue
+          knownIds.add(pid)
+          batch.push({ ...buildRecord(item), price_list_id: priceListId })
+          added++
+        }
       }
 
       // Flush every 500
-      if (newItems.length >= 500) {
-        await supabase.from('price_list_items').insert(newItems.splice(0))
+      if (batch.length >= 500) {
+        if (isBackfill) {
+          await supabase.from('price_list_items')
+            .upsert(batch.splice(0), { onConflict: 'product_id,price_list_id' })
+        } else {
+          await supabase.from('price_list_items').insert(batch.splice(0))
+        }
       }
 
       if (!nextContinuation || items.length === 0) break
@@ -155,9 +180,14 @@ export async function GET(req: NextRequest) {
       await new Promise(r => setTimeout(r, 100))
     }
 
-    // Insert any remaining
-    if (newItems.length > 0) {
-      await supabase.from('price_list_items').insert(newItems)
+    // Flush remainder
+    if (batch.length > 0) {
+      if (isBackfill) {
+        await supabase.from('price_list_items')
+          .upsert(batch, { onConflict: 'product_id,price_list_id' })
+      } else {
+        await supabase.from('price_list_items').insert(batch)
+      }
     }
 
     // Update item_count if anything was added
@@ -173,14 +203,15 @@ export async function GET(req: NextRequest) {
       status: 'ok',
       completed_at: new Date().toISOString(),
       items_checked: totalFetched,
-      items_added: added,
+      items_added: isBackfill ? 0 : added,
     }).eq('id', logId)
 
     return NextResponse.json({
       ok: true,
       since: sinceDate,
       checked: totalFetched,
-      added,
+      added: isBackfill ? 0 : added,
+      updated: isBackfill ? updated : 0,
     })
 
   } catch (err) {
