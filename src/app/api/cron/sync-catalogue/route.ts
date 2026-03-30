@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
           })
         )
 
-        const valid = results.filter((r): r is Record<string, unknown> => r !== null)
+        const valid = results.filter((r) => r !== null) as Record<string, unknown>[]
         if (valid.length > 0) {
           await supabase.from('price_list_items')
             .upsert(valid, { onConflict: 'product_id,price_list_id' })
