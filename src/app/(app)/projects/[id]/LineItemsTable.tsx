@@ -99,6 +99,26 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const [showTips, setShowTips] = useState(false)
   // Map of twinbru_product_id → current catalogue price (for stale price detection)
   const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
+  // Map of line item id → stock info
+  const [stockMap, setStockMap] = useState<Record<string, { inStock: boolean; stockDate: string | null } | null>>({})
+  const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  const fetchStock = useCallback((lineItemId: string, productId: string, quantity: number, autoFillLead?: (weeks: number) => void) => {
+    if (stockDebounceRef.current[lineItemId]) clearTimeout(stockDebounceRef.current[lineItemId])
+    stockDebounceRef.current[lineItemId] = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/fabric-stock?productId=${productId}&quantity=${Math.max(1, quantity)}`)
+        const data = await res.json()
+        if (data.stockDate !== undefined) {
+          setStockMap(m => ({ ...m, [lineItemId]: data }))
+          if (autoFillLead && !data.inStock && data.stockDate) {
+            const weeks = Math.ceil((new Date(data.stockDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+            if (weeks > 0) autoFillLead(weeks)
+          }
+        }
+      } catch { /* silent */ }
+    }, 600)
+  }, [])
 
   useEffect(() => {
     const ids = lineItems
@@ -121,6 +141,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Only re-run when the set of twinbru product IDs changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems.map(i => i.twinbru_product_id).join(',')])
+
+  // Re-fetch stock when quantity changes for twinbru items already in stockMap
+  useEffect(() => {
+    for (const item of lineItems) {
+      if (item.twinbru_product_id && item.id in stockMap) {
+        fetchStock(item.id, String(item.twinbru_product_id), item.quantity)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems.map(i => `${i.id}:${i.quantity}`).join(',')])
 
   const updateLocal = useCallback((id: string, field: string, value: string | number | null) => {
     onChange(lineItems.map(item =>
@@ -222,7 +252,18 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }
     onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
     await supabase.from('line_items').update(updates).eq('id', lineItemId)
-  }, [lineItems, onChange, supabase])
+    if (fabric.product_id) {
+      const currentItem = lineItems.find(i => i.id === lineItemId)
+      const qty = currentItem?.quantity ?? 1
+      fetchStock(lineItemId, fabric.product_id, qty, async (weeks) => {
+        // Only auto-fill if lead time is currently empty
+        if (!currentItem?.lead_time_weeks) {
+          onChange(lineItems.map(i => i.id === lineItemId ? { ...i, ...updates, lead_time_weeks: weeks } : i))
+          await supabase.from('line_items').update({ lead_time_weeks: weeks }).eq('id', lineItemId)
+        }
+      })
+    }
+  }, [lineItems, onChange, supabase, fetchStock])
 
   const toggleIndent = useCallback(async (id: string, currentLevel: number) => {
     const indent_level = currentLevel > 0 ? 0 : 1
@@ -419,6 +460,20 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
                         />
                       </div>
+                      {item.twinbru_product_id && (() => {
+                        const s = stockMap[item.id]
+                        if (!s) return null
+                        if (s.inStock) return (
+                          <span className="inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">In Stock</span>
+                        )
+                        if (s.stockDate) {
+                          const weeks = Math.ceil((new Date(s.stockDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+                          return (
+                            <span className="inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{weeks}w lead time</span>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                   </td>
 
