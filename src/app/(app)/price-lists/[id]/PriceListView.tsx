@@ -16,6 +16,41 @@ interface PriceListItem {
   useable_width_cm: number | null
 }
 
+interface StockInfo {
+  inStock: boolean
+  stockDate: string | null
+  isMaxLeadTime: boolean
+}
+
+function StockBadge({ productId }: { productId: string }) {
+  const [stock, setStock] = useState<StockInfo | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/fabric-stock?productId=${productId}&quantity=1`)
+      .then(r => r.json())
+      .then(d => { if (d.stockDate !== undefined) setStock(d) })
+      .catch(() => {})
+  }, [productId])
+
+  if (!stock) return null
+
+  if (stock.inStock) {
+    return <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">In Stock</span>
+  }
+
+  if (stock.stockDate) {
+    const date = new Date(stock.stockDate)
+    const weeks = Math.ceil((date.getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+    return (
+      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+        ~{weeks}w lead time
+      </span>
+    )
+  }
+
+  return null
+}
+
 function formatPrice(n: number | null) {
   if (n == null) return '–'
   return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -120,6 +155,7 @@ export function PriceListView({ priceListId }: { priceListId: string }) {
                     <p className="text-xs font-semibold text-[#1A1A18]">{formatPrice(item.price_zar)}</p>
                     {item.useable_width_cm && <p className="text-[10px] text-[#8A877F]">{item.useable_width_cm}cm</p>}
                   </div>
+                  {item.product_id && <div className="pt-1"><StockBadge productId={item.product_id} /></div>}
                 </div>
               </div>
             ))}
