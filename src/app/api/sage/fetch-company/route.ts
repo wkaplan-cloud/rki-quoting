@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     }
 
     const auth = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64')
-    const url = `https://resellers.accounting.sageone.co.za/api/2.0.0/Company/Get?apikey=${encodeURIComponent(apiKey)}`
+    const url = `https://resellers.accounting.sageone.co.za/api/2.0.0/Company/Get?apikey=${apiKey}`
 
     const res = await fetch(url, {
       headers: { Authorization: auth, Accept: 'application/json' },
