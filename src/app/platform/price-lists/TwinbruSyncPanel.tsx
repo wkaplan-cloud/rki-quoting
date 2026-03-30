@@ -156,8 +156,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
   const [catalogueSyncLog, setCatalogueSyncLog] = useState<SyncLog | null>(lastCatalogueSync)
   const [triggeringPrices, setTriggeringPrices] = useState(false)
   const [triggeringCatalogue, setTriggeringCatalogue] = useState(false)
-  const [triggeringBackfill, setTriggeringBackfill] = useState(false)
-  const [result, setResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+const [result, setResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
 
   async function triggerSync(type: 'prices' | 'catalogue') {
     const setTriggering = type === 'prices' ? setTriggeringPrices : setTriggeringCatalogue
@@ -202,29 +201,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
     }
   }
 
-  async function triggerBackfill() {
-    setTriggeringBackfill(true)
-    setResult(null)
-    try {
-      const res = await fetch('/api/cron/sync-catalogue?trigger=manual&backfill=true', {
-        headers: { Authorization: `Bearer ${cronSecret}` },
-      })
-      const text = await res.text()
-      let data: Record<string, unknown> = {}
-      try { data = JSON.parse(text) } catch { /* non-JSON timeout response */ }
-      if (!res.ok) {
-        setResult({ type: 'err', msg: String(data.error ?? `Server error ${res.status} — backfill may have timed out, check DB`) })
-        return
-      }
-      setResult({ type: 'ok', msg: `Backfill done — ${String(data.checked ?? '?')} products updated with widths` })
-    } catch (e) {
-      setResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
-    } finally {
-      setTriggeringBackfill(false)
-    }
-  }
-
-  return (
+return (
     <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-6">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Twinbru Sync</h2>
@@ -247,29 +224,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
         triggering={triggeringCatalogue}
       />
 
-      <div className="py-4 border-b border-white/10">
-        <div className="flex items-center justify-between gap-6">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-white">Backfill Fabric Widths</p>
-            <p className="text-xs text-white/40 mt-0.5">Re-fetches all 29k products and updates full &amp; useable width (cm). Run once after the width columns were added.</p>
-          </div>
-          <button
-            onClick={triggerBackfill}
-            disabled={triggeringBackfill}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed"
-          >
-            <RefreshCw size={12} className={triggeringBackfill ? 'animate-spin' : ''} />
-            {triggeringBackfill ? 'Running…' : 'Backfill Widths'}
-          </button>
-        </div>
-        {triggeringBackfill && (
-          <div className="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full w-full bg-gradient-to-r from-transparent via-[#9A7B4F] to-transparent animate-pulse" />
-          </div>
-        )}
-      </div>
-
-      {result && (
+{result && (
         <div className={`mt-4 flex items-start gap-2 text-xs rounded-lg px-3 py-2.5 ${
           result.type === 'ok' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'
         }`}>
