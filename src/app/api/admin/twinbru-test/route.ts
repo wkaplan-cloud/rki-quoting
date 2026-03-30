@@ -19,12 +19,25 @@ export async function GET(req: NextRequest) {
     'Accept': 'application/json',
   }
 
+  // Test 1: GET single product by ID
   const productId = req.nextUrl.searchParams.get('productId') ?? '35250'
+  const getRes = await fetch(`${BASE}/products/${productId}`, { headers })
+  const getText = await getRes.text()
+  let getJson = null
+  try { getJson = JSON.parse(getText) } catch { /* not json */ }
 
-  const res = await fetch(`${BASE}/products/${productId}`, { headers })
-  const text = await res.text()
-  let json = null
-  try { json = JSON.parse(text) } catch { /* not json */ }
+  // Test 2: POST /products/ search (same call as backfill)
+  const postRes = await fetch(`${BASE}/products/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ page: 1, pageSize: 50, filter: '' }),
+  })
+  const postText = await postRes.text()
+  let postJson = null
+  try { postJson = JSON.parse(postText) } catch { /* not json */ }
 
-  return NextResponse.json({ status: res.status, ok: res.ok, raw: json ?? text })
+  return NextResponse.json({
+    get: { status: getRes.status, ok: getRes.ok, raw: getJson ?? getText.slice(0, 500) },
+    post: { status: postRes.status, ok: postRes.ok, raw: postJson ?? postText.slice(0, 500) },
+  })
 }
