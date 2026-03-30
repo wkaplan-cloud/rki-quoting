@@ -13,6 +13,7 @@ interface PriceListItem {
   product_id: string | null
   price_zar: number | null
   image_url: string | null
+  useable_width_cm: number | null
 }
 
 function formatPrice(n: number | null) {
@@ -115,7 +116,10 @@ export function PriceListView({ priceListId }: { priceListId: string }) {
                   {item.design && <p className="text-xs font-medium text-[#2C2C2A] truncate">{item.design}</p>}
                   {item.colour && <p className="text-[10px] text-[#8A877F] truncate">{item.colour}</p>}
                   {item.sku && <p className="text-[10px] text-[#8A877F] truncate font-mono">{item.sku}</p>}
-                  <p className="text-xs font-semibold text-[#1A1A18] pt-0.5">{formatPrice(item.price_zar)}</p>
+                  <div className="flex items-center justify-between pt-0.5">
+                    <p className="text-xs font-semibold text-[#1A1A18]">{formatPrice(item.price_zar)}</p>
+                    {item.useable_width_cm && <p className="text-[10px] text-[#8A877F]">{item.useable_width_cm}cm</p>}
+                  </div>
                 </div>
               </div>
             ))}
