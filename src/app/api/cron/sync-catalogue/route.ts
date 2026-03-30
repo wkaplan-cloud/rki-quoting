@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
   // Insert running log entry
   const { data: logRow } = await supabase
     .from('twinbru_sync_log')
-    .insert({ sync_type: 'catalogue', triggered_by: triggeredBy })
+    .insert({ sync_type: isBackfill ? 'backfill' : 'catalogue', triggered_by: triggeredBy })
     .select('id')
     .single()
   const logId = logRow?.id
