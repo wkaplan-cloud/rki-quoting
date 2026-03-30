@@ -85,46 +85,83 @@ export async function GET(req: NextRequest) {
   const logId = logRow?.id
 
   try {
-    let sinceDate: string
+    // ── BACKFILL MODE ────────────────────────────────────────────────────────
+    // Uses POST /products/ (search endpoint) which returns ALL products.
+    // Upserts every row so existing records get their width columns populated.
     if (isBackfill) {
-      // Go back far enough to get every product ever added
-      sinceDate = '2000-01-01T00:00:00Z'
-    } else {
-      const { data: lastSync } = await supabase
-        .from('twinbru_sync_log')
-        .select('completed_at')
-        .eq('sync_type', 'catalogue')
-        .eq('status', 'ok')
-        .order('completed_at', { ascending: false })
-        .limit(1)
-        .single()
-      sinceDate = lastSync?.completed_at ?? '2026-03-19T00:00:00Z'
+      let page = 1
+      let totalFetched = 0
+      let updated = 0
+      const PAGE_SIZE = 500
+
+      while (true) {
+        const res = await fetch(`${TWINBRU_BASE}/products/`, {
+          method: 'POST',
+          headers: twinbruHeaders(),
+          body: JSON.stringify({ page, pageSize: PAGE_SIZE }),
+        })
+
+        if (!res.ok) {
+          throw new Error(`Products search ${res.status}: ${await res.text().then(t => t.slice(0, 300))}`)
+        }
+
+        const data = await res.json()
+        const items = extractItems(data)
+        totalFetched += items.length
+
+        if (items.length > 0) {
+          const batch = items.map(item => ({ ...buildRecord(item), price_list_id: priceListId }))
+          await supabase.from('price_list_items')
+            .upsert(batch, { onConflict: 'product_id,price_list_id' })
+          updated += items.length
+        }
+
+        if (items.length < PAGE_SIZE) break
+        page++
+        await new Promise(r => setTimeout(r, 150))
+      }
+
+      await supabase.from('twinbru_sync_log').update({
+        status: 'ok',
+        completed_at: new Date().toISOString(),
+        items_checked: totalFetched,
+        items_added: 0,
+      }).eq('id', logId)
+
+      return NextResponse.json({ ok: true, checked: totalFetched, updated })
     }
 
-    // For normal sync: load known IDs to skip inserts for existing products
-    // For backfill: skip this — we upsert everything to update width fields
+    // ── NORMAL SYNC MODE ─────────────────────────────────────────────────────
+    const { data: lastSync } = await supabase
+      .from('twinbru_sync_log')
+      .select('completed_at')
+      .eq('sync_type', 'catalogue')
+      .eq('status', 'ok')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single()
+    const sinceDate = lastSync?.completed_at ?? '2026-03-19T00:00:00Z'
+
+    // Load existing product_ids to skip duplicates
     const knownIds = new Set<string>()
-    if (!isBackfill) {
-      let from = 0
-      while (true) {
-        const { data: existing } = await supabase
-          .from('price_list_items')
-          .select('product_id')
-          .eq('price_list_id', priceListId)
-          .not('product_id', 'is', null)
-          .range(from, from + 999)
-        if (!existing?.length) break
-        for (const r of existing) knownIds.add(r.product_id)
-        if (existing.length < 1000) break
-        from += 1000
-      }
+    let from = 0
+    while (true) {
+      const { data: existing } = await supabase
+        .from('price_list_items')
+        .select('product_id')
+        .eq('price_list_id', priceListId)
+        .not('product_id', 'is', null)
+        .range(from, from + 999)
+      if (!existing?.length) break
+      for (const r of existing) knownIds.add(r.product_id)
+      if (existing.length < 1000) break
+      from += 1000
     }
 
     // ODS Changefeed — paginated via ODS-Continuation header
     let continuation: string | null = null
     let totalFetched = 0
     let added = 0
-    let updated = 0
     const batch: Record<string, unknown>[] = []
 
     while (true) {
@@ -151,28 +188,14 @@ export async function GET(req: NextRequest) {
 
       for (const item of items) {
         const pid = String(item.productId ?? item.id ?? '').trim()
-        if (!pid) continue
-
-        if (isBackfill) {
-          // Upsert — updates width on existing rows, inserts new ones
-          batch.push({ ...buildRecord(item), price_list_id: priceListId })
-          updated++
-        } else {
-          if (knownIds.has(pid)) continue
-          knownIds.add(pid)
-          batch.push({ ...buildRecord(item), price_list_id: priceListId })
-          added++
-        }
+        if (!pid || knownIds.has(pid)) continue
+        knownIds.add(pid)
+        batch.push({ ...buildRecord(item), price_list_id: priceListId })
+        added++
       }
 
-      // Flush every 500
       if (batch.length >= 500) {
-        if (isBackfill) {
-          await supabase.from('price_list_items')
-            .upsert(batch.splice(0), { onConflict: 'product_id,price_list_id' })
-        } else {
-          await supabase.from('price_list_items').insert(batch.splice(0))
-        }
+        await supabase.from('price_list_items').insert(batch.splice(0))
       }
 
       if (!nextContinuation || items.length === 0) break
@@ -180,17 +203,10 @@ export async function GET(req: NextRequest) {
       await new Promise(r => setTimeout(r, 100))
     }
 
-    // Flush remainder
     if (batch.length > 0) {
-      if (isBackfill) {
-        await supabase.from('price_list_items')
-          .upsert(batch, { onConflict: 'product_id,price_list_id' })
-      } else {
-        await supabase.from('price_list_items').insert(batch)
-      }
+      await supabase.from('price_list_items').insert(batch)
     }
 
-    // Update item_count if anything was added
     if (added > 0) {
       const { count } = await supabase
         .from('price_list_items')
@@ -203,16 +219,10 @@ export async function GET(req: NextRequest) {
       status: 'ok',
       completed_at: new Date().toISOString(),
       items_checked: totalFetched,
-      items_added: isBackfill ? 0 : added,
+      items_added: added,
     }).eq('id', logId)
 
-    return NextResponse.json({
-      ok: true,
-      since: sinceDate,
-      checked: totalFetched,
-      added: isBackfill ? 0 : added,
-      updated: isBackfill ? updated : 0,
-    })
+    return NextResponse.json({ ok: true, since: sinceDate, checked: totalFetched, added })
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
