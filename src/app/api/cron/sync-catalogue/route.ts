@@ -92,13 +92,13 @@ export async function GET(req: NextRequest) {
       let page = 1
       let totalFetched = 0
       let updated = 0
-      const PAGE_SIZE = 500
+      const PAGE_SIZE = 50
 
       while (true) {
         const res = await fetch(`${TWINBRU_BASE}/products/`, {
           method: 'POST',
           headers: twinbruHeaders(),
-          body: JSON.stringify({ page, pageSize: PAGE_SIZE }),
+          body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
         })
 
         if (!res.ok) {
