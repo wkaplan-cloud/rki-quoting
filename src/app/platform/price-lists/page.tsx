@@ -47,8 +47,8 @@ export default async function PlatformPriceListsPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const syncLogs: any[] = syncLogsRes.data ?? []
-  const lastPriceSync = syncLogs.find(l => l.sync_type === 'prices') ?? null
-  const lastCatalogueSync = syncLogs.find(l => l.sync_type === 'catalogue') ?? null
+  const lastPriceSync = syncLogs.find(l => l.sync_type === 'prices' && l.status === 'ok') ?? syncLogs.find(l => l.sync_type === 'prices') ?? null
+  const lastCatalogueSync = syncLogs.find(l => l.sync_type === 'catalogue' && l.status === 'ok') ?? syncLogs.find(l => l.sync_type === 'catalogue') ?? null
   const catalogueCount = catalogueCountRes.count ?? 0
 
   return (
