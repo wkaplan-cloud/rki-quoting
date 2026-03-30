@@ -20,8 +20,12 @@ function twinbruHeaders(extra: Record<string, string> = {}) {
 }
 
 function buildRecord(item: Record<string, unknown>) {
-  const fullWidth    = item.selvedge_full_width_cm    ?? item.selvedgeFullWidthCm    ?? null
-  const useableWidth = item.selvedge_useable_width_cm ?? item.selvedgeUseableWidthCm ?? null
+  // Width fields live inside item.properties (from GET /products/{id} and changefeed)
+  const props = (typeof item.properties === 'object' && item.properties !== null)
+    ? item.properties as Record<string, unknown>
+    : item
+  const fullWidth    = props.selvedge_full_width_cm    ?? item.selvedge_full_width_cm    ?? null
+  const useableWidth = props.selvedge_useable_width_cm ?? item.selvedge_useable_width_cm ?? null
   return {
     brand:            String(item.brand        ?? item.brandName        ?? '').trim() || null,
     collection:       String(item.collectionName ?? '').trim() || null,
@@ -86,49 +90,62 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── BACKFILL MODE ────────────────────────────────────────────────────────
-    // Uses POST /products/ (search endpoint) which returns ALL products.
-    // Upserts every row so existing records get their width columns populated.
+    // Loads all product_ids from DB, fetches each via GET /products/{id}
+    // concurrently (30 at a time), upserts width fields back.
     if (isBackfill) {
-      let page = 1
-      let totalFetched = 0
-      let updated = 0
-      const PAGE_SIZE = 50
-
+      // Load all product_ids from DB
+      const allProductIds: string[] = []
+      let from = 0
       while (true) {
-        const res = await fetch(`${TWINBRU_BASE}/products/`, {
-          method: 'POST',
-          headers: twinbruHeaders(),
-          body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
-        })
+        const { data: rows } = await supabase
+          .from('price_list_items')
+          .select('product_id')
+          .eq('price_list_id', priceListId)
+          .not('product_id', 'is', null)
+          .range(from, from + 999)
+        if (!rows?.length) break
+        for (const r of rows) allProductIds.push(r.product_id)
+        if (rows.length < 1000) break
+        from += 1000
+      }
 
-        if (!res.ok) {
-          throw new Error(`Products search ${res.status}: ${await res.text().then(t => t.slice(0, 300))}`)
-        }
+      const CONCURRENCY = 30
+      let updated = 0
 
-        const data = await res.json()
-        const items = extractItems(data)
-        totalFetched += items.length
+      for (let i = 0; i < allProductIds.length; i += CONCURRENCY) {
+        const chunk = allProductIds.slice(i, i + CONCURRENCY)
+        const results = await Promise.all(
+          chunk.map(async (pid) => {
+            try {
+              const res = await fetch(`${TWINBRU_BASE}/products/${pid}`, {
+                headers: twinbruHeaders(),
+              })
+              if (!res.ok) return null
+              const item = await res.json()
+              const record = buildRecord(item)
+              return { ...record, product_id: String(pid), price_list_id: priceListId }
+            } catch {
+              return null
+            }
+          })
+        )
 
-        if (items.length > 0) {
-          const batch = items.map(item => ({ ...buildRecord(item), price_list_id: priceListId }))
+        const valid = results.filter((r): r is Record<string, unknown> => r !== null)
+        if (valid.length > 0) {
           await supabase.from('price_list_items')
-            .upsert(batch, { onConflict: 'product_id,price_list_id' })
-          updated += items.length
+            .upsert(valid, { onConflict: 'product_id,price_list_id' })
+          updated += valid.length
         }
-
-        if (items.length < PAGE_SIZE) break
-        page++
-        await new Promise(r => setTimeout(r, 150))
       }
 
       await supabase.from('twinbru_sync_log').update({
         status: 'ok',
         completed_at: new Date().toISOString(),
-        items_checked: totalFetched,
+        items_checked: allProductIds.length,
         items_added: 0,
       }).eq('id', logId)
 
-      return NextResponse.json({ ok: true, checked: totalFetched, updated })
+      return NextResponse.json({ ok: true, checked: allProductIds.length, updated })
     }
 
     // ── NORMAL SYNC MODE ─────────────────────────────────────────────────────
