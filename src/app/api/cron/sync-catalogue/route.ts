@@ -79,51 +79,68 @@ export async function GET(req: NextRequest) {
   const logId = logRow?.id
 
   try {
-    // Get the highest product_id already in our database.
-    // Twinbru assigns sequential numeric IDs so any new fabric will have a higher ID.
-    // We filter the API with productId.gt.{maxId} — only new products come back,
-    // regardless of how large the full catalogue is.
-    const { data: maxRow } = await supabase
-      .from('price_list_items')
-      .select('product_id')
-      .eq('price_list_id', priceListId)
-      .not('product_id', 'is', null)
-      .order('product_id', { ascending: false })
+    // Use last successful sync date so we only fetch products modified since then.
+    // Falls back to the CSV export date on first run.
+    const { data: lastSync } = await supabase
+      .from('twinbru_sync_log')
+      .select('completed_at')
+      .eq('sync_type', 'catalogue')
+      .eq('status', 'ok')
+      .order('completed_at', { ascending: false })
       .limit(1)
       .single()
 
-    const maxProductId = maxRow ? parseInt(maxRow.product_id, 10) : 0
+    const sinceDate = lastSync?.completed_at ?? '2026-03-19T00:00:00Z'
 
-    let page = 1
+    // Load existing product_ids to skip duplicates (paginated past 1000-row limit)
+    const knownIds = new Set<string>()
+    let from = 0
+    while (true) {
+      const { data: existing } = await supabase
+        .from('price_list_items')
+        .select('product_id')
+        .eq('price_list_id', priceListId)
+        .not('product_id', 'is', null)
+        .range(from, from + 999)
+      if (!existing?.length) break
+      for (const r of existing) knownIds.add(r.product_id)
+      if (existing.length < 1000) break
+      from += 1000
+    }
+
+    // ODS Changefeed — GET /ods/item-read/v1/api/items/product/changes
+    // Returns only products modified since sinceDate. Paginated via ODS-Continuation header.
+    let continuation: string | null = null
     let totalFetched = 0
     let added = 0
-    let hasMore = true
     const newItems: Record<string, unknown>[] = []
 
-    // Filter to only products with ID higher than our current max
-    const filter = maxProductId > 0 ? `productId.gt.${maxProductId}` : ''
+    while (true) {
+      const url = new URL(`${TWINBRU_BASE}/ods/item-read/v1/api/items/product/changes`)
+      url.searchParams.set('modifiedSince', sinceDate)
+      url.searchParams.set('maxBatchSize', '500')
 
-    while (hasMore) {
-      const res = await fetch(`${TWINBRU_BASE}/products/`, {
-        method: 'POST',
-        headers: twinbruHeaders(),
-        body: JSON.stringify({ page, pageSize: 50, filter }),
-      })
-
-      if (!res.ok) {
-        throw new Error(`Products API ${res.status}: ${await res.text().then(t => t.slice(0, 200))}`)
+      const hdrs: Record<string, string> = {
+        ...twinbruHeaders(),
+        ...(continuation ? { 'ODS-Continuation': continuation } : {}),
       }
 
+      const res = await fetch(url.toString(), { method: 'GET', headers: hdrs })
+
+      if (!res.ok) {
+        throw new Error(`Changefeed ${res.status}: ${await res.text().then(t => t.slice(0, 300))}`)
+      }
+
+      const nextContinuation = res.headers.get('ODS-Continuation')
       const data = await res.json()
       const items = extractItems(data)
-      const total = Number(data.totalItemCount ?? data.total ?? 0)
 
-      if (items.length === 0) break
       totalFetched += items.length
 
       for (const item of items) {
-        const pid = String(item.productId ?? '').trim()
-        if (!pid) continue
+        const pid = String(item.productId ?? item.id ?? '').trim()
+        if (!pid || knownIds.has(pid)) continue
+        knownIds.add(pid)
         newItems.push({ ...buildRecord(item), price_list_id: priceListId })
         added++
       }
@@ -133,9 +150,9 @@ export async function GET(req: NextRequest) {
         await supabase.from('price_list_items').insert(newItems.splice(0))
       }
 
-      hasMore = items.length === 50 && totalFetched < (total || Infinity)
-      page++
-      if (hasMore) await new Promise(r => setTimeout(r, 120))
+      if (!nextContinuation || items.length === 0) break
+      continuation = nextContinuation
+      await new Promise(r => setTimeout(r, 100))
     }
 
     // Insert any remaining
@@ -143,7 +160,7 @@ export async function GET(req: NextRequest) {
       await supabase.from('price_list_items').insert(newItems)
     }
 
-    // Update item_count
+    // Update item_count if anything was added
     if (added > 0) {
       const { count } = await supabase
         .from('price_list_items')
@@ -161,7 +178,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      maxProductId,
+      since: sinceDate,
       checked: totalFetched,
       added,
     })
