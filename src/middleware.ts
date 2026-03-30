@@ -43,6 +43,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === '/robots.txt' ||
     request.nextUrl.pathname === '/llms.txt' ||
     request.nextUrl.pathname.startsWith('/api/contact') ||
+    request.nextUrl.pathname.startsWith('/api/admin') ||
+    request.nextUrl.pathname.startsWith('/api/cron') ||
     request.nextUrl.pathname.endsWith('.xml') ||
     request.nextUrl.pathname.endsWith('.html')
 
