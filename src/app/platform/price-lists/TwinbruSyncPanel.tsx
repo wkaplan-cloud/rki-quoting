@@ -63,20 +63,7 @@ function ProgressBar({ running }: { running: boolean }) {
   if (!running) return null
   return (
     <div className="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
-      <div
-        className="h-full bg-[#9A7B4F] rounded-full"
-        style={{
-          width: '40%',
-          animation: 'twinbru-slide 1.4s ease-in-out infinite',
-        }}
-      />
-      <style>{`
-        @keyframes twinbru-slide {
-          0%   { transform: translateX(-150%); width: 40% }
-          50%  { width: 60% }
-          100% { transform: translateX(350%); width: 40% }
-        }
-      `}</style>
+      <div className="h-full w-full bg-gradient-to-r from-transparent via-[#9A7B4F] to-transparent animate-pulse" />
     </div>
   )
 }
