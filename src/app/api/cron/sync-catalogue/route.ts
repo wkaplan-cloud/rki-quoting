@@ -15,7 +15,6 @@ function twinbruHeaders() {
     'Api-Version': 'v1',
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'fields': 'productId,brandName,collectionName,collectionId,designName,productName,brand,sku,designId',
   }
 }
 
@@ -102,14 +101,20 @@ export async function GET(req: NextRequest) {
     const newItems: Record<string, unknown>[] = []
 
     while (hasMore) {
-      const res = await fetch(`${TWINBRU_BASE}/products/`, {
-        method: 'POST',
-        headers: twinbruHeaders(),
-        body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
-      })
-
-      if (!res.ok) {
-        throw new Error(`Twinbru products API ${res.status}: ${await res.text().then(t => t.slice(0, 200))}`)
+      // Retry up to 3 times on 500
+      let res: Response | null = null
+      for (let attempt = 0; attempt < 3; attempt++) {
+        res = await fetch(`${TWINBRU_BASE}/products/`, {
+          method: 'POST',
+          headers: twinbruHeaders(),
+          body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
+        })
+        if (res.status !== 500) break
+        await new Promise(r => setTimeout(r, 1500))
+      }
+      if (!res || !res.ok) {
+        const body = res ? await res.text().then(t => t.slice(0, 200)) : 'no response'
+        throw new Error(`Twinbru products API ${res?.status ?? 0}: ${body}`)
       }
 
       const data = await res.json()

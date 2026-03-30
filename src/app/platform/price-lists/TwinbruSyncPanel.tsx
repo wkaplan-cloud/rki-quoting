@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
 
 interface SyncLog {
@@ -35,6 +35,52 @@ function daysSince(d: string | null): number | null {
   return Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000)
 }
 
+function ElapsedTimer({ running }: { running: boolean }) {
+  const [elapsed, setElapsed] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (running) {
+      setElapsed(0)
+      intervalRef.current = setInterval(() => setElapsed(s => s + 1), 1000)
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [running])
+
+  if (!running) return null
+  const m = Math.floor(elapsed / 60)
+  const s = elapsed % 60
+  return (
+    <span className="text-white/40 tabular-nums">
+      {m > 0 ? `${m}m ` : ''}{s}s
+    </span>
+  )
+}
+
+function ProgressBar({ running }: { running: boolean }) {
+  if (!running) return null
+  return (
+    <div className="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
+      <div
+        className="h-full bg-[#9A7B4F] rounded-full"
+        style={{
+          width: '40%',
+          animation: 'twinbru-slide 1.4s ease-in-out infinite',
+        }}
+      />
+      <style>{`
+        @keyframes twinbru-slide {
+          0%   { transform: translateX(-150%); width: 40% }
+          50%  { width: 60% }
+          100% { transform: translateX(350%); width: 40% }
+        }
+      `}</style>
+    </div>
+  )
+}
+
 function SyncRow({ label, log, onTrigger, triggering, syncType }: {
   label: string
   log: SyncLog | null
@@ -47,53 +93,75 @@ function SyncRow({ label, log, onTrigger, triggering, syncType }: {
   const statusOk = log?.status === 'ok'
 
   return (
-    <div className="flex items-start justify-between gap-6 py-4 border-b border-white/10 last:border-0">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-white">{label}</p>
-
-        {log ? (
-          <div className="mt-1 space-y-0.5">
-            <p className="text-xs text-white/50">
-              Last run: <span className="text-white/70">{fmt(log.completed_at)}</span>
-              {log.triggered_by === 'manual' && (
-                <span className="ml-2 text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-white/40">manual</span>
-              )}
-            </p>
-            {statusOk ? (
-              <p className="text-xs text-white/50">
-                {syncType === 'prices'
-                  ? <>{log.items_checked?.toLocaleString()} checked &middot; <span className={log.items_changed ? 'text-amber-400' : 'text-emerald-400'}>{log.items_changed ?? 0} changed</span></>
-                  : <>{log.items_checked?.toLocaleString()} fetched &middot; <span className="text-emerald-400">{log.items_added ?? 0} new fabrics added</span></>
-                }
-              </p>
-            ) : (
-              <p className="text-xs text-red-400 flex items-center gap-1">
-                <AlertCircle size={11} /> {log.error_message?.slice(0, 120) ?? 'Error'}
-              </p>
-            )}
+    <div className="py-4 border-b border-white/10 last:border-0">
+      <div className="flex items-start justify-between gap-6">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-white">{label}</p>
+            {triggering && <ElapsedTimer running={triggering} />}
           </div>
-        ) : (
-          <p className="text-xs text-white/40 mt-1">Never run</p>
-        )}
 
-        {stale && (
-          <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
-            <Clock size={11} />
-            {age == null ? 'Catalogue has never been synced' : `${age} days since last catalogue sync — consider refreshing`}
-          </p>
-        )}
+          {log ? (
+            <div className="mt-1 space-y-0.5">
+              <p className="text-xs text-white/50">
+                Last run: <span className="text-white/70">{fmt(log.completed_at)}</span>
+                {log.triggered_by === 'manual' && (
+                  <span className="ml-2 text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-white/40">manual</span>
+                )}
+              </p>
+              {statusOk ? (
+                <p className="text-xs text-white/50">
+                  {syncType === 'prices'
+                    ? <>{log.items_checked?.toLocaleString()} checked &middot; <span className={log.items_changed ? 'text-amber-400' : 'text-emerald-400'}>{log.items_changed ?? 0} changed</span></>
+                    : <>{log.items_checked?.toLocaleString()} fetched &middot; <span className="text-emerald-400">{log.items_added ?? 0} new fabrics added</span></>
+                  }
+                </p>
+              ) : (
+                <p className="text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle size={11} /> {log.error_message?.slice(0, 120) ?? 'Error'}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-white/40 mt-1">{triggering ? 'Running…' : 'Never run'}</p>
+          )}
+
+          {stale && !triggering && (
+            <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
+              <Clock size={11} />
+              {age == null ? 'Catalogue has never been synced' : `${age} days since last catalogue sync — consider refreshing`}
+            </p>
+          )}
+        </div>
+
+        <button
+          onClick={onTrigger}
+          disabled={triggering}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed"
+        >
+          <RefreshCw size={12} className={triggering ? 'animate-spin' : ''} />
+          {triggering ? 'Syncing…' : syncType === 'prices' ? 'Sync Prices Now' : 'Sync Catalogue Now'}
+        </button>
       </div>
 
-      <button
-        onClick={onTrigger}
-        disabled={triggering}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed"
-      >
-        <RefreshCw size={12} className={triggering ? 'animate-spin' : ''} />
-        {triggering ? 'Syncing…' : syncType === 'prices' ? 'Sync Prices Now' : 'Sync Catalogue Now'}
-      </button>
+      <ProgressBar running={triggering} />
     </div>
   )
+}
+
+function makeLog(partial: Partial<SyncLog> & { sync_type: string }): SyncLog {
+  return {
+    id: crypto.randomUUID(),
+    started_at: new Date().toISOString(),
+    completed_at: new Date().toISOString(),
+    status: 'ok',
+    items_checked: null,
+    items_changed: null,
+    items_added: null,
+    error_message: null,
+    triggered_by: 'manual',
+    ...partial,
+  }
 }
 
 export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCount, cronSecret }: Props) {
@@ -124,16 +192,20 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
 
       if (type === 'prices') {
         setResult({ type: 'ok', msg: `Done — ${data.checked?.toLocaleString()} prices checked, ${data.changed ?? 0} updated` })
-        setPriceSyncLog(prev => prev
-          ? { ...prev, status: 'ok', completed_at: new Date().toISOString(), items_checked: data.checked, items_changed: data.changed, triggered_by: 'manual' }
-          : null
-        )
+        setPriceSyncLog(prev => makeLog({
+          ...(prev ?? {}),
+          sync_type: 'prices',
+          items_checked: data.checked,
+          items_changed: data.changed,
+        }))
       } else {
         setResult({ type: 'ok', msg: `Done — ${data.checked?.toLocaleString()} fetched, ${data.added ?? 0} new fabrics added` })
-        setCatalogueSyncLog(prev => prev
-          ? { ...prev, status: 'ok', completed_at: new Date().toISOString(), items_checked: data.checked, items_added: data.added, triggered_by: 'manual' }
-          : null
-        )
+        setCatalogueSyncLog(prev => makeLog({
+          ...(prev ?? {}),
+          sync_type: 'catalogue',
+          items_checked: data.checked,
+          items_added: data.added,
+        }))
       }
     } catch (e) {
       setResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
