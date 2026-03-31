@@ -36,7 +36,7 @@ const plans = [
   },
 ]
 
-export function SubscribeClient({ trialExpired, daysLeft }: { trialExpired: boolean; daysLeft: number }) {
+export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName }: { trialExpired: boolean; daysLeft: number; userEmail: string; studioName: string }) {
   const [loading, setLoading] = useState<string | null>(null)
   const [extensionRequested, setExtensionRequested] = useState(false)
 
@@ -48,9 +48,10 @@ export function SubscribeClient({ trialExpired, daysLeft }: { trialExpired: bool
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'Trial extension request',
-          message: 'A studio is requesting a trial extension. Please review in the platform admin and extend if appropriate.',
-          email: 'trial@quotinghub.co.za',
-          name: 'Trial Extension Request',
+          message: `A studio is requesting a trial extension. Please review in the platform admin and extend if appropriate.`,
+          email: userEmail,
+          name: studioName || userEmail,
+          company: studioName,
         }),
       })
       setExtensionRequested(true)
@@ -73,8 +74,9 @@ export function SubscribeClient({ trialExpired, daysLeft }: { trialExpired: bool
         body: JSON.stringify({
           type: `Subscription request — ${planId} plan`,
           message: `A studio is requesting to subscribe to the ${planId} plan (R${planId === 'solo' ? '599' : '1,099'}/month). Please action this in the platform admin.`,
-          email: 'subscription@quotinghub.co.za',
-          name: 'Subscription Request',
+          email: userEmail,
+          name: studioName || userEmail,
+          company: studioName,
         }),
       })
       toast.success("Request sent! We'll be in touch within 24 hours to activate your plan.")

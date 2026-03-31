@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mail, MailOpen, Tag } from 'lucide-react'
+import { Mail, MailOpen, Tag, Send } from 'lucide-react'
 
 interface Submission {
   id: string
@@ -23,9 +23,14 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
   const router = useRouter()
   const [selected, setSelected] = useState<Submission | null>(null)
   const [list, setList] = useState(submissions)
+  const [reply, setReply] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState<string | null>(null) // stores message id after send
 
   async function openMessage(msg: Submission) {
     setSelected(msg)
+    setReply('')
+    setSent(null)
     if (!msg.read) {
       await fetch('/api/platform/messages/read', {
         method: 'POST',
@@ -108,13 +113,38 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
               <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{selected.message}</p>
             </div>
 
-            <div className="mt-5">
-              <a
-                href={`mailto:${selected.email}?subject=Re: your QuotingHub message`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#C4A46B] text-[#1A1A18] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] hover:text-white transition-colors"
-              >
-                <Mail size={13} /> Reply by email
-              </a>
+            <div className="mt-6">
+              {sent === selected.id ? (
+                <div className="flex items-center gap-2 text-sm text-emerald-400">
+                  <Mail size={13} /> Reply sent to {selected.email}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    value={reply}
+                    onChange={e => setReply(e.target.value)}
+                    placeholder={`Reply to ${selected.name || selected.email}…`}
+                    rows={4}
+                    className="w-full bg-[#0F0F0D] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white/80 placeholder:text-white/20 resize-none focus:outline-none focus:border-white/20"
+                  />
+                  <button
+                    disabled={!reply.trim() || sending}
+                    onClick={async () => {
+                      setSending(true)
+                      const res = await fetch('/api/platform/messages/reply', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ to: selected.email, toName: selected.name, message: reply }),
+                      })
+                      setSending(false)
+                      if (res.ok) { setSent(selected.id); setReply('') }
+                    }}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#C4A46B] text-[#1A1A18] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Send size={13} /> {sending ? 'Sending…' : 'Send reply'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

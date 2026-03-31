@@ -27,5 +27,18 @@ export default async function SubscribePage() {
     : 0
   const trialExpired = daysLeft === 0
 
-  return <SubscribeClient trialExpired={trialExpired} daysLeft={daysLeft} />
+  const { data: settings } = await supabaseAdmin
+    .from('settings')
+    .select('business_name')
+    .eq('org_id', orgId)
+    .maybeSingle()
+
+  return (
+    <SubscribeClient
+      trialExpired={trialExpired}
+      daysLeft={daysLeft}
+      userEmail={user.email ?? ''}
+      studioName={settings?.business_name ?? ''}
+    />
+  )
 }
