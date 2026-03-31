@@ -89,13 +89,15 @@ export function PriceListView({ priceListId }: { priceListId: string }) {
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
-      const { data } = await supabase
+      const words = q.split(/\s+/).filter(Boolean)
+      let query = supabase
         .from('price_list_items')
         .select('*')
         .eq('price_list_id', priceListId)
-        .or(`design.ilike.%${q}%,colour.ilike.%${q}%,collection.ilike.%${q}%,sku.ilike.%${q}%,brand.ilike.%${q}%`)
-        .order('brand').order('collection').order('design')
-        .limit(60)
+      for (const word of words) {
+        query = query.or(`design.ilike.%${word}%,colour.ilike.%${word}%,collection.ilike.%${word}%,sku.ilike.%${word}%,brand.ilike.%${word}%`)
+      }
+      const { data } = await query.order('brand').order('collection').order('design').limit(60)
       setItems(data ?? [])
       setLoading(false)
     }, 300)
