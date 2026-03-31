@@ -46,7 +46,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/api/admin') ||
     request.nextUrl.pathname.startsWith('/api/cron') ||
     request.nextUrl.pathname.endsWith('.xml') ||
-    request.nextUrl.pathname.endsWith('.html')
+    request.nextUrl.pathname.endsWith('.html') ||
+    request.nextUrl.pathname.startsWith('/interior-design-software-')
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))

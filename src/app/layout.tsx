@@ -77,6 +77,26 @@ const organizationSchema = {
   },
 }
 
+const localBusinessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  name: 'QuotingHub',
+  url: 'https://quotinghub.co.za',
+  logo: 'https://quotinghub.co.za/logo.png',
+  description: 'Quoting and project management software for interior designers in South Africa.',
+  areaServed: [
+    { '@type': 'City', name: 'Johannesburg' },
+    { '@type': 'City', name: 'Cape Town' },
+    { '@type': 'City', name: 'Durban' },
+    { '@type': 'Country', name: 'South Africa' },
+  ],
+  address: {
+    '@type': 'PostalAddress',
+    addressCountry: 'ZA',
+  },
+  sameAs: ['https://quotinghub.co.za'],
+}
+
 const webApplicationSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
@@ -114,6 +134,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationSchema).replace(/</g, '\\u003c'),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(localBusinessSchema).replace(/</g, '\\u003c'),
           }}
         />
         <script
