@@ -25,7 +25,7 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
   const [list, setList] = useState(submissions)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState<string | null>(null) // stores message id after send
+  const [sent, setSent] = useState<{ id: string; at: Date } | null>(null)
 
   async function openMessage(msg: Submission) {
     setSelected(msg)
@@ -114,9 +114,12 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
             </div>
 
             <div className="mt-6">
-              {sent === selected.id ? (
+              {sent?.id === selected.id ? (
                 <div className="flex items-center gap-2 text-sm text-emerald-400">
                   <Mail size={13} /> Reply sent to {selected.email}
+                  <span className="text-white/25 text-xs">
+                    {sent.at.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} at {sent.at.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -137,7 +140,7 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
                         body: JSON.stringify({ to: selected.email, toName: selected.name, message: reply }),
                       })
                       setSending(false)
-                      if (res.ok) { setSent(selected.id); setReply('') }
+                      if (res.ok) { setSent({ id: selected.id, at: new Date() }); setReply('') }
                     }}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-[#C4A46B] text-[#1A1A18] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
