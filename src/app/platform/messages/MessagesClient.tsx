@@ -11,6 +11,7 @@ interface Submission {
   message: string
   read: boolean
   created_at: string
+  replied_at: string | null
 }
 
 const TYPE_COLOURS: Record<string, string> = {
@@ -26,6 +27,12 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState<{ id: string; at: Date } | null>(null)
+
+  function getRepliedAt(msg: Submission) {
+    if (sent?.id === msg.id) return sent.at
+    if (msg.replied_at) return new Date(msg.replied_at)
+    return null
+  }
 
   async function openMessage(msg: Submission) {
     setSelected(msg)
@@ -114,11 +121,11 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
             </div>
 
             <div className="mt-6">
-              {sent?.id === selected.id ? (
+              {getRepliedAt(selected) ? (
                 <div className="flex items-center gap-2 text-sm text-emerald-400">
                   <Mail size={13} /> Reply sent to {selected.email}
                   <span className="text-white/25 text-xs">
-                    {sent.at.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} at {sent.at.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                    {getRepliedAt(selected)!.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} at {getRepliedAt(selected)!.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
               ) : (
@@ -137,7 +144,7 @@ export function MessagesClient({ submissions }: { submissions: Submission[] }) {
                       const res = await fetch('/api/platform/messages/reply', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ to: selected.email, toName: selected.name, message: reply }),
+                        body: JSON.stringify({ to: selected.email, toName: selected.name, message: reply, id: selected.id }),
                       })
                       setSending(false)
                       if (res.ok) { setSent({ id: selected.id, at: new Date() }); setReply('') }

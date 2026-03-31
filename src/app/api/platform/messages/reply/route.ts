@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const PLATFORM_ADMIN = process.env.PLATFORM_ADMIN_EMAIL
 const REPLY_FROM = process.env.PLATFORM_REPLY_EMAIL ?? 'hello@quotinghub.co.za'
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { to, toName, message } = await req.json() as { to: string; toName?: string; message: string }
+  const { to, toName, message, id } = await req.json() as { to: string; toName?: string; message: string; id?: string }
   if (!to || !message?.trim()) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY)
 
   try {
+    const repliedAt = new Date().toISOString()
     await resend.emails.send({
       from: `QuotingHub <${REPLY_FROM}>`,
       to,
@@ -36,7 +38,8 @@ export async function POST(req: NextRequest) {
         </div>
       `,
     })
-    return NextResponse.json({ ok: true })
+    if (id) await supabaseAdmin.from('contact_submissions').update({ replied_at: repliedAt }).eq('id', id)
+    return NextResponse.json({ ok: true, replied_at: repliedAt })
   } catch {
     return NextResponse.json({ error: 'Failed to send reply' }, { status: 500 })
   }
