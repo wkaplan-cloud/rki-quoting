@@ -157,6 +157,9 @@ export function PriceListView({ priceListId }: { priceListId: string }) {
                     <p className="text-xs font-semibold text-[#1A1A18]">{formatPrice(item.price_zar)}</p>
                     {item.useable_width_cm && <p className="text-[10px] text-[#8A877F]">{item.useable_width_cm}cm</p>}
                   </div>
+                  {item.price_zar != null && (
+                    <p className="text-[10px] text-[#8A877F]">Roll (40m): {formatPrice(Math.round(item.price_zar * 0.9 * 40 * 100) / 100)}</p>
+                  )}
                   {item.product_id && <div className="pt-1"><StockBadge productId={item.product_id} /></div>}
                 </div>
               </div>

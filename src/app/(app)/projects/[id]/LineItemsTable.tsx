@@ -474,6 +474,29 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         }
                         return null
                       })()}
+                      {item.twinbru_cost_price != null && (() => {
+                        const rollPrice = Math.round(item.twinbru_cost_price * 0.9 * 100) / 100
+                        const isRoll = Math.abs(item.cost_price - rollPrice) < 0.01
+                        const setMode = async (roll: boolean) => {
+                          const cost_price = roll ? rollPrice : item.twinbru_cost_price!
+                          const quantity = roll ? 40 : item.quantity
+                          const unit = roll ? 'm' : item.unit
+                          onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, quantity, unit } : i))
+                          await supabase.from('line_items').update({ cost_price, ...(roll ? { quantity: 40, unit: 'm' } : {}) }).eq('id', item.id)
+                        }
+                        return (
+                          <div className="flex items-center gap-0.5 mt-1">
+                            <button
+                              onClick={() => setMode(false)}
+                              className={`text-[9px] px-1.5 py-0.5 rounded-l-full border transition-colors cursor-pointer ${!isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
+                            >Cut</button>
+                            <button
+                              onClick={() => setMode(true)}
+                              className={`text-[9px] px-1.5 py-0.5 rounded-r-full border transition-colors cursor-pointer ${isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
+                            >Roll</button>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </td>
 
