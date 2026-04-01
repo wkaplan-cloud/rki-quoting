@@ -61,7 +61,8 @@ export default function OnboardingPage() {
     const json = await res.json()
     if (!res.ok) { toast.error(json.error ?? 'Setup failed'); setSaving(false); return }
 
-    let orgId = json.orgId
+    const orgId: string | undefined = json.orgId
+    if (!orgId) { toast.error('Setup failed'); setSaving(false); return }
 
     const { data: existingSettings } = await supabase.from('settings').select('id').maybeSingle()
     if (existingSettings) {
