@@ -43,6 +43,60 @@ const ACTION_COLOR: Record<string, string> = {
   deleted: 'text-red-600 bg-red-50',
 }
 
+const TABLE_LABEL: Record<string, string> = {
+  projects: 'Project',
+  clients: 'Client',
+  suppliers: 'Supplier',
+  line_items: 'Line Item',
+  settings: 'Settings',
+  price_lists: 'Price List',
+  price_list_items: 'Price List Item',
+}
+
+function getRecordLabel(log: AuditLog): string {
+  const d = log.new_data ?? log.old_data
+  if (!d) return '—'
+  switch (log.table_name) {
+    case 'projects':
+      return [d.project_number, d.project_name].filter(Boolean).join(' — ') || '—'
+    case 'clients':
+      return (d.client_name as string) || '—'
+    case 'suppliers':
+      return (d.supplier_name as string) || '—'
+    case 'line_items':
+      return (d.item_name as string) || '—'
+    case 'settings':
+      return 'Studio settings'
+    case 'price_lists':
+      return (d.name as string) || '—'
+    case 'price_list_items':
+      return (d.fabric_name as string) || '—'
+    default:
+      return '—'
+  }
+}
+
+// For updates, show key field changes that are meaningful to the user
+const TRACKED_FIELDS: Record<string, string[]> = {
+  projects: ['status', 'project_name', 'project_number', 'client_id'],
+  clients: ['client_name', 'company', 'contact_number', 'email'],
+  suppliers: ['supplier_name', 'category', 'markup_percentage'],
+  line_items: ['item_name', 'quantity', 'cost_price', 'markup_percentage'],
+  settings: ['business_name', 'vat_rate', 'deposit_percentage', 'email_from'],
+}
+
+function getChanges(log: AuditLog): { field: string; from: string; to: string }[] {
+  if (log.action !== 'updated' || !log.old_data || !log.new_data) return []
+  const fields = TRACKED_FIELDS[log.table_name] ?? []
+  return fields
+    .filter(f => String(log.old_data![f] ?? '') !== String(log.new_data![f] ?? ''))
+    .map(f => ({
+      field: f.replace(/_/g, ' '),
+      from: String(log.old_data![f] ?? '—'),
+      to: String(log.new_data![f] ?? '—'),
+    }))
+}
+
 export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
@@ -259,25 +313,46 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                 <th className="text-left px-4 py-3">When</th>
                 <th className="text-left px-4 py-3">User</th>
                 <th className="text-left px-4 py-3">Action</th>
-                <th className="text-left px-4 py-3">Table</th>
+                <th className="text-left px-4 py-3">Record</th>
+                <th className="text-left px-4 py-3">Changes</th>
               </tr>
             </thead>
             <tbody>
               {auditLogs.length === 0 && (
-                <tr><td colSpan={4} className="px-4 py-10 text-center text-[#8A877F]">No activity yet</td></tr>
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-[#8A877F]">No activity yet</td></tr>
               )}
-              {auditLogs.map(log => (
-                <tr key={log.id} className="border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9]">
-                  <td className="px-4 py-2.5 text-xs text-[#8A877F] whitespace-nowrap">{fmt(log.created_at)}</td>
-                  <td className="px-4 py-2.5 text-xs text-[#2C2C2A]">{log.user_email ?? '—'}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ACTION_COLOR[log.action] ?? 'text-[#8A877F] bg-[#F5F2EC]'}`}>
-                      {log.action}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-[#8A877F] font-mono">{log.table_name}</td>
-                </tr>
-              ))}
+              {auditLogs.map(log => {
+                const changes = getChanges(log)
+                return (
+                  <tr key={log.id} className="border-b border-[#EDE9E1] last:border-0 hover:bg-[#FDFCF9]">
+                    <td className="px-4 py-2.5 text-xs text-[#8A877F] whitespace-nowrap">{fmt(log.created_at)}</td>
+                    <td className="px-4 py-2.5 text-xs text-[#2C2C2A]">{log.user_email ?? '—'}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ACTION_COLOR[log.action] ?? 'text-[#8A877F] bg-[#F5F2EC]'}`}>
+                        {log.action}
+                      </span>
+                      <span className="ml-1.5 text-xs text-[#8A877F]">{TABLE_LABEL[log.table_name] ?? log.table_name}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-[#2C2C2A] font-medium">{getRecordLabel(log)}</td>
+                    <td className="px-4 py-2.5">
+                      {changes.length > 0 ? (
+                        <div className="space-y-0.5">
+                          {changes.map(c => (
+                            <div key={c.field} className="text-xs text-[#8A877F]">
+                              <span className="font-medium text-[#2C2C2A] capitalize">{c.field}:</span>{' '}
+                              <span className="line-through text-[#C4BFB5]">{c.from}</span>
+                              {' → '}
+                              <span className="text-[#2C2C2A]">{c.to}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[#C4BFB5]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
