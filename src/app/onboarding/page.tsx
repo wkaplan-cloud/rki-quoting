@@ -52,29 +52,16 @@ export default function OnboardingPage() {
   async function finish() {
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: existingOrgId } = await supabase.rpc('get_current_org_id')
 
-    let orgId = existingOrgId
+    const res = await fetch('/api/onboarding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ business_name: form.business_name }),
+    })
+    const json = await res.json()
+    if (!res.ok) { toast.error(json.error ?? 'Setup failed'); setSaving(false); return }
 
-    if (!orgId) {
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({ name: form.business_name })
-        .select()
-        .single()
-      if (orgError) { toast.error(orgError.message); setSaving(false); return }
-      orgId = org.id
-
-      const { error: memberError } = await supabase.from('org_members').insert({
-        org_id: orgId,
-        user_id: user!.id,
-        invited_email: user!.email!,
-        role: 'admin',
-        status: 'active',
-        joined_at: new Date().toISOString(),
-      })
-      if (memberError) { toast.error(memberError.message); setSaving(false); return }
-    }
+    let orgId = json.orgId
 
     const { data: existingSettings } = await supabase.from('settings').select('id').maybeSingle()
     if (existingSettings) {
