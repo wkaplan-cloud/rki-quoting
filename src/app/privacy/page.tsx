@@ -1,20 +1,13 @@
 import Link from 'next/link'
+import { PublicLayout } from '@/components/layout/PublicLayout'
 
 export const metadata = { title: 'Privacy Policy – QuotingHub' }
 
 export default function PrivacyPage() {
   const updated = '10 April 2026'
   return (
-    <div className="min-h-screen bg-[#F5F2EC] font-sans">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <Link href="/"><img src="/logo.png" alt="QuotingHub" className="h-10 w-auto object-contain" /></Link>
-          <Link href="/signup" className="px-4 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors font-medium">Get Started</Link>
-        </div>
-      </nav>
-
-      <div className="max-w-3xl mx-auto px-6 pt-32 pb-24">
+    <PublicLayout>
+      <div className="max-w-3xl mx-auto px-6 pb-24">
         <p className="text-xs text-[#9A7B4F] uppercase tracking-widest font-semibold mb-3">Legal</p>
         <h1 className="font-serif text-4xl text-[#1A1A18] tracking-tight mb-2">Privacy Policy</h1>
         <p className="text-sm text-[#8A877F] mb-12">Last updated: {updated}</p>
@@ -121,13 +114,8 @@ export default function PrivacyPage() {
 
         </div>
 
-        <div className="mt-16 pt-8 border-t border-[#D8D3C8] flex flex-wrap gap-6 text-xs text-[#8A877F]">
-          <Link href="/terms" className="hover:text-[#9A7B4F] transition-colors">Terms of Service</Link>
-          <Link href="/faq" className="hover:text-[#9A7B4F] transition-colors">FAQ</Link>
-          <Link href="/" className="hover:text-[#9A7B4F] transition-colors">Back to Home</Link>
-        </div>
       </div>
-    </div>
+    </PublicLayout>
   )
 }
 

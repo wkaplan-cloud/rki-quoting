@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Check, ArrowRight } from 'lucide-react'
+import { PublicLayout } from '@/components/layout/PublicLayout'
 
 const plans = [
   {
@@ -37,29 +38,9 @@ const plans = [
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-[#F5F2EC] font-sans">
-
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
-        <div className="max-w-6xl mx-auto px-6 h-32 flex items-center justify-between">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-28 w-auto object-contain" />
-          <div className="flex items-center gap-3">
-            <Link href="/" className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">
-              Home
-            </Link>
-            <Link href="/login" className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">
-              Log in
-            </Link>
-            <Link href="/signup" className="px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
-              Get started free
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <PublicLayout>
       {/* Hero */}
-      <section className="pt-52 pb-10 px-6 text-center">
+      <section className="pt-20 pb-10 px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 rounded-full px-4 py-1.5 mb-6">
             <span className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider">Simple pricing</span>
@@ -140,26 +121,10 @@ export default function PricingPage() {
           <h2 className="font-serif text-3xl text-[#1A1A18] mb-10 text-center">Common questions</h2>
           <div className="space-y-8">
             {[
-              {
-                q: 'What happens after my 30-day trial?',
-                a: "You'll be prompted to choose a plan to keep access. Your data is never deleted — if you subscribe within a few days of expiry everything is exactly as you left it.",
-              },
-              {
-                q: 'Do I need a credit card to start?',
-                a: 'No. Sign up with just your email address. You only enter payment details when you choose to subscribe after the trial.',
-              },
-              {
-                q: 'What is the difference between Solo and Studio?',
-                a: 'Solo is for one-person studios. Studio allows unlimited team members so your whole team can collaborate on projects together.',
-              },
-              {
-                q: 'What does price list access include?',
-                a: 'Both plans include access to the Home Fabrics price list so you can browse and pull products directly into your quotes. More supplier price lists are being added.',
-              },
-              {
-                q: 'Can I cancel at any time?',
-                a: 'Yes. There are no long-term contracts. Cancel anytime from your account settings.',
-              },
+              { q: 'What happens after my 30-day trial?', a: "You'll be prompted to choose a plan to keep access. Your data is never deleted — if you subscribe within a few days of expiry everything is exactly as you left it." },
+              { q: 'Do I need a credit card to start?', a: 'No. Sign up with just your email address. You only enter payment details when you choose to subscribe after the trial.' },
+              { q: 'What is the difference between Solo and Studio?', a: 'Solo is for one-person studios. Studio allows unlimited team members so your whole team can collaborate on projects together.' },
+              { q: 'Can I cancel at any time?', a: 'Yes. There are no long-term contracts. Cancel anytime from your account settings.' },
             ].map(({ q, a }) => (
               <div key={q} className="border-b border-[#EDE9E1] pb-8">
                 <p className="font-medium text-[#1A1A18] mb-2">{q}</p>
@@ -170,21 +135,14 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Footer CTA */}
+      {/* CTA */}
       <section className="bg-[#1A1A18] px-6 py-16 text-center">
         <p className="font-serif text-3xl text-white mb-3">Ready to start?</p>
         <p className="text-white/50 text-sm mb-8">Join interior designers already using QuotingHub to run their studios.</p>
-        <Link
-          href="/signup"
-          className="inline-flex items-center gap-2 bg-[#9A7B4F] text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-[#B8956A] transition-colors"
-        >
+        <Link href="/signup" className="inline-flex items-center gap-2 bg-[#9A7B4F] text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-[#B8956A] transition-colors">
           Start your free trial <ArrowRight size={14} />
         </Link>
       </section>
-
-      <footer className="bg-[#0F0F0D] px-6 py-6 text-center">
-        <p className="text-xs text-white/20">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
-      </footer>
-    </div>
+    </PublicLayout>
   )
 }
