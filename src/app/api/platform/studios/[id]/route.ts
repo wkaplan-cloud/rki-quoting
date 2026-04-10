@@ -18,14 +18,29 @@ export async function DELETE(
 
   if (!orgId) return NextResponse.json({ error: 'Missing org id' }, { status: 400 })
 
-  // Fetch all auth user IDs that belong to this org so we can delete them from auth
+  // Fetch all auth user IDs that belong to this org before we delete anything
   const { data: members } = await supabaseAdmin
     .from('org_members')
     .select('user_id')
     .eq('org_id', orgId)
     .not('user_id', 'is', null)
 
-  // Delete the organization — CASCADE should clean up org_members, settings, etc.
+  const userIds = (members ?? []).map(m => m.user_id).filter(Boolean) as string[]
+
+  // Step 1: Delete child rows that have FK → organizations (no CASCADE set)
+  // settings has org_id FK
+  await supabaseAdmin.from('settings').delete().eq('org_id', orgId)
+  // org_members has org_id FK
+  const { error: membersError } = await supabaseAdmin
+    .from('org_members')
+    .delete()
+    .eq('org_id', orgId)
+
+  if (membersError) {
+    return NextResponse.json({ error: membersError.message }, { status: 500 })
+  }
+
+  // Step 2: Delete the organization row itself
   const { error: orgError } = await supabaseAdmin
     .from('organizations')
     .delete()
@@ -35,10 +50,9 @@ export async function DELETE(
     return NextResponse.json({ error: orgError.message }, { status: 500 })
   }
 
-  // Delete auth users that were in this org (best-effort — skip if they belong to other orgs)
-  const userIds = (members ?? []).map(m => m.user_id).filter(Boolean) as string[]
+  // Step 3: Delete auth users that are no longer in any org
+  // (deleting auth users cascades their projects, clients, suppliers, settings, etc.)
   for (const uid of userIds) {
-    // Check if the user still belongs to any org before deleting
     const { count } = await supabaseAdmin
       .from('org_members')
       .select('*', { count: 'exact', head: true })
