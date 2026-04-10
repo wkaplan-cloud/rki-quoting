@@ -37,6 +37,7 @@ interface CompletedProject {
   design_fee: number
   vat_rate: number | null
   client: { client_name: string } | { client_name: string }[] | null
+  stages?: { final_invoice_paid: boolean } | { final_invoice_paid: boolean }[] | null
 }
 
 interface LineItemRow {
@@ -349,7 +350,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       {tab === 'profit' && (
         <div className="space-y-8">
           {completedProjects.length === 0 ? (
-            <p className="text-sm text-[#8A877F] py-10 text-center">No completed projects yet.</p>
+            <p className="text-sm text-[#8A877F] py-10 text-center">No projects with a paid final invoice yet.</p>
           ) : (
             <>
               {/* Year totals summary */}

@@ -28,13 +28,18 @@ export default async function AdminPage() {
     supabase.from('settings').select('*').maybeSingle(),
     supabaseAdmin.from('organizations').select('plan, subscription_status').eq('id', orgId).single(),
     supabase.from('projects')
-      .select('id, project_name, project_number, date, design_fee, vat_rate, client:clients(client_name)')
-      .eq('status', 'Completed')
+      .select('id, project_name, project_number, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
       .order('date', { ascending: false }),
   ])
 
   // Fetch line items for completed projects
-  const projectIds = (completedProjects ?? []).map(p => p.id)
+  // Only include projects where the final invoice has been paid
+  const paidProjects = (completedProjects ?? []).filter(p => {
+    const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
+    return stages?.final_invoice_paid === true
+  })
+
+  const projectIds = paidProjects.map(p => p.id)
   const { data: completedLineItems } = projectIds.length > 0
     ? await supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', projectIds)
     : { data: [] }
@@ -50,7 +55,7 @@ export default async function AdminPage() {
           settings={settings}
           plan={org?.plan ?? 'trial'}
           subscriptionStatus={org?.subscription_status ?? 'trialing'}
-          completedProjects={completedProjects ?? []}
+          completedProjects={paidProjects}
           completedLineItems={completedLineItems ?? []}
         />
       </div>
