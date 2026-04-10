@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -19,6 +20,7 @@ export default function SignupPage() {
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     if (!/[A-Z]/.test(password)) { setError('Password must contain at least one uppercase letter'); return }
     if (!/[0-9]/.test(password)) { setError('Password must contain at least one number'); return }
+    if (!acceptedTerms) { setError('Please accept the Terms of Service and Privacy Policy to continue'); return }
     setLoading(true)
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
@@ -145,13 +147,29 @@ export default function SignupPage() {
                   />
                 </div>
 
+                <div className="flex items-start gap-3 pt-1">
+                  <input
+                    type="checkbox"
+                    id="accept-terms"
+                    checked={acceptedTerms}
+                    onChange={e => setAcceptedTerms(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-[#D8D3C8] text-[#9A7B4F] cursor-pointer flex-shrink-0"
+                  />
+                  <label htmlFor="accept-terms" className="text-xs text-[#8A877F] leading-relaxed cursor-pointer">
+                    I agree to the{' '}
+                    <Link href="/terms" target="_blank" className="text-[#9A7B4F] hover:underline">Terms of Service</Link>
+                    {' '}and{' '}
+                    <Link href="/privacy" target="_blank" className="text-[#9A7B4F] hover:underline">Privacy Policy</Link>
+                  </label>
+                </div>
+
                 {error && (
                   <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
                 )}
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !acceptedTerms}
                   className="w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer mt-1"
                 >
                   {loading ? 'Creating account…' : 'Create Account'}

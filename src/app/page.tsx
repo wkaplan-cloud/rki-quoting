@@ -22,6 +22,12 @@ export default function LandingPage() {
               Pricing
             </Link>
             <Link
+              href="/faq"
+              className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium"
+            >
+              FAQ
+            </Link>
+            <Link
               href="/login"
               className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium"
             >
@@ -298,6 +304,9 @@ export default function LandingPage() {
           <img src="/logo.png" alt="QuotingHub" className="h-20 w-auto object-contain" />
           <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
           <div className="flex items-center gap-5">
+            <Link href="/faq" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">FAQ</Link>
+            <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
+            <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
             <Link href="/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Log in</Link>
             <Link href="/signup" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Sign up</Link>
           </div>
