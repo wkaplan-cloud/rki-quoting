@@ -36,7 +36,7 @@ interface CompletedProject {
   date: string
   design_fee: number
   vat_rate: number | null
-  client: { client_name: string } | null
+  client: { client_name: string } | { client_name: string }[] | null
 }
 
 interface LineItemRow {
@@ -383,7 +383,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                       <tbody className="divide-y divide-[#EDE9E1]">
                         {byYear[year]!.map(p => (
                           <tr key={p.id} className="hover:bg-[#FDFCF9]">
-                            <td className="px-5 py-3 text-[#2C2C2A] font-medium">{p.client?.client_name ?? <span className="text-[#C4BFB5] italic text-xs">No client</span>}</td>
+                            <td className="px-5 py-3 text-[#2C2C2A] font-medium">{(Array.isArray(p.client) ? p.client[0]?.client_name : p.client?.client_name) ?? <span className="text-[#C4BFB5] italic text-xs">No client</span>}</td>
                             <td className="px-5 py-3 text-[#8A877F]">
                               <Link href={`/projects/${p.id}`} className="hover:text-[#9A7B4F] hover:underline transition-colors">
                                 {p.project_name}
