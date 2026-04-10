@@ -72,6 +72,10 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
           <View style={{ alignItems: 'center' }}>
             <Text style={s.title}>PRODUCTION SHEET</Text>
             <Text style={s.meta}>{project.project_name}  ·  {project.project_number}</Text>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {((project as any).client?.client_name || (Array.isArray((project as any).client) && (project as any).client[0]?.client_name)) ? (
+              <Text style={s.meta}>{Array.isArray((project as any).client) ? (project as any).client[0]?.client_name : (project as any).client?.client_name}</Text>
+            ) : null}
             <Text style={s.meta}>{new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
