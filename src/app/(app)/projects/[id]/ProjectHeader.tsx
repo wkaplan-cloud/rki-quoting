@@ -139,7 +139,10 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
             <h1 className="font-serif text-xl md:text-2xl text-[#1A1A18] font-medium">{project.project_name}</h1>
             <div className="flex items-center gap-3 mt-1 text-sm text-[#8A877F]">
               <span className="font-mono">{project.project_number}</span>
-              {project.client && <><span>·</span><span>{project.client.client_name}</span></>}
+              {project.client
+                ? <><span>·</span><span>{project.client.client_name}</span></>
+                : <button onClick={() => setEditing(true)} className="text-[#9A7B4F] hover:underline cursor-pointer">+ Add client</button>
+              }
               <span>·</span>
               <span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
               <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
