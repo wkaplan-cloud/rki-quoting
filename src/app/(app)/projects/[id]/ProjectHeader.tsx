@@ -30,6 +30,7 @@ const EMPTY_STAGES: ProjectStages = {
 
 export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate }: Props) {
   const [editing, setEditing] = useState(false)
+  const [editingClient, setEditingClient] = useState(false)
   const [togglingStage, setTogglingStage] = useState<string | null>(null)
   const [form, setForm] = useState({
     project_name: project.project_name,
@@ -39,6 +40,8 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     notes: project.notes ?? '',
   })
   const [clientName, setClientName] = useState(project.client?.client_name ?? '')
+  const [pendingClientId, setPendingClientId] = useState(project.client_id ?? '')
+  const [pendingClientName, setPendingClientName] = useState(project.client?.client_name ?? '')
   const supabase = createClient()
 
   async function handleCreateClient(name: string) {
@@ -50,17 +53,25 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     return { id: data.id }
   }
 
-  async function saveClient(clientId: string, label: string) {
-    const newClientId = clientId || null
+  async function confirmClient() {
+    const newClientId = pendingClientId || null
     const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', project.id)
     if (error) { toast.error(error.message); return }
+    const displayName = pendingClientName.split(' — ')[0]
+    setClientName(displayName)
+    setForm(f => ({ ...f, client_id: pendingClientId }))
     onProjectUpdate({
       ...project,
-      ...form,
       client_id: newClientId,
-      client: newClientId ? { client_name: label.split(' — ')[0], company: label.includes(' — ') ? label.split(' — ')[1] : null } : null,
+      client: newClientId ? { client_name: displayName, company: pendingClientName.includes(' — ') ? pendingClientName.split(' — ')[1] : null } : null,
     })
-    setEditing(false)
+    setEditingClient(false)
+  }
+
+  function cancelClientEdit() {
+    setPendingClientId(project.client_id ?? '')
+    setPendingClientName(project.client?.client_name ?? '')
+    setEditingClient(false)
   }
 
   async function save() {
@@ -113,7 +124,6 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     const newStages = { ...(stages ?? { ...EMPTY_STAGES, project_id: project.id }), ...update } as ProjectStages
     onStagesUpdate(newStages)
 
-    // Auto-derive and save status (don't override Cancelled)
     if (project.status !== 'Cancelled') {
       const { statusFromStages } = await import('@/lib/types')
       const newStatus = statusFromStages(newStages)
@@ -141,7 +151,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
                 options={clients.map(c => ({ id: c.id, label: c.client_name + (c.company ? ` — ${c.company}` : '') }))}
                 value={form.client_id}
                 inputValue={clientName}
-                onChange={(id, label) => { setForm(f => ({ ...f, client_id: id })); setClientName(label); saveClient(id, label) }}
+                onChange={(id, label) => { setForm(f => ({ ...f, client_id: id })); setClientName(label) }}
                 onCreate={handleCreateClient}
                 placeholder="Type to search or create client…"
               />
@@ -150,17 +160,44 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
         ) : (
           <div className="flex-1">
             <h1 className="font-serif text-xl md:text-2xl text-[#1A1A18] font-medium">{project.project_name}</h1>
-            <div className="flex items-center gap-3 mt-1 text-sm text-[#8A877F]">
+            <div className="flex items-center gap-3 mt-1 text-sm text-[#8A877F] flex-wrap">
               <span className="font-mono">{project.project_number}</span>
-              {project.client
-                ? <><span>·</span><span>{project.client.client_name}</span></>
-                : <button onClick={() => setEditing(true)} className="text-[#9A7B4F] hover:underline cursor-pointer">+ Add client</button>
-              }
-              <span>·</span>
-              <span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-              <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
-                <Pencil size={12} />
-              </button>
+
+              {/* Client — inline editable */}
+              {editingClient ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-56">
+                    <Combobox
+                      options={clients.map(c => ({ id: c.id, label: c.client_name + (c.company ? ` — ${c.company}` : '') }))}
+                      value={pendingClientId}
+                      inputValue={pendingClientName}
+                      onChange={(id, label) => { setPendingClientId(id); setPendingClientName(label) }}
+                      onCreate={handleCreateClient}
+                      placeholder="Search or create client…"
+                    />
+                  </div>
+                  <button onClick={confirmClient} className="p-1.5 rounded bg-[#9A7B4F] text-white hover:bg-[#7d6340] transition-colors cursor-pointer flex-shrink-0">
+                    <Check size={13} />
+                  </button>
+                  <button onClick={cancelClientEdit} className="p-1.5 rounded border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer flex-shrink-0">
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {project.client
+                    ? <><span>·</span><span className="cursor-pointer hover:text-[#2C2C2A]" onClick={() => { setPendingClientId(project.client_id ?? ''); setPendingClientName(project.client?.client_name ?? ''); setEditingClient(true) }}>{project.client.client_name}</span></>
+                    : <button onClick={() => { setPendingClientId(''); setPendingClientName(''); setEditingClient(true) }} className="text-[#9A7B4F] hover:underline cursor-pointer">+ Add client</button>
+                  }
+                </>
+              )}
+
+              {!editingClient && <><span>·</span><span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span></>}
+              {!editingClient && (
+                <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                  <Pencil size={12} />
+                </button>
+              )}
             </div>
           </div>
         )}
