@@ -1,22 +1,2 @@
-export default function SuppliersLoading() {
-  return (
-    <div className="p-6 md:p-8 animate-pulse">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="h-7 w-28 bg-[#D8D3C8] rounded mb-1" />
-          <div className="h-4 w-48 bg-[#EDE9E1] rounded" />
-        </div>
-        <div className="h-9 w-32 bg-[#D8D3C8] rounded-lg" />
-      </div>
-      <div className="bg-white border border-[#D8D3C8] rounded-xl overflow-hidden">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4 px-5 py-3.5 border-b border-[#EDE9E1] last:border-0">
-            <div className="h-4 w-36 bg-[#EDE9E1] rounded" />
-            <div className="h-4 w-24 bg-[#EDE9E1] rounded" />
-            <div className="ml-auto h-4 w-12 bg-[#EDE9E1] rounded" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+import { LoadingScreen } from '@/components/LoadingScreen'
+export default function SuppliersLoading() { return <LoadingScreen /> }
