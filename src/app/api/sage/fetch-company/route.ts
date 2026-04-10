@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(companies.map(c => ({ id: String(c.ID), name: c.Name })))
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
+    console.error('[sage/fetch-company]', e)
+    return NextResponse.json({ error: 'Failed to connect to Sage. Check your credentials and try again.' }, { status: 500 })
   }
 }

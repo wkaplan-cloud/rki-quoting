@@ -13,7 +13,7 @@ export async function GET() {
     const items: { ID: number; Name: string }[] = Array.isArray(data) ? data : (data.Results ?? [])
     return NextResponse.json(items.map(c => ({ id: c.ID, name: c.Name })))
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[sage/customers]', e)
+    return NextResponse.json({ error: 'Failed to fetch Sage customers. Please try again.' }, { status: 500 })
   }
 }
