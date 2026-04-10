@@ -13,7 +13,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
       supabase.from('line_items').select('*').eq('project_id', id).order('sort_order'),
       supabase.from('clients').select('id, client_name, company').order('client_name'),
-      supabase.from('suppliers').select('id, supplier_name, markup_percentage, delivery_address, is_platform, price_list_id').order('supplier_name'),
+      supabase.from('suppliers').select('id, supplier_name, markup_percentage, delivery_address, is_platform, price_list_id, email').order('supplier_name'),
       supabase.from('items').select('id, item_name').order('item_name'),
       supabase.from('settings').select('business_name, business_address, vat_rate, sage_api_key, sage_username, sage_password, sage_company_id, email_template_quote, email_template_invoice').maybeSingle(),
       supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),

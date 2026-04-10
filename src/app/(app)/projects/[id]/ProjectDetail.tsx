@@ -17,7 +17,7 @@ interface Props {
   project: Project & { client: { client_name: string; company: string | null; email: string | null } | null }
   initialLineItems: LineItem[]
   clients: { id: string; client_name: string; company: string | null }[]
-  suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; is_platform: boolean; price_list_id: string | null }[]
+  suppliers: { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }[]
   items: { id: string; item_name: string }[]
   officeAddress: { name: string; address: string }
   businessName: string
@@ -42,6 +42,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sendPoMenuOpen, setSendPoMenuOpen] = useState(false)
   const sendPoMenuRef = useRef<HTMLDivElement>(null)
   const [sendPoSending, setSendPoSending] = useState(false)
+  const [supplierEmailOverrides, setSupplierEmailOverrides] = useState<Record<string, string>>({})
   // Sage state
   const [sageModalOpen, setSageModalOpen] = useState(false)
   const [sageCustomers, setSageCustomers] = useState<SageCustomer[]>([])
@@ -381,12 +382,49 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                               <Send size={13} className="text-[#9A7B4F] flex-shrink-0" /> Send All POs
                             </button>
                           )}
-                          {poSuppliers.map(s => (
-                            <button key={s.id} onClick={() => { handleSendPO(s.id); setSendPoMenuOpen(false) }}
-                              className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                              <Send size={13} className="text-[#9A7B4F] flex-shrink-0" /> PO – {s.supplier_name}
-                            </button>
-                          ))}
+                          {poSuppliers.map(s => {
+                            const hasEmail = !!(s.email || supplierEmailOverrides[s.id])
+                            if (hasEmail) {
+                              return (
+                                <button key={s.id} onClick={() => { handleSendPO(s.id); setSendPoMenuOpen(false) }}
+                                  className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                                  <Send size={13} className="text-[#9A7B4F] flex-shrink-0" /> PO – {s.supplier_name}
+                                </button>
+                              )
+                            }
+                            return (
+                              <div key={s.id} className="px-3 py-2 border-b border-[#F0EDE7] last:border-0">
+                                <p className="text-xs text-[#8A877F] mb-1.5">
+                                  <span className="font-medium text-[#2C2C2A]">{s.supplier_name}</span> — no email address
+                                </p>
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="email"
+                                    placeholder="Add email address"
+                                    value={supplierEmailOverrides[s.id] ?? ''}
+                                    onChange={e => setSupplierEmailOverrides(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                    onClick={e => e.stopPropagation()}
+                                    className="flex-1 min-w-0 px-2 py-1 text-xs border border-[#D8D3C8] rounded focus:outline-none focus:border-[#9A7B4F] bg-white"
+                                  />
+                                  <button
+                                    disabled={!supplierEmailOverrides[s.id]}
+                                    onClick={async () => {
+                                      const email = supplierEmailOverrides[s.id]
+                                      if (!email) return
+                                      // Save email to supplier record
+                                      await fetch(`/api/suppliers/${s.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+                                      setSuppliers(prev => prev.map(sup => sup.id === s.id ? { ...sup, email } : sup))
+                                      handleSendPO(s.id)
+                                      setSendPoMenuOpen(false)
+                                    }}
+                                    className="px-2 py-1 text-xs bg-[#9A7B4F] text-white rounded hover:bg-[#7d6340] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                                  >
+                                    Save &amp; Send
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
                         </>
                       )}
                     </>
