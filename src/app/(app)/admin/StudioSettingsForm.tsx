@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { Upload, X, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { Upload, X, CheckCircle, Eye, EyeOff, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Settings {
@@ -49,6 +49,8 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     sage_company_id: settings?.sage_company_id ?? '',
   })
   const sageConnected = !!(settings?.sage_api_key && settings?.sage_username && settings?.sage_password && settings?.sage_company_id)
+  // Show Sage integration only for studios that already have it configured, or R Kaplan Interiors
+  const sageEnabled = sageConnected || !!(settings?.business_name?.toLowerCase().includes('kaplan'))
   const setSage = (k: string, v: string) => setSageForm(f => ({ ...f, [k]: v }))
 
   const [form, setForm] = useState({
@@ -253,81 +255,105 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
 
       {/* Row 3: Sage Integration (full width) */}
       <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage One SA Integration</h2>
-          {sageConnected && (
-            <div className="flex items-center gap-2">
-              <CheckCircle size={13} className="text-green-600" />
-              <span className="text-xs text-green-700 font-medium">Connected</span>
-              <button type="button" onClick={disconnectSage} className="text-xs text-red-400 hover:text-red-600 underline ml-1">Disconnect</button>
-            </div>
-          )}
-        </div>
 
-        {!sageConnected && !showSageForm ? (
-          /* Not connected — show a clean prompt instead of blank fields */
-          <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
-            <div>
-              <p className="text-sm font-medium text-[#2C2C2A]">Not connected</p>
-              <p className="text-xs text-[#8A877F] mt-0.5">Connect Sage One SA to push invoices directly to your accounting software.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSageForm(true)}
-              className="ml-6 flex-shrink-0 px-4 py-2 border border-[#D8D3C8] rounded text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors"
-            >
-              Set up Sage →
-            </button>
-          </div>
-        ) : (
-          /* Connected or user clicked "Set up Sage" — show credential fields */
+        {sageEnabled ? (
+          /* Studio has Sage access — show full integration panel */
           <>
-            <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} />
-              <div>
-                <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} />
-                <button
-                  type="button"
-                  onClick={fetchCompanyId}
-                  disabled={fetchingCompany}
-                  className="mt-1.5 text-xs text-[#9A7B4F] hover:underline disabled:opacity-50"
-                >
-                  {fetchingCompany ? 'Looking up…' : 'Fetch Company ID from Sage →'}
-                </button>
-              </div>
-              <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} />
-              <div className="relative">
-                <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-[30px] text-[#8A877F] hover:text-[#2C2C2A]"
-                >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={saveSageCredentials}
-                disabled={savingSage}
-                className="px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50"
-              >
-                {savingSage ? 'Saving…' : 'Save Sage Credentials'}
-              </button>
-              {!sageConnected && (
-                <button
-                  type="button"
-                  onClick={() => setShowSageForm(false)}
-                  className="text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
-                >
-                  Cancel
-                </button>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage One SA Integration</h2>
+              {sageConnected && (
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={13} className="text-green-600" />
+                  <span className="text-xs text-green-700 font-medium">Connected</span>
+                  <button type="button" onClick={disconnectSage} className="text-xs text-red-400 hover:text-red-600 underline ml-1">Disconnect</button>
+                </div>
               )}
             </div>
+
+            {!sageConnected && !showSageForm ? (
+              <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
+                <div>
+                  <p className="text-sm font-medium text-[#2C2C2A]">Not connected</p>
+                  <p className="text-xs text-[#8A877F] mt-0.5">Connect Sage One SA to push invoices directly to your accounting software.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSageForm(true)}
+                  className="ml-6 flex-shrink-0 px-4 py-2 border border-[#D8D3C8] rounded text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors"
+                >
+                  Set up Sage →
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} />
+                  <div>
+                    <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} />
+                    <button
+                      type="button"
+                      onClick={fetchCompanyId}
+                      disabled={fetchingCompany}
+                      className="mt-1.5 text-xs text-[#9A7B4F] hover:underline disabled:opacity-50"
+                    >
+                      {fetchingCompany ? 'Looking up…' : 'Fetch Company ID from Sage →'}
+                    </button>
+                  </div>
+                  <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} />
+                  <div className="relative">
+                    <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-[30px] text-[#8A877F] hover:text-[#2C2C2A]"
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={saveSageCredentials}
+                    disabled={savingSage}
+                    className="px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50"
+                  >
+                    {savingSage ? 'Saving…' : 'Save Sage Credentials'}
+                  </button>
+                  {!sageConnected && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSageForm(false)}
+                      className="text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </>
+        ) : (
+          /* Other studios — show promotional card */
+          <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            <div className="w-10 h-10 rounded-lg bg-[#9A7B4F]/10 flex items-center justify-center flex-shrink-0">
+              <Zap size={18} className="text-[#9A7B4F]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[#2C2C2A]">Sage One SA Integration</p>
+              <p className="text-xs text-[#8A877F] mt-1 leading-relaxed">
+                Connect QuotingHub to your Sage One SA account to push invoices directly to your accounting software — no double-entry, no copy-paste. Customers are matched automatically and invoices appear in Sage the moment you approve them.
+              </p>
+            </div>
+            <a
+              href="mailto:warren@kaplan.co.za?subject=Sage%20Integration%20Request&body=Hi%2C%20I%27d%20like%20to%20activate%20the%20Sage%20One%20SA%20integration%20for%20my%20QuotingHub%20studio."
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors"
+            >
+              <Zap size={13} />
+              Activate Sage Integration
+            </a>
+          </div>
         )}
       </section>
 

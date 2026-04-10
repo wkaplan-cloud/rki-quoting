@@ -17,6 +17,8 @@ export default function SignupPage() {
     if (!fullName.trim()) { setError('Please enter your full name'); return }
     if (password !== confirm) { setError('Passwords do not match'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
+    if (!/[A-Z]/.test(password)) { setError('Password must contain at least one uppercase letter'); return }
+    if (!/[0-9]/.test(password)) { setError('Password must contain at least one number'); return }
     setLoading(true)
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
@@ -128,7 +130,7 @@ export default function SignupPage() {
                     autoComplete="new-password"
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
-                  <p className="text-xs text-[#C4BFB5] mt-1.5">Minimum 8 characters</p>
+                  <p className="text-xs text-[#C4BFB5] mt-1.5">Min 8 characters, one uppercase letter and one number</p>
                 </div>
 
                 <div>

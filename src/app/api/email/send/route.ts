@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unexpected error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[email/send]', e)
+    return NextResponse.json({ error: 'Failed to send email. Please try again.' }, { status: 500 })
   }
 }
