@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     supabase.from('settings').select('logo_url, business_name, vat_rate').maybeSingle(),
   ])
 
-  if (!project || project.user_id !== user.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const logoUrl = await fetchLogoBase64(settings?.logo_url)
 

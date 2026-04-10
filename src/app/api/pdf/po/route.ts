@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     supabase.from('settings').select('vat_rate, logo_url, business_name, business_address, vat_number, company_registration').maybeSingle(),
   ])
 
-  if (!project || project.user_id !== user.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const lineItems = supplierId
     ? (() => {

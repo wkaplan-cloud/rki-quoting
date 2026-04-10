@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, email_from').maybeSingle(),
   ])
 
-  if (!project || project.user_id !== user.id) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
 
   // Use override email from modal, or fall back to what's saved on the client

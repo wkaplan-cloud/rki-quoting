@@ -117,7 +117,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       ? `/api/pdf/po?projectId=${project.id}${supplierIdParam ? `&supplierId=${supplierIdParam}` : ''}`
       : `/api/pdf/${type}?projectId=${project.id}`
     const res = await fetch(url)
-    if (!res.ok) { toast.error('PDF generation failed'); return }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'PDF generation failed')
+      return
+    }
     const blob = await res.blob()
     const objectUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')

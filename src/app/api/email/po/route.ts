@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     supabase.from('settings').select('vat_rate, logo_url, business_name, business_address, vat_number, company_registration, accounts_email, email_from').maybeSingle(),
   ])
 
-  if (!project || project.user_id !== user.id) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
 
   const vatRate = project.vat_rate ?? settings?.vat_rate ?? 15
