@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare
+  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator
 } from 'lucide-react'
 
 const mainLinks = [
@@ -11,11 +11,11 @@ const mainLinks = [
 ]
 
 const secondaryLinks = [
-  { href: '/clients',     label: 'Clients',     icon: Users },
-  { href: '/suppliers',   label: 'Suppliers',   icon: Truck },
-  { href: '/items',       label: 'Items',       icon: Package },
-  { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
-  { href: '/import',      label: 'Import',      icon: Upload },
+  { href: '/clients',            label: 'Clients',            icon: Users },
+  { href: '/suppliers',          label: 'Suppliers',          icon: Truck },
+  { href: '/items',              label: 'Items',              icon: Package },
+  { href: '/price-lists',        label: 'Price Lists',        icon: BookOpen },
+  { href: '/markup-calculator',  label: 'Markup Calculator',  icon: Calculator },
 ]
 
 interface Props {
@@ -124,6 +124,14 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick
               <Settings size={14} />
             </span>
             <span className={labelCls}>Profile</span>
+          </Link>
+
+          <Link href="/import" onClick={onClose} title="Import"
+            className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
+            <span className="flex items-center justify-center w-10 flex-shrink-0">
+              <Upload size={14} />
+            </span>
+            <span className={labelCls}>Import</span>
           </Link>
 
           {isAdmin && (
