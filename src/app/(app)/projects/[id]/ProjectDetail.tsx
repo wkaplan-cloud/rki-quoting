@@ -407,15 +407,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                                     placeholder="Add email address"
                                     value={supplierEmailOverrides[s.id] ?? ''}
                                     onChange={e => setSupplierEmailOverrides(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                    onMouseDown={e => e.stopPropagation()}
                                     onClick={e => e.stopPropagation()}
                                     className="flex-1 min-w-0 px-2 py-1 text-xs border border-[#D8D3C8] rounded focus:outline-none focus:border-[#9A7B4F] bg-white"
                                   />
                                   <button
                                     disabled={!supplierEmailOverrides[s.id]}
+                                    onMouseDown={e => e.stopPropagation()}
                                     onClick={async () => {
                                       const email = supplierEmailOverrides[s.id]
                                       if (!email) return
-                                      // Save email to supplier record
                                       await fetch(`/api/suppliers/${s.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
                                       setSuppliers(prev => prev.map(sup => sup.id === s.id ? { ...sup, email } : sup))
                                       handleSendPO(s.id)
