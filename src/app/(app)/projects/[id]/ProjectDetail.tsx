@@ -42,7 +42,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sendPoMenuOpen, setSendPoMenuOpen] = useState(false)
   const sendPoMenuRef = useRef<HTMLDivElement>(null)
   const [sendPoSending, setSendPoSending] = useState(false)
-  const [supplierEmailOverrides, setSupplierEmailOverrides] = useState<Record<string, string>>({})
+  const [addEmailModal, setAddEmailModal] = useState<{ supplierId: string; supplierName: string; email: string } | null>(null)
   // Sage state
   const [sageModalOpen, setSageModalOpen] = useState(false)
   const [sageCustomers, setSageCustomers] = useState<SageCustomer[]>([])
@@ -387,8 +387,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                             </button>
                           )}
                           {poSuppliers.map(s => {
-                            const hasEmail = !!(s.email || supplierEmailOverrides[s.id])
-                            if (hasEmail) {
+                            if (s.email) {
                               return (
                                 <button key={s.id} onClick={() => { handleSendPO(s.id); setSendPoMenuOpen(false) }}
                                   className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
@@ -397,37 +396,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                               )
                             }
                             return (
-                              <div key={s.id} className="px-3 py-2 border-b border-[#F0EDE7] last:border-0">
-                                <p className="text-xs text-[#8A877F] mb-1.5">
-                                  <span className="font-medium text-[#2C2C2A]">{s.supplier_name}</span> — no email address
-                                </p>
-                                <div className="flex items-center gap-1.5">
-                                  <input
-                                    type="email"
-                                    placeholder="Add email address"
-                                    value={supplierEmailOverrides[s.id] ?? ''}
-                                    onChange={e => setSupplierEmailOverrides(prev => ({ ...prev, [s.id]: e.target.value }))}
-                                    onMouseDown={e => e.stopPropagation()}
-                                    onClick={e => e.stopPropagation()}
-                                    className="flex-1 min-w-0 px-2 py-1 text-xs border border-[#D8D3C8] rounded focus:outline-none focus:border-[#9A7B4F] bg-white"
-                                  />
-                                  <button
-                                    disabled={!supplierEmailOverrides[s.id]}
-                                    onMouseDown={e => e.stopPropagation()}
-                                    onClick={async () => {
-                                      const email = supplierEmailOverrides[s.id]
-                                      if (!email) return
-                                      await fetch(`/api/suppliers/${s.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
-                                      setSuppliers(prev => prev.map(sup => sup.id === s.id ? { ...sup, email } : sup))
-                                      handleSendPO(s.id)
-                                      setSendPoMenuOpen(false)
-                                    }}
-                                    className="px-2 py-1 text-xs bg-[#9A7B4F] text-white rounded hover:bg-[#7d6340] disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-                                  >
-                                    Save &amp; Send
-                                  </button>
-                                </div>
-                              </div>
+                              <button key={s.id} onClick={() => { setSendPoMenuOpen(false); setAddEmailModal({ supplierId: s.id, supplierName: s.supplier_name, email: '' }) }}
+                                className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                                <Mail size={13} className="text-[#C4BFB5] flex-shrink-0" />
+                                <span>PO – {s.supplier_name} <span className="text-[10px] text-[#C4A46B] ml-1">no email</span></span>
+                              </button>
                             )
                           })}
                         </>
@@ -713,6 +686,51 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 className="px-5 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer font-medium"
               >
                 {emailSending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add supplier email modal */}
+      {addEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAddEmailModal(null)}>
+          <div className="bg-white rounded-lg shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">Add email for {addEmailModal.supplierName}</h3>
+            <p className="text-xs text-[#8A877F] mb-4">This email will be saved to the supplier and used to send the PO.</p>
+            <input
+              type="email"
+              autoFocus
+              placeholder="supplier@example.com"
+              value={addEmailModal.email}
+              onChange={e => setAddEmailModal(prev => prev ? { ...prev, email: e.target.value } : null)}
+              onKeyDown={async e => {
+                if (e.key === 'Enter' && addEmailModal.email) {
+                  const { supplierId, email } = addEmailModal
+                  setAddEmailModal(null)
+                  await fetch(`/api/suppliers/${supplierId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+                  setSuppliers(prev => prev.map(s => s.id === supplierId ? { ...s, email } : s))
+                  handleSendPO(supplierId)
+                }
+              }}
+              className="w-full px-3 py-2 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F] mb-4"
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setAddEmailModal(null)}
+                className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
+                Cancel
+              </button>
+              <button
+                disabled={!addEmailModal.email}
+                onClick={async () => {
+                  const { supplierId, email } = addEmailModal
+                  setAddEmailModal(null)
+                  await fetch(`/api/suppliers/${supplierId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+                  setSuppliers(prev => prev.map(s => s.id === supplierId ? { ...s, email } : s))
+                  handleSendPO(supplierId)
+                }}
+                className="px-4 py-2 text-sm bg-[#9A7B4F] text-white rounded-lg hover:bg-[#7d6340] disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium">
+                Save &amp; Send PO
               </button>
             </div>
           </div>
