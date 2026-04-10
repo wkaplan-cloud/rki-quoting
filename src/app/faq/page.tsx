@@ -9,99 +9,28 @@ const faqs = [
     items: [
       {
         q: 'What is QuotingHub?',
-        a: 'QuotingHub is a quoting and project management platform built specifically for interior designers. It lets you create professional quotes, invoices, and purchase orders, manage clients and suppliers, and track projects from concept to completion — all in one place.',
+        a: 'QuotingHub is a quoting and project management platform built specifically for interior designers. Create professional quotes, invoices, and purchase orders — all in one place.',
       },
       {
         q: 'Do I need to install anything?',
-        a: 'No. QuotingHub is entirely browser-based. You can access it from any device with an internet connection — desktop, laptop, or tablet. No software installation required.',
+        a: 'No. QuotingHub is entirely browser-based. Access it from any device with an internet connection — no software installation required.',
       },
       {
         q: 'Is there a free trial?',
-        a: 'Yes. New accounts get a free trial period so you can explore the platform fully before committing to a subscription. No credit card is required to start your trial.',
-      },
-      {
-        q: 'How do I get started?',
-        a: 'Simply click "Get Started" on our homepage, create your account, and you\'ll be guided through setting up your studio. You can start creating quotes within minutes.',
+        a: 'Yes. New accounts get a free trial period to explore the platform fully before committing to a subscription. No credit card is required to start.',
       },
     ],
   },
   {
-    category: 'Quotes & Documents',
+    category: 'Billing',
     items: [
-      {
-        q: 'What documents can I generate?',
-        a: 'QuotingHub generates professional PDFs for quotes, invoices, purchase orders (per supplier or combined), and production sheets. All documents are branded with your logo and studio details.',
-      },
-      {
-        q: 'Can I send documents directly from the platform?',
-        a: 'Yes. You can email quotes and invoices to clients, and purchase orders directly to suppliers, all from within the platform. A copy is logged in the project\'s email history.',
-      },
-      {
-        q: 'How does the markup and pricing work?',
-        a: 'You enter the cost price for each line item and apply a markup percentage. The system calculates the sale price, profit, and totals automatically — including VAT and any design fee. Totals update in real time as you edit.',
-      },
-      {
-        q: 'Can I add a design fee?',
-        a: 'Yes. Each project has a design fee percentage field. The design fee is calculated on the project subtotal and shown separately on quotes and invoices.',
-      },
-      {
-        q: 'Can I group line items into sections?',
-        a: 'Yes. You can create section rows (e.g. "Living Room", "Master Bedroom") to organise your line items. Sections appear as grouped headings on your PDFs.',
-      },
-    ],
-  },
-  {
-    category: 'Suppliers & Clients',
-    items: [
-      {
-        q: 'Can I manage multiple suppliers?',
-        a: 'Yes. You can maintain a full supplier list with contact details, default markups, and delivery addresses. When creating a quote, you assign line items to suppliers and generate a separate purchase order for each.',
-      },
-      {
-        q: 'What happens if a supplier has no email address?',
-        a: 'If you try to send a purchase order to a supplier with no email on file, the platform will prompt you to add one. The email is saved to the supplier record so you only need to enter it once.',
-      },
-      {
-        q: 'Can I import my existing data?',
-        a: 'Yes. QuotingHub supports CSV imports for suppliers, clients, and items. This makes it easy to migrate your existing spreadsheet data into the platform.',
-      },
-    ],
-  },
-  {
-    category: 'Team & Access',
-    items: [
-      {
-        q: 'Can multiple people use the same account?',
-        a: 'Yes. Studio admins can invite team members to join the studio. Team members can access projects, create quotes, and generate documents. Admins have additional access to settings and the audit log.',
-      },
-      {
-        q: 'What is the audit log?',
-        a: 'The audit log in the Admin section records all significant actions taken within your studio — who created a project, changed a status, invited a team member, and more. It\'s useful for accountability and tracking.',
-      },
-      {
-        q: 'Can I set different permission levels?',
-        a: 'Currently, QuotingHub has two roles: Admin and Member. Admins can manage team members, studio settings, and view the profit dashboard. Members can work on projects and generate documents.',
-      },
-    ],
-  },
-  {
-    category: 'Billing & Subscription',
-    items: [
-      {
-        q: 'How much does QuotingHub cost?',
-        a: 'Please visit our Pricing page for current subscription plans. We offer monthly and annual billing options.',
-      },
       {
         q: 'Can I cancel at any time?',
-        a: 'Yes. You can cancel your subscription at any time from within the platform. Cancellation takes effect at the end of your current billing period and you retain access until then.',
+        a: 'Yes. Cancel your subscription at any time from within the platform. Cancellation takes effect at the end of your current billing period and you retain access until then.',
       },
       {
         q: 'What happens to my data if I cancel?',
-        a: 'Your data is retained for 24 months after cancellation in case you wish to return. After that period, it is permanently deleted. You can request earlier deletion by contacting us.',
-      },
-      {
-        q: 'Do you offer refunds?',
-        a: 'We do not offer refunds for partial billing periods. If you experience a technical issue that prevents you from using the Service, please contact our support team and we will assess on a case-by-case basis.',
+        a: 'Your data is retained for 24 months after cancellation in case you wish to return. After that period it is permanently deleted. You can request earlier deletion by contacting us.',
       },
     ],
   },
@@ -110,19 +39,11 @@ const faqs = [
     items: [
       {
         q: 'Is my data secure?',
-        a: 'Yes. All data is encrypted in transit (HTTPS) and at rest. Your studio\'s data is isolated from other studios at the database level using row-level security. We follow industry best practices for security.',
-      },
-      {
-        q: 'Who can see my data?',
-        a: 'Only you and your invited team members can see your studio\'s data. Our support team may access data only when necessary to resolve a support request, and only with your consent.',
+        a: 'Yes. All data is encrypted in transit and at rest. Your studio\'s data is isolated from other studios at the database level. We follow industry best practices for security.',
       },
       {
         q: 'Is QuotingHub POPIA compliant?',
         a: 'Yes. We take our obligations under the Protection of Personal Information Act (POPIA) seriously. You have the right to access, correct, or request deletion of your personal data at any time. See our Privacy Policy for full details.',
-      },
-      {
-        q: 'Can I enable two-factor authentication?',
-        a: 'Yes. Two-factor authentication (2FA) via an authenticator app is available in your account security settings.',
       },
     ],
   },
@@ -131,11 +52,7 @@ const faqs = [
     items: [
       {
         q: 'How do I get help?',
-        a: 'You can contact us via the contact form on our website or email us at support@quotinghub.co.za. We aim to respond within one business day.',
-      },
-      {
-        q: 'Do you offer onboarding or training?',
-        a: 'Yes. We offer guided onboarding to help you get set up quickly. Contact us after signing up and we\'ll schedule a walkthrough.',
+        a: 'Use the contact form on our website and we\'ll get back to you within one business day.',
       },
     ],
   },
@@ -160,7 +77,9 @@ export default function FAQPage() {
       <div className="max-w-3xl mx-auto px-6 pt-32 pb-24">
         <p className="text-xs text-[#9A7B4F] uppercase tracking-widest font-semibold mb-3">Support</p>
         <h1 className="font-serif text-4xl text-[#1A1A18] tracking-tight mb-3">Frequently Asked Questions</h1>
-        <p className="text-sm text-[#8A877F] mb-12 leading-relaxed">Everything you need to know about QuotingHub. Can&apos;t find the answer? <a href="mailto:support@quotinghub.co.za" className="text-[#9A7B4F] hover:underline">Email us</a>.</p>
+        <p className="text-sm text-[#8A877F] mb-12 leading-relaxed">
+          Can&apos;t find the answer? <Link href="/#contact" className="text-[#9A7B4F] hover:underline">Get in touch</Link>.
+        </p>
 
         <div className="space-y-12">
           {faqs.map(cat => (
@@ -193,9 +112,9 @@ export default function FAQPage() {
         <div className="mt-16 bg-white border border-[#D8D3C8] rounded-2xl p-8 text-center">
           <h3 className="font-serif text-xl text-[#1A1A18] mb-2">Still have questions?</h3>
           <p className="text-sm text-[#8A877F] mb-5">Our team is happy to help.</p>
-          <a href="mailto:support@quotinghub.co.za" className="inline-block px-6 py-2.5 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors">
-            Contact Support
-          </a>
+          <Link href="/#contact" className="inline-block px-6 py-2.5 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors">
+            Contact Us
+          </Link>
         </div>
 
         <div className="mt-12 pt-8 border-t border-[#D8D3C8] flex flex-wrap gap-6 text-xs text-[#8A877F]">

@@ -58,7 +58,7 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
       })
       toast.success("Request sent! We'll be in touch within 24 hours to activate your plan.")
     } catch {
-      toast.error('Something went wrong. Please email us at hello@quotinghub.co.za')
+      toast.error('Something went wrong. Please use our contact form to get in touch.')
     } finally {
       setLoading(null)
     }
@@ -154,8 +154,8 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
 
         <p className="text-center text-xs text-[#8A877F]">
           Need help choosing?{' '}
-          <a href="mailto:hello@quotinghub.co.za" className="text-[#9A7B4F] hover:underline">
-            Email us
+          <a href="/#contact" className="text-[#9A7B4F] hover:underline">
+            Contact us
           </a>
         </p>
 

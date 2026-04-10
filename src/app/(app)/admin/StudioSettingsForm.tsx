@@ -347,7 +347,9 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
               </p>
             </div>
             <a
-              href="mailto:warren@kaplan.co.za?subject=Sage%20Integration%20Request&body=Hi%2C%20I%27d%20like%20to%20activate%20the%20Sage%20One%20SA%20integration%20for%20my%20QuotingHub%20studio."
+              href="https://quotinghub.co.za/#contact"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors"
             >
               <Zap size={13} />

@@ -23,8 +23,8 @@ export default function TermsPage() {
         <div className="prose prose-sm max-w-none text-[#2C2C2A] space-y-8">
 
           <Section title="1. Agreement to Terms">
-            <p>By accessing or using QuotingHub (&ldquo;the Service&rdquo;), operated by Kaplan Advisory Group (Pty) Ltd (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;), you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, do not use the Service.</p>
-            <p>These Terms constitute a legally binding agreement between you and Kaplan Advisory Group (Pty) Ltd, a company registered in South Africa.</p>
+            <p>By accessing or using QuotingHub (&ldquo;the Service&rdquo;), operated by QuotingHub (Pty) Ltd (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;), you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree to these Terms, do not use the Service.</p>
+            <p>These Terms constitute a legally binding agreement between you and QuotingHub (Pty) Ltd, a company registered in South Africa.</p>
           </Section>
 
           <Section title="2. Description of Service">
@@ -73,7 +73,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="7. Intellectual Property">
-            <p>The Service, including all software, design, text, graphics, logos, and other content, is owned by Kaplan Advisory Group (Pty) Ltd and is protected by South African and international intellectual property laws.</p>
+            <p>The Service, including all software, design, text, graphics, logos, and other content, is owned by QuotingHub (Pty) Ltd and is protected by South African and international intellectual property laws.</p>
             <p>We grant you a limited, non-exclusive, non-transferable, revocable licence to use the Service solely for your internal business purposes in accordance with these Terms.</p>
           </Section>
 
@@ -89,7 +89,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="10. Indemnification">
-            <p>You agree to indemnify, defend, and hold harmless Kaplan Advisory Group (Pty) Ltd and its officers, directors, employees, and agents from and against any claims, liabilities, damages, losses, and expenses (including reasonable legal fees) arising out of or related to your use of the Service, your violation of these Terms, or your violation of any third-party rights.</p>
+            <p>You agree to indemnify, defend, and hold harmless QuotingHub (Pty) Ltd and its officers, directors, employees, and agents from and against any claims, liabilities, damages, losses, and expenses (including reasonable legal fees) arising out of or related to your use of the Service, your violation of these Terms, or your violation of any third-party rights.</p>
           </Section>
 
           <Section title="11. Termination">
@@ -100,7 +100,7 @@ export default function TermsPage() {
 
           <Section title="12. Governing Law and Disputes">
             <p>These Terms are governed by the laws of the Republic of South Africa. Any disputes arising from these Terms or the Service shall be subject to the exclusive jurisdiction of the courts of South Africa.</p>
-            <p>Before commencing legal proceedings, you agree to first attempt to resolve the dispute informally by contacting us at <a href="mailto:legal@quotinghub.co.za" className="text-[#9A7B4F] hover:underline">legal@quotinghub.co.za</a> and allowing 30 days for resolution.</p>
+            <p>Before commencing legal proceedings, you agree to first attempt to resolve the dispute informally by <Link href="/#contact" className="text-[#9A7B4F] hover:underline">contacting us</Link> and allowing 30 days for resolution.</p>
           </Section>
 
           <Section title="13. Changes to These Terms">
@@ -108,12 +108,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="14. Contact">
-            <p>For questions about these Terms, please contact us:</p>
-            <p>
-              Kaplan Advisory Group (Pty) Ltd<br />
-              Email: <a href="mailto:legal@quotinghub.co.za" className="text-[#9A7B4F] hover:underline">legal@quotinghub.co.za</a><br />
-              Website: <a href="https://quotinghub.co.za" className="text-[#9A7B4F] hover:underline">quotinghub.co.za</a>
-            </p>
+            <p>For questions about these Terms, please <Link href="/#contact" className="text-[#9A7B4F] hover:underline">contact us via our website</Link>.</p>
           </Section>
 
         </div>

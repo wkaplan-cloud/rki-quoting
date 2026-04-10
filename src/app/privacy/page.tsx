@@ -22,8 +22,8 @@ export default function PrivacyPage() {
         <div className="space-y-8 text-sm text-[#4A4A47] leading-relaxed">
 
           <Section title="1. Who We Are">
-            <p>QuotingHub is operated by Kaplan Advisory Group (Pty) Ltd, registered in South Africa. We are the responsible party (as defined under the Protection of Personal Information Act 4 of 2013, &ldquo;POPIA&rdquo;) for the personal information we collect through our platform at quotinghub.co.za.</p>
-            <p>Contact: <a href="mailto:privacy@quotinghub.co.za" className="text-[#9A7B4F] hover:underline">privacy@quotinghub.co.za</a></p>
+            <p>QuotingHub is operated by QuotingHub (Pty) Ltd, registered in South Africa. We are the responsible party (as defined under the Protection of Personal Information Act 4 of 2013, &ldquo;POPIA&rdquo;) for the personal information we collect through our platform at quotinghub.co.za.</p>
+            <p><Link href="/#contact" className="text-[#9A7B4F] hover:underline">Contact us via our website</Link></p>
           </Section>
 
           <Section title="2. What Personal Information We Collect">
@@ -98,7 +98,7 @@ export default function PrivacyPage() {
               <li><strong>Objection:</strong> Object to the processing of your information in certain circumstances</li>
               <li><strong>Complaint:</strong> Lodge a complaint with the Information Regulator of South Africa</li>
             </ul>
-            <p>To exercise any of these rights, contact us at <a href="mailto:privacy@quotinghub.co.za" className="text-[#9A7B4F] hover:underline">privacy@quotinghub.co.za</a>. We will respond within 30 days.</p>
+            <p>To exercise any of these rights, <Link href="/#contact" className="text-[#9A7B4F] hover:underline">contact us via our website</Link>. We will respond within 30 days.</p>
             <p>The Information Regulator of South Africa can be reached at: <a href="https://www.justice.gov.za/inforeg/" target="_blank" rel="noopener noreferrer" className="text-[#9A7B4F] hover:underline">www.justice.gov.za/inforeg</a></p>
           </Section>
 
@@ -115,11 +115,8 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="12. Contact Us">
-            <p>
-              Kaplan Advisory Group (Pty) Ltd — Information Officer<br />
-              Email: <a href="mailto:privacy@quotinghub.co.za" className="text-[#9A7B4F] hover:underline">privacy@quotinghub.co.za</a><br />
-              Website: <a href="https://quotinghub.co.za" className="text-[#9A7B4F] hover:underline">quotinghub.co.za</a>
-            </p>
+            <p>QuotingHub (Pty) Ltd — Information Officer</p>
+            <p><Link href="/#contact" className="text-[#9A7B4F] hover:underline">Contact us via our website</Link></p>
           </Section>
 
         </div>
