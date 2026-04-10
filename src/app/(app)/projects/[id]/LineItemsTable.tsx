@@ -26,7 +26,7 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
   )
 }
 
-type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; is_platform: boolean; price_list_id: string | null }
+type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }
 
 interface Props {
   projectId: string
@@ -188,7 +188,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }).select().single()
     if (error) { toast.error('Failed to create supplier'); return { id: '' } }
     toast.success(`Supplier "${name}" created`)
-    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, is_platform: false, price_list_id: null })
+    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, is_platform: false, price_list_id: null, email: data.email ?? null })
     return { id: data.id }
   }, [supabase, onSupplierCreated])
 
