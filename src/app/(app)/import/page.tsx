@@ -6,12 +6,15 @@ import { ImportWizard } from './ImportWizard'
 export default async function ImportPage() {
   const supabase = await createClient()
 
-  const [{ data: projects }, { data: suppliers }, { data: clients }, { data: items }] = await Promise.all([
+  const [{ data: projects }, { data: suppliers }, { data: clients }, { data: items }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('id, project_name, project_number').order('created_at', { ascending: false }),
     supabase.from('suppliers').select('id, supplier_name, markup_percentage').order('supplier_name'),
     supabase.from('clients').select('id, client_name').order('client_name'),
     supabase.from('items').select('id, item_name').order('item_name'),
+    supabase.from('settings').select('business_name').maybeSingle(),
   ])
+
+  const businessName = settings?.business_name ?? ''
 
   return (
     <div className="flex flex-col h-full">
@@ -25,6 +28,7 @@ export default async function ImportPage() {
           existingSuppliers={suppliers ?? []}
           existingClients={clients ?? []}
           existingItems={items ?? []}
+          showLinesImport={businessName.toLowerCase().includes('kaplan')}
         />
       </div>
     </div>

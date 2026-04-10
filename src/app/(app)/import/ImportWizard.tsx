@@ -56,13 +56,14 @@ const toTitleCase = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase(
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Props {
+  showLinesImport?: boolean
   projects: { id: string; project_name: string; project_number: string }[]
   existingSuppliers: { id: string; supplier_name: string; markup_percentage: number }[]
   existingClients: { id: string; client_name: string }[]
   existingItems: { id: string; item_name: string }[]
 }
 
-type Tab = 'suppliers' | 'clients' | 'items'
+type Tab = 'suppliers' | 'clients' | 'items' | 'lines'
 
 // ─── File Upload Button ───────────────────────────────────────────────────────
 function FileUpload({ onFile, label }: { onFile: (text: string, name: string) => void; label: string }) {
@@ -88,7 +89,7 @@ function FileUpload({ onFile, label }: { onFile: (text: string, name: string) =>
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function ImportWizard({ projects, existingSuppliers, existingClients, existingItems }: Props) {
+export function ImportWizard({ projects, existingSuppliers, existingClients, existingItems, showLinesImport }: Props) {
   const [tab, setTab] = useState<Tab>('suppliers')
   const supabase = createClient()
 
@@ -96,6 +97,7 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
     { key: 'suppliers', label: 'Suppliers' },
     { key: 'clients', label: 'Clients' },
     { key: 'items', label: 'Items' },
+    ...(showLinesImport ? [{ key: 'lines' as Tab, label: 'Quote Lines' }] : []),
   ]
 
   return (
@@ -114,6 +116,7 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
       {tab === 'suppliers' && <SuppliersImport supabase={supabase} existingSuppliers={existingSuppliers} />}
       {tab === 'clients'  && <ClientsImport  supabase={supabase} existingClients={existingClients} />}
       {tab === 'items'    && <ItemsImport    supabase={supabase} existingItems={existingItems} />}
+      {tab === 'lines'    && <LinesImport    supabase={supabase} projects={projects} existingSuppliers={existingSuppliers} existingClients={existingClients} />}
     </div>
   )
 }
