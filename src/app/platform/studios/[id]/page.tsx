@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, Users, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
-import { DeleteStudioButton } from './DeleteStudioButton'
+import { ArchiveStudioButton, RestoreStudioButton } from './DeleteStudioButton'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -42,6 +42,17 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         <ArrowLeft size={14} /> All studios
       </Link>
 
+      {org.status === 'archived' && (
+        <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+          <span className="text-amber-400 text-xs font-medium">Archived</span>
+          <span className="text-white/40 text-xs">·</span>
+          <span className="text-white/40 text-xs">
+            {org.archived_at ? `Archived on ${new Date(org.archived_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'This studio has been archived'}
+          </span>
+          <span className="text-white/20 text-xs ml-1">· Data deleted after 24 months</span>
+        </div>
+      )}
+
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <h1 className="font-serif text-3xl text-white mb-1">{settings?.business_name || org.name}</h1>
@@ -49,7 +60,10 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
             Joined {new Date(org.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <DeleteStudioButton orgId={id} studioName={settings?.business_name || org.name} />
+        {org.status === 'archived'
+          ? <RestoreStudioButton orgId={id} studioName={settings?.business_name || org.name} />
+          : <ArchiveStudioButton orgId={id} studioName={settings?.business_name || org.name} />
+        }
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

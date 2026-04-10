@@ -33,7 +33,7 @@ function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string
 export default async function StudiosPage() {
   const { data: orgs } = await supabaseAdmin
     .from('organizations')
-    .select('id, name, created_at, plan, trial_ends_at, subscription_status')
+    .select('id, name, created_at, plan, trial_ends_at, subscription_status, status, archived_at')
     .order('created_at', { ascending: false })
 
   const enriched = await Promise.all(
@@ -65,9 +65,12 @@ export default async function StudiosPage() {
     })
   )
 
-  const trialCount = enriched.filter(o => o.subscription_status === 'trialing').length
-  const activeCount = enriched.filter(o => o.subscription_status === 'active').length
-  const expiredCount = enriched.filter(o => {
+  const activeStudios = enriched.filter(o => o.status !== 'archived')
+  const archivedStudios = enriched.filter(o => o.status === 'archived')
+
+  const trialCount = activeStudios.filter(o => o.subscription_status === 'trialing').length
+  const activeCount = activeStudios.filter(o => o.subscription_status === 'active').length
+  const expiredCount = activeStudios.filter(o => {
     if (o.subscription_status !== 'trialing') return false
     const days = o.trial_ends_at ? Math.max(0, Math.ceil((new Date(o.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0
     return days === 0
@@ -77,7 +80,7 @@ export default async function StudiosPage() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="font-serif text-3xl text-white mb-1">Studios</h1>
-        <p className="text-sm text-white/40">{enriched.length} studio{enriched.length !== 1 ? 's' : ''} registered</p>
+        <p className="text-sm text-white/40">{activeStudios.length} active studio{activeStudios.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Summary stats */}
@@ -94,60 +97,75 @@ export default async function StudiosPage() {
         ))}
       </div>
 
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/10">
-              <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Studio / Business</th>
-              <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Admin</th>
-              <th className="text-center px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">
-                <div className="flex items-center justify-center gap-1"><Users size={11} /> Members</div>
-              </th>
-              <th className="text-center px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">
-                <div className="flex items-center justify-center gap-1"><FolderOpen size={11} /> Projects</div>
-              </th>
-              <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Plan</th>
-              <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Joined</th>
-              <th className="px-5 py-3" />
+      <StudioTable studios={activeStudios} />
+
+      {archivedStudios.length > 0 && (
+        <div className="mt-10">
+          <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-sm font-medium text-white/40 uppercase tracking-wider">Archived Studios</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">{archivedStudios.length}</span>
+          </div>
+          <StudioTable studios={archivedStudios} archived />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StudioTable({ studios, archived = false }: { studios: any[]; archived?: boolean }) {
+  return (
+    <div className={`bg-[#1A1A18] border rounded-xl overflow-hidden ${archived ? 'border-amber-500/20 opacity-70' : 'border-white/10'}`}>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-white/10">
+            <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Studio / Business</th>
+            <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Admin</th>
+            <th className="text-center px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">
+              <div className="flex items-center justify-center gap-1"><Users size={11} /> Members</div>
+            </th>
+            <th className="text-center px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">
+              <div className="flex items-center justify-center gap-1"><FolderOpen size={11} /> Projects</div>
+            </th>
+            <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">{archived ? 'Archived' : 'Plan'}</th>
+            <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Joined</th>
+            <th className="px-5 py-3" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/5">
+          {studios.length === 0 && (
+            <tr>
+              <td colSpan={7} className="px-5 py-10 text-center text-white/30 text-sm">No studios yet</td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {enriched.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-5 py-10 text-center text-white/30 text-sm">No studios yet</td>
-              </tr>
-            )}
-            {enriched.map(studio => (
-              <tr key={studio.id} className="hover:bg-white/5 transition-colors">
-                <td className="px-5 py-3.5">
-                  <p className="text-white font-medium">{studio.businessName}</p>
-                  {studio.businessName !== studio.name && (
-                    <p className="text-xs text-white/30 mt-0.5">{studio.name}</p>
-                  )}
-                </td>
-                <td className="px-5 py-3.5 text-white/60">{studio.adminName}</td>
-                <td className="px-5 py-3.5 text-center text-white/60">{studio.memberCount}</td>
-                <td className="px-5 py-3.5 text-center text-white/60">{studio.projectCount}</td>
-                <td className="px-5 py-3.5">
-                  <PlanBadge
-                    plan={studio.plan ?? 'trial'}
-                    status={studio.subscription_status ?? 'trialing'}
-                    trialEndsAt={studio.trial_ends_at}
-                  />
-                </td>
-                <td className="px-5 py-3.5 text-white/40 text-xs">
-                  {new Date(studio.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </td>
-                <td className="px-5 py-3.5">
-                  <Link href={`/platform/studios/${studio.id}`} className="flex items-center gap-1 text-xs text-[#C4A46B] hover:underline">
-                    Manage <ChevronRight size={12} />
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          )}
+          {studios.map(studio => (
+            <tr key={studio.id} className="hover:bg-white/5 transition-colors">
+              <td className="px-5 py-3.5">
+                <p className="text-white font-medium">{studio.businessName}</p>
+                {studio.businessName !== studio.name && (
+                  <p className="text-xs text-white/30 mt-0.5">{studio.name}</p>
+                )}
+              </td>
+              <td className="px-5 py-3.5 text-white/60">{studio.adminName}</td>
+              <td className="px-5 py-3.5 text-center text-white/60">{studio.memberCount}</td>
+              <td className="px-5 py-3.5 text-center text-white/60">{studio.projectCount}</td>
+              <td className="px-5 py-3.5">
+                {archived
+                  ? <span className="text-xs text-amber-400/70">{studio.archived_at ? new Date(studio.archived_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
+                  : <PlanBadge plan={studio.plan ?? 'trial'} status={studio.subscription_status ?? 'trialing'} trialEndsAt={studio.trial_ends_at} />
+                }
+              </td>
+              <td className="px-5 py-3.5 text-white/40 text-xs">
+                {new Date(studio.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </td>
+              <td className="px-5 py-3.5">
+                <Link href={`/platform/studios/${studio.id}`} className="flex items-center gap-1 text-xs text-[#C4A46B] hover:underline">
+                  {archived ? 'View' : 'Manage'} <ChevronRight size={12} />
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
