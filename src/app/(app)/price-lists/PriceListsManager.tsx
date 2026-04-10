@@ -330,18 +330,20 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                 onChange={e => setSupplierName(e.target.value)}
               />
 
-              <label className="flex items-start gap-3 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isGlobal}
-                  onChange={e => setIsGlobal(e.target.checked)}
-                  className="mt-0.5 rounded border-[#D8D3C8] accent-[#9A7B4F]"
-                />
-                <div>
-                  <p className="text-sm font-medium text-[#2C2C2A]">Make available to all studios</p>
-                  <p className="text-xs text-[#8A877F] mt-0.5">This price list will appear in every studio&apos;s Price Lists. Only you can delete it.</p>
-                </div>
-              </label>
+              {basePath === '/platform/price-lists' && (
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isGlobal}
+                    onChange={e => setIsGlobal(e.target.checked)}
+                    className="mt-0.5 rounded border-[#D8D3C8] accent-[#9A7B4F]"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-[#2C2C2A]">Make available to all studios</p>
+                    <p className="text-xs text-[#8A877F] mt-0.5">This price list will appear in every studio&apos;s Price Lists. Only you can delete it.</p>
+                  </div>
+                </label>
+              )}
 
               {/* File upload */}
               <div>

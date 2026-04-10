@@ -10,10 +10,8 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
 
-  // Use security definer to get org id (bypasses RLS)
   const { data: orgId } = await supabase.rpc('get_current_org_id')
 
-  // Fetch membership via admin client to bypass RLS
   const { data: membership } = await supabaseAdmin
     .from('org_members')
     .select('role, org_id')
@@ -22,15 +20,24 @@ export default async function AdminPage() {
     .eq('status', 'active')
     .maybeSingle()
 
-  // Non-admins and unauthenticated users get a 404
   if (membership?.role !== 'admin') notFound()
 
-  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }] = await Promise.all([
+  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }, { data: completedProjects }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
     supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(100),
     supabase.from('settings').select('*').maybeSingle(),
     supabaseAdmin.from('organizations').select('plan, subscription_status').eq('id', orgId).single(),
+    supabase.from('projects')
+      .select('id, project_name, project_number, date, design_fee, vat_rate, client:clients(client_name)')
+      .eq('status', 'Completed')
+      .order('date', { ascending: false }),
   ])
+
+  // Fetch line items for completed projects
+  const projectIds = (completedProjects ?? []).map(p => p.id)
+  const { data: completedLineItems } = projectIds.length > 0
+    ? await supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', projectIds)
+    : { data: [] }
 
   return (
     <div>
@@ -43,6 +50,8 @@ export default async function AdminPage() {
           settings={settings}
           plan={org?.plan ?? 'trial'}
           subscriptionStatus={org?.subscription_status ?? 'trialing'}
+          completedProjects={completedProjects ?? []}
+          completedLineItems={completedLineItems ?? []}
         />
       </div>
     </div>

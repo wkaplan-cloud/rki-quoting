@@ -62,7 +62,7 @@ interface Props {
   existingItems: { id: string; item_name: string }[]
 }
 
-type Tab = 'suppliers' | 'clients' | 'items' | 'lines'
+type Tab = 'suppliers' | 'clients' | 'items'
 
 // ─── File Upload Button ───────────────────────────────────────────────────────
 function FileUpload({ onFile, label }: { onFile: (text: string, name: string) => void; label: string }) {
@@ -96,7 +96,6 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
     { key: 'suppliers', label: 'Suppliers' },
     { key: 'clients', label: 'Clients' },
     { key: 'items', label: 'Items' },
-    { key: 'lines', label: 'Quote Lines' },
   ]
 
   return (
@@ -115,7 +114,6 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
       {tab === 'suppliers' && <SuppliersImport supabase={supabase} existingSuppliers={existingSuppliers} />}
       {tab === 'clients'  && <ClientsImport  supabase={supabase} existingClients={existingClients} />}
       {tab === 'items'    && <ItemsImport    supabase={supabase} existingItems={existingItems} />}
-      {tab === 'lines'    && <LinesImport    supabase={supabase} projects={projects} existingSuppliers={existingSuppliers} existingClients={existingClients} />}
     </div>
   )
 }

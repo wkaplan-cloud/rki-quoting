@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import toast from 'react-hot-toast'
-import { FileText, Send, Copy, ChevronDown, RefreshCw, Upload, Mail } from 'lucide-react'
+import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer } from 'lucide-react'
 
 interface SageCustomer { id: string; name: string; reference?: string }
 interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
@@ -290,135 +290,142 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       />
 
       {/* Action bar — desktop only */}
-      <div className="hidden md:flex items-center gap-2 px-8 py-3 border-b border-[#D8D3C8] bg-[#F5F2EC] flex-wrap justify-between">
-        <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('production')}>
-          <FileText size={13} /> Production PDF
-        </Button>
-        <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
-        <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('quote')}>
-          <FileText size={13} /> Quote PDF
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('invoice')}>
-          <FileText size={13} /> Invoice PDF
-        </Button>
-        {/* Purchase Orders dropdown */}
-        {(() => {
-          const poSupplierIds = [...new Set(
-            lineItems.filter(i => i.row_type !== 'section' && i.supplier_id).map(i => i.supplier_id!)
-          )]
-          const poSuppliers = poSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean) as typeof suppliers
-          if (poSuppliers.length === 0) return (
-            <Button size="sm" variant="secondary" disabled>
-              <FileText size={13} /> Purchase Orders
-            </Button>
-          )
-          if (poSuppliers.length === 1) return (
-            <Button size="sm" variant="secondary" onClick={() => handleGeneratePDF('po', poSuppliers[0]!.id)}>
-              <FileText size={13} /> PO – {poSuppliers[0]!.supplier_name}
-            </Button>
-          )
-          return (
+      {(() => {
+        const poSupplierIds = [...new Set(
+          lineItems.filter(i => i.row_type !== 'section' && i.supplier_id).map(i => i.supplier_id!)
+        )]
+        const poSuppliers = poSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean) as typeof suppliers
+
+        return (
+          <div className="hidden md:flex items-center gap-2 px-6 py-2.5 border-b border-[#D8D3C8] bg-[#F5F2EC]">
+
+            {/* ── Save / Download dropdown ── */}
             <div className="relative" ref={poMenuRef}>
-              <Button size="sm" variant="secondary" onClick={() => setPoMenuOpen(v => !v)}>
-                <FileText size={13} /> Purchase Orders <ChevronDown size={12} />
-              </Button>
+              <button
+                onClick={() => { setPoMenuOpen(v => !v); setSendPoMenuOpen(false) }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors font-medium cursor-pointer"
+              >
+                <Download size={13} /> Save PDF <ChevronDown size={12} className={`transition-transform ${poMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
               {poMenuOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded shadow-lg min-w-[180px]">
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2 border-b border-[#EDE9E1] font-medium"
-                    onClick={() => { handleGeneratePDF('po'); setPoMenuOpen(false) }}
-                  >
-                    <FileText size={12} className="text-[#9A7B4F]" /> All POs (combined)
+                <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded-lg shadow-lg min-w-[200px] py-1">
+                  <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Client Documents</p>
+                  <button onClick={() => { handleGeneratePDF('quote'); setPoMenuOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                    <FileText size={13} className="text-[#9A7B4F] flex-shrink-0" /> Quote PDF
                   </button>
-                  {poSuppliers.map(s => (
-                    <button
-                      key={s.id}
-                      className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2"
-                      onClick={() => { handleGeneratePDF('po', s.id); setPoMenuOpen(false) }}
-                    >
-                      <FileText size={12} className="text-[#9A7B4F]" /> {s.supplier_name}
-                    </button>
-                  ))}
+                  <button onClick={() => { handleGeneratePDF('invoice'); setPoMenuOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                    <FileText size={13} className="text-[#9A7B4F] flex-shrink-0" /> Invoice PDF
+                  </button>
+                  <div className="border-t border-[#EDE9E1] my-1" />
+                  <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Purchase Orders</p>
+                  {poSuppliers.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-[#C4BFB5] italic">No suppliers on line items</p>
+                  ) : (
+                    <>
+                      {poSuppliers.length > 1 && (
+                        <button onClick={() => { handleGeneratePDF('po'); setPoMenuOpen(false) }}
+                          className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5 font-medium">
+                          <FileText size={13} className="text-[#9A7B4F] flex-shrink-0" /> All POs (combined)
+                        </button>
+                      )}
+                      {poSuppliers.map(s => (
+                        <button key={s.id} onClick={() => { handleGeneratePDF('po', s.id); setPoMenuOpen(false) }}
+                          className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                          <FileText size={13} className="text-[#9A7B4F] flex-shrink-0" /> PO – {s.supplier_name}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  <div className="border-t border-[#EDE9E1] my-1" />
+                  <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Internal</p>
+                  <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                    <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Production Sheet
+                  </button>
                 </div>
               )}
             </div>
-          )
-        })()}
-        <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
-        {/* Sage */}
-        {sageConnected && (
-          sageInvoiceId ? (
-            <div className="flex items-center gap-1.5">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sageInvoiceStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                Sage: {sageInvoiceStatus ?? 'Pushed'}
-              </span>
-              <Button size="sm" variant="ghost" onClick={handleSyncSageStatus} disabled={sageSyncing}>
-                <RefreshCw size={12} className={sageSyncing ? 'animate-spin' : ''} />
-                {sageSyncing ? 'Syncing…' : 'Sync'}
-              </Button>
-            </div>
-          ) : (
-            <Button size="sm" variant="secondary" onClick={openSageModal}>
-              <Upload size={13} /> Push to Sage
-            </Button>
-          )
-        )}
-        <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
-        <div className="flex-1" />
-        {/* Send PO dropdown */}
-        {(() => {
-          const poSupplierIds = [...new Set(
-            lineItems.filter(i => i.row_type !== 'section' && i.supplier_id).map(i => i.supplier_id!)
-          )]
-          const poSuppliers = poSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean) as typeof suppliers
-          if (poSuppliers.length === 0) return (
-            <Button size="sm" variant="secondary" disabled>
-              <Send size={13} /> Send PO
-            </Button>
-          )
-          if (poSuppliers.length === 1) return (
-            <Button size="sm" variant="secondary" onClick={() => handleSendPO(poSuppliers[0]!.id)} disabled={sendPoSending}>
-              <Send size={13} /> {sendPoSending ? 'Sending…' : `Send PO – ${poSuppliers[0]!.supplier_name}`}
-            </Button>
-          )
-          return (
+
+            {/* ── Send dropdown ── */}
             <div className="relative" ref={sendPoMenuRef}>
-              <Button size="sm" variant="secondary" onClick={() => setSendPoMenuOpen(v => !v)} disabled={sendPoSending}>
-                <Send size={13} /> {sendPoSending ? 'Sending…' : 'Send PO'} <ChevronDown size={12} />
-              </Button>
+              <button
+                onClick={() => { setSendPoMenuOpen(v => !v); setPoMenuOpen(false) }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#9A7B4F] text-white text-sm hover:bg-[#7d6340] transition-colors font-medium cursor-pointer"
+              >
+                <Send size={13} /> Send <ChevronDown size={12} className={`transition-transform ${sendPoMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
               {sendPoMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded shadow-lg min-w-[180px]">
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2 border-b border-[#EDE9E1] font-medium"
-                    onClick={() => handleSendPO()}
-                  >
-                    <Send size={12} className="text-[#9A7B4F]" /> Send All POs
+                <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded-lg shadow-lg min-w-[210px] py-1">
+                  <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Email to Client</p>
+                  <button onClick={() => { handleOpenEmailModal('quote'); setSendPoMenuOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                    <Send size={13} className="text-[#9A7B4F] flex-shrink-0" /> Send Quote
                   </button>
-                  {poSuppliers.map(s => (
-                    <button
-                      key={s.id}
-                      className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2"
-                      onClick={() => handleSendPO(s.id)}
-                    >
-                      <Send size={12} className="text-[#9A7B4F]" /> {s.supplier_name}
-                    </button>
-                  ))}
+                  <button onClick={() => { handleOpenEmailModal('invoice'); setSendPoMenuOpen(false) }}
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                    <Send size={13} className="text-[#9A7B4F] flex-shrink-0" /> Send Invoice
+                  </button>
+                  {poSuppliers.length > 0 && (
+                    <>
+                      <div className="border-t border-[#EDE9E1] my-1" />
+                      <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Email to Suppliers</p>
+                      {sendPoSending ? (
+                        <p className="px-3 py-2 text-xs text-[#8A877F]">Sending…</p>
+                      ) : (
+                        <>
+                          {poSuppliers.length > 1 && (
+                            <button onClick={() => { handleSendPO(); setSendPoMenuOpen(false) }}
+                              className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5 font-medium">
+                              <Send size={13} className="text-[#9A7B4F] flex-shrink-0" /> Send All POs
+                            </button>
+                          )}
+                          {poSuppliers.map(s => (
+                            <button key={s.id} onClick={() => { handleSendPO(s.id); setSendPoMenuOpen(false) }}
+                              className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                              <Send size={13} className="text-[#9A7B4F] flex-shrink-0" /> PO – {s.supplier_name}
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </div>
-          )
-        })()}
-        <Button size="sm" variant="secondary" onClick={() => handleOpenEmailModal('quote')}>
-          <Send size={13} /> Send Quote
-        </Button>
-        <Button size="sm" variant="secondary" onClick={() => handleOpenEmailModal('invoice')}>
-          <Send size={13} /> Send Invoice
-        </Button>
-        <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
-        <Button size="sm" variant="ghost" onClick={handleDuplicate}>
-          <Copy size={13} /> Duplicate
-        </Button>
-      </div>
+
+            <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
+
+            {/* Sage */}
+            {sageConnected && (
+              sageInvoiceId ? (
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sageInvoiceStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    Sage: {sageInvoiceStatus ?? 'Pushed'}
+                  </span>
+                  <button onClick={handleSyncSageStatus} disabled={sageSyncing}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
+                    <RefreshCw size={11} className={sageSyncing ? 'animate-spin' : ''} />
+                    {sageSyncing ? 'Syncing…' : 'Sync'}
+                  </button>
+                </div>
+              ) : (
+                <button onClick={openSageModal}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
+                  <Upload size={13} /> Push to Sage
+                </button>
+              )
+            )}
+
+            <div className="flex-1" />
+            <button onClick={handleDuplicate}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+              <Copy size={13} /> Duplicate
+            </button>
+          </div>
+        )
+      })()}
 
       {/* Mobile read-only view */}
       <div className="md:hidden flex-1 overflow-y-auto">

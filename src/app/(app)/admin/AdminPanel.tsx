@@ -5,6 +5,7 @@ import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight } from 'luc
 import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
 import Link from 'next/link'
+import { computeLineItems } from '@/lib/quoting'
 
 interface Member {
   id: string
@@ -28,6 +29,24 @@ interface AuditLog {
   created_at: string
 }
 
+interface CompletedProject {
+  id: string
+  project_name: string
+  project_number: string
+  date: string
+  design_fee: number
+  vat_rate: number | null
+  client: { client_name: string } | null
+}
+
+interface LineItemRow {
+  project_id: string
+  cost_price: number
+  markup_percentage: number
+  quantity: number
+  row_type: string | null
+}
+
 interface Props {
   members: Member[]
   auditLogs: AuditLog[]
@@ -35,6 +54,8 @@ interface Props {
   settings: Record<string, unknown> | null
   plan: string
   subscriptionStatus: string
+  completedProjects: CompletedProject[]
+  completedLineItems: LineItemRow[]
 }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -97,13 +118,33 @@ function getChanges(log: AuditLog): { field: string; from: string; to: string }[
     }))
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('designer')
   const [inviting, setInviting] = useState(false)
-  const [tab, setTab] = useState<'users' | 'studio' | 'audit'>('users')
+  const [tab, setTab] = useState<'users' | 'studio' | 'profit' | 'audit'>('users')
+
+  // Compute profit per completed project
+  const profitByProject = completedProjects.map(p => {
+    const items = completedLineItems.filter(li => li.project_id === p.id)
+    const computed = computeLineItems(items as any)
+    const profit = computed.reduce((sum, i) => sum + i.profit, 0)
+    const designFeeAmount = computed.reduce((sum, i) => sum + i.total_price, 0) * ((p.design_fee ?? 0) / 100)
+    return { ...p, profitExVat: profit + designFeeAmount }
+  })
+
+  // Group by year
+  const byYear: Record<string, typeof profitByProject> = {}
+  for (const p of profitByProject) {
+    const year = new Date(p.date).getFullYear().toString()
+    if (!byYear[year]) byYear[year] = []
+    byYear[year].push(p)
+  }
+  const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a))
+
+  const fmtZAR = (n: number) => `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
@@ -163,13 +204,13 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
     <div>
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
-        {(['users', 'studio', 'audit'] as const).map(t => (
+        {(['users', 'studio', 'profit', 'audit'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${tab === t ? 'border-b-2 border-[#9A7B4F] text-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
           >
-            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : 'Audit Log'}
+            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : t === 'profit' ? 'Profit' : 'Audit Log'}
           </button>
         ))}
       </div>
@@ -303,6 +344,74 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
 
       {tab === 'studio' && (
         <StudioSettingsForm settings={settings as any} />
+      )}
+
+      {tab === 'profit' && (
+        <div className="space-y-8">
+          {completedProjects.length === 0 ? (
+            <p className="text-sm text-[#8A877F] py-10 text-center">No completed projects yet.</p>
+          ) : (
+            <>
+              {/* Year totals summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {years.slice(0, 4).map(year => {
+                  const total = byYear[year]!.reduce((s, p) => s + p.profitExVat, 0)
+                  return (
+                    <div key={year} className="bg-white border border-[#D8D3C8] rounded-xl px-5 py-4">
+                      <p className="text-xs text-[#8A877F] mb-1">{year}</p>
+                      <p className="text-lg font-semibold text-[#2C2C2A]">{fmtZAR(total)}</p>
+                      <p className="text-xs text-[#8A877F] mt-0.5">{byYear[year]!.length} project{byYear[year]!.length !== 1 ? 's' : ''}</p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Per-year project list */}
+              {years.map(year => (
+                <div key={year}>
+                  <h3 className="text-xs font-semibold text-[#8A877F] uppercase tracking-wider mb-3">{year}</h3>
+                  <div className="bg-white border border-[#D8D3C8] rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#EDE9E1] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
+                          <th className="text-left px-5 py-2.5">Client</th>
+                          <th className="text-left px-5 py-2.5">Project</th>
+                          <th className="text-left px-5 py-2.5">Date</th>
+                          <th className="text-right px-5 py-2.5">Profit ex VAT</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EDE9E1]">
+                        {byYear[year]!.map(p => (
+                          <tr key={p.id} className="hover:bg-[#FDFCF9]">
+                            <td className="px-5 py-3 text-[#2C2C2A] font-medium">{p.client?.client_name ?? <span className="text-[#C4BFB5] italic text-xs">No client</span>}</td>
+                            <td className="px-5 py-3 text-[#8A877F]">
+                              <Link href={`/projects/${p.id}`} className="hover:text-[#9A7B4F] hover:underline transition-colors">
+                                {p.project_name}
+                                <span className="ml-2 text-xs text-[#C4BFB5]">{p.project_number}</span>
+                              </Link>
+                            </td>
+                            <td className="px-5 py-3 text-[#8A877F] text-xs">
+                              {new Date(p.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className={`px-5 py-3 text-right font-semibold tabular-nums ${p.profitExVat >= 0 ? 'text-[#2C2C2A]' : 'text-red-500'}`}>
+                              {fmtZAR(p.profitExVat)}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-[#F5F2EC] border-t border-[#D8D3C8]">
+                          <td colSpan={3} className="px-5 py-2.5 text-xs font-semibold text-[#8A877F] uppercase tracking-wider">{year} Total</td>
+                          <td className="px-5 py-2.5 text-right font-bold text-[#2C2C2A] tabular-nums">
+                            {fmtZAR(byYear[year]!.reduce((s, p) => s + p.profitExVat, 0))}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
       )}
 
       {tab === 'audit' && (
