@@ -50,6 +50,19 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     return { id: data.id }
   }
 
+  async function saveClient(clientId: string, label: string) {
+    const newClientId = clientId || null
+    const { error } = await supabase.from('projects').update({ client_id: newClientId }).eq('id', project.id)
+    if (error) { toast.error(error.message); return }
+    onProjectUpdate({
+      ...project,
+      ...form,
+      client_id: newClientId,
+      client: newClientId ? { client_name: label.split(' — ')[0], company: label.includes(' — ') ? label.split(' — ')[1] : null } : null,
+    })
+    setEditing(false)
+  }
+
   async function save() {
     const { error } = await supabase.from('projects').update({
       ...form,
@@ -128,7 +141,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
                 options={clients.map(c => ({ id: c.id, label: c.client_name + (c.company ? ` — ${c.company}` : '') }))}
                 value={form.client_id}
                 inputValue={clientName}
-                onChange={(id, label) => { setForm(f => ({ ...f, client_id: id })); setClientName(label) }}
+                onChange={(id, label) => { setForm(f => ({ ...f, client_id: id })); setClientName(label); saveClient(id, label) }}
                 onCreate={handleCreateClient}
                 placeholder="Type to search or create client…"
               />
