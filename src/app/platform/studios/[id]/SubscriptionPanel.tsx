@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { CreditCard, RefreshCw } from 'lucide-react'
+import { CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
@@ -31,7 +31,6 @@ export function SubscriptionPanel({
   const [selectedPlan, setSelectedPlan] = useState(plan)
   const [selectedStatus, setSelectedStatus] = useState(status)
   const [saving, setSaving] = useState(false)
-  const [extending, setExtending] = useState(false)
 
   const daysLeft = trialEndsAt
     ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
@@ -51,23 +50,6 @@ export function SubscriptionPanel({
     } else {
       const d = await res.json()
       toast.error(d.error ?? 'Failed to update')
-    }
-  }
-
-  async function extendTrial(days: number) {
-    setExtending(true)
-    const res = await fetch(`/api/platform/studios/${orgId}/subscription`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ extendDays: days }),
-    })
-    setExtending(false)
-    if (res.ok) {
-      toast.success(`Trial extended by ${days} days`)
-      router.refresh()
-    } else {
-      const d = await res.json()
-      toast.error(d.error ?? 'Failed to extend trial')
     }
   }
 
@@ -122,29 +104,13 @@ export function SubscriptionPanel({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={save}
-            disabled={saving}
-            className="px-4 py-2 bg-[#9A7B4F] text-white text-xs font-medium rounded-lg hover:bg-[#B8956A] transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-
-          <div className="flex items-center gap-2 border-l border-white/10 pl-3">
-            <span className="text-xs text-white/30">Extend trial:</span>
-            {[7, 14, 30].map(days => (
-              <button
-                key={days}
-                onClick={() => extendTrial(days)}
-                disabled={extending}
-                className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 text-xs rounded-lg transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1"
-              >
-                <RefreshCw size={10} /> +{days}d
-              </button>
-            ))}
-          </div>
-        </div>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="px-4 py-2 bg-[#9A7B4F] text-white text-xs font-medium rounded-lg hover:bg-[#B8956A] transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
       </div>
     </div>
   )

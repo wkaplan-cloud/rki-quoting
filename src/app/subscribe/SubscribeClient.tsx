@@ -36,32 +36,9 @@ const plans = [
   },
 ]
 
-export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName }: { trialExpired: boolean; daysLeft: number; userEmail: string; studioName: string }) {
+export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName, memberCount }: { trialExpired: boolean; daysLeft: number; userEmail: string; studioName: string; memberCount: number }) {
   const [loading, setLoading] = useState<string | null>(null)
-  const [extensionRequested, setExtensionRequested] = useState(false)
-
-  async function handleExtensionRequest() {
-    setLoading('extend')
-    try {
-      await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'Trial extension request',
-          message: `A studio is requesting a trial extension. Please review in the platform admin and extend if appropriate.`,
-          email: userEmail,
-          name: studioName || userEmail,
-          company: studioName,
-        }),
-      })
-      setExtensionRequested(true)
-      toast.success("Request sent! We'll review and extend your trial within 24 hours.")
-    } catch {
-      toast.error('Something went wrong. Please email us at hello@quotinghub.co.za')
-    } finally {
-      setLoading(null)
-    }
-  }
+  const soloDisabled = memberCount > 1
 
   async function handleSubscribe(planId: string) {
     setLoading(planId)
@@ -114,51 +91,65 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName 
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {plans.map(plan => (
-            <div
-              key={plan.id}
-              className={`rounded-2xl border p-8 flex flex-col ${
-                plan.highlight
-                  ? 'bg-[#1A1A18] border-[#1A1A18] text-white'
-                  : 'bg-white border-[#D8D3C8] text-[#1A1A18]'
-              }`}
-            >
-              {plan.highlight && (
-                <span className="inline-block self-start bg-[#9A7B4F] text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider mb-4">
-                  Most popular
-                </span>
-              )}
-              <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${plan.highlight ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`}>
-                {plan.name}
-              </p>
-              <div className="flex items-end gap-1 mb-1">
-                <span className="font-serif text-4xl">R{plan.price.toLocaleString()}</span>
-                <span className={`text-sm mb-1.5 ${plan.highlight ? 'text-white/50' : 'text-[#8A877F]'}`}>/month</span>
-              </div>
-              <p className={`text-sm mb-6 ${plan.highlight ? 'text-white/60' : 'text-[#8A877F]'}`}>{plan.description}</p>
-
-              <ul className="space-y-2.5 mb-8 flex-1">
-                {plan.features.map(f => (
-                  <li key={f} className="flex items-start gap-2">
-                    <Check size={13} className={`mt-0.5 flex-shrink-0 ${plan.highlight ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`} />
-                    <span className={`text-sm ${plan.highlight ? 'text-white/80' : 'text-[#2C2C2A]'}`}>{f}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => handleSubscribe(plan.id)}
-                disabled={loading !== null}
-                className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-colors disabled:opacity-60 cursor-pointer ${
-                  plan.highlight
-                    ? 'bg-[#9A7B4F] text-white hover:bg-[#B8956A]'
-                    : 'bg-[#1A1A18] text-white hover:bg-[#9A7B4F]'
+          {plans.map(plan => {
+            const isDisabled = plan.id === 'solo' && soloDisabled
+            return (
+              <div
+                key={plan.id}
+                className={`rounded-2xl border p-8 flex flex-col relative ${
+                  isDisabled
+                    ? 'bg-[#F5F2EC] border-[#D8D3C8] opacity-50 select-none'
+                    : plan.highlight
+                    ? 'bg-[#1A1A18] border-[#1A1A18] text-white'
+                    : 'bg-white border-[#D8D3C8] text-[#1A1A18]'
                 }`}
               >
-                {loading === plan.id ? 'Sending request…' : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
-              </button>
-            </div>
-          ))}
+                {isDisabled && (
+                  <div className="absolute inset-0 rounded-2xl flex items-center justify-center">
+                    <span className="bg-white border border-[#D8D3C8] text-[#8A877F] text-xs font-medium px-3 py-1.5 rounded-full shadow-sm">
+                      Not available — your studio has multiple users
+                    </span>
+                  </div>
+                )}
+                {plan.highlight && !isDisabled && (
+                  <span className="inline-block self-start bg-[#9A7B4F] text-white text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider mb-4">
+                    Most popular
+                  </span>
+                )}
+                <p className={`text-xs font-semibold uppercase tracking-widest mb-1 ${plan.highlight && !isDisabled ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`}>
+                  {plan.name}
+                </p>
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="font-serif text-4xl">R{plan.price.toLocaleString()}</span>
+                  <span className={`text-sm mb-1.5 ${plan.highlight && !isDisabled ? 'text-white/50' : 'text-[#8A877F]'}`}>/month</span>
+                </div>
+                <p className={`text-sm mb-6 ${plan.highlight && !isDisabled ? 'text-white/60' : 'text-[#8A877F]'}`}>{plan.description}</p>
+
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {plan.features.map(f => (
+                    <li key={f} className="flex items-start gap-2">
+                      <Check size={13} className={`mt-0.5 flex-shrink-0 ${plan.highlight && !isDisabled ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`} />
+                      <span className={`text-sm ${plan.highlight && !isDisabled ? 'text-white/80' : 'text-[#2C2C2A]'}`}>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => !isDisabled && handleSubscribe(plan.id)}
+                  disabled={loading !== null || isDisabled}
+                  className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-colors ${
+                    isDisabled
+                      ? 'bg-[#D8D3C8] text-[#8A877F] cursor-not-allowed'
+                      : plan.highlight
+                      ? 'bg-[#9A7B4F] text-white hover:bg-[#B8956A] cursor-pointer disabled:opacity-60'
+                      : 'bg-[#1A1A18] text-white hover:bg-[#9A7B4F] cursor-pointer disabled:opacity-60'
+                  }`}
+                >
+                  {loading === plan.id ? 'Sending request…' : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
+                </button>
+              </div>
+            )
+          })}
         </div>
 
         <p className="text-center text-xs text-[#8A877F]">
@@ -167,26 +158,6 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName 
             Email us
           </a>
         </p>
-
-        {/* Trial extension request */}
-        <div className="mt-6 border-t border-[#D8D3C8] pt-6 text-center">
-          {extensionRequested ? (
-            <p className="text-sm text-[#9A7B4F]">
-              Request received — we&apos;ll extend your trial within 24 hours.
-            </p>
-          ) : (
-            <>
-              <p className="text-xs text-[#8A877F] mb-2">Need more time to evaluate?</p>
-              <button
-                onClick={handleExtensionRequest}
-                disabled={loading !== null}
-                className="text-xs text-[#9A7B4F] hover:underline disabled:opacity-50 cursor-pointer"
-              >
-                {loading === 'extend' ? 'Sending…' : 'Request a trial extension'}
-              </button>
-            </>
-          )}
-        </div>
 
         {!trialExpired && (
           <p className="text-center text-xs text-[#C4BFB5] mt-4">

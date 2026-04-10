@@ -27,11 +27,10 @@ export default async function SubscribePage() {
     : 0
   const trialExpired = daysLeft === 0
 
-  const { data: settings } = await supabaseAdmin
-    .from('settings')
-    .select('business_name')
-    .eq('org_id', orgId)
-    .maybeSingle()
+  const [{ data: settings }, { count: memberCount }] = await Promise.all([
+    supabaseAdmin.from('settings').select('business_name').eq('org_id', orgId).maybeSingle(),
+    supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'active'),
+  ])
 
   return (
     <SubscribeClient
@@ -39,6 +38,7 @@ export default async function SubscribePage() {
       daysLeft={daysLeft}
       userEmail={user.email ?? ''}
       studioName={settings?.business_name ?? ''}
+      memberCount={memberCount ?? 1}
     />
   )
 }

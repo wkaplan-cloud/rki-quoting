@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Users, FolderOpen, Mail, Phone, MapPin, Calendar } from 'lucide-react'
+import { ArrowLeft, Users, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
+import { DeleteStudioButton } from './DeleteStudioButton'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -41,11 +42,14 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         <ArrowLeft size={14} /> All studios
       </Link>
 
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl text-white mb-1">{settings?.business_name || org.name}</h1>
-        <p className="text-sm text-white/40">
-          Joined {new Date(org.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl text-white mb-1">{settings?.business_name || org.name}</h1>
+          <p className="text-sm text-white/40">
+            Joined {new Date(org.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <DeleteStudioButton orgId={id} studioName={settings?.business_name || org.name} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
