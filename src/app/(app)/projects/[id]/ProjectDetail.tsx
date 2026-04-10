@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import toast from 'react-hot-toast'
-import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer } from 'lucide-react'
+import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail } from 'lucide-react'
 
 interface SageCustomer { id: string; name: string; reference?: string }
 interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
