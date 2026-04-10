@@ -39,6 +39,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
   const [savingSage, setSavingSage] = useState(false)
   const [fetchingCompany, setFetchingCompany] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showSageForm, setShowSageForm] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [sageForm, setSageForm] = useState({
@@ -62,7 +63,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     bank_branch_code:       settings?.bank_branch_code ?? '',
     vat_rate:               String(settings?.vat_rate ?? 15),
     deposit_percentage:     String(settings?.deposit_percentage ?? 70),
-    footer_text:            settings?.footer_text ?? 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.',
+    footer_text:            settings?.footer_text ?? 'Thank you for your business.',
     terms_conditions:       settings?.terms_conditions ?? '',
     company_registration:   settings?.company_registration ?? '',
     email_template_quote:   settings?.email_template_quote ?? `Dear {{client_name}},\n\nPlease find attached your quotation for {{project_name}}.\n\nReference: {{project_number}}\n\nPlease don't hesitate to contact us should you have any questions or require any amendments.\n\nKind regards,\n{{studio_name}}`,
@@ -258,44 +259,76 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
             <div className="flex items-center gap-2">
               <CheckCircle size={13} className="text-green-600" />
               <span className="text-xs text-green-700 font-medium">Connected</span>
-              <button type="button" onClick={disconnectSage} className="text-xs text-red-400 hover:text-red-600 underline ml-1">Clear</button>
+              <button type="button" onClick={disconnectSage} className="text-xs text-red-400 hover:text-red-600 underline ml-1">Disconnect</button>
             </div>
           )}
         </div>
-        <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} />
-          <div>
-            <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} />
+
+        {!sageConnected && !showSageForm ? (
+          /* Not connected — show a clean prompt instead of blank fields */
+          <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
+            <div>
+              <p className="text-sm font-medium text-[#2C2C2A]">Not connected</p>
+              <p className="text-xs text-[#8A877F] mt-0.5">Connect Sage One SA to push invoices directly to your accounting software.</p>
+            </div>
             <button
               type="button"
-              onClick={fetchCompanyId}
-              disabled={fetchingCompany}
-              className="mt-1.5 text-xs text-[#9A7B4F] hover:underline disabled:opacity-50"
+              onClick={() => setShowSageForm(true)}
+              className="ml-6 flex-shrink-0 px-4 py-2 border border-[#D8D3C8] rounded text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors"
             >
-              {fetchingCompany ? 'Looking up…' : 'Fetch Company ID from Sage →'}
+              Set up Sage →
             </button>
           </div>
-          <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} />
-          <div className="relative">
-            <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
-            <button
-              type="button"
-              onClick={() => setShowPassword(v => !v)}
-              className="absolute right-3 top-[30px] text-[#8A877F] hover:text-[#2C2C2A]"
-            >
-              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={saveSageCredentials}
-          disabled={savingSage}
-          className="px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50"
-        >
-          {savingSage ? 'Saving…' : 'Save Sage Credentials'}
-        </button>
+        ) : (
+          /* Connected or user clicked "Set up Sage" — show credential fields */
+          <>
+            <p className="text-xs text-[#8A877F]">Enter your Sage One SA credentials. Get your API key from <span className="font-mono">accounting.sageone.co.za/Marketing/DeveloperProgram.aspx</span></p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Input label="API Key" value={sageForm.sage_api_key} onChange={e => setSage('sage_api_key', e.target.value)} />
+              <div>
+                <Input label="Company ID" value={sageForm.sage_company_id} onChange={e => setSage('sage_company_id', e.target.value)} />
+                <button
+                  type="button"
+                  onClick={fetchCompanyId}
+                  disabled={fetchingCompany}
+                  className="mt-1.5 text-xs text-[#9A7B4F] hover:underline disabled:opacity-50"
+                >
+                  {fetchingCompany ? 'Looking up…' : 'Fetch Company ID from Sage →'}
+                </button>
+              </div>
+              <Input label="Sage Username (email)" type="email" value={sageForm.sage_username} onChange={e => setSage('sage_username', e.target.value)} />
+              <div className="relative">
+                <Input label="Sage Password" type={showPassword ? 'text' : 'password'} value={sageForm.sage_password} onChange={e => setSage('sage_password', e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  className="absolute right-3 top-[30px] text-[#8A877F] hover:text-[#2C2C2A]"
+                >
+                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={saveSageCredentials}
+                disabled={savingSage}
+                className="px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50"
+              >
+                {savingSage ? 'Saving…' : 'Save Sage Credentials'}
+              </button>
+              {!sageConnected && (
+                <button
+                  type="button"
+                  onClick={() => setShowSageForm(false)}
+                  className="text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       <div className="border-t border-[#EDE9E1] pt-6">

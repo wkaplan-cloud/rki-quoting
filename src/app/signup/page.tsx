@@ -1,28 +1,31 @@
 'use client'
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function SignupPage() {
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (!fullName.trim()) { setError('Please enter your full name'); return }
     if (password !== confirm) { setError('Passwords do not match'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true)
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) {
-      setError(error.message)
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, full_name: fullName }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setError(data.error ?? 'Something went wrong. Please try again.')
       setLoading(false)
     } else {
       setDone(true)
@@ -36,13 +39,10 @@ export default function SignupPage() {
     >
       {/* Left panel */}
       <div className="hidden lg:flex w-2/5 flex-col justify-between p-12 relative">
-        {/* Logo */}
         <div className="relative z-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="QuotingHub" className="h-28 w-auto object-contain" style={{ filter: 'invert(1)' }} />
         </div>
-
-        {/* Tagline */}
         <div className="relative z-10">
           <p className="font-serif text-white/85 text-4xl leading-snug tracking-tight">
             Quotes, invoices<br />
@@ -61,7 +61,6 @@ export default function SignupPage() {
             ))}
           </ul>
         </div>
-
         <p className="relative z-10 text-white/20 text-xs">© QuotingHub · quotinghub.co.za</p>
       </div>
 
@@ -70,15 +69,17 @@ export default function SignupPage() {
         <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }}>
           {done ? (
             <div className="text-center space-y-4 py-4">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="font-serif text-2xl text-[#1A1A18]">Check your email</h2>
-              <p className="text-sm text-[#8A877F]">
-                We sent a confirmation link to <strong>{email}</strong>.<br />
-                Click it to activate your account.
+              <h2 className="font-serif text-2xl text-[#1A1A18]">Check your inbox</h2>
+              <p className="text-sm text-[#8A877F] leading-relaxed">
+                We sent a confirmation link to<br /><strong className="text-[#2C2C2A]">{email}</strong>
+              </p>
+              <p className="text-xs text-[#C4BFB5] leading-relaxed">
+                Click the link in the email to activate your account. Check your spam folder if you don't see it.
               </p>
               <Link href="/login" className="inline-block mt-4 text-sm text-[#9A7B4F] hover:underline">
                 Back to sign in →
@@ -86,20 +87,33 @@ export default function SignupPage() {
             </div>
           ) : (
             <>
-              <div className="mb-8">
+              <div className="mb-7">
                 <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Create your account</h1>
                 <p className="text-sm text-[#8A877F] mt-1.5">Start quoting in minutes</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Full Name</label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    placeholder="Jane Smith"
+                    required
+                    autoComplete="name"
+                    className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Email</label>
                   <input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    placeholder=""
                     required
+                    autoComplete="email"
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
                 </div>
@@ -110,8 +124,8 @@ export default function SignupPage() {
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder=""
                     required
+                    autoComplete="new-password"
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
                   <p className="text-xs text-[#C4BFB5] mt-1.5">Minimum 8 characters</p>
@@ -123,8 +137,8 @@ export default function SignupPage() {
                     type="password"
                     value={confirm}
                     onChange={e => setConfirm(e.target.value)}
-                    placeholder=""
                     required
+                    autoComplete="new-password"
                     className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
                   />
                 </div>

@@ -14,11 +14,18 @@ export default async function SettingsPage() {
     .eq('user_id', user!.id)
     .maybeSingle()
 
+  const meta = (user?.user_metadata ?? {}) as Record<string, string>
+
   return (
     <div>
       <PageHeader title="Profile" subtitle="Your personal account details" />
-      <div className="p-8 max-w-sm">
-        <SettingsForm currentFullName={member?.full_name ?? ''} />
+      <div className="p-8 max-w-lg">
+        <SettingsForm
+          currentFullName={member?.full_name ?? meta.full_name ?? ''}
+          email={user?.email ?? ''}
+          currentPhone={meta.phone ?? ''}
+          currentJobTitle={meta.job_title ?? ''}
+        />
       </div>
     </div>
   )

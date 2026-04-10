@@ -22,6 +22,12 @@ export async function POST(req: NextRequest) {
 
   if (orgError) return NextResponse.json({ error: orgError.message }, { status: 500 })
 
+  // Pull full_name from user metadata set at signup, fall back to email prefix
+  const fullName: string =
+    (user.user_metadata?.full_name as string | undefined)?.trim() ||
+    user.email?.split('@')[0] ||
+    ''
+
   const { error: memberError } = await supabaseAdmin
     .from('org_members')
     .insert({
@@ -31,6 +37,7 @@ export async function POST(req: NextRequest) {
       role: 'admin',
       status: 'active',
       joined_at: new Date().toISOString(),
+      full_name: fullName || null,
     })
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })

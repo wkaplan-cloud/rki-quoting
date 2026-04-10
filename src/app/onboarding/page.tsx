@@ -28,7 +28,7 @@ export default function OnboardingPage() {
     bank_name: '',
     bank_account_number: '',
     bank_branch_code: '',
-    footer_text: 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.',
+    footer_text: 'Thank you for your business.',
   })
 
   function set(k: string, v: string) {
