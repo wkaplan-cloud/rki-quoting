@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   try {
+    // Require an authenticated session — this endpoint must not be public
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const { apiKey, username, password } = await req.json()
     if (!apiKey || !username || !password) {
       return NextResponse.json({ error: 'apiKey, username and password are required' }, { status: 400 })
