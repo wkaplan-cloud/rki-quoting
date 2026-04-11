@@ -1,7 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Send, CheckCircle } from 'lucide-react'
-import Script from 'next/script'
 
 export function ContactForm() {
   const [name, setName] = useState('')
@@ -11,71 +10,17 @@ export function ContactForm() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
-  const widgetRef = useRef<HTMLDivElement>(null)
-  const widgetId = useRef<string | null>(null)
-
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-
-  // Explicitly render the widget on mount — handles client-side navigation
-  // where the auto-scan already ran before this component mounted
-  useEffect(() => {
-    if (!siteKey) return
-    function render() {
-      if (!widgetRef.current || !(window as any).turnstile) return
-      if (widgetId.current != null) return // already rendered
-      widgetId.current = (window as any).turnstile.render(widgetRef.current, {
-        sitekey: siteKey,
-        theme: 'light',
-        size: 'invisible',
-      })
-    }
-    if ((window as any).turnstile) {
-      render()
-    } else {
-      // Script not yet loaded — attach a callback it will call on ready
-      const prev = (window as any).onloadTurnstileCallback
-      ;(window as any).onloadTurnstileCallback = () => {
-        render()
-        if (prev) prev()
-      }
-    }
-    return () => {
-      if (widgetId.current != null && (window as any).turnstile) {
-        (window as any).turnstile.remove(widgetId.current)
-        widgetId.current = null
-      }
-    }
-  }, [siteKey])
-
-  // Reset widget after failed submit
-  useEffect(() => {
-    if (error && siteKey && (window as any).turnstile && widgetId.current != null) {
-      (window as any).turnstile.reset(widgetId.current)
-    }
-  }, [error, siteKey])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    // Get token from the hidden input Turnstile injects
-    const form = e.target as HTMLFormElement
-    const cfToken = siteKey
-      ? (form.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
-      : undefined
-
-    if (siteKey && !cfToken) {
-      setError('Please complete the security check.')
-      setLoading(false)
-      return
-    }
-
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message, _trap: trap, cf_token: cfToken }),
+        body: JSON.stringify({ name, email, message, _trap: trap }),
       })
       if (!res.ok) {
         const d = await res.json()
@@ -100,10 +45,6 @@ export function ContactForm() {
   }
 
   return (
-    <>
-      {siteKey && (
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" strategy="lazyOnload" />
-      )}
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Honeypot — hidden from humans */}
       <input
@@ -149,9 +90,6 @@ export function ContactForm() {
         />
       </div>
 
-      {/* Turnstile widget — invisible, explicitly rendered via ref */}
-      {siteKey && <div ref={widgetRef} />}
-
       {error && <p className="text-xs text-red-500">{error}</p>}
 
       <button
@@ -162,6 +100,5 @@ export function ContactForm() {
         {loading ? 'Sending…' : <><Send size={14} /> Send message</>}
       </button>
     </form>
-    </>
   )
 }

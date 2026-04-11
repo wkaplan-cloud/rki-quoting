@@ -266,7 +266,7 @@ export default function LandingPage() {
       </section>
 
       {/* Contact */}
-      <section id="contact" className="py-24 px-6 bg-white border-t border-[#D8D3C8]">
+      <section id="contact" className="scroll-mt-20 sm:scroll-mt-32 py-24 px-6 bg-white border-t border-[#D8D3C8]">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">Get in touch</p>
