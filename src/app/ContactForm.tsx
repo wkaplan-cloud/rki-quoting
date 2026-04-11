@@ -116,12 +116,13 @@ export function ContactForm() {
         />
       </div>
 
-      {/* Turnstile widget — auto-renders when site key is configured */}
+      {/* Turnstile widget — invisible mode, no UI shown to user */}
       {siteKey && (
         <div
           className="cf-turnstile"
           data-sitekey={siteKey}
           data-theme="light"
+          data-size="invisible"
         />
       )}
 
