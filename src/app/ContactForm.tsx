@@ -27,7 +27,6 @@ export function ContactForm() {
       widgetId.current = (window as any).turnstile.render(widgetRef.current, {
         sitekey: siteKey,
         theme: 'light',
-        size: 'invisible',
       })
     }
 
@@ -62,8 +61,8 @@ export function ContactForm() {
     setLoading(true)
     setError('')
 
-    const cfToken = siteKey
-      ? (widgetRef.current?.querySelector('[name="cf-turnstile-response"]') as HTMLInputElement)?.value
+    const cfToken = siteKey && widgetId.current != null
+      ? (window as any).turnstile.getResponse(widgetId.current)
       : undefined
 
     if (siteKey && !cfToken) {
