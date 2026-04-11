@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Send, CheckCircle } from 'lucide-react'
 import Script from 'next/script'
 
@@ -11,13 +11,46 @@ export function ContactForm() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+  const widgetRef = useRef<HTMLDivElement>(null)
+  const widgetId = useRef<string | null>(null)
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
+  // Explicitly render the widget on mount — handles client-side navigation
+  // where the auto-scan already ran before this component mounted
+  useEffect(() => {
+    if (!siteKey) return
+    function render() {
+      if (!widgetRef.current || !(window as any).turnstile) return
+      if (widgetId.current != null) return // already rendered
+      widgetId.current = (window as any).turnstile.render(widgetRef.current, {
+        sitekey: siteKey,
+        theme: 'light',
+        size: 'invisible',
+      })
+    }
+    if ((window as any).turnstile) {
+      render()
+    } else {
+      // Script not yet loaded — attach a callback it will call on ready
+      const prev = (window as any).onloadTurnstileCallback
+      ;(window as any).onloadTurnstileCallback = () => {
+        render()
+        if (prev) prev()
+      }
+    }
+    return () => {
+      if (widgetId.current != null && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetId.current)
+        widgetId.current = null
+      }
+    }
+  }, [siteKey])
+
   // Reset widget after failed submit
   useEffect(() => {
-    if (error && siteKey && (window as any).turnstile) {
-      (window as any).turnstile.reset()
+    if (error && siteKey && (window as any).turnstile && widgetId.current != null) {
+      (window as any).turnstile.reset(widgetId.current)
     }
   }, [error, siteKey])
 
@@ -69,7 +102,7 @@ export function ContactForm() {
   return (
     <>
       {siteKey && (
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" />
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" strategy="lazyOnload" />
       )}
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Honeypot — hidden from humans */}
@@ -116,15 +149,8 @@ export function ContactForm() {
         />
       </div>
 
-      {/* Turnstile widget — invisible mode, no UI shown to user */}
-      {siteKey && (
-        <div
-          className="cf-turnstile"
-          data-sitekey={siteKey}
-          data-theme="light"
-          data-size="invisible"
-        />
-      )}
+      {/* Turnstile widget — invisible, explicitly rendered via ref */}
+      {siteKey && <div ref={widgetRef} />}
 
       {error && <p className="text-xs text-red-500">{error}</p>}
 
