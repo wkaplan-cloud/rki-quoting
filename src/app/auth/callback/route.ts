@@ -10,13 +10,13 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.exchangeCodeForSession(code)
 
-    // Self-signup: user set their name + password at registration, so full_name is always
-    // in user_metadata. Invited users never have it — they set it on /set-password.
-    // Also accept type=signup as a secondary signal in case metadata isn't available yet.
-    const isSelfSignup = !!user?.user_metadata?.full_name || type === 'signup'
+    // app_metadata.is_self_signup is set server-side (admin only) at registration time.
+    // This is the only reliable signal — URL params like ?type=signup are not always
+    // preserved by Supabase's redirect chain when appending the &code= parameter.
+    const isSelfSignup = !!user?.app_metadata?.is_self_signup
 
     if (isSelfSignup) {
-      // Sign out so they log in fresh — cleaner than being silently mid-session
+      // Sign out so they land on /welcome and log in fresh — cleaner UX
       await supabase.auth.signOut()
       return NextResponse.redirect(`${origin}/welcome`)
     }

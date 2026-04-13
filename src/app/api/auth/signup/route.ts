@@ -20,12 +20,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Password must contain at least one number' }, { status: 400 })
   }
 
-  // Create user without auto-confirming — we send our own branded email
+  // Create user without auto-confirming — we send our own branded email.
+  // app_metadata.is_self_signup is an admin-only flag used in /auth/callback to
+  // reliably distinguish self-signup (→ /welcome) from invited users (→ /set-password).
+  // URL params are not reliable because Supabase may not preserve them through its redirect chain.
   const { data: { user }, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email: email.toLowerCase().trim(),
     password,
     email_confirm: false,
     user_metadata: { full_name: full_name.trim() },
+    app_metadata: { is_self_signup: true },
   })
 
   if (createError) {
