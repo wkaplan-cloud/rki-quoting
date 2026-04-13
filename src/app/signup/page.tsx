@@ -201,6 +201,15 @@ export default function SignupPage() {
                 Already have an account?{' '}
                 <Link href="/login" className="text-[#9A7B4F] hover:underline">Sign in</Link>
               </p>
+
+              <div className="mt-5 pt-5 border-t border-[#EDE9E1]">
+                <p className="text-xs text-[#C4BFB5] text-center leading-relaxed">
+                  Already part of a studio on QuotingHub?{' '}
+                  <span className="text-[#8A877F]">Ask your studio admin to invite you — don&apos;t create a new account.</span>
+                  {' '}Need help?{' '}
+                  <a href="https://quotinghub.co.za/#contact" className="text-[#9A7B4F] hover:underline">Contact us</a>
+                </p>
+              </div>
             </>
           )}
         </div>
