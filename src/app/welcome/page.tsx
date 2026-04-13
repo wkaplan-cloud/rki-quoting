@@ -2,14 +2,10 @@ import Link from 'next/link'
 
 export default function WelcomePage() {
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-6"
-      style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
-    >
+    <div className="min-h-screen bg-[#F5F2EC] flex items-center justify-center p-6">
       <div className="w-full max-w-md text-center">
         <div
-          className="bg-white rounded-3xl px-10 py-12"
-          style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }}
+          className="bg-white border border-[#D8D3C8] rounded-xl px-10 py-12"
         >
           {/* Check mark */}
           <div className="w-16 h-16 rounded-full bg-[#9A7B4F]/10 flex items-center justify-center mx-auto mb-6">
