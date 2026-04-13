@@ -12,7 +12,9 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
-  const [hashRedirecting, setHashRedirecting] = useState(false)
+  const [hashRedirecting, setHashRedirecting] = useState(() =>
+    typeof window !== 'undefined' && window.location.hash.includes('access_token=')
+  )
   const router = useRouter()
   const supabase = createClient()
 
