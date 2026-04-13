@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -14,6 +14,33 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true)
   const router = useRouter()
   const supabase = createClient()
+
+  // Supabase implicit flow: when the email confirmation link is clicked, Supabase
+  // redirects to the site URL (/login) with tokens in the URL hash fragment
+  // (#access_token=...&type=signup). The Supabase client auto-processes the hash
+  // and establishes a session. We detect this and redirect to /welcome.
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash.includes('access_token=')) return
+
+    const params = new URLSearchParams(hash.slice(1)) // strip leading #
+    const type = params.get('type')
+
+    // Let the Supabase client process the hash and set up the session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return
+      if (type === 'signup') {
+        router.replace('/welcome')
+      } else if (type === 'invite') {
+        // Invited users need to set their password
+        supabase.rpc('accept_org_invite').then(() => {
+          router.replace('/set-password')
+        })
+      } else {
+        router.replace('/dashboard')
+      }
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
