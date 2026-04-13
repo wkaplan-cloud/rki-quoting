@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     type: 'signup',
     email: email.toLowerCase().trim(),
     password, // required by Supabase SDK for signup type
-    options: { redirectTo: `${SITE_URL}/auth/callback?type=signup` },
+    options: { redirectTo: `${SITE_URL}/confirming` },
   })
 
   if (linkError || !linkData) {

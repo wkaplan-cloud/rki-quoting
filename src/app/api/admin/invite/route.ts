@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'invite',
     email,
-    options: { redirectTo: 'https://quotinghub.co.za/auth/callback' },
+    options: { redirectTo: 'https://quotinghub.co.za/confirming' },
   })
 
   if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 })
