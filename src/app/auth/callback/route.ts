@@ -10,33 +10,37 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
 
   // --- OTP / token_hash flow ---
-  // generateLink() (used for both self-signup and invite) produces an OTP-style
-  // action link. When the user clicks it, Supabase verifies server-side and redirects
-  // to our callback with ?token_hash=xxx&type=xxx (NOT ?code=xxx).
+  // generateLink() produces an OTP-style action link. When clicked, Supabase verifies
+  // server-side and redirects to our callback with ?token_hash=xxx&type=xxx (NOT ?code=xxx).
   if (token_hash && type) {
-    // Map URL type to verifyOtp type — Supabase sends 'email' for signup confirmations
-    // and 'invite' for team invitations.
     const otpType = type === 'invite' ? 'invite' : 'email'
-    await supabase.auth.verifyOtp({ token_hash, type: otpType })
+    const { error } = await supabase.auth.verifyOtp({ token_hash, type: otpType })
+
+    if (error) {
+      // Token invalid or already used — send to login with a message
+      return NextResponse.redirect(`${origin}/login?error=confirmation_failed`)
+    }
 
     if (type === 'invite') {
-      // Link this user to their pending org_members record
+      // Invited user — link to their pending org_members record, then set password
       await supabase.rpc('accept_org_invite')
       return NextResponse.redirect(`${origin}/set-password`)
     }
 
-    // Self-signup email confirmation — sign out so they log in fresh on /welcome
-    await supabase.auth.signOut()
+    // Self-signup: verifyOtp already logged them in.
+    // Send to /welcome — that page shows a confirmation message with a "Continue" button → /onboarding.
     return NextResponse.redirect(`${origin}/welcome`)
   }
 
   // --- PKCE code flow (fallback) ---
   if (code) {
-    await supabase.auth.exchangeCodeForSession(code)
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (error) {
+      return NextResponse.redirect(`${origin}/login?error=confirmation_failed`)
+    }
     await supabase.rpc('accept_org_invite')
     return NextResponse.redirect(`${origin}/set-password`)
   }
 
-  // Should not reach here — redirect somewhere safe
   return NextResponse.redirect(`${origin}/login`)
 }

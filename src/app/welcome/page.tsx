@@ -7,7 +7,6 @@ export default function WelcomePage() {
       style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
       <div className="w-full max-w-md text-center">
-        {/* Card */}
         <div
           className="bg-white rounded-3xl px-10 py-12"
           style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }}
@@ -19,25 +18,24 @@ export default function WelcomePage() {
             </svg>
           </div>
 
-          {/* Logo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto object-contain mx-auto mb-6" />
 
           <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight mb-3">
-            You&apos;re all set!
+            Email confirmed!
           </h1>
           <p className="text-[#8A877F] text-sm leading-relaxed mb-2">
-            Thank you for choosing QuotingHub.
+            Thank you for confirming your email address.
           </p>
-          <p className="text-[#8A877F] text-sm leading-relaxed mb-8">
-            Your email has been confirmed. Sign in below to set up your studio and start creating professional quotes in minutes.
+          <p className="text-[#8A877F] text-sm leading-relaxed mb-10">
+            You&apos;re ready to set up your studio. It only takes a couple of minutes — you&apos;ll add your business details so your quotes and invoices look professional from day one.
           </p>
 
           <Link
-            href="/login"
-            className="block w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-xl hover:bg-[#9A7B4F] transition-colors duration-200"
+            href="/onboarding"
+            className="block w-full py-3.5 bg-[#1A1A18] text-white text-sm font-medium rounded-xl hover:bg-[#9A7B4F] transition-colors duration-200"
           >
-            Sign in to QuotingHub →
+            Continue to set up my studio →
           </Link>
 
           <p className="text-xs text-[#C4BFB5] mt-6 leading-relaxed">
