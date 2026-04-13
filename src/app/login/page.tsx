@@ -17,34 +17,39 @@ export default function LoginPage() {
   const supabase = createClient()
 
   // Supabase implicit flow: email confirmation links redirect to /login with tokens
-  // in the URL hash (#access_token=...&type=signup). We must listen for the
-  // SIGNED_IN auth state event — getSession() races and often returns null because
-  // the client hasn't finished processing the hash yet when it's called.
+  // in the URL hash (#access_token=...&type=signup).
+  // We parse the tokens directly and call setSession() — this is the only race-free
+  // approach. onAuthStateChange can miss the event if it fires before the listener
+  // is registered. getSession() races with hash processing and returns null.
   useEffect(() => {
-    if (!window.location.hash.includes('access_token=')) return
+    const hash = window.location.hash
+    if (!hash.includes('access_token=')) return
 
-    const params = new URLSearchParams(window.location.hash.slice(1))
+    const params = new URLSearchParams(hash.slice(1))
+    const access_token = params.get('access_token')
+    const refresh_token = params.get('refresh_token')
     const type = params.get('type')
+
+    if (!access_token || !refresh_token) return
 
     setHashRedirecting(true)
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        subscription.unsubscribe()
-        if (type === 'signup') {
-          router.replace('/welcome')
-        } else if (type === 'invite') {
-          supabase.rpc('accept_org_invite').then(() => router.replace('/set-password'))
-        } else {
-          router.replace('/dashboard')
-        }
+    supabase.auth.setSession({ access_token, refresh_token }).then(({ data: { session }, error }) => {
+      if (error || !session) {
+        // Something went wrong — drop back to login
+        setHashRedirecting(false)
+        return
+      }
+      if (type === 'signup') {
+        router.replace('/welcome')
+      } else if (type === 'invite') {
+        supabase.rpc('accept_org_invite').then(() => router.replace('/set-password'))
+      } else {
+        router.replace('/dashboard')
       }
     })
-
-    return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Show a blank loading screen while the hash is being processed — don't flash the login form
   if (hashRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center"
