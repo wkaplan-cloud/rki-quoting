@@ -12,35 +12,47 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
+  const [hashRedirecting, setHashRedirecting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  // Supabase implicit flow: when the email confirmation link is clicked, Supabase
-  // redirects to the site URL (/login) with tokens in the URL hash fragment
-  // (#access_token=...&type=signup). The Supabase client auto-processes the hash
-  // and establishes a session. We detect this and redirect to /welcome.
+  // Supabase implicit flow: email confirmation links redirect to /login with tokens
+  // in the URL hash (#access_token=...&type=signup). We must listen for the
+  // SIGNED_IN auth state event — getSession() races and often returns null because
+  // the client hasn't finished processing the hash yet when it's called.
   useEffect(() => {
-    const hash = window.location.hash
-    if (!hash.includes('access_token=')) return
+    if (!window.location.hash.includes('access_token=')) return
 
-    const params = new URLSearchParams(hash.slice(1)) // strip leading #
+    const params = new URLSearchParams(window.location.hash.slice(1))
     const type = params.get('type')
 
-    // Let the Supabase client process the hash and set up the session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return
-      if (type === 'signup') {
-        router.replace('/welcome')
-      } else if (type === 'invite') {
-        // Invited users need to set their password
-        supabase.rpc('accept_org_invite').then(() => {
-          router.replace('/set-password')
-        })
-      } else {
-        router.replace('/dashboard')
+    setHashRedirecting(true)
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        subscription.unsubscribe()
+        if (type === 'signup') {
+          router.replace('/welcome')
+        } else if (type === 'invite') {
+          supabase.rpc('accept_org_invite').then(() => router.replace('/set-password'))
+        } else {
+          router.replace('/dashboard')
+        }
       }
     })
+
+    return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show a blank loading screen while the hash is being processed — don't flash the login form
+  if (hashRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center"
+        style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <div className="w-8 h-8 rounded-full border-2 border-[#C4A46B] border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
