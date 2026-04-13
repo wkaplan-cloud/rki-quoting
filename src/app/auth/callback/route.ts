@@ -3,27 +3,40 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-  const type = searchParams.get('type') // 'signup' for new registrations, absent for invites
+  const token_hash = searchParams.get('token_hash')
+  const type       = searchParams.get('type')
+  const code       = searchParams.get('code') // PKCE fallback
 
-  if (code) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.exchangeCodeForSession(code)
+  const supabase = await createClient()
 
-    // app_metadata.is_self_signup is set server-side (admin only) at registration time.
-    // This is the only reliable signal — URL params like ?type=signup are not always
-    // preserved by Supabase's redirect chain when appending the &code= parameter.
-    const isSelfSignup = !!user?.app_metadata?.is_self_signup
+  // --- OTP / token_hash flow ---
+  // generateLink() (used for both self-signup and invite) produces an OTP-style
+  // action link. When the user clicks it, Supabase verifies server-side and redirects
+  // to our callback with ?token_hash=xxx&type=xxx (NOT ?code=xxx).
+  if (token_hash && type) {
+    // Map URL type to verifyOtp type — Supabase sends 'email' for signup confirmations
+    // and 'invite' for team invitations.
+    const otpType = type === 'invite' ? 'invite' : 'email'
+    await supabase.auth.verifyOtp({ token_hash, type: otpType })
 
-    if (isSelfSignup) {
-      // Sign out so they land on /welcome and log in fresh — cleaner UX
-      await supabase.auth.signOut()
-      return NextResponse.redirect(`${origin}/welcome`)
+    if (type === 'invite') {
+      // Link this user to their pending org_members record
+      await supabase.rpc('accept_org_invite')
+      return NextResponse.redirect(`${origin}/set-password`)
     }
 
-    // Invite flow — link the user to their pending org_members record
-    await supabase.rpc('accept_org_invite')
+    // Self-signup email confirmation — sign out so they log in fresh on /welcome
+    await supabase.auth.signOut()
+    return NextResponse.redirect(`${origin}/welcome`)
   }
 
-  return NextResponse.redirect(`${origin}/set-password`)
+  // --- PKCE code flow (fallback) ---
+  if (code) {
+    await supabase.auth.exchangeCodeForSession(code)
+    await supabase.rpc('accept_org_invite')
+    return NextResponse.redirect(`${origin}/set-password`)
+  }
+
+  // Should not reach here — redirect somewhere safe
+  return NextResponse.redirect(`${origin}/login`)
 }
