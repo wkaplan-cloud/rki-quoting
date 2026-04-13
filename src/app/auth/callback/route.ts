@@ -8,11 +8,15 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient()
-    await supabase.auth.exchangeCodeForSession(code)
+    const { data: { user } } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (type === 'signup') {
-      // Email confirmation for new self-signup — sign them out so they log in fresh
-      // on the welcome page (cleaner UX than being silently logged in mid-confirmation)
+    // Self-signup: user set their name + password at registration, so full_name is always
+    // in user_metadata. Invited users never have it — they set it on /set-password.
+    // Also accept type=signup as a secondary signal in case metadata isn't available yet.
+    const isSelfSignup = !!user?.user_metadata?.full_name || type === 'signup'
+
+    if (isSelfSignup) {
+      // Sign out so they log in fresh — cleaner than being silently mid-session
       await supabase.auth.signOut()
       return NextResponse.redirect(`${origin}/welcome`)
     }

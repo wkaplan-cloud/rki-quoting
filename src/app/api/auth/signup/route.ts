@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     to: email.toLowerCase().trim(),
     subject: 'Confirm your QuotingHub account',
-    text: `Hi ${firstName},\n\nWelcome to QuotingHub! Please confirm your email address to activate your account:\n\n${confirmUrl}\n\nThis link expires in 24 hours.\n\nIf you didn't create an account, you can safely ignore this email.\n\nThe QuotingHub Team`,
+    text: `Hi ${firstName},\n\nWelcome to QuotingHub! Please confirm your email address to activate your account:\n\n${confirmUrl}\n\nThis link expires in 24 hours.\n\nIf you didn't sign up for QuotingHub, you can safely ignore this email.\n\nThe QuotingHub Team`,
     html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirm your QuotingHub account</title></head>
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         <tr>
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
             <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Hi ${firstName},</p>
-            <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Welcome to QuotingHub! You're one step away from replacing your spreadsheets with a proper quoting system.</p>
+            <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Welcome to QuotingHub! You're one step away from replacing your old system with a proper quoting platform.</p>
             <p style="margin:0 0 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Click the button below to confirm your email address and activate your account.</p>
 
             <!-- CTA -->

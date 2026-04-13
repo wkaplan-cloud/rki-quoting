@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, Users, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
-import { ArchiveStudioButton, RestoreStudioButton } from './DeleteStudioButton'
+import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -60,10 +60,16 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
             Joined {new Date(org.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        {org.status === 'archived'
-          ? <RestoreStudioButton orgId={id} studioName={settings?.business_name || org.name} />
-          : <ArchiveStudioButton orgId={id} studioName={settings?.business_name || org.name} />
-        }
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {org.status === 'archived' ? (
+            <>
+              <RestoreStudioButton orgId={id} studioName={settings?.business_name || org.name} />
+              <DeleteStudioButton orgId={id} studioName={settings?.business_name || org.name} />
+            </>
+          ) : (
+            <ArchiveStudioButton orgId={id} studioName={settings?.business_name || org.name} />
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
