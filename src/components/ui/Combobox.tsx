@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 interface Option {
   id: string
   label: string
+  isPlatform?: boolean
 }
 
 interface Props {
@@ -91,10 +92,16 @@ export function Combobox({ options, value, inputValue, onChange, onCreate, place
           key={opt.id}
           type="button"
           onMouseDown={() => handleSelect(opt)}
-          className={`w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] transition-colors
-            ${opt.id === value ? 'bg-[#F5F2EC] text-[#9A7B4F] font-medium' : 'text-[#2C2C2A]'}`}
+          className={`w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] transition-colors flex items-center justify-between gap-2
+            ${opt.id === value ? 'bg-[#F5F2EC] font-medium' : ''}
+            ${opt.isPlatform ? 'text-[#9A7B4F]' : 'text-[#2C2C2A]'}`}
         >
-          {opt.label}
+          <span>{opt.label}</span>
+          {opt.isPlatform && (
+            <span className="flex-shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#9A7B4F]/10 text-[#9A7B4F]">
+              Platform
+            </span>
+          )}
         </button>
       ))}
       {showCreate && (

@@ -539,7 +539,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   {/* Supplier */}
                   <td className={COL}>
                     <Combobox
-                      options={suppliers.map(s => ({ id: s.id, label: s.supplier_name }))}
+                      options={suppliers.map(s => ({ id: s.id, label: s.supplier_name, isPlatform: s.is_platform }))}
                       value={item.supplier_id ?? ''}
                       inputValue={item.supplier_name ?? ''}
                       onChange={(id, label) => handleSupplierChange(item.id, id, label)}
@@ -680,6 +680,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         >
           <LayoutList size={14} /> Add room / section
         </button>
+      </div>
+      <p className="mt-2 text-xs text-[#9A7B4F]/80 leading-relaxed">
+        To search fabrics and pull in live pricing, select a platform supplier (shown in gold) on the line item first — the item name field will become a live fabric search.
+      </p>
+      <div className="mt-1 flex items-center gap-4">
         <button
           onClick={() => setShowTips(v => !v)}
           className="flex items-center gap-1.5 text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors cursor-pointer ml-auto"
