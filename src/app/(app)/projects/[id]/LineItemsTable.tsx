@@ -481,9 +481,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         const setMode = async (roll: boolean) => {
                           const cost_price = roll ? rollPrice : item.twinbru_cost_price!
                           const quantity = roll ? 1 : item.quantity
-                          const unit = roll ? 'roll' : item.unit
+                          const unit = roll ? 'roll' : 'm'
                           onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, quantity, unit } : i))
-                          await supabase.from('line_items').update({ cost_price, ...(roll ? { quantity: 1, unit: 'roll' } : {}) }).eq('id', item.id)
+                          await supabase.from('line_items').update({ cost_price, quantity, unit }).eq('id', item.id)
                         }
                         return (
                           <div className="flex items-center gap-0.5 mt-1">
