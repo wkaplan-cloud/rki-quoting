@@ -37,8 +37,8 @@ export default async function PlatformPriceListsPage() {
     .from('twinbru_sync_log')
     .select('id, sync_type, started_at, completed_at, status, items_checked, items_changed, items_added, error_message, triggered_by')
     .in('sync_type', ['prices', 'catalogue'])
-    .order('completed_at', { ascending: false })
-    .limit(10)
+    .order('started_at', { ascending: false })
+    .limit(30)
 
   const catalogueCountRes = await supabaseAdmin
     .from('price_list_items')
@@ -47,8 +47,17 @@ export default async function PlatformPriceListsPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const syncLogs: any[] = syncLogsRes.data ?? []
-  const lastPriceSync = syncLogs.find(l => l.sync_type === 'prices' && l.status === 'ok') ?? syncLogs.find(l => l.sync_type === 'prices') ?? null
-  const lastCatalogueSync = syncLogs.find(l => l.sync_type === 'catalogue' && l.status === 'ok') ?? syncLogs.find(l => l.sync_type === 'catalogue') ?? null
+  // Prefer the most recent completed (ok or error) sync — skip stuck/running rows with no completed_at
+  const lastPriceSync =
+    syncLogs.find(l => l.sync_type === 'prices' && l.status === 'ok') ??
+    syncLogs.find(l => l.sync_type === 'prices' && l.completed_at) ??
+    syncLogs.find(l => l.sync_type === 'prices') ??
+    null
+  const lastCatalogueSync =
+    syncLogs.find(l => l.sync_type === 'catalogue' && l.status === 'ok') ??
+    syncLogs.find(l => l.sync_type === 'catalogue' && l.completed_at) ??
+    syncLogs.find(l => l.sync_type === 'catalogue') ??
+    null
   const catalogueCount = catalogueCountRes.count ?? 0
 
   return (

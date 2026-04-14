@@ -109,9 +109,13 @@ export async function GET(req: NextRequest) {
       for (const { productId, price } of prices) {
         const row = rowMap.get(productId)
         if (!row) continue
-        // Only update if the price actually changed
-        if (row.currentPrice !== price) {
-          updates.push({ id: row.rowId, price_zar: price, price_updated_at: now })
+        // Explicitly convert to number (API may return strings despite the type assertion)
+        // Round to 2dp to avoid floating-point false-positives
+        const apiPrice = Math.round(Number(price) * 100) / 100
+        if (isNaN(apiPrice)) continue
+        const dbPrice = row.currentPrice != null ? Math.round(row.currentPrice * 100) / 100 : null
+        if (dbPrice !== apiPrice) {
+          updates.push({ id: row.rowId, price_zar: apiPrice, price_updated_at: now })
         }
       }
 

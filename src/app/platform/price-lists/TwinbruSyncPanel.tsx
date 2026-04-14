@@ -91,7 +91,7 @@ function SyncRow({ label, log, onTrigger, triggering, syncType }: {
           {log ? (
             <div className="mt-1 space-y-0.5">
               <p className="text-xs text-white/50">
-                Last run: <span className="text-white/70">{fmt(log.completed_at)}</span>
+                Last run: <span className="text-white/70">{fmt(log.completed_at ?? log.started_at)}</span>
                 {log.triggered_by === 'manual' && (
                   <span className="ml-2 text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-white/40">manual</span>
                 )}
@@ -103,9 +103,13 @@ function SyncRow({ label, log, onTrigger, triggering, syncType }: {
                     : <>{log.items_checked?.toLocaleString()} fetched &middot; <span className="text-emerald-400">{log.items_added ?? 0} new fabrics added</span></>
                   }
                 </p>
+              ) : !log.completed_at ? (
+                <p className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={11} /> Sync did not complete — likely timed out. Try re-running.
+                </p>
               ) : (
                 <p className="text-xs text-red-400 flex items-center gap-1">
-                  <AlertCircle size={11} /> {log.error_message?.slice(0, 120) ?? 'Error'}
+                  <AlertCircle size={11} /> {log.error_message?.slice(0, 160) ?? 'Sync failed — try re-running or check logs.'}
                 </p>
               )}
             </div>
