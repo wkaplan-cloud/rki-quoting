@@ -130,6 +130,6 @@ export interface ProjectTotals {
   vat_base: number
   vat_amount: number
   grand_total: number
-  deposit_70: number
+  deposit: number
   balance_due: number
 }

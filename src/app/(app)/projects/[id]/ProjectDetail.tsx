@@ -22,6 +22,7 @@ interface Props {
   officeAddress: { name: string; address: string }
   businessName: string
   vatRate: number
+  depositPct: number
   initialStages: ProjectStages | null
   initialEmailLogs: EmailLog[]
   emailTemplateQuote: string | null
@@ -30,7 +31,7 @@ interface Props {
   activePriceListIds: string[]
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -73,7 +74,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   }, [])
 
   const computed = computeLineItems(lineItems)
-  const totals = computeTotals(lineItems, designFeePct, vatRate)
+  const totals = computeTotals(lineItems, designFeePct, vatRate, depositPct)
 
   const handleDesignFeeChange = useCallback(async (pct: number) => {
     setDesignFeePct(pct)
@@ -505,8 +506,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             <span>{formatZAR(totals.grand_total)}</span>
           </div>
           <div className="flex justify-between text-sm text-[#9A7B4F]">
-            <span>70% Deposit</span>
-            <span className="font-medium">{formatZAR(totals.deposit_70)}</span>
+            <span>{depositPct}% Deposit</span>
+            <span className="font-medium">{formatZAR(totals.deposit)}</span>
           </div>
         </div>
       </div>
@@ -573,12 +574,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               <span>{formatZAR(totals.grand_total)}</span>
             </div>
             <div className="flex justify-between text-sm text-[#9A7B4F]">
-              <span>70% Deposit</span>
-              <span className="font-medium">{formatZAR(totals.deposit_70)}</span>
+              <span>{depositPct}% Deposit</span>
+              <span className="font-medium">{formatZAR(totals.deposit)}</span>
             </div>
             {stages?.deposit_received && (
               <div className="flex justify-between text-sm text-[#8A877F]">
-                <span>30% Balance</span>
+                <span>{100 - depositPct}% Balance</span>
                 <span className="font-medium">{formatZAR(totals.balance_due)}</span>
               </div>
             )}

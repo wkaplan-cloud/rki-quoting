@@ -9,6 +9,7 @@ interface Props {
   lineItems: LineItem[]
   type: 'quote' | 'invoice'
   vatRate?: number
+  depositPct?: number
   footerText?: string
   logoUrl?: string | null
   businessName?: string | null
@@ -22,9 +23,9 @@ interface Props {
   printDate?: string | null
 }
 
-export function QuotePDF({ project, client, lineItems, type, vatRate = 15, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, printDate }: Props) {
+export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depositPct = 70, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, printDate }: Props) {
   const computed = computeLineItems(lineItems)
-  const totals = computeTotals(lineItems, project.design_fee, vatRate)
+  const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
 
   return (
     <Document>
@@ -142,12 +143,12 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, foote
               <Text style={styles.totalsBigVal}>{formatZAR(totals.grand_total)}</Text>
             </View>
             <View style={styles.totalsDeposit}>
-              <Text style={styles.totalsDepositLabel}>70% Deposit Required</Text>
-              <Text style={styles.totalsDepositVal}>{formatZAR(totals.deposit_70)}</Text>
+              <Text style={styles.totalsDepositLabel}>{depositPct}% Deposit Required</Text>
+              <Text style={styles.totalsDepositVal}>{formatZAR(totals.deposit)}</Text>
             </View>
             {type === 'invoice' && (
               <View style={[styles.totalsRow, { marginTop: 4 }]}>
-                <Text style={styles.totalsLabel}>30% Due Before Delivery</Text>
+                <Text style={styles.totalsLabel}>{100 - depositPct}% Due Before Delivery</Text>
                 <Text style={[styles.totalsVal, { fontFamily: 'Helvetica-Bold' }]}>{formatZAR(totals.balance_due)}</Text>
               </View>
             )}
