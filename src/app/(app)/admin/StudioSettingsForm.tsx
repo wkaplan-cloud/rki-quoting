@@ -41,7 +41,25 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
   const fileRef = useRef<HTMLInputElement>(null)
   const searchParams = useSearchParams()
 
-  const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token && settings?.sage_company_id))
+  const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token))
+  const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
+  const [fetchingCompanyId, setFetchingCompanyId] = useState(false)
+
+  async function fetchCompanyId() {
+    setFetchingCompanyId(true)
+    try {
+      const res = await fetch('/api/sage/fetch-company-id', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to fetch company ID'); return }
+      setSageCompanyId(data.company_id)
+      setSageConnected(true)
+      toast.success(`Company found: ${data.company_name} (ID: ${data.company_id})`)
+    } catch {
+      toast.error('Failed to fetch company ID')
+    } finally {
+      setFetchingCompanyId(false)
+    }
+  }
 
   // Show toast from OAuth callback redirect params
   useEffect(() => {
@@ -240,10 +258,20 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
               <p className="text-sm font-medium text-[#2C2C2A]">Your Sage account is connected</p>
               <p className="text-xs text-[#8A877F] mt-0.5">
                 Invoices can be pushed from any project. Payment status syncs automatically.
-                {settings?.sage_company_id && (
-                  <span className="ml-1 font-mono">Company ID: {settings.sage_company_id}</span>
+                {sageCompanyId && (
+                  <span className="ml-1 font-mono">Company ID: {sageCompanyId}</span>
                 )}
               </p>
+              {!sageCompanyId && (
+                <button
+                  type="button"
+                  onClick={fetchCompanyId}
+                  disabled={fetchingCompanyId}
+                  className="mt-2 text-xs text-[#9A7B4F] hover:underline disabled:opacity-50 cursor-pointer"
+                >
+                  {fetchingCompanyId ? 'Fetching…' : 'Fetch Company ID from Sage →'}
+                </button>
+              )}
             </div>
             <button
               type="button"
