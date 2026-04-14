@@ -31,13 +31,14 @@ interface Props {
   activePriceListIds: string[]
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
   const [stages, setStages] = useState<ProjectStages | null>(initialStages)
   const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
   const [vatRate, setVatRate] = useState(initialVatRate)
+  const [depositPct, setDepositPct] = useState(initialDepositPct)
   const [poMenuOpen, setPoMenuOpen] = useState(false)
   const poMenuRef = useRef<HTMLDivElement>(null)
   const [sendPoMenuOpen, setSendPoMenuOpen] = useState(false)
@@ -84,6 +85,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const handleVatRateChange = useCallback(async (rate: number) => {
     setVatRate(rate)
     await supabase.from('projects').update({ vat_rate: rate }).eq('id', project.id)
+  }, [project.id, supabase])
+
+  const handleDepositPctChange = useCallback(async (pct: number) => {
+    setDepositPct(pct)
+    await supabase.from('projects').update({ deposit_percentage: pct }).eq('id', project.id)
   }, [project.id, supabase])
 
   const handleDuplicate = useCallback(async () => {
@@ -573,8 +579,17 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               <span>Total</span>
               <span>{formatZAR(totals.grand_total)}</span>
             </div>
-            <div className="flex justify-between text-sm text-[#9A7B4F]">
-              <span>{depositPct}% Deposit</span>
+            <div className="flex justify-between text-sm text-[#9A7B4F] items-center">
+              <span className="flex items-center gap-0.5">
+                Deposit (
+                <input
+                  type="number" min="0" max="100" step="1"
+                  value={depositPct}
+                  onChange={e => handleDepositPctChange(parseFloat(e.target.value) || 0)}
+                  className="w-8 text-center text-sm text-[#9A7B4F] border-b border-dashed border-[#9A7B4F]/40 focus:border-[#9A7B4F] outline-none bg-transparent"
+                />
+                %)
+              </span>
               <span className="font-medium">{formatZAR(totals.deposit)}</span>
             </div>
             {stages?.deposit_received && (

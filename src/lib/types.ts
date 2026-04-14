@@ -42,6 +42,8 @@ export interface Project {
   date: string
   status: ProjectStatus
   design_fee: number
+  vat_rate: number | null
+  deposit_percentage: number | null
   notes: string | null
   created_at: string
   user_id: string | null
