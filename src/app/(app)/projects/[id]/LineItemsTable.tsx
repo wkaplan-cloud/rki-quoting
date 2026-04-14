@@ -249,6 +249,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       colour_finish: fabric.colour ?? null,
       twinbru_product_id,
       twinbru_cost_price: fabric.price_zar ?? null,
+      unit: 'm',
     }
     onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
     await supabase.from('line_items').update(updates).eq('id', lineItemId)
