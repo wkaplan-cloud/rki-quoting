@@ -144,11 +144,12 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Rep Name" value={contact.rep_name} onChange={e => setC('rep_name', e.target.value)} />
+            <Input label="Rep Name" placeholder="Your dedicated sales rep" value={contact.rep_name} onChange={e => setC('rep_name', e.target.value)} />
             <Input label="Rep Number" value={contact.rep_number} onChange={e => setC('rep_number', e.target.value)} />
           </div>
+          <p className="text-xs text-[#8A877F] -mt-2">The rep name is used to address purchase orders. The rep email is where POs are sent.</p>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Rep Email" type="email" value={contact.email} onChange={e => setC('email', e.target.value)} />
+            <Input label="Rep Email (PO recipient)" type="email" value={contact.email} onChange={e => setC('email', e.target.value)} />
             <Input label="CC Email (PO copies)" type="email" value={contact.email_cc} onChange={e => setC('email_cc', e.target.value)} />
           </div>
           <div className="flex gap-3 pt-2">
@@ -182,15 +183,16 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
         <Input label="Category" value={form.category} onChange={e => set('category', e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <Input label="Contact Person" value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
+        <Input label="Contact Person" placeholder="Head office / accounts contact" value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
         <Input label="Contact Number" value={form.contact_number} onChange={e => set('contact_number', e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <Input label="Rep Name" value={form.rep_name} onChange={e => set('rep_name', e.target.value)} />
+        <Input label="Rep Name" placeholder="Your dedicated sales rep" value={form.rep_name} onChange={e => set('rep_name', e.target.value)} />
         <Input label="Rep Number" value={form.rep_number} onChange={e => set('rep_number', e.target.value)} />
       </div>
+      <p className="text-xs text-[#8A877F] -mt-2">The rep name is used to address purchase orders. The rep email is where POs are sent.</p>
       <div className="grid grid-cols-2 gap-4">
-        <Input label="Email" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+        <Input label="Rep Email (PO recipient)" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
         <Input label="CC Email (PO copies)" type="email" value={form.email_cc} onChange={e => set('email_cc', e.target.value)} />
       </div>
       <Textarea label="Delivery Address" value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)} rows={2} />

@@ -477,13 +477,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       })()}
                       {item.twinbru_cost_price != null && (() => {
                         const rollPrice = Math.round(item.twinbru_cost_price * 0.9 * 100) / 100
-                        const isRoll = Math.abs(item.cost_price - rollPrice) < 0.01
+                        const isRoll = item.unit === 'roll'
                         const setMode = async (roll: boolean) => {
                           const cost_price = roll ? rollPrice : item.twinbru_cost_price!
-                          const quantity = roll ? 40 : item.quantity
-                          const unit = roll ? 'm' : item.unit
+                          const quantity = roll ? 1 : item.quantity
+                          const unit = roll ? 'roll' : item.unit
                           onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, quantity, unit } : i))
-                          await supabase.from('line_items').update({ cost_price, ...(roll ? { quantity: 40, unit: 'm' } : {}) }).eq('id', item.id)
+                          await supabase.from('line_items').update({ cost_price, ...(roll ? { quantity: 1, unit: 'roll' } : {}) }).eq('id', item.id)
                         }
                         return (
                           <div className="flex items-center gap-0.5 mt-1">
@@ -527,11 +527,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         value={item.unit ?? ''}
                         onChange={e => updateLocal(item.id, 'unit', e.target.value)}
                         onBlur={e => saveField(item.id, 'unit', e.target.value)}
+                        onFocus={e => e.target.select()}
                         placeholder="unit"
                         className="w-12 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
                       />
                       <datalist id={`units-${item.id}`}>
-                        {['each','m','m²','lm','pair','set','roll','kg'].map(u => <option key={u} value={u} />)}
+                        {['each','m','m²','lm','roll','pair','set','kg'].map(u => <option key={u} value={u} />)}
                       </datalist>
                     </div>
                   </td>
@@ -610,9 +611,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           {priceChanged && (
                             <div
                               title={`Twinbru price updated to R${currentCataloguePrice?.toLocaleString('en-ZA', { minimumFractionDigits: 2 })} — verify before sending`}
-                              className="absolute -top-1 -right-1 text-amber-500 cursor-help"
+                              className="absolute -top-1.5 -right-1 flex items-center gap-0.5 text-amber-500 cursor-help"
                             >
                               <AlertTriangle size={11} />
+                              <span className="text-[9px] font-semibold leading-none">Price updated</span>
                             </div>
                           )}
                         </div>

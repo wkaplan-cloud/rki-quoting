@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, BookOpen, Trash2, Upload, X, ChevronRight, AlertCircle, Globe, Lock, Clock } from 'lucide-react'
+import { Plus, BookOpen, Trash2, Upload, X, ChevronRight, AlertCircle, Globe, Lock, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
@@ -96,6 +96,7 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [requestingId, setRequestingId] = useState<string | null>(null)
   const [localAccess, setLocalAccess] = useState<AccessRecord[]>(accessRecords)
+  const [showFormatHint, setShowFormatHint] = useState(false)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -344,6 +345,29 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                   </div>
                 </label>
               )}
+
+              {/* CSV format hint */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowFormatHint(v => !v)}
+                  className="flex items-center gap-1.5 text-xs text-[#9A7B4F] hover:text-[#7d6340] transition-colors cursor-pointer"
+                >
+                  {showFormatHint ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  Expected CSV column format
+                </button>
+                {showFormatHint && (
+                  <div className="mt-2 bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg p-3 space-y-2">
+                    <p className="text-xs text-[#8A877F]">Your CSV header row must include at least 3 of the following column names (case-insensitive):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Brand','Collection','Design','Colour / Color','SKU','Product ID','Price (ZAR) / Price','Image URL / Image'].map(col => (
+                        <span key={col} className="text-[10px] font-mono bg-white border border-[#D8D3C8] rounded px-2 py-0.5 text-[#2C2C2A]">{col}</span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-[#8A877F]">Extra columns are ignored. The Home Fabrics export CSV works out of the box.</p>
+                  </div>
+                )}
+              </div>
 
               {/* File upload */}
               <div>

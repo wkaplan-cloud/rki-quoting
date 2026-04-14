@@ -68,9 +68,9 @@ export default async function DashboardPage() {
   const summaryCards = [
     { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoices`, alert: false },
     { label: 'Pipeline Value', value: formatZAR(activeRevenuePipeline), sub: 'active projects', alert: false },
-    { label: 'Awaiting Deposit', value: awaitingDeposit.toString(), sub: 'quote sent, not paid', alert: awaitingDeposit > 0 },
-    { label: 'In Production', value: inProduction.toString(), sub: 'deposit received', alert: false },
-    { label: 'Balance Due Outstanding', value: invoicesOutstanding.toString(), sub: 'balance due sent, not paid', alert: invoicesOutstanding > 0 },
+    { label: 'Awaiting Deposit', value: awaitingDeposit.toString(), sub: 'Quote sent — deposit not yet received', alert: awaitingDeposit > 0 },
+    { label: 'In Production', value: inProduction.toString(), sub: 'Deposit received, not yet delivered', alert: false },
+    { label: 'Balance Due Outstanding', value: invoicesOutstanding.toString(), sub: 'Final invoice sent — balance not yet paid', alert: invoicesOutstanding > 0 },
     { label: 'Total Revenue', value: formatZAR(totalRevenue), sub: `${completedProjects.length} completed projects`, alert: false },
   ]
 
