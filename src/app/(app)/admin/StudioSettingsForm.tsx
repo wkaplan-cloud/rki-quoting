@@ -44,7 +44,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
 
   const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token))
   const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
-  const [sageItemId, setSageItemId] = useState(String((settings as Settings & { sage_item_id?: number | null })?.sage_item_id ?? ''))
+  const [sageItemId, setSageItemId] = useState(String(settings?.sage_item_id ?? ''))
   const [fetchingCompanyId, setFetchingCompanyId] = useState(false)
   const [savingItemId, setSavingItemId] = useState(false)
 
