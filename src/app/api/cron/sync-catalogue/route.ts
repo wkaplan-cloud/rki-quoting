@@ -202,6 +202,21 @@ export async function GET(req: NextRequest) {
       const data = await res.json()
       const items = extractItems(data)
 
+      // Debug: on first page log the raw top-level keys + continuation header so we can diagnose 0-fetch issues
+      if (totalFetched === 0 && items.length === 0) {
+        const debugKeys = typeof data === 'object' && data !== null ? Object.keys(data) : ['(not an object)']
+        console.log('[catalogue-sync] First page returned 0 items. Top-level keys:', debugKeys, '| ODS-Continuation:', nextContinuation, '| sinceDate:', sinceDate)
+        // Surface in response for manual diagnosis
+        await supabase.from('twinbru_sync_log').update({
+          status: 'ok',
+          completed_at: new Date().toISOString(),
+          items_checked: 0,
+          items_added: 0,
+          error_message: `0 items returned from changefeed. Response keys: [${debugKeys.join(', ')}]. sinceDate: ${sinceDate}`,
+        }).eq('id', logId)
+        return NextResponse.json({ ok: true, since: sinceDate, checked: 0, added: 0, debug: { responseKeys: debugKeys, continuation: nextContinuation } })
+      }
+
       totalFetched += items.length
 
       for (const item of items) {
