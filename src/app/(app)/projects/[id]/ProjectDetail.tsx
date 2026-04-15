@@ -75,8 +75,31 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  // Auto-sync Sage payment status on project open (silent — only toast if status changes)
+  useEffect(() => {
+    if (!sageConnected || !initial.sage_invoice_id || (initial.sage_invoice_status ?? '').toUpperCase() === 'PAID') return
+    fetch('/api/sage/sync-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: initial.id }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status && data.status !== initial.sage_invoice_status) {
+          setSageInvoiceStatus(data.status)
+          if ((data.status ?? '').toUpperCase() === 'PAID') {
+            toast.success('Invoice marked as paid in Sage — project locked')
+            router.refresh()
+          }
+        }
+      })
+      .catch(() => { /* silent */ })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, designFeePct, vatRate, depositPct)
+  const isPaid = sageConnected && (sageInvoiceStatus ?? '').toUpperCase() === 'PAID'
 
   const handleDesignFeeChange = useCallback(async (pct: number) => {
     setDesignFeePct(pct)
@@ -303,6 +326,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         stages={stages}
         onProjectUpdate={setProject}
         onStagesUpdate={setStages}
+        sageConnected={sageConnected}
+        sageInvoicePaid={isPaid}
       />
 
       {/* Action bar — desktop only */}
@@ -428,23 +453,28 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             {sageConnected && (
               sageInvoiceId ? (
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sageInvoiceStatus === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                     Sage: {sageInvoiceStatus ?? 'Pushed'}
                   </span>
-                  {sageInvoiceStatus !== 'PAID' && (
+                  {!isPaid && (
                     <button onClick={openSageModal}
+                      title="Push updated line items and amounts to the existing Sage invoice"
                       className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
                       <Upload size={11} /> Update
                     </button>
                   )}
-                  <button onClick={handleSyncSageStatus} disabled={sageSyncing}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
-                    <RefreshCw size={11} className={sageSyncing ? 'animate-spin' : ''} />
-                    {sageSyncing ? 'Syncing…' : 'Sync'}
-                  </button>
+                  {!isPaid && (
+                    <button onClick={handleSyncSageStatus} disabled={sageSyncing}
+                      title="Check Sage for the latest payment status on this invoice"
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
+                      <RefreshCw size={11} className={sageSyncing ? 'animate-spin' : ''} />
+                      {sageSyncing ? 'Syncing…' : 'Sync'}
+                    </button>
+                  )}
                 </div>
               ) : (
                 <button onClick={openSageModal}
+                  title="Create an invoice in Sage Business Cloud Accounting from this project"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
                   <Upload size={13} /> Push to Sage
                 </button>
@@ -530,6 +560,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
       {/* Body — desktop only */}
       <div className="hidden md:block flex-1 p-8 overflow-auto">
+        {isPaid && (
+          <div className="mb-4 flex items-center gap-2.5 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+            <span className="text-base">🔒</span>
+            <span><strong>Invoice paid in full.</strong> This project is locked — no edits can be made after payment.</span>
+          </div>
+        )}
         <LineItemsTable
           projectId={project.id}
           lineItems={lineItems}
@@ -539,6 +575,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           onChange={setLineItems}
           onSupplierCreated={s => setSuppliers(prev => [...prev, s])}
           activePriceListIds={activePriceListIds}
+          locked={isPaid}
         />
 
         {/* Totals */}
@@ -565,7 +602,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   type="number" min="0" max="100" step="0.5"
                   value={designFeePct}
                   onChange={e => handleDesignFeeChange(parseFloat(e.target.value) || 0)}
-                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent"
+                  disabled={isPaid}
+                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 %)
               </span>
@@ -579,7 +617,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   type="number" min="0" max="100" step="0.5"
                   value={vatRate}
                   onChange={e => handleVatRateChange(parseFloat(e.target.value) || 0)}
-                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent"
+                  disabled={isPaid}
+                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 %)
               </span>
@@ -596,7 +635,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   type="number" min="0" max="100" step="1"
                   value={depositPct}
                   onChange={e => handleDepositPctChange(parseFloat(e.target.value) || 0)}
-                  className="w-8 text-center text-sm text-[#9A7B4F] border-b border-dashed border-[#9A7B4F]/40 focus:border-[#9A7B4F] outline-none bg-transparent"
+                  disabled={isPaid}
+                  className="w-8 text-center text-sm text-[#9A7B4F] border-b border-dashed border-[#9A7B4F]/40 focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 %)
               </span>

@@ -37,6 +37,7 @@ interface Props {
   onChange: (items: LineItem[]) => void
   onSupplierCreated: (supplier: Supplier) => void
   activePriceListIds: string[]
+  locked?: boolean
 }
 
 const COL = 'px-2 py-1.5 border-r border-[#EDE9E1] last:border-0'
@@ -92,7 +93,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked }: Props) {
   const supabase = createClient()
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
@@ -294,7 +295,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const itemCount = lineItems.filter(i => i.row_type === 'item').length
 
   return (
-    <div>
+    <div className="relative">
+      {locked && (
+        <div className="absolute inset-0 z-10 bg-[#F5F2EC]/60 rounded cursor-not-allowed" title="Editing is locked — this invoice has been paid" />
+      )}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Line Items</h2>
         <span className="text-xs text-[#8A877F]">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>

@@ -7,6 +7,7 @@ import { STAGE_CONFIG } from '@/lib/types'
 import toast from 'react-hot-toast'
 import { Pencil, Check, X, Ban, Trash2 } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
+import confetti from 'canvas-confetti'
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null } | null }
@@ -14,6 +15,8 @@ interface Props {
   stages: ProjectStages | null
   onProjectUpdate: (p: any) => void
   onStagesUpdate: (s: ProjectStages) => void
+  sageConnected?: boolean
+  sageInvoicePaid?: boolean
 }
 
 const EMPTY_STAGES: ProjectStages = {
@@ -28,7 +31,7 @@ const EMPTY_STAGES: ProjectStages = {
   delivered_installed: false, delivered_installed_at: null,
 }
 
-export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate }: Props) {
+export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate, sageConnected, sageInvoicePaid }: Props) {
   const [editing, setEditing] = useState(false)
   const [editingClient, setEditingClient] = useState(false)
   const [togglingStage, setTogglingStage] = useState<string | null>(null)
@@ -107,6 +110,12 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
   }
 
   async function toggleStage(key: StageKey, currentVal: boolean) {
+    // Block unticking final_invoice_paid when Sage is connected — Sage is the source of truth
+    if (key === 'final_invoice_paid' && currentVal && sageConnected && sageInvoicePaid) {
+      toast.error('Invoice is paid in Sage — sync status is managed automatically')
+      return
+    }
+
     setTogglingStage(key)
     const now = new Date().toISOString()
     const stageCfg = STAGE_CONFIG.find(s => s.key === key)!
@@ -123,6 +132,18 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
 
     const newStages = { ...(stages ?? { ...EMPTY_STAGES, project_id: project.id }), ...update } as ProjectStages
     onStagesUpdate(newStages)
+
+    // Fire confetti when ticking a stage ON
+    if (!currentVal) {
+      if (key === 'final_invoice_paid') {
+        // Big celebration for paid in full
+        confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 }, colors: ['#9A7B4F', '#C4A46B', '#FFD700', '#ffffff', '#2C2C2A'] })
+        setTimeout(() => confetti({ particleCount: 150, spread: 100, origin: { x: 0, y: 0.7 }, angle: 60 }), 200)
+        setTimeout(() => confetti({ particleCount: 150, spread: 100, origin: { x: 1, y: 0.7 }, angle: 120 }), 400)
+      } else {
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#9A7B4F', '#C4A46B', '#EDE9E1', '#ffffff'] })
+      }
+    }
 
     if (project.status !== 'Cancelled') {
       const { statusFromStages } = await import('@/lib/types')
