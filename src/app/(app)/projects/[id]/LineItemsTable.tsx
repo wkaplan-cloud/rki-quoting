@@ -295,10 +295,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const itemCount = lineItems.filter(i => i.row_type === 'item').length
 
   return (
-    <div className="relative">
-      {locked && (
-        <div className="absolute inset-0 z-10 bg-[#F5F2EC]/60 rounded cursor-not-allowed" title="Editing is locked — this invoice has been paid" />
-      )}
+    <div className={locked ? 'pointer-events-none select-text opacity-80' : ''}>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Line Items</h2>
         <span className="text-xs text-[#8A877F]">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
