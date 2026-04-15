@@ -27,11 +27,11 @@ export async function POST(req: NextRequest) {
 
     await supabase.from('projects').update({ sage_invoice_status: status }).eq('id', projectId)
 
-    // If fully paid → mark paid in full in project_stages
+    // If fully paid → mark paid in full in project_stages and update project status
     if (status === 'Paid' || status === 'PAID') {
       const { data: stages } = await supabase
         .from('project_stages')
-        .select('id, final_invoice_paid')
+        .select('*')
         .eq('project_id', projectId)
         .maybeSingle()
 
@@ -41,6 +41,12 @@ export async function POST(req: NextRequest) {
           final_invoice_paid_at: new Date().toISOString(),
         }).eq('project_id', projectId)
       }
+
+      // Derive and write new project status so the badge reflects payment
+      const { statusFromStages } = await import('@/lib/types')
+      const updatedStages = { ...(stages ?? {}), final_invoice_paid: true }
+      const newStatus = statusFromStages(updatedStages as Parameters<typeof statusFromStages>[0])
+      await supabase.from('projects').update({ status: newStatus }).eq('id', projectId)
     }
 
     return NextResponse.json({ status })

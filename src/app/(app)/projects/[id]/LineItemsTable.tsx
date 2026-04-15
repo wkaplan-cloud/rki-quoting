@@ -710,21 +710,25 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
           </button>
         </div>
       )}
-      <p className="mt-2 text-xs text-[#9A7B4F]/80 leading-relaxed">
-        To search fabrics and pull in live pricing, select a platform supplier (shown in gold) on the line item first — the item name field will become a live fabric search.
-      </p>
-      <div className="mt-1 flex items-center gap-4">
-        <button
-          onClick={() => setShowTips(v => !v)}
-          className="flex items-center gap-1.5 text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors cursor-pointer ml-auto"
-        >
-          <HelpCircle size={13} />
-          How do line items work?
-          {showTips ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-        </button>
-      </div>
+      {!locked && (
+        <>
+          <p className="mt-2 text-xs text-[#9A7B4F]/80 leading-relaxed">
+            To search fabrics and pull in live pricing, select a platform supplier (shown in gold) on the line item first — the item name field will become a live fabric search.
+          </p>
+          <div className="mt-1 flex items-center gap-4">
+            <button
+              onClick={() => setShowTips(v => !v)}
+              className="flex items-center gap-1.5 text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors cursor-pointer ml-auto"
+            >
+              <HelpCircle size={13} />
+              How do line items work?
+              {showTips ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+          </div>
+        </>
+      )}
 
-      {showTips && (
+      {!locked && showTips && (
         <div className="mt-3 bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg p-4">
           <p className="text-xs font-medium text-[#2C2C2A] mb-3">Column guide</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">

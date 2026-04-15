@@ -32,7 +32,7 @@ export interface Item {
   created_at: string
 }
 
-export type ProjectStatus = 'Draft' | 'Quote' | 'Invoice' | 'Completed' | 'Cancelled'
+export type ProjectStatus = 'Draft' | 'Quote' | 'Invoice' | 'Paid' | 'Completed' | 'Cancelled'
 
 export interface Project {
   id: string
@@ -121,6 +121,7 @@ export type StageKey = typeof STAGE_CONFIG[number]['key']
 export function statusFromStages(stages: ProjectStages | null | undefined): ProjectStatus {
   if (!stages) return 'Draft'
   if (stages.delivered_installed) return 'Completed'
+  if (stages.final_invoice_paid) return 'Paid'
   if (stages.final_invoice_sent) return 'Invoice'
   if (stages.quote_sent) return 'Quote'
   return 'Draft'
