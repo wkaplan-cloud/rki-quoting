@@ -199,12 +199,17 @@ export async function GET(req: NextRequest) {
 
       const res = await fetch(url.toString(), { method: 'GET', headers: hdrs })
 
-      if (!res.ok) {
-        throw new Error(`Changefeed ${res.status}: ${await res.text().then(t => t.slice(0, 300))}`)
-      }
-
       const nextContinuation = res.headers.get('ODS-Continuation')
-      const data = await res.json()
+      const rawText = await res.text()
+      if (!res.ok) {
+        throw new Error(`Changefeed ${res.status}: ${rawText.slice(0, 300)}`)
+      }
+      let data: unknown = {}
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(`Changefeed returned non-JSON (${res.status}): ${rawText.slice(0, 300)}`)
+      }
       const items = extractItems(data)
 
       totalFetched += items.length
