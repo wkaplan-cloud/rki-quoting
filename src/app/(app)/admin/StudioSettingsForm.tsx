@@ -265,6 +265,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
         </div>
 
         {sageConnected ? (
+          <>
           <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
             <div>
               <p className="text-sm font-medium text-[#2C2C2A]">Your Sage account is connected</p>
@@ -313,6 +314,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
               {savingItemId ? 'Saving…' : 'Save'}
             </button>
           </div>
+          </>
         ) : (
           <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
             <div>
