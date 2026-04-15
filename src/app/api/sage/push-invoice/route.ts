@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     const invoice = await sagePost('/TaxInvoice/Save', {
       CustomerID: Number(sageContactId),
-      DocumentDate: docDate,
+      Date: docDate,
       DueDate: dueDate,
       Reference: project.project_number,
       Description: project.project_name,
