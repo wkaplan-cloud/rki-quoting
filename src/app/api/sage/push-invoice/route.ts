@@ -49,9 +49,10 @@ export async function POST(req: NextRequest) {
         const c = computed.find(ci => ci.id === item.id)
         return {
           SelectionId: selectionId,
+          LineType: 0,
           Description: item.description ? `${item.item_name} — ${item.description}` : item.item_name,
           Quantity: item.quantity,
-          UnitPrice: c?.sale_price ?? 0,
+          UnitPriceExclusive: c?.sale_price ?? 0,
           TaxTypeId: taxTypeId,
         }
       })
@@ -62,9 +63,10 @@ export async function POST(req: NextRequest) {
       const designFeeAmount = (subtotal * project.design_fee) / 100
       lines.push({
         SelectionId: selectionId,
+        LineType: 0,
         Description: `Design Fee (${project.design_fee}%)`,
         Quantity: 1,
-        UnitPrice: parseFloat(designFeeAmount.toFixed(2)),
+        UnitPriceExclusive: parseFloat(designFeeAmount.toFixed(2)),
         TaxTypeId: taxTypeId,
       })
     }
