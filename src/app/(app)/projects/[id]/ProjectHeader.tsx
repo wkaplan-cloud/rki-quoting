@@ -102,7 +102,10 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
   }
 
   async function handleDelete() {
-    if (!confirm('Permanently delete this project and all its line items? This cannot be undone.')) return
+    const msg = sageInvoicePaid
+      ? 'Permanently delete this project and all its line items? This cannot be undone.\n\nNote: this project has a paid Sage invoice. Deleting it here will NOT affect Sage — the invoice will remain in your Sage account.'
+      : 'Permanently delete this project and all its line items? This cannot be undone.'
+    if (!confirm(msg)) return
     await supabase.from('line_items').delete().eq('project_id', project.id)
     const { error } = await supabase.from('projects').delete().eq('id', project.id)
     if (error) { toast.error(error.message); return }
@@ -232,7 +235,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
           ) : (
             <>
               <StatusBadge status={project.status as any} />
-              {project.status !== 'Cancelled' && project.status !== 'Completed' && (
+              {project.status !== 'Cancelled' && project.status !== 'Completed' && !sageInvoicePaid && (
                 <button
                   onClick={handleCancel}
                   className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer"
