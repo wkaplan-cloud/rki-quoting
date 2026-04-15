@@ -14,6 +14,7 @@ interface Settings {
   sage_refresh_token?: string | null
   sage_token_expires_at?: string | null
   sage_company_id?: string | null
+  sage_item_id?: number | null
   business_name?: string | null
   business_address?: string | null
   vat_number?: string | null
@@ -43,7 +44,9 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
 
   const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token))
   const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
+  const [sageItemId, setSageItemId] = useState(String((settings as Settings & { sage_item_id?: number | null })?.sage_item_id ?? ''))
   const [fetchingCompanyId, setFetchingCompanyId] = useState(false)
+  const [savingItemId, setSavingItemId] = useState(false)
 
   async function fetchCompanyId() {
     setFetchingCompanyId(true)
@@ -112,6 +115,15 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     set('logo_url', data.publicUrl + '?t=' + Date.now())
     toast.success('Logo uploaded')
     setUploading(false)
+  }
+
+  async function saveItemId() {
+    setSavingItemId(true)
+    const id = parseInt(sageItemId)
+    if (!id) { toast.error('Enter a valid numeric item ID'); setSavingItemId(false); return }
+    const { error } = await supabase.from('settings').update({ sage_item_id: id }).eq('id', settings!.id)
+    if (error) { toast.error(error.message) } else { toast.success('Sage item ID saved') }
+    setSavingItemId(false)
   }
 
   async function disconnectSage() {
@@ -280,6 +292,25 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
               className="ml-6 flex-shrink-0 text-xs text-red-400 hover:text-red-600 underline disabled:opacity-50 cursor-pointer"
             >
               {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+            </button>
+          </div>
+          <div className="flex items-end gap-3 mt-3">
+            <div className="flex-1 max-w-xs">
+              <Input
+                label="Sage Item ID (used on invoice lines)"
+                value={sageItemId}
+                onChange={e => setSageItemId(e.target.value)}
+                placeholder="e.g. 390570"
+              />
+              <p className="text-xs text-[#8A877F] mt-1">Find this in your Sage item list — it&apos;s the internal ID of the service item to link invoice lines to.</p>
+            </div>
+            <button
+              type="button"
+              onClick={saveItemId}
+              disabled={savingItemId}
+              className="mb-6 px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {savingItemId ? 'Saving…' : 'Save'}
             </button>
           </div>
         ) : (

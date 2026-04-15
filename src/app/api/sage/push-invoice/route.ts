@@ -14,22 +14,23 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const [{ data: project }, { data: lineItems }] = await Promise.all([
+    const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
       supabase.from('projects').select('*').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
+      supabase.from('settings').select('sage_item_id').maybeSingle(),
     ])
 
     // RLS already scopes to the user's org — if the project exists it's accessible
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    if (!settings?.sage_item_id) return NextResponse.json({ error: 'Sage Item ID not configured — set it in Admin → Settings' }, { status: 400 })
 
     const computed = computeLineItems(lineItems ?? [])
 
     // Fetch the default tax type from Sage
     const taxTypesResp = await sageGet('/TaxType/Get')
 
-    // TODO: replace 390570 with dynamic item lookup once correct endpoint is found
-    // SelectionId is a Sage Item ID (not an Account ID) — 390570 = "service" item
-    const selectionId: number = 390570
+    // SelectionId is a Sage Item ID — stored in settings by the studio admin
+    const selectionId: number = settings.sage_item_id
 
     // Pick the company-specific default tax type (IsDefault: true and CompanyId > 0)
     const defaultTaxType = (taxTypesResp.Results ?? []).find(
