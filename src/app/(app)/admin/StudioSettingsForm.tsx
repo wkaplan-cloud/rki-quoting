@@ -44,9 +44,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
 
   const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token))
   const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
-  const [sageItemId, setSageItemId] = useState(String(settings?.sage_item_id ?? ''))
   const [fetchingCompanyId, setFetchingCompanyId] = useState(false)
-  const [savingItemId, setSavingItemId] = useState(false)
 
   async function fetchCompanyId() {
     setFetchingCompanyId(true)
@@ -100,6 +98,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     email_template_quote:   settings?.email_template_quote ?? `Dear {{client_name}},\n\nPlease find attached your quotation for {{project_name}}.\n\nReference: {{project_number}}\n\nPlease don't hesitate to contact us should you have any questions or require any amendments.\n\nKind regards,\n{{studio_name}}`,
     email_template_invoice: settings?.email_template_invoice ?? `Dear {{client_name}},\n\nPlease find attached your invoice for {{project_name}}.\n\nReference: {{project_number}}\n\nKindly arrange payment at your earliest convenience.\n\nKind regards,\n{{studio_name}}`,
     accounts_email:         settings?.accounts_email ?? '',
+    sage_item_id:           String(settings?.sage_item_id ?? ''),
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -115,15 +114,6 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     set('logo_url', data.publicUrl + '?t=' + Date.now())
     toast.success('Logo uploaded')
     setUploading(false)
-  }
-
-  async function saveItemId() {
-    setSavingItemId(true)
-    const id = parseInt(sageItemId)
-    if (!id) { toast.error('Enter a valid numeric item ID'); setSavingItemId(false); return }
-    const { error } = await supabase.from('settings').update({ sage_item_id: id }).eq('id', settings!.id)
-    if (error) { toast.error(error.message) } else { toast.success('Sage item ID saved') }
-    setSavingItemId(false)
   }
 
   async function disconnectSage() {
@@ -146,6 +136,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
       ...form,
       vat_rate: parseFloat(form.vat_rate),
       deposit_percentage: parseFloat(form.deposit_percentage),
+      sage_item_id: form.sage_item_id ? parseInt(form.sage_item_id) : null,
     }).eq('id', settings!.id)
     if (error) { toast.error(error.message) } else { toast.success('Studio settings saved') }
     setSaving(false)
@@ -295,24 +286,13 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
               {disconnecting ? 'Disconnecting…' : 'Disconnect'}
             </button>
           </div>
-          <div className="flex items-end gap-3 mt-3">
-            <div className="flex-1 max-w-xs">
-              <Input
-                label="Sage Item ID (used on invoice lines)"
-                value={sageItemId}
-                onChange={e => setSageItemId(e.target.value)}
-                placeholder=""
-              />
-              <p className="text-xs text-[#8A877F] mt-1">Find this in your Sage item list — it&apos;s the internal ID of the service item to link invoice lines to.</p>
-            </div>
-            <button
-              type="button"
-              onClick={saveItemId}
-              disabled={savingItemId}
-              className="mb-6 px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              {savingItemId ? 'Saving…' : 'Save'}
-            </button>
+          <div className="mt-3 max-w-xs">
+            <Input
+              label="Sage Item ID (used on invoice lines)"
+              value={form.sage_item_id}
+              onChange={e => set('sage_item_id', e.target.value)}
+            />
+            <p className="text-xs text-[#8A877F] mt-1">The internal ID of the Sage item to link all invoice lines to. Saved with the main Save button below.</p>
           </div>
           </>
         ) : (

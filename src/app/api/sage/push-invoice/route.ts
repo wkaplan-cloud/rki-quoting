@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       CustomerID: Number(sageContactId),
       Date: docDate,
       DueDate: dueDate,
+      Inclusive: false,
       Reference: project.project_number,
       Description: project.project_name,
       Lines: lines,
