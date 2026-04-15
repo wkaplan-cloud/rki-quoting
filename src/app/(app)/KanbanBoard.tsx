@@ -8,6 +8,7 @@ import { STAGE_CONFIG, statusFromStages } from '@/lib/types'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import toast from 'react-hot-toast'
 import { Check } from 'lucide-react'
+import confetti from 'canvas-confetti'
 
 type StageConfigItem = typeof STAGE_CONFIG[number]
 
@@ -67,6 +68,17 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
     } as ProjectStages
 
     setLocalStages(prev => ({ ...prev, [projectId]: newStages }))
+
+    // Fire confetti when ticking a stage ON
+    if (!currentVal) {
+      if (key === 'delivered_installed') {
+        confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 }, colors: ['#9A7B4F', '#C4A46B', '#FFD700', '#ffffff', '#2C2C2A'] })
+        setTimeout(() => confetti({ particleCount: 150, spread: 100, origin: { x: 0, y: 0.7 }, angle: 60 }), 200)
+        setTimeout(() => confetti({ particleCount: 150, spread: 100, origin: { x: 1, y: 0.7 }, angle: 120 }), 400)
+      } else {
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#9A7B4F', '#C4A46B', '#EDE9E1', '#ffffff'] })
+      }
+    }
 
     // Auto-update project status
     const proj = localProjects.find(p => p.id === projectId)
