@@ -26,9 +26,16 @@ export function SessionGuard() {
         return
       }
 
-      // Session-only or no flags: valid for this browser session
-      // Set the flag so future checks don't sign the user out
-      sessionStorage.setItem('rki_session_only', '1')
+      // No rememberUntil flag. If rki_session_only is absent from sessionStorage
+      // it means the browser was restarted after a "don't remember me" login —
+      // sign the user out so the session doesn't silently persist.
+      if (!sessionOnly) {
+        await supabase.auth.signOut()
+        router.push('/login')
+        return
+      }
+
+      // sessionOnly is present — still within the same browser session, nothing to do.
     }
 
     check()
