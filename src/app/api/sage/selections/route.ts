@@ -7,11 +7,13 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  try {
-    const data = await sageGet('/Selection/Get')
-    return NextResponse.json(data)
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+  const results: Record<string, unknown> = {}
+  for (const path of ['/Account/Get', '/AccountCategory/Get', '/Item/Get', '/TaxType/Get']) {
+    try {
+      results[path] = await sageGet(path)
+    } catch (e: unknown) {
+      results[path] = { error: e instanceof Error ? e.message : String(e) }
+    }
   }
+  return NextResponse.json(results)
 }
