@@ -48,6 +48,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   // Sage state
   const [sageModalOpen, setSageModalOpen] = useState(false)
   const [sageCustomers, setSageCustomers] = useState<SageCustomer[]>([])
+  const [sageCustomersLoading, setSageCustomersLoading] = useState(false)
   const [sageCustomerSearch, setSageCustomerSearch] = useState('')
   const [sageSelectedCustomer, setSageSelectedCustomer] = useState<SageCustomer | null>(null)
   const [sagePushing, setSagePushing] = useState(false)
@@ -229,6 +230,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     setSageSelectedCustomer(null)
     setSageCustomerSearch('')
     setSageCustomers([])
+    setSageCustomersLoading(true)
     try {
       const res = await fetch('/api/sage/customers')
       const data = await res.json()
@@ -237,6 +239,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     } catch (e: unknown) {
       toast.error((e instanceof Error ? e.message : 'Failed to load Sage customers'))
       setSageModalOpen(false)
+    } finally {
+      setSageCustomersLoading(false)
     }
   }, [])
 
@@ -772,8 +776,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               />
             </div>
             <div className="overflow-y-auto flex-1">
-              {sageCustomers.length === 0 ? (
+              {sageCustomersLoading ? (
                 <p className="text-xs text-[#8A877F] text-center py-6">Loading customers…</p>
+              ) : sageCustomers.length === 0 ? (
+                <p className="text-xs text-[#8A877F] text-center py-6">No customers found in Sage — add one in your Sage account first</p>
               ) : filteredSageCustomers.length === 0 ? (
                 <p className="text-xs text-[#8A877F] text-center py-6">No customers match</p>
               ) : (
