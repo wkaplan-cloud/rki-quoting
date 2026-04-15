@@ -23,7 +23,7 @@ export async function GET() {
     response_type: 'code',
     client_id: process.env.SAGE_CLIENT_ID!,
     redirect_uri: process.env.SAGE_REDIRECT_URI!,
-    scope: 'openid offline_access',
+    scope: 'openid email profile',
     state,
   })
 
