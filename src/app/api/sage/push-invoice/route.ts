@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sagePost } from '@/lib/sage'
+import { sageGet, sagePost } from '@/lib/sage'
 import { computeLineItems } from '@/lib/quoting'
 
 export async function POST(req: NextRequest) {
@@ -24,16 +24,35 @@ export async function POST(req: NextRequest) {
 
     const computed = computeLineItems(lineItems ?? [])
 
+    // Fetch the Sales income account and default tax type from Sage in parallel
+    const [accountsResp, taxTypesResp] = await Promise.all([
+      sageGet('/Account/Get'),
+      sageGet('/TaxType/Get'),
+    ])
+
+    // Pick the first Sales-category account (Category.Description === 'Sales')
+    const salesAccount = (accountsResp.Results ?? []).find(
+      (a: { Category?: { Description?: string } }) => a.Category?.Description === 'Sales'
+    )
+    const selectionId: number = salesAccount?.ID ?? 0
+
+    // Pick the company-specific default tax type (IsDefault: true and CompanyId > 0)
+    const defaultTaxType = (taxTypesResp.Results ?? []).find(
+      (t: { IsDefault?: boolean; CompanyId?: number }) => t.IsDefault && (t.CompanyId ?? 0) > 0
+    )
+    const taxTypeId: number = defaultTaxType?.ID ?? 146922 // fallback to known Standard Rate
+
     // Build invoice lines — items only, skip section rows
     const lines = (lineItems ?? [])
       .filter(item => item.row_type === 'item')
       .map(item => {
         const c = computed.find(ci => ci.id === item.id)
         return {
+          SelectionId: selectionId,
           Description: item.description ? `${item.item_name} — ${item.description}` : item.item_name,
           Quantity: item.quantity,
           UnitPrice: c?.sale_price ?? 0,
-          TaxType: { ID: 1 }, // Standard rate (15% VAT)
+          TaxTypeId: taxTypeId,
         }
       })
 
@@ -42,10 +61,11 @@ export async function POST(req: NextRequest) {
       const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
       const designFeeAmount = (subtotal * project.design_fee) / 100
       lines.push({
+        SelectionId: selectionId,
         Description: `Design Fee (${project.design_fee}%)`,
         Quantity: 1,
         UnitPrice: parseFloat(designFeeAmount.toFixed(2)),
-        TaxType: { ID: 1 },
+        TaxTypeId: taxTypeId,
       })
     }
 
