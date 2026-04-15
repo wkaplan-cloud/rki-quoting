@@ -38,15 +38,20 @@ function buildRecord(item: Record<string, unknown>) {
   }
 }
 
-function extractItems(data: Record<string, unknown>): Record<string, unknown>[] {
-  const results = data.results
-  if (Array.isArray(results)) {
-    return results.map((r: Record<string, unknown>) =>
+function extractItems(data: unknown): Record<string, unknown>[] {
+  // Plain array response (ODS can return items directly)
+  if (Array.isArray(data)) return data as Record<string, unknown>[]
+  if (typeof data !== 'object' || data === null) return []
+  const obj = data as Record<string, unknown>
+  // results[].item wrapper (prices API shape)
+  if (Array.isArray(obj.results)) {
+    return (obj.results as Record<string, unknown>[]).map(r =>
       (r && typeof r === 'object' && 'item' in r) ? (r.item as Record<string, unknown>) : r
     )
   }
-  for (const key of ['items', 'data', 'products', 'values']) {
-    if (Array.isArray(data[key])) return data[key] as Record<string, unknown>[]
+  // Standard wrapper keys including OData "value"
+  for (const key of ['value', 'items', 'data', 'products', 'values']) {
+    if (Array.isArray(obj[key])) return obj[key] as Record<string, unknown>[]
   }
   return []
 }
@@ -202,21 +207,6 @@ export async function GET(req: NextRequest) {
       const data = await res.json()
       const items = extractItems(data)
 
-      // Debug: on first page log the raw top-level keys + continuation header so we can diagnose 0-fetch issues
-      if (totalFetched === 0 && items.length === 0) {
-        const debugKeys = typeof data === 'object' && data !== null ? Object.keys(data) : ['(not an object)']
-        console.log('[catalogue-sync] First page returned 0 items. Top-level keys:', debugKeys, '| ODS-Continuation:', nextContinuation, '| sinceDate:', sinceDate)
-        // Surface in response for manual diagnosis
-        await supabase.from('twinbru_sync_log').update({
-          status: 'ok',
-          completed_at: new Date().toISOString(),
-          items_checked: 0,
-          items_added: 0,
-          error_message: `0 items returned from changefeed. Response keys: [${debugKeys.join(', ')}]. sinceDate: ${sinceDate}`,
-        }).eq('id', logId)
-        return NextResponse.json({ ok: true, since: sinceDate, checked: 0, added: 0, debug: { responseKeys: debugKeys, continuation: nextContinuation } })
-      }
-
       totalFetched += items.length
 
       for (const item of items) {
@@ -231,10 +221,12 @@ export async function GET(req: NextRequest) {
         await supabase.from('price_list_items').insert(batch.splice(0))
       }
 
-      // Robin confirmed: stop when the response is empty (items = 0), not when the token is absent.
-      // Always echo the latest token back; the last received token is stored implicitly via sinceDate on next run.
+      // Always capture the latest token so we can continue paging.
+      // The first response from this ODS endpoint can be empty — it is just positioning the cursor.
+      // Keep going as long as we have a token AND we haven't yet received data and got an empty page.
+      // Stop when: empty response after receiving some data (done), OR no token at all.
       if (nextContinuation) continuation = nextContinuation
-      if (items.length === 0) break
+      if (items.length === 0 && (totalFetched > 0 || !continuation)) break
       await new Promise(r => setTimeout(r, 100))
     }
 

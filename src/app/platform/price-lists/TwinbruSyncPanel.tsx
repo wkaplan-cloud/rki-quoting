@@ -190,8 +190,7 @@ const [result, setResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>
           items_changed: data.changed,
         }))
       } else {
-        const debugSuffix = data.debug ? ` | API response keys: [${data.debug.responseKeys?.join(', ')}] continuation: ${data.debug.continuation ?? 'none'}` : ''
-        setResult({ type: data.checked === 0 ? 'err' : 'ok', msg: `Done — ${data.checked?.toLocaleString()} fetched, ${data.added ?? 0} new fabrics added${debugSuffix}` })
+        setResult({ type: 'ok', msg: `Done — ${data.checked?.toLocaleString()} fetched, ${data.added ?? 0} new fabrics added` })
         setCatalogueSyncLog(prev => makeLog({
           ...(prev ?? {}),
           sync_type: 'catalogue',
