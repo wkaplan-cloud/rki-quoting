@@ -8,7 +8,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const results: Record<string, unknown> = {}
-  for (const path of ['/Account/Get', '/AccountCategory/Get', '/Item/Get', '/TaxType/Get']) {
+  for (const path of ['/TaxInvoice/Get', '/Quote/Get', '/SalesOrder/Get']) {
     try {
       results[path] = await sageGet(path)
     } catch (e: unknown) {
