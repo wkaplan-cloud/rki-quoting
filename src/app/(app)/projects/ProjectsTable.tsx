@@ -7,7 +7,7 @@ import type { Project, ProjectStatus, LineItem } from '@/lib/types'
 import { formatZAR, computeTotals } from '@/lib/quoting'
 import { FolderOpen, ChevronRight } from 'lucide-react'
 
-const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Completed', 'Cancelled']
+const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Paid', 'Completed', 'Cancelled']
 
 interface Props {
   projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[] })[]

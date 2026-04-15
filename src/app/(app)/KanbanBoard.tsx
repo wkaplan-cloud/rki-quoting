@@ -23,15 +23,21 @@ interface Props {
   projects: Project[]  // passed as initialProjects internally
   stagesMap: Record<string, ProjectStages>
   stageConfig: readonly StageConfigItem[]
+  sageConnected?: boolean
 }
 
-export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig }: Props) {
+export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig, sageConnected }: Props) {
   const [localStages, setLocalStages] = useState<Record<string, ProjectStages>>(stagesMap)
   const [localProjects, setLocalProjects] = useState<Project[]>(initialProjects)
   const supabase = createClient()
   const router = useRouter()
 
   async function toggleStage(projectId: string, key: StageKey, currentVal: boolean) {
+    // Block toggling final_invoice_paid from the board when Sage is connected — manage from inside the project
+    if (key === 'final_invoice_paid' && sageConnected) {
+      toast.error('Payment status is managed by Sage — open the project to sync')
+      return
+    }
     const now = new Date().toISOString()
     const dateKey = stageConfig.find(s => s.key === key)!.dateKey
     const update = {
@@ -120,7 +126,7 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig 
               return (
                 <tr
                   key={p.id}
-                  className={`border-b border-[#EDE9E1] transition-colors ${i === localProjects.length - 1 ? 'border-0' : ''} ${p.status === 'Completed' ? 'bg-green-50/50 opacity-70 hover:opacity-100' : 'hover:bg-[#FDFCF9]'}`}
+                  className={`border-b border-[#EDE9E1] transition-colors ${i === localProjects.length - 1 ? 'border-0' : ''} ${p.status === 'Completed' ? 'bg-[#9A7B4F]/5 opacity-70 hover:opacity-100' : p.status === 'Paid' ? 'bg-green-50/50 opacity-70 hover:opacity-100' : 'hover:bg-[#FDFCF9]'}`}
                 >
                   {/* Project info */}
                   <td className="px-4 py-3 max-w-[220px]">

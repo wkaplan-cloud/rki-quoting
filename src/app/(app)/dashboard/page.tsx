@@ -11,10 +11,12 @@ import { Plus } from 'lucide-react'
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const [{ data: projects }, { data: allLineItems }] = await Promise.all([
+  const [{ data: projects }, { data: allLineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
     supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
+    supabase.from('settings').select('sage_access_token, sage_company_id').maybeSingle(),
   ])
+  const sageConnected = !!(settings?.sage_access_token && settings?.sage_company_id)
 
   const projectIds = (projects ?? []).map(p => p.id)
 
@@ -107,14 +109,15 @@ export default async function DashboardPage() {
             projects={ps
               .filter(p => p.status !== 'Cancelled')
               .sort((a, b) => {
-                const aComp = a.status === 'Completed'
-                const bComp = b.status === 'Completed'
+                const aComp = a.status === 'Completed' || a.status === 'Paid'
+                const bComp = b.status === 'Completed' || b.status === 'Paid'
                 if (aComp !== bComp) return aComp ? 1 : -1
                 return new Date(b.date).getTime() - new Date(a.date).getTime()
               })
             }
             stagesMap={stagesMap}
             stageConfig={STAGE_CONFIG}
+            sageConnected={sageConnected}
           />
         </div>
       </div>
