@@ -44,12 +44,13 @@ const COL = 'px-2 py-1.5 border-r border-[#EDE9E1] last:border-0'
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
-function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
+function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnly }: {
   value: string
   onChange: (v: string) => void
   onBlur: (v: string) => void
   placeholder?: string
   className?: string
+  readOnly?: boolean
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
@@ -70,6 +71,7 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className }: {
       onChange={e => { onChange(e.target.value); resize() }}
       onBlur={e => onBlur(e.target.value)}
       placeholder={placeholder}
+      readOnly={readOnly}
       className={className + ' resize-none overflow-hidden leading-snug'}
       style={{ minHeight: '26px' }}
     />
@@ -295,7 +297,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const itemCount = lineItems.filter(i => i.row_type === 'item').length
 
   return (
-    <div className={locked ? 'pointer-events-none select-text opacity-80' : ''}>
+    <div>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Line Items</h2>
         <span className="text-xs text-[#8A877F]">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
@@ -330,15 +332,15 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                 return (
                   <tr
                     key={item.id}
-                    draggable
-                    onDragStart={() => { dragItem.current = index }}
-                    onDragEnter={() => { dragOver.current = index }}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={e => e.preventDefault()}
+                    draggable={!locked}
+                    onDragStart={!locked ? () => { dragItem.current = index } : undefined}
+                    onDragEnter={!locked ? () => { dragOver.current = index } : undefined}
+                    onDragEnd={!locked ? handleDragEnd : undefined}
+                    onDragOver={!locked ? e => e.preventDefault() : undefined}
                     className="border-b border-[#D8D3C8] bg-[#F5F2EC] group"
                   >
-                    <td className="px-1.5 py-2 text-[#C4BFB5] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
-                      <GripVertical size={14} />
+                    <td className={`px-1.5 py-2 text-[#C4BFB5] ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                      {!locked && <GripVertical size={14} />}
                     </td>
                     <td />
                     <td colSpan={12} className="px-2 py-2 border-r border-[#EDE9E1]">
@@ -348,18 +350,21 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           value={item.item_name}
                           onChange={e => updateLocal(item.id, 'item_name', e.target.value)}
                           onBlur={e => saveField(item.id, 'item_name', e.target.value)}
+                          readOnly={locked}
                           className="flex-1 bg-transparent outline-none text-xs font-semibold text-[#5A5750] uppercase tracking-widest placeholder-[#C4BFB5] focus:text-[#2C2C2A]"
                           placeholder="Room / Section name…"
                         />
                       </div>
                     </td>
                     <td className="px-1.5 py-2">
-                      <button
-                        onClick={() => deleteRow(item.id)}
-                        className="text-[#D8D3C8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {!locked && (
+                        <button
+                          onClick={() => deleteRow(item.id)}
+                          className="text-[#D8D3C8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -372,11 +377,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               return (
                 <tr
                   key={item.id}
-                  draggable
-                  onDragStart={() => { dragItem.current = index }}
-                  onDragEnter={() => { dragOver.current = index }}
-                  onDragEnd={handleDragEnd}
-                  onDragOver={e => e.preventDefault()}
+                  draggable={!locked}
+                  onDragStart={!locked ? () => { dragItem.current = index } : undefined}
+                  onDragEnter={!locked ? () => { dragOver.current = index } : undefined}
+                  onDragEnd={!locked ? handleDragEnd : undefined}
+                  onDragOver={!locked ? e => e.preventDefault() : undefined}
                   className={`border-b border-[#EDE9E1] last:border-0 group transition-colors
                     ${item.received
                       ? 'bg-blue-50 hover:bg-blue-50'
@@ -384,8 +389,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     }`}
                 >
                   {/* Drag handle */}
-                  <td className="px-1.5 py-1 text-[#D8D3C8] group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing">
-                    <GripVertical size={14} />
+                  <td className={`px-1.5 py-1 text-[#D8D3C8] ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                    {!locked && <GripVertical size={14} />}
                   </td>
 
                   {/* Received checkbox */}
@@ -431,20 +436,23 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                               onBlur={v => saveField(item.id, 'item_name', v)}
                               placeholder="Item name"
                               className={INPUT}
+                              readOnly={locked}
                             />
                           )}
                         </div>
-                        <button
-                          onClick={() => toggleIndent(item.id, item.indent_level)}
-                          title={indented ? 'Remove indent' : 'Attach to item above'}
-                          className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
-                            ${indented
-                              ? 'text-[#9A7B4F] opacity-100'
-                              : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
-                            }`}
-                        >
-                          <CornerDownRight size={12} />
-                        </button>
+                        {!locked && (
+                          <button
+                            onClick={() => toggleIndent(item.id, item.indent_level)}
+                            title={indented ? 'Remove indent' : 'Attach to item above'}
+                            className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
+                              ${indented
+                                ? 'text-[#9A7B4F] opacity-100'
+                                : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
+                              }`}
+                          >
+                            <CornerDownRight size={12} />
+                          </button>
+                        )}
                       </div>
                       <div className="flex gap-1 mt-0.5">
                         <input
@@ -452,6 +460,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'dimensions', e.target.value)}
                           onBlur={e => saveField(item.id, 'dimensions', e.target.value)}
                           placeholder="Dimensions…"
+                          readOnly={locked}
                           className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
                         />
                         <input
@@ -459,6 +468,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'colour_finish', e.target.value)}
                           onBlur={e => saveField(item.id, 'colour_finish', e.target.value)}
                           placeholder="Colour/finish…"
+                          readOnly={locked}
                           className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
                         />
                       </div>
@@ -486,6 +496,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, quantity, unit } : i))
                           await supabase.from('line_items').update({ cost_price, quantity, unit }).eq('id', item.id)
                         }
+                        if (locked) return null
                         return (
                           <div className="flex items-center gap-0.5 mt-1">
                             <button
@@ -510,6 +521,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       onBlur={v => saveField(item.id, 'description', v)}
                       placeholder="Description"
                       className={INPUT}
+                      readOnly={locked}
                     />
                   </td>
 
@@ -521,6 +533,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         value={item.quantity}
                         onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'quantity', v as unknown as number) }}
                         onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value.replace(',', '.')) || 0)}
+                        readOnly={locked}
                         className={NUM_INPUT + ' flex-1'}
                       />
                       <input
@@ -530,6 +543,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         onBlur={e => saveField(item.id, 'unit', e.target.value)}
                         onFocus={e => e.target.select()}
                         placeholder="unit"
+                        readOnly={locked}
                         className="w-12 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
                       />
                       <datalist id={`units-${item.id}`}>
@@ -540,40 +554,46 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
                   {/* Supplier */}
                   <td className={COL}>
-                    <Combobox
-                      options={suppliers.map(s => ({ id: s.id, label: s.supplier_name, isPlatform: s.is_platform }))}
-                      value={item.supplier_id ?? ''}
-                      inputValue={item.supplier_name ?? ''}
-                      onChange={(id, label) => handleSupplierChange(item.id, id, label)}
-                      onCreate={createSupplier}
-                      placeholder="Supplier…"
-                      className="min-w-[120px]"
-                    />
+                    {locked
+                      ? <span className="text-sm text-[#2C2C2A]">{item.supplier_name ?? '—'}</span>
+                      : <Combobox
+                          options={suppliers.map(s => ({ id: s.id, label: s.supplier_name, isPlatform: s.is_platform }))}
+                          value={item.supplier_id ?? ''}
+                          inputValue={item.supplier_name ?? ''}
+                          onChange={(id, label) => handleSupplierChange(item.id, id, label)}
+                          onCreate={createSupplier}
+                          placeholder="Supplier…"
+                          className="min-w-[120px]"
+                        />
+                    }
                   </td>
 
                   {/* Deliver To */}
                   <td className={COL + ' overflow-visible'}>
-                    {(() => {
-                      const deliveryOptions = [
-                        ...(officeAddress.address ? [{ id: officeAddress.address, label: officeAddress.name }] : []),
-                        ...suppliers.filter(s => s.delivery_address).map(s => ({ id: s.delivery_address!, label: s.supplier_name })),
-                      ]
-                      const selected = deliveryOptions.find(o => o.id === item.delivery_address)
-                      return (
-                        <Combobox
-                          options={deliveryOptions}
-                          value={item.delivery_address ?? ''}
-                          inputValue={selected?.label ?? item.delivery_address ?? ''}
-                          onChange={(id, label) => {
-                            const addr = id || label
-                            updateLocal(item.id, 'delivery_address', addr)
-                            saveField(item.id, 'delivery_address', addr)
-                          }}
-                          placeholder="Deliver to…"
-                          className="min-w-[120px]"
-                        />
-                      )
-                    })()}
+                    {locked
+                      ? <span className="text-sm text-[#2C2C2A]">{item.delivery_address ?? '—'}</span>
+                      : (() => {
+                          const deliveryOptions = [
+                            ...(officeAddress.address ? [{ id: officeAddress.address, label: officeAddress.name }] : []),
+                            ...suppliers.filter(s => s.delivery_address).map(s => ({ id: s.delivery_address!, label: s.supplier_name })),
+                          ]
+                          const selected = deliveryOptions.find(o => o.id === item.delivery_address)
+                          return (
+                            <Combobox
+                              options={deliveryOptions}
+                              value={item.delivery_address ?? ''}
+                              inputValue={selected?.label ?? item.delivery_address ?? ''}
+                              onChange={(id, label) => {
+                                const addr = id || label
+                                updateLocal(item.id, 'delivery_address', addr)
+                                saveField(item.id, 'delivery_address', addr)
+                              }}
+                              placeholder="Deliver to…"
+                              className="min-w-[120px]"
+                            />
+                          )
+                        })()
+                    }
                   </td>
 
                   {/* Lead time */}
@@ -584,6 +604,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         value={item.lead_time_weeks ?? ''}
                         onChange={e => updateLocal(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                         onBlur={e => saveField(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
+                        readOnly={locked}
                         className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
                         placeholder="–"
                       />
@@ -630,6 +651,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       value={item.markup_percentage}
                       onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'markup_percentage', v as unknown as number) }}
                       onBlur={e => saveField(item.id, 'markup_percentage', parseFloat(e.target.value.replace(',', '.')) || 0)}
+                      readOnly={locked}
                       className={NUM_INPUT}
                     />
                   </td>
@@ -650,12 +672,14 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
                   {/* Delete */}
                   <td className="px-1.5 py-1">
-                    <button
-                      onClick={() => deleteRow(item.id)}
-                      className="text-[#D8D3C8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    {!locked && (
+                      <button
+                        onClick={() => deleteRow(item.id)}
+                        className="text-[#D8D3C8] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               )
@@ -670,20 +694,22 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         )}
       </div>
 
-      <div className="mt-2 flex items-center gap-4">
-        <button
-          onClick={addRow}
-          className="flex items-center gap-1.5 text-sm text-[#9A7B4F] hover:text-[#7d6340] transition-colors cursor-pointer"
-        >
-          <Plus size={14} /> Add item
-        </button>
-        <button
-          onClick={addSection}
-          className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
-        >
-          <LayoutList size={14} /> Add room / section
-        </button>
-      </div>
+      {!locked && (
+        <div className="mt-2 flex items-center gap-4">
+          <button
+            onClick={addRow}
+            className="flex items-center gap-1.5 text-sm text-[#9A7B4F] hover:text-[#7d6340] transition-colors cursor-pointer"
+          >
+            <Plus size={14} /> Add item
+          </button>
+          <button
+            onClick={addSection}
+            className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+          >
+            <LayoutList size={14} /> Add room / section
+          </button>
+        </div>
+      )}
       <p className="mt-2 text-xs text-[#9A7B4F]/80 leading-relaxed">
         To search fabrics and pull in live pricing, select a platform supplier (shown in gold) on the line item first — the item name field will become a live fabric search.
       </p>
