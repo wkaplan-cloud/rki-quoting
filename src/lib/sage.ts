@@ -71,10 +71,11 @@ async function getValidToken(): Promise<{ token: string; companyId: string }> {
 }
 
 function buildUrl(companyId: string, path: string): string {
-  const params = new URLSearchParams({ CompanyId: companyId })
+  // Build URL manually — do not use URLSearchParams for apikey because
+  // Sage requires the literal curly braces e.g. {key} not %7Bkey%7D
   const apiKey = process.env.SAGE_API_KEY
-  if (apiKey) params.set('apikey', apiKey)
-  return `${SA_API_BASE}${path}?${params}`
+  const base = `${SA_API_BASE}${path}?CompanyId=${companyId}`
+  return apiKey ? `${base}&apikey=${apiKey}` : base
 }
 
 export async function sageGet(path: string) {
