@@ -24,6 +24,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
   if (!project) notFound()
 
+  // Self-heal: recompute status from stages and fix if stale
+  if (project.status !== 'Cancelled') {
+    const { statusFromStages } = await import('@/lib/types')
+    const correctStatus = statusFromStages(stages ?? null)
+    if (correctStatus !== project.status) {
+      await supabase.from('projects').update({ status: correctStatus }).eq('id', id)
+      project.status = correctStatus
+    }
+  }
+
   // Fetch active price list access for this org
   const { data: activeAccess } = orgId
     ? await supabaseAdmin.from('price_list_access').select('price_list_id').eq('org_id', orgId).eq('status', 'active')
