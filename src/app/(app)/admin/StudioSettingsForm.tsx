@@ -301,7 +301,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
                 label="Sage Item ID (used on invoice lines)"
                 value={sageItemId}
                 onChange={e => setSageItemId(e.target.value)}
-                placeholder="e.g. 390570"
+                placeholder=""
               />
               <p className="text-xs text-[#8A877F] mt-1">Find this in your Sage item list — it&apos;s the internal ID of the service item to link invoice lines to.</p>
             </div>
