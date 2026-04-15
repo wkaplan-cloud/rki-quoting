@@ -49,9 +49,20 @@ export async function POST(req: NextRequest) {
       })
     }
 
+    // Sage expects dates as /Date(ms)/ (OData .NET format)
+    const toSageDate = (dateStr: string) => {
+      const ms = new Date(dateStr).getTime()
+      return `/Date(${ms})/`
+    }
+    const docDate = toSageDate(project.date)
+    // Due date: 30 days after document date
+    const dueMs = new Date(project.date).getTime() + 30 * 24 * 60 * 60 * 1000
+    const dueDate = `/Date(${dueMs})/`
+
     const invoice = await sagePost('/TaxInvoice/Save', {
       Customer: { ID: Number(sageContactId) },
-      DocumentDate: project.date,
+      DocumentDate: docDate,
+      DueDate: dueDate,
       Reference: project.project_number,
       Description: project.project_name,
       Lines: lines,
