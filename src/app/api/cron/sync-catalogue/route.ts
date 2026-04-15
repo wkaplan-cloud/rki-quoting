@@ -27,7 +27,7 @@ function buildRecord(item: Record<string, unknown>) {
   const fullWidth    = props.selvedge_full_width_cm    ?? item.selvedge_full_width_cm    ?? null
   const useableWidth = props.selvedge_useable_width_cm ?? item.selvedge_useable_width_cm ?? null
   return {
-    brand:            String(item.brand        ?? item.brandName        ?? '').trim() || null,
+    brand:            String(item.brand        ?? '').trim() || null,  // confirmed: field is "brand", no "brandName"
     collection:       String(item.collectionName ?? '').trim() || null,
     design:           String(item.designName   ?? '').trim() || null,
     colour:           String(item.productName  ?? '').trim() || null,
@@ -216,8 +216,10 @@ export async function GET(req: NextRequest) {
         await supabase.from('price_list_items').insert(batch.splice(0))
       }
 
-      if (!nextContinuation || items.length === 0) break
-      continuation = nextContinuation
+      // Robin confirmed: stop when the response is empty (items = 0), not when the token is absent.
+      // Always echo the latest token back; the last received token is stored implicitly via sinceDate on next run.
+      if (nextContinuation) continuation = nextContinuation
+      if (items.length === 0) break
       await new Promise(r => setTimeout(r, 100))
     }
 

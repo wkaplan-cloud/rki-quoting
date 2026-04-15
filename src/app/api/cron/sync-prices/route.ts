@@ -7,7 +7,7 @@ const TWINBRU_BASE = process.env.TWINBRU_BASE_URL ?? 'https://api.twinbru.com'
 const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
 const PRICES_KEY   = process.env.TWINBRU_PRICES_KEY ?? ''
 const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
-const BATCH        = 100  // max product IDs per /prices/products call
+const BATCH        = 50   // confirmed max per /prices/products call
 
 function twinbruHeaders(usesPricesKey = false) {
   return {
@@ -28,17 +28,13 @@ async function fetchPriceBatch(productIds: number[]): Promise<{ productId: numbe
   if (!res.ok) throw new Error(`Twinbru prices API ${res.status}: ${await res.text().then(t => t.slice(0, 200))}`)
   const data = await res.json()
 
-  // Unwrap various response shapes
-  const items: Record<string, unknown>[] = (
-    data?.results?.map((r: Record<string, unknown>) => r?.item ?? r) ??
-    data?.items ??
-    data?.data ??
-    (Array.isArray(data) ? data : [])
-  )
+  // Response shape confirmed: { results: [{ item: { productId, price, ... } }] }
+  const items: Record<string, unknown>[] =
+    data?.results?.map((r: Record<string, unknown>) => r?.item ?? r) ?? []
 
   return items.flatMap(item => {
     const pid = item?.productId as number | undefined
-    const price = (item?.price ?? item?.salesPrice ?? item?.amount ?? item?.value) as number | undefined
+    const price = item?.price as number | undefined  // confirmed field name
     if (pid == null || price == null) return []
     return [{ productId: pid, price }]
   })
