@@ -174,10 +174,18 @@ const [result, setResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${cronSecret}` },
       })
-      const data = await res.json()
+
+      const rawText = await res.text()
+      let data: Record<string, unknown> = {}
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        setResult({ type: 'err', msg: `Server returned non-JSON (${res.status}): ${rawText.slice(0, 200)}` })
+        return
+      }
 
       if (!res.ok) {
-        setResult({ type: 'err', msg: data.error ?? 'Sync failed' })
+        setResult({ type: 'err', msg: String(data.error ?? rawText.slice(0, 200) ?? 'Sync failed') })
         return
       }
 
