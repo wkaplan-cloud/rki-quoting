@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
     ])
 
-    if (!project || project.user_id !== user.id) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+    // RLS already scopes to the user's org — if the project exists it's accessible
+    if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
     const computed = computeLineItems(lineItems ?? [])
 
