@@ -24,6 +24,14 @@ export async function POST(req: NextRequest) {
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     if (!settings?.sage_item_id) return NextResponse.json({ error: 'Sage Item ID not configured — set it in Admin → Settings' }, { status: 400 })
 
+    // Block update if invoice is already paid
+    const existingStatus = (project.sage_invoice_status ?? '').toUpperCase()
+    if (project.sage_invoice_id && (existingStatus === 'PAID')) {
+      return NextResponse.json({
+        error: 'This invoice has already been marked as paid in Sage and cannot be updated. Use Sync to confirm the current status.',
+      }, { status: 400 })
+    }
+
     const computed = computeLineItems(lineItems ?? [])
 
     // Fetch the default tax type from Sage
@@ -72,7 +80,7 @@ export async function POST(req: NextRequest) {
     const docDate = toSageDate(project.date)
     const dueDate = `/Date(${new Date(project.date).getTime() + 30 * 24 * 60 * 60 * 1000})/`
 
-    const invoice = await sagePost('/TaxInvoice/Save', {
+    const invoicePayload: Record<string, unknown> = {
       CustomerID: Number(sageContactId),
       Date: docDate,
       DueDate: dueDate,
@@ -80,7 +88,14 @@ export async function POST(req: NextRequest) {
       Reference: project.project_number,
       Description: project.project_name,
       Lines: lines,
-    })
+    }
+
+    // If invoice already exists in Sage, pass the ID to update rather than create
+    if (project.sage_invoice_id) {
+      invoicePayload.ID = Number(project.sage_invoice_id)
+    }
+
+    const invoice = await sagePost('/TaxInvoice/Save', invoicePayload)
 
     // SA API returns the saved invoice — grab ID
     const sageId = invoice.ID ?? invoice.id
