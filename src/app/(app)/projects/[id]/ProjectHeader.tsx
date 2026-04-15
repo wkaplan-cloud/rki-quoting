@@ -235,7 +235,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
           ) : (
             <>
               <StatusBadge status={project.status as any} />
-              {project.status !== 'Cancelled' && project.status !== 'Completed' && !sageInvoicePaid && (
+              {project.status !== 'Cancelled' && project.status !== 'Completed' && project.status !== 'Paid' && !sageInvoicePaid && (
                 <button
                   onClick={handleCancel}
                   className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer"

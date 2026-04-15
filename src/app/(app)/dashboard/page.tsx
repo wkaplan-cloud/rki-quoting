@@ -39,6 +39,7 @@ export default async function DashboardPage() {
   const drafts = ps.filter(p => p.status === 'Draft').length
   const openQuotes = ps.filter(p => p.status === 'Quote').length
   const activeInvoices = ps.filter(p => p.status === 'Invoice').length
+  const paidProjects = ps.filter(p => p.status === 'Paid').length
 
   const awaitingDeposit = ps.filter(p => {
     const s = stagesMap[p.id]
@@ -68,7 +69,7 @@ export default async function DashboardPage() {
   }, 0)
 
   const summaryCards = [
-    { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoices`, alert: false },
+    { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },
     { label: 'Pipeline Value', value: formatZAR(activeRevenuePipeline), sub: 'active projects', alert: false },
     { label: 'Awaiting Deposit', value: awaitingDeposit.toString(), sub: 'Quote sent — deposit not yet received', alert: awaitingDeposit > 0 },
     { label: 'In Production', value: inProduction.toString(), sub: 'Deposit received, not yet delivered', alert: false },

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { ProjectStages, StageKey } from '@/lib/types'
+import type { ProjectStages, StageKey, ProjectStatus } from '@/lib/types'
 import { STAGE_CONFIG, statusFromStages } from '@/lib/types'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import toast from 'react-hot-toast'
@@ -15,7 +15,7 @@ interface Project {
   id: string
   project_name: string
   project_number: string
-  status: string
+  status: ProjectStatus
   client: { client_name: string } | null
 }
 
