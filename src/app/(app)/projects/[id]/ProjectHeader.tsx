@@ -138,8 +138,8 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
 
     // Fire confetti when ticking a stage ON
     if (!currentVal) {
-      if (key === 'final_invoice_paid') {
-        // Big celebration for paid in full
+      if (key === 'delivered_installed') {
+        // Big triple-cannon celebration for delivered & installed
         confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 }, colors: ['#9A7B4F', '#C4A46B', '#FFD700', '#ffffff', '#2C2C2A'] })
         setTimeout(() => confetti({ particleCount: 150, spread: 100, origin: { x: 0, y: 0.7 }, angle: 60 }), 200)
         setTimeout(() => confetti({ particleCount: 150, spread: 100, origin: { x: 1, y: 0.7 }, angle: 120 }), 400)
