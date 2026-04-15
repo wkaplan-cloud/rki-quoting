@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, sage_invoice_id: sageId, status: sageStatus })
   } catch (e: unknown) {
-    console.error('[sage/push-invoice]', e)
-    return NextResponse.json({ error: 'Failed to push invoice to Sage. Please try again.' }, { status: 500 })
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[sage/push-invoice]', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
