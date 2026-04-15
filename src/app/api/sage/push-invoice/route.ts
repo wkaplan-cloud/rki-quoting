@@ -49,13 +49,14 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Due date: 30 days after document date (OData .NET format)
-    const dueMs = new Date(project.date).getTime() + 30 * 24 * 60 * 60 * 1000
-    const dueDate = `/Date(${dueMs})/`
+    // Sage SBCA uses OData .NET date format: /Date(ms)/
+    const toSageDate = (dateStr: string) => `/Date(${new Date(dateStr).getTime()})/`
+    const docDate = toSageDate(project.date)
+    const dueDate = `/Date(${new Date(project.date).getTime() + 30 * 24 * 60 * 60 * 1000})/`
 
     const invoice = await sagePost('/TaxInvoice/Save', {
       CustomerID: Number(sageContactId),
-      DocumentDate: project.date,
+      DocumentDate: docDate,
       DueDate: dueDate,
       Reference: project.project_number,
       Description: project.project_name,
