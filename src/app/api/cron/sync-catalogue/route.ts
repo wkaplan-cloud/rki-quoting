@@ -155,15 +155,36 @@ export async function GET(req: NextRequest) {
     }
 
     // ── NORMAL SYNC MODE ─────────────────────────────────────────────────────
-    const { data: lastSync } = await supabase
+    // The ODS changefeed scans through ALL product ranges (not just changed ones),
+    // returning empty batches for unchanged ranges. This can mean hundreds of empty
+    // pages before finding any data, easily timing out a single function invocation.
+    //
+    // Strategy: time-box each run to 4 min. Save the continuation token as RESUME:<token>
+    // in error_message so the next cron run picks up exactly where this one left off.
+
+    // Look for a previous partial run to resume from
+    const { data: resumeLog } = await supabase
+      .from('twinbru_sync_log')
+      .select('error_message, completed_at')
+      .eq('sync_type', 'catalogue')
+      .eq('status', 'ok')
+      .like('error_message', 'RESUME:%')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single()
+    const resumeToken = resumeLog?.error_message?.slice(7) ?? null  // strip "RESUME:"
+
+    // For sinceDate, use the last FULLY completed sync (no RESUME token)
+    const { data: lastFullSync } = await supabase
       .from('twinbru_sync_log')
       .select('completed_at')
       .eq('sync_type', 'catalogue')
       .eq('status', 'ok')
+      .is('error_message', null)
       .order('completed_at', { ascending: false })
       .limit(1)
       .single()
-    const sinceDate = lastSync?.completed_at ?? '2026-03-19T00:00:00Z'
+    const sinceDate = lastFullSync?.completed_at ?? '2026-03-19T00:00:00Z'
 
     // Load existing product_ids to skip duplicates
     const knownIds = new Set<string>()
@@ -182,12 +203,35 @@ export async function GET(req: NextRequest) {
     }
 
     // ODS Changefeed — paginated via ODS-Continuation header
-    let continuation: string | null = null
+    // Start from the resume token if we have one, otherwise start fresh
+    let continuation: string | null = resumeToken
     let totalFetched = 0
     let added = 0
     const batch: Record<string, unknown>[] = []
+    const startTime = Date.now()
+    const TIME_LIMIT_MS = 240_000  // 4 min — leaves buffer before Vercel's 5-min kill
 
     while (true) {
+      // Time-box: if we're approaching the limit, save progress and exit cleanly
+      if (Date.now() - startTime > TIME_LIMIT_MS) {
+        if (batch.length > 0) await supabase.from('price_list_items').insert(batch.splice(0))
+        if (added > 0) {
+          const { count } = await supabase
+            .from('price_list_items')
+            .select('id', { count: 'exact', head: true })
+            .eq('price_list_id', priceListId)
+          await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
+        }
+        await supabase.from('twinbru_sync_log').update({
+          status: 'ok',
+          completed_at: new Date().toISOString(),
+          items_checked: totalFetched,
+          items_added: added,
+          error_message: continuation ? `RESUME:${continuation}` : null,
+        }).eq('id', logId)
+        return NextResponse.json({ ok: true, partial: true, since: sinceDate, checked: totalFetched, added })
+      }
+
       const url = new URL(`${TWINBRU_BASE}/ods/item-read/v1/api/items/product/changes`)
       url.searchParams.set('modifiedSince', sinceDate)
       url.searchParams.set('maxBatchSize', '500')
@@ -226,11 +270,8 @@ export async function GET(req: NextRequest) {
         await supabase.from('price_list_items').insert(batch.splice(0))
       }
 
-      // Always capture the latest token so we can continue paging.
-      // The first response from this ODS endpoint can be empty — it is just positioning the cursor.
-      // Keep going as long as we have a token AND we haven't yet received data and got an empty page.
-      // Stop when: empty response after receiving some data (done), OR no token at all.
       if (nextContinuation) continuation = nextContinuation
+      // Stop when empty AND (we've received data OR there's no token left to follow)
       if (items.length === 0 && (totalFetched > 0 || !continuation)) break
       await new Promise(r => setTimeout(r, 100))
     }
@@ -247,6 +288,7 @@ export async function GET(req: NextRequest) {
       await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
     }
 
+    // Fully completed — no RESUME token needed
     await supabase.from('twinbru_sync_log').update({
       status: 'ok',
       completed_at: new Date().toISOString(),

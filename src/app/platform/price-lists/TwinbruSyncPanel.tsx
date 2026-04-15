@@ -202,7 +202,13 @@ const [result, setResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>
       } else {
         const checked = data.checked as number | null
         const added = data.added as number | null
-        setResult({ type: 'ok', msg: `Done — ${checked?.toLocaleString()} fetched, ${added ?? 0} new fabrics added` })
+        const partial = data.partial as boolean | undefined
+        setResult({
+          type: 'ok',
+          msg: partial
+            ? `Partial run — ${checked?.toLocaleString()} scanned, ${added ?? 0} new fabrics added. Cron will resume automatically.`
+            : `Done — ${checked?.toLocaleString()} fetched, ${added ?? 0} new fabrics added`,
+        })
         setCatalogueSyncLog(prev => makeLog({
           ...(prev ?? {}),
           sync_type: 'catalogue',
