@@ -24,17 +24,12 @@ export async function POST(req: NextRequest) {
 
     const computed = computeLineItems(lineItems ?? [])
 
-    // Fetch the Sales income account and default tax type from Sage in parallel
-    const [accountsResp, taxTypesResp] = await Promise.all([
-      sageGet('/Account/Get'),
-      sageGet('/TaxType/Get'),
-    ])
+    // Fetch the default tax type from Sage
+    const taxTypesResp = await sageGet('/TaxType/Get')
 
-    // Pick the first Sales-category account (Category.Description === 'Sales')
-    const salesAccount = (accountsResp.Results ?? []).find(
-      (a: { Category?: { Description?: string } }) => a.Category?.Description === 'Sales'
-    )
-    const selectionId: number = salesAccount?.ID ?? 0
+    // TODO: replace 390570 with dynamic item lookup once correct endpoint is found
+    // SelectionId is a Sage Item ID (not an Account ID) — 390570 = "service" item
+    const selectionId: number = 390570
 
     // Pick the company-specific default tax type (IsDefault: true and CompanyId > 0)
     const defaultTaxType = (taxTypesResp.Results ?? []).find(

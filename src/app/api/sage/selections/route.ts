@@ -9,8 +9,12 @@ export async function GET() {
 
   const results: Record<string, unknown> = {}
   for (const path of [
-    '/Account/Get/390570',
-    '/Account/Get?$filter=ID eq 390570',
+    '/Item/Get/390570',
+    '/InventoryItem/Get',
+    '/StockItem/Get',
+    '/NonInventoryItem/Get',
+    '/ServiceItem/Get',
+    '/Item/Get?$filter=Code eq \'02\'',
   ]) {
     try {
       results[path] = await sageGet(path)
