@@ -190,20 +190,24 @@ const [result, setResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>
       }
 
       if (type === 'prices') {
-        setResult({ type: 'ok', msg: `Done — ${data.checked?.toLocaleString()} prices checked, ${data.changed ?? 0} updated` })
+        const checked = data.checked as number | null
+        const changed = data.changed as number | null
+        setResult({ type: 'ok', msg: `Done — ${checked?.toLocaleString()} prices checked, ${changed ?? 0} updated` })
         setPriceSyncLog(prev => makeLog({
           ...(prev ?? {}),
           sync_type: 'prices',
-          items_checked: data.checked,
-          items_changed: data.changed,
+          items_checked: checked,
+          items_changed: changed,
         }))
       } else {
-        setResult({ type: 'ok', msg: `Done — ${data.checked?.toLocaleString()} fetched, ${data.added ?? 0} new fabrics added` })
+        const checked = data.checked as number | null
+        const added = data.added as number | null
+        setResult({ type: 'ok', msg: `Done — ${checked?.toLocaleString()} fetched, ${added ?? 0} new fabrics added` })
         setCatalogueSyncLog(prev => makeLog({
           ...(prev ?? {}),
           sync_type: 'catalogue',
-          items_checked: data.checked,
-          items_added: data.added,
+          items_checked: checked,
+          items_added: added,
         }))
       }
     } catch (e) {
