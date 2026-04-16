@@ -20,12 +20,28 @@ interface Props {
   bankAccount?: string | null
   bankBranch?: string | null
   termsConditions?: string | null
-  printDate?: string | null
+  quotedDate?: string | null
+  validityDays?: number | null
+  paymentTerms?: string | null
+  leadTime?: string | null
 }
 
-export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depositPct = 70, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, printDate }: Props) {
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(iso)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().split('T')[0]
+}
+
+export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depositPct = 70, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime }: Props) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
+
+  const issuedDate = quotedDate ?? new Date().toISOString().split('T')[0]
+  const validUntil = (type === 'quote' && validityDays) ? addDays(issuedDate, validityDays) : null
 
   return (
     <Document>
@@ -52,7 +68,8 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
           <View style={{ flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
             <Text style={styles.docTitle}>{type === 'quote' ? 'QUOTATION' : 'INVOICE'}</Text>
             <Text style={styles.docMeta}>{`#${project.project_number}`}</Text>
-            <Text style={styles.docMeta}>{new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
+            <Text style={styles.docMeta}>Date Issued: {formatDate(issuedDate)}</Text>
+            {validUntil ? <Text style={[styles.docMeta, { color: '#9A7B4F' }]}>Valid Until: {formatDate(validUntil)}</Text> : null}
           </View>
         </View>
 
@@ -162,16 +179,55 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
             <Text style={{ fontSize: 7, color: '#2C2C2A', lineHeight: 1.5 }}>{termsConditions}</Text>
           </View>
         ) : null}
+
+        {/* Payment Terms + Lead Time */}
+        {(paymentTerms || leadTime) ? (
+          <View style={{ marginTop: 12, flexDirection: 'row', gap: 12 }}>
+            {paymentTerms ? (
+              <View style={{ flex: 1, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 10 }}>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 4, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 3 }}>PAYMENT TERMS</Text>
+                <Text style={{ fontSize: 7, color: '#2C2C2A', lineHeight: 1.5 }}>{paymentTerms}</Text>
+              </View>
+            ) : null}
+            {leadTime ? (
+              <View style={{ flex: 1, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 10 }}>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 4, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 3 }}>ESTIMATED LEAD TIME</Text>
+                <Text style={{ fontSize: 7, color: '#2C2C2A', lineHeight: 1.5 }}>{leadTime}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* Acceptance block — quotes only */}
+        {type === 'quote' ? (
+          <View style={{ marginTop: 16, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12 }}>
+            <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 }}>ACCEPTANCE</Text>
+            <Text style={{ fontSize: 7, color: '#2C2C2A', marginBottom: 12, lineHeight: 1.5 }}>
+              By signing below, I/we confirm acceptance of the above quotation and its terms and conditions.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 24 }}>
+              <View style={{ flex: 1 }}>
+                <View style={{ borderBottomWidth: 0.5, borderBottomColor: '#2C2C2A', marginBottom: 4, paddingBottom: 16 }} />
+                <Text style={{ fontSize: 7, color: '#8A877F' }}>Full Name</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ borderBottomWidth: 0.5, borderBottomColor: '#2C2C2A', marginBottom: 4, paddingBottom: 16 }} />
+                <Text style={{ fontSize: 7, color: '#8A877F' }}>Signature</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ borderBottomWidth: 0.5, borderBottomColor: '#2C2C2A', marginBottom: 4, paddingBottom: 16 }} />
+                <Text style={{ fontSize: 7, color: '#8A877F' }}>Date</Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
         </View>
 
         {/* Footer */}
-        <View style={styles.footer}>
+        <View style={[styles.footer, { justifyContent: 'flex-start' }]}>
           <Text style={styles.footerText}>
-            {footerText ?? 'Thank you for your business. All prices quoted are valid for 30 days. A 70% deposit is required to confirm your order.'}
+            {footerText ?? 'Thank you for your business.'}
           </Text>
-          <View style={styles.footerSig}>
-            <View style={styles.sigLine}><Text>Authorised Signature</Text></View>
-          </View>
         </View>
       </Page>
     </Document>

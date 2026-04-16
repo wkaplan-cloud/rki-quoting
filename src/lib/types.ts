@@ -50,6 +50,7 @@ export interface Project {
   sage_invoice_id: string | null
   sage_invoice_status: string | null
   sage_pushed_at: string | null
+  quoted_date: string | null
   // joined
   client?: Client | null
 }

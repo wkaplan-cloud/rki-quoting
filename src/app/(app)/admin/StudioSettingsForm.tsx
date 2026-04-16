@@ -29,6 +29,9 @@ interface Settings {
   footer_text?: string | null
   terms_conditions?: string | null
   company_registration?: string | null
+  quote_validity_days?: number | null
+  payment_terms?: string | null
+  lead_time?: string | null
   email_template_quote?: string | null
   email_template_invoice?: string | null
   accounts_email?: string | null
@@ -99,6 +102,9 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     email_template_invoice: settings?.email_template_invoice ?? `Dear {{client_name}},\n\nPlease find attached your invoice for {{project_name}}.\n\nReference: {{project_number}}\n\nKindly arrange payment at your earliest convenience.\n\nKind regards,\n{{studio_name}}`,
     accounts_email:         settings?.accounts_email ?? '',
     sage_item_id:           String(settings?.sage_item_id ?? ''),
+    quote_validity_days:    String(settings?.quote_validity_days ?? 30),
+    payment_terms:          settings?.payment_terms ?? '',
+    lead_time:              settings?.lead_time ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -137,6 +143,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
       vat_rate: parseFloat(form.vat_rate),
       deposit_percentage: parseFloat(form.deposit_percentage),
       sage_item_id: form.sage_item_id ? parseInt(form.sage_item_id) : null,
+      quote_validity_days: form.quote_validity_days ? parseInt(form.quote_validity_days) : 30,
     }).eq('id', settings!.id)
     if (error) { toast.error(error.message) } else { toast.success('Studio settings saved') }
     setSaving(false)
@@ -224,10 +231,13 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
         {/* Quote Defaults */}
         <section className="space-y-4">
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Quote Defaults</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Input label="VAT Rate (%)" type="number" min="0" step="0.1" value={form.vat_rate} onChange={e => set('vat_rate', e.target.value)} />
             <Input label="Deposit (%)" type="number" min="0" max="100" step="1" value={form.deposit_percentage} onChange={e => set('deposit_percentage', e.target.value)} />
+            <Input label="Quote Valid For (days)" type="number" min="1" step="1" value={form.quote_validity_days} onChange={e => set('quote_validity_days', e.target.value)} />
           </div>
+          <Textarea label="Payment Terms (shown on quote PDF)" value={form.payment_terms} onChange={e => set('payment_terms', e.target.value)} rows={2} placeholder="e.g. 50% deposit on order confirmation, balance payable before delivery." />
+          <Input label="Estimated Lead Time (shown on quote PDF)" value={form.lead_time} onChange={e => set('lead_time', e.target.value)} placeholder="e.g. 6–8 weeks from deposit confirmation" />
           <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
           <Textarea label="Terms & Conditions (shown on quote PDF)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={7} />
         </section>

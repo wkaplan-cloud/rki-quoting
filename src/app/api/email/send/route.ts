@@ -16,11 +16,19 @@ export async function POST(req: NextRequest) {
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, email_from').maybeSingle(),
+    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, email_from, quote_validity_days, payment_terms, lead_time').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
+
+  // Lock quoted_date on first email send — never overwrite if already set
+  let quotedDate = (project as any).quoted_date as string | null
+  if (!quotedDate && type === 'quote') {
+    const today = new Date().toISOString().split('T')[0]
+    await supabase.from('projects').update({ quoted_date: today }).eq('id', projectId)
+    quotedDate = today
+  }
 
   // Use override email from modal, or fall back to what's saved on the client
   const clientEmail = overrideEmail?.trim() || (project.client as any)?.email
@@ -47,7 +55,10 @@ export async function POST(req: NextRequest) {
         bankBranch: settings?.bank_branch_code,
         footerText: settings?.footer_text,
         termsConditions: settings?.terms_conditions,
-        printDate: new Date().toISOString(),
+        quotedDate: quotedDate ?? (project as any).quoted_date ?? new Date().toISOString().split('T')[0],
+        validityDays: (settings as any)?.quote_validity_days ?? 30,
+        paymentTerms: (settings as any)?.payment_terms ?? null,
+        leadTime: (settings as any)?.lead_time ?? null,
       }) as any
     )
 
