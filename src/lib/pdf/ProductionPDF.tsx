@@ -1,30 +1,36 @@
-import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
+import { Document, Page, Text, View } from '@react-pdf/renderer'
 import { StyleSheet } from '@react-pdf/renderer'
 import { computeLineItem, formatZAR, computeTotals } from '../quoting'
 import type { Project, LineItem, Supplier } from '../types'
 
 const s = StyleSheet.create({
   page: { fontFamily: 'Helvetica', fontSize: 7, color: '#2C2C2A', padding: 32, flexDirection: 'column' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#D8D3C8' },
-  title: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
-  meta: { fontSize: 7, color: '#8A877F', marginTop: 2 },
+  // Header
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#D8D3C8' },
+  studioName: { fontSize: 7, color: '#8A877F', marginBottom: 4 },
+  docTitle: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
+  projectName: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#1A1A18', textAlign: 'right' },
+  meta: { fontSize: 7, color: '#8A877F', marginTop: 3, textAlign: 'right' },
   // Table
-  tableHeader: { flexDirection: 'row', backgroundColor: '#2C2C2A', paddingVertical: 5, paddingHorizontal: 3 },
-  th: { fontSize: 6, color: '#F5F2EC', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
-  row: { flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
-  rowAlt: { backgroundColor: '#FDFCF9' },
-  sectionRow: { flexDirection: 'row', backgroundColor: '#F5F2EC', paddingVertical: 5, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', marginTop: 3 },
-  sectionLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#5A5750', textTransform: 'uppercase', letterSpacing: 0.8 },
+  tableHeader: { flexDirection: 'row', backgroundColor: '#2C2C2A', paddingVertical: 6, paddingHorizontal: 3 },
+  th: { fontSize: 7, color: '#F5F2EC', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
+  row: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
+  rowAlt: { backgroundColor: '#F5F2EC' },
+  sectionRow: { flexDirection: 'row', backgroundColor: '#D8D3C8', paddingVertical: 5, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#C4BFB5', marginTop: 4 },
+  sectionLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#4A4845', textTransform: 'uppercase', letterSpacing: 0.8 },
   td: { fontSize: 6.5, color: '#2C2C2A' },
   tdMuted: { color: '#8A877F' },
   // Totals
-  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  totalsLabel: { fontSize: 7, color: '#8A877F' },
-  totalsVal: { fontSize: 7, color: '#2C2C2A' },
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  totalsLabel: { fontSize: 8, color: '#8A877F' },
+  totalsVal: { fontSize: 8, color: '#2C2C2A' },
   totalsBig: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  totalsBigLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
-  totalsBigVal: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
-  divider: { borderTopWidth: 0.5, borderTopColor: '#D8D3C8', marginVertical: 4 },
+  totalsBigLabel: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
+  totalsBigVal: { fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
+  divider: { borderTopWidth: 0.5, borderTopColor: '#D8D3C8', marginVertical: 5 },
+  // Footer
+  footer: { position: 'absolute', bottom: 24, left: 32, right: 32, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.5, borderTopColor: '#D8D3C8', paddingTop: 6 },
+  footerText: { fontSize: 7, color: '#8A877F' },
 })
 
 // Column widths (landscape A4 usable ~778px)
@@ -53,9 +59,16 @@ interface Props {
   printDate?: string | null
 }
 
-export function ProductionPDF({ project, lineItems, suppliers, logoUrl, businessName, vatRate = 15, printDate }: Props) {
+export function ProductionPDF({ project, lineItems, suppliers, businessName, vatRate = 15, printDate }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.supplier_name]))
   const totals = computeTotals(lineItems, project.design_fee, vatRate)
+  const clientName = (() => {
+    const c = (project as any).client
+    if (!c) return null
+    if (Array.isArray(c)) return c[0]?.client_name ?? null
+    return c.client_name ?? null
+  })()
+  const printedOn = new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
   let itemIndex = 0
 
   return (
@@ -64,23 +77,13 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
         {/* Header */}
         <View style={s.header}>
           <View>
-            {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 160, maxHeight: 36, objectFit: 'contain' }} />
-              : <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold' }}>{businessName || 'R Kaplan Interiors'}</Text>
-            }
+            <Text style={s.studioName}>{businessName || 'R Kaplan Interiors'}</Text>
+            <Text style={s.docTitle}>PRODUCTION SHEET</Text>
           </View>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={s.title}>PRODUCTION SHEET</Text>
-            <Text style={s.meta}>{project.project_name}  ·  {project.project_number}</Text>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {((project as any).client?.client_name || (Array.isArray((project as any).client) && (project as any).client[0]?.client_name)) ? (
-              <Text style={s.meta}>{Array.isArray((project as any).client) ? (project as any).client[0]?.client_name : (project as any).client?.client_name}</Text>
-            ) : null}
-            <Text style={s.meta}>{new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={s.meta}>Total (incl. VAT)</Text>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#1A1A18', marginTop: 2 }}>{formatZAR(totals.grand_total)}</Text>
+          <View>
+            <Text style={s.projectName}>{project.project_name}</Text>
+            <Text style={s.meta}>{project.project_number}{clientName ? `  ·  ${clientName}` : ''}</Text>
+            <Text style={s.meta}>{printedOn}</Text>
           </View>
         </View>
 
@@ -137,14 +140,20 @@ export function ProductionPDF({ project, lineItems, suppliers, logoUrl, business
         })}
 
         {/* Totals */}
-        <View style={{ marginTop: 16, alignItems: 'flex-end' }}>
-          <View style={{ width: 220, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 10 }}>
+        <View style={{ marginTop: 16, marginBottom: 40, alignItems: 'flex-end' }}>
+          <View style={{ width: 240, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12 }}>
             <View style={s.totalsRow}><Text style={s.totalsLabel}>Subtotal</Text><Text style={s.totalsVal}>{formatZAR(totals.subtotal)}</Text></View>
             <View style={s.totalsRow}><Text style={s.totalsLabel}>Design Fee ({project.design_fee ?? 0}%)</Text><Text style={s.totalsVal}>{formatZAR(totals.design_fee)}</Text></View>
             <View style={s.totalsRow}><Text style={s.totalsLabel}>VAT ({vatRate}%)</Text><Text style={s.totalsVal}>{formatZAR(totals.vat_amount)}</Text></View>
             <View style={s.divider} />
             <View style={s.totalsBig}><Text style={s.totalsBigLabel}>TOTAL</Text><Text style={s.totalsBigVal}>{formatZAR(totals.grand_total)}</Text></View>
           </View>
+        </View>
+
+        {/* Footer */}
+        <View style={s.footer} fixed>
+          <Text style={s.footerText}>{businessName || 'R Kaplan Interiors'}  ·  {project.project_number}  ·  Printed {printedOn}</Text>
+          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
       </Page>
     </Document>
