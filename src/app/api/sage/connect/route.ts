@@ -25,6 +25,7 @@ export async function GET() {
     redirect_uri: process.env.SAGE_REDIRECT_URI!,
     scope: 'openid email profile',
     state,
+    prompt: 'login', // always show login form, never auto-connect from cached session
   })
 
   const audience = process.env.SAGE_API_AUDIENCE
