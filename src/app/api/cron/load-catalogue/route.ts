@@ -137,6 +137,9 @@ export async function GET(req: NextRequest) {
 
       const rawText = await res.text()
       if (!res.ok) {
+        // 500 on a later page means we've hit the API's unfiltered result cap (~10,000 items)
+        // Treat it as end of results rather than a hard failure
+        if (res.status === 500 && page > 1) break
         throw new Error(`Products API ${res.status} (page ${page}): ${rawText.slice(0, 200)}`)
       }
 
