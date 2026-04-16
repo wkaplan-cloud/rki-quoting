@@ -18,6 +18,7 @@ interface SyncLog {
 interface Props {
   lastPriceSync: SyncLog | null
   lastCatalogueSync: SyncLog | null
+  lastLoadSync: SyncLog | null
   catalogueCount: number
   cronSecret: string
 }
@@ -113,9 +114,10 @@ async function safeFetch(url: string, cronSecret: string): Promise<{ ok: boolean
   return { ok: res.ok, status: res.status, data }
 }
 
-export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCount, cronSecret }: Props) {
+export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSync, catalogueCount, cronSecret }: Props) {
   const [priceSyncLog, setPriceSyncLog] = useState<SyncLog | null>(lastPriceSync)
   const [catalogueSyncLog, setCatalogueSyncLog] = useState<SyncLog | null>(lastCatalogueSync)
+  const [loadSyncLog, setLoadSyncLog] = useState<SyncLog | null>(lastLoadSync)
 
   const [triggeringPrices, setTriggeringPrices] = useState(false)
   const [triggeringCatalogue, setTriggeringCatalogue] = useState(false)
@@ -221,6 +223,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
         setTimeout(() => runLoadOnce(), 10_000)
       } else {
         setLoadResult({ type: 'ok', msg: `Complete — ${loadCheckedRef.current.toLocaleString()} products scanned, ${loadAddedRef.current.toLocaleString()} new fabrics added` })
+        setLoadSyncLog(prev => makeLog({ ...(prev ?? {}), sync_type: 'load', items_checked: loadCheckedRef.current, items_added: loadAddedRef.current }))
         loadRunningRef.current = false
         setTriggeringLoad(false)
       }
@@ -331,6 +334,21 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
               {triggeringLoad && <ElapsedTimer running={triggeringLoad} />}
             </div>
             <p className="text-xs text-white/30 mb-1">Fetches every fabric from Twinbru and adds any that are not already in the catalogue. Safe to run at any time — existing fabrics and prices are never overwritten or deleted. Runs in 4-min chunks and auto-continues until complete.</p>
+            {loadSyncLog ? (
+              <div className="mt-1 space-y-0.5">
+                <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(loadSyncLog.completed_at ?? loadSyncLog.started_at)}</span></p>
+                {loadSyncLog.status === 'ok' ? (
+                  <p className="text-xs text-white/50">
+                    {loadSyncLog.items_checked?.toLocaleString()} scanned &middot;{' '}
+                    <span className="text-emerald-400">{loadSyncLog.items_added ?? 0} added</span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {loadSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-white/40 mt-1">{triggeringLoad ? 'Running…' : 'Never run'}</p>
+            )}
             <ResultBanner result={loadResult} />
           </div>
           <button onClick={triggerFullLoad} disabled={triggeringLoad}

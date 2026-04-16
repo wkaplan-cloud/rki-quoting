@@ -58,6 +58,11 @@ export default async function PlatformPriceListsPage() {
     syncLogs.find(l => l.sync_type === 'catalogue' && l.completed_at) ??
     syncLogs.find(l => l.sync_type === 'catalogue') ??
     null
+  const lastLoadSync =
+    syncLogs.find(l => l.sync_type === 'load' && l.status === 'ok' && !l.error_message?.startsWith('RESUME:')) ??
+    syncLogs.find(l => l.sync_type === 'load' && l.completed_at) ??
+    syncLogs.find(l => l.sync_type === 'load') ??
+    null
   const catalogueCount = catalogueCountRes.count ?? 0
 
   return (
@@ -71,6 +76,7 @@ export default async function PlatformPriceListsPage() {
       <TwinbruSyncPanel
         lastPriceSync={lastPriceSync}
         lastCatalogueSync={lastCatalogueSync}
+        lastLoadSync={lastLoadSync}
         catalogueCount={catalogueCount}
         cronSecret={process.env.CRON_SECRET ?? ''}
       />
