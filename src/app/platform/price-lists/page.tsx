@@ -36,7 +36,7 @@ export default async function PlatformPriceListsPage() {
   const syncLogsRes = await supabaseAdmin
     .from('twinbru_sync_log')
     .select('id, sync_type, started_at, completed_at, status, items_checked, items_changed, items_added, error_message, triggered_by')
-    .in('sync_type', ['prices', 'catalogue'])
+    .in('sync_type', ['prices', 'catalogue', 'load'])
     .order('started_at', { ascending: false })
     .limit(30)
 

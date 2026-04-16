@@ -96,28 +96,34 @@ export async function GET(req: NextRequest) {
     const productIds = Array.from(rowMap.keys())
     const updates: { id: string; price_zar: number; price_updated_at: string }[] = []
 
-    // Fetch prices from Twinbru in batches of 100
-    for (let i = 0; i < productIds.length; i += BATCH) {
-      const batch = productIds.slice(i, i + BATCH)
-      const prices = await fetchPriceBatch(batch)
+    // Fetch prices from Twinbru — 5 concurrent batches of 50 to stay within time limits
+    const PARALLEL = 5
+    for (let i = 0; i < productIds.length; i += BATCH * PARALLEL) {
+      const batchSlices: number[][] = []
+      for (let j = i; j < Math.min(i + BATCH * PARALLEL, productIds.length); j += BATCH) {
+        batchSlices.push(productIds.slice(j, j + BATCH))
+      }
+      const priceGroups = await Promise.all(batchSlices.map(b => fetchPriceBatch(b)))
 
       const now = new Date().toISOString()
-      for (const { productId, price } of prices) {
-        const row = rowMap.get(productId)
-        if (!row) continue
-        // Explicitly convert to number (API may return strings despite the type assertion)
-        // Round to 2dp to avoid floating-point false-positives
-        const apiPrice = Math.round(Number(price) * 100) / 100
-        if (isNaN(apiPrice)) continue
-        const dbPrice = row.currentPrice != null ? Math.round(row.currentPrice * 100) / 100 : null
-        if (dbPrice !== apiPrice) {
-          updates.push({ id: row.rowId, price_zar: apiPrice, price_updated_at: now })
+      for (const prices of priceGroups) {
+        for (const { productId, price } of prices) {
+          const row = rowMap.get(productId)
+          if (!row) continue
+          // Explicitly convert to number (API may return strings despite the type assertion)
+          // Round to 2dp to avoid floating-point false-positives
+          const apiPrice = Math.round(Number(price) * 100) / 100
+          if (isNaN(apiPrice)) continue
+          const dbPrice = row.currentPrice != null ? Math.round(row.currentPrice * 100) / 100 : null
+          if (dbPrice !== apiPrice) {
+            updates.push({ id: row.rowId, price_zar: apiPrice, price_updated_at: now })
+          }
         }
       }
 
-      // Small pause to avoid hammering the API
-      if (i + BATCH < productIds.length) {
-        await new Promise(r => setTimeout(r, 120))
+      // Brief pause between groups to avoid rate limiting
+      if (i + BATCH * PARALLEL < productIds.length) {
+        await new Promise(r => setTimeout(r, 200))
       }
     }
 

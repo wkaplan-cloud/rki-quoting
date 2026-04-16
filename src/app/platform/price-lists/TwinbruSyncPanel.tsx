@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react'
+import { RefreshCw, CheckCircle2, AlertCircle, Clock, Database } from 'lucide-react'
 
 interface SyncLog {
   id: string
@@ -21,6 +21,8 @@ interface Props {
   catalogueCount: number
   cronSecret: string
 }
+
+type SyncResult = { type: 'ok' | 'err'; msg: string } | null
 
 function fmt(d: string | null) {
   if (!d) return '—'
@@ -68,74 +70,17 @@ function ProgressBar({ running }: { running: boolean }) {
   )
 }
 
-function SyncRow({ label, log, onTrigger, triggering, syncType }: {
-  label: string
-  log: SyncLog | null
-  onTrigger: () => void
-  triggering: boolean
-  syncType: 'prices' | 'catalogue'
-}) {
-  const age = daysSince(log?.completed_at ?? null)
-  const stale = syncType === 'catalogue' ? (age == null || age > 30) : false
-  const statusOk = log?.status === 'ok'
-
+function ResultBanner({ result }: { result: SyncResult }) {
+  if (!result) return null
   return (
-    <div className="py-4 border-b border-white/10 last:border-0">
-      <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium text-white">{label}</p>
-            {triggering && <ElapsedTimer running={triggering} />}
-          </div>
-
-          {log ? (
-            <div className="mt-1 space-y-0.5">
-              <p className="text-xs text-white/50">
-                Last run: <span className="text-white/70">{fmt(log.completed_at ?? log.started_at)}</span>
-                {log.triggered_by === 'manual' && (
-                  <span className="ml-2 text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-white/40">manual</span>
-                )}
-              </p>
-              {statusOk ? (
-                <p className="text-xs text-white/50">
-                  {syncType === 'prices'
-                    ? <>{log.items_checked?.toLocaleString()} checked &middot; <span className={log.items_changed ? 'text-amber-400' : 'text-emerald-400'}>{log.items_changed ?? 0} changed</span></>
-                    : <>{log.items_checked?.toLocaleString()} fetched &middot; <span className="text-emerald-400">{log.items_added ?? 0} new fabrics added</span></>
-                  }
-                </p>
-              ) : !log.completed_at ? (
-                <p className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={11} /> Sync did not complete — likely timed out. Try re-running.
-                </p>
-              ) : (
-                <p className="text-xs text-red-400 flex items-center gap-1">
-                  <AlertCircle size={11} /> {log.error_message?.slice(0, 160) ?? 'Sync failed — try re-running or check logs.'}
-                </p>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-white/40 mt-1">{triggering ? 'Running…' : 'Never run'}</p>
-          )}
-
-          {stale && !triggering && (
-            <p className="text-xs text-amber-400 flex items-center gap-1 mt-1">
-              <Clock size={11} />
-              {age == null ? 'Catalogue has never been synced' : `${age} days since last catalogue sync — consider refreshing`}
-            </p>
-          )}
-        </div>
-
-        <button
-          onClick={onTrigger}
-          disabled={triggering}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed"
-        >
-          <RefreshCw size={12} className={triggering ? 'animate-spin' : ''} />
-          {triggering ? 'Syncing…' : syncType === 'prices' ? 'Sync Prices Now' : 'Sync Catalogue Now'}
-        </button>
-      </div>
-
-      <ProgressBar running={triggering} />
+    <div className={`mt-2 flex items-start gap-2 text-xs rounded-lg px-3 py-2 ${
+      result.type === 'ok' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'
+    }`}>
+      {result.type === 'ok'
+        ? <CheckCircle2 size={12} className="mt-0.5 flex-shrink-0" />
+        : <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+      }
+      {result.msg}
     </div>
   )
 }
@@ -155,108 +100,244 @@ function makeLog(partial: Partial<SyncLog> & { sync_type: string }): SyncLog {
   }
 }
 
+async function safeFetch(url: string, cronSecret: string): Promise<{ ok: boolean; status: number; data: Record<string, unknown> }> {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${cronSecret}` },
+  })
+  const rawText = await res.text()
+  let data: Record<string, unknown> = {}
+  try { data = rawText ? JSON.parse(rawText) : {} } catch { /* non-JSON */ }
+  if (!res.ok && !data.error) data.error = rawText.slice(0, 200)
+  return { ok: res.ok, status: res.status, data }
+}
+
 export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCount, cronSecret }: Props) {
   const [priceSyncLog, setPriceSyncLog] = useState<SyncLog | null>(lastPriceSync)
   const [catalogueSyncLog, setCatalogueSyncLog] = useState<SyncLog | null>(lastCatalogueSync)
+
   const [triggeringPrices, setTriggeringPrices] = useState(false)
   const [triggeringCatalogue, setTriggeringCatalogue] = useState(false)
-const [result, setResult] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [triggeringLoad, setTriggeringLoad] = useState(false)
 
-  async function triggerSync(type: 'prices' | 'catalogue') {
-    const setTriggering = type === 'prices' ? setTriggeringPrices : setTriggeringCatalogue
-    setTriggering(true)
-    setResult(null)
+  const [priceResult, setPriceResult] = useState<SyncResult>(null)
+  const [catalogueResult, setCatalogueResult] = useState<SyncResult>(null)
+  const [loadResult, setLoadResult] = useState<SyncResult>(null)
+
+  // Tracks total fabrics added across all auto-continue runs for the load
+  const loadAddedRef = useRef(0)
+  const loadCheckedRef = useRef(0)
+  const catalogueAddedRef = useRef(0)
+  const catalogueCheckedRef = useRef(0)
+
+  // Allows cancelling auto-continue if user navigates away
+  const loadRunningRef = useRef(false)
+  const catalogueRunningRef = useRef(false)
+
+  async function triggerPriceSync() {
+    setTriggeringPrices(true)
+    setPriceResult(null)
     try {
-      const url = type === 'prices'
-        ? '/api/cron/sync-prices'
-        : '/api/cron/sync-catalogue?trigger=manual'
-
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${cronSecret}` },
-      })
-
-      const rawText = await res.text()
-      let data: Record<string, unknown> = {}
-      try {
-        data = rawText ? JSON.parse(rawText) : {}
-      } catch {
-        setResult({ type: 'err', msg: `Server returned non-JSON (${res.status}): ${rawText.slice(0, 200)}` })
+      const { ok, data } = await safeFetch('/api/cron/sync-prices', cronSecret)
+      if (!ok) {
+        setPriceResult({ type: 'err', msg: String(data.error ?? 'Sync failed') })
         return
       }
-
-      if (!res.ok) {
-        setResult({ type: 'err', msg: String(data.error ?? rawText.slice(0, 200) ?? 'Sync failed') })
-        return
-      }
-
-      if (type === 'prices') {
-        const checked = data.checked as number | null
-        const changed = data.changed as number | null
-        setResult({ type: 'ok', msg: `Done — ${checked?.toLocaleString()} prices checked, ${changed ?? 0} updated` })
-        setPriceSyncLog(prev => makeLog({
-          ...(prev ?? {}),
-          sync_type: 'prices',
-          items_checked: checked,
-          items_changed: changed,
-        }))
-      } else {
-        const checked = data.checked as number | null
-        const added = data.added as number | null
-        const partial = data.partial as boolean | undefined
-        setResult({
-          type: 'ok',
-          msg: partial
-            ? `Partial run — ${checked?.toLocaleString()} scanned, ${added ?? 0} new fabrics added. Cron will resume automatically.`
-            : `Done — ${checked?.toLocaleString()} fetched, ${added ?? 0} new fabrics added`,
-        })
-        setCatalogueSyncLog(prev => makeLog({
-          ...(prev ?? {}),
-          sync_type: 'catalogue',
-          items_checked: checked,
-          items_added: added,
-        }))
-      }
+      const checked = data.checked as number | null
+      const changed = data.changed as number | null
+      setPriceResult({ type: 'ok', msg: `Done — ${checked?.toLocaleString()} prices checked, ${changed ?? 0} updated` })
+      setPriceSyncLog(prev => makeLog({ ...(prev ?? {}), sync_type: 'prices', items_checked: checked, items_changed: changed }))
     } catch (e) {
-      setResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
+      setPriceResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
     } finally {
-      setTriggering(false)
+      setTriggeringPrices(false)
     }
   }
 
-return (
+  // Catalogue sync — auto-continues on partial runs without user pressing the button again
+  async function triggerCatalogueSync() {
+    catalogueRunningRef.current = true
+    catalogueAddedRef.current = 0
+    catalogueCheckedRef.current = 0
+    setTriggeringCatalogue(true)
+    setCatalogueResult(null)
+    await runCatalogueOnce()
+  }
+
+  async function runCatalogueOnce() {
+    if (!catalogueRunningRef.current) return
+    try {
+      const { ok, data } = await safeFetch('/api/cron/sync-catalogue?trigger=manual', cronSecret)
+      if (!ok) {
+        setCatalogueResult({ type: 'err', msg: String(data.error ?? 'Sync failed') })
+        catalogueRunningRef.current = false
+        setTriggeringCatalogue(false)
+        return
+      }
+      catalogueAddedRef.current += (data.added as number | null) ?? 0
+      catalogueCheckedRef.current += (data.checked as number | null) ?? 0
+      if (data.partial) {
+        setCatalogueResult({ type: 'ok', msg: `Running… ${catalogueCheckedRef.current.toLocaleString()} scanned, ${catalogueAddedRef.current} new fabrics so far. Continuing in 10s…` })
+        setCatalogueSyncLog(prev => makeLog({ ...(prev ?? {}), sync_type: 'catalogue', items_checked: catalogueCheckedRef.current, items_added: catalogueAddedRef.current }))
+        setTimeout(() => runCatalogueOnce(), 10_000)
+      } else {
+        setCatalogueResult({ type: 'ok', msg: `Done — ${catalogueCheckedRef.current.toLocaleString()} scanned, ${catalogueAddedRef.current} new fabrics added` })
+        setCatalogueSyncLog(prev => makeLog({ ...(prev ?? {}), sync_type: 'catalogue', items_checked: catalogueCheckedRef.current, items_added: catalogueAddedRef.current }))
+        catalogueRunningRef.current = false
+        setTriggeringCatalogue(false)
+      }
+    } catch (e) {
+      setCatalogueResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
+      catalogueRunningRef.current = false
+      setTriggeringCatalogue(false)
+    }
+  }
+
+  // Full load via POST /products/search — auto-continues across years/pages
+  async function triggerFullLoad() {
+    loadRunningRef.current = true
+    loadAddedRef.current = 0
+    loadCheckedRef.current = 0
+    setTriggeringLoad(true)
+    setLoadResult(null)
+    await runLoadOnce()
+  }
+
+  async function runLoadOnce() {
+    if (!loadRunningRef.current) return
+    try {
+      const { ok, data } = await safeFetch('/api/cron/load-catalogue?trigger=manual', cronSecret)
+      if (!ok) {
+        setLoadResult({ type: 'err', msg: String(data.error ?? 'Load failed') })
+        loadRunningRef.current = false
+        setTriggeringLoad(false)
+        return
+      }
+      loadAddedRef.current += (data.added as number | null) ?? 0
+      loadCheckedRef.current += (data.checked as number | null) ?? 0
+      if (data.partial) {
+        setLoadResult({ type: 'ok', msg: `Loading… ${loadCheckedRef.current.toLocaleString()} products scanned, ${loadAddedRef.current.toLocaleString()} new fabrics added so far. Continuing in 10s…` })
+        setTimeout(() => runLoadOnce(), 10_000)
+      } else {
+        setLoadResult({ type: 'ok', msg: `Complete — ${loadCheckedRef.current.toLocaleString()} products scanned, ${loadAddedRef.current.toLocaleString()} new fabrics added` })
+        loadRunningRef.current = false
+        setTriggeringLoad(false)
+      }
+    } catch (e) {
+      setLoadResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
+      loadRunningRef.current = false
+      setTriggeringLoad(false)
+    }
+  }
+
+  const priceSyncOk = priceSyncLog?.status === 'ok'
+  const catalogueSyncOk = catalogueSyncLog?.status === 'ok'
+  const catalogueAge = daysSince(catalogueSyncLog?.completed_at ?? null)
+
+  return (
     <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-6">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Twinbru Sync</h2>
         <span className="text-xs text-white/30">{catalogueCount.toLocaleString()} fabrics in catalogue</span>
       </div>
-      <p className="text-xs text-white/30 mb-5">Prices sync automatically every night at 2am. Catalogue sync is manual — run it when new fabrics are added.</p>
+      <p className="text-xs text-white/30 mb-5">Prices and catalogue changes sync automatically at 2am. Use the buttons below to run manually or load the full fabric catalogue.</p>
 
-      <SyncRow
-        label="Price Sync"
-        syncType="prices"
-        log={priceSyncLog}
-        onTrigger={() => triggerSync('prices')}
-        triggering={triggeringPrices}
-      />
-      <SyncRow
-        label="Catalogue Sync"
-        syncType="catalogue"
-        log={catalogueSyncLog}
-        onTrigger={() => triggerSync('catalogue')}
-        triggering={triggeringCatalogue}
-      />
-
-{result && (
-        <div className={`mt-4 flex items-start gap-2 text-xs rounded-lg px-3 py-2.5 ${
-          result.type === 'ok' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'
-        }`}>
-          {result.type === 'ok'
-            ? <CheckCircle2 size={13} className="mt-0.5 flex-shrink-0" />
-            : <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
-          }
-          {result.msg}
+      {/* Price Sync */}
+      <div className="py-4 border-b border-white/10">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-white">Price Sync</p>
+              {triggeringPrices && <ElapsedTimer running={triggeringPrices} />}
+            </div>
+            {priceSyncLog ? (
+              <div className="mt-1 space-y-0.5">
+                <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(priceSyncLog.completed_at ?? priceSyncLog.started_at)}</span></p>
+                {priceSyncOk ? (
+                  <p className="text-xs text-white/50">
+                    {priceSyncLog.items_checked?.toLocaleString()} checked &middot;{' '}
+                    <span className={priceSyncLog.items_changed ? 'text-amber-400' : 'text-emerald-400'}>
+                      {priceSyncLog.items_changed ?? 0} changed
+                    </span>
+                  </p>
+                ) : !priceSyncLog.completed_at ? (
+                  <p className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11} /> Did not complete — likely timed out.</p>
+                ) : (
+                  <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {priceSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-white/40 mt-1">{triggeringPrices ? 'Running…' : 'Never run'}</p>
+            )}
+            <ResultBanner result={priceResult} />
+          </div>
+          <button onClick={triggerPriceSync} disabled={triggeringPrices}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
+            <RefreshCw size={12} className={triggeringPrices ? 'animate-spin' : ''} />
+            {triggeringPrices ? 'Syncing…' : 'Sync Prices Now'}
+          </button>
         </div>
-      )}
+        <ProgressBar running={triggeringPrices} />
+      </div>
+
+      {/* Catalogue Change Sync (ODS changefeed — picks up discontinued items etc) */}
+      <div className="py-4 border-b border-white/10">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-white">Catalogue Changes</p>
+              {triggeringCatalogue && <ElapsedTimer running={triggeringCatalogue} />}
+            </div>
+            <p className="text-xs text-white/30 mb-1">Picks up discontinued or updated fabrics since last sync.</p>
+            {catalogueSyncLog ? (
+              <div className="mt-1 space-y-0.5">
+                <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(catalogueSyncLog.completed_at ?? catalogueSyncLog.started_at)}</span></p>
+                {catalogueSyncOk ? (
+                  <p className="text-xs text-white/50">
+                    {catalogueSyncLog.items_checked?.toLocaleString()} scanned &middot;{' '}
+                    <span className="text-emerald-400">{catalogueSyncLog.items_added ?? 0} new</span>
+                  </p>
+                ) : !catalogueSyncLog.completed_at ? (
+                  <p className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11} /> Did not complete — will resume automatically tonight.</p>
+                ) : (
+                  <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {catalogueSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
+                )}
+                {catalogueAge != null && catalogueAge > 30 && (
+                  <p className="text-xs text-amber-400 flex items-center gap-1 mt-1"><Clock size={11} /> {catalogueAge} days since last sync</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-white/40 mt-1">{triggeringCatalogue ? 'Running…' : 'Never run'}</p>
+            )}
+            <ResultBanner result={catalogueResult} />
+          </div>
+          <button onClick={triggerCatalogueSync} disabled={triggeringCatalogue}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
+            <RefreshCw size={12} className={triggeringCatalogue ? 'animate-spin' : ''} />
+            {triggeringCatalogue ? 'Running…' : 'Sync Changes'}
+          </button>
+        </div>
+        <ProgressBar running={triggeringCatalogue} />
+      </div>
+
+      {/* Full Catalogue Load (POST /products/search by year) */}
+      <div className="py-4">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-white">Load Full Catalogue</p>
+              {triggeringLoad && <ElapsedTimer running={triggeringLoad} />}
+            </div>
+            <p className="text-xs text-white/30 mb-1">Fetches all fabrics from Twinbru year by year (2000–{new Date().getFullYear()}). Run this once to populate the catalogue. Runs in 4-min chunks and auto-continues.</p>
+            <ResultBanner result={loadResult} />
+          </div>
+          <button onClick={triggerFullLoad} disabled={triggeringLoad}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#9A7B4F]/20 hover:bg-[#9A7B4F]/30 text-[#C8A97A] transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
+            <Database size={12} className={triggeringLoad ? 'animate-pulse' : ''} />
+            {triggeringLoad ? 'Loading…' : 'Load All Fabrics'}
+          </button>
+        </div>
+        <ProgressBar running={triggeringLoad} />
+      </div>
     </div>
   )
 }
