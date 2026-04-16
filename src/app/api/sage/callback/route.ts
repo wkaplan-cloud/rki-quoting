@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
-const SA_API_BASE = 'https://resellers.accounting.sageone.co.za/api/2.0.0'
+const SA_API_BASE = process.env.SAGE_API_URL ?? 'https://resellers.accounting.sageone.co.za/api/2.0.0'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)

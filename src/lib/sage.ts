@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 
-const SA_API_BASE = 'https://resellers.accounting.sageone.co.za/api/2.0.0'
+const SA_API_BASE = process.env.SAGE_API_URL ?? 'https://resellers.accounting.sageone.co.za/api/2.0.0'
 const SAGE_TOKEN_URL = 'https://id.sage.com/oauth/token'
 
 interface SageConnection {
