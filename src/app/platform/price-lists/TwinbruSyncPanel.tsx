@@ -86,10 +86,9 @@ function ResultBanner({ result }: { result: SyncResult }) {
 }
 
 function makeLog(partial: Partial<SyncLog> & { sync_type: string }): SyncLog {
+  const now = new Date().toISOString()
   return {
     id: crypto.randomUUID(),
-    started_at: new Date().toISOString(),
-    completed_at: new Date().toISOString(),
     status: 'ok',
     items_checked: null,
     items_changed: null,
@@ -97,6 +96,9 @@ function makeLog(partial: Partial<SyncLog> & { sync_type: string }): SyncLog {
     error_message: null,
     triggered_by: 'manual',
     ...partial,
+    // Must come after ...partial so the fresh timestamp always wins
+    started_at: now,
+    completed_at: now,
   }
 }
 

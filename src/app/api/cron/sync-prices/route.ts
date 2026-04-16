@@ -130,7 +130,10 @@ export async function GET(req: NextRequest) {
     // Write changed prices to Supabase in batches of 500
     for (let i = 0; i < updates.length; i += 500) {
       const batch = updates.slice(i, i + 500)
-      await supabase.from('price_list_items').upsert(batch, { onConflict: 'id' })
+      const { error: upsertErr } = await supabase
+        .from('price_list_items')
+        .upsert(batch, { onConflict: 'id' })
+      if (upsertErr) throw new Error(`Price upsert failed: ${upsertErr.message}`)
     }
 
     // Mark log complete
