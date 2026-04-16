@@ -100,6 +100,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
   const [showTips, setShowTips] = useState(false)
+  // Delivery address prompt modal
+  const [addDeliveryModal, setAddDeliveryModal] = useState<{ supplierId: string; supplierName: string; lineItemId: string; address: string } | null>(null)
+  // Local delivery address overrides (supplierId → address) for addresses added this session
+  const [deliveryOverrides, setDeliveryOverrides] = useState<Record<string, string>>({})
   // Map of twinbru_product_id → current catalogue price (for stale price detection)
   const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
   // Map of line item id → stock info
@@ -579,7 +583,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       : (() => {
                           const deliveryOptions = [
                             ...(officeAddress.address ? [{ id: officeAddress.address, label: officeAddress.name }] : []),
-                            ...suppliers.map(s => ({ id: s.delivery_address ?? s.supplier_name, label: s.supplier_name })),
+                            ...suppliers.map(s => {
+                              const addr = deliveryOverrides[s.id] ?? s.delivery_address
+                              return addr
+                                ? { id: addr, label: s.supplier_name }
+                                : { id: `supplier:${s.id}`, label: s.supplier_name }
+                            }),
                           ]
                           const selected = deliveryOptions.find(o => o.id === item.delivery_address)
                           return (
@@ -588,9 +597,15 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                               value={item.delivery_address ?? ''}
                               inputValue={selected?.label ?? item.delivery_address ?? ''}
                               onChange={(id, label) => {
-                                const addr = id || label
-                                updateLocal(item.id, 'delivery_address', addr)
-                                saveField(item.id, 'delivery_address', addr)
+                                if (id.startsWith('supplier:')) {
+                                  const supplierId = id.replace('supplier:', '')
+                                  const sup = suppliers.find(s => s.id === supplierId)
+                                  if (sup) setAddDeliveryModal({ supplierId, supplierName: sup.supplier_name, lineItemId: item.id, address: '' })
+                                } else {
+                                  const addr = id || label
+                                  updateLocal(item.id, 'delivery_address', addr)
+                                  saveField(item.id, 'delivery_address', addr)
+                                }
                               }}
                               placeholder="Deliver to…"
                               className="min-w-[120px]"
@@ -742,6 +757,51 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                 <span className="text-xs text-[#8A877F] leading-relaxed">{tip}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add delivery address modal */}
+      {addDeliveryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAddDeliveryModal(null)}>
+          <div className="bg-white rounded-lg shadow-xl w-[420px] p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">Add delivery address for {addDeliveryModal.supplierName}</h3>
+            <p className="text-xs text-[#8A877F] mb-4">This address will be saved to the supplier and used as the default deliver-to for their items.</p>
+            <textarea
+              autoFocus
+              rows={3}
+              placeholder="e.g. 12 Industrial Ave, Cape Town, 7441"
+              value={addDeliveryModal.address}
+              onChange={e => setAddDeliveryModal(prev => prev ? { ...prev, address: e.target.value } : null)}
+              className="w-full px-3 py-2 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F] mb-4 resize-none leading-relaxed"
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setAddDeliveryModal(null)} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                Cancel
+              </button>
+              <button
+                disabled={!addDeliveryModal.address.trim()}
+                onClick={async () => {
+                  const { supplierId, supplierName: _name, lineItemId, address } = addDeliveryModal
+                  const trimmed = address.trim()
+                  setAddDeliveryModal(null)
+                  // Save to supplier record
+                  await fetch(`/api/suppliers/${supplierId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ delivery_address: trimmed }),
+                  })
+                  // Update local override so dropdown reflects the new address immediately
+                  setDeliveryOverrides(prev => ({ ...prev, [supplierId]: trimmed }))
+                  // Save to the line item
+                  updateLocal(lineItemId, 'delivery_address', trimmed)
+                  saveField(lineItemId, 'delivery_address', trimmed)
+                }}
+                className="px-4 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+              >
+                Save Address
+              </button>
+            </div>
           </div>
         </div>
       )}

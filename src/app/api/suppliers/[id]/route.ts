@@ -7,10 +7,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json() as { email?: string; email_cc?: string }
+  const body = await req.json() as { email?: string; email_cc?: string; delivery_address?: string }
   const allowed: Record<string, string | null> = {}
   if ('email' in body) allowed.email = body.email ?? null
   if ('email_cc' in body) allowed.email_cc = body.email_cc ?? null
+  if ('delivery_address' in body) allowed.delivery_address = body.delivery_address ?? null
 
   if (Object.keys(allowed).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
