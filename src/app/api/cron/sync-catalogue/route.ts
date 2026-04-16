@@ -232,16 +232,18 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, partial: true, since: sinceDate, checked: totalFetched, added })
       }
 
-      const url = new URL(`${TWINBRU_BASE}/ods/item-read/v1/api/items/product/changes`)
-      url.searchParams.set('modifiedSince', sinceDate)
-      url.searchParams.set('maxBatchSize', '500')
-
+      // Confirmed correct endpoint from working Python script: POST /changefeed
+      // Body carries the date + pageSize; ODS-Continuation header used for paging
       const hdrs: Record<string, string> = {
         ...twinbruHeaders(),
         ...(continuation ? { 'ODS-Continuation': continuation } : {}),
       }
 
-      const res = await fetch(url.toString(), { method: 'GET', headers: hdrs })
+      const res = await fetch(`${TWINBRU_BASE}/changefeed`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({ date: sinceDate, pageSize: 500 }),
+      })
 
       const nextContinuation = res.headers.get('ODS-Continuation')
       const rawText = await res.text()

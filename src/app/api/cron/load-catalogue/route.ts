@@ -6,6 +6,7 @@ export const maxDuration = 300
 const TWINBRU_BASE = process.env.TWINBRU_BASE_URL ?? 'https://api.twinbru.com'
 const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
 const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
+const PAGE_SIZE    = 50  // confirmed API max
 
 function twinbruHeaders() {
   return {
@@ -24,24 +25,26 @@ function buildRecord(item: Record<string, unknown>) {
   const fullWidth    = props.selvedge_full_width_cm    ?? item.selvedge_full_width_cm    ?? null
   const useableWidth = props.selvedge_useable_width_cm ?? item.selvedge_useable_width_cm ?? null
   return {
-    brand:            String(item.brand        ?? '').trim() || null,
+    brand:            String(item.brand ?? item.brandName ?? '').trim() || null,
     collection:       String(item.collectionName ?? '').trim() || null,
-    design:           String(item.designName   ?? '').trim() || null,
-    colour:           String(item.productName  ?? '').trim() || null,
+    design:           String(item.designName ?? '').trim() || null,
+    colour:           String(item.productName ?? '').trim() || null,
     sku:              String(item.sku ?? item.productId ?? '').trim() || null,
-    product_id:       String(item.productId    ?? '').trim() || null,
+    product_id:       String(item.productId ?? '').trim() || null,
     full_width_cm:    fullWidth    != null ? Number(fullWidth)    : null,
     useable_width_cm: useableWidth != null ? Number(useableWidth) : null,
   }
 }
 
-function extractSearchItems(data: unknown): { items: Record<string, unknown>[], totalPages: number } {
-  if (typeof data !== 'object' || data === null) return { items: [], totalPages: 1 }
+// Confirmed response shape from working Python script:
+// { results: [...], totalItemCount: N } or { results: [...], total: N }
+function extractProducts(data: unknown): { items: Record<string, unknown>[], total: number } {
+  if (typeof data !== 'object' || data === null) return { items: [], total: 0 }
   const obj = data as Record<string, unknown>
-  const totalPages = Number(obj.totalPages ?? obj.total_pages ?? obj.pages ?? 1)
-  const raw = obj.results ?? obj.items ?? obj.data ?? obj.products
+  const total = Number(obj.totalItemCount ?? obj.total ?? obj.totalItems ?? 0)
+  const raw = obj.results ?? obj.items ?? obj.products
   const items = Array.isArray(raw) ? raw as Record<string, unknown>[] : []
-  return { items, totalPages }
+  return { items, total }
 }
 
 export async function GET(req: NextRequest) {
@@ -78,10 +81,10 @@ export async function GET(req: NextRequest) {
   const logId = logRow?.id
 
   try {
-    // Check for a previous partial run to resume from (RESUME:year:page)
+    // Resume from previous partial run if available (RESUME:page)
     const { data: resumeLog } = await supabase
       .from('twinbru_sync_log')
-      .select('error_message, completed_at')
+      .select('error_message')
       .eq('sync_type', 'load')
       .eq('status', 'ok')
       .like('error_message', 'RESUME:%')
@@ -89,12 +92,9 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .single()
 
-    let startYear = 2000
     let startPage = 1
     if (resumeLog?.error_message) {
-      const parts = resumeLog.error_message.slice(7).split(':')  // strip "RESUME:"
-      startYear = parseInt(parts[0] ?? '2000', 10) || 2000
-      startPage = parseInt(parts[1] ?? '1', 10) || 1
+      startPage = parseInt(resumeLog.error_message.slice(7), 10) || 1
     }
 
     // Load existing product_ids to skip duplicates
@@ -113,70 +113,64 @@ export async function GET(req: NextRequest) {
       from += 1000
     }
 
-    const currentYear = new Date().getFullYear()
     const TIME_LIMIT_MS = 240_000  // 4 min
     const startTime = Date.now()
+    let page = startPage
+    let queryTotal = 0
+    let queryFetched = 0
     let totalFetched = 0
     let added = 0
     const batch: Record<string, unknown>[] = []
     let timedOut = false
-    let lastYear = startYear
-    let lastPage = startPage
 
-    outerLoop:
-    for (let year = startYear; year <= currentYear; year++) {
-      const yearCode = `${year}00-${year}99`
-      let page = (year === startYear) ? startPage : 1
-      let totalPages = 999  // will be updated after first response
-
-      while (page <= totalPages) {
-        if (Date.now() - startTime > TIME_LIMIT_MS) {
-          timedOut = true
-          lastYear = year
-          lastPage = page
-          break outerLoop
-        }
-
-        const res = await fetch(`${TWINBRU_BASE}/products/search`, {
-          method: 'POST',
-          headers: twinbruHeaders(),
-          body: JSON.stringify({
-            page,
-            filter: `status.eq.RN/launch.in(${yearCode})`,
-          }),
-        })
-
-        const rawText = await res.text()
-        if (!res.ok) {
-          throw new Error(`Search API ${res.status} (year ${year} page ${page}): ${rawText.slice(0, 200)}`)
-        }
-
-        let data: unknown = {}
-        try {
-          data = rawText ? JSON.parse(rawText) : {}
-        } catch {
-          throw new Error(`Search returned non-JSON (year ${year} page ${page}): ${rawText.slice(0, 200)}`)
-        }
-
-        const { items, totalPages: tp } = extractSearchItems(data)
-        totalPages = tp
-        totalFetched += items.length
-
-        for (const item of items) {
-          const pid = String(item.productId ?? item.id ?? '').trim()
-          if (!pid || knownIds.has(pid)) continue
-          knownIds.add(pid)
-          batch.push({ ...buildRecord(item), price_list_id: priceListId })
-          added++
-        }
-
-        if (batch.length >= 500) {
-          await supabase.from('price_list_items').insert(batch.splice(0))
-        }
-
-        page++
-        await new Promise(r => setTimeout(r, 80))
+    while (true) {
+      if (Date.now() - startTime > TIME_LIMIT_MS) {
+        timedOut = true
+        break
       }
+
+      const res = await fetch(`${TWINBRU_BASE}/products/`, {
+        method: 'POST',
+        headers: twinbruHeaders(),
+        body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
+      })
+
+      const rawText = await res.text()
+      if (!res.ok) {
+        throw new Error(`Products API ${res.status} (page ${page}): ${rawText.slice(0, 200)}`)
+      }
+
+      let data: unknown = {}
+      try {
+        data = rawText ? JSON.parse(rawText) : {}
+      } catch {
+        throw new Error(`Products API returned non-JSON (page ${page}): ${rawText.slice(0, 200)}`)
+      }
+
+      const { items, total } = extractProducts(data)
+
+      if (queryTotal === 0 && total) queryTotal = total
+      queryFetched += items.length
+      totalFetched += items.length
+
+      for (const item of items) {
+        const pid = String(item.productId ?? item.id ?? '').trim()
+        if (!pid || knownIds.has(pid)) continue
+        knownIds.add(pid)
+        batch.push({ ...buildRecord(item), price_list_id: priceListId })
+        added++
+      }
+
+      if (batch.length >= 500) {
+        await supabase.from('price_list_items').insert(batch.splice(0))
+      }
+
+      // Stop when: no items, last page (under page size), or all fetched
+      if (!items.length || items.length < PAGE_SIZE) break
+      if (queryTotal && queryFetched >= queryTotal) break
+
+      page++
+      await new Promise(r => setTimeout(r, 80))
     }
 
     // Flush remaining
@@ -198,7 +192,7 @@ export async function GET(req: NextRequest) {
         completed_at: new Date().toISOString(),
         items_checked: totalFetched,
         items_added: added,
-        error_message: `RESUME:${lastYear}:${lastPage}`,
+        error_message: `RESUME:${page}`,
       }).eq('id', logId)
       return NextResponse.json({ ok: true, partial: true, checked: totalFetched, added })
     }
