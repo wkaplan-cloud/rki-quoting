@@ -286,7 +286,7 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                     // Active access, platform admin view, or non-global
                     return (
                       <>
-                        {canManage && (
+                        {canManage && !(pl.is_global && basePath === '/price-lists') && (
                           <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
                             <Trash2 size={13} />
                           </Button>
