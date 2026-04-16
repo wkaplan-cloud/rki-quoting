@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`,
       attachments: [{
-        filename: `${project.project_number}_${type === 'quote' ? 'Quote' : 'Invoice'}.pdf`,
+        filename: `${type === 'quote' ? 'Quote' : 'Invoice'}-${project.project_number}.pdf`,
         content: Buffer.from(buffer),
       }],
     })

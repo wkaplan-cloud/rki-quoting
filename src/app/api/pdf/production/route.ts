@@ -28,11 +28,10 @@ export async function GET(req: NextRequest) {
     createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString() }) as any
   )
 
-  const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${slug(project.project_number)}_Production.pdf"`,
+      'Content-Disposition': `attachment; filename="Production-${project.project_number}.pdf"`,
     },
   })
 }

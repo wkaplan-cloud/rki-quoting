@@ -136,7 +136,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
           {bankName || bankAccount ? (
             <View style={{ borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12, width: 220 }}>
               <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 }}>BANKING DETAILS</Text>
-              {bankName ? <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#2C2C2A', marginBottom: 6 }}>{bankName}</Text> : null}
+              {bankName ? <Text style={{ fontSize: 8, color: '#2C2C2A', marginBottom: 5 }}>{bankName}</Text> : null}
               {bankAccount ? <><Text style={{ fontSize: 7, color: '#8A877F', marginBottom: 2 }}>Account Number</Text><Text style={{ fontSize: 8, color: '#2C2C2A', marginBottom: 5 }}>{bankAccount}</Text></> : null}
               {bankBranch ? <><Text style={{ fontSize: 7, color: '#8A877F', marginBottom: 2 }}>Branch Code</Text><Text style={{ fontSize: 8, color: '#2C2C2A' }}>{bankBranch}</Text></> : null}
             </View>

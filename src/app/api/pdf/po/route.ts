@@ -42,10 +42,8 @@ export async function GET(req: NextRequest) {
     : (allLineItems ?? [])
 
   const supplier = supplierId ? (suppliers ?? []).find(s => s.id === supplierId) ?? null : null
-  const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_')
-  const filename = supplier
-    ? `${slug(project.project_number)}_PO_${slug(supplier.supplier_name)}.pdf`
-    : `${slug(project.project_number)}_PO.pdf`
+  const poNumber = `${project.project_number}-${supplier?.supplier_name.slice(0, 3).toUpperCase() ?? 'GEN'}`
+  const filename = supplier ? `PO-${poNumber}.pdf` : `PO-${project.project_number}.pdf`
 
   const logoUrl = await fetchLogoBase64(settings?.logo_url)
 

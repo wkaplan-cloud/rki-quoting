@@ -114,9 +114,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         const data = await res.json()
         if (data.stockDate !== undefined) {
           setStockMap(m => ({ ...m, [lineItemId]: data }))
-          if (autoFillLead && !data.inStock && data.stockDate) {
-            const weeks = Math.ceil((new Date(data.stockDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
-            if (weeks > 0) autoFillLead(weeks)
+          if (autoFillLead) {
+            if (data.inStock) {
+              autoFillLead(0)
+            } else if (data.stockDate) {
+              const weeks = Math.ceil((new Date(data.stockDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+              autoFillLead(Math.max(0, weeks))
+            }
           }
         }
       } catch { /* silent */ }
@@ -575,7 +579,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       : (() => {
                           const deliveryOptions = [
                             ...(officeAddress.address ? [{ id: officeAddress.address, label: officeAddress.name }] : []),
-                            ...suppliers.filter(s => s.delivery_address).map(s => ({ id: s.delivery_address!, label: s.supplier_name })),
+                            ...suppliers.map(s => ({ id: s.delivery_address ?? s.supplier_name, label: s.supplier_name })),
                           ]
                           const selected = deliveryOptions.find(o => o.id === item.delivery_address)
                           return (

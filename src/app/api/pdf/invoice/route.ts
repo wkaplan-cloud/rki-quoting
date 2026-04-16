@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${project.project_number}_Invoice.pdf"`,
+      'Content-Disposition': `attachment; filename="Invoice-${project.project_number}.pdf"`,
     },
   })
 }
