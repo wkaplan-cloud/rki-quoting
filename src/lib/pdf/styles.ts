@@ -42,7 +42,7 @@ export const styles = StyleSheet.create({
   totalsDepositVal: { fontSize: 8, color: '#9A7B4F', fontFamily: 'Helvetica-Bold' },
   // Footer
   footer: { marginTop: 24, borderTopWidth: 0.5, borderTopColor: '#D8D3C8', paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
-  footerText: { fontSize: 7, color: '#8A877F', flex: 1 },
+  footerText: { fontSize: 7, color: '#8A877F', flex: 1, textAlign: 'center' },
   footerSig: { width: 140, textAlign: 'right' },
   sigLine: { borderTopWidth: 0.5, borderTopColor: '#2C2C2A', marginTop: 24, paddingTop: 4, fontSize: 7, color: '#8A877F' },
 })

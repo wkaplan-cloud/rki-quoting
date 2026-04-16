@@ -203,7 +203,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
           <View style={{ marginTop: 16, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12 }}>
             <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F', marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', paddingBottom: 4 }}>ACCEPTANCE</Text>
             <Text style={{ fontSize: 7, color: '#2C2C2A', marginBottom: 12, lineHeight: 1.5 }}>
-              By signing below, I/we confirm acceptance of the above quotation and its terms and conditions.
+              Acceptance of this quotation may be confirmed by signing below or by payment of the required deposit. Either constitutes agreement to the above quotation and its terms and conditions.
             </Text>
             <View style={{ flexDirection: 'row', gap: 24 }}>
               <View style={{ flex: 1 }}>
