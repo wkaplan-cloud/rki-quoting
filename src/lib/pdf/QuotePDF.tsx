@@ -151,7 +151,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
               <Text style={styles.totalsVal}>{formatZAR(totals.design_fee)}</Text>
             </View>
             <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>VAT (15%)</Text>
+              <Text style={styles.totalsLabel}>VAT ({vatRate}%)</Text>
               <Text style={styles.totalsVal}>{formatZAR(totals.vat_amount)}</Text>
             </View>
             <View style={styles.totalsDivider} />

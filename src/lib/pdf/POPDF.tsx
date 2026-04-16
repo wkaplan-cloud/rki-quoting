@@ -133,7 +133,7 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
 
       {/* Footer */}
       <View style={styles.footer} fixed>
-        <Text style={styles.footerText}>Please reference PO number {poNumber} on all correspondence and delivery notes.</Text>
+        <Text style={[styles.footerText, { textAlign: 'left' }]}>Please reference PO number {poNumber} on all correspondence and delivery notes.</Text>
         <View style={styles.footerSig}>
           <View style={styles.sigLine}><Text>Authorised Signature</Text></View>
         </View>
