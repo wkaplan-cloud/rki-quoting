@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { Upload, X, CheckCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 interface Settings {
   id?: string
@@ -39,6 +39,7 @@ interface Settings {
 
 export function StudioSettingsForm({ settings }: { settings: Settings | null }) {
   const supabase = createClient()
+  const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -65,11 +66,12 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     }
   }
 
-  // Show toast from OAuth callback redirect params
+  // Show toast from OAuth callback redirect params, then clear them from the URL
   useEffect(() => {
     if (searchParams.get('sage_connected') === '1') {
       toast.success('Sage connected successfully')
       setSageConnected(true)
+      router.replace('/admin')
     }
     const err = searchParams.get('sage_error')
     if (err) {
@@ -80,8 +82,9 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
         unknown: 'Something went wrong connecting to Sage',
       }
       toast.error(messages[err] ?? `Sage error: ${err}`)
+      router.replace('/admin')
     }
-  }, [searchParams])
+  }, [searchParams, router])
 
   const [form, setForm] = useState({
     business_name:          settings?.business_name ?? '',
