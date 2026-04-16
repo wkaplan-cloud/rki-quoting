@@ -239,7 +239,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
         <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Twinbru Sync</h2>
         <span className="text-xs text-white/30">{catalogueCount.toLocaleString()} fabrics in catalogue</span>
       </div>
-      <p className="text-xs text-white/30 mb-5">Prices and catalogue changes sync automatically at 2am. Use the buttons below to run manually or load the full fabric catalogue.</p>
+      <p className="text-xs text-white/30 mb-5">Three separate syncs keep your catalogue current. Each runs automatically at 2am — use the buttons to trigger manually.</p>
 
       {/* Price Sync */}
       <div className="py-4 border-b border-white/10">
@@ -249,6 +249,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
               <p className="text-sm font-medium text-white">Price Sync</p>
               {triggeringPrices && <ElapsedTimer running={triggeringPrices} />}
             </div>
+            <p className="text-xs text-white/30 mb-1">Updates the ZAR price on every fabric already in the catalogue. Runs nightly at 2am. Does not add or remove fabrics.</p>
             {priceSyncLog ? (
               <div className="mt-1 space-y-0.5">
                 <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(priceSyncLog.completed_at ?? priceSyncLog.started_at)}</span></p>
@@ -287,7 +288,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
               <p className="text-sm font-medium text-white">Catalogue Changes</p>
               {triggeringCatalogue && <ElapsedTimer running={triggeringCatalogue} />}
             </div>
-            <p className="text-xs text-white/30 mb-1">Picks up discontinued or updated fabrics since last sync.</p>
+            <p className="text-xs text-white/30 mb-1">Checks Twinbru for fabrics that have been discontinued since the last sync and marks them accordingly. Does not add new fabrics or update prices.</p>
             {catalogueSyncLog ? (
               <div className="mt-1 space-y-0.5">
                 <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(catalogueSyncLog.completed_at ?? catalogueSyncLog.started_at)}</span></p>
@@ -327,7 +328,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, catalogueCo
               <p className="text-sm font-medium text-white">Load Full Catalogue</p>
               {triggeringLoad && <ElapsedTimer running={triggeringLoad} />}
             </div>
-            <p className="text-xs text-white/30 mb-1">Fetches all fabrics from Twinbru year by year (2000–{new Date().getFullYear()}). Run this once to populate the catalogue. Runs in 4-min chunks and auto-continues.</p>
+            <p className="text-xs text-white/30 mb-1">Fetches every fabric from Twinbru and adds any that are not already in the catalogue. Safe to run at any time — existing fabrics and prices are never overwritten or deleted. Runs in 4-min chunks and auto-continues until complete.</p>
             <ResultBanner result={loadResult} />
           </div>
           <button onClick={triggerFullLoad} disabled={triggeringLoad}
