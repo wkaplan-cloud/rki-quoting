@@ -62,13 +62,13 @@ export async function GET(req: NextRequest) {
 
   try {
     // Load all product IDs + current prices from price_list_items (paginate past 1000 row limit)
-    const items: { id: string; product_id: string; price_zar: number | null }[] = []
+    const items: { id: string; product_id: string; price_zar: number | null; price_list_id: string }[] = []
     const PAGE = 1000
     let from = 0
     while (true) {
       const { data, error: fetchErr } = await supabase
         .from('price_list_items')
-        .select('id, product_id, price_zar')
+        .select('id, product_id, price_zar, price_list_id')
         .not('product_id', 'is', null)
         .range(from, from + PAGE - 1)
       if (fetchErr) throw new Error(fetchErr.message)
@@ -86,15 +86,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, checked: 0, changed: 0 })
     }
 
-    // Build a map: productId (number) → { rowId, currentPrice }
-    const rowMap = new Map<number, { rowId: string; currentPrice: number | null }>()
+    // Build a map: productId (number) → { rowId, currentPrice, priceListId }
+    const rowMap = new Map<number, { rowId: string; currentPrice: number | null; priceListId: string }>()
     for (const item of items) {
       const pid = parseInt(item.product_id, 10)
-      if (!isNaN(pid)) rowMap.set(pid, { rowId: item.id, currentPrice: item.price_zar })
+      if (!isNaN(pid)) rowMap.set(pid, { rowId: item.id, currentPrice: item.price_zar, priceListId: item.price_list_id })
     }
 
     const productIds = Array.from(rowMap.keys())
-    const updates: { id: string; price_zar: number; price_updated_at: string }[] = []
+    const updates: { id: string; price_list_id: string; price_zar: number; price_updated_at: string }[] = []
 
     // Fetch prices from Twinbru — 5 concurrent batches of 50 to stay within time limits
     const PARALLEL = 5
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
           if (isNaN(apiPrice)) continue
           const dbPrice = row.currentPrice != null ? Math.round(row.currentPrice * 100) / 100 : null
           if (dbPrice !== apiPrice) {
-            updates.push({ id: row.rowId, price_zar: apiPrice, price_updated_at: now })
+            updates.push({ id: row.rowId, price_list_id: row.priceListId, price_zar: apiPrice, price_updated_at: now })
           }
         }
       }
