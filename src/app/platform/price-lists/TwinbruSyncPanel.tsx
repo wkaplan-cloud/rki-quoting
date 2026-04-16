@@ -179,7 +179,11 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
       }
       catalogueAddedRef.current += (data.added as number | null) ?? 0
       catalogueCheckedRef.current += (data.checked as number | null) ?? 0
-      if (data.partial) {
+      if (data.unavailable) {
+        setCatalogueResult({ type: 'err', msg: 'Changefeed endpoint not available from Twinbru (404). Use Load Full Catalogue to add new fabrics.' })
+        catalogueRunningRef.current = false
+        setTriggeringCatalogue(false)
+      } else if (data.partial) {
         setCatalogueResult({ type: 'ok', msg: `Running… ${catalogueCheckedRef.current.toLocaleString()} scanned, ${catalogueAddedRef.current} new fabrics so far. Continuing in 10s…` })
         setCatalogueSyncLog(prev => makeLog({ ...(prev ?? {}), sync_type: 'catalogue', items_checked: catalogueCheckedRef.current, items_added: catalogueAddedRef.current }))
         setTimeout(() => runCatalogueOnce(), 10_000)
@@ -293,7 +297,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
               <p className="text-sm font-medium text-white">Catalogue Changes</p>
               {triggeringCatalogue && <ElapsedTimer running={triggeringCatalogue} />}
             </div>
-            <p className="text-xs text-white/30 mb-1">Checks Twinbru for fabrics that have been discontinued since the last sync and marks them accordingly. Does not add new fabrics or update prices.</p>
+            <p className="text-xs text-white/30 mb-1">Uses the Twinbru changefeed to pick up newly added or changed fabrics since the last sync. If the changefeed is unavailable, use Load Full Catalogue instead.</p>
             {catalogueSyncLog ? (
               <div className="mt-1 space-y-0.5">
                 <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(catalogueSyncLog.completed_at ?? catalogueSyncLog.started_at)}</span></p>
