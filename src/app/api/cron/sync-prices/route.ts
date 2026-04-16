@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
     // Write changed prices to Supabase in batches of 500
     for (let i = 0; i < updates.length; i += 500) {
       const batch = updates.slice(i, i + 500)
-      await supabase.from('price_list_items').upsert(batch)
+      await supabase.from('price_list_items').upsert(batch, { onConflict: 'id' })
     }
 
     // Mark log complete
