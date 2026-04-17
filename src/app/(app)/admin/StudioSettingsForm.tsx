@@ -182,6 +182,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
   }
 
   return (
+    <div className="space-y-8">
     <form onSubmit={save} className="space-y-8">
 
       {/* Row 1: Business Details + Branding & Contact */}
@@ -285,7 +286,12 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
         </section>
       </div>
 
-      {/* Row 3: Sage Integration (full width) */}
+      <div className="border-t border-[#EDE9E1] pt-6">
+        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Studio Settings'}</Button>
+      </div>
+    </form>
+
+      {/* Sage Integration — outside the main form to avoid state resets */}
       <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage Business Cloud Accounting</h2>
@@ -412,10 +418,6 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
           </div>
         )}
       </section>
-
-      <div className="border-t border-[#EDE9E1] pt-6">
-        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Studio Settings'}</Button>
-      </div>
-    </form>
+    </div>
   )
 }
