@@ -325,10 +325,12 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
                   <p className="text-sm font-medium text-[#2C2C2A]">{r.supplier_name}</p>
                   <p className="text-xs text-[#8A877F]">{r.email}</p>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-[#8A877F]">
-                  {RECIPIENT_STATUS_ICONS[r.status]}
-                  <span>{RECIPIENT_STATUS_LABEL[r.status]}</span>
-                </div>
+                {(r.status !== 'pending' || r.sent_at) && (
+                  <div className="flex items-center gap-1.5 text-xs text-[#8A877F]">
+                    {RECIPIENT_STATUS_ICONS[r.status]}
+                    <span>{RECIPIENT_STATUS_LABEL[r.status]}</span>
+                  </div>
+                )}
                 {isDraft && (
                   <button
                     onClick={() => handleRemoveSupplier(r.id)}
