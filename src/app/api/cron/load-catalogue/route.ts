@@ -8,11 +8,11 @@ const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
 const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
 const PAGE_SIZE    = 50  // confirmed API max
 
-// Strategy (mirrors working Python script):
-// 1. Discover all collection IDs via facets in a single API call
-// 2. Scan each collection with filter "collectionId.eq.{cid}"
-// Each product belongs to exactly one collection — zero overlap, exact count.
-// RESUME token format: "RESUME:{collectionId}:{page}"
+// Safe approach: unfiltered POST /products/ scan.
+// The API naturally caps at ~10,000 products (returns 500 after page ~200).
+// This gives us whatever Twinbru exposes unfiltered and terminates cleanly.
+// Once Robin confirms the correct filter syntax we can extend beyond 10,000.
+// RESUME token: "RESUME:<page>"
 
 function twinbruHeaders() {
   return {
@@ -51,36 +51,6 @@ function extractProducts(data: unknown): { items: Record<string, unknown>[], tot
   return { items, total }
 }
 
-async function fetchCollectionIds(): Promise<number[]> {
-  const res = await fetch(`${TWINBRU_BASE}/products/`, {
-    method: 'POST',
-    headers: twinbruHeaders(),
-    body: JSON.stringify({
-      page: 1, pageSize: 1, filter: '',
-      facets: [{ attribute: 'collectionId' }],
-    }),
-  })
-  if (!res.ok) return []
-  const data = await res.json().catch(() => null)
-  if (!data) return []
-
-  const facets = Array.isArray(data.facets) ? data.facets as Record<string, unknown>[] : []
-  const facet = facets.find(f => {
-    const name = String(f.name ?? '').toLowerCase()
-    return name === 'collectionid'
-  })
-  if (!facet) return []
-
-  const values = Array.isArray(facet.values) ? facet.values as Record<string, unknown>[] : []
-  const ids: number[] = []
-  for (const v of values) {
-    const key = v.key ?? v.value ?? v.id
-    const n = parseInt(String(key), 10)
-    if (!isNaN(n)) ids.push(n)
-  }
-  return ids.sort((a, b) => a - b)
-}
-
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -117,9 +87,7 @@ export async function GET(req: NextRequest) {
   try {
     // ── Resolve resume position ───────────────────────────────────────────────
     const useResume = triggeredBy === 'cron' || triggeredBy === 'continue'
-
-    let resumeCollectionId: number | null = null
-    let resumePage = 1
+    let startPage = 1
 
     if (useResume) {
       const { data: resumeLog } = await supabase
@@ -133,23 +101,9 @@ export async function GET(req: NextRequest) {
         .single()
 
       if (resumeLog?.error_message) {
-        const parts = resumeLog.error_message.slice(7).split(':') // strip "RESUME:"
-        const cid  = parseInt(parts[0], 10)
-        const page = parseInt(parts[1], 10)
-        if (!isNaN(cid))  resumeCollectionId = cid
-        if (!isNaN(page)) resumePage = page
+        const page = parseInt(resumeLog.error_message.slice(7), 10)
+        if (!isNaN(page)) startPage = page
       }
-    }
-
-    // ── Discover all collection IDs via facets ────────────────────────────────
-    const allCollectionIds = await fetchCollectionIds()
-
-    if (!allCollectionIds.length) {
-      await supabase.from('twinbru_sync_log').update({
-        status: 'error', completed_at: new Date().toISOString(),
-        error_message: 'Facets API returned no collection IDs',
-      }).eq('id', logId)
-      return NextResponse.json({ error: 'No collection IDs from facets' }, { status: 500 })
     }
 
     // ── Load existing product_ids to skip duplicates ──────────────────────────
@@ -168,76 +122,59 @@ export async function GET(req: NextRequest) {
       from += 1000
     }
 
-    // ── Scan each collection ──────────────────────────────────────────────────
-    const TIME_LIMIT_MS = 240_000  // 4 min
+    // ── Unfiltered scan ───────────────────────────────────────────────────────
+    const TIME_LIMIT_MS = 240_000
     const startTime     = Date.now()
+    let page            = startPage
     let totalFetched    = 0
     let added           = 0
     const batch: Record<string, unknown>[] = []
     let timedOut        = false
-    let resumeToken: string | null = null
 
-    // Skip collections before the resume point
-    const startIdx = resumeCollectionId != null
-      ? Math.max(0, allCollectionIds.indexOf(resumeCollectionId))
-      : 0
-
-    for (let i = startIdx; i < allCollectionIds.length; i++) {
-      const cid    = allCollectionIds[i]
-      const filter = `collectionId.eq.${cid}`
-      let page     = (i === startIdx && resumeCollectionId != null) ? resumePage : 1
-      let colTotal = 0
-      let colFetched = 0
-
-      while (true) {
-        if (Date.now() - startTime > TIME_LIMIT_MS) {
-          timedOut = true
-          resumeToken = `RESUME:${cid}:${page}`
-          break
-        }
-
-        const res = await fetch(`${TWINBRU_BASE}/products/`, {
-          method: 'POST',
-          headers: twinbruHeaders(),
-          body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter }),
-        })
-        const rawText = await res.text()
-
-        if (res.status !== 200) {
-          if (res.status === 404 || res.status === 500) break
-          throw new Error(`Products API ${res.status} (collection ${cid} page ${page}): ${rawText.slice(0, 200)}`)
-        }
-
-        let data: unknown = {}
-        try { data = rawText ? JSON.parse(rawText) : {} } catch {
-          throw new Error(`Products API non-JSON (collection ${cid} page ${page}): ${rawText.slice(0, 200)}`)
-        }
-
-        const { items, total } = extractProducts(data)
-        if (colTotal === 0 && total) colTotal = total
-        colFetched   += items.length
-        totalFetched += items.length
-
-        for (const item of items) {
-          const pid = String(item.productId ?? item.id ?? '').trim()
-          if (!pid || knownIds.has(pid)) continue
-          knownIds.add(pid)
-          batch.push({ ...buildRecord(item), price_list_id: priceListId })
-          added++
-        }
-
-        if (batch.length >= 500) {
-          await supabase.from('price_list_items').insert(batch.splice(0))
-        }
-
-        if (!items.length || items.length < PAGE_SIZE) break
-        if (colTotal && colFetched >= colTotal) break
-
-        page++
-        await new Promise(r => setTimeout(r, 80))
+    while (true) {
+      if (Date.now() - startTime > TIME_LIMIT_MS) {
+        timedOut = true
+        break
       }
 
-      if (timedOut) break
+      const res = await fetch(`${TWINBRU_BASE}/products/`, {
+        method: 'POST',
+        headers: twinbruHeaders(),
+        body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
+      })
+      const rawText = await res.text()
+
+      if (res.status !== 200) {
+        // 500 after page 1 = API cap reached — this is the natural end
+        if (res.status === 500 && page > 1) break
+        throw new Error(`Products API ${res.status} (page ${page}): ${rawText.slice(0, 200)}`)
+      }
+
+      let data: unknown = {}
+      try { data = rawText ? JSON.parse(rawText) : {} } catch {
+        throw new Error(`Products API non-JSON (page ${page}): ${rawText.slice(0, 200)}`)
+      }
+
+      const { items, total } = extractProducts(data)
+      totalFetched += items.length
+
+      for (const item of items) {
+        const pid = String(item.productId ?? item.id ?? '').trim()
+        if (!pid || knownIds.has(pid)) continue
+        knownIds.add(pid)
+        batch.push({ ...buildRecord(item), price_list_id: priceListId })
+        added++
+      }
+
+      if (batch.length >= 500) {
+        await supabase.from('price_list_items').insert(batch.splice(0))
+      }
+
+      if (!items.length || items.length < PAGE_SIZE) break
+      if (total && totalFetched >= total) break
+
+      page++
+      await new Promise(r => setTimeout(r, 80))
     }
 
     // ── Flush + update counts ─────────────────────────────────────────────────
@@ -253,13 +190,13 @@ export async function GET(req: NextRequest) {
       await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
     }
 
-    if (timedOut && resumeToken) {
+    if (timedOut) {
       await supabase.from('twinbru_sync_log').update({
         status: 'ok',
         completed_at: new Date().toISOString(),
         items_checked: totalFetched,
         items_added: added,
-        error_message: resumeToken,
+        error_message: `RESUME:${page}`,
       }).eq('id', logId)
       return NextResponse.json({ ok: true, partial: true, checked: totalFetched, added })
     }
