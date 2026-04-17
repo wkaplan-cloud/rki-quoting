@@ -205,15 +205,21 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
     loadRunningRef.current = true
     loadAddedRef.current = 0
     loadCheckedRef.current = 0
+    loadInvocationRef.current = 0
     setTriggeringLoad(true)
     setLoadResult(null)
     await runLoadOnce()
   }
 
+  const loadInvocationRef = useRef(0)
+
   async function runLoadOnce() {
     if (!loadRunningRef.current) return
+    // First invocation = manual (fresh start), subsequent = continue (uses RESUME token)
+    const trigger = loadInvocationRef.current === 0 ? 'manual' : 'continue'
+    loadInvocationRef.current++
     try {
-      const { ok, data } = await safeFetch('/api/cron/load-catalogue?trigger=manual', cronSecret)
+      const { ok, data } = await safeFetch(`/api/cron/load-catalogue?trigger=${trigger}`, cronSecret)
       if (!ok) {
         setLoadResult({ type: 'err', msg: String(data.error ?? 'Load failed') })
         loadRunningRef.current = false

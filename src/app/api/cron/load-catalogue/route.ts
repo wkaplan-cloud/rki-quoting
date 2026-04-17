@@ -105,8 +105,8 @@ export async function GET(req: NextRequest) {
   try {
     // ── Resolve resume position ──────────────────────────────────────────────
     // Manual runs always start fresh from Phase 1 Page 1 — the user explicitly
-    // wants a full scan. Only cron runs continue from a saved RESUME token.
-    const isCron = triggeredBy === 'cron'
+    // wants a full scan. Cron and auto-continue runs resume from a saved RESUME token.
+    const isCron = triggeredBy === 'cron' || triggeredBy === 'continue'
 
     let resumeLog: { error_message: string } | null = null
     if (isCron) {
