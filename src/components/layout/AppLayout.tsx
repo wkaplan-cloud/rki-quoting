@@ -10,6 +10,7 @@ export function AppLayout({
   children,
   isAdmin,
   businessName,
+  sourcingEnabled,
   userEmail,
   userName,
   plan,
@@ -21,6 +22,7 @@ export function AppLayout({
   children: React.ReactNode
   isAdmin: boolean
   businessName: string
+  sourcingEnabled: boolean
   userEmail: string
   userName: string
   plan: string
@@ -41,6 +43,7 @@ export function AppLayout({
       <Sidebar
         isAdmin={isAdmin}
         businessName={businessName}
+        sourcingEnabled={sourcingEnabled}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onContactClick={() => setFeedbackOpen(true)}

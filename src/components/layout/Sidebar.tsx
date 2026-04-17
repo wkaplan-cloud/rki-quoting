@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator
+  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag
 } from 'lucide-react'
 
 const mainLinks = [
@@ -21,6 +21,7 @@ const secondaryLinks = [
 interface Props {
   isAdmin: boolean
   businessName: string
+  sourcingEnabled: boolean
   isOpen: boolean
   onClose: () => void
   onContactClick: () => void
@@ -29,7 +30,7 @@ interface Props {
   trialDaysLeft: number | null
 }
 
-export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft }: Props) {
+export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft }: Props) {
   const path = usePathname()
   const isActive = (href: string) =>
     href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
@@ -114,6 +115,28 @@ export function Sidebar({ isAdmin, businessName, isOpen, onClose, onContactClick
               <span className={labelCls}>{label}</span>
             </Link>
           ))}
+
+          {sourcingEnabled && (
+            <>
+              <div className="border-t border-white/10 my-2 mx-2" />
+              <Link
+                href="/sourcing"
+                onClick={onClose}
+                title="Request Price"
+                className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
+                  ${isActive('/sourcing')
+                    ? 'bg-[#9A7B4F]/20 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+              >
+                <span className="flex items-center justify-center w-10 flex-shrink-0">
+                  <Tag size={15} className={isActive('/sourcing') ? 'text-[#C4A46B]' : 'opacity-60'} />
+                </span>
+                <span className={`text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3`}>
+                  Request Price
+                </span>
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Bottom */}

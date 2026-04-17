@@ -137,3 +137,80 @@ export interface ProjectTotals {
   deposit: number
   balance_due: number
 }
+
+// ─── Sourcing Requests ────────────────────────────────────────────────────────
+
+export type SourcingRequestStatus =
+  | 'draft'
+  | 'sent'
+  | 'responded'
+  | 'accepted'
+  | 'pushed'
+  | 'cancelled'
+
+export type SourcingRecipientStatus =
+  | 'pending'
+  | 'viewed'
+  | 'responded'
+  | 'accepted'
+  | 'rejected'
+  | 'declined'
+
+export interface SourcingRequest {
+  id: string
+  user_id: string
+  project_id: string | null
+  title: string
+  specifications: string | null
+  quantity: number
+  unit: string | null
+  dimensions: string | null
+  colour_finish: string | null
+  status: SourcingRequestStatus
+  sent_at: string | null
+  accepted_at: string | null
+  accepted_response_id: string | null
+  pushed_at: string | null
+  created_at: string
+}
+
+export interface SourcingRequestImage {
+  id: string
+  sourcing_request_id: string
+  url: string
+  caption: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface SourcingRequestRecipient {
+  id: string
+  sourcing_request_id: string
+  supplier_id: string | null
+  supplier_name: string
+  email: string
+  token: string
+  status: SourcingRecipientStatus
+  sent_at: string | null
+  viewed_at: string | null
+  responded_at: string | null
+  created_at: string
+}
+
+export interface SourcingRequestResponse {
+  id: string
+  recipient_id: string
+  unit_price: number
+  lead_time_weeks: number | null
+  notes: string | null
+  valid_until: string | null
+  submitted_at: string
+}
+
+export interface SourcingRequestWithRelations extends SourcingRequest {
+  images: SourcingRequestImage[]
+  recipients: (SourcingRequestRecipient & {
+    response: SourcingRequestResponse | null
+    supplier: Pick<Supplier, 'id' | 'supplier_name' | 'markup_percentage'> | null
+  })[]
+}
