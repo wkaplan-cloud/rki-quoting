@@ -30,7 +30,7 @@ const RECIPIENT_STATUS_ICONS: Record<SourcingRecipientStatus, React.ReactNode> =
 }
 
 const RECIPIENT_STATUS_LABEL: Record<SourcingRecipientStatus, string> = {
-  pending:   'Pending',
+  pending:   'Price Request Sent',
   viewed:    'Viewed',
   responded: 'Responded',
   accepted:  'Accepted',
@@ -166,6 +166,18 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
 
   return (
     <div className="max-w-4xl space-y-6">
+      {/* Send loading overlay */}
+      {loading === 'send' && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 max-w-xs w-full mx-4">
+            <div className="w-10 h-10 border-2 border-[#EDE9E1] border-t-[#9A7B4F] rounded-full animate-spin" />
+            <div className="text-center">
+              <p className="text-sm font-semibold text-[#2C2C2A]">Sending pricing request…</p>
+              <p className="text-xs text-[#8A877F] mt-1">Emailing all selected suppliers. This may take a moment.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Status banner for terminal states */}
       {isPushed && (
         <div className="bg-purple-50 border border-purple-200 rounded-xl px-5 py-4 flex items-start gap-3">
@@ -228,6 +240,18 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
             </label>
           )}
         </div>
+        {uploadingImage && (
+          <div className="h-1 bg-[#EDE9E1] overflow-hidden">
+            <div className="h-full bg-[#9A7B4F] animate-[progress_1.4s_ease-in-out_infinite]" style={{ width: '40%', animation: 'indeterminate 1.4s ease-in-out infinite' }} />
+          </div>
+        )}
+        <style>{`
+          @keyframes indeterminate {
+            0% { transform: translateX(-100%) scaleX(0.5); }
+            50% { transform: translateX(60%) scaleX(0.8); }
+            100% { transform: translateX(300%) scaleX(0.5); }
+          }
+        `}</style>
         <div className="p-5">
           {request.images.length === 0 ? (
             <p className="text-sm text-[#8A877F] text-center py-4">No images attached yet.</p>
@@ -279,7 +303,12 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
                 ))}
               </select>
               <Button size="sm" onClick={handleAddSupplier} disabled={!selectedSupplierId || loading === 'add-supplier'}>
-                Add
+                {loading === 'add-supplier' ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
+                    Adding…
+                  </span>
+                ) : 'Add'}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => { setShowAddSupplier(false); setSelectedSupplierId('') }}>
                 Cancel

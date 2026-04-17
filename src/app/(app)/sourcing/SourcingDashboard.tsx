@@ -1,7 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Tag, ChevronRight, Clock, CheckCircle, Send, XCircle, ArrowUpRight } from 'lucide-react'
+import { Plus, Tag, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type { SourcingRequest, SourcingRequestStatus, SourcingRecipientStatus } from '@/lib/types'
 
@@ -40,27 +40,53 @@ function recipientSummary(reqs: RecipientRow[], requestId: string): string {
   return `${responded} / ${rows.length} responded`
 }
 
+const emptyForm = {
+  title: '',
+  quantity: '',
+  unit: '',
+  dimensions: '',
+  colour_finish: '',
+  specifications: '',
+}
+
 export function SourcingDashboard({ requests, recipients }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [creating, setCreating] = useState(false)
-  const [title, setTitle] = useState('')
+  const [form, setForm] = useState(emptyForm)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const set = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim()) return
+    if (!form.title.trim()) return
     setError(null)
+    setSubmitting(true)
     const res = await fetch('/api/sourcing', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: title.trim() }),
+      body: JSON.stringify({
+        title: form.title.trim(),
+        quantity: form.quantity ? parseFloat(form.quantity) : 1,
+        unit: form.unit.trim() || null,
+        dimensions: form.dimensions.trim() || null,
+        colour_finish: form.colour_finish.trim() || null,
+        specifications: form.specifications.trim() || null,
+      }),
     })
     const json = await res.json()
-    if (!res.ok) { setError(json.error); return }
+    if (!res.ok) { setError(json.error); setSubmitting(false); return }
     startTransition(() => {
       router.push(`/sourcing/${json.data.id}`)
     })
+  }
+
+  function cancelCreate() {
+    setCreating(false)
+    setForm(emptyForm)
+    setError(null)
   }
 
   if (requests.length === 0 && !creating) {
@@ -82,27 +108,105 @@ export function SourcingDashboard({ requests, recipients }: Props) {
 
   return (
     <div className="max-w-3xl">
-      {/* New request inline form */}
+      {/* New request form */}
       {creating ? (
         <form
           onSubmit={handleCreate}
-          className="mb-6 bg-white rounded-xl border border-[#EDE9E1] p-5 shadow-sm"
+          className="mb-6 bg-white rounded-xl border border-[#EDE9E1] shadow-sm overflow-hidden"
         >
-          <p className="text-sm font-semibold text-[#2C2C2A] mb-3">New Pricing Request</p>
-          <input
-            autoFocus
-            type="text"
-            placeholder="What item needs pricing? e.g. Custom sectional sofa"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] mb-3"
-          />
-          {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
-          <div className="flex gap-2">
-            <Button type="submit" disabled={!title.trim() || isPending}>
-              <Plus size={13} /> Create
+          <div className="px-5 py-4 border-b border-[#EDE9E1]">
+            <p className="text-sm font-semibold text-[#2C2C2A]">New Pricing Request</p>
+            <p className="text-xs text-[#8A877F] mt-0.5">Fill in as much detail as possible — suppliers will see all of this.</p>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {/* Item name */}
+            <div>
+              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">
+                Item Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                autoFocus
+                type="text"
+                placeholder="e.g. Custom sectional sofa, Bedroom curtains"
+                value={form.title}
+                onChange={e => set('title', e.target.value)}
+                required
+                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+              />
+            </div>
+
+            {/* Quantity + Unit */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="e.g. 5"
+                  value={form.quantity}
+                  onChange={e => set('quantity', e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Unit</label>
+                <input
+                  type="text"
+                  placeholder="e.g. metres, each, m²"
+                  value={form.unit}
+                  onChange={e => set('unit', e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                />
+              </div>
+            </div>
+
+            {/* Size + Colour */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Size / Dimensions</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2200W × 900D × 800H"
+                  value={form.dimensions}
+                  onChange={e => set('dimensions', e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Colour / Finish</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sage green, Natural linen"
+                  value={form.colour_finish}
+                  onChange={e => set('colour_finish', e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Description / Specifications</label>
+              <textarea
+                rows={4}
+                placeholder="Describe the item in detail — fabric type, construction, finishes, any special requirements…"
+                value={form.specifications}
+                onChange={e => set('specifications', e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] resize-none"
+              />
+            </div>
+
+            {error && <p className="text-xs text-red-600">{error}</p>}
+          </div>
+
+          <div className="px-5 py-4 border-t border-[#EDE9E1] flex gap-2">
+            <Button type="submit" disabled={!form.title.trim() || submitting || isPending}>
+              <Plus size={13} />
+              {submitting || isPending ? 'Creating…' : 'Create Request'}
             </Button>
-            <Button variant="ghost" type="button" onClick={() => { setCreating(false); setTitle('') }}>
+            <Button variant="ghost" type="button" onClick={cancelCreate}>
               Cancel
             </Button>
           </div>
