@@ -104,34 +104,23 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── Resolve resume position ──────────────────────────────────────────────
-    // Find the last fully-complete run (no RESUME token) so we don't accidentally
-    // pick up a stale RESUME token from before a previous complete run.
-    const { data: lastComplete } = await supabase
-      .from('twinbru_sync_log')
-      .select('completed_at')
-      .eq('sync_type', 'load')
-      .eq('status', 'ok')
-      .not('error_message', 'like', 'RESUME:%')
-      .is('error_message', null)
-      .order('completed_at', { ascending: false })
-      .limit(1)
-      .single()
+    // Manual runs always start fresh from Phase 1 Page 1 — the user explicitly
+    // wants a full scan. Only cron runs continue from a saved RESUME token.
+    const isCron = triggeredBy === 'cron'
 
-    let resumeQuery = supabase
-      .from('twinbru_sync_log')
-      .select('error_message')
-      .eq('sync_type', 'load')
-      .eq('status', 'ok')
-      .like('error_message', 'RESUME:%')
-      .order('completed_at', { ascending: false })
-      .limit(1)
-
-    // Only use a RESUME token if it's newer than the last complete run
-    if (lastComplete?.completed_at) {
-      resumeQuery = resumeQuery.gt('completed_at', lastComplete.completed_at)
+    let resumeLog: { error_message: string } | null = null
+    if (isCron) {
+      const { data } = await supabase
+        .from('twinbru_sync_log')
+        .select('error_message')
+        .eq('sync_type', 'load')
+        .eq('status', 'ok')
+        .like('error_message', 'RESUME:%')
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .single()
+      resumeLog = data
     }
-
-    const { data: resumeLog } = await resumeQuery.single()
 
     // Default: phase 1, page 1
     let phase      = 1
