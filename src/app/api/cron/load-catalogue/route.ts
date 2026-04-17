@@ -104,7 +104,20 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── Resolve resume position ──────────────────────────────────────────────
-    const { data: resumeLog } = await supabase
+    // Find the last fully-complete run (no RESUME token) so we don't accidentally
+    // pick up a stale RESUME token from before a previous complete run.
+    const { data: lastComplete } = await supabase
+      .from('twinbru_sync_log')
+      .select('completed_at')
+      .eq('sync_type', 'load')
+      .eq('status', 'ok')
+      .not('error_message', 'like', 'RESUME:%')
+      .is('error_message', null)
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    let resumeQuery = supabase
       .from('twinbru_sync_log')
       .select('error_message')
       .eq('sync_type', 'load')
@@ -112,10 +125,16 @@ export async function GET(req: NextRequest) {
       .like('error_message', 'RESUME:%')
       .order('completed_at', { ascending: false })
       .limit(1)
-      .single()
+
+    // Only use a RESUME token if it's newer than the last complete run
+    if (lastComplete?.completed_at) {
+      resumeQuery = resumeQuery.gt('completed_at', lastComplete.completed_at)
+    }
+
+    const { data: resumeLog } = await resumeQuery.single()
 
     // Default: phase 1, page 1
-    let phase     = 1
+    let phase      = 1
     let resumePage = 1
     let resumeYear = START_YEAR
 
