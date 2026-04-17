@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://app.quotinghub.co.za'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
 
 // GET /api/sourcing/respond/[token] — fetch request data for supplier page (public, no auth)
 export async function GET(

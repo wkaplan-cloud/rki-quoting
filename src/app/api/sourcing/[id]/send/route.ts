@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://app.quotinghub.co.za'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
 
 function buildSupplierEmail({
   supplierName,
