@@ -8,6 +8,7 @@ interface RequestData {
   specifications: string | null
   quantity: number
   unit: string | null
+  item_quantity: number | null
   dimensions: string | null
   colour_finish: string | null
   status: string
