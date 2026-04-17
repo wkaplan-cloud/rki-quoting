@@ -50,7 +50,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.endsWith('.xml') ||
     request.nextUrl.pathname.endsWith('.html') ||
     request.nextUrl.pathname.startsWith('/interior-design-software-') ||
-    request.nextUrl.pathname.startsWith('/sourcing/respond')
+    request.nextUrl.pathname.startsWith('/sourcing/respond') ||
+    request.nextUrl.pathname.startsWith('/api/sourcing/respond')
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
