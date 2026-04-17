@@ -72,8 +72,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
     }
   }
 
-  async function connectBasic(e: React.FormEvent) {
-    e.preventDefault()
+  async function connectBasic() {
     setConnectingBasic(true)
     try {
       const res = await fetch('/api/sage/connect-basic', {
@@ -376,25 +375,24 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
                     Enter credentials
                   </button>
                 ) : (
-                  <form onSubmit={connectBasic} className="space-y-2">
+                  <div className="space-y-2">
                     <Input
                       label="Sage email"
                       type="email"
                       value={basicEmail}
                       onChange={e => setBasicEmail(e.target.value)}
-                      required
                     />
                     <Input
                       label="Sage password"
                       type="password"
                       value={basicPassword}
                       onChange={e => setBasicPassword(e.target.value)}
-                      required
                     />
                     <div className="flex items-center gap-2 pt-1">
                       <button
-                        type="submit"
-                        disabled={connectingBasic}
+                        type="button"
+                        onClick={connectBasic}
+                        disabled={connectingBasic || !basicEmail || !basicPassword}
                         className="flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer"
                       >
                         {connectingBasic ? 'Connecting…' : 'Connect'}
