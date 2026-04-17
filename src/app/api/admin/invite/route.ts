@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: resendError } = await resend.emails.send({
     from: `${businessName} <quotes@quotinghub.co.za>`,
+    replyTo: user.email ?? undefined,
     to: email,
     subject: `You've been invited to join ${businessName} on QuotingHub`,
     text: `You have been invited to join ${businessName} as a ${roleLabel} on quotinghub.co.za.\n\nAccept your invite here: ${inviteUrl}\n\nThis link expires in 24 hours.`,

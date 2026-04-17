@@ -139,7 +139,7 @@ export async function POST(
   }
 
   const studioName = settings?.business_name ?? 'Your Studio'
-  const replyTo = settings?.email_from?.trim() || null
+  const replyTo = user.email || settings?.email_from?.trim() || null
 
   const now = new Date().toISOString()
 
