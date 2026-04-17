@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { decrypt } from '@/lib/sage-crypto'
 
-const SA_API_BASE = process.env.SAGE_API_URL ?? 'https://resellers.accounting.sageone.co.za/api/2.0.0'
+const OAUTH_API_BASE = process.env.SAGE_API_URL ?? 'https://resellers.accounting.sageone.co.za/api/2.0.0'
+const LIVE_API_BASE = 'https://accounting.sageone.co.za/api/2.0.0'
 
 export async function POST() {
   try {
@@ -11,22 +13,33 @@ export async function POST() {
 
     const { data: settings } = await supabase
       .from('settings')
-      .select('sage_access_token')
+      .select('sage_access_token, sage_username, sage_password')
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (!settings?.sage_access_token) {
+    let authHeader: string
+    let apiBase: string
+
+    if (settings?.sage_username && settings?.sage_password) {
+      const password = decrypt(settings.sage_password)
+      const basicToken = Buffer.from(`${settings.sage_username}:${password}`).toString('base64')
+      authHeader = `Basic ${basicToken}`
+      apiBase = LIVE_API_BASE
+    } else if (settings?.sage_access_token) {
+      authHeader = `Bearer ${settings.sage_access_token}`
+      apiBase = OAUTH_API_BASE
+    } else {
       return NextResponse.json({ error: 'Sage not connected' }, { status: 400 })
     }
 
     const apiKey = process.env.SAGE_API_KEY
     const url = apiKey
-      ? `${SA_API_BASE}/Company/Get?apikey=${apiKey}`
-      : `${SA_API_BASE}/Company/Get`
+      ? `${apiBase}/Company/Get?apikey=${apiKey}`
+      : `${apiBase}/Company/Get`
 
     const res = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${settings.sage_access_token}`,
+        Authorization: authHeader,
         Accept: 'application/json',
       },
     })

@@ -1,9 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
+import { decrypt } from '@/lib/sage-crypto'
 
-const SA_API_BASE = process.env.SAGE_API_URL ?? 'https://resellers.accounting.sageone.co.za/api/2.0.0'
-const SAGE_TOKEN_URL = 'https://id.sage.com/oauth/token'
+// OAuth (reseller/sandbox) endpoints
+const OAUTH_API_BASE = process.env.SAGE_API_URL ?? 'https://resellers.accounting.sageone.co.za/api/2.0.0'
+const OAUTH_TOKEN_URL = 'https://id.sage.com/oauth/token'
 
-interface SageConnection {
+// Basic Auth (live) endpoint
+const LIVE_API_BASE = 'https://accounting.sageone.co.za/api/2.0.0'
+
+interface OAuthConnection {
+  type: 'oauth'
   id: string
   sage_access_token: string
   sage_refresh_token: string | null
@@ -11,25 +17,57 @@ interface SageConnection {
   sage_company_id: string
 }
 
+interface BasicAuthConnection {
+  type: 'basic'
+  id: string
+  sage_username: string
+  sage_password: string // encrypted value from DB
+  sage_company_id: string
+}
+
+type SageConnection = OAuthConnection | BasicAuthConnection
+
 async function getConnection(): Promise<SageConnection> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('settings')
-    .select('id, sage_access_token, sage_refresh_token, sage_token_expires_at, sage_company_id')
+    .select('id, sage_access_token, sage_refresh_token, sage_token_expires_at, sage_company_id, sage_username, sage_password')
     .maybeSingle()
 
-  if (!data?.sage_access_token || !data?.sage_company_id) {
+  if (!data?.sage_company_id) {
     throw new Error('Sage not connected — connect your Sage account in Settings')
   }
-  return data as SageConnection
+
+  if (data.sage_username && data.sage_password) {
+    return {
+      type: 'basic',
+      id: data.id,
+      sage_username: data.sage_username,
+      sage_password: data.sage_password,
+      sage_company_id: data.sage_company_id,
+    }
+  }
+
+  if (data.sage_access_token) {
+    return {
+      type: 'oauth',
+      id: data.id,
+      sage_access_token: data.sage_access_token,
+      sage_refresh_token: data.sage_refresh_token ?? null,
+      sage_token_expires_at: data.sage_token_expires_at ?? null,
+      sage_company_id: data.sage_company_id,
+    }
+  }
+
+  throw new Error('Sage not connected — connect your Sage account in Settings')
 }
 
-async function refreshAccessToken(conn: SageConnection): Promise<string> {
+async function refreshOAuthToken(conn: OAuthConnection): Promise<string> {
   if (!conn.sage_refresh_token) {
     throw new Error('No refresh token — please reconnect Sage in Settings')
   }
 
-  const res = await fetch(SAGE_TOKEN_URL, {
+  const res = await fetch(OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -57,32 +95,44 @@ async function refreshAccessToken(conn: SageConnection): Promise<string> {
   return tokens.access_token as string
 }
 
-async function getValidToken(): Promise<{ token: string; companyId: string }> {
+/** Returns { authHeader, apiBase, companyId } ready for API calls. */
+async function getAuth(): Promise<{ authHeader: string; apiBase: string; companyId: string }> {
   const conn = await getConnection()
 
+  if (conn.type === 'basic') {
+    const password = decrypt(conn.sage_password)
+    const basicToken = Buffer.from(`${conn.sage_username}:${password}`).toString('base64')
+    return {
+      authHeader: `Basic ${basicToken}`,
+      apiBase: LIVE_API_BASE,
+      companyId: conn.sage_company_id,
+    }
+  }
+
+  // OAuth — refresh if expiring soon
   const expiresAt = conn.sage_token_expires_at ? new Date(conn.sage_token_expires_at) : null
-  const isExpiredOrExpiringSoon = expiresAt ? expiresAt.getTime() - 60_000 < Date.now() : false
+  const isExpiring = expiresAt ? expiresAt.getTime() - 60_000 < Date.now() : false
+  const token = isExpiring ? await refreshOAuthToken(conn) : conn.sage_access_token
 
-  const token = isExpiredOrExpiringSoon
-    ? await refreshAccessToken(conn)
-    : conn.sage_access_token
-
-  return { token, companyId: conn.sage_company_id }
+  return {
+    authHeader: `Bearer ${token}`,
+    apiBase: OAUTH_API_BASE,
+    companyId: conn.sage_company_id,
+  }
 }
 
-function buildUrl(companyId: string, path: string): string {
-  // Build URL manually — do not use URLSearchParams for apikey because
-  // Sage requires the literal curly braces e.g. {key} not %7Bkey%7D
+function buildUrl(apiBase: string, companyId: string, path: string): string {
+  // Do not use URLSearchParams for apikey — Sage requires literal curly braces
   const apiKey = process.env.SAGE_API_KEY
-  const base = `${SA_API_BASE}${path}?CompanyId=${companyId}`
+  const base = `${apiBase}${path}?CompanyId=${companyId}`
   return apiKey ? `${base}&apikey=${apiKey}` : base
 }
 
 export async function sageGet(path: string) {
-  const { token, companyId } = await getValidToken()
-  const res = await fetch(buildUrl(companyId, path), {
+  const { authHeader, apiBase, companyId } = await getAuth()
+  const res = await fetch(buildUrl(apiBase, companyId, path), {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: authHeader,
       Accept: 'application/json',
     },
   })
@@ -91,11 +141,11 @@ export async function sageGet(path: string) {
 }
 
 export async function sagePost(path: string, body: object) {
-  const { token, companyId } = await getValidToken()
-  const res = await fetch(buildUrl(companyId, path), {
+  const { authHeader, apiBase, companyId } = await getAuth()
+  const res = await fetch(buildUrl(apiBase, companyId, path), {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: authHeader,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },

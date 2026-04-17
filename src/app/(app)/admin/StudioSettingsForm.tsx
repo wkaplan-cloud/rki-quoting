@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { Upload, X, CheckCircle, Zap } from 'lucide-react'
+import { Upload, X, CheckCircle, Zap, KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -14,6 +14,7 @@ interface Settings {
   sage_refresh_token?: string | null
   sage_token_expires_at?: string | null
   sage_company_id?: string | null
+  sage_username?: string | null
   sage_item_id?: number | null
   sourcing_enabled?: boolean | null
   business_name?: string | null
@@ -47,9 +48,13 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
   const fileRef = useRef<HTMLInputElement>(null)
   const searchParams = useSearchParams()
 
-  const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token))
+  const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token || settings?.sage_username))
   const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
   const [fetchingCompanyId, setFetchingCompanyId] = useState(false)
+  const [showBasicForm, setShowBasicForm] = useState(false)
+  const [basicEmail, setBasicEmail] = useState('')
+  const [basicPassword, setBasicPassword] = useState('')
+  const [connectingBasic, setConnectingBasic] = useState(false)
 
   async function fetchCompanyId() {
     setFetchingCompanyId(true)
@@ -64,6 +69,30 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
       toast.error('Failed to fetch company ID')
     } finally {
       setFetchingCompanyId(false)
+    }
+  }
+
+  async function connectBasic(e: React.FormEvent) {
+    e.preventDefault()
+    setConnectingBasic(true)
+    try {
+      const res = await fetch('/api/sage/connect-basic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: basicEmail, password: basicPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to connect to Sage'); return }
+      setSageConnected(true)
+      setSageCompanyId(data.company_id)
+      setShowBasicForm(false)
+      setBasicEmail('')
+      setBasicPassword('')
+      toast.success(`Connected to Sage — ${data.company_name} (ID: ${data.company_id})`)
+    } catch {
+      toast.error('Failed to connect to Sage')
+    } finally {
+      setConnectingBasic(false)
     }
   }
 
@@ -310,20 +339,78 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
           </div>
           </>
         ) : (
-          <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
-            <div>
-              <p className="text-sm font-medium text-[#2C2C2A]">Not connected</p>
-              <p className="text-xs text-[#8A877F] mt-0.5">
-                Connect your Sage account to push invoices directly — no double-entry, no copy-paste.
-              </p>
+          <div className="space-y-3">
+            <p className="text-xs text-[#8A877F]">
+              Connect your Sage account to push invoices directly — no double-entry, no copy-paste.
+              Choose the method that matches your Sage plan.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Option 1: OAuth (reseller/Sage ID) */}
+              <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4 flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[#2C2C2A]">Connect via Sage ID</p>
+                  <p className="text-xs text-[#8A877F] mt-0.5">For reseller plan users — redirects to Sage login.</p>
+                </div>
+                <a
+                  href="/api/sage/connect"
+                  className="self-start flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors"
+                >
+                  <Zap size={12} />
+                  Connect via Sage ID
+                </a>
+              </div>
+
+              {/* Option 2: Basic Auth (live accounting.sageone.co.za) */}
+              <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4 flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-medium text-[#2C2C2A]">Connect with email &amp; password</p>
+                  <p className="text-xs text-[#8A877F] mt-0.5">For standard Sage accounts — uses your Sage login.</p>
+                </div>
+                {!showBasicForm ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowBasicForm(true)}
+                    className="self-start flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors cursor-pointer"
+                  >
+                    <KeyRound size={12} />
+                    Enter credentials
+                  </button>
+                ) : (
+                  <form onSubmit={connectBasic} className="space-y-2">
+                    <Input
+                      label="Sage email"
+                      type="email"
+                      value={basicEmail}
+                      onChange={e => setBasicEmail(e.target.value)}
+                      required
+                    />
+                    <Input
+                      label="Sage password"
+                      type="password"
+                      value={basicPassword}
+                      onChange={e => setBasicPassword(e.target.value)}
+                      required
+                    />
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={connectingBasic}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {connectingBasic ? 'Connecting…' : 'Connect'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowBasicForm(false); setBasicEmail(''); setBasicPassword('') }}
+                        className="text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
-            <a
-              href="/api/sage/connect"
-              className="ml-6 flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-sm rounded hover:bg-[#2C2C2A] transition-colors"
-            >
-              <Zap size={13} />
-              Connect to Sage
-            </a>
           </div>
         )}
       </section>

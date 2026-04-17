@@ -12,6 +12,8 @@ export async function POST() {
     sage_refresh_token: null,
     sage_token_expires_at: null,
     sage_company_id: null,
+    sage_username: null,
+    sage_password: null,
   }, { count: 'exact' }).eq('user_id', user.id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
