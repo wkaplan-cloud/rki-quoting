@@ -16,14 +16,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    const apiKey = process.env.SAGE_API_KEY
-    const companyUrl = apiKey
-      ? `${LIVE_API_BASE}/Company/Get?apikey=${apiKey}`
-      : `${LIVE_API_BASE}/Company/Get`
-
     const basicToken = Buffer.from(`${email}:${password}`).toString('base64')
 
-    // Verify credentials by fetching the company list
+    // Do NOT send SAGE_API_KEY to the live URL — the reseller key only works on the sandbox.
+    const companyUrl = `${LIVE_API_BASE}/Company/Get`
+
     const res = await fetch(companyUrl, {
       headers: {
         Authorization: `Basic ${basicToken}`,
@@ -34,10 +31,10 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const text = await res.text()
       console.error('[sage/connect-basic] Company/Get failed:', res.status, text)
-      if (res.status === 401 || res.status === 403) {
-        return NextResponse.json({ error: 'Invalid Sage email or password' }, { status: 400 })
-      }
-      return NextResponse.json({ error: `Sage returned ${res.status}: ${text.slice(0, 200)}` }, { status: 400 })
+      return NextResponse.json(
+        { error: `Sage returned ${res.status}: ${text.slice(0, 300)}` },
+        { status: 400 }
+      )
     }
 
     const data = await res.json()
@@ -53,24 +50,28 @@ export async function POST(req: NextRequest) {
     const companyName = companies[0].Name
 
     // Store encrypted credentials — clear any OAuth tokens
-    const { error } = await supabaseAdmin.from('settings').update({
+    const { error, count } = await supabaseAdmin.from('settings').update({
       sage_username: email,
       sage_password: encrypt(password),
       sage_company_id: companyId,
-      // Clear OAuth fields
       sage_access_token: null,
       sage_refresh_token: null,
       sage_token_expires_at: null,
-    }).eq('user_id', user.id)
+    }, { count: 'exact' }).eq('user_id', user.id)
 
     if (error) {
       console.error('[sage/connect-basic] DB update failed:', error)
-      return NextResponse.json({ error: 'Failed to save credentials' }, { status: 500 })
+      return NextResponse.json({ error: `Failed to save credentials: ${error.message}` }, { status: 500 })
+    }
+
+    if (count === 0) {
+      console.error('[sage/connect-basic] No settings row found for user_id:', user.id)
+      return NextResponse.json({ error: 'No settings row found — contact support' }, { status: 500 })
     }
 
     return NextResponse.json({ company_id: companyId, company_name: companyName })
   } catch (e) {
     console.error('[sage/connect-basic] unexpected error:', e)
-    return NextResponse.json({ error: 'Failed to connect to Sage' }, { status: 500 })
+    return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
