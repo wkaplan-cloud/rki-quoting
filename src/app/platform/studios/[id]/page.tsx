@@ -5,6 +5,7 @@ import { ArrowLeft, Users, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
 import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
+import { BetaFeaturesPanel } from './BetaFeaturesPanel'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -119,6 +120,14 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
       </div>
+
+      {/* Beta feature toggles */}
+      {adminMember?.user_id && (
+        <BetaFeaturesPanel
+          userId={adminMember.user_id}
+          initialSourcingEnabled={!!(settings?.sourcing_enabled)}
+        />
+      )}
 
       {/* Subscription management */}
       <SubscriptionPanel

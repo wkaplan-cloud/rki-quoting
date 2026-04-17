@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { Upload, X, CheckCircle, Zap, Tag } from 'lucide-react'
+import { Upload, X, CheckCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams, useRouter } from 'next/navigation'
 
@@ -46,19 +46,6 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
   const [disconnecting, setDisconnecting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const searchParams = useSearchParams()
-
-  const [sourcingEnabled, setSourcingEnabled] = useState(!!(settings?.sourcing_enabled))
-  const [togglingSourceing, setTogglingSourceing] = useState(false)
-
-  async function toggleSourcing() {
-    setTogglingSourceing(true)
-    const next = !sourcingEnabled
-    const { error } = await supabase.from('settings').update({ sourcing_enabled: next }).eq('id', settings!.id)
-    if (error) { toast.error('Failed to update feature'); setTogglingSourceing(false); return }
-    setSourcingEnabled(next)
-    toast.success(`Request Price ${next ? 'enabled' : 'disabled'}`)
-    setTogglingSourceing(false)
-  }
 
   const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token))
   const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
@@ -339,34 +326,6 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
             </a>
           </div>
         )}
-      </section>
-
-      {/* Features */}
-      <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
-        <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Beta Features</h2>
-        <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
-          <div className="flex items-start gap-3">
-            <Tag size={16} className="text-[#9A7B4F] mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-[#2C2C2A]">Request Price</p>
-              <p className="text-xs text-[#8A877F] mt-0.5">
-                Let designers send pricing requests to suppliers, compare responses, and push accepted prices directly into quotes.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={toggleSourcing}
-            disabled={togglingSourceing}
-            className={`ml-6 flex-shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 cursor-pointer ${sourcingEnabled ? 'bg-[#9A7B4F]' : 'bg-[#D8D3C8]'}`}
-            aria-checked={sourcingEnabled}
-            role="switch"
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${sourcingEnabled ? 'translate-x-6' : 'translate-x-1'}`}
-            />
-          </button>
-        </div>
       </section>
 
       <div className="border-t border-[#EDE9E1] pt-6">
