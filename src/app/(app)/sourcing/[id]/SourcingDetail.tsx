@@ -2,7 +2,7 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Send, Check, ArrowUpRight, Trash2, Plus, Upload, X, Clock, CheckCircle, XCircle, Eye, AlertCircle
+  Send, Check, ArrowUpRight, Trash2, Plus, Upload, X, Clock, CheckCircle, XCircle, Eye, AlertCircle, PencilLine
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type {
@@ -37,6 +37,16 @@ const RECIPIENT_STATUS_LABEL: Record<SourcingRecipientStatus, string> = {
   rejected:  'Not selected',
   declined:  'Declined',
 }
+
+const FIELD_LABELS: { key: string; label: string }[] = [
+  { key: 'title',           label: 'Item Name' },
+  { key: 'fabric_quantity', label: 'Fabric Qty' },
+  { key: 'fabric_unit',     label: 'Fabric Unit' },
+  { key: 'item_quantity',   label: 'No. of Items' },
+  { key: 'dimensions',      label: 'Size / Dimensions' },
+  { key: 'colour_finish',   label: 'Colour / Finish' },
+  { key: 'specifications',  label: 'Description' },
+]
 
 function formatZAR(n: number) {
   return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -215,9 +225,10 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
           )}
         </div>
         <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3">
-          <Detail label="Title" value={request.title} />
-          <Detail label="Quantity" value={`${request.quantity}${request.unit ? ' ' + request.unit : ''}`} />
-          {request.dimensions && <Detail label="Dimensions" value={request.dimensions} />}
+          <Detail label="Item Name" value={request.title} />
+          {request.quantity != null && <Detail label="Fabric / Material Qty" value={`${request.quantity}${request.unit ? ' ' + request.unit : ''}`} />}
+          {request.item_quantity != null && <Detail label="No. of Items" value={String(request.item_quantity)} />}
+          {request.dimensions && <Detail label="Size / Dimensions" value={request.dimensions} />}
           {request.colour_finish && <Detail label="Colour / Finish" value={request.colour_finish} />}
           {request.specifications && (
             <div className="col-span-2">
@@ -389,6 +400,21 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
                       </div>
                       {resp.notes && (
                         <p className="mt-2 text-xs text-[#6B6860] leading-relaxed">{resp.notes}</p>
+                      )}
+                      {resp.changed_fields && resp.changed_fields.length > 0 && resp.supplier_edits && (
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-700 mb-2 flex items-center gap-1">
+                            <PencilLine size={10} /> Supplier modified {resp.changed_fields.length} field{resp.changed_fields.length !== 1 ? 's' : ''}
+                          </p>
+                          <div className="space-y-1.5">
+                            {FIELD_LABELS.filter(f => resp.changed_fields!.includes(f.key) && resp.supplier_edits![f.key] != null).map(f => (
+                              <div key={f.key} className="text-xs">
+                                <span className="text-amber-600 font-medium">{f.label}:</span>
+                                <span className="text-amber-800 ml-1">{String(resp.supplier_edits![f.key])}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                     {isSent && !isAccepted && !isTerminal && (

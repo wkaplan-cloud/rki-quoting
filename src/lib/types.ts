@@ -164,6 +164,7 @@ export interface SourcingRequest {
   specifications: string | null
   quantity: number
   unit: string | null
+  item_quantity: number | null
   dimensions: string | null
   colour_finish: string | null
   status: SourcingRequestStatus
@@ -172,6 +173,17 @@ export interface SourcingRequest {
   accepted_response_id: string | null
   pushed_at: string | null
   created_at: string
+}
+
+export interface SupplierEdits {
+  title?: string
+  fabric_quantity?: number
+  fabric_unit?: string
+  item_quantity?: number
+  dimensions?: string
+  colour_finish?: string
+  specifications?: string
+  [key: string]: unknown
 }
 
 export interface SourcingRequestImage {
@@ -205,6 +217,8 @@ export interface SourcingRequestResponse {
   notes: string | null
   valid_until: string | null
   submitted_at: string
+  supplier_edits: SupplierEdits | null
+  changed_fields: string[] | null
 }
 
 export interface SourcingRequestWithRelations extends SourcingRequest {

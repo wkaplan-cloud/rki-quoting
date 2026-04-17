@@ -44,6 +44,7 @@ const emptyForm = {
   title: '',
   quantity: '',
   unit: '',
+  item_quantity: '',
   dimensions: '',
   colour_finish: '',
   specifications: '',
@@ -69,8 +70,9 @@ export function SourcingDashboard({ requests, recipients }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: form.title.trim(),
-        quantity: form.quantity ? parseFloat(form.quantity) : 1,
+        quantity: form.quantity ? parseFloat(form.quantity) : null,
         unit: form.unit.trim() || null,
+        item_quantity: form.item_quantity ? parseInt(form.item_quantity) : null,
         dimensions: form.dimensions.trim() || null,
         colour_finish: form.colour_finish.trim() || null,
         specifications: form.specifications.trim() || null,
@@ -136,10 +138,10 @@ export function SourcingDashboard({ requests, recipients }: Props) {
               />
             </div>
 
-            {/* Quantity + Unit */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Quantities */}
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Quantity</label>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Fabric / Material Qty</label>
                 <input
                   type="number"
                   min="0"
@@ -154,9 +156,21 @@ export function SourcingDashboard({ requests, recipients }: Props) {
                 <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Unit</label>
                 <input
                   type="text"
-                  placeholder="e.g. metres, each, m²"
+                  placeholder="e.g. metres, m²"
                   value={form.unit}
                   onChange={e => set('unit', e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">No. of Items</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="e.g. 3"
+                  value={form.item_quantity}
+                  onChange={e => set('item_quantity', e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
                 />
               </div>

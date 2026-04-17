@@ -102,6 +102,8 @@ export async function POST(
     lead_time_weeks?: number | null
     notes?: string
     valid_until?: string | null
+    supplier_edits?: Record<string, unknown> | null
+    changed_fields?: string[] | null
   }
 
   const now = new Date().toISOString()
@@ -129,6 +131,8 @@ export async function POST(
       lead_time_weeks: body.lead_time_weeks ?? null,
       notes: body.notes?.trim() || null,
       valid_until: body.valid_until || null,
+      supplier_edits: body.supplier_edits ?? null,
+      changed_fields: body.changed_fields ?? null,
     })
 
   if (responseError) return NextResponse.json({ error: responseError.message }, { status: 500 })

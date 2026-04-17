@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     specifications?: string
     quantity?: number
     unit?: string
+    item_quantity?: number
     dimensions?: string
     colour_finish?: string
   }
@@ -36,8 +37,9 @@ export async function POST(req: NextRequest) {
     user_id: user.id,
     title: body.title.trim(),
     specifications: body.specifications?.trim() || null,
-    quantity: body.quantity ?? 1,
+    quantity: body.quantity ?? null,
     unit: body.unit?.trim() || null,
+    item_quantity: body.item_quantity ?? null,
     dimensions: body.dimensions?.trim() || null,
     colour_finish: body.colour_finish?.trim() || null,
     status: 'draft',
