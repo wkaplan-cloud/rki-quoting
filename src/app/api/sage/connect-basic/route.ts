@@ -18,8 +18,12 @@ export async function POST(req: NextRequest) {
 
     const basicToken = Buffer.from(`${email}:${password}`).toString('base64')
 
-    // Do NOT send SAGE_API_KEY to the live URL — the reseller key only works on the sandbox.
-    const companyUrl = `${LIVE_API_BASE}/Company/Get`
+    // Sage requires the reseller API key on ALL requests (Basic Auth and OAuth alike)
+    // to identify the third-party application.
+    const apiKey = process.env.SAGE_API_KEY
+    const companyUrl = apiKey
+      ? `${LIVE_API_BASE}/Company/Get?apikey=${apiKey}`
+      : `${LIVE_API_BASE}/Company/Get`
 
     const res = await fetch(companyUrl, {
       headers: {

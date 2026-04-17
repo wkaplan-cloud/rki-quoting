@@ -121,18 +121,16 @@ async function getAuth(): Promise<{ authHeader: string; apiBase: string; company
   }
 }
 
-function buildUrl(apiBase: string, companyId: string, path: string, isBasicAuth: boolean): string {
+function buildUrl(apiBase: string, companyId: string, path: string): string {
   // Do not use URLSearchParams for apikey — Sage requires literal curly braces.
-  // Do NOT send the reseller API key to the live URL — it only works on the sandbox.
-  const apiKey = isBasicAuth ? null : process.env.SAGE_API_KEY
+  const apiKey = process.env.SAGE_API_KEY
   const base = `${apiBase}${path}?CompanyId=${companyId}`
   return apiKey ? `${base}&apikey=${apiKey}` : base
 }
 
 export async function sageGet(path: string) {
   const { authHeader, apiBase, companyId } = await getAuth()
-  const isBasicAuth = authHeader.startsWith('Basic ')
-  const res = await fetch(buildUrl(apiBase, companyId, path, isBasicAuth), {
+  const res = await fetch(buildUrl(apiBase, companyId, path), {
     headers: {
       Authorization: authHeader,
       Accept: 'application/json',
@@ -144,8 +142,7 @@ export async function sageGet(path: string) {
 
 export async function sagePost(path: string, body: object) {
   const { authHeader, apiBase, companyId } = await getAuth()
-  const isBasicAuth = authHeader.startsWith('Basic ')
-  const res = await fetch(buildUrl(apiBase, companyId, path, isBasicAuth), {
+  const res = await fetch(buildUrl(apiBase, companyId, path), {
     method: 'POST',
     headers: {
       Authorization: authHeader,
