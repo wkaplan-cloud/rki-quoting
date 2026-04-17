@@ -8,12 +8,11 @@ const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
 const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
 const PAGE_SIZE    = 50  // confirmed API max
 
-// Scan year by year only — each fabric has exactly one launch year so there
-// is zero overlap between years. No Phase 1 unfiltered scan needed.
-const START_YEAR = 2000
-const END_YEAR   = new Date().getFullYear()
-
-// RESUME token format: "RESUME:<year>:<page>"
+// Strategy (mirrors working Python script):
+// 1. Discover all collection IDs via facets in a single API call
+// 2. Scan each collection with filter "collectionId.eq.{cid}"
+// Each product belongs to exactly one collection — zero overlap, exact count.
+// RESUME token format: "RESUME:{collectionId}:{page}"
 
 function twinbruHeaders() {
   return {
@@ -52,6 +51,36 @@ function extractProducts(data: unknown): { items: Record<string, unknown>[], tot
   return { items, total }
 }
 
+async function fetchCollectionIds(): Promise<number[]> {
+  const res = await fetch(`${TWINBRU_BASE}/products/`, {
+    method: 'POST',
+    headers: twinbruHeaders(),
+    body: JSON.stringify({
+      page: 1, pageSize: 1, filter: '',
+      facets: [{ attribute: 'collectionId' }],
+    }),
+  })
+  if (!res.ok) return []
+  const data = await res.json().catch(() => null)
+  if (!data) return []
+
+  const facets = Array.isArray(data.facets) ? data.facets as Record<string, unknown>[] : []
+  const facet = facets.find(f => {
+    const name = String(f.name ?? '').toLowerCase()
+    return name === 'collectionid'
+  })
+  if (!facet) return []
+
+  const values = Array.isArray(facet.values) ? facet.values as Record<string, unknown>[] : []
+  const ids: number[] = []
+  for (const v of values) {
+    const key = v.key ?? v.value ?? v.id
+    const n = parseInt(String(key), 10)
+    if (!isNaN(n)) ids.push(n)
+  }
+  return ids.sort((a, b) => a - b)
+}
+
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -87,12 +116,10 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── Resolve resume position ───────────────────────────────────────────────
-    // Manual = always start fresh from year 2000, page 1.
-    // Cron / continue = pick up from saved RESUME token.
     const useResume = triggeredBy === 'cron' || triggeredBy === 'continue'
 
-    let startYear = START_YEAR
-    let startPage = 1
+    let resumeCollectionId: number | null = null
+    let resumePage = 1
 
     if (useResume) {
       const { data: resumeLog } = await supabase
@@ -107,11 +134,22 @@ export async function GET(req: NextRequest) {
 
       if (resumeLog?.error_message) {
         const parts = resumeLog.error_message.slice(7).split(':') // strip "RESUME:"
-        const year = parseInt(parts[0], 10)
+        const cid  = parseInt(parts[0], 10)
         const page = parseInt(parts[1], 10)
-        if (!isNaN(year)) startYear = year
-        if (!isNaN(page)) startPage = page
+        if (!isNaN(cid))  resumeCollectionId = cid
+        if (!isNaN(page)) resumePage = page
       }
+    }
+
+    // ── Discover all collection IDs via facets ────────────────────────────────
+    const allCollectionIds = await fetchCollectionIds()
+
+    if (!allCollectionIds.length) {
+      await supabase.from('twinbru_sync_log').update({
+        status: 'error', completed_at: new Date().toISOString(),
+        error_message: 'Facets API returned no collection IDs',
+      }).eq('id', logId)
+      return NextResponse.json({ error: 'No collection IDs from facets' }, { status: 500 })
     }
 
     // ── Load existing product_ids to skip duplicates ──────────────────────────
@@ -130,8 +168,7 @@ export async function GET(req: NextRequest) {
       from += 1000
     }
 
-    // ── Year-by-year scan ─────────────────────────────────────────────────────
-    // Each fabric belongs to exactly one launch year — no overlap between years.
+    // ── Scan each collection ──────────────────────────────────────────────────
     const TIME_LIMIT_MS = 240_000  // 4 min
     const startTime     = Date.now()
     let totalFetched    = 0
@@ -140,19 +177,22 @@ export async function GET(req: NextRequest) {
     let timedOut        = false
     let resumeToken: string | null = null
 
-    for (let year = startYear; year <= END_YEAR; year++) {
-      const lo     = `${year}00`
-      const hi     = `${year}99`
-      const filter = `status.eq.RN/launch.in(${lo}-${hi})`
+    // Skip collections before the resume point
+    const startIdx = resumeCollectionId != null
+      ? Math.max(0, allCollectionIds.indexOf(resumeCollectionId))
+      : 0
 
-      let page        = year === startYear ? startPage : 1
-      let yearTotal   = 0
-      let yearFetched = 0
+    for (let i = startIdx; i < allCollectionIds.length; i++) {
+      const cid    = allCollectionIds[i]
+      const filter = `collectionId.eq.${cid}`
+      let page     = (i === startIdx && resumeCollectionId != null) ? resumePage : 1
+      let colTotal = 0
+      let colFetched = 0
 
       while (true) {
         if (Date.now() - startTime > TIME_LIMIT_MS) {
           timedOut = true
-          resumeToken = `RESUME:${year}:${page}`
+          resumeToken = `RESUME:${cid}:${page}`
           break
         }
 
@@ -164,19 +204,18 @@ export async function GET(req: NextRequest) {
         const rawText = await res.text()
 
         if (res.status !== 200) {
-          // 404 or 500 = no results for this year — skip it
           if (res.status === 404 || res.status === 500) break
-          throw new Error(`Products API ${res.status} (year ${year} page ${page}): ${rawText.slice(0, 200)}`)
+          throw new Error(`Products API ${res.status} (collection ${cid} page ${page}): ${rawText.slice(0, 200)}`)
         }
 
         let data: unknown = {}
         try { data = rawText ? JSON.parse(rawText) : {} } catch {
-          throw new Error(`Products API non-JSON (year ${year} page ${page}): ${rawText.slice(0, 200)}`)
+          throw new Error(`Products API non-JSON (collection ${cid} page ${page}): ${rawText.slice(0, 200)}`)
         }
 
         const { items, total } = extractProducts(data)
-        if (yearTotal === 0 && total) yearTotal = total
-        yearFetched  += items.length
+        if (colTotal === 0 && total) colTotal = total
+        colFetched   += items.length
         totalFetched += items.length
 
         for (const item of items) {
@@ -192,7 +231,7 @@ export async function GET(req: NextRequest) {
         }
 
         if (!items.length || items.length < PAGE_SIZE) break
-        if (yearTotal && yearFetched >= yearTotal) break
+        if (colTotal && colFetched >= colTotal) break
 
         page++
         await new Promise(r => setTimeout(r, 80))
