@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/sync-prices",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/load-catalogue",
-      "schedule": "0,15,30,45 2,3 * * *"
     }
   ]
 }
