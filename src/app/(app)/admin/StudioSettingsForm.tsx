@@ -405,7 +405,7 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
                         Cancel
                       </button>
                     </div>
-                  </form>
+                  </div>
                 )}
               </div>
             </div>
