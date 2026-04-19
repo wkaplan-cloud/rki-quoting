@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-const PLAN_PRICES: Record<string, number> = {
-  solo: 599,
-  studio: 1099,
+const PLANS: Record<string, { price: number; planCode: string }> = {
+  solo:   { price: 599,  planCode: process.env.PAYSTACK_PLAN_SOLO   ?? '' },
+  studio: { price: 1099, planCode: process.env.PAYSTACK_PLAN_STUDIO ?? '' },
 }
 
 export async function POST(req: NextRequest) {
@@ -13,7 +13,9 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { planId } = await req.json() as { planId: string }
-  if (!PLAN_PRICES[planId]) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+  const plan = PLANS[planId]
+  if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+  if (!plan.planCode) return NextResponse.json({ error: 'Plan not configured' }, { status: 500 })
 
   const secretKey = process.env.PAYSTACK_SECRET_KEY
   if (!secretKey) return NextResponse.json({ error: 'Paystack not configured' }, { status: 500 })
@@ -21,7 +23,7 @@ export async function POST(req: NextRequest) {
   const { data: orgId } = await supabase.rpc('get_current_org_id')
   if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 404 })
 
-  // Enforce: Solo plan only available for single-user studios
+  // Enforce Solo = 1 user max
   if (planId === 'solo') {
     const { count } = await supabaseAdmin
       .from('org_members')
@@ -33,17 +35,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const amountZar = PLAN_PRICES[planId]
   const reference = `QH-sub-${orgId.slice(0, 8)}-${planId}-${Date.now()}`
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
   const callbackUrl = `${appUrl}/api/paystack/subscription-callback?ref=${reference}`
 
-  // Store the pending reference on the org so the callback can look it up
+  // Store pending reference on org
   await supabaseAdmin
     .from('organizations')
     .update({ paystack_reference: reference, paystack_pending_plan: planId })
     .eq('id', orgId)
 
+  // Initialize transaction with plan code — Paystack auto-creates subscription after first payment
   const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
     method: 'POST',
     headers: {
@@ -52,10 +54,11 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       email: user.email,
-      amount: amountZar * 100, // kobo
+      amount: plan.price * 100, // kobo
       reference,
       currency: 'ZAR',
       callback_url: callbackUrl,
+      plan: plan.planCode,
       metadata: {
         org_id: orgId,
         plan: planId,
