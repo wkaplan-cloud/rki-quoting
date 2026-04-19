@@ -1,8 +1,9 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag
+  LayoutDashboard, FolderOpen, Users, Truck, Package, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle
 } from 'lucide-react'
 
 const mainLinks = [
@@ -34,6 +35,24 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
   const path = usePathname()
   const isActive = (href: string) =>
     href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [upgrading, setUpgrading] = useState(false)
+
+  async function handleUpgrade() {
+    setUpgrading(true)
+    try {
+      const res = await fetch('/api/paystack/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: 'studio' }),
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? 'Something went wrong'); return }
+      window.location.href = data.authorization_url
+    } finally {
+      setUpgrading(false)
+    }
+  }
 
   // Shared label style: always visible on mobile, fade in on desktop hover
   const labelCls = 'text-xs whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3'
@@ -180,12 +199,28 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
 
           {/* Subscription status */}
           {subscriptionStatus === 'active' ? (
-            <div className="flex items-center h-7 mx-1">
-              <span className="flex items-center justify-center w-10 flex-shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              </span>
-              <span className={`${labelCls} text-white/30 capitalize`}>{plan} plan</span>
-            </div>
+            plan === 'solo' ? (
+              <button
+                onClick={() => setUpgradeModalOpen(true)}
+                title="Upgrade to Studio"
+                className="flex items-center h-7 rounded mx-1 hover:bg-white/5 transition-colors w-[calc(100%-8px)] group/upgrade"
+              >
+                <span className="flex items-center justify-center w-10 flex-shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                </span>
+                <span className={`${labelCls} text-white/30 capitalize group-hover/upgrade:text-white/60 transition-colors`}>
+                  Solo plan
+                  <ArrowUpCircle size={10} className="inline ml-1 opacity-0 group-hover/upgrade:opacity-60 transition-opacity" />
+                </span>
+              </button>
+            ) : (
+              <div className="flex items-center h-7 mx-1">
+                <span className="flex items-center justify-center w-10 flex-shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                </span>
+                <span className={`${labelCls} text-white/30 capitalize`}>{plan} plan</span>
+              </div>
+            )
           ) : subscriptionStatus === 'trialing' && trialDaysLeft !== null ? (
             <Link href="/subscribe" onClick={onClose}
               title={trialDaysLeft === 0 ? 'Trial ended' : `Trial · ${trialDaysLeft}d left`}
@@ -210,6 +245,45 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
           </form>
         </div>
       </aside>
+      {/* Upgrade to Studio modal */}
+      {upgradeModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setUpgradeModalOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-[360px] p-7" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-[#1A1A18]">Upgrade to Studio</h2>
+              <button onClick={() => setUpgradeModalOpen(false)} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
+              Studio gives you unlimited team members and multi-user collaboration. Your card will be charged <strong className="text-[#2C2C2A]">R1,099/month</strong> starting today.
+            </p>
+            <ul className="space-y-2 mb-6">
+              {['Unlimited team members', 'Multi-user collaboration', 'Priority support'].map(f => (
+                <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setUpgradeModalOpen(false)}
+                className="flex-1 py-2.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpgrade}
+                disabled={upgrading}
+                className="flex-1 py-2.5 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer font-medium"
+              >
+                {upgrading ? 'Redirecting…' : 'Upgrade to Studio →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
