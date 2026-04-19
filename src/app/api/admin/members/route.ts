@@ -24,6 +24,25 @@ export async function PATCH(req: NextRequest) {
   const { id, status, role } = await req.json()
   if (!id || (!status && !role)) return NextResponse.json({ error: 'id and status or role required' }, { status: 400 })
 
+  // Block reactivation if the org is on Solo plan and already has a member
+  if (status === 'active') {
+    const { data: org } = await supabaseAdmin
+      .from('organizations')
+      .select('plan, subscription_status')
+      .eq('id', membership.org_id)
+      .single()
+    if (org?.plan === 'solo' && org?.subscription_status === 'active') {
+      const { count } = await supabaseAdmin
+        .from('org_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('org_id', membership.org_id)
+        .eq('status', 'active')
+      if ((count ?? 0) >= 1) {
+        return NextResponse.json({ error: 'Solo plan is limited to 1 user. Upgrade to Studio to reactivate team members.', upgrade: true }, { status: 403 })
+      }
+    }
+  }
+
   const updates: Record<string, string> = {}
   if (status) updates.status = status
   if (role) updates.role = role

@@ -42,23 +42,21 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
 
   async function handleSubscribe(planId: string) {
     setLoading(planId)
-    // Stripe checkout will be wired up here once keys are configured
-    // For now, notify the platform admin by email
     try {
-      await fetch('/api/contact', {
+      const res = await fetch('/api/paystack/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: `Subscription request — ${planId} plan`,
-          message: `A studio is requesting to subscribe to the ${planId} plan (R${planId === 'solo' ? '599' : '1,099'}/month). Please action this in the platform admin.`,
-          email: userEmail,
-          name: studioName || userEmail,
-          company: studioName,
-        }),
+        body: JSON.stringify({ planId }),
       })
-      toast.success("Request sent! We'll be in touch within 24 hours to activate your plan.")
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Something went wrong. Please try again.')
+        return
+      }
+      // Redirect to Paystack checkout
+      window.location.href = data.authorization_url
     } catch {
-      toast.error('Something went wrong. Please use our contact form to get in touch.')
+      toast.error('Something went wrong. Please try again.')
     } finally {
       setLoading(null)
     }
@@ -145,7 +143,7 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
                       : 'bg-[#1A1A18] text-white hover:bg-[#9A7B4F] cursor-pointer disabled:opacity-60'
                   }`}
                 >
-                  {loading === plan.id ? 'Sending request…' : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
+                  {loading === plan.id ? 'Redirecting to payment…' : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
                 </button>
               </div>
             )
