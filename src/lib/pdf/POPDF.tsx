@@ -15,10 +15,10 @@ interface Props {
   vatNumber?: string | null
   companyReg?: string | null
   printDate?: string | null
-  studioRepEmail?: string
+  platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null }[]
 }
 
-function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, studioRepEmail }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null; printDate?: string | null; studioRepEmail?: string }) {
+function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null; printDate?: string | null; platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null }[] }) {
   const itemRows = items.filter(i => i.row_type !== 'section')
   const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const vatAmount = subtotal * (vatRate / 100)
@@ -60,9 +60,10 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
             <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold', marginBottom: 2 }]}>{supplier.supplier_name}</Text>
             {supplier.contact_person && <Text style={[styles.infoVal, { marginBottom: 2 }]}>{supplier.contact_person}</Text>}
             {supplier.is_platform
-              ? studioRepEmail
-                ? <Text style={styles.infoVal}>{studioRepEmail}</Text>
-                : null
+              ? (() => {
+                  const email = platformContacts?.find(c => c.supplier_id === supplier.id)?.email
+                  return email ? <Text style={styles.infoVal}>{email}</Text> : null
+                })()
               : supplier.email
                 ? <Text style={styles.infoVal}>{supplier.email}</Text>
                 : null
@@ -147,9 +148,9 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
   )
 }
 
-export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, studioRepEmail }: Props) {
+export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
-  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, studioRepEmail }
+  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }
 
   // Single supplier mode — lineItems already filtered by API
   if (supplierId) {
