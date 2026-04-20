@@ -36,7 +36,7 @@ export default function TermsPage() {
 
           <Section title="4. Subscription and Payment">
             <p><strong>4.1 Trial Period.</strong> New accounts may be offered a free trial period. No payment is required during the trial. At the end of the trial, continued use requires a paid subscription.</p>
-            <p><strong>4.2 Subscription Fees.</strong> Subscription fees are charged in South African Rand (ZAR) and billed on a monthly basis. All fees are exclusive of VAT, which will be added where applicable.</p>
+            <p><strong>4.2 Subscription Fees.</strong> Subscription fees are charged in South African Rand (ZAR) and billed on a monthly basis.</p>
             <p><strong>4.3 Payment.</strong> Payments are processed securely. By providing payment details, you authorise us to charge your payment method for all fees due.</p>
             <p><strong>4.4 Cancellation.</strong> You may cancel your subscription at any time. Cancellation takes effect at the end of the current billing period. No refunds are provided for partial periods unless required by law.</p>
             <p><strong>4.5 Price Changes.</strong> We reserve the right to change subscription pricing. We will provide at least 30 days&apos; notice before any price change takes effect. Continued use after the effective date constitutes acceptance of the new pricing.</p>
