@@ -144,7 +144,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
   const [discontinuedCount, setDiscontinuedCount] = useState(0)
   const [discontinuedProductIds, setDiscontinuedProductIds] = useState<string[]>([])
   const [discontinuedTotalInDb, setDiscontinuedTotalInDb] = useState(0)
-  const activeIdsRef = useRef<number[]>([])
+  const activeIdsRef = useRef<string[]>([])
   const discontinuedCurrentYearRef = useRef(0)
 
   async function triggerPriceSync() {
@@ -284,9 +284,9 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
         setDiscontinuedState('idle')
         return
       }
-      const { activeIds } = await res.json() as { activeIds: number[] }
+      const { activeIds } = await res.json() as { activeIds: string[] }
       activeIdsRef.current.push(...activeIds)
-      setDiscontinuedResult({ type: 'ok', msg: `Scanning… year ${year} (${activeIdsRef.current.toLocaleString()} active found so far)` })
+      setDiscontinuedResult({ type: 'ok', msg: `Scanning… year ${year} (${activeIdsRef.current.length.toLocaleString()} active found so far)` })
       discontinuedCurrentYearRef.current = year + 1
       await scanNextYear()
     } catch (e) {

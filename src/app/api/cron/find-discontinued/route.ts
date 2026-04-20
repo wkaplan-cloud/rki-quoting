@@ -61,8 +61,8 @@ export async function GET(req: NextRequest) {
     const items: Record<string, unknown>[] = Array.isArray(raw) ? raw : []
 
     for (const item of items) {
-      const pid = parseInt(String(item.productId ?? item.id ?? ''), 10)
-      if (!isNaN(pid)) activeIds.push(pid)
+      const pid = String(item.productId ?? item.id ?? '').trim()
+      if (pid) activeIds.push(pid)
     }
 
     if (!items.length || items.length < PAGE_SIZE) break
@@ -79,9 +79,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { activeProductIds } = await req.json() as { activeProductIds: number[] }
-  if (!Array.isArray(activeProductIds)) {
-    return NextResponse.json({ error: 'Missing activeProductIds' }, { status: 400 })
+  const { activeProductIds } = await req.json() as { activeProductIds: string[] }
+  if (!Array.isArray(activeProductIds) || activeProductIds.length === 0) {
+    return NextResponse.json({ error: 'No active product IDs provided — scan may have returned empty results' }, { status: 400 })
   }
 
   const supabase = createClient(
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   )
 
-  const activeSet = new Set(activeProductIds.map(String))
+  const activeSet = new Set(activeProductIds)
 
   // Load all product_ids from DB
   const dbIds: string[] = []
