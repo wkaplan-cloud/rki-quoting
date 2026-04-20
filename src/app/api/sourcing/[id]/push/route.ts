@@ -66,6 +66,13 @@ export async function POST(
     if (supplier) markupPercentage = supplier.markup_percentage
   }
 
+  // Fetch studio's default delivery address from settings
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('business_address')
+    .maybeSingle()
+  const deliveryAddress = settings?.business_address || null
+
   // Determine sort_order (append to end)
   const { count } = await supabase
     .from('line_items')
@@ -90,6 +97,7 @@ export async function POST(
       cost_price: response.unit_price,
       markup_percentage: markupPercentage,
       lead_time_weeks: response.lead_time_weeks || null,
+      delivery_address: deliveryAddress,
       sort_order: sortOrder,
       row_type: 'item',
       indent_level: 0,

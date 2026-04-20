@@ -189,18 +189,23 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
         </div>
       )}
       {/* Status banner for terminal states */}
-      {isPushed && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl px-5 py-4 flex items-start gap-3">
-          <CheckCircle size={16} className="text-purple-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-purple-800">Pushed to quote</p>
-            <p className="text-xs text-purple-600 mt-0.5">
-              This request was pushed to a project as a new line item on{' '}
-              {request.pushed_at ? new Date(request.pushed_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}.
-            </p>
+      {isPushed && (() => {
+        const pushedProject = projects.find(p => p.id === request.project_id)
+        return (
+          <div className="bg-purple-50 border border-purple-200 rounded-xl px-5 py-4 flex items-start gap-3">
+            <CheckCircle size={16} className="text-purple-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-purple-800">
+                Accepted — pushed to {pushedProject ? `Quote #${pushedProject.project_number} — ${pushedProject.project_name}` : 'quote'}
+              </p>
+              <p className="text-xs text-purple-600 mt-0.5">
+                Added as a new line item on{' '}
+                {request.pushed_at ? new Date(request.pushed_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}.
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {isCancelled && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-start gap-3">
@@ -400,6 +405,12 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
                       </div>
                       {resp.notes && (
                         <p className="mt-2 text-xs text-[#6B6860] leading-relaxed">{resp.notes}</p>
+                      )}
+                      {resp.attachment_url && (
+                        <a href={resp.attachment_url} target="_blank" rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#9A7B4F] hover:underline">
+                          <ArrowUpRight size={12} /> View attached document
+                        </a>
                       )}
                       {resp.changed_fields && resp.changed_fields.length > 0 && resp.supplier_edits && (
                         <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">

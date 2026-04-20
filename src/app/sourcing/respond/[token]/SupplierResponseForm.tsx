@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { CheckCircle, Package, PencilLine } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { CheckCircle, Package, PencilLine, Paperclip, X } from 'lucide-react'
 
 interface RequestData {
   id: string
@@ -108,6 +108,31 @@ export function SupplierResponseForm({ token, data }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null)
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const attachmentInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAttachmentFile(file)
+    setUploadingAttachment(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`/api/sourcing/respond/${token}/upload`, { method: 'POST', body: formData })
+    const json = await res.json()
+    setUploadingAttachment(false)
+    if (!res.ok) { setError(json.error ?? 'Upload failed'); setAttachmentFile(null); return }
+    setAttachmentUrl(json.url)
+  }
+
+  function removeAttachment() {
+    setAttachmentFile(null)
+    setAttachmentUrl(null)
+    if (attachmentInputRef.current) attachmentInputRef.current.value = ''
+  }
+
   const alreadyResponded = ['responded', 'accepted', 'rejected', 'declined'].includes(recipient.status)
   const isDeclined = recipient.status === 'declined'
   const isAccepted = recipient.status === 'accepted'
@@ -162,6 +187,7 @@ export function SupplierResponseForm({ token, data }: Props) {
         valid_until: validUntil || null,
         supplier_edits: changedFields.length > 0 ? supplierEdits : null,
         changed_fields: changedFields.length > 0 ? changedFields : null,
+        attachment_url: attachmentUrl ?? null,
       }),
     })
     const json = await res.json()
@@ -327,6 +353,25 @@ export function SupplierResponseForm({ token, data }: Props) {
                 <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Notes / Conditions</label>
                 <textarea rows={3} placeholder="Any caveats, material specs, colour options, or special conditions…" value={notes} onChange={e => setNotes(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Attach Quote / Document <span className="text-[#8A877F] font-normal">(optional)</span></label>
+                {attachmentFile ? (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[#F5F2EC] border border-[#D8D3C8] rounded">
+                    <Paperclip size={13} className="text-[#9A7B4F] flex-shrink-0" />
+                    <span className="text-sm text-[#2C2C2A] truncate flex-1">{attachmentFile.name}</span>
+                    {uploadingAttachment
+                      ? <span className="text-xs text-[#8A877F]">Uploading…</span>
+                      : <button type="button" onClick={removeAttachment} className="text-[#8A877F] hover:text-red-500 transition-colors flex-shrink-0"><X size={13} /></button>
+                    }
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 px-3 py-2 bg-[#F5F2EC] border border-[#D8D3C8] border-dashed rounded cursor-pointer hover:bg-[#EDE9E1] transition-colors">
+                    <Paperclip size={13} className="text-[#8A877F]" />
+                    <span className="text-sm text-[#8A877F]">Click to attach a file (PDF, image, etc.)</span>
+                    <input ref={attachmentInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" className="hidden" onChange={handleAttachmentChange} />
+                  </label>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Price valid until</label>

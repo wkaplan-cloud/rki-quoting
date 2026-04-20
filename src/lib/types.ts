@@ -219,6 +219,7 @@ export interface SourcingRequestResponse {
   submitted_at: string
   supplier_edits: SupplierEdits | null
   changed_fields: string[] | null
+  attachment_url: string | null
 }
 
 export interface SourcingRequestWithRelations extends SourcingRequest {

@@ -21,10 +21,10 @@ export const styles = StyleSheet.create({
   tableHeader: { flexDirection: 'row', backgroundColor: '#F5F2EC', paddingVertical: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: '#D8D3C8' },
   tableRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#C4BFB5' },
   tableRowAlt: { backgroundColor: '#FDFCF9' },
-  th: { fontSize: 7, color: '#8A877F', fontFamily: 'Helvetica-Bold' },
+  th: { fontSize: 8, color: '#8A877F', fontFamily: 'Helvetica-Bold' },
   tableSectionRow: { flexDirection: 'row', backgroundColor: '#F5F2EC', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: '#D8D3C8', marginTop: 4 },
-  tableSectionLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#8A877F' },
-  td: { fontSize: 6.5, color: '#2C2C2A' },
+  tableSectionLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#8A877F' },
+  td: { fontSize: 8, color: '#2C2C2A' },
   tdRight: { textAlign: 'right' },
   tdMuted: { color: '#8A877F' },
   // Totals
@@ -42,7 +42,7 @@ export const styles = StyleSheet.create({
   totalsDepositVal: { fontSize: 8, color: '#9A7B4F', fontFamily: 'Helvetica-Bold' },
   // Footer
   footer: { marginTop: 24, borderTopWidth: 0.5, borderTopColor: '#D8D3C8', paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
-  footerText: { fontSize: 7, color: '#8A877F', flex: 1, textAlign: 'center' },
+  footerText: { fontSize: 9, color: '#8A877F', flex: 1, textAlign: 'center' },
   footerSig: { width: 140, textAlign: 'right' },
   sigLine: { borderTopWidth: 0.5, borderTopColor: '#2C2C2A', marginTop: 24, paddingTop: 4, fontSize: 7, color: '#8A877F' },
 })
