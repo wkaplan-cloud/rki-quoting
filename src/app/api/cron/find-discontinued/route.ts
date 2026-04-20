@@ -58,7 +58,11 @@ export async function GET(req: NextRequest) {
     if (totalPageCount === 0 && tpc) totalPageCount = tpc
 
     const raw = data.results ?? data.items ?? data.products ?? []
-    const items: Record<string, unknown>[] = Array.isArray(raw) ? raw : []
+    const rawItems: Record<string, unknown>[] = Array.isArray(raw) ? raw : []
+    // Unwrap results[].item wrapper if present (POST /products/ response shape)
+    const items = rawItems.map(r =>
+      (r && typeof r === 'object' && 'item' in r) ? (r.item as Record<string, unknown>) : r
+    )
 
     for (const item of items) {
       const pid = String(item.productId ?? item.id ?? '').trim()
