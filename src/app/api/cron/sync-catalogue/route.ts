@@ -26,8 +26,11 @@ function buildRecord(item: Record<string, unknown>) {
     : item
   const fullWidth    = props.selvedge_full_width_cm    ?? item.selvedge_full_width_cm    ?? null
   const useableWidth = props.selvedge_useable_width_cm ?? item.selvedge_useable_width_cm ?? null
+  const assetId      = item.assetId ?? props.assetId ?? null
+  const imageUrl     = item.imageUrl ?? item.image_url ?? item.thumbnailUrl
+    ?? (assetId ? `https://cdn.twinbru.com/ods/assets/${assetId}/render.jpg` : null)
   return {
-    brand:            String(item.brand        ?? '').trim() || null,  // confirmed: field is "brand", no "brandName"
+    brand:            String(item.brand        ?? '').trim() || null,
     collection:       String(item.collectionName ?? '').trim() || null,
     design:           String(item.designName   ?? '').trim() || null,
     colour:           String(item.productName  ?? '').trim() || null,
@@ -35,6 +38,7 @@ function buildRecord(item: Record<string, unknown>) {
     product_id:       String(item.productId    ?? '').trim() || null,
     full_width_cm:    fullWidth    != null ? Number(fullWidth)    : null,
     useable_width_cm: useableWidth != null ? Number(useableWidth) : null,
+    image_url:        imageUrl ? String(imageUrl) : null,
   }
 }
 
@@ -107,7 +111,7 @@ export async function GET(req: NextRequest) {
           .select('product_id')
           .eq('price_list_id', priceListId)
           .not('product_id', 'is', null)
-          .is('full_width_cm', null)
+          .or('full_width_cm.is.null,image_url.is.null')
           .range(from, from + 999)
         if (!rows?.length) break
         for (const r of rows) allProductIds.push(r.product_id)

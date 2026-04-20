@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, CheckCircle2, AlertCircle, Clock, Database, Trash2 } from 'lucide-react'
+import { RefreshCw, CheckCircle2, AlertCircle, Database, Trash2 } from 'lucide-react'
 
 interface SyncLog {
   id: string
@@ -17,7 +17,6 @@ interface SyncLog {
 
 interface Props {
   lastPriceSync: SyncLog | null
-  lastCatalogueSync: SyncLog | null
   lastLoadSync: SyncLog | null
   catalogueCount: number
   cronSecret: string
@@ -114,28 +113,22 @@ async function safeFetch(url: string, cronSecret: string): Promise<{ ok: boolean
   return { ok: res.ok, status: res.status, data }
 }
 
-export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSync, catalogueCount, cronSecret }: Props) {
+export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, catalogueCount, cronSecret }: Props) {
   const [priceSyncLog, setPriceSyncLog] = useState<SyncLog | null>(lastPriceSync)
-  const [catalogueSyncLog, setCatalogueSyncLog] = useState<SyncLog | null>(lastCatalogueSync)
   const [loadSyncLog, setLoadSyncLog] = useState<SyncLog | null>(lastLoadSync)
 
   const [triggeringPrices, setTriggeringPrices] = useState(false)
-  const [triggeringCatalogue, setTriggeringCatalogue] = useState(false)
   const [triggeringLoad, setTriggeringLoad] = useState(false)
 
   const [priceResult, setPriceResult] = useState<SyncResult>(null)
-  const [catalogueResult, setCatalogueResult] = useState<SyncResult>(null)
   const [loadResult, setLoadResult] = useState<SyncResult>(null)
 
   // Tracks total fabrics added across all auto-continue runs for the load
   const loadAddedRef = useRef(0)
   const loadCheckedRef = useRef(0)
-  const catalogueAddedRef = useRef(0)
-  const catalogueCheckedRef = useRef(0)
 
   // Allows cancelling auto-continue if user navigates away
   const loadRunningRef = useRef(false)
-  const catalogueRunningRef = useRef(false)
 
   // Discontinued scan state
   type DiscontinuedState = 'idle' | 'scanning' | 'found' | 'deleting' | 'done'
@@ -164,49 +157,6 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
       setPriceResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
     } finally {
       setTriggeringPrices(false)
-    }
-  }
-
-  // Catalogue sync — auto-continues on partial runs without user pressing the button again
-  async function triggerCatalogueSync() {
-    catalogueRunningRef.current = true
-    catalogueAddedRef.current = 0
-    catalogueCheckedRef.current = 0
-    setTriggeringCatalogue(true)
-    setCatalogueResult(null)
-    await runCatalogueOnce()
-  }
-
-  async function runCatalogueOnce() {
-    if (!catalogueRunningRef.current) return
-    try {
-      const { ok, data } = await safeFetch('/api/cron/sync-catalogue?trigger=manual', cronSecret)
-      if (!ok) {
-        setCatalogueResult({ type: 'err', msg: String(data.error ?? 'Sync failed') })
-        catalogueRunningRef.current = false
-        setTriggeringCatalogue(false)
-        return
-      }
-      catalogueAddedRef.current += (data.added as number | null) ?? 0
-      catalogueCheckedRef.current += (data.checked as number | null) ?? 0
-      if (data.unavailable) {
-        setCatalogueResult({ type: 'err', msg: 'Changefeed endpoint not available from Twinbru (404). Use Load Full Catalogue to add new fabrics.' })
-        catalogueRunningRef.current = false
-        setTriggeringCatalogue(false)
-      } else if (data.partial) {
-        setCatalogueResult({ type: 'ok', msg: `Running… ${catalogueCheckedRef.current.toLocaleString()} scanned, ${catalogueAddedRef.current} new fabrics so far. Continuing in 10s…` })
-        setCatalogueSyncLog(prev => makeLog({ ...(prev ?? {}), sync_type: 'catalogue', items_checked: catalogueCheckedRef.current, items_added: catalogueAddedRef.current }))
-        setTimeout(() => runCatalogueOnce(), 10_000)
-      } else {
-        setCatalogueResult({ type: 'ok', msg: `Done — ${catalogueCheckedRef.current.toLocaleString()} scanned, ${catalogueAddedRef.current} new fabrics added` })
-        setCatalogueSyncLog(prev => makeLog({ ...(prev ?? {}), sync_type: 'catalogue', items_checked: catalogueCheckedRef.current, items_added: catalogueAddedRef.current }))
-        catalogueRunningRef.current = false
-        setTriggeringCatalogue(false)
-      }
-    } catch (e) {
-      setCatalogueResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
-      catalogueRunningRef.current = false
-      setTriggeringCatalogue(false)
     }
   }
 
@@ -347,8 +297,6 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
   }
 
   const priceSyncOk = priceSyncLog?.status === 'ok'
-  const catalogueSyncOk = catalogueSyncLog?.status === 'ok'
-  const catalogueAge = daysSince(catalogueSyncLog?.completed_at ?? null)
 
   return (
     <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-6">
@@ -395,46 +343,6 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
           </button>
         </div>
         <ProgressBar running={triggeringPrices} />
-      </div>
-
-      {/* Catalogue Change Sync (ODS changefeed — picks up discontinued items etc) */}
-      <div className="py-4 border-b border-white/10">
-        <div className="flex items-start justify-between gap-6">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-white">Catalogue Changes</p>
-              {triggeringCatalogue && <ElapsedTimer running={triggeringCatalogue} />}
-            </div>
-            <p className="text-xs text-white/30 mb-1">Uses the Twinbru changefeed to pick up newly added or changed fabrics since the last sync. If the changefeed is unavailable, use Load Full Catalogue instead.</p>
-            {catalogueSyncLog ? (
-              <div className="mt-1 space-y-0.5">
-                <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(catalogueSyncLog.completed_at ?? catalogueSyncLog.started_at)}</span></p>
-                {catalogueSyncOk ? (
-                  <p className="text-xs text-white/50">
-                    {catalogueSyncLog.items_checked?.toLocaleString()} scanned &middot;{' '}
-                    <span className="text-emerald-400">{catalogueSyncLog.items_added ?? 0} new</span>
-                  </p>
-                ) : !catalogueSyncLog.completed_at ? (
-                  <p className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11} /> Did not complete — will resume automatically tonight.</p>
-                ) : (
-                  <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {catalogueSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
-                )}
-                {catalogueAge != null && catalogueAge > 30 && (
-                  <p className="text-xs text-amber-400 flex items-center gap-1 mt-1"><Clock size={11} /> {catalogueAge} days since last sync</p>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-white/40 mt-1">{triggeringCatalogue ? 'Running…' : 'Never run'}</p>
-            )}
-            <ResultBanner result={catalogueResult} />
-          </div>
-          <button onClick={triggerCatalogueSync} disabled={triggeringCatalogue}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
-            <RefreshCw size={12} className={triggeringCatalogue ? 'animate-spin' : ''} />
-            {triggeringCatalogue ? 'Running…' : 'Sync Changes'}
-          </button>
-        </div>
-        <ProgressBar running={triggeringCatalogue} />
       </div>
 
       {/* Full Catalogue Load (POST /products/search by year) */}

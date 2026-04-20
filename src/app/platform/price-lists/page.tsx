@@ -36,9 +36,9 @@ export default async function PlatformPriceListsPage() {
   const syncLogsRes = await supabaseAdmin
     .from('twinbru_sync_log')
     .select('id, sync_type, started_at, completed_at, status, items_checked, items_changed, items_added, error_message, triggered_by')
-    .in('sync_type', ['prices', 'catalogue', 'load'])
+    .in('sync_type', ['prices', 'load'])
     .order('started_at', { ascending: false })
-    .limit(30)
+    .limit(20)
 
   const catalogueCountRes = await supabaseAdmin
     .from('price_list_items')
@@ -52,11 +52,6 @@ export default async function PlatformPriceListsPage() {
     syncLogs.find(l => l.sync_type === 'prices' && l.status === 'ok') ??
     syncLogs.find(l => l.sync_type === 'prices' && l.completed_at) ??
     syncLogs.find(l => l.sync_type === 'prices') ??
-    null
-  const lastCatalogueSync =
-    syncLogs.find(l => l.sync_type === 'catalogue' && l.status === 'ok') ??
-    syncLogs.find(l => l.sync_type === 'catalogue' && l.completed_at) ??
-    syncLogs.find(l => l.sync_type === 'catalogue') ??
     null
   const lastLoadSync =
     syncLogs.find(l => l.sync_type === 'load' && l.status === 'ok' && !l.error_message?.startsWith('RESUME:')) ??
@@ -75,7 +70,6 @@ export default async function PlatformPriceListsPage() {
       {/* Twinbru Sync */}
       <TwinbruSyncPanel
         lastPriceSync={lastPriceSync}
-        lastCatalogueSync={lastCatalogueSync}
         lastLoadSync={lastLoadSync}
         catalogueCount={catalogueCount}
         cronSecret={process.env.CRON_SECRET ?? ''}

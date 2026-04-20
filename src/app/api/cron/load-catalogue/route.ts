@@ -33,6 +33,9 @@ function buildRecord(item: Record<string, unknown>) {
     : item
   const fullWidth    = props.selvedge_full_width_cm    ?? item.selvedge_full_width_cm    ?? null
   const useableWidth = props.selvedge_useable_width_cm ?? item.selvedge_useable_width_cm ?? null
+  const assetId      = item.assetId ?? props.assetId ?? null
+  const imageUrl     = item.imageUrl ?? item.image_url ?? item.thumbnailUrl
+    ?? (assetId ? `https://cdn.twinbru.com/ods/assets/${assetId}/render.jpg` : null)
   return {
     brand:            String(item.brand ?? item.brandName ?? '').trim() || null,
     collection:       String(item.collectionName ?? '').trim() || null,
@@ -42,6 +45,7 @@ function buildRecord(item: Record<string, unknown>) {
     product_id:       String(item.productId ?? '').trim() || null,
     full_width_cm:    fullWidth    != null ? Number(fullWidth)    : null,
     useable_width_cm: useableWidth != null ? Number(useableWidth) : null,
+    image_url:        imageUrl ? String(imageUrl) : null,
   }
 }
 
@@ -50,7 +54,11 @@ function extractProducts(data: unknown): { items: Record<string, unknown>[], tot
   const obj = data as Record<string, unknown>
   const totalPageCount = Number(obj.totalPageCount ?? obj.totalPages ?? 0)
   const raw = obj.results ?? obj.items ?? obj.products
-  const items = Array.isArray(raw) ? raw as Record<string, unknown>[] : []
+  const rawItems = Array.isArray(raw) ? raw as Record<string, unknown>[] : []
+  // Unwrap results[].item wrapper if present
+  const items = rawItems.map(r =>
+    (r && typeof r === 'object' && 'item' in r) ? (r.item as Record<string, unknown>) : r
+  )
   return { items, totalPageCount }
 }
 
