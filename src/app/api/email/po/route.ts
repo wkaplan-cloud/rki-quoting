@@ -21,12 +21,11 @@ export async function POST(req: NextRequest) {
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-  if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
 
   const vatRate = project.vat_rate ?? settings?.vat_rate ?? 15
   const studioName = settings?.business_name ?? 'Your Studio'
   const accountsEmail = settings?.accounts_email?.trim() || null
-  const replyTo = settings?.email_from?.trim() || null
+  const replyTo = user.email ?? null
 
   // Which suppliers to send to
   const supplierIds = supplierId
@@ -96,7 +95,7 @@ export async function POST(req: NextRequest) {
     const subject = `Purchase Order ${poNumber} – ${project.project_name}`
 
     const { error: resendError } = await resend.emails.send({
-      from: `${studioName} <quotes@quotinghub.co.za>`,
+      from: `${studioName} <no-reply@quotinghub.co.za>`,
       ...(replyTo ? { replyTo } : {}),
       to: effectiveEmail,
       ...(effectiveEmailCc ? { cc: effectiveEmailCc } : {}),
@@ -134,6 +133,7 @@ export async function POST(req: NextRequest) {
         <tr>
           <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:20px 40px;">
             <p style="margin:0;font-size:12px;color:#8A877F;">${studioName}${replyTo ? ` &middot; <a href="mailto:${replyTo}" style="color:#8A877F;text-decoration:none;">${replyTo}</a>` : ''}</p>
+            <p style="margin:2px 0 0;font-size:11px;color:#C4BFB5;">Sent via QuotingHub · Reply directly to this email to reach the studio</p>
             <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Sent via QuotingHub</p>
           </td>
         </tr>

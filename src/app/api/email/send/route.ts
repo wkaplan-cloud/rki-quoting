@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-  if (!settings?.email_from?.trim()) return NextResponse.json({ error: 'No reply-to email address set. Please add your studio email in Admin → Studio Settings before sending.' }, { status: 400 })
 
   // Lock quoted_date on first email send — never overwrite if already set
   let quotedDate = (project as any).quoted_date as string | null
@@ -65,15 +64,15 @@ export async function POST(req: NextRequest) {
     const label = type === 'quote' ? 'Quotation' : 'Invoice'
     const subject = `${label} - ${project.project_name} - ${project.project_number}`
     const studioName = settings?.business_name ?? 'Your Studio'
-    const studioReplyTo = settings?.email_from
+    const userEmail = user.email ?? ''
 
     const plainText = customBody
       ? customBody
-      : `Dear ${project.client?.client_name ?? 'Client'},\n\nPlease find attached your ${label.toLowerCase()} for ${project.project_name}.\n\nReference: ${project.project_number}\n\nKind regards,\n${studioName}${studioReplyTo ? `\n${studioReplyTo}` : ''}`
+      : `Dear ${project.client?.client_name ?? 'Client'},\n\nPlease find attached your ${label.toLowerCase()} for ${project.project_name}.\n\nReference: ${project.project_number}\n\nKind regards,\n${studioName}${userEmail ? `\n${userEmail}` : ''}`
 
     const { error: resendError } = await resend.emails.send({
-      from: `${studioName} <quotes@quotinghub.co.za>`,
-      ...(studioReplyTo ? { replyTo: studioReplyTo } : {}),
+      from: `${studioName} <no-reply@quotinghub.co.za>`,
+      ...(userEmail ? { replyTo: userEmail } : {}),
       to: clientEmail,
       subject,
       text: plainText,
@@ -123,7 +122,7 @@ export async function POST(req: NextRequest) {
         <!-- Footer -->
         <tr>
           <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:20px 40px;">
-            <p style="margin:0;font-size:12px;color:#8A877F;">${studioName}${studioReplyTo ? ` &middot; <a href="mailto:${studioReplyTo}" style="color:#8A877F;text-decoration:none;">${studioReplyTo}</a>` : ''}</p>
+            <p style="margin:0;font-size:12px;color:#8A877F;">${studioName}${userEmail ? ` &middot; <a href="mailto:${userEmail}" style="color:#8A877F;text-decoration:none;">${userEmail}</a>` : ''}</p>
             <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Sent via QuotingHub</p>
           </td>
         </tr>
