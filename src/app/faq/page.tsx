@@ -10,7 +10,7 @@ const faqs = [
     items: [
       {
         q: 'What is QuotingHub?',
-        a: 'QuotingHub is a quoting and project management platform built specifically for interior designers. Create professional quotes, invoices, and purchase orders — all in one place.',
+        a: 'QuotingHub is a business system built specifically for interior designers. It helps you quote faster, look more professional, reduce admin, and win more projects — with quotes, invoices, purchase orders, and supplier management all in one place.',
       },
       {
         q: 'Do I need to install anything?',
