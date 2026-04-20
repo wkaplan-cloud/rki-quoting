@@ -8,14 +8,14 @@ const plans = [
   {
     id: 'solo',
     name: 'Solo',
-    price: 599,
-    description: 'For freelance designers and single-person studios.',
+    price: 699,
+    description: 'For independent designers running their own studio.',
     features: [
       'Unlimited projects & quotes',
-      'Auto-generated PDFs',
+      'Branded PDF quotes & invoices',
       'Purchase orders per supplier',
-      'Send quotes & POs by email',
-      'Price list access',
+      'Supplier price list access',
+      'Design fee calculations built in',
       '1 user',
     ],
     highlight: false,
@@ -23,22 +23,36 @@ const plans = [
   {
     id: 'studio',
     name: 'Studio',
-    price: 1099,
-    description: 'For growing studios with a full team.',
+    price: 1499,
+    description: 'For growing studios with a small team.',
     features: [
       'Everything in Solo',
-      'Unlimited team members',
-      'Multi-user collaboration',
-      'Price list access',
+      'Up to 5 team members',
+      'Shared projects & live collaboration',
+      'Team project pipeline view',
       'Priority support',
     ],
     highlight: true,
+  },
+  {
+    id: 'agency',
+    name: 'Agency',
+    price: 2499,
+    description: 'For established firms and high-volume studios.',
+    features: [
+      'Everything in Studio',
+      'Unlimited team members',
+      'Price Requests — send sourcing requests to suppliers directly',
+      'Dedicated account support',
+    ],
+    highlight: false,
   },
 ]
 
 export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName, memberCount }: { trialExpired: boolean; daysLeft: number; userEmail: string; studioName: string; memberCount: number }) {
   const [loading, setLoading] = useState<string | null>(null)
   const soloDisabled = memberCount > 1
+  const studioDisabled = memberCount > 5
 
   async function handleSubscribe(planId: string) {
     setLoading(planId)
@@ -85,12 +99,12 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
       <div className="w-full max-w-3xl">
         <h1 className="font-serif text-4xl text-[#1A1A18] text-center mb-2">Choose your plan</h1>
         <p className="text-[#8A877F] text-center text-sm mb-10">
-          Both plans include a 30-day free trial and price list access.
+          All plans include a 30-day free trial. Pricing is based on studio size — not features.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {plans.map(plan => {
-            const isDisabled = plan.id === 'solo' && soloDisabled
+            const isDisabled = (plan.id === 'solo' && soloDisabled) || (plan.id === 'studio' && studioDisabled)
             return (
               <div
                 key={plan.id}
@@ -105,7 +119,7 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
                 {isDisabled && (
                   <div className="absolute inset-0 rounded-2xl flex items-center justify-center">
                     <span className="bg-white border border-[#D8D3C8] text-[#8A877F] text-xs font-medium px-3 py-1.5 rounded-full shadow-sm">
-                      Not available — your studio has multiple users
+                      Not available — your studio has too many users
                     </span>
                   </div>
                 )}

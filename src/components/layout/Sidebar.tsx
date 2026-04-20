@@ -256,7 +256,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               </button>
             </div>
             <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-              Studio gives you unlimited team members and multi-user collaboration. Your card will be charged <strong className="text-[#2C2C2A]">R1,099/month</strong> starting today.
+              Studio gives you up to 5 team members and shared project collaboration. Your card will be charged <strong className="text-[#2C2C2A]">R1,499/month</strong> starting today.
             </p>
             <ul className="space-y-2 mb-6">
               {['Unlimited team members', 'Multi-user collaboration', 'Priority support'].map(f => (

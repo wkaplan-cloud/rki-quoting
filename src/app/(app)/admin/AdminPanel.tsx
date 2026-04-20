@@ -228,7 +228,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                 <div className="flex items-center justify-between bg-[#9A7B4F]/8 border border-[#9A7B4F]/25 rounded-lg px-4 py-3">
                   <div>
                     <p className="text-sm font-medium text-[#2C2C2A]">Solo plan — 1 user only</p>
-                    <p className="text-xs text-[#8A877F] mt-0.5">Upgrade to Studio to add team members.</p>
+                    <p className="text-xs text-[#8A877F] mt-0.5">Upgrade to Studio or Agency to add team members.</p>
                   </div>
                   <Link
                     href="/subscribe"

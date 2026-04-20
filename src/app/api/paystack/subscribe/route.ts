@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const PLANS: Record<string, { price: number; planCode: string }> = {
-  solo:   { price: 599,  planCode: process.env.PAYSTACK_PLAN_SOLO   ?? '' },
-  studio: { price: 1099, planCode: process.env.PAYSTACK_PLAN_STUDIO ?? '' },
+  solo:   { price: 699,  planCode: process.env.PAYSTACK_PLAN_SOLO   ?? '' },
+  studio: { price: 1499, planCode: process.env.PAYSTACK_PLAN_STUDIO ?? '' },
+  agency: { price: 2499, planCode: process.env.PAYSTACK_PLAN_AGENCY ?? '' },
 }
 
 export async function POST(req: NextRequest) {
@@ -23,15 +24,18 @@ export async function POST(req: NextRequest) {
   const { data: orgId } = await supabase.rpc('get_current_org_id')
   if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 404 })
 
-  // Enforce Solo = 1 user max
-  if (planId === 'solo') {
+  // Enforce user limits per plan
+  if (planId === 'solo' || planId === 'studio') {
     const { count } = await supabaseAdmin
       .from('org_members')
       .select('*', { count: 'exact', head: true })
       .eq('org_id', orgId)
       .eq('status', 'active')
-    if ((count ?? 0) > 1) {
-      return NextResponse.json({ error: 'Solo plan is not available for studios with multiple users. Please select the Studio plan.' }, { status: 400 })
+    if (planId === 'solo' && (count ?? 0) > 1) {
+      return NextResponse.json({ error: 'Solo plan is limited to 1 user. Please select the Studio or Agency plan.' }, { status: 400 })
+    }
+    if (planId === 'studio' && (count ?? 0) > 5) {
+      return NextResponse.json({ error: 'Studio plan supports up to 5 users. Please select the Agency plan.' }, { status: 400 })
     }
   }
 

@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation'
 
 const PLAN_OPTIONS = [
   { value: 'trial', label: 'Trial' },
-  { value: 'solo', label: 'Solo — R599/month' },
-  { value: 'studio', label: 'Studio — R1,099/month' },
+  { value: 'solo', label: 'Solo — R699/month' },
+  { value: 'studio', label: 'Studio — R1,499/month' },
+  { value: 'agency', label: 'Agency — R2,499/month' },
 ]
 
 const STATUS_OPTIONS = [

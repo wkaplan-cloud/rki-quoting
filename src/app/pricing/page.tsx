@@ -5,34 +5,52 @@ import { PublicLayout } from '@/components/layout/PublicLayout'
 const plans = [
   {
     name: 'Solo',
-    price: 599,
-    description: 'For freelance designers and single-person studios.',
+    price: 699,
+    audience: 'For independent designers running their own studio.',
+    tagline: 'Professional quoting without the admin overload.',
     features: [
       'Unlimited projects & quotes',
-      'Auto-generated PDFs',
+      'Branded, client-ready PDF quotes & invoices',
       'Purchase orders per supplier',
-      'Send quotes & POs by email',
-      'Price list access (Home Fabrics & more)',
-      'Client portal',
+      'Supplier price list access',
+      'Design fee calculations built in',
       '1 user',
     ],
-    cta: 'Start free trial',
+    cta: 'Start quoting professionally',
     highlight: false,
   },
   {
     name: 'Studio',
-    price: 1099,
-    description: 'For growing studios with a full team.',
+    price: 1499,
+    audience: 'For growing studios with a team.',
+    tagline: 'Operate more efficiently as your business grows.',
     features: [
       'Everything in Solo',
-      'Unlimited team members',
-      'Multi-user collaboration',
-      'Price list access (Home Fabrics & more)',
-      'Team project management',
+      'Up to 5 team members',
+      'Shared projects and live collaboration',
+      'Team project pipeline view',
+      'Coordinated supplier orders across your team',
       'Priority support',
     ],
-    cta: 'Start free trial',
+    cta: 'Grow your studio',
     highlight: true,
+  },
+  {
+    name: 'Agency',
+    price: 2499,
+    audience: 'For established firms and high-volume studios.',
+    tagline: 'Operational efficiency for studios managing more.',
+    features: [
+      'Everything in Studio',
+      'Unlimited team members',
+      'Price Requests — send sourcing requests to suppliers directly',
+      'Remove email chains from your sourcing workflow',
+      'Ideal for complex projects with multiple suppliers',
+      'Dedicated account support',
+    ],
+    cta: 'Run a more efficient studio',
+    highlight: false,
+    premium: true,
   },
 ]
 
@@ -43,20 +61,24 @@ export default function PricingPage() {
       <section className="pt-20 pb-10 px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 rounded-full px-4 py-1.5 mb-6">
-            <span className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider">Simple pricing</span>
+            <span className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider">Pricing that grows with your business</span>
           </div>
           <h1 className="font-serif text-5xl text-[#1A1A18] leading-tight tracking-tight mb-4">
-            30 days free.<br />No card required.
+            A system built to<br />
+            <em className="text-[#C4A46B] not-italic">grow with your studio.</em>
           </h1>
-          <p className="text-[#8A877F] text-lg leading-relaxed">
-            Start quoting immediately. After your trial, choose the plan that fits your studio.
+          <p className="text-[#8A877F] text-lg leading-relaxed mb-3">
+            Start your 30-day free trial. No credit card required.
+          </p>
+          <p className="text-[#8A877F] text-base leading-relaxed max-w-xl mx-auto">
+            QuotingHub is priced by business size — not by locking features away. Most capabilities are included across all plans. As your studio grows, your plan grows with you.
           </p>
         </div>
       </section>
 
       {/* Plans */}
       <section className="px-6 pb-20">
-        <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
           {plans.map(plan => (
             <div
               key={plan.name}
@@ -73,6 +95,13 @@ export default function PricingPage() {
                   </span>
                 </div>
               )}
+              {plan.premium && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-[#C4A46B] text-white text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+                    Full workflow
+                  </span>
+                </div>
+              )}
 
               <div className="mb-6">
                 <p className={`text-xs font-semibold uppercase tracking-widest mb-2 ${plan.highlight ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`}>
@@ -82,8 +111,11 @@ export default function PricingPage() {
                   <span className="font-serif text-4xl">R{plan.price.toLocaleString()}</span>
                   <span className={`text-sm mb-1.5 ${plan.highlight ? 'text-white/50' : 'text-[#8A877F]'}`}>/month</span>
                 </div>
-                <p className={`text-sm leading-relaxed ${plan.highlight ? 'text-white/60' : 'text-[#8A877F]'}`}>
-                  {plan.description}
+                <p className={`text-sm font-medium mb-1 ${plan.highlight ? 'text-white/90' : 'text-[#2C2C2A]'}`}>
+                  {plan.audience}
+                </p>
+                <p className={`text-sm leading-relaxed italic ${plan.highlight ? 'text-white/50' : 'text-[#8A877F]'}`}>
+                  {plan.tagline}
                 </p>
               </div>
 
@@ -91,7 +123,7 @@ export default function PricingPage() {
                 {plan.features.map(feature => (
                   <li key={feature} className="flex items-start gap-2.5">
                     <Check size={14} className={`mt-0.5 flex-shrink-0 ${plan.highlight ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`} />
-                    <span className={`text-sm ${plan.highlight ? 'text-white/80' : 'text-[#2C2C2A]'}`}>{feature}</span>
+                    <span className={`text-sm leading-snug ${plan.highlight ? 'text-white/80' : 'text-[#2C2C2A]'}`}>{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -113,6 +145,13 @@ export default function PricingPage() {
             </div>
           ))}
         </div>
+
+        {/* Scaling note */}
+        <div className="max-w-2xl mx-auto mt-10 text-center">
+          <p className="text-sm text-[#8A877F] leading-relaxed border border-[#EDE9E1] rounded-xl px-6 py-4 bg-white">
+            <span className="font-medium text-[#2C2C2A]">Why do larger plans cost more?</span> Because larger studios generate more revenue with QuotingHub. Pricing is based on the scale of your business and the value it creates — not on arbitrarily locking features away. Every tier gives you a complete, professional quoting system.
+          </p>
+        </div>
       </section>
 
       {/* FAQ */}
@@ -121,10 +160,11 @@ export default function PricingPage() {
           <h2 className="font-serif text-3xl text-[#1A1A18] mb-10 text-center">Common questions</h2>
           <div className="space-y-8">
             {[
-              { q: 'What happens after my 30-day trial?', a: "You'll be prompted to choose a plan to keep access. Your data is never deleted — if you subscribe within a few days of expiry everything is exactly as you left it." },
+              { q: 'What happens after my 30-day trial?', a: "You'll be prompted to choose a plan to keep access. Your data is never deleted — if you subscribe within a few days of expiry, everything is exactly as you left it." },
               { q: 'Do I need a credit card to start?', a: 'No. Sign up with just your email address. You only enter payment details when you choose to subscribe after the trial.' },
-              { q: 'What is the difference between Solo and Studio?', a: 'Solo is for one-person studios. Studio allows unlimited team members so your whole team can collaborate on projects together.' },
-              { q: 'Can I cancel at any time?', a: 'Yes. There are no long-term contracts. Cancel anytime from your account settings.' },
+              { q: 'What is Price Requests?', a: 'Price Requests is an Agency-only feature that lets you select items, attach images and descriptions, and send pricing requests directly to your suppliers — all from inside QuotingHub. It eliminates the back-and-forth email chains that slow down sourcing and quoting.' },
+              { q: 'Can I upgrade my plan later?', a: 'Yes. You can upgrade at any time from your account settings. Your data and projects carry over seamlessly.' },
+              { q: 'Can I cancel at any time?', a: 'Yes. There are no long-term contracts. Cancel anytime from your account settings — no questions asked.' },
             ].map(({ q, a }) => (
               <div key={q} className="border-b border-[#EDE9E1] pb-8">
                 <p className="font-medium text-[#1A1A18] mb-2">{q}</p>
@@ -137,11 +177,12 @@ export default function PricingPage() {
 
       {/* CTA */}
       <section className="bg-[#1A1A18] px-6 py-16 text-center">
-        <p className="font-serif text-3xl text-white mb-3">Ready to start?</p>
-        <p className="text-white/50 text-sm mb-8">Join interior designers already using QuotingHub to run their studios.</p>
+        <p className="font-serif text-3xl text-white mb-3">Your studio deserves a better system.</p>
+        <p className="text-white/50 text-sm mb-8 max-w-md mx-auto">Join interior designers across South Africa quoting professionally and winning more projects.</p>
         <Link href="/signup" className="inline-flex items-center gap-2 bg-[#9A7B4F] text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-[#B8956A] transition-colors">
           Start your free trial <ArrowRight size={14} />
         </Link>
+        <p className="text-white/25 text-xs mt-4">30 days free · No credit card required</p>
       </section>
     </PublicLayout>
   )
