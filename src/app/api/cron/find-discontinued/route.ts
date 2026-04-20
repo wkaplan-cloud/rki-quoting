@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   if (!year) return NextResponse.json({ error: 'Missing year param' }, { status: 400 })
 
   const filter = `status.eq.RN/launch.in(${year}00-${year}99)`
-  const activeIds: number[] = []
+  const activeIds: string[] = []
   let page           = 1
   let totalPageCount = 0
 
