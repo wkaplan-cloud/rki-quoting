@@ -8,11 +8,14 @@ const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
 const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
 const PAGE_SIZE    = 50  // confirmed API max
 
-// Safe approach: unfiltered POST /products/ scan.
-// The API naturally caps at ~10,000 products (returns 500 after page ~200).
-// This gives us whatever Twinbru exposes unfiltered and terminates cleanly.
-// Once Robin confirms the correct filter syntax we can extend beyond 10,000.
-// RESUME token: "RESUME:<page>"
+// Strategy confirmed by Robin (Twinbru):
+// Loop years 2000→current, filter: "status.eq.RN/launch.in(YYYYxx-YYYYxx)"
+// Each year stays under the 10,000 result hard limit.
+// Pagination via totalPageCount in response.
+// RESUME token: "RESUME:<year>:<page>"
+
+const START_YEAR = 2000
+const END_YEAR   = new Date().getFullYear()
 
 function twinbruHeaders() {
   return {
@@ -42,13 +45,13 @@ function buildRecord(item: Record<string, unknown>) {
   }
 }
 
-function extractProducts(data: unknown): { items: Record<string, unknown>[], total: number } {
-  if (typeof data !== 'object' || data === null) return { items: [], total: 0 }
+function extractProducts(data: unknown): { items: Record<string, unknown>[], totalPageCount: number } {
+  if (typeof data !== 'object' || data === null) return { items: [], totalPageCount: 0 }
   const obj = data as Record<string, unknown>
-  const total = Number(obj.totalItemCount ?? obj.total ?? obj.totalItems ?? 0)
+  const totalPageCount = Number(obj.totalPageCount ?? obj.totalPages ?? 0)
   const raw = obj.results ?? obj.items ?? obj.products
   const items = Array.isArray(raw) ? raw as Record<string, unknown>[] : []
-  return { items, total }
+  return { items, totalPageCount }
 }
 
 export async function GET(req: NextRequest) {
@@ -87,6 +90,7 @@ export async function GET(req: NextRequest) {
   try {
     // ── Resolve resume position ───────────────────────────────────────────────
     const useResume = triggeredBy === 'cron' || triggeredBy === 'continue'
+    let startYear = START_YEAR
     let startPage = 1
 
     if (useResume) {
@@ -101,7 +105,10 @@ export async function GET(req: NextRequest) {
         .single()
 
       if (resumeLog?.error_message) {
-        const page = parseInt(resumeLog.error_message.slice(7), 10)
+        const parts = resumeLog.error_message.slice(7).split(':')
+        const year = parseInt(parts[0], 10)
+        const page = parseInt(parts[1], 10)
+        if (!isNaN(year)) startYear = year
         if (!isNaN(page)) startPage = page
       }
     }
@@ -122,59 +129,68 @@ export async function GET(req: NextRequest) {
       from += 1000
     }
 
-    // ── Unfiltered scan ───────────────────────────────────────────────────────
+    // ── Year-by-year scan ─────────────────────────────────────────────────────
     const TIME_LIMIT_MS = 240_000
     const startTime     = Date.now()
-    let page            = startPage
     let totalFetched    = 0
     let added           = 0
     const batch: Record<string, unknown>[] = []
     let timedOut        = false
+    let resumeToken: string | null = null
 
-    while (true) {
-      if (Date.now() - startTime > TIME_LIMIT_MS) {
-        timedOut = true
-        break
+    for (let year = startYear; year <= END_YEAR; year++) {
+      const filter = `status.eq.RN/launch.in(${year}00-${year}99)`
+      let page           = year === startYear ? startPage : 1
+      let totalPageCount = 0
+
+      while (true) {
+        if (Date.now() - startTime > TIME_LIMIT_MS) {
+          timedOut = true
+          resumeToken = `RESUME:${year}:${page}`
+          break
+        }
+
+        const res = await fetch(`${TWINBRU_BASE}/products/`, {
+          method: 'POST',
+          headers: twinbruHeaders(),
+          body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter }),
+        })
+        const rawText = await res.text()
+
+        if (res.status !== 200) {
+          if (res.status === 404 || res.status === 500) break
+          throw new Error(`Products API ${res.status} (year ${year} page ${page}): ${rawText.slice(0, 200)}`)
+        }
+
+        let data: unknown = {}
+        try { data = rawText ? JSON.parse(rawText) : {} } catch {
+          throw new Error(`Products API non-JSON (year ${year} page ${page}): ${rawText.slice(0, 200)}`)
+        }
+
+        const { items, totalPageCount: tpc } = extractProducts(data)
+        if (totalPageCount === 0 && tpc) totalPageCount = tpc
+        totalFetched += items.length
+
+        for (const item of items) {
+          const pid = String(item.productId ?? item.id ?? '').trim()
+          if (!pid || knownIds.has(pid)) continue
+          knownIds.add(pid)
+          batch.push({ ...buildRecord(item), price_list_id: priceListId })
+          added++
+        }
+
+        if (batch.length >= 500) {
+          await supabase.from('price_list_items').insert(batch.splice(0))
+        }
+
+        if (!items.length || items.length < PAGE_SIZE) break
+        if (totalPageCount && page >= totalPageCount) break
+
+        page++
+        await new Promise(r => setTimeout(r, 80))
       }
 
-      const res = await fetch(`${TWINBRU_BASE}/products/`, {
-        method: 'POST',
-        headers: twinbruHeaders(),
-        body: JSON.stringify({ page, pageSize: PAGE_SIZE, filter: '' }),
-      })
-      const rawText = await res.text()
-
-      if (res.status !== 200) {
-        // 500 after page 1 = API cap reached — this is the natural end
-        if (res.status === 500 && page > 1) break
-        throw new Error(`Products API ${res.status} (page ${page}): ${rawText.slice(0, 200)}`)
-      }
-
-      let data: unknown = {}
-      try { data = rawText ? JSON.parse(rawText) : {} } catch {
-        throw new Error(`Products API non-JSON (page ${page}): ${rawText.slice(0, 200)}`)
-      }
-
-      const { items, total } = extractProducts(data)
-      totalFetched += items.length
-
-      for (const item of items) {
-        const pid = String(item.productId ?? item.id ?? '').trim()
-        if (!pid || knownIds.has(pid)) continue
-        knownIds.add(pid)
-        batch.push({ ...buildRecord(item), price_list_id: priceListId })
-        added++
-      }
-
-      if (batch.length >= 500) {
-        await supabase.from('price_list_items').insert(batch.splice(0))
-      }
-
-      if (!items.length || items.length < PAGE_SIZE) break
-      if (total && totalFetched >= total) break
-
-      page++
-      await new Promise(r => setTimeout(r, 80))
+      if (timedOut) break
     }
 
     // ── Flush + update counts ─────────────────────────────────────────────────
@@ -190,13 +206,13 @@ export async function GET(req: NextRequest) {
       await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
     }
 
-    if (timedOut) {
+    if (timedOut && resumeToken) {
       await supabase.from('twinbru_sync_log').update({
         status: 'ok',
         completed_at: new Date().toISOString(),
         items_checked: totalFetched,
         items_added: added,
-        error_message: `RESUME:${page}`,
+        error_message: resumeToken,
       }).eq('id', logId)
       return NextResponse.json({ ok: true, partial: true, checked: totalFetched, added })
     }

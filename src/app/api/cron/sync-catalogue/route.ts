@@ -232,33 +232,19 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ ok: true, partial: true, since: sinceDate, checked: totalFetched, added })
       }
 
-      // Confirmed correct endpoint from working Python script: POST /changefeed
-      // Body carries the date + pageSize; ODS-Continuation header used for paging
+      // Confirmed by Robin: GET /products/changes?maxBatchSize=500&modifiedSince={date}
+      // ODS-Continuation header used for cursor-based pagination
+      const url = `${TWINBRU_BASE}/products/changes?maxBatchSize=500&modifiedSince=${encodeURIComponent(sinceDate)}`
       const hdrs: Record<string, string> = {
         ...twinbruHeaders(),
         ...(continuation ? { 'ODS-Continuation': continuation } : {}),
       }
 
-      const res = await fetch(`${TWINBRU_BASE}/changefeed`, {
-        method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({ date: sinceDate, pageSize: 500 }),
-      })
+      const res = await fetch(url, { method: 'GET', headers: hdrs })
 
       const nextContinuation = res.headers.get('ODS-Continuation')
       const rawText = await res.text()
       if (!res.ok) {
-        if (res.status === 404) {
-          // Changefeed endpoint not available — log as ok with a note
-          await supabase.from('twinbru_sync_log').update({
-            status: 'ok',
-            completed_at: new Date().toISOString(),
-            items_checked: 0,
-            items_added: 0,
-            error_message: 'UNAVAILABLE: Changefeed endpoint returned 404. Use Load Full Catalogue to sync new fabrics.',
-          }).eq('id', logId)
-          return NextResponse.json({ ok: true, unavailable: true, checked: 0, added: 0 })
-        }
         throw new Error(`Changefeed ${res.status}: ${rawText.slice(0, 300)}`)
       }
       let data: unknown = {}
