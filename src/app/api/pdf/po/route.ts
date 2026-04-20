@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     supabase.from('projects').select('*').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
     supabase.from('suppliers').select('*'),
-    supabase.from('settings').select('vat_rate, logo_url, business_name, business_address, vat_number, company_registration').maybeSingle(),
+    supabase.from('settings').select('vat_rate, logo_url, business_name, business_address, vat_number, company_registration, email_from').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   const buffer = await renderToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, printDate: new Date().toISOString() }) as any
+    createElement(POPDF, { project, lineItems, suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, printDate: new Date().toISOString(), studioRepEmail: settings?.email_from ?? undefined }) as any
   )
 
   return new NextResponse(new Uint8Array(buffer), {
