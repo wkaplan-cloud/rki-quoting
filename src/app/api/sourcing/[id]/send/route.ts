@@ -147,7 +147,7 @@ export async function POST(
     const respondUrl = `${SITE_URL}/sourcing/respond/${recipient.token}`
 
     const { error: emailError } = await resend.emails.send({
-      from: `${studioName} <quotes@quotinghub.co.za>`,
+      from: `${studioName} <no-reply@quotinghub.co.za>`,
       ...(replyTo ? { replyTo } : {}),
       to: recipient.email,
       subject: `Pricing Request: ${request.title} — ${studioName}`,

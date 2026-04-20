@@ -162,7 +162,7 @@ export async function POST(
   if (designerEmail) {
     const requestUrl = `${SITE_URL}/sourcing/${String(request.id)}`
     await resend.emails.send({
-      from: 'QuotingHub <quotes@quotinghub.co.za>',
+      from: 'QuotingHub <no-reply@quotinghub.co.za>',
       to: designerEmail,
       subject: `${recipient.supplier_name} responded to: ${String(request.title)}`,
       html: `<!DOCTYPE html>
