@@ -136,6 +136,11 @@ export function Combobox({ options, value, inputValue, onChange, onCreate, place
           value={query}
           onChange={handleInputChange}
           onFocus={() => { setPos(calcPos()); setOpen(true) }}
+          onBlur={() => {
+            const match = options.find(o => o.label.toLowerCase() === query.toLowerCase().trim())
+            if (match && match.id !== value) { setQuery(match.label); onChange(match.id, match.label) }
+            setOpen(false)
+          }}
           placeholder={placeholder}
           className="w-full px-3 py-2 bg-white border border-[#D8D3C8] rounded text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] focus:ring-1 focus:ring-[#9A7B4F] transition-colors placeholder-[#C4BFB5]"
         />
