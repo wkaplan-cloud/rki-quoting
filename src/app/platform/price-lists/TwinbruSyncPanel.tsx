@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { RefreshCw, CheckCircle2, AlertCircle, Clock, Database } from 'lucide-react'
+import { RefreshCw, CheckCircle2, AlertCircle, Clock, Database, Trash2 } from 'lucide-react'
 
 interface SyncLog {
   id: string
@@ -137,6 +137,16 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
   const loadRunningRef = useRef(false)
   const catalogueRunningRef = useRef(false)
 
+  // Discontinued scan state
+  type DiscontinuedState = 'idle' | 'scanning' | 'found' | 'deleting' | 'done'
+  const [discontinuedState, setDiscontinuedState] = useState<DiscontinuedState>('idle')
+  const [discontinuedResult, setDiscontinuedResult] = useState<SyncResult>(null)
+  const [discontinuedCount, setDiscontinuedCount] = useState(0)
+  const [discontinuedProductIds, setDiscontinuedProductIds] = useState<string[]>([])
+  const [discontinuedTotalInDb, setDiscontinuedTotalInDb] = useState(0)
+  const activeIdsRef = useRef<number[]>([])
+  const discontinuedCurrentYearRef = useRef(0)
+
   async function triggerPriceSync() {
     setTriggeringPrices(true)
     setPriceResult(null)
@@ -241,6 +251,98 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
       setLoadResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
       loadRunningRef.current = false
       setTriggeringLoad(false)
+    }
+  }
+
+  const START_YEAR = 2000
+  const END_YEAR   = new Date().getFullYear()
+
+  async function startDiscontinuedScan() {
+    activeIdsRef.current = []
+    discontinuedCurrentYearRef.current = START_YEAR
+    setDiscontinuedState('scanning')
+    setDiscontinuedResult(null)
+    setDiscontinuedCount(0)
+    setDiscontinuedProductIds([])
+    await scanNextYear()
+  }
+
+  async function scanNextYear() {
+    const year = discontinuedCurrentYearRef.current
+    if (year > END_YEAR) {
+      // All years scanned — compare against DB
+      await compareWithDb()
+      return
+    }
+    try {
+      const res = await fetch(`/api/cron/find-discontinued?year=${year}`, {
+        headers: { Authorization: `Bearer ${cronSecret}` },
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setDiscontinuedResult({ type: 'err', msg: String(d.error ?? 'Scan failed') })
+        setDiscontinuedState('idle')
+        return
+      }
+      const { activeIds } = await res.json() as { activeIds: number[] }
+      activeIdsRef.current.push(...activeIds)
+      setDiscontinuedResult({ type: 'ok', msg: `Scanning… year ${year} (${activeIdsRef.current.toLocaleString()} active found so far)` })
+      discontinuedCurrentYearRef.current = year + 1
+      await scanNextYear()
+    } catch (e) {
+      setDiscontinuedResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
+      setDiscontinuedState('idle')
+    }
+  }
+
+  async function compareWithDb() {
+    try {
+      const res = await fetch('/api/cron/find-discontinued', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cronSecret}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activeProductIds: activeIdsRef.current }),
+      })
+      const d = await res.json()
+      if (!res.ok) {
+        setDiscontinuedResult({ type: 'err', msg: String(d.error ?? 'Compare failed') })
+        setDiscontinuedState('idle')
+        return
+      }
+      setDiscontinuedCount(d.discontinuedCount)
+      setDiscontinuedProductIds(d.discontinuedProductIds)
+      setDiscontinuedTotalInDb(d.totalInDb)
+      if (d.discontinuedCount === 0) {
+        setDiscontinuedResult({ type: 'ok', msg: `All ${d.totalInDb.toLocaleString()} fabrics in your catalogue are active on Twinbru. Nothing to delete.` })
+        setDiscontinuedState('done')
+      } else {
+        setDiscontinuedResult(null)
+        setDiscontinuedState('found')
+      }
+    } catch (e) {
+      setDiscontinuedResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
+      setDiscontinuedState('idle')
+    }
+  }
+
+  async function deleteDiscontinued() {
+    setDiscontinuedState('deleting')
+    try {
+      const res = await fetch('/api/cron/find-discontinued', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${cronSecret}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productIds: discontinuedProductIds }),
+      })
+      const d = await res.json()
+      if (!res.ok) {
+        setDiscontinuedResult({ type: 'err', msg: String(d.error ?? 'Delete failed') })
+        setDiscontinuedState('found')
+        return
+      }
+      setDiscontinuedResult({ type: 'ok', msg: `Done — ${d.deleted.toLocaleString()} discontinued fabrics removed. ${(discontinuedTotalInDb - d.deleted).toLocaleString()} active fabrics remain.` })
+      setDiscontinuedState('done')
+    } catch (e) {
+      setDiscontinuedResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
+      setDiscontinuedState('found')
     }
   }
 
@@ -368,6 +470,59 @@ export function TwinbruSyncPanel({ lastPriceSync, lastCatalogueSync, lastLoadSyn
           </button>
         </div>
         <ProgressBar running={triggeringLoad} />
+      </div>
+
+      {/* Find Discontinued & Delete */}
+      <div className="py-4 border-t border-white/10">
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-white">Find Discontinued & Delete</p>
+              {discontinuedState === 'scanning' && <ElapsedTimer running={true} />}
+            </div>
+            <p className="text-xs text-white/30 mb-2">Scans Twinbru for all currently active fabrics (year by year), then compares against your catalogue. Any fabric in your database that Twinbru no longer lists as active will be shown for deletion.</p>
+
+            {discontinuedState === 'found' && (
+              <div className="mt-2 p-3 bg-red-900/20 border border-red-500/20 rounded-lg">
+                <p className="text-sm font-medium text-red-400">
+                  {discontinuedCount.toLocaleString()} discontinued fabrics found
+                </p>
+                <p className="text-xs text-white/40 mt-0.5">
+                  Active on Twinbru: {activeIdsRef.current.length.toLocaleString()} &middot; In your catalogue: {discontinuedTotalInDb.toLocaleString()}
+                </p>
+                <button
+                  onClick={deleteDiscontinued}
+                  className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600/80 hover:bg-red-600 text-white transition-colors cursor-pointer"
+                >
+                  <Trash2 size={12} />
+                  Delete {discontinuedCount.toLocaleString()} discontinued fabrics
+                </button>
+              </div>
+            )}
+
+            <ResultBanner result={discontinuedResult} />
+          </div>
+
+          {(discontinuedState === 'idle' || discontinuedState === 'done') && (
+            <button
+              onClick={startDiscontinuedScan}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0 cursor-pointer"
+            >
+              <RefreshCw size={12} />
+              {discontinuedState === 'done' ? 'Scan Again' : 'Find Discontinued'}
+            </button>
+          )}
+
+          {discontinuedState === 'scanning' && (
+            <span className="text-xs text-white/40 flex-shrink-0 pt-1">Scanning…</span>
+          )}
+
+          {discontinuedState === 'deleting' && (
+            <span className="text-xs text-white/40 flex-shrink-0 pt-1">Deleting…</span>
+          )}
+        </div>
+        {discontinuedState === 'scanning' && <ProgressBar running={true} />}
+        {discontinuedState === 'deleting' && <ProgressBar running={true} />}
       </div>
     </div>
   )
