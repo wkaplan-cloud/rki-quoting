@@ -7,15 +7,17 @@ const plans = [
     name: 'Solo',
     price: 699,
     audience: 'For independent designers running their own studio.',
-    tagline: 'Professional quoting without the admin overload.',
+    tagline: 'Everything you need to quote, invoice, and order professionally.',
     features: [
-      'Unlimited projects & quotes',
-      'Branded, client-ready PDF quotes & invoices',
-      'Purchase orders per supplier',
-      'Supplier & fabric price list access',
-      'Sage Business Cloud accounting sync',
-      'Design fee calculations built in',
       '1 user',
+      'Unlimited projects, quotes & invoices',
+      'Client-ready PDF quotes & invoices',
+      'Purchase orders sent directly to suppliers',
+      'Clients, suppliers & price list management',
+      'Supplier fabric catalogue access',
+      'Request Price — send sourcing requests to suppliers',
+      'Design fee calculations built in',
+      'Basic dashboard: project count, pipeline & revenue',
     ],
     cta: 'Start quoting professionally',
     highlight: false,
@@ -24,13 +26,16 @@ const plans = [
     name: 'Studio',
     price: 1499,
     audience: 'For growing studios with a team.',
-    tagline: 'Operate more efficiently as your business grows.',
+    tagline: 'Full visibility, collaboration, and operational tools for your studio.',
     features: [
       'Everything in Solo',
-      'Up to 5 team members',
-      'Shared projects and live collaboration',
-      'Team project pipeline view',
-      'Request Price — send sourcing requests to suppliers directly',
+      'Up to 5 team members with role permissions',
+      'Full pipeline dashboard + Kanban board',
+      'Production Sheet PDF for internal use',
+      'Markup Calculator',
+      'Bulk import tools',
+      'Profit analytics per project & per year',
+      'Team audit log',
     ],
     cta: 'Grow your studio',
     highlight: true,
@@ -39,11 +44,12 @@ const plans = [
     name: 'Agency',
     price: 2499,
     audience: 'For established firms and high-volume studios.',
-    tagline: 'Operational efficiency for studios managing more.',
+    tagline: 'No limits. Full integration. Your brand on every document.',
     features: [
       'Everything in Studio',
       'Unlimited team members',
-      'Custom branded PDFs — upload your letterhead, we match it for you',
+      'Sage Business Cloud Accounting integration',
+      'Custom branded PDFs — we match your letterhead',
     ],
     cta: 'Run a more efficient studio',
     highlight: false,
@@ -68,7 +74,7 @@ export default function PricingPage() {
             Start your 30-day free trial. No credit card required.
           </p>
           <p className="text-[#8A877F] text-base leading-relaxed max-w-xl mx-auto">
-            QuotingHub is priced by business size — not by locking features away. Most capabilities are included across all plans. As your studio grows, your plan grows with you.
+            Every plan gives you a complete quoting system. As your studio grows, unlock team collaboration, advanced analytics, Sage integration, and custom-branded documents.
           </p>
         </div>
       </section>
@@ -146,7 +152,7 @@ export default function PricingPage() {
         {/* Scaling note */}
         <div className="max-w-2xl mx-auto mt-10 text-center">
           <p className="text-sm text-[#8A877F] leading-relaxed border border-[#EDE9E1] rounded-xl px-6 py-4 bg-white">
-            <span className="font-medium text-[#2C2C2A]">Why do larger plans cost more?</span> Because larger studios generate more revenue with QuotingHub. Pricing is based on the scale of your business and the value it creates — not on arbitrarily locking features away. Every tier gives you a complete, professional quoting system.
+            <span className="font-medium text-[#2C2C2A]">Why do larger plans cost more?</span> Larger studios have larger teams and generate more revenue. Higher tiers unlock the tools that scale with you — team collaboration, pipeline analytics, Sage accounting, and custom-branded documents. Every plan starts with a fully functional quoting system.
           </p>
         </div>
       </section>
@@ -159,7 +165,7 @@ export default function PricingPage() {
             {[
               { q: 'What happens after my 30-day trial?', a: "You'll be prompted to choose a plan to keep access. Your data is never deleted — if you subscribe within a few days of expiry, everything is exactly as you left it." },
               { q: 'Do I need a credit card to start?', a: 'No. Sign up with just your email address. You only enter payment details when you choose to subscribe after the trial.' },
-              { q: 'What is Price Requests?', a: 'Price Requests is available on Studio and Agency plans. It lets you select items, attach images and descriptions, and send pricing requests directly to your suppliers — all from inside QuotingHub. It eliminates the back-and-forth email chains that slow down sourcing and quoting.' },
+              { q: 'What is Price Requests?', a: 'Price Requests is available on all plans. It lets you select items, attach images and descriptions, and send pricing requests directly to your suppliers — all from inside QuotingHub. It eliminates the back-and-forth email chains that slow down sourcing and quoting.' },
               { q: 'Can I upgrade my plan later?', a: 'Yes. You can upgrade at any time from your account settings. Your data and projects carry over seamlessly.' },
               { q: 'Can I cancel at any time?', a: 'Yes. There are no long-term contracts. Cancel anytime from your account settings — no questions asked.' },
             ].map(({ q, a }) => (
