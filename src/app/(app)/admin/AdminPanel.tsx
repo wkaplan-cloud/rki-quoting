@@ -224,6 +224,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   }
 
   return (
+    <>
     <div>
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
@@ -527,5 +528,6 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
           </div>
         </div>
       )}
+    </>
   )
 }
