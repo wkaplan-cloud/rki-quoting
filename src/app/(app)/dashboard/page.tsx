@@ -11,12 +11,16 @@ import { Plus } from 'lucide-react'
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const [{ data: projects }, { data: allLineItems }, { data: settings }] = await Promise.all([
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  const [{ data: projects }, { data: allLineItems }, { data: settings }, { data: org }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
     supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
     supabase.from('settings').select('sage_access_token, sage_company_id').maybeSingle(),
+    orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null }),
   ])
-  const sageConnected = !!(settings?.sage_access_token && settings?.sage_company_id)
+  const plan = org?.plan ?? 'trial'
+  const isSolo = plan === 'solo'
+  const sageConnected = !isSolo && !!(settings?.sage_access_token && settings?.sage_company_id)
 
   const projectIds = (projects ?? []).map(p => p.id)
 
@@ -68,7 +72,7 @@ export default async function DashboardPage() {
     return sum + totals.grand_total
   }, 0)
 
-  const summaryCards = [
+  const allSummaryCards = [
     { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },
     { label: 'Pipeline Value', value: formatZAR(activeRevenuePipeline), sub: 'active projects', alert: false },
     { label: 'Awaiting Deposit', value: awaitingDeposit.toString(), sub: 'Quote sent — deposit not yet received', alert: awaitingDeposit > 0 },
@@ -76,6 +80,7 @@ export default async function DashboardPage() {
     { label: 'Balance Due Outstanding', value: invoicesOutstanding.toString(), sub: 'Final invoice sent — balance not yet paid', alert: invoicesOutstanding > 0 },
     { label: 'Total Revenue', value: formatZAR(totalRevenue), sub: `${completedProjects.length} completed projects`, alert: false },
   ]
+  const summaryCards = isSolo ? allSummaryCards.slice(0, 2) : allSummaryCards
 
   return (
     <div className="flex flex-col h-full">
@@ -103,24 +108,26 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Pipeline list */}
-        <div>
-          <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Project Pipeline</h2>
-          <KanbanBoard
-            projects={ps
-              .filter(p => p.status !== 'Cancelled')
-              .sort((a, b) => {
-                const aComp = a.status === 'Completed' || a.status === 'Paid'
-                const bComp = b.status === 'Completed' || b.status === 'Paid'
-                if (aComp !== bComp) return aComp ? 1 : -1
-                return new Date(b.date).getTime() - new Date(a.date).getTime()
-              })
-            }
-            stagesMap={stagesMap}
-            stageConfig={STAGE_CONFIG}
-            sageConnected={sageConnected}
-          />
-        </div>
+        {/* Pipeline list — Studio+ only */}
+        {!isSolo && (
+          <div>
+            <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Project Pipeline</h2>
+            <KanbanBoard
+              projects={ps
+                .filter(p => p.status !== 'Cancelled')
+                .sort((a, b) => {
+                  const aComp = a.status === 'Completed' || a.status === 'Paid'
+                  const bComp = b.status === 'Completed' || b.status === 'Paid'
+                  if (aComp !== bComp) return aComp ? 1 : -1
+                  return new Date(b.date).getTime() - new Date(a.date).getTime()
+                })
+              }
+              stagesMap={stagesMap}
+              stageConfig={STAGE_CONFIG}
+              sageConnected={sageConnected}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

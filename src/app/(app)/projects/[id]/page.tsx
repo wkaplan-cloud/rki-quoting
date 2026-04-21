@@ -8,7 +8,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }, { data: platformContacts }, { data: orgId }] =
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  const { data: orgMeta } = orgId
+    ? await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
+    : { data: null }
+
+  const [{ data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }, { data: platformContacts }] =
     await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
       supabase.from('line_items').select('*').eq('project_id', id).order('sort_order'),
@@ -19,7 +24,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
       supabase.from('email_logs').select('id, type, sent_to, sent_at, supplier_name').eq('project_id', id).order('sent_at', { ascending: false }),
       supabase.from('platform_supplier_contacts').select('supplier_id, markup_percentage, email'),
-      supabase.rpc('get_current_org_id'),
     ])
 
   if (!project) notFound()
@@ -69,6 +73,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       emailTemplateInvoice={settings?.email_template_invoice ?? null}
       sageConnected={!!(settings?.sage_access_token && settings?.sage_company_id)}
       activePriceListIds={[...activePriceListIds]}
+      plan={orgMeta?.plan ?? 'trial'}
     />
   )
 }

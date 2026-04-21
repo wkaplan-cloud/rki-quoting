@@ -1,10 +1,18 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ImportWizard } from './ImportWizard'
 
 export default async function ImportPage() {
   const supabase = await createClient()
+
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  const { data: org } = orgId
+    ? await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
+    : { data: null }
+  if (org?.plan === 'solo') redirect('/dashboard')
 
   const [{ data: projects }, { data: suppliers }, { data: clients }, { data: items }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('id, project_name, project_number').order('created_at', { ascending: false }),

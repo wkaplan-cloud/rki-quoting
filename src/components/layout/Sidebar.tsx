@@ -16,7 +16,6 @@ const secondaryLinks = [
   { href: '/suppliers',          label: 'Suppliers',          icon: Truck },
   { href: '/items',              label: 'Items',              icon: Package },
   { href: '/price-lists',        label: 'Price Lists',        icon: BookOpen },
-  { href: '/markup-calculator',  label: 'Markup Calculator',  icon: Calculator },
 ]
 
 interface Props {
@@ -136,6 +135,23 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             </Link>
           ))}
 
+          {plan !== 'solo' && (
+            <Link
+              href="/markup-calculator"
+              onClick={onClose}
+              title="Markup Calculator"
+              className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
+                ${isActive('/markup-calculator')
+                  ? 'text-white/80'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+            >
+              <span className="flex items-center justify-center w-10 flex-shrink-0">
+                <Calculator size={14} className={isActive('/markup-calculator') ? 'text-[#C4A46B]' : 'opacity-60'} />
+              </span>
+              <span className={labelCls}>Markup Calculator</span>
+            </Link>
+          )}
+
           {sourcingEnabled && plan !== 'solo' && (
             <>
               <div className="border-t border-white/10 my-2 mx-2" />
@@ -169,15 +185,17 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             <span className={labelCls}>Profile</span>
           </Link>
 
-          <Link href="/import" onClick={onClose} title="Import"
-            className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
-            <span className="flex items-center justify-center w-10 flex-shrink-0">
-              <Upload size={14} />
-            </span>
-            <span className={labelCls}>Import</span>
-          </Link>
+          {plan !== 'solo' && (
+            <Link href="/import" onClick={onClose} title="Import"
+              className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
+              <span className="flex items-center justify-center w-10 flex-shrink-0">
+                <Upload size={14} />
+              </span>
+              <span className={labelCls}>Import</span>
+            </Link>
+          )}
 
-          {isAdmin && (
+          {isAdmin && plan !== 'solo' && (
             <Link href="/admin" onClick={onClose} title="Admin"
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <span className="flex items-center justify-center w-10 flex-shrink-0">

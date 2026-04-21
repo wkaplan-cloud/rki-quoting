@@ -29,9 +29,10 @@ interface Props {
   emailTemplateInvoice: string | null
   sageConnected: boolean
   activePriceListIds: string[]
+  plan: string
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds, plan }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -379,12 +380,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                       ))}
                     </>
                   )}
-                  <div className="border-t border-[#EDE9E1] my-1" />
-                  <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Internal</p>
-                  <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
-                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                    <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Production Sheet
-                  </button>
+                  {plan !== 'solo' && (
+                    <>
+                      <div className="border-t border-[#EDE9E1] my-1" />
+                      <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Internal</p>
+                      <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                        <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Production Sheet
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

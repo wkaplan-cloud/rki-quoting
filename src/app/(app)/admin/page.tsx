@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -21,6 +21,10 @@ export default async function AdminPage() {
     .maybeSingle()
 
   if (membership?.role !== 'admin') notFound()
+
+  // Fetch org plan before heavy data load
+  const { data: orgMeta } = await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
+  if (orgMeta?.plan === 'solo') redirect('/dashboard')
 
   const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }, { data: completedProjects }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
