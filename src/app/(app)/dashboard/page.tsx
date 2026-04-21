@@ -80,7 +80,9 @@ export default async function DashboardPage() {
     { label: 'Balance Due Outstanding', value: invoicesOutstanding.toString(), sub: 'Final invoice sent — balance not yet paid', alert: invoicesOutstanding > 0 },
     { label: 'Total Revenue', value: formatZAR(totalRevenue), sub: `${completedProjects.length} completed projects`, alert: false },
   ]
-  const summaryCards = isSolo ? allSummaryCards.slice(0, 2) : allSummaryCards
+  const summaryCards = isSolo
+    ? [allSummaryCards[0], allSummaryCards[1], allSummaryCards[5]]
+    : allSummaryCards
 
   return (
     <div className="flex flex-col h-full">
