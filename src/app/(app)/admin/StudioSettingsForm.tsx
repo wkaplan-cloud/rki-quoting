@@ -39,7 +39,7 @@ interface Settings {
   accounts_email?: string | null
 }
 
-export function StudioSettingsForm({ settings }: { settings: Settings | null }) {
+export function StudioSettingsForm({ settings, plan }: { settings: Settings | null; plan?: string }) {
   const supabase = createClient()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -246,6 +246,38 @@ export function StudioSettingsForm({ settings }: { settings: Settings | null }) 
               </div>
             </div>
           </section>
+
+          {plan === 'agency' && (
+            <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
+              <div>
+                <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Custom Branded PDFs</h2>
+                <p className="text-xs text-[#8A877F] mt-1">Upload your current invoice or letterhead and we will match it on your QuotingHub PDFs.</p>
+              </div>
+              <label className="flex items-center gap-2 px-4 py-3 bg-[#F5F2EC] border border-dashed border-[#D8D3C8] rounded cursor-pointer hover:border-[#9A7B4F] transition-colors w-fit">
+                <Upload size={14} className="text-[#8A877F]" />
+                <span className="text-sm text-[#8A877F]">{uploading ? 'Uploading…' : 'Upload file (PDF or image)'}</span>
+                <input
+                  type="file"
+                  accept=".pdf,image/png,image/jpeg"
+                  className="hidden"
+                  onChange={async e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setUploading(true)
+                    const ext = file.name.split('.').pop()
+                    const path = `letterhead.${ext}`
+                    const { error: uploadError } = await supabase.storage
+                      .from('branding')
+                      .upload(path, file, { upsert: true, contentType: file.type })
+                    if (uploadError) { toast.error('Upload failed: ' + uploadError.message) }
+                    else toast.success("Letterhead uploaded — we'll be in touch to apply your branding.")
+                    setUploading(false)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </section>
+          )}
 
           <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
             <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Banking Details</h2>

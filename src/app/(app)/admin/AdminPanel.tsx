@@ -344,7 +344,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       )}
 
       {tab === 'studio' && (
-        <StudioSettingsForm settings={settings as any} />
+        <StudioSettingsForm settings={settings as any} plan={plan} />
       )}
 
       {tab === 'profit' && (

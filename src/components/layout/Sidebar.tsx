@@ -271,10 +271,10 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               </button>
             </div>
             <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-              Studio gives you up to 5 team members and shared project collaboration. Your card will be charged <strong className="text-[#2C2C2A]">R1,499/month</strong> starting today.
+              Studio gives you up to 5 team members, shared project collaboration, and Price Requests. Your card will be charged <strong className="text-[#2C2C2A]">R1,499/month</strong> starting today.
             </p>
             <ul className="space-y-2 mb-6">
-              {['Up to 5 team members', 'Shared projects & live collaboration', 'Priority support'].map(f => (
+              {['Up to 5 team members', 'Shared projects & live collaboration', 'Request Price — send sourcing requests to suppliers'].map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
                   {f}
@@ -311,10 +311,10 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               </button>
             </div>
             <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-              Agency gives you unlimited team members and Price Requests — send sourcing requests directly to suppliers without the email chains. Your card will be charged <strong className="text-[#2C2C2A]">R2,499/month</strong> starting today.
+              Agency gives you unlimited team members and custom branded PDFs — we match your existing letterhead so every document looks like yours. Your card will be charged <strong className="text-[#2C2C2A]">R2,499/month</strong> starting today.
             </p>
             <ul className="space-y-2 mb-6">
-              {['Unlimited team members', 'Price Requests — direct supplier sourcing', 'Dedicated account support'].map(f => (
+              {['Unlimited team members', 'Custom branded PDFs — we match your letterhead', 'Everything in Studio'].map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
                   {f}
