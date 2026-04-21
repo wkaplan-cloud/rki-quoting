@@ -212,7 +212,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       quantity: 1,
       cost_price: 0,
       markup_percentage: 40,
-      delivery_address: officeAddress.address || null,
+      delivery_address: officeAddress.address || '',
       sort_order,
       row_type: 'item',
       indent_level: 0,
