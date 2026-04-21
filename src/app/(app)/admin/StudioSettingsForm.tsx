@@ -323,8 +323,8 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
       </div>
     </form>
 
-      {/* Sage Integration — outside the main form to avoid state resets */}
-      <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
+      {/* Sage Integration — Agency plan only, outside the main form to avoid state resets */}
+      {plan === 'agency' && <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage Business Cloud Accounting</h2>
           {sageConnected && (
@@ -449,7 +449,7 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
             </div>
           </div>
         )}
-      </section>
+      </section>}
     </div>
   )
 }

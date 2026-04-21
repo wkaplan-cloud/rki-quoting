@@ -152,7 +152,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             </Link>
           )}
 
-          {sourcingEnabled && plan !== 'solo' && (
+          {sourcingEnabled && plan === 'agency' && (
             <>
               <div className="border-t border-white/10 my-2 mx-2" />
               <Link

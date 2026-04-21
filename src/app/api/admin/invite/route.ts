@@ -25,15 +25,18 @@ export async function POST(req: NextRequest) {
     .eq('id', membership.org_id)
     .single()
 
-  if (org?.plan === 'solo' && org?.subscription_status === 'active') {
-    // Count active + pending — Solo allows exactly 1 user total, no pending invites either
+  if (org?.subscription_status === 'active') {
     const { count } = await supabaseAdmin
       .from('org_members')
       .select('*', { count: 'exact', head: true })
       .eq('org_id', membership.org_id)
       .in('status', ['active', 'pending'])
-    if ((count ?? 0) >= 1) {
+
+    if (org?.plan === 'solo' && (count ?? 0) >= 1) {
       return NextResponse.json({ error: 'Solo plan is limited to 1 user. Upgrade to Studio to add team members.', upgrade: true }, { status: 403 })
+    }
+    if (org?.plan === 'studio' && (count ?? 0) >= 5) {
+      return NextResponse.json({ error: 'Studio plan supports up to 5 team members. Upgrade to Agency for unlimited members.', upgrade: true }, { status: 403 })
     }
   }
 
