@@ -93,6 +93,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Profit', tip: 'Your profit per unit (Sale minus Cost). Shown for your reference only.' },
   { col: 'Tot. Cost', tip: 'Total cost for this line (Cost × Qty).' },
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
+  { col: 'Indent', tip: 'Use the indent button (↳) to nest a line under the one above — useful for sub-items like fabric under a sofa. Indented rows are slightly inset on the Production Sheet.' },
 ]
 
 export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked }: Props) {
@@ -211,7 +212,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       description: '',
       quantity: 1,
       cost_price: 0,
-      markup_percentage: 40,
+      markup_percentage: 0,
       delivery_address: officeAddress.address || '',
       sort_order,
       row_type: 'item',

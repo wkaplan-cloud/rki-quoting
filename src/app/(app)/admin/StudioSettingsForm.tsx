@@ -126,7 +126,7 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
     bank_account_number:    settings?.bank_account_number ?? '',
     bank_branch_code:       settings?.bank_branch_code ?? '',
     vat_rate:               String(settings?.vat_rate ?? 15),
-    deposit_percentage:     String(settings?.deposit_percentage ?? 70),
+    deposit_percentage:     String(settings?.deposit_percentage ?? 50),
     footer_text:            settings?.footer_text ?? 'Thank you for your business.',
     terms_conditions:       settings?.terms_conditions ?? '',
     company_registration:   settings?.company_registration ?? '',

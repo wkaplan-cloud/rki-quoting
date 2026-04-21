@@ -162,9 +162,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     if (type === 'po' && supplierIdParam) {
       const supplier = suppliers.find(s => s.id === supplierIdParam)
       a.download = `${slug(project.project_number)}_PO_${slug(supplier?.supplier_name ?? 'supplier')}.pdf`
+    } else if (type === 'po') {
+      a.download = `${slug(project.project_number)}_PO_all.pdf`
     } else {
-      const clientPart = project.client?.client_name ? `_${slug(project.client.client_name)}` : ''
-      a.download = `${slug(businessName)}${clientPart}_${slug(project.project_name)}_${type}.pdf`
+      const clientPart = project.client?.client_name ? `${slug(project.client.client_name)}_` : ''
+      a.download = `${clientPart}${slug(project.project_number)}_${type}.pdf`
     }
     a.click()
   }, [project.id, project.project_number, project.project_name, project.client, businessName, suppliers])

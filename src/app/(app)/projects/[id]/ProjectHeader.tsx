@@ -40,7 +40,6 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     project_number: project.project_number,
     client_id: project.client_id ?? '',
     date: project.date,
-    notes: project.notes ?? '',
   })
   const [clientName, setClientName] = useState(project.client?.client_name ?? '')
   const [pendingClientId, setPendingClientId] = useState(project.client_id ?? '')
@@ -89,7 +88,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
   }
 
   function cancel() {
-    setForm({ project_name: project.project_name, project_number: project.project_number, client_id: project.client_id ?? '', date: project.date, notes: project.notes ?? '' })
+    setForm({ project_name: project.project_name, project_number: project.project_number, client_id: project.client_id ?? '', date: project.date })
     setEditing(false)
   }
 

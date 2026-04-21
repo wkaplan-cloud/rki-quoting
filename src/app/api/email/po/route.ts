@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
       : null
     const effectiveEmail = orgContact?.email || supplier?.email
     const effectiveEmailCc = orgContact?.email_cc || supplier?.email_cc
-    const effectiveContactPerson = orgContact?.rep_name || supplier?.contact_person || supplier?.supplier_name
+    const effectiveRepName = orgContact?.rep_name || (supplier as any)?.rep_name
+    const effectiveContactPerson = effectiveRepName || supplier?.contact_person || supplier?.supplier_name
 
     if (!effectiveEmail) {
       const err = supplier?.is_platform ? 'No rep email set — go to Suppliers → Home Fabrics to add your studio\'s rep email' : 'No email address on supplier'
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
       ...(effectiveEmailCc ? { cc: effectiveEmailCc } : {}),
       ...(accountsEmail ? { bcc: accountsEmail } : {}),
       subject,
-      text: `Dear ${effectiveContactPerson},\n\nPlease find attached Purchase Order ${poNumber} for ${project.project_name}.\n\nKindly acknowledge receipt and confirm availability.\n\nKind regards,\n${studioName}`,
+      text: `Dear ${effectiveContactPerson},\n\nPlease find attached Purchase Order ${poNumber} for ${project.project_name} — ${supplier.supplier_name}${supplier.contact_person ? ` (Accounts: ${supplier.contact_person})` : ''}.\n\nKindly acknowledge receipt and confirm availability.\n\nKind regards,\n${studioName}`,
       html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
                 <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-left:3px solid #C4A46B;border-radius:4px;padding:14px 18px;">
                   <p style="margin:0;font-size:11px;color:#8A877F;text-transform:uppercase;letter-spacing:0.08em;">PO Reference</p>
                   <p style="margin:4px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:600;color:#1A1A18;">${poNumber}</p>
+                  <p style="margin:6px 0 0;font-size:12px;color:#8A877F;">Supplier: ${supplier.supplier_name}${supplier.contact_person ? ` &middot; Accounts: ${supplier.contact_person}` : ''}</p>
                 </td>
               </tr>
             </table>

@@ -18,7 +18,7 @@ interface Props {
   platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null }[]
 }
 
-function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null; printDate?: string | null; platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null }[] }) {
+function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null; printDate?: string | null; platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null; rep_email?: string | null }[] }) {
   const itemRows = items.filter(i => i.row_type !== 'section')
   const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const vatAmount = subtotal * (vatRate / 100)
@@ -58,16 +58,17 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
           <Text style={styles.sectionLabel}>SUPPLIER</Text>
           <View style={{ flexDirection: 'column' }}>
             <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold', marginBottom: 2 }]}>{supplier.supplier_name}</Text>
-            {supplier.contact_person && <Text style={[styles.infoVal, { marginBottom: 2 }]}>{supplier.contact_person}</Text>}
-            {supplier.is_platform
-              ? (() => {
-                  const email = platformContacts?.find(c => c.supplier_id === supplier.id)?.email
-                  return email ? <Text style={styles.infoVal}>{email}</Text> : null
-                })()
-              : supplier.email
-                ? <Text style={styles.infoVal}>{supplier.email}</Text>
-                : null
-            }
+            {(() => {
+              const contact = supplier.is_platform ? platformContacts?.find(c => c.supplier_id === supplier.id) : null
+              const repName = contact?.rep_name || (supplier as any).rep_name
+              const repEmail = contact?.email || supplier.email
+              return (
+                <>
+                  {repName && <Text style={[styles.infoVal, { marginBottom: 2 }]}>Attn: {repName}</Text>}
+                  {repEmail && <Text style={styles.infoVal}>{repEmail}</Text>}
+                </>
+              )
+            })()}
           </View>
         </View>
       )}

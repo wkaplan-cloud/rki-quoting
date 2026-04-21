@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { Combobox } from '@/components/ui/Combobox'
 import toast from 'react-hot-toast'
@@ -26,7 +25,6 @@ export function NewProjectForm({ clients }: Props) {
     date: new Date().toISOString().split('T')[0],
     status: 'Draft',
     design_fee: '0',
-    notes: '',
   })
 
   useEffect(() => {
@@ -144,13 +142,6 @@ export function NewProjectForm({ clients }: Props) {
           onChange={e => set('design_fee', e.target.value)}
         />
       </div>
-
-      <Textarea
-        label="Notes"
-        value={form.notes}
-        onChange={e => set('notes', e.target.value)}
-        rows={3}
-      />
 
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={saving}>
