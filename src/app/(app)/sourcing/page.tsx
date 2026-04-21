@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SourcingDashboard } from './SourcingDashboard'
@@ -18,11 +17,6 @@ export default async function SourcingPage() {
 
   if (!settings?.sourcing_enabled) redirect('/dashboard')
 
-  const { data: orgId } = await supabase.rpc('get_current_org_id')
-  const { data: org } = orgId
-    ? await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
-    : { data: null }
-  if (org?.plan !== 'agency') redirect('/dashboard')
 
   const { data: requests } = await supabase
     .from('sourcing_requests')

@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight } from 'lucide-react'
+import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
 import Link from 'next/link'
@@ -125,6 +125,8 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('designer')
   const [inviting, setInviting] = useState(false)
+  const [upgradeAgencyOpen, setUpgradeAgencyOpen] = useState(false)
+  const [upgradingAgency, setUpgradingAgency] = useState(false)
   const [tab, setTab] = useState<'users' | 'studio' | 'profit' | 'audit'>('users')
 
   // Compute profit per completed project
@@ -158,7 +160,11 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
     })
     if (!res.ok) {
       const data = await res.json()
-      toast.error(data.error ?? 'Failed to send invite', { duration: data.upgrade ? 6000 : 4000 })
+      if (data.upgrade && plan === 'studio') {
+        setUpgradeAgencyOpen(true)
+      } else {
+        toast.error(data.error ?? 'Failed to send invite')
+      }
     } else {
       toast.success(`Invite sent to ${inviteEmail}`)
       setMembers(m => [...m, {
@@ -200,6 +206,22 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   }
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  async function handleUpgradeAgency() {
+    setUpgradingAgency(true)
+    try {
+      const res = await fetch('/api/paystack/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: 'agency' }),
+      })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? 'Something went wrong'); return }
+      window.location.href = data.authorization_url
+    } finally {
+      setUpgradingAgency(false)
+    }
+  }
 
   return (
     <div>
@@ -468,5 +490,42 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
         </div>
       )}
     </div>
+
+      {/* Upgrade to Agency modal — triggered when studio hits 5-member cap */}
+      {upgradeAgencyOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setUpgradeAgencyOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-[380px] p-7" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-[#1A1A18]">Team limit reached</h2>
+              <button onClick={() => setUpgradeAgencyOpen(false)} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
+              Studio supports up to 5 team members. Upgrade to Agency for <strong className="text-[#2C2C2A]">unlimited members</strong>, Sage integration, and custom branded PDFs — charged at <strong className="text-[#2C2C2A]">R2,499/month</strong>.
+            </p>
+            <ul className="space-y-2 mb-6">
+              {['Unlimited team members', 'Sage Business Cloud Accounting integration', 'Custom branded PDFs — we match your letterhead'].map(f => (
+                <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <button onClick={() => setUpgradeAgencyOpen(false)} className="flex-1 py-2.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                Cancel
+              </button>
+              <button
+                onClick={handleUpgradeAgency}
+                disabled={upgradingAgency}
+                className="flex-1 py-2.5 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer font-medium"
+              >
+                {upgradingAgency ? 'Redirecting…' : 'Upgrade to Agency →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   )
 }

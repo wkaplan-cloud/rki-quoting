@@ -110,6 +110,15 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* Solo upsell nudge */}
+        {isSolo && (
+          <p className="text-xs text-[#8A877F]">
+            Want the full picture?{' '}
+            <a href="/subscribe" className="text-[#9A7B4F] hover:underline">Upgrade to Studio</a>
+            {' '}for Kanban pipeline, advanced metrics, and team collaboration.
+          </p>
+        )}
+
         {/* Pipeline list — Studio+ only */}
         {!isSolo && (
           <div>

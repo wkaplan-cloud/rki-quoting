@@ -40,6 +40,22 @@ export default async function SettingsPage() {
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-6">Studio Settings</h2>
           <StudioSettingsForm settings={settings as any} plan={plan} />
         </section>
+
+        {/* Upsell nudges */}
+        {plan === 'solo' && (
+          <p className="text-xs text-[#8A877F] border-t border-[#EDE9E1] pt-6">
+            Need to add team members?{' '}
+            <a href="/subscribe" className="text-[#9A7B4F] hover:underline">Upgrade to Studio</a>
+            {' '}for up to 5 users, shared projects, and full pipeline analytics.
+          </p>
+        )}
+        {plan === 'studio' && (
+          <p className="text-xs text-[#8A877F] border-t border-[#EDE9E1] pt-6">
+            Want Sage accounting integration and custom branded PDFs?{' '}
+            <a href="/subscribe" className="text-[#9A7B4F] hover:underline">Upgrade to Agency</a>
+            {' '}for unlimited team members too.
+          </p>
+        )}
       </div>
     </div>
   )

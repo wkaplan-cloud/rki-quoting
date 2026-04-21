@@ -382,15 +382,24 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                       ))}
                     </>
                   )}
-                  {plan !== 'solo' && (
-                    <>
-                      <div className="border-t border-[#EDE9E1] my-1" />
-                      <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Internal</p>
-                      <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                        <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Production Sheet
-                      </button>
-                    </>
+                  <div className="border-t border-[#EDE9E1] my-1" />
+                  <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Internal</p>
+                  {plan !== 'solo' ? (
+                    <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                      <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Production Sheet
+                    </button>
+                  ) : (
+                    <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
+                      <Printer size={13} className="flex-shrink-0" /> Production Sheet
+                      <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio+</span>
+                    </div>
+                  )}
+                  {plan !== 'agency' && (
+                    <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
+                      <FileText size={13} className="flex-shrink-0" /> Custom Branded PDFs
+                      <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Agency</span>
+                    </div>
                   )}
                 </div>
               )}

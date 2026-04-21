@@ -151,7 +151,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             </Link>
           )}
 
-          {sourcingEnabled && plan === 'agency' && (
+          {sourcingEnabled && (
             <>
               <div className="border-t border-white/10 my-2 mx-2" />
               <Link
@@ -288,10 +288,10 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               </button>
             </div>
             <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-              Studio gives you up to 5 team members, shared project collaboration, and Price Requests. Your card will be charged <strong className="text-[#2C2C2A]">R1,499/month</strong> starting today.
+              Studio unlocks your full workflow — team collaboration, advanced pipeline analytics, and internal production tools. Your card will be charged <strong className="text-[#2C2C2A]">R1,499/month</strong> starting today.
             </p>
             <ul className="space-y-2 mb-6">
-              {['Up to 5 team members', 'Shared projects & live collaboration', 'Request Price — send sourcing requests to suppliers'].map(f => (
+              {['Up to 5 team members with role permissions', 'Full pipeline dashboard + Kanban board', 'Production Sheet PDF for internal use', 'Markup Calculator & bulk import tools', 'Profit analytics per project & per year'].map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
                   {f}
@@ -328,10 +328,10 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               </button>
             </div>
             <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-              Agency gives you unlimited team members and custom branded PDFs — we match your existing letterhead so every document looks like yours. Your card will be charged <strong className="text-[#2C2C2A]">R2,499/month</strong> starting today.
+              Agency removes all limits — unlimited team members, Sage accounting integration, and custom branded PDFs matched to your letterhead. Your card will be charged <strong className="text-[#2C2C2A]">R2,499/month</strong> starting today.
             </p>
             <ul className="space-y-2 mb-6">
-              {['Unlimited team members', 'Custom branded PDFs — we match your letterhead', 'Everything in Studio'].map(f => (
+              {['Unlimited team members', 'Sage Business Cloud Accounting integration', 'Custom branded PDFs — we match your letterhead', 'Everything in Studio'].map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
                   {f}
