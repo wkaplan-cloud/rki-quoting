@@ -36,8 +36,7 @@ function buildRecord(item: Record<string, unknown>) {
   // Robin (Twinbru) confirmed: use renditions[].key directly as the CDN path.
   // Prefer a "large" or "medium" rendition; fall back to first available.
   const renditions = Array.isArray(item.renditions) ? item.renditions as Record<string, unknown>[] : []
-  const rendition  = renditions.find(r => /uhd4k/i.test(String(r.renditionType ?? '')))
-    ?? renditions.find(r => /large/i.test(String(r.renditionType ?? '')))
+  const rendition  = renditions.find(r => /large/i.test(String(r.renditionType ?? '')))
     ?? renditions.find(r => /preview/i.test(String(r.renditionType ?? '')))
     ?? renditions.find(r => /thumbnail/i.test(String(r.renditionType ?? '')))
     ?? renditions[0] ?? null
