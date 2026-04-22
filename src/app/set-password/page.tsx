@@ -22,6 +22,14 @@ export default function SetPasswordPage() {
   const [sessionReady, setSessionReady] = useState(false)
 
   useEffect(() => {
+    // Recovery flow arrives via auth/callback with ?mode=recovery (no hash tokens needed)
+    const mode = new URLSearchParams(window.location.search).get('mode')
+    if (mode === 'recovery') {
+      setFlowType('recovery')
+      setSessionReady(true)
+      return
+    }
+
     const hash = window.location.hash
     if (!hash.includes('access_token=')) {
       // No hash token — assume the session is already set (redirect from login invite flow)

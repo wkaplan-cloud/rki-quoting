@@ -38,8 +38,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       return NextResponse.redirect(`${origin}/login?error=confirmation_failed`)
     }
-    await supabase.rpc('accept_org_invite')
-    return NextResponse.redirect(`${origin}/set-password`)
+    const next = searchParams.get('next') || '/dashboard'
+    const mode = searchParams.get('mode')
+    // Only accept org invite for invite flows, not password recovery
+    if (mode !== 'recovery') {
+      await supabase.rpc('accept_org_invite')
+    }
+    const modeParam = mode ? `?mode=${mode}` : ''
+    return NextResponse.redirect(`${origin}${next}${modeParam}`)
   }
 
   return NextResponse.redirect(`${origin}/login`)
