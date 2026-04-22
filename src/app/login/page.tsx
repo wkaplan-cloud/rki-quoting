@@ -65,7 +65,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError(error.message)
       setLoading(false)
@@ -77,6 +77,18 @@ export default function LoginPage() {
       } else {
         localStorage.removeItem('rki_remember_until')
         sessionStorage.setItem('rki_session_only', '1')
+      }
+      // If this user is a supplier portal account (not a designer), redirect them to the portal
+      if (user) {
+        const { data: portalAccount } = await supabase
+          .from('supplier_portal_accounts')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .maybeSingle()
+        if (portalAccount) {
+          router.push('/supplier-portal/dashboard')
+          return
+        }
       }
       router.push('/dashboard')
       router.refresh()
@@ -178,6 +190,15 @@ export default function LoginPage() {
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-[#9A7B4F] hover:underline">Sign up</Link>
           </p>
+
+          <div className="mt-6 pt-5 border-t border-[#EDE9E1] text-center">
+            <p className="text-xs text-[#B0AB9F]">Are you a supplier?</p>
+            <Link href="/supplier-portal/login" className="text-sm text-[#9A7B4F] hover:underline font-medium">Sign in to your Supplier Portal →</Link>
+            <p className="text-xs text-[#C4BFB5] mt-1">
+              No account yet?{' '}
+              <Link href="/supplier-portal/register" className="text-[#9A7B4F] hover:underline">Register here</Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
