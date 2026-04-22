@@ -130,6 +130,7 @@ export function PriceListView({ priceListId }: { priceListId: string }) {
         {items.length > 0 && (
           <span className="text-xs text-[#8A877F]">{items.length === 60 ? '60+ results' : `${items.length} result${items.length !== 1 ? 's' : ''}`}</span>
         )}
+        <span className="text-xs text-[#8A877F] ml-auto">Local fabrics only — imported fabrics and wallpaper are not listed</span>
       </div>
 
       {/* Results */}
