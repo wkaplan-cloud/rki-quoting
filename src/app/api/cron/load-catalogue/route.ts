@@ -33,9 +33,15 @@ function buildRecord(item: Record<string, unknown>) {
     : item
   const fullWidth    = props.selvedge_full_width_cm    ?? item.selvedge_full_width_cm    ?? null
   const useableWidth = props.selvedge_useable_width_cm ?? item.selvedge_useable_width_cm ?? null
-  const assetId      = item.assetId ?? props.assetId ?? null
-  const imageUrl     = item.imageUrl ?? item.image_url ?? item.thumbnailUrl
-    ?? (assetId ? `https://cdn.twinbru.com/ods/assets/${assetId}/render.jpg` : null)
+  // Robin (Twinbru) confirmed: use renditions[].key directly as the CDN path.
+  // Prefer a "large" or "medium" rendition; fall back to first available.
+  const renditions = Array.isArray(item.renditions) ? item.renditions as Record<string, unknown>[] : []
+  const rendition  = renditions.find(r => /large/i.test(String(r.renditionType ?? '')))
+    ?? renditions.find(r => /medium/i.test(String(r.renditionType ?? '')))
+    ?? renditions[0] ?? null
+  const imageUrl   = rendition?.key
+    ? `https://cdn.twinbru.com/ods/assets/${rendition.key}`
+    : null
   return {
     brand:            String(item.brand ?? item.brandName ?? '').trim() || null,
     collection:       String(item.collectionName ?? '').trim() || null,
