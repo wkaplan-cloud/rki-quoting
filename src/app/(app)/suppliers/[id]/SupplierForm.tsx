@@ -8,16 +8,15 @@ import { Button } from '@/components/ui/Button'
 import type { Supplier } from '@/lib/types'
 import { Globe, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { WORK_CATEGORIES } from '@/lib/categories'
 
 const toTitleCase = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
-
-const SPECIALITIES = ['Upholstery', 'Furniture', 'Cabinetry', 'Lighting', 'Flooring', 'Curtains & Blinds', 'Outdoor', 'Accessories', 'Hardware', 'Custom Joinery']
 
 function SpecialityPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const toggle = (s: string) => onChange(value.includes(s) ? value.filter(x => x !== s) : [...value, s])
   return (
     <div className="flex flex-wrap gap-1.5">
-      {SPECIALITIES.map(s => (
+      {WORK_CATEGORIES.map(s => (
         <button
           key={s}
           type="button"

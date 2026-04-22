@@ -39,13 +39,9 @@ const RECIPIENT_STATUS_LABEL: Record<SourcingRecipientStatus, string> = {
 }
 
 const FIELD_LABELS: { key: string; label: string }[] = [
-  { key: 'title',           label: 'Item Name' },
-  { key: 'fabric_quantity', label: 'Fabric Qty' },
+  { key: 'fabric_quantity', label: 'Fabric / Material Qty' },
   { key: 'fabric_unit',     label: 'Fabric Unit' },
-  { key: 'item_quantity',   label: 'No. of Items' },
-  { key: 'dimensions',      label: 'Size / Dimensions' },
-  { key: 'colour_finish',   label: 'Colour / Finish' },
-  { key: 'specifications',  label: 'Description' },
+  { key: 'supplier_notes',  label: 'Supplier Notes' },
 ]
 
 function formatZAR(n: number) {
@@ -231,13 +227,13 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
         </div>
         <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3">
           <Detail label="Item Name" value={request.title} />
-          {request.quantity != null && <Detail label="Fabric / Material Qty" value={`${request.quantity}${request.unit ? ' ' + request.unit : ''}`} />}
-          {request.item_quantity != null && <Detail label="No. of Items" value={String(request.item_quantity)} />}
+          {request.work_type && <Detail label="Type of Work" value={request.work_type} />}
+          {request.item_quantity != null && <Detail label="Quantity of Items" value={String(request.item_quantity)} />}
           {request.dimensions && <Detail label="Size / Dimensions" value={request.dimensions} />}
           {request.colour_finish && <Detail label="Colour / Finish" value={request.colour_finish} />}
           {request.specifications && (
             <div className="col-span-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Specifications</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Description / Notes</p>
               <p className="text-sm text-[#2C2C2A] leading-relaxed whitespace-pre-wrap">{request.specifications}</p>
             </div>
           )}

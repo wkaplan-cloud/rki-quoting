@@ -46,9 +46,9 @@ export async function GET(
     request: {
       id: request.id,
       title: request.title,
+      work_type: request.work_type ?? null,
       specifications: request.specifications,
-      quantity: request.quantity,
-      unit: request.unit,
+      item_quantity: request.item_quantity ?? null,
       dimensions: request.dimensions,
       colour_finish: request.colour_finish,
       status: request.status,

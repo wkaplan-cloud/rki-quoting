@@ -3,6 +3,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Tag, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { WORK_CATEGORIES } from '@/lib/categories'
 import type { SourcingRequest, SourcingRequestStatus, SourcingRecipientStatus } from '@/lib/types'
 
 interface RecipientRow {
@@ -42,8 +43,7 @@ function recipientSummary(reqs: RecipientRow[], requestId: string): string {
 
 const emptyForm = {
   title: '',
-  quantity: '',
-  unit: '',
+  work_type: '',
   item_quantity: '',
   dimensions: '',
   colour_finish: '',
@@ -70,8 +70,7 @@ export function SourcingDashboard({ requests, recipients }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: form.title.trim(),
-        quantity: form.quantity ? parseFloat(form.quantity) : null,
-        unit: form.unit.trim() || null,
+        work_type: form.work_type || null,
         item_quantity: form.item_quantity ? parseInt(form.item_quantity) : null,
         dimensions: form.dimensions.trim() || null,
         colour_finish: form.colour_finish.trim() || null,
@@ -138,45 +137,22 @@ export function SourcingDashboard({ requests, recipients }: Props) {
               />
             </div>
 
-            {/* Quantities */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Fabric / Material Qty</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="e.g. 5"
-                  value={form.quantity}
-                  onChange={e => set('quantity', e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Unit</label>
-                <input
-                  type="text"
-                  placeholder="e.g. metres, m²"
-                  value={form.unit}
-                  onChange={e => set('unit', e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">No. of Items</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="e.g. 3"
-                  value={form.item_quantity}
-                  onChange={e => set('item_quantity', e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
-                />
-              </div>
+            {/* Work type */}
+            <div>
+              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Type of Work</label>
+              <select
+                value={form.work_type}
+                onChange={e => set('work_type', e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] text-[#2C2C2A]"
+              >
+                <option value="">Select category…</option>
+                {WORK_CATEGORIES.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
 
-            {/* Size + Colour */}
+            {/* Size + Quantity */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Size / Dimensions</label>
@@ -189,27 +165,57 @@ export function SourcingDashboard({ requests, recipients }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Colour / Finish</label>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Quantity of Items</label>
                 <input
-                  type="text"
-                  placeholder="e.g. Sage green, Natural linen"
-                  value={form.colour_finish}
-                  onChange={e => set('colour_finish', e.target.value)}
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="e.g. 3"
+                  value={form.item_quantity}
+                  onChange={e => set('item_quantity', e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
                 />
               </div>
             </div>
 
+            {/* Colour */}
+            <div>
+              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Colour / Finish</label>
+              <input
+                type="text"
+                placeholder="e.g. Sage green, Natural linen"
+                value={form.colour_finish}
+                onChange={e => set('colour_finish', e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+              />
+            </div>
+
             {/* Description */}
             <div>
-              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Description / Specifications</label>
+              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Description / Notes</label>
               <textarea
-                rows={4}
-                placeholder="Describe the item in detail — fabric type, construction, finishes, any special requirements…"
+                rows={3}
+                placeholder="Describe the item — construction, special requirements, references…"
                 value={form.specifications}
                 onChange={e => set('specifications', e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] resize-none"
               />
+            </div>
+
+            {/* Supplier section — read-only indicator */}
+            <div className="rounded-lg border border-dashed border-[#D8D3C8] bg-[#FAFAF8] px-4 py-3 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#B0AA9F]">Supplier fills in</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-[#C4BFB5] mb-1">Fabric / Material Qty needed</p>
+                  <div className="h-8 rounded bg-[#F0EDE8] border border-[#E8E4DE]" />
+                </div>
+                <div>
+                  <p className="text-xs text-[#C4BFB5] mb-1">Supplier Notes</p>
+                  <div className="h-8 rounded bg-[#F0EDE8] border border-[#E8E4DE]" />
+                </div>
+              </div>
+              <p className="text-[10px] text-[#C4BFB5]">The supplier will complete these fields when they respond.</p>
             </div>
 
             {error && <p className="text-xs text-red-600">{error}</p>}

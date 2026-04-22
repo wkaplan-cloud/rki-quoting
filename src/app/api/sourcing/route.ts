@@ -21,9 +21,8 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as {
     title: string
+    work_type?: string
     specifications?: string
-    quantity?: number
-    unit?: string
     item_quantity?: number
     dimensions?: string
     colour_finish?: string
@@ -36,9 +35,8 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase.from('sourcing_requests').insert({
     user_id: user.id,
     title: body.title.trim(),
+    work_type: body.work_type?.trim() || null,
     specifications: body.specifications?.trim() || null,
-    quantity: body.quantity ?? null,
-    unit: body.unit?.trim() || null,
     item_quantity: body.item_quantity ?? null,
     dimensions: body.dimensions?.trim() || null,
     colour_finish: body.colour_finish?.trim() || null,

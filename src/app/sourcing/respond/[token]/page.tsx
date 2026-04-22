@@ -23,7 +23,7 @@ export default async function SupplierResponsePage({
   // Step 2 — fetch the sourcing request
   const { data: request, error: requestError } = await supabaseAdmin
     .from('sourcing_requests')
-    .select('id, user_id, title, specifications, quantity, unit, item_quantity, dimensions, colour_finish, status')
+    .select('id, user_id, title, work_type, specifications, item_quantity, dimensions, colour_finish, status')
     .eq('id', recipient.sourcing_request_id)
     .maybeSingle()
 
@@ -65,9 +65,8 @@ export default async function SupplierResponsePage({
         request: {
           id: request.id,
           title: request.title,
+          work_type: request.work_type ?? null,
           specifications: request.specifications,
-          quantity: request.quantity,
-          unit: request.unit,
           item_quantity: request.item_quantity,
           dimensions: request.dimensions,
           colour_finish: request.colour_finish,

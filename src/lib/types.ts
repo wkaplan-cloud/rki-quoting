@@ -161,6 +161,7 @@ export interface SourcingRequest {
   user_id: string
   project_id: string | null
   title: string
+  work_type: string | null
   specifications: string | null
   quantity: number
   unit: string | null
