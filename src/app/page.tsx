@@ -4,10 +4,12 @@ import {
   ChevronRight, Check, ArrowRight, Mail
 } from 'lucide-react'
 import { ContactForm } from './ContactForm'
+import { AuthRecoveryRedirect } from './_components/AuthRecoveryRedirect'
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#F5F2EC] font-sans">
+      <AuthRecoveryRedirect />
 
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
