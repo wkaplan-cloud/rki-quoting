@@ -171,7 +171,7 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
   const pushSalePrice = pushResponse ? pushResponse.unit_price * (1 + pushMarkup / 100) : 0
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       {/* Send loading overlay */}
       {loading === 'send' && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
@@ -216,6 +216,12 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
+
+      {/* ── Two-column layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+
+      {/* LEFT — request details + images */}
+      <div className="lg:col-span-3 space-y-6">
 
       {/* ── Request details ── */}
       <div className="bg-white rounded-xl border border-[#EDE9E1] overflow-hidden">
@@ -290,6 +296,11 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
           )}
         </div>
       </div>
+
+      </div>{/* end left col */}
+
+      {/* RIGHT — suppliers + responses + actions */}
+      <div className="lg:col-span-2 space-y-6">
 
       {/* ── Suppliers / Recipients ── */}
       <div className="bg-white rounded-xl border border-[#EDE9E1] overflow-hidden">
@@ -477,6 +488,9 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
           )}
         </div>
       )}
+
+      </div>{/* end right col */}
+      </div>{/* end grid */}
 
       {/* ── Push to Quote modal ── */}
       {showPushModal && pushResponse && (

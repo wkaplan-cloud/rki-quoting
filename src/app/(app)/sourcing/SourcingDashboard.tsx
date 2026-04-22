@@ -108,7 +108,7 @@ export function SourcingDashboard({ requests, recipients }: Props) {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div>
       {/* New request form */}
       {creating ? (
         <form

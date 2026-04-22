@@ -197,39 +197,52 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
 
   // ── Regular supplier form ───────────────────────────────────────────
   return (
-    <form onSubmit={save} className="space-y-5">
-      {/* Markup — prominent */}
-      <div className="bg-[#9A7B4F]/8 border border-[#9A7B4F]/30 rounded p-4">
-        <label className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider block mb-2">Default Markup %</label>
-        <div className="flex items-center gap-2">
-          <input
-            type="text" inputMode="decimal"
-            value={form.markup_percentage}
-            onChange={e => set('markup_percentage', e.target.value)}
-            className="w-28 px-3 py-2 bg-white border border-[#D8D3C8] rounded text-xl font-semibold text-[#9A7B4F] text-center outline-none focus:border-[#9A7B4F]"
-          />
-          <span className="text-[#8A877F] text-sm">% — auto-fills into new line items</span>
+    <form onSubmit={save} className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left — identity */}
+        <div className="bg-white rounded-xl border border-[#EDE9E1] p-6 space-y-5">
+          <h3 className="text-sm font-semibold text-[#2C2C2A]">Supplier Details</h3>
+
+          <div className="bg-[#9A7B4F]/8 border border-[#9A7B4F]/30 rounded p-4">
+            <label className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider block mb-2">Default Markup %</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text" inputMode="decimal"
+                value={form.markup_percentage}
+                onChange={e => set('markup_percentage', e.target.value)}
+                className="w-28 px-3 py-2 bg-white border border-[#D8D3C8] rounded text-xl font-semibold text-[#9A7B4F] text-center outline-none focus:border-[#9A7B4F]"
+              />
+              <span className="text-[#8A877F] text-sm">% — auto-fills into new line items</span>
+            </div>
+          </div>
+
+          <Input label="Supplier Name" value={form.supplier_name} onChange={e => set('supplier_name', e.target.value)} required />
+
+          <div>
+            <label className="text-xs font-medium text-[#8A877F] block mb-2">Specialities</label>
+            <SpecialityPicker value={specialities} onChange={setSpecialities} />
+          </div>
+        </div>
+
+        {/* Right — contacts */}
+        <div className="bg-white rounded-xl border border-[#EDE9E1] p-6 space-y-5">
+          <h3 className="text-sm font-semibold text-[#2C2C2A]">Contact &amp; Ordering</h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Accounts Contact" placeholder="Head office / accounts" value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
+            <Input label="Rep Name" placeholder="Your dedicated sales rep" value={form.rep_name} onChange={e => set('rep_name', e.target.value)} />
+          </div>
+          <p className="text-xs text-[#8A877F] -mt-2">Rep name is used to address purchase orders. Rep email is where POs are sent.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Rep Email (PO recipient)" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+            <Input label="CC Email (PO copies)" type="email" value={form.email_cc} onChange={e => set('email_cc', e.target.value)} />
+          </div>
+          <Textarea label="Delivery Address" value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)} rows={2} />
+          <Textarea label="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} />
         </div>
       </div>
 
-      <Input label="Supplier Name" value={form.supplier_name} onChange={e => set('supplier_name', e.target.value)} required />
-      <div>
-        <label className="text-xs font-medium text-[#8A877F] block mb-2">Speciality</label>
-        <SpecialityPicker value={specialities} onChange={setSpecialities} />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Input label="Accounts Contact" placeholder="Head office / accounts contact" value={form.contact_person} onChange={e => set('contact_person', e.target.value)} />
-        <Input label="Rep Name" placeholder="Your dedicated sales rep" value={form.rep_name} onChange={e => set('rep_name', e.target.value)} />
-      </div>
-      <p className="text-xs text-[#8A877F] -mt-2">The rep name is used to address purchase orders. The rep email is where POs are sent.</p>
-      <div className="grid grid-cols-2 gap-4">
-        <Input label="Rep Email (PO recipient)" type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-        <Input label="CC Email (PO copies)" type="email" value={form.email_cc} onChange={e => set('email_cc', e.target.value)} />
-      </div>
-      <Textarea label="Delivery Address" value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)} rows={2} />
-      <Textarea label="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} />
-
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-3">
         <Button type="submit" disabled={saving}>{saving ? 'Saving…' : supplier ? 'Save Changes' : 'Create Supplier'}</Button>
         <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
         {supplier && <Button type="button" variant="danger" onClick={deleteSupplier} className="ml-auto">Delete</Button>}

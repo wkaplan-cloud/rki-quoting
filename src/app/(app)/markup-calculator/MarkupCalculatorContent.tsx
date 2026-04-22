@@ -38,7 +38,7 @@ export function MarkupCalculatorContent() {
   const inputCls = 'w-full px-3 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors'
 
   return (
-    <div className="p-6 md:p-8 max-w-3xl">
+    <div className="p-6 md:p-8">
       <div className="flex items-center gap-3 mb-8">
         <div className="w-9 h-9 rounded-lg bg-[#9A7B4F]/10 flex items-center justify-center">
           <Calculator size={18} className="text-[#9A7B4F]" />
