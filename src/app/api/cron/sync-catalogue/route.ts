@@ -106,8 +106,8 @@ export async function GET(req: NextRequest) {
     // Loads all product_ids from DB, fetches each via GET /products/{id}
     // concurrently (30 at a time), upserts width fields back.
     if (isBackfill) {
-      // Load only product_ids that still need widths populated
-      const allProductIds: string[] = []
+      // Load only product_ids that are missing an image_url
+      const missingIds: string[] = []
       let from = 0
       while (true) {
         const { data: rows } = await supabase
@@ -115,19 +115,26 @@ export async function GET(req: NextRequest) {
           .select('product_id')
           .eq('price_list_id', priceListId)
           .not('product_id', 'is', null)
-          .or('full_width_cm.is.null,image_url.is.null')
+          .is('image_url', null)
           .range(from, from + 999)
         if (!rows?.length) break
-        for (const r of rows) allProductIds.push(r.product_id)
+        for (const r of rows) missingIds.push(r.product_id)
         if (rows.length < 1000) break
         from += 1000
       }
 
-      const CONCURRENCY = 50
-      let updated = 0
+      // Total catalogue size for reporting
+      const { count: totalCount } = await supabase
+        .from('price_list_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('price_list_id', priceListId)
+      const total = totalCount ?? 0
 
-      for (let i = 0; i < allProductIds.length; i += CONCURRENCY) {
-        const chunk = allProductIds.slice(i, i + CONCURRENCY)
+      const CONCURRENCY = 50
+      let populated = 0  // fabrics that actually got a non-null image_url
+
+      for (let i = 0; i < missingIds.length; i += CONCURRENCY) {
+        const chunk = missingIds.slice(i, i + CONCURRENCY)
         const results = await Promise.all(
           chunk.map(async (pid) => {
             try {
@@ -148,18 +155,18 @@ export async function GET(req: NextRequest) {
         if (valid.length > 0) {
           await supabase.from('price_list_items')
             .upsert(valid, { onConflict: 'product_id,price_list_id' })
-          updated += valid.length
+          populated += valid.filter(r => r.image_url != null).length
         }
       }
 
       await supabase.from('twinbru_sync_log').update({
         status: 'ok',
         completed_at: new Date().toISOString(),
-        items_checked: allProductIds.length,
-        items_added: 0,
+        items_checked: total,
+        items_added: populated,
       }).eq('id', logId)
 
-      return NextResponse.json({ ok: true, checked: allProductIds.length, updated })
+      return NextResponse.json({ ok: true, total, missing: missingIds.length, populated })
     }
 
     // ── NORMAL SYNC MODE ─────────────────────────────────────────────────────

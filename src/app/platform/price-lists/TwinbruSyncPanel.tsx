@@ -289,9 +289,10 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
     try {
       const { ok, data } = await safeFetch('/api/cron/sync-catalogue?backfill=true&trigger=manual', cronSecret)
       if (!ok) { setImageResult({ type: 'err', msg: String(data.error ?? 'Backfill failed') }); return }
-      const checked = (data.checked as number | null) ?? 0
-      const updated = (data.updated as number | null) ?? 0
-      setImageResult({ type: 'ok', msg: `Done — ${checked.toLocaleString()} fabrics checked, ${updated.toLocaleString()} images updated` })
+      const total     = (data.total     as number | null) ?? 0
+      const missing   = (data.missing   as number | null) ?? 0
+      const populated = (data.populated as number | null) ?? 0
+      setImageResult({ type: 'ok', msg: `Done — scanned ${total.toLocaleString()} fabrics · ${missing.toLocaleString()} had no image · ${populated.toLocaleString()} images populated` })
     } catch (e) {
       setImageResult({ type: 'err', msg: e instanceof Error ? e.message : 'Unknown error' })
     } finally {
@@ -459,8 +460,8 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
                 <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(lastImageSync.completed_at ?? lastImageSync.started_at)}</span></p>
                 {lastImageSync.status === 'ok' && (
                   <p className="text-xs text-white/50">
-                    {lastImageSync.items_checked?.toLocaleString()} checked &middot;{' '}
-                    <span className="text-emerald-400">{lastImageSync.items_added ?? 0} updated</span>
+                    {lastImageSync.items_checked?.toLocaleString()} scanned &middot;{' '}
+                    <span className="text-emerald-400">{lastImageSync.items_added ?? 0} images populated</span>
                   </p>
                 )}
               </div>
