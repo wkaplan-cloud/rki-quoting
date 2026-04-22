@@ -90,6 +90,11 @@ function buildSupplierEmail({
               You can also copy and paste this link into your browser:<br>
               <a href="${respondUrl}" style="color:#8A877F;">${respondUrl}</a>
             </p>
+
+            <p style="margin:24px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:20px;">
+              Have a Supplier Portal account?
+              <a href="${SITE_URL}/supplier-portal/login" style="color:#9A7B4F;text-decoration:none;">Sign in to your portal →</a>
+            </p>
           </td>
         </tr>
         <tr>

@@ -54,7 +54,11 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/sourcing/respond') ||
     request.nextUrl.pathname.startsWith('/api/sourcing/respond') ||
     request.nextUrl.pathname.startsWith('/api/paystack/subscription-callback') ||
-    request.nextUrl.pathname.startsWith('/api/paystack/webhook')
+    request.nextUrl.pathname.startsWith('/api/paystack/webhook') ||
+    request.nextUrl.pathname.startsWith('/supplier-portal/login') ||
+    request.nextUrl.pathname.startsWith('/supplier-portal/register') ||
+    request.nextUrl.pathname === '/supplier-portal' ||
+    request.nextUrl.pathname.startsWith('/api/supplier-portal/auth')
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
@@ -62,6 +66,10 @@ export async function middleware(request: NextRequest) {
 
   if (user && request.nextUrl.pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  if (user && request.nextUrl.pathname === '/supplier-portal/login') {
+    return NextResponse.redirect(new URL('/supplier-portal/dashboard', request.url))
   }
 
   return supabaseResponse

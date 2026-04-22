@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { compressImage } from '@/lib/compressImage'
+import { RecipientMessageThread } from './RecipientMessageThread'
 import type {
   SourcingRequestWithRelations,
   SourcingRequestRecipient,
@@ -322,25 +323,34 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
             <p className="text-sm text-[#8A877F] text-center py-3">No suppliers added yet.</p>
           ) : (
             request.recipients.map(r => (
-              <div key={r.id} className="flex items-center gap-3 py-2 border-b border-[#F5F2EC] last:border-0">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#2C2C2A]">{r.supplier_name}</p>
-                  <p className="text-xs text-[#8A877F]">{r.email}</p>
-                </div>
-                {(r.status !== 'pending' || r.sent_at) && (
-                  <div className="flex items-center gap-1.5 text-xs text-[#8A877F]">
-                    {RECIPIENT_STATUS_ICONS[r.status]}
-                    <span>{RECIPIENT_STATUS_LABEL[r.status]}</span>
+              <div key={r.id} className="py-2 border-b border-[#F5F2EC] last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#2C2C2A]">{r.supplier_name}</p>
+                    <p className="text-xs text-[#8A877F]">{r.email}</p>
                   </div>
-                )}
-                {isDraft && (
-                  <button
-                    onClick={() => handleRemoveSupplier(r.id)}
-                    disabled={loading === `remove-${r.id}`}
-                    className="text-[#C4BFB5] hover:text-red-400 transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  {(r.status !== 'pending' || r.sent_at) && (
+                    <div className="flex items-center gap-1.5 text-xs text-[#8A877F]">
+                      {RECIPIENT_STATUS_ICONS[r.status]}
+                      <span>{RECIPIENT_STATUS_LABEL[r.status]}</span>
+                    </div>
+                  )}
+                  {isDraft && (
+                    <button
+                      onClick={() => handleRemoveSupplier(r.id)}
+                      disabled={loading === `remove-${r.id}`}
+                      className="text-[#C4BFB5] hover:text-red-400 transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+                {!isDraft && (
+                  <RecipientMessageThread
+                    requestId={request.id}
+                    recipientId={r.id}
+                    recipientName={r.supplier_name}
+                  />
                 )}
               </div>
             ))

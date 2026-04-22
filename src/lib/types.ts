@@ -231,3 +231,35 @@ export interface SourcingRequestWithRelations extends SourcingRequest {
     supplier: Pick<Supplier, 'id' | 'supplier_name' | 'markup_percentage'> | null
   })[]
 }
+
+export interface SourcingMessage {
+  id: string
+  recipient_id: string
+  sender_type: 'designer' | 'supplier'
+  body: string
+  created_at: string
+}
+
+// ─── Supplier Portal ──────────────────────────────────────────────────────────
+
+export interface SupplierPortalAccount {
+  id: string
+  auth_user_id: string
+  email: string
+  company_name: string | null
+  created_at: string
+}
+
+export interface SupplierPriceListItem {
+  id: string
+  portal_account_id: string
+  item_name: string
+  description: string | null
+  sku: string | null
+  unit: string | null
+  price: number | null
+  lead_time_weeks: number | null
+  image_url: string | null
+  sort_order: number
+  created_at: string
+}

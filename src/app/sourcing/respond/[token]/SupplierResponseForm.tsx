@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle, Package, Paperclip, X } from 'lucide-react'
+import { CheckCircle, Package, Paperclip, X, MessageSquare, Send } from 'lucide-react'
 import { compressImage } from '@/lib/compressImage'
 
 interface RequestData {
@@ -41,6 +41,13 @@ interface ImageData {
   caption: string | null
 }
 
+interface MessageData {
+  id: string
+  sender_type: 'designer' | 'supplier'
+  body: string
+  created_at: string
+}
+
 interface Props {
   token: string
   data: {
@@ -49,6 +56,7 @@ interface Props {
     response: ResponseData | null
     images: ImageData[]
     studio_name: string
+    initialMessages: MessageData[]
   }
 }
 
@@ -63,7 +71,7 @@ function DetailRow({ label, value }: { label: string; value: string | number | n
 }
 
 export function SupplierResponseForm({ token, data }: Props) {
-  const { request, recipient, response: existingResponse, images, studio_name } = data
+  const { request, recipient, response: existingResponse, images, studio_name, initialMessages } = data
 
   const [fabricQty, setFabricQty] = useState(existingResponse?.supplier_edits?.fabric_quantity?.toString() ?? '')
   const [fabricUnit, setFabricUnit] = useState(existingResponse?.supplier_edits?.fabric_unit ?? '')
@@ -102,6 +110,53 @@ export function SupplierResponseForm({ token, data }: Props) {
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null)
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const attachmentInputRef = useRef<HTMLInputElement>(null)
+
+  // Messaging
+  const [messages, setMessages] = useState<MessageData[]>(initialMessages)
+  const [msgInput, setMsgInput] = useState('')
+  const [sendingMsg, setSendingMsg] = useState(false)
+  const [msgError, setMsgError] = useState<string | null>(null)
+  const msgBottomRef = useRef<HTMLDivElement>(null)
+  const msgIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    async function fetchMessages() {
+      try {
+        const res = await fetch(`/api/sourcing/respond/${token}/messages`)
+        if (!res.ok) return
+        const data = await res.json() as { messages: MessageData[] }
+        setMessages(data.messages)
+      } catch {}
+    }
+    msgIntervalRef.current = setInterval(fetchMessages, 12000)
+    return () => { if (msgIntervalRef.current) clearInterval(msgIntervalRef.current) }
+  }, [token])
+
+  useEffect(() => {
+    msgBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  async function handleSendMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!msgInput.trim()) return
+    setSendingMsg(true)
+    setMsgError(null)
+    try {
+      const res = await fetch(`/api/sourcing/respond/${token}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: msgInput.trim() }),
+      })
+      const data = await res.json() as { message?: MessageData; error?: string }
+      if (!res.ok) { setMsgError(data.error ?? 'Failed to send'); return }
+      if (data.message) setMessages(prev => [...prev, data.message!])
+      setMsgInput('')
+    } catch {
+      setMsgError('Failed to send')
+    } finally {
+      setSendingMsg(false)
+    }
+  }
 
   const alreadyResponded = ['responded', 'accepted', 'rejected', 'declined'].includes(recipient.status)
   const isDeclined = recipient.status === 'declined'
@@ -244,6 +299,59 @@ export function SupplierResponseForm({ token, data }: Props) {
             <img src={selectedImage} alt="" className="max-w-full max-h-full rounded-lg object-contain" />
           </div>
         )}
+
+        {/* Messages panel */}
+        <div className="bg-white rounded-2xl border border-[#EDE9E1] overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#EDE9E1] flex items-center gap-2">
+            <MessageSquare size={14} className="text-[#9A7B4F]" />
+            <p className="text-sm font-semibold text-[#2C2C2A]">Messages from {studio_name}</p>
+            {messages.length > 0 && (
+              <span className="ml-auto text-xs text-[#8A877F]">{messages.length} message{messages.length !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+          <div className="p-4 space-y-2 max-h-60 overflow-y-auto">
+            {messages.length === 0 ? (
+              <p className="text-xs text-[#C4BFB5] text-center py-3">No messages yet. Use this to ask questions about the request.</p>
+            ) : (
+              messages.map(m => (
+                <div key={m.id} className={`flex ${m.sender_type === 'designer' ? 'justify-start' : 'justify-end'}`}>
+                  <div className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-relaxed whitespace-pre-wrap ${
+                    m.sender_type === 'designer'
+                      ? 'bg-[#F5F2EC] border border-[#EDE9E1] text-[#2C2C2A] rounded-tl-sm'
+                      : 'bg-[#2C2C2A] text-[#F5F2EC] rounded-tr-sm'
+                  }`}>
+                    <div className={`text-[9px] font-semibold mb-0.5 ${m.sender_type === 'designer' ? 'text-[#9A7B4F]' : 'text-white/50'}`}>
+                      {m.sender_type === 'designer' ? studio_name : 'You'}
+                    </div>
+                    {m.body}
+                    <div className={`text-[9px] mt-1 ${m.sender_type === 'designer' ? 'text-[#C4BFB5]' : 'text-white/40'}`}>
+                      {new Date(m.created_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                      {' · '}{new Date(m.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={msgBottomRef} />
+          </div>
+          {msgError && <p className="px-4 pb-2 text-xs text-red-500">{msgError}</p>}
+          <form onSubmit={handleSendMessage} className="px-4 pb-4 flex gap-2">
+            <input
+              type="text"
+              value={msgInput}
+              onChange={e => setMsgInput(e.target.value)}
+              placeholder={`Ask ${studio_name} a question…`}
+              className="flex-1 px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+            />
+            <button
+              type="submit"
+              disabled={sendingMsg || !msgInput.trim()}
+              className="px-3 py-2 bg-[#2C2C2A] text-white rounded text-sm font-medium hover:bg-[#9A7B4F] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              <Send size={13} />
+            </button>
+          </form>
+        </div>
 
         {/* Response section */}
         {submitted || declined ? (

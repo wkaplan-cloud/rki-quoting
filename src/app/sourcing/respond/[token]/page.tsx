@@ -40,6 +40,7 @@ export default async function SupplierResponsePage({
     { data: images },
     { data: responses },
     { data: settings },
+    { data: messages },
   ] = await Promise.all([
     supabaseAdmin
       .from('sourcing_request_images')
@@ -56,6 +57,11 @@ export default async function SupplierResponsePage({
       .select('business_name')
       .eq('user_id', request.user_id)
       .maybeSingle(),
+    supabaseAdmin
+      .from('sourcing_messages')
+      .select('id, sender_type, body, created_at')
+      .eq('recipient_id', recipient.id)
+      .order('created_at'),
   ])
 
   return (
@@ -82,6 +88,7 @@ export default async function SupplierResponsePage({
         response: responses?.[0] ?? null,
         images: images ?? [],
         studio_name: settings?.business_name ?? 'Your Studio',
+        initialMessages: (messages ?? []) as { id: string; sender_type: 'designer' | 'supplier'; body: string; created_at: string }[],
       }}
     />
   )
