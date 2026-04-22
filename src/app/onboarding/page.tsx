@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
 import { Upload, X, ArrowRight, Building2, Palette } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { compressImage } from '@/lib/compressImage'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -37,11 +38,13 @@ export default function OnboardingPage() {
 
   async function uploadLogo(file: File) {
     setUploading(true)
-    const ext = file.name.split('.').pop()
+    let compressed: File
+    try { compressed = await compressImage(file) } catch (e) { toast.error(e instanceof Error ? e.message : 'Upload failed'); setUploading(false); return }
+    const ext = compressed.name.split('.').pop()
     const path = `logo.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('branding')
-      .upload(path, file, { upsert: true, contentType: file.type })
+      .upload(path, compressed, { upsert: true, contentType: compressed.type })
     if (uploadError) { toast.error('Upload failed: ' + uploadError.message); setUploading(false); return }
     const { data } = supabase.storage.from('branding').getPublicUrl(path)
     set('logo_url', data.publicUrl + '?t=' + Date.now())

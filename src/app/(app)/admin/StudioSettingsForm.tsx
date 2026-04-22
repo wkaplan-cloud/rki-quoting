@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Upload, X, CheckCircle, Zap, KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { compressImage } from '@/lib/compressImage'
 
 interface Settings {
   id?: string
@@ -142,11 +143,13 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
 
   async function uploadLogo(file: File) {
     setUploading(true)
-    const ext = file.name.split('.').pop()
+    let compressed: File
+    try { compressed = await compressImage(file) } catch (e) { toast.error(e instanceof Error ? e.message : 'Upload failed'); setUploading(false); return }
+    const ext = compressed.name.split('.').pop()
     const path = `logo.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('branding')
-      .upload(path, file, { upsert: true, contentType: file.type })
+      .upload(path, compressed, { upsert: true, contentType: compressed.type })
     if (uploadError) { toast.error('Upload failed: ' + uploadError.message); setUploading(false); return }
     const { data } = supabase.storage.from('branding').getPublicUrl(path)
     set('logo_url', data.publicUrl + '?t=' + Date.now())
@@ -264,11 +267,13 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
                     const file = e.target.files?.[0]
                     if (!file) return
                     setUploading(true)
-                    const ext = file.name.split('.').pop()
+                    let compressed: File
+                    try { compressed = await compressImage(file) } catch (err) { toast.error(err instanceof Error ? err.message : 'Upload failed'); setUploading(false); e.target.value = ''; return }
+                    const ext = compressed.name.split('.').pop()
                     const path = `letterhead.${ext}`
                     const { error: uploadError } = await supabase.storage
                       .from('branding')
-                      .upload(path, file, { upsert: true, contentType: file.type })
+                      .upload(path, compressed, { upsert: true, contentType: compressed.type })
                     if (uploadError) { toast.error('Upload failed: ' + uploadError.message) }
                     else toast.success("Letterhead uploaded — we'll be in touch to apply your branding.")
                     setUploading(false)
