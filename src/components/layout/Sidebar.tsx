@@ -99,7 +99,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               key={href}
               href={href}
               onClick={onClose}
-              title={label}
+              
               className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
                 ${isActive(href)
                   ? 'bg-[#9A7B4F]/20 text-white'
@@ -121,7 +121,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               key={href}
               href={href}
               onClick={onClose}
-              title={label}
+              
               className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
                 ${isActive(href)
                   ? 'text-white/80'
@@ -138,7 +138,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             <Link
               href="/markup-calculator"
               onClick={onClose}
-              title="Markup Calculator"
+              
               className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
                 ${isActive('/markup-calculator')
                   ? 'text-white/80'
@@ -157,7 +157,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
               <Link
                 href="/sourcing"
                 onClick={onClose}
-                title="Price Request"
+                
                 className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
                   ${isActive('/sourcing')
                     ? 'bg-[#9A7B4F]/20 text-white'
@@ -177,7 +177,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
         {/* Bottom */}
         <div className="flex-shrink-0 py-2 border-t border-white/10 space-y-0.5">
           {plan === 'solo' && (
-            <Link href="/settings" onClick={onClose} title="Settings"
+            <Link href="/settings" onClick={onClose} 
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
                 <Settings size={14} />
@@ -187,7 +187,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
           )}
 
           {plan !== 'solo' && (
-            <Link href="/import" onClick={onClose} title="Import"
+            <Link href="/import" onClick={onClose} 
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
                 <Upload size={14} />
@@ -197,7 +197,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
           )}
 
           {plan !== 'solo' && (
-            <Link href="/admin" onClick={onClose} title="Admin"
+            <Link href="/admin" onClick={onClose} 
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
                 <ShieldCheck size={14} />
@@ -208,7 +208,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
 
           <button
             onClick={() => { onContactClick(); onClose() }}
-            title="Contact"
+            
             className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors w-[calc(100%-8px)]"
           >
             <span className="flex items-center justify-center w-10 flex-shrink-0">
@@ -222,7 +222,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             plan === 'solo' ? (
               <button
                 onClick={() => setUpgradeModalOpen(true)}
-                title="Upgrade to Studio"
+                
                 className="flex items-center h-7 rounded mx-1 hover:bg-white/5 transition-colors w-[calc(100%-8px)] group/upgrade"
               >
                 <span className="flex items-center justify-center w-10 flex-shrink-0">
@@ -236,7 +236,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             ) : plan === 'studio' ? (
               <button
                 onClick={() => setUpgradeAgencyModalOpen(true)}
-                title="Upgrade to Agency"
+                
                 className="flex items-center h-7 rounded mx-1 hover:bg-white/5 transition-colors w-[calc(100%-8px)] group/upgrade"
               >
                 <span className="flex items-center justify-center w-10 flex-shrink-0">
@@ -257,7 +257,6 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             )
           ) : subscriptionStatus === 'trialing' && trialDaysLeft !== null ? (
             <Link href="/subscribe" onClick={onClose}
-              title={trialDaysLeft === 0 ? 'Trial ended' : `Trial · ${trialDaysLeft}d left`}
               className={`flex items-center h-7 rounded mx-1 hover:bg-white/5 transition-colors ${trialDaysLeft <= 5 ? 'text-amber-400' : 'text-white/40'}`}>
               <span className="flex items-center justify-center w-10 flex-shrink-0">
                 <span className={`w-1.5 h-1.5 rounded-full ${trialDaysLeft <= 5 ? 'bg-amber-400' : 'bg-[#C4A46B]'}`} />
@@ -269,7 +268,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
           ) : null}
 
           <form action="/api/auth/signout" method="post">
-            <button type="submit" title="Sign Out"
+            <button type="submit" 
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors w-[calc(100%-8px)]">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
                 <LogOut size={14} />
