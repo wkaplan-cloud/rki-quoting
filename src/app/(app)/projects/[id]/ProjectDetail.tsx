@@ -341,7 +341,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         const poSuppliers = poSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean) as typeof suppliers
 
         return (
-          <div className="hidden md:flex items-center gap-2 px-6 py-2.5 border-b border-[#D8D3C8] bg-[#F5F2EC]">
+          <div className="flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b border-[#D8D3C8] bg-[#F5F2EC]">
 
             {/* ── Save / Download dropdown ── */}
             <div className="relative" ref={poMenuRef}>

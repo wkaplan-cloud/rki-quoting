@@ -384,13 +384,21 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
               >
                 {/* Card header */}
                 <div className={`px-4 py-3 flex items-center justify-between border-b ${isWinner ? 'border-emerald-200 bg-emerald-50' : 'border-[#EDE9E1] bg-[#FAFAF8]'}`}>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-[#2C2C2A]">{r.supplier_name}</p>
                     {isWinner && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded-full uppercase tracking-wide">
                         <Check size={9} /> Accepted
                       </span>
                     )}
+                    {isWinner && isPushed && (() => {
+                      const p = projects.find(p => p.id === request.project_id)
+                      return p ? (
+                        <span className="text-[10px] text-emerald-700 font-medium">
+                          → Quote #{p.project_number} — {p.project_name}
+                        </span>
+                      ) : null
+                    })()}
                     {r.status === 'rejected' && (
                       <span className="inline-flex items-center px-2 py-0.5 bg-[#EDE9E1] text-[#8A877F] text-[10px] font-semibold rounded-full uppercase tracking-wide">Not selected</span>
                     )}
