@@ -184,24 +184,6 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
           </div>
         </div>
       )}
-      {/* Status banner for terminal states */}
-      {isPushed && (() => {
-        const pushedProject = projects.find(p => p.id === request.project_id)
-        return (
-          <div className="bg-purple-50 border border-purple-200 rounded-xl px-5 py-4 flex items-start gap-3">
-            <CheckCircle size={16} className="text-purple-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-purple-800">
-                Accepted — pushed to {pushedProject ? `Quote #${pushedProject.project_number} — ${pushedProject.project_name}` : 'quote'}
-              </p>
-              <p className="text-xs text-purple-600 mt-0.5">
-                Added as a new line item on{' '}
-                {request.pushed_at ? new Date(request.pushed_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}.
-              </p>
-            </div>
-          </div>
-        )
-      })()}
 
       {isCancelled && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 flex items-start gap-3">
@@ -394,7 +376,7 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
                     {isWinner && isPushed && (() => {
                       const p = projects.find(p => p.id === request.project_id)
                       return p ? (
-                        <span className="text-[10px] text-emerald-700 font-medium">
+                        <span className="text-xs text-emerald-700 font-semibold">
                           → Quote #{p.project_number} — {p.project_name}
                         </span>
                       ) : null
