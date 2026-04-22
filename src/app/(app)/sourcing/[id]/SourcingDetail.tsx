@@ -217,8 +217,8 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
         </div>
       )}
 
-      {/* ── Row 1: Request details + Images side by side ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      {/* ── Row 1: Request details (wide) + Images (narrow) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
 
       {/* ── Request details ── */}
       <div className="bg-white rounded-xl border border-[#EDE9E1] overflow-hidden">
@@ -365,10 +365,11 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
 
       {/* ── Responses ── */}
       {(isSent || isAccepted || isPushed) && request.recipients.some(r => r.response) && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8A877F] px-1">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#8A877F] mb-3 px-1">
             Responses ({request.recipients.filter(r => r.response).length})
           </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {request.recipients.filter(r => r.response).map(r => {
             const resp = r.response!
             const isWinner = resp.id === request.accepted_response_id
@@ -454,6 +455,7 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
               </div>
             )
           })}
+          </div>
         </div>
       )}
 
