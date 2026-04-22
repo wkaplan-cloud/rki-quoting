@@ -92,10 +92,12 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <FolderOpen size={40} className="text-[#D8D3C8] mb-3" />
-          <p className="text-[#8A877F] text-sm">No projects found</p>
-          <Link href="/projects/new" className="mt-3 text-sm text-[#9A7B4F] hover:underline">
-            Create your first project →
-          </Link>
+          <p className="text-[#8A877F] text-sm">{showArchived ? 'No archived projects' : 'No projects found'}</p>
+          {!showArchived && (
+            <Link href="/projects/new" className="mt-3 text-sm text-[#9A7B4F] hover:underline">
+              Create your first project →
+            </Link>
+          )}
         </div>
       ) : (
         <>
