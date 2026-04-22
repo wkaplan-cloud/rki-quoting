@@ -1,12 +1,14 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SupplierRegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const noPortalAccount = searchParams.get('notice') === 'no-portal-account'
   const supabase = createClient()
   const [companyName, setCompanyName] = useState('')
   const [email, setEmail] = useState('')
@@ -66,6 +68,12 @@ export default function SupplierRegisterPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-[#EDE9E1] p-8" style={{ boxShadow: '0 4px 24px rgba(44,44,42,0.08)' }}>
+          {noPortalAccount && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5 text-xs text-amber-800 leading-relaxed">
+              <strong>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
+            </div>
+          )}
+
           <div className="bg-[#F5F2EC] border border-[#EDE9E1] rounded-lg px-4 py-3 mb-5 text-xs text-[#6B6860] leading-relaxed">
             <strong className="text-[#2C2C2A]">Important:</strong> Use the same email address that design studios use when sending you price requests. This lets us automatically show your requests in your dashboard.
           </div>

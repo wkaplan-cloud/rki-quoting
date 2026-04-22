@@ -78,15 +78,19 @@ export default function LoginPage() {
         localStorage.removeItem('rki_remember_until')
         sessionStorage.setItem('rki_session_only', '1')
       }
-      // If this user is a supplier portal account (not a designer), redirect them to the portal
       if (user) {
-        const { data: portalAccount } = await supabase
-          .from('supplier_portal_accounts')
-          .select('id')
-          .eq('auth_user_id', user.id)
-          .maybeSingle()
+        const [{ data: portalAccount }, { data: orgMember }] = await Promise.all([
+          supabase.from('supplier_portal_accounts').select('id').eq('auth_user_id', user.id).maybeSingle(),
+          supabase.from('org_members').select('id').eq('user_id', user.id).maybeSingle(),
+        ])
         if (portalAccount) {
           router.push('/supplier-portal/dashboard')
+          return
+        }
+        if (!orgMember) {
+          // Signed in but not a designer — sign them out and send to supplier registration
+          await supabase.auth.signOut()
+          router.push('/supplier-portal/register?notice=no-portal-account')
           return
         }
       }
