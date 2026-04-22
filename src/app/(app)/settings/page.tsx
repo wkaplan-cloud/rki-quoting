@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SettingsForm } from './SettingsForm'
 import { StudioSettingsForm } from '../admin/StudioSettingsForm'
@@ -19,6 +20,9 @@ export default async function SettingsPage() {
 
   const meta = (user?.user_metadata ?? {}) as Record<string, string>
   const plan = org?.plan ?? 'trial'
+
+  // Studio/Agency users manage everything through Admin
+  if (plan !== 'solo' && plan !== 'trial') redirect('/admin')
 
   return (
     <div>

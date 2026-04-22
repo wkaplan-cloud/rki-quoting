@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
+import { SettingsForm } from '../settings/SettingsForm'
 import Link from 'next/link'
 import { computeLineItems } from '@/lib/quoting'
 
@@ -57,6 +58,7 @@ interface Props {
   subscriptionStatus: string
   completedProjects: CompletedProject[]
   completedLineItems: LineItemRow[]
+  userProfile: { fullName: string; email: string; phone: string; jobTitle: string }
 }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -119,7 +121,7 @@ function getChanges(log: AuditLog): { field: string; from: string; to: string }[
     }))
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, userProfile }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -127,7 +129,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   const [inviting, setInviting] = useState(false)
   const [upgradeAgencyOpen, setUpgradeAgencyOpen] = useState(false)
   const [upgradingAgency, setUpgradingAgency] = useState(false)
-  const [tab, setTab] = useState<'users' | 'studio' | 'profit' | 'audit'>('users')
+  const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'audit'>(isAdmin ? 'users' : 'profile')
 
   // Compute profit per completed project
   const profitByProject = completedProjects.map(p => {
@@ -228,13 +230,16 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
     <div>
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
-        {(['users', 'studio', 'profit', 'audit'] as const).map(t => (
+        {(isAdmin
+          ? (['users', 'studio', 'profit', 'audit', 'profile'] as const)
+          : (['profile'] as const)
+        ).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${tab === t ? 'border-b-2 border-[#9A7B4F] text-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
           >
-            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : t === 'profit' ? 'Profit' : 'Audit Log'}
+            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : t === 'profit' ? 'Profit' : t === 'audit' ? 'Audit Log' : 'My Profile'}
           </button>
         ))}
       </div>
@@ -488,6 +493,17 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {tab === 'profile' && (
+        <div className="max-w-lg">
+          <SettingsForm
+            currentFullName={userProfile.fullName}
+            email={userProfile.email}
+            currentPhone={userProfile.phone}
+            currentJobTitle={userProfile.jobTitle}
+          />
         </div>
       )}
     </div>

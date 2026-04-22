@@ -14,17 +14,46 @@ export default async function AdminPage() {
 
   const { data: membership } = await supabaseAdmin
     .from('org_members')
-    .select('role, org_id')
+    .select('role, org_id, full_name')
     .eq('user_id', user.id)
     .eq('org_id', orgId)
     .eq('status', 'active')
     .maybeSingle()
 
-  if (membership?.role !== 'admin') notFound()
-
-  // Fetch org plan before heavy data load
+  // Fetch org plan — solo users redirect to dashboard
   const { data: orgMeta } = await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
   if (orgMeta?.plan === 'solo') redirect('/dashboard')
+
+  const isAdmin = membership?.role === 'admin'
+  const meta = (user.user_metadata ?? {}) as Record<string, string>
+  const userProfile = {
+    fullName: membership?.full_name ?? meta.full_name ?? '',
+    email: user.email ?? '',
+    phone: meta.phone ?? '',
+    jobTitle: meta.job_title ?? '',
+  }
+
+  // Non-admins: profile-only view
+  if (!isAdmin) {
+    return (
+      <div>
+        <PageHeader title="My Account" subtitle="Manage your profile" />
+        <div className="p-8">
+          <AdminPanel
+            members={[]}
+            auditLogs={[]}
+            isAdmin={false}
+            settings={null}
+            plan={orgMeta?.plan ?? 'trial'}
+            subscriptionStatus={'active'}
+            completedProjects={[]}
+            completedLineItems={[]}
+            userProfile={userProfile}
+          />
+        </div>
+      </div>
+    )
+  }
 
   const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }, { data: completedProjects }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
@@ -36,8 +65,6 @@ export default async function AdminPage() {
       .order('date', { ascending: false }),
   ])
 
-  // Fetch line items for completed projects
-  // Only include projects where the final invoice has been paid
   const paidProjects = (completedProjects ?? []).filter(p => {
     const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
     return stages?.final_invoice_paid === true
@@ -61,6 +88,7 @@ export default async function AdminPage() {
           subscriptionStatus={org?.subscription_status ?? 'trialing'}
           completedProjects={paidProjects}
           completedLineItems={completedLineItems ?? []}
+          userProfile={userProfile}
         />
       </div>
     </div>

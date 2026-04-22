@@ -18,7 +18,7 @@ const secondaryLinks = [
 ]
 
 interface Props {
-  isAdmin: boolean
+  isAdmin?: boolean
   businessName: string
   sourcingEnabled: boolean
   isOpen: boolean
@@ -176,13 +176,15 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
 
         {/* Bottom */}
         <div className="flex-shrink-0 py-2 border-t border-white/10 space-y-0.5">
-          <Link href="/settings" onClick={onClose} title="Settings"
-            className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
-            <span className="flex items-center justify-center w-10 flex-shrink-0">
-              <Settings size={14} />
-            </span>
-            <span className={labelCls}>Settings</span>
-          </Link>
+          {plan === 'solo' && (
+            <Link href="/settings" onClick={onClose} title="Settings"
+              className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
+              <span className="flex items-center justify-center w-10 flex-shrink-0">
+                <Settings size={14} />
+              </span>
+              <span className={labelCls}>Settings</span>
+            </Link>
+          )}
 
           {plan !== 'solo' && (
             <Link href="/import" onClick={onClose} title="Import"
@@ -194,7 +196,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
             </Link>
           )}
 
-          {isAdmin && plan !== 'solo' && (
+          {plan !== 'solo' && (
             <Link href="/admin" onClick={onClose} title="Admin"
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
