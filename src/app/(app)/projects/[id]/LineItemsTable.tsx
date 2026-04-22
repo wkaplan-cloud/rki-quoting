@@ -485,7 +485,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                               <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.localQty.toLocaleString()}m in stock — next day</span>
                             )}
                             {s.transitQty != null && s.transitDate && (
-                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{s.transitQty.toLocaleString()}m — ~{Math.max(1, Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))} days (BE)</span>
+                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{s.transitQty.toLocaleString()}m — arriving in ~{Math.max(1, Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))} days</span>
                             )}
                             {s.localQty == null && s.transitQty == null && s.maxLeadTimeDate && (
                               <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{Math.max(1, Math.ceil((new Date(s.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time</span>
