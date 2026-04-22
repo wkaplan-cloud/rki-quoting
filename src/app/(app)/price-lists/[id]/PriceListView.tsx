@@ -17,38 +17,42 @@ interface PriceListItem {
 }
 
 interface StockInfo {
-  inStock: boolean
-  stockDate: string | null
-  isMaxLeadTime: boolean
+  localQty: number | null
+  transitQty: number | null
+  transitDate: string | null
+  maxLeadTimeDate: string | null
+  weeksUntilAvailable: number | null
 }
 
 function StockBadge({ productId }: { productId: string }) {
   const [stock, setStock] = useState<StockInfo | null>(null)
 
   useEffect(() => {
-    fetch(`/api/fabric-stock?productId=${productId}&quantity=1`)
+    fetch(`/api/fabric-stock?productId=${productId}`)
       .then(r => r.json())
-      .then(d => { if (d.stockDate !== undefined) setStock(d) })
+      .then(d => { if (d.weeksUntilAvailable !== undefined) setStock(d) })
       .catch(() => {})
   }, [productId])
 
   if (!stock) return null
 
-  if (stock.inStock) {
-    return <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">In Stock</span>
-  }
-
-  if (stock.stockDate) {
-    const date = new Date(stock.stockDate)
-    const weeks = Math.ceil((date.getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
-    return (
-      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-        ~{weeks}w lead time
-      </span>
-    )
-  }
-
-  return null
+  return (
+    <div className="flex flex-col gap-0.5">
+      {stock.localQty != null && stock.localQty > 0 && (
+        <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{stock.localQty.toLocaleString()}m in stock — next day</span>
+      )}
+      {stock.transitQty != null && stock.transitDate && (
+        <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+          {stock.transitQty.toLocaleString()}m — arriving in ~{Math.max(1, Math.ceil((new Date(stock.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))} days
+        </span>
+      )}
+      {stock.localQty == null && stock.transitQty == null && stock.maxLeadTimeDate && (
+        <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+          ~{Math.max(1, Math.ceil((new Date(stock.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time
+        </span>
+      )}
+    </div>
+  )
 }
 
 function formatPrice(n: number | null) {
