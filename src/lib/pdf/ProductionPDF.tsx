@@ -13,12 +13,12 @@ const s = StyleSheet.create({
   meta: { fontSize: 7, color: '#8A877F', marginTop: 3, textAlign: 'right' },
   // Table
   tableHeader: { flexDirection: 'row', backgroundColor: '#2C2C2A', paddingVertical: 6, paddingHorizontal: 3 },
-  th: { fontSize: 7, color: '#F5F2EC', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
+  th: { fontSize: 9, color: '#F5F2EC', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
   row: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   rowAlt: { backgroundColor: '#F5F2EC' },
   sectionRow: { flexDirection: 'row', backgroundColor: '#D8D3C8', paddingVertical: 5, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#C4BFB5', marginTop: 4 },
-  sectionLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#4A4845', textTransform: 'uppercase', letterSpacing: 0.8 },
-  td: { fontSize: 6.5, color: '#2C2C2A' },
+  sectionLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#4A4845', textTransform: 'uppercase', letterSpacing: 0.8 },
+  td: { fontSize: 9, color: '#2C2C2A' },
   tdMuted: { color: '#8A877F' },
   // Totals
   totalsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
@@ -119,7 +119,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
               <View style={[{ width: W.item, paddingRight: 6, paddingLeft: item.indent_level > 0 ? 6 : 0 }]}>
                 <Text style={s.td}>{item.item_name}</Text>
                 {(item.dimensions || item.colour_finish) ? (
-                  <Text style={[s.td, s.tdMuted, { fontSize: 5.5, marginTop: 1 }]}>
+                  <Text style={[s.td, s.tdMuted, { fontSize: 7, marginTop: 1 }]}>
                     {[item.dimensions, item.colour_finish].filter(Boolean).join(' · ')}
                   </Text>
                 ) : null}
