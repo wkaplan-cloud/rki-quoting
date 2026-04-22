@@ -108,24 +108,19 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Map of twinbru_product_id → current catalogue price (for stale price detection)
   const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
   // Map of line item id → stock info
-  const [stockMap, setStockMap] = useState<Record<string, { inStock: boolean; stockDate: string | null } | null>>({})
+  const [stockMap, setStockMap] = useState<Record<string, { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null } | null>>({})
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  const fetchStock = useCallback((lineItemId: string, productId: string, quantity: number, autoFillLead?: (weeks: number) => void) => {
+  const fetchStock = useCallback((lineItemId: string, productId: string, _quantity: number, autoFillLead?: (weeks: number) => void) => {
     if (stockDebounceRef.current[lineItemId]) clearTimeout(stockDebounceRef.current[lineItemId])
     stockDebounceRef.current[lineItemId] = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/fabric-stock?productId=${productId}&quantity=${Math.max(1, quantity)}`)
+        const res = await fetch(`/api/fabric-stock?productId=${productId}`)
         const data = await res.json()
-        if (data.stockDate !== undefined) {
+        if (data.weeksUntilAvailable !== undefined) {
           setStockMap(m => ({ ...m, [lineItemId]: data }))
-          if (autoFillLead) {
-            if (data.inStock) {
-              autoFillLead(0)
-            } else if (data.stockDate) {
-              const weeks = Math.ceil((new Date(data.stockDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
-              autoFillLead(Math.max(0, weeks))
-            }
+          if (autoFillLead && data.weeksUntilAvailable != null) {
+            autoFillLead(data.weeksUntilAvailable)
           }
         }
       } catch { /* silent */ }
@@ -484,16 +479,19 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       {item.twinbru_product_id && (() => {
                         const s = stockMap[item.id]
                         if (!s) return null
-                        if (s.inStock) return (
-                          <span className="inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">In Stock</span>
+                        return (
+                          <div className="flex flex-col gap-0.5 mt-1">
+                            {s.localQty != null && s.localQty > 0 && (
+                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.localQty.toLocaleString()}m in stock (SA)</span>
+                            )}
+                            {s.transitQty != null && s.transitDate && (
+                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{s.transitQty.toLocaleString()}m arriving ~{Math.max(1, Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w (BE)</span>
+                            )}
+                            {s.localQty == null && s.transitQty == null && s.maxLeadTimeDate && (
+                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{Math.max(1, Math.ceil((new Date(s.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time</span>
+                            )}
+                          </div>
                         )
-                        if (s.stockDate) {
-                          const weeks = Math.ceil((new Date(s.stockDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))
-                          return (
-                            <span className="inline-block mt-1 text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{weeks}w lead time</span>
-                          )
-                        }
-                        return null
                       })()}
                       {item.twinbru_cost_price != null && (() => {
                         const rollPrice = Math.round(item.twinbru_cost_price * 0.9 * 40 * 100) / 100
