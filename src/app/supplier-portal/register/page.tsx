@@ -1,11 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-export default function SupplierRegisterPage() {
+function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const noPortalAccount = searchParams.get('notice') === 'no-portal-account'
@@ -161,5 +161,13 @@ export default function SupplierRegisterPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SupplierRegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   )
 }
