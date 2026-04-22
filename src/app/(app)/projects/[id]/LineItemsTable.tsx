@@ -320,7 +320,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <th className="w-7 px-2 py-2" title="Received" />
               <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
-              <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Qty / Unit</th>
+              <th className="text-right px-2 py-2 min-w-[130px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
               <th className="text-right px-2 py-2 min-w-[70px] whitespace-nowrap">Lead</th>

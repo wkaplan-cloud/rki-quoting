@@ -64,7 +64,7 @@ export default function FAQPage() {
 
   return (
     <PublicLayout>
-      <div className="max-w-3xl mx-auto px-6 pb-24">
+      <div className="max-w-3xl mx-auto px-6 pt-32 sm:pt-48 pb-24">
         <h1 className="font-serif text-4xl text-[#1A1A18] tracking-tight mb-3">Frequently Asked Questions</h1>
         <p className="text-sm text-[#8A877F] mb-12 leading-relaxed">
           Can&apos;t find the answer? <Link href="/#contact" className="text-[#9A7B4F] hover:underline">Get in touch</Link>.

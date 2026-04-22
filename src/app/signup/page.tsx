@@ -60,7 +60,7 @@ export default function SignupPage() {
             with legacy quoting tools.
           </p>
           <ul className="mt-6 space-y-2">
-            {['Reactive quoting with real-time totals', 'Auto-generated PDFs', 'Purchase orders per supplier', 'Send quotes by email'].map(f => (
+            {['Reactive quoting with real-time totals', 'Auto-generated PDFs', 'Purchase orders per supplier'].map(f => (
               <li key={f} className="flex items-center gap-2 text-sm text-white/50">
                 <span className="w-1 h-1 rounded-full bg-[#C4A46B] flex-shrink-0" />
                 {f}

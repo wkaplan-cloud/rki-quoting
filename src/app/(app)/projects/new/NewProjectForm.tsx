@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
 import { Combobox } from '@/components/ui/Combobox'
 import toast from 'react-hot-toast'
@@ -22,8 +21,6 @@ export function NewProjectForm({ clients }: Props) {
   const [form, setForm] = useState({
     project_number: '',
     project_name: '',
-    date: new Date().toISOString().split('T')[0],
-    status: 'Draft',
     design_fee: '0',
   })
 
@@ -75,6 +72,8 @@ export function NewProjectForm({ clients }: Props) {
       user_id: user!.id,
       org_id: orgId,
       client_id: clientId || null,
+      date: new Date().toISOString().split('T')[0],
+      status: 'Draft',
       design_fee: parseFloat(form.design_fee) || 0,
     }).select().single()
 
@@ -104,44 +103,27 @@ export function NewProjectForm({ clients }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Combobox
-          label="Client"
-          options={clients.map(c => ({
-            id: c.id,
-            label: c.client_name + (c.company ? ` — ${c.company}` : ''),
-          }))}
-          value={clientId}
-          inputValue={clientName}
-          onChange={(id, label) => { setClientId(id); setClientName(label) }}
-          onCreate={handleCreateClient}
-          placeholder="Type to search or create…"
-        />
-        <Select label="Status" value={form.status} onChange={e => set('status', e.target.value)}>
-          <option value="Quote">Quoting</option>
-          <option value="Invoice">Invoiced</option>
-          <option value="Completed">Completed</option>
-          <option value="Cancelled">Cancelled</option>
-        </Select>
-      </div>
+      <Combobox
+        label="Client"
+        options={clients.map(c => ({
+          id: c.id,
+          label: c.client_name + (c.company ? ` — ${c.company}` : ''),
+        }))}
+        value={clientId}
+        inputValue={clientName}
+        onChange={(id, label) => { setClientId(id); setClientName(label) }}
+        onCreate={handleCreateClient}
+        placeholder="Type to search or create…"
+      />
 
-      <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Date"
-          type="date"
-          value={form.date}
-          onChange={e => set('date', e.target.value)}
-          required
-        />
-        <Input
-          label="Design Fee (%)"
-          type="number"
-          min="0"
-          step="0.01"
-          value={form.design_fee}
-          onChange={e => set('design_fee', e.target.value)}
-        />
-      </div>
+      <Input
+        label="Design Fee (%)"
+        type="number"
+        min="0"
+        step="0.01"
+        value={form.design_fee}
+        onChange={e => set('design_fee', e.target.value)}
+      />
 
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={saving}>

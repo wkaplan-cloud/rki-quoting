@@ -298,19 +298,19 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
                 </li>
               ))}
             </ul>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setUpgradeModalOpen(false)}
-                className="flex-1 py-2.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
+            <div className="flex flex-col gap-2">
               <button
                 onClick={() => handleUpgrade('studio')}
                 disabled={upgrading}
-                className="flex-1 py-2.5 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer font-medium"
+                className="w-full py-3 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer font-medium"
               >
                 {upgrading ? 'Redirecting…' : 'Upgrade to Studio →'}
+              </button>
+              <button
+                onClick={() => setUpgradeModalOpen(false)}
+                className="w-full py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>
@@ -338,19 +338,19 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
                 </li>
               ))}
             </ul>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setUpgradeAgencyModalOpen(false)}
-                className="flex-1 py-2.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
+            <div className="flex flex-col gap-2">
               <button
                 onClick={() => handleUpgrade('agency')}
                 disabled={upgrading}
-                className="flex-1 py-2.5 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer font-medium"
+                className="w-full py-3 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer font-medium"
               >
                 {upgrading ? 'Redirecting…' : 'Upgrade to Agency →'}
+              </button>
+              <button
+                onClick={() => setUpgradeAgencyModalOpen(false)}
+                className="w-full py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>

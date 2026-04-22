@@ -44,7 +44,7 @@ const plans = [
     name: 'Agency',
     price: 2499,
     audience: 'For established firms and high-volume studios.',
-    tagline: 'No limits. Full integration. Your brand on every document.',
+    tagline: 'No limits. Full integration.',
     features: [
       'Everything in Studio',
       'Unlimited team members',
@@ -61,7 +61,7 @@ export default function PricingPage() {
   return (
     <PublicLayout>
       {/* Hero */}
-      <section className="pt-20 pb-10 px-6 text-center">
+      <section className="pt-32 sm:pt-48 pb-10 px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 rounded-full px-4 py-1.5 mb-6">
             <span className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider">Pricing that grows with your business</span>
