@@ -57,7 +57,7 @@ export default async function AdminPage() {
 
   const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }, { data: completedProjects }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
-    supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).limit(100),
+    supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(500),
     supabase.from('settings').select('*').maybeSingle(),
     supabaseAdmin.from('organizations').select('plan, subscription_status').eq('id', orgId).single(),
     supabase.from('projects')

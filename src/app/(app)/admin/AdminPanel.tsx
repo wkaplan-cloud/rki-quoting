@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight, X } from 'lucide-react'
+import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight, X, HardDrive } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
 import { SettingsForm } from '../settings/SettingsForm'
@@ -124,6 +124,15 @@ function getChanges(log: AuditLog): { field: string; from: string; to: string }[
 export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, userProfile }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
+  const [storageBytes, setStorageBytes] = useState<number | null>(null)
+  const [storageFileCount, setStorageFileCount] = useState<number>(0)
+
+  useEffect(() => {
+    fetch('/api/admin/storage')
+      .then(r => r.json())
+      .then(d => { setStorageBytes(d.totalBytes ?? 0); setStorageFileCount(d.fileCount ?? 0) })
+      .catch(() => {})
+  }, [])
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('designer')
   const [inviting, setInviting] = useState(false)
@@ -372,7 +381,30 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       )}
 
       {tab === 'studio' && (
-        <StudioSettingsForm settings={settings as any} plan={plan} />
+        <div className="space-y-6">
+          <StudioSettingsForm settings={settings as any} plan={plan} />
+          {/* Storage usage */}
+          <div className="bg-white border border-[#D8D3C8] rounded p-5">
+            <h3 className="text-sm font-medium text-[#2C2C2A] mb-3 flex items-center gap-2">
+              <HardDrive size={15} className="text-[#9A7B4F]" /> Upload Storage Usage
+            </h3>
+            {storageBytes === null ? (
+              <p className="text-xs text-[#8A877F]">Loading…</p>
+            ) : (
+              <div className="flex items-end gap-6">
+                <div>
+                  <p className="text-2xl font-semibold text-[#2C2C2A] tabular-nums">
+                    {storageBytes < 1024 * 1024
+                      ? `${(storageBytes / 1024).toFixed(1)} KB`
+                      : `${(storageBytes / (1024 * 1024)).toFixed(1)} MB`}
+                  </p>
+                  <p className="text-xs text-[#8A877F] mt-0.5">{storageFileCount} image{storageFileCount !== 1 ? 's' : ''} uploaded</p>
+                </div>
+                <p className="text-xs text-[#C4BFB5] pb-0.5">Sourcing request images only. Supplier attachments are not included.</p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {tab === 'profit' && (
@@ -444,6 +476,8 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       )}
 
       {tab === 'audit' && (
+        <div className="space-y-3">
+          <p className="text-xs text-[#8A877F]">Showing activity from the last 90 days.</p>
         <div className="bg-white border border-[#D8D3C8] rounded overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -493,6 +527,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
               })}
             </tbody>
           </table>
+        </div>
         </div>
       )}
 

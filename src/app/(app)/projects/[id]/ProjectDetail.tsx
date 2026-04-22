@@ -349,7 +349,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 onClick={() => { setPoMenuOpen(v => !v); setSendPoMenuOpen(false) }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors font-medium cursor-pointer"
               >
-                <Download size={13} /> Save PDF <ChevronDown size={12} className={`transition-transform ${poMenuOpen ? 'rotate-180' : ''}`} />
+                <Download size={13} /> Download <ChevronDown size={12} className={`transition-transform ${poMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {poMenuOpen && (
                 <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded-lg shadow-lg min-w-[200px] py-1">
@@ -411,7 +411,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 onClick={() => { setSendPoMenuOpen(v => !v); setPoMenuOpen(false) }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#9A7B4F] text-white text-sm hover:bg-[#7d6340] transition-colors font-medium cursor-pointer"
               >
-                <Send size={13} /> Send <ChevronDown size={12} className={`transition-transform ${sendPoMenuOpen ? 'rotate-180' : ''}`} />
+                <Send size={13} /> Email <ChevronDown size={12} className={`transition-transform ${sendPoMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               {sendPoMenuOpen && (
                 <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-[#D8D3C8] rounded-lg shadow-lg min-w-[210px] py-1">

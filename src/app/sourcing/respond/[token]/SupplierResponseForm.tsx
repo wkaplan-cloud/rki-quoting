@@ -71,7 +71,25 @@ export function SupplierResponseForm({ token, data }: Props) {
 
   const [unitPrice, setUnitPrice] = useState(existingResponse?.unit_price?.toString() ?? '')
   const [leadTime, setLeadTime] = useState(existingResponse?.lead_time_weeks?.toString() ?? '')
-  const [validUntil, setValidUntil] = useState(existingResponse?.valid_until ?? '')
+  // Derive the initial validity option from an existing stored date, or default to ''
+  function dateToValidityDays(dateStr: string | null): string {
+    if (!dateStr) return ''
+    const stored = new Date(dateStr).getTime()
+    const now = Date.now()
+    const diffDays = Math.round((stored - now) / (1000 * 60 * 60 * 24))
+    if (diffDays <= 35) return '30'
+    if (diffDays <= 65) return '60'
+    return '90'
+  }
+  const [validityDays, setValidityDays] = useState<string>(dateToValidityDays(existingResponse?.valid_until ?? null))
+  // Compute the ISO date string from the chosen validity period
+  function validUntilDate(days: string): string {
+    if (!days) return ''
+    const d = new Date()
+    d.setDate(d.getDate() + Number(days))
+    return d.toISOString().split('T')[0]
+  }
+  const validUntil = validUntilDate(validityDays)
 
   const [submitting, setSubmitting] = useState(false)
   const [declining, setDeclining] = useState(false)
@@ -335,9 +353,17 @@ export function SupplierResponseForm({ token, data }: Props) {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Price valid until</label>
-                  <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)}
-                    className="px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]" />
+                  <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Price valid for</label>
+                  <select
+                    value={validityDays}
+                    onChange={e => setValidityDays(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                  >
+                    <option value="">Select validity period</option>
+                    <option value="30">30 days</option>
+                    <option value="60">60 days</option>
+                    <option value="90">90 days</option>
+                  </select>
                 </div>
               </div>
             </div>

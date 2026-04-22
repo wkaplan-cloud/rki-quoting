@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       url: publicUrl,
       caption,
       sort_order: count ?? 0,
+      file_size_bytes: file.size,
     })
     .select()
     .single()
