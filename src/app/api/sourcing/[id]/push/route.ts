@@ -87,7 +87,7 @@ export async function POST(
     .insert({
       project_id,
       item_name: request.title,
-      description: request.specifications || null,
+      description: [request.specifications, response.notes].filter(Boolean).join('\n') || null,
       quantity: request.quantity,
       unit: request.unit || null,
       dimensions: request.dimensions || null,

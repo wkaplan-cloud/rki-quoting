@@ -592,6 +592,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           onSupplierCreated={s => setSuppliers(prev => [...prev, s])}
           activePriceListIds={activePriceListIds}
           locked={isPaid}
+          depositReceived={stages?.deposit_received ?? false}
         />
 
         {/* Totals */}

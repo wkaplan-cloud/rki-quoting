@@ -38,6 +38,7 @@ interface Props {
   onSupplierCreated: (supplier: Supplier) => void
   activePriceListIds: string[]
   locked?: boolean
+  depositReceived?: boolean
 }
 
 const COL = 'px-2 py-1.5 border-r border-[#EDE9E1] last:border-0'
@@ -96,7 +97,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Indent', tip: 'Use the indent button (↳) to nest a line under the one above — useful for sub-items like fabric under a sofa. Indented rows are slightly inset on the Production Sheet.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived }: Props) {
   const supabase = createClient()
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
@@ -149,8 +150,20 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems.map(i => i.twinbru_product_id).join(',')])
 
+  // Fetch stock on initial load for all Home Fabrics items (only before deposit received)
+  useEffect(() => {
+    if (depositReceived) return
+    for (const item of lineItems) {
+      if (item.twinbru_product_id) {
+        fetchStock(item.id, String(item.twinbru_product_id), item.quantity)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Re-fetch stock when quantity changes for twinbru items already in stockMap
   useEffect(() => {
+    if (depositReceived) return
     for (const item of lineItems) {
       if (item.twinbru_product_id && item.id in stockMap) {
         fetchStock(item.id, String(item.twinbru_product_id), item.quantity)
@@ -476,7 +489,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
                         />
                       </div>
-                      {item.twinbru_product_id && (() => {
+                      {!depositReceived && item.twinbru_product_id && (() => {
                         const s = stockMap[item.id]
                         if (!s) return null
                         return (
