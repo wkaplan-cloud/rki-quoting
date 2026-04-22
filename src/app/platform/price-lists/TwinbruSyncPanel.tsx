@@ -18,6 +18,8 @@ interface SyncLog {
 interface Props {
   lastPriceSync: SyncLog | null
   lastLoadSync: SyncLog | null
+  lastDiscontinuedSync: SyncLog | null
+  lastImageSync: SyncLog | null
   catalogueCount: number
   cronSecret: string
 }
@@ -103,7 +105,7 @@ async function safeFetch(url: string, cronSecret: string) {
   return { ok: res.ok, data }
 }
 
-export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, catalogueCount, cronSecret }: Props) {
+export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinuedSync, lastImageSync, catalogueCount, cronSecret }: Props) {
   // ── Prices ──────────────────────────────────────────────────────────────────
   const [priceSyncLog, setPriceSyncLog] = useState<SyncLog | null>(lastPriceSync)
   const [triggeringPrices, setTriggeringPrices] = useState(false)
@@ -354,7 +356,20 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, catalogueCount, 
                 <p className="text-sm font-medium text-white">Remove Discontinued</p>
                 {discontinuedState === 'scanning' && <ElapsedTimer running={true} />}
               </div>
-              <p className="text-xs text-white/30 mb-2">Scans all active Twinbru fabrics and removes any from your catalogue that are no longer listed.</p>
+              <p className="text-xs text-white/30 mb-1">Scans all active Twinbru fabrics and removes any from your catalogue that are no longer listed.</p>
+              {lastDiscontinuedSync ? (
+                <div className="mt-1 mb-2 space-y-0.5">
+                  <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(lastDiscontinuedSync.completed_at ?? lastDiscontinuedSync.started_at)}</span></p>
+                  {lastDiscontinuedSync.status === 'ok' && (
+                    <p className="text-xs text-white/50">
+                      {lastDiscontinuedSync.items_checked?.toLocaleString()} scanned &middot;{' '}
+                      <span className="text-red-400">{lastDiscontinuedSync.items_added ?? 0} removed</span>
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-white/40 mt-1 mb-2">Never run</p>
+              )}
 
               {discontinuedState === 'found' && (
                 <div className="mt-2 p-3 bg-red-900/20 border border-red-500/20 rounded-lg">
@@ -439,6 +454,19 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, catalogueCount, 
               {triggeringImages && <ElapsedTimer running={triggeringImages} />}
             </div>
             <p className="text-xs text-white/30 mb-1">Fetches and populates images for any fabrics in the catalogue that are missing an image URL. Safe to run at any time.</p>
+            {lastImageSync ? (
+              <div className="mt-1 space-y-0.5">
+                <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(lastImageSync.completed_at ?? lastImageSync.started_at)}</span></p>
+                {lastImageSync.status === 'ok' && (
+                  <p className="text-xs text-white/50">
+                    {lastImageSync.items_checked?.toLocaleString()} checked &middot;{' '}
+                    <span className="text-emerald-400">{lastImageSync.items_added ?? 0} updated</span>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-white/40 mt-1">{triggeringImages ? 'Running…' : 'Never run'}</p>
+            )}
             <ResultBanner result={imageResult} />
           </div>
           <button onClick={triggerImageBackfill} disabled={triggeringImages}

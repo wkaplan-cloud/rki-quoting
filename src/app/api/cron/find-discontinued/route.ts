@@ -163,5 +163,14 @@ export async function DELETE(req: NextRequest) {
     await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceList.id)
   }
 
+  await supabase.from('twinbru_sync_log').insert({
+    sync_type: 'discontinued',
+    triggered_by: 'manual',
+    status: 'ok',
+    completed_at: new Date().toISOString(),
+    items_checked: productIds.length,
+    items_added: deleted,
+  })
+
   return NextResponse.json({ deleted })
 }
