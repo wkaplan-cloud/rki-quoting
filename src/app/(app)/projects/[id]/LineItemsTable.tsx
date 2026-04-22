@@ -496,7 +496,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         return null
                       })()}
                       {item.twinbru_cost_price != null && (() => {
-                        const rollPrice = Math.round(item.twinbru_cost_price * 0.9 * 100) / 100
+                        const rollPrice = Math.round(item.twinbru_cost_price * 0.9 * 40 * 100) / 100
                         const isRoll = item.unit === 'roll'
                         const setMode = async (roll: boolean) => {
                           const cost_price = roll ? rollPrice : item.twinbru_cost_price!

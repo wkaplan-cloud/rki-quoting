@@ -135,6 +135,7 @@ export function PriceListView({ priceListId }: { priceListId: string }) {
             <Search size={28} className="text-[#C4A46B] opacity-40 mb-3" />
             <p className="text-sm font-medium text-[#2C2C2A]">Search to find fabrics</p>
             <p className="text-xs text-[#8A877F] mt-1">Type a design name, colour, brand or SKU</p>
+            <p className="text-xs text-[#8A877F] mt-3 max-w-xs">Local fabrics only — imported fabrics and wallpaper are not listed</p>
           </div>
         ) : items.length === 0 && !loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">

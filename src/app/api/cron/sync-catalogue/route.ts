@@ -27,8 +27,10 @@ function buildRecord(item: Record<string, unknown>) {
   const fullWidth    = props.selvedge_full_width_cm    ?? item.selvedge_full_width_cm    ?? null
   const useableWidth = props.selvedge_useable_width_cm ?? item.selvedge_useable_width_cm ?? null
   const renditions = Array.isArray(item.renditions) ? item.renditions as Record<string, unknown>[] : []
-  const rendition  = renditions.find(r => /large/i.test(String(r.renditionType ?? '')))
-    ?? renditions.find(r => /medium/i.test(String(r.renditionType ?? '')))
+  const rendition  = renditions.find(r => /uhd4k/i.test(String(r.renditionType ?? '')))
+    ?? renditions.find(r => /large/i.test(String(r.renditionType ?? '')))
+    ?? renditions.find(r => /preview/i.test(String(r.renditionType ?? '')))
+    ?? renditions.find(r => /thumbnail/i.test(String(r.renditionType ?? '')))
     ?? renditions[0] ?? null
   const imageUrl   = rendition?.key
     ? `https://cdn.twinbru.com/ods/assets/${rendition.key}`
