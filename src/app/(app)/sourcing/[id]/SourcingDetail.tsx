@@ -2,7 +2,7 @@
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Send, Check, ArrowUpRight, Trash2, Plus, Upload, X, Clock, CheckCircle, XCircle, Eye, AlertCircle, PencilLine
+  Send, Check, ArrowUpRight, Trash2, Plus, Upload, X, Clock, CheckCircle, XCircle, Eye, AlertCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import type {
@@ -369,88 +369,105 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
         </div>
       </div>
 
-      {/* ── Responses comparison (when at least one response received) ── */}
+      {/* ── Responses ── */}
       {(isSent || isAccepted || isPushed) && request.recipients.some(r => r.response) && (
-        <div className="bg-white rounded-xl border border-[#EDE9E1] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#EDE9E1]">
-            <h2 className="text-sm font-semibold text-[#2C2C2A]">Responses</h2>
-          </div>
-          <div className="divide-y divide-[#F5F2EC]">
-            {request.recipients.filter(r => r.response).map(r => {
-              const resp = r.response!
-              const isWinner = resp.id === request.accepted_response_id
-              const markup = r.supplier?.markup_percentage ?? 40
-              const salePrice = resp.unit_price * (1 + markup / 100)
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#8A877F] px-1">
+            Responses ({request.recipients.filter(r => r.response).length})
+          </p>
+          {request.recipients.filter(r => r.response).map(r => {
+            const resp = r.response!
+            const isWinner = resp.id === request.accepted_response_id
+            const markup = r.supplier?.markup_percentage ?? 40
+            const salePrice = resp.unit_price * (1 + markup / 100)
+            const fabricQty = resp.supplier_edits?.fabric_quantity
+            const fabricUnit = resp.supplier_edits?.fabric_unit
+            const supplierNotes = (resp.supplier_edits?.supplier_notes as string | undefined) ?? resp.notes
 
-              return (
-                <div
-                  key={r.id}
-                  className={`px-5 py-4 ${isWinner ? 'bg-emerald-50' : ''}`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <p className="text-sm font-semibold text-[#2C2C2A]">{r.supplier_name}</p>
-                        {isWinner && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded">
-                            <Check size={9} /> Accepted
-                          </span>
-                        )}
-                        {r.status === 'rejected' && (
-                          <span className="text-[10px] text-[#C4BFB5]">Not selected</span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-x-6 gap-y-1">
-                        <PricePair label="Cost price" value={formatZAR(resp.unit_price)} />
-                        <PricePair label={`Sale price (${markup}% markup)`} value={formatZAR(salePrice)} highlight />
-                        {resp.lead_time_weeks != null && (
-                          <PricePair label="Lead time" value={`${resp.lead_time_weeks} weeks`} />
-                        )}
-                        {resp.valid_until && (
-                          <PricePair label="Valid until" value={new Date(resp.valid_until).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })} />
-                        )}
-                      </div>
-                      {resp.notes && (
-                        <p className="mt-2 text-xs text-[#6B6860] leading-relaxed">{resp.notes}</p>
-                      )}
-                      {resp.attachment_url && (
-                        <a href={resp.attachment_url} target="_blank" rel="noopener noreferrer"
-                          className="mt-2 inline-flex items-center gap-1.5 text-xs text-[#9A7B4F] hover:underline">
-                          <ArrowUpRight size={12} /> View attached document
-                        </a>
-                      )}
-                      {resp.changed_fields && resp.changed_fields.length > 0 && resp.supplier_edits && (
-                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                          <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-700 mb-2 flex items-center gap-1">
-                            <PencilLine size={10} /> Supplier modified {resp.changed_fields.length} field{resp.changed_fields.length !== 1 ? 's' : ''}
-                          </p>
-                          <div className="space-y-1.5">
-                            {FIELD_LABELS.filter(f => resp.changed_fields!.includes(f.key) && resp.supplier_edits![f.key] != null).map(f => (
-                              <div key={f.key} className="text-xs">
-                                <span className="text-amber-600 font-medium">{f.label}:</span>
-                                <span className="text-amber-800 ml-1">{String(resp.supplier_edits![f.key])}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {isSent && !isAccepted && !isTerminal && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleAccept(resp.id)}
-                        disabled={loading === `accept-${resp.id}`}
-                      >
-                        <Check size={12} />
-                        {loading === `accept-${resp.id}` ? 'Accepting…' : 'Accept'}
-                      </Button>
+            return (
+              <div
+                key={r.id}
+                className={`rounded-xl border overflow-hidden ${isWinner ? 'border-emerald-300 shadow-[0_0_0_3px_rgba(16,185,129,0.08)]' : r.status === 'rejected' ? 'border-[#EDE9E1] opacity-60' : 'border-[#EDE9E1]'} bg-white`}
+              >
+                {/* Card header */}
+                <div className={`px-4 py-3 flex items-center justify-between border-b ${isWinner ? 'border-emerald-200 bg-emerald-50' : 'border-[#EDE9E1] bg-[#FAFAF8]'}`}>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-[#2C2C2A]">{r.supplier_name}</p>
+                    {isWinner && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded-full uppercase tracking-wide">
+                        <Check size={9} /> Accepted
+                      </span>
+                    )}
+                    {r.status === 'rejected' && (
+                      <span className="inline-flex items-center px-2 py-0.5 bg-[#EDE9E1] text-[#8A877F] text-[10px] font-semibold rounded-full uppercase tracking-wide">Not selected</span>
                     )}
                   </div>
+                  <span className="text-[10px] text-[#C4BFB5]">
+                    {new Date(resp.submitted_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
+                  </span>
                 </div>
-              )
-            })}
-          </div>
+
+                {/* Prices — hero row */}
+                <div className="grid grid-cols-2 divide-x divide-[#EDE9E1] border-b border-[#EDE9E1]">
+                  <div className="px-4 py-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Cost Price</p>
+                    <p className="text-xl font-bold text-[#2C2C2A] tabular-nums">{formatZAR(resp.unit_price)}</p>
+                  </div>
+                  <div className="px-4 py-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Sale Price <span className="normal-case font-normal text-[#C4BFB5]">({markup}% markup)</span></p>
+                    <p className="text-xl font-bold text-[#9A7B4F] tabular-nums">{formatZAR(salePrice)}</p>
+                  </div>
+                </div>
+
+                {/* Supplier details */}
+                {(fabricQty != null || supplierNotes) && (
+                  <div className="px-4 py-3 border-b border-[#EDE9E1] bg-[#FAFAF8] space-y-2">
+                    {fabricQty != null && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Fabric needed:</span>
+                        <span className="text-xs text-[#2C2C2A]">{fabricQty}{fabricUnit ? ` ${fabricUnit}` : ''}</span>
+                      </div>
+                    )}
+                    {supplierNotes && (
+                      <p className="text-xs text-[#6B6860] leading-relaxed">{supplierNotes}</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer meta */}
+                {(resp.lead_time_weeks != null || resp.valid_until || resp.attachment_url) && (
+                  <div className="px-4 py-2.5 border-b border-[#EDE9E1] flex flex-wrap gap-x-5 gap-y-1">
+                    {resp.lead_time_weeks != null && (
+                      <span className="text-xs text-[#8A877F]">Lead time: <span className="text-[#2C2C2A] font-medium">{resp.lead_time_weeks} weeks</span></span>
+                    )}
+                    {resp.valid_until && (
+                      <span className="text-xs text-[#8A877F]">Valid until: <span className="text-[#2C2C2A] font-medium">{new Date(resp.valid_until).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</span></span>
+                    )}
+                    {resp.attachment_url && (
+                      <a href={resp.attachment_url} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-[#9A7B4F] hover:underline">
+                        <ArrowUpRight size={11} /> Attached document
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Accept CTA */}
+                {isSent && !isAccepted && !isTerminal && (
+                  <div className="px-4 py-3">
+                    <Button
+                      className="w-full justify-center"
+                      onClick={() => handleAccept(resp.id)}
+                      disabled={loading === `accept-${resp.id}`}
+                    >
+                      <Check size={13} />
+                      {loading === `accept-${resp.id}` ? 'Accepting…' : 'Accept this price'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -561,11 +578,3 @@ function Detail({ label, value }: { label: string; value: string }) {
   )
 }
 
-function PricePair({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div>
-      <p className="text-[10px] text-[#8A877F] uppercase tracking-wider">{label}</p>
-      <p className={`text-sm font-semibold ${highlight ? 'text-[#9A7B4F]' : 'text-[#2C2C2A]'}`}>{value}</p>
-    </div>
-  )
-}
