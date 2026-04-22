@@ -580,14 +580,20 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   {/* Deliver To */}
                   <td className={COL + ' overflow-visible'}>
                     {locked
-                      ? <span className="text-sm text-[#2C2C2A]">{item.delivery_address ?? '—'}</span>
+                      ? (() => {
+                          const raw = item.delivery_address ?? '—'
+                          const parts = raw.split('\n')
+                          return parts.length > 1
+                            ? <span className="text-sm text-[#2C2C2A] leading-snug"><span className="font-medium">{parts[0]}</span><br /><span className="text-[#8A877F]">{parts.slice(1).join(', ')}</span></span>
+                            : <span className="text-sm text-[#2C2C2A]">{raw}</span>
+                        })()
                       : (() => {
                           const deliveryOptions = [
                             ...(officeAddress.address ? [{ id: officeAddress.address, label: officeAddress.name }] : []),
                             ...suppliers.map(s => {
                               const addr = deliveryOverrides[s.id] ?? s.delivery_address
                               return addr
-                                ? { id: addr, label: s.supplier_name }
+                                ? { id: `${s.supplier_name}\n${addr}`, label: s.supplier_name }
                                 : { id: `supplier:${s.id}`, label: s.supplier_name }
                             }),
                           ]
@@ -596,7 +602,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             <Combobox
                               options={deliveryOptions}
                               value={item.delivery_address ?? ''}
-                              inputValue={selected?.label ?? item.delivery_address ?? ''}
+                              inputValue={selected?.label ?? (item.delivery_address?.split('\n')[0] ?? '')}
                               onChange={(id, label) => {
                                 if (id.startsWith('supplier:')) {
                                   const supplierId = id.replace('supplier:', '')
@@ -783,8 +789,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <button
                 disabled={!addDeliveryModal.address.trim()}
                 onClick={async () => {
-                  const { supplierId, supplierName: _name, lineItemId, address } = addDeliveryModal
+                  const { supplierId, supplierName, lineItemId, address } = addDeliveryModal
                   const trimmed = address.trim()
+                  const combined = `${supplierName}\n${trimmed}`
                   setAddDeliveryModal(null)
                   // Save to supplier record
                   await fetch(`/api/suppliers/${supplierId}`, {
@@ -794,9 +801,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   })
                   // Update local override so dropdown reflects the new address immediately
                   setDeliveryOverrides(prev => ({ ...prev, [supplierId]: trimmed }))
-                  // Save to the line item
-                  updateLocal(lineItemId, 'delivery_address', trimmed)
-                  saveField(lineItemId, 'delivery_address', trimmed)
+                  // Save to the line item with supplier name prepended
+                  updateLocal(lineItemId, 'delivery_address', combined)
+                  saveField(lineItemId, 'delivery_address', combined)
                 }}
                 className="px-4 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
               >
