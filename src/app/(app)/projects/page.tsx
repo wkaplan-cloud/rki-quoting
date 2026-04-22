@@ -9,7 +9,7 @@ import { Plus } from 'lucide-react'
 export default async function ProjectsPage() {
   const supabase = await createClient()
   const [{ data: projects }, { data: orgIdResult }] = await Promise.all([
-    supabase.from('projects').select('*, client:clients(client_name, company), line_items(*)').order('created_at', { ascending: false }),
+    supabase.from('projects').select('*, client:clients(client_name, company), line_items(*)').order('created_at', { ascending: false }).order('archived_at', { ascending: false, nullsFirst: true }),
     supabase.rpc('get_current_org_id'),
   ])
 

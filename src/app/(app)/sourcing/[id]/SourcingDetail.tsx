@@ -5,6 +5,7 @@ import {
   Send, Check, ArrowUpRight, Trash2, Plus, Upload, X, Clock, CheckCircle, XCircle, Eye, AlertCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { compressImage } from '@/lib/compressImage'
 import type {
   SourcingRequestWithRelations,
   SourcingRequestRecipient,
@@ -148,8 +149,10 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
     if (!file) return
     setUploadingImage(true)
     setError(null)
+    let compressed: File
+    try { compressed = await compressImage(file) } catch (err) { setError(err instanceof Error ? err.message : 'Upload failed'); setUploadingImage(false); if (fileInputRef.current) fileInputRef.current.value = ''; return }
     const form = new FormData()
-    form.append('file', file)
+    form.append('file', compressed)
     form.append('sourcing_request_id', request.id)
     const res = await fetch('/api/sourcing/images', { method: 'POST', body: form })
     const json = await res.json()

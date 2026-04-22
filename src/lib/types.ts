@@ -51,6 +51,7 @@ export interface Project {
   sage_invoice_status: string | null
   sage_pushed_at: string | null
   quoted_date: string | null
+  archived_at: string | null
   // joined
   client?: Client | null
 }

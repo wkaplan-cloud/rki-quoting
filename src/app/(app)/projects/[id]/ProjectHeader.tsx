@@ -102,11 +102,10 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
 
   async function handleDelete() {
     const msg = sageInvoicePaid
-      ? 'Permanently delete this project and all its line items? This cannot be undone.\n\nNote: this project has a paid Sage invoice. Deleting it here will NOT affect Sage — the invoice will remain in your Sage account.'
-      : 'Permanently delete this project and all its line items? This cannot be undone.'
+      ? 'Archive this project? It will be hidden from your projects list but can be restored.\n\nNote: this project has a paid Sage invoice. Archiving it here will NOT affect Sage.'
+      : 'Archive this project? It will be hidden from your projects list but can be restored.'
     if (!confirm(msg)) return
-    await supabase.from('line_items').delete().eq('project_id', project.id)
-    const { error } = await supabase.from('projects').delete().eq('id', project.id)
+    const { error } = await supabase.from('projects').update({ archived_at: new Date().toISOString() }).eq('id', project.id)
     if (error) { toast.error(error.message); return }
     window.location.href = '/projects'
   }

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { CheckCircle, Package, Paperclip, X } from 'lucide-react'
+import { compressImage } from '@/lib/compressImage'
 
 interface RequestData {
   id: string
@@ -98,10 +99,12 @@ export function SupplierResponseForm({ token, data }: Props) {
   async function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setAttachmentFile(file)
     setUploadingAttachment(true)
+    let compressed: File
+    try { compressed = await compressImage(file) } catch (err) { setError(err instanceof Error ? err.message : 'Upload failed'); setUploadingAttachment(false); if (attachmentInputRef.current) attachmentInputRef.current.value = ''; return }
+    setAttachmentFile(compressed)
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file', compressed)
     const res = await fetch(`/api/sourcing/respond/${token}/upload`, { method: 'POST', body: formData })
     const json = await res.json()
     setUploadingAttachment(false)

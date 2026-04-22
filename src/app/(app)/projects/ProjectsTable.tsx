@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
 import type { Project, ProjectStatus, LineItem } from '@/lib/types'
 import { formatZAR, computeTotals } from '@/lib/quoting'
-import { FolderOpen, ChevronRight } from 'lucide-react'
+import { FolderOpen, ChevronRight, Archive } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Paid', 'Completed', 'Cancelled']
 
@@ -17,11 +18,21 @@ interface Props {
 export function ProjectsTable({ projects, userEmailMap }: Props) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
+  const [showArchived, setShowArchived] = useState(false)
   const router = useRouter()
+  const supabase = createClient()
 
-  const filtered = projects
+  async function handleUnarchive(id: string) {
+    await supabase.from('projects').update({ archived_at: null }).eq('id', id)
+    router.refresh()
+  }
+
+  const active   = projects.filter(p => !p.archived_at)
+  const archived = projects.filter(p =>  p.archived_at)
+
+  const filtered = (showArchived ? archived : active)
     .filter(p => {
-      const matchStatus = statusFilter === 'All' || p.status === statusFilter
+      const matchStatus = showArchived || statusFilter === 'All' || p.status === statusFilter
       const q = search.toLowerCase()
       const matchSearch = !q ||
         p.project_name.toLowerCase().includes(q) ||
@@ -47,21 +58,34 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
           onChange={e => setSearch(e.target.value)}
           className="px-3 py-2 bg-white border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] w-full sm:w-64"
         />
-        <div className="flex items-center gap-1 flex-wrap">
-          {(['All', ...STATUSES] as const).map(s => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 text-xs rounded font-medium transition-colors cursor-pointer
-                ${statusFilter === s
-                  ? 'bg-[#2C2C2A] text-white'
-                  : 'bg-white border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
-                }`}
-            >
-              {s === 'All' ? 'All' : STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
+        {!showArchived && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {(['All', ...STATUSES] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1.5 text-xs rounded font-medium transition-colors cursor-pointer
+                  ${statusFilter === s
+                    ? 'bg-[#2C2C2A] text-white'
+                    : 'bg-white border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
+                  }`}
+              >
+                {s === 'All' ? 'All' : STATUS_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          onClick={() => setShowArchived(v => !v)}
+          className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs rounded font-medium transition-colors cursor-pointer border ${
+            showArchived
+              ? 'bg-[#2C2C2A] text-white border-[#2C2C2A]'
+              : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
+          }`}
+        >
+          <Archive size={12} />
+          {showArchived ? 'Hide Archived' : `Archived${archived.length > 0 ? ` (${archived.length})` : ''}`}
+        </button>
       </div>
 
       {/* Table */}
@@ -118,8 +142,8 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
               {filtered.map((p, i) => (
                 <tr
                   key={p.id}
-                  onClick={() => router.push(`/projects/${p.id}`)}
-                  className={`border-b border-[#EDE9E1] hover:bg-[#F5F2EC] cursor-pointer transition-colors ${i === filtered.length - 1 ? 'border-0' : ''}`}
+                  onClick={() => !showArchived && router.push(`/projects/${p.id}`)}
+                  className={`border-b border-[#EDE9E1] transition-colors ${i === filtered.length - 1 ? 'border-0' : ''} ${showArchived ? 'opacity-60' : 'hover:bg-[#F5F2EC] cursor-pointer'}`}
                 >
                   <td className="px-4 py-3 text-[#8A877F] font-mono text-xs">{p.project_number}</td>
                   <td className="px-4 py-3 font-medium text-[#2C2C2A]">{p.project_name}</td>
@@ -132,6 +156,11 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
                   <td className="px-4 py-3 text-right font-medium text-[#2C2C2A] whitespace-nowrap">
                     {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, 15).grand_total)}
                   </td>
+                  {showArchived && (
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={e => { e.stopPropagation(); handleUnarchive(p.id) }} className="text-xs text-[#9A7B4F] hover:underline cursor-pointer">Restore</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
