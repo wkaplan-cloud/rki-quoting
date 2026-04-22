@@ -217,11 +217,8 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
         </div>
       )}
 
-      {/* ── Two-column layout ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-
-      {/* LEFT — request details + images */}
-      <div className="lg:col-span-3 space-y-6">
+      {/* ── Row 1: Request details + Images side by side ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
       {/* ── Request details ── */}
       <div className="bg-white rounded-xl border border-[#EDE9E1] overflow-hidden">
@@ -297,10 +294,7 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
         </div>
       </div>
 
-      </div>{/* end left col */}
-
-      {/* RIGHT — suppliers + responses + actions */}
-      <div className="lg:col-span-2 space-y-6">
+      </div>{/* end row 1 grid */}
 
       {/* ── Suppliers / Recipients ── */}
       <div className="bg-white rounded-xl border border-[#EDE9E1] overflow-hidden">
@@ -378,8 +372,6 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
           {request.recipients.filter(r => r.response).map(r => {
             const resp = r.response!
             const isWinner = resp.id === request.accepted_response_id
-            const markup = r.supplier?.markup_percentage ?? 40
-            const salePrice = resp.unit_price * (1 + markup / 100)
             const fabricQty = resp.supplier_edits?.fabric_quantity
             const fabricUnit = resp.supplier_edits?.fabric_unit
             const supplierNotes = (resp.supplier_edits?.supplier_notes as string | undefined) ?? resp.notes
@@ -407,16 +399,10 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
                   </span>
                 </div>
 
-                {/* Prices — hero row */}
-                <div className="grid grid-cols-2 divide-x divide-[#EDE9E1] border-b border-[#EDE9E1]">
-                  <div className="px-4 py-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Cost Price</p>
-                    <p className="text-xl font-bold text-[#2C2C2A] tabular-nums">{formatZAR(resp.unit_price)}</p>
-                  </div>
-                  <div className="px-4 py-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Sale Price <span className="normal-case font-normal text-[#C4BFB5]">({markup}% markup)</span></p>
-                    <p className="text-xl font-bold text-[#9A7B4F] tabular-nums">{formatZAR(salePrice)}</p>
-                  </div>
+                {/* Price — hero row */}
+                <div className="px-4 py-4 border-b border-[#EDE9E1]">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Cost Price</p>
+                  <p className="text-2xl font-bold text-[#2C2C2A] tabular-nums">{formatZAR(resp.unit_price)}</p>
                 </div>
 
                 {/* Supplier details */}
@@ -505,9 +491,6 @@ export function SourcingDetail({ request, allSuppliers, projects }: Props) {
           )}
         </div>
       )}
-
-      </div>{/* end right col */}
-      </div>{/* end grid */}
 
       {/* ── Push to Quote modal ── */}
       {showPushModal && pushResponse && (
