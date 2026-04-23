@@ -88,6 +88,9 @@ export async function DELETE(
     await supabaseAdmin.from('suppliers').delete().in('user_id', userIds)
   }
 
+  // Delete any audit_logs tied directly to the org (org_id FK)
+  await supabaseAdmin.from('audit_logs').delete().eq('org_id', orgId)
+
   // Remove org membership records
   await supabaseAdmin.from('org_members').delete().eq('org_id', orgId)
 
