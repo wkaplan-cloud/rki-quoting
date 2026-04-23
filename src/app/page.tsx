@@ -253,7 +253,7 @@ export default function LandingPage() {
               <div className="flex-1">
                 <div className="inline-flex items-center gap-2 bg-[#C4A46B]/15 border border-[#C4A46B]/25 rounded-full px-4 py-1.5 mb-6">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#C4A46B]" />
-                  <span className="text-xs font-medium text-[#C4A46B] tracking-wide uppercase">Agency feature</span>
+                  <span className="text-xs font-medium text-[#C4A46B] tracking-wide uppercase">Included on all plans</span>
                 </div>
                 <h2 className="font-serif text-3xl md:text-4xl text-white leading-tight tracking-tight mb-4">
                   Stop chasing suppliers<br />by email.
@@ -266,7 +266,7 @@ export default function LandingPage() {
                     'Select items and send pricing requests in seconds',
                     'Suppliers respond directly — no email thread to manage',
                     'Speed up sourcing and get quotes out faster',
-                    'Designed for studios managing multiple suppliers',
+                    'Available on every QuotingHub plan',
                   ].map(i => (
                     <li key={i} className="flex items-start gap-3 text-sm text-white/75">
                       <Check size={14} className="text-[#C4A46B] flex-shrink-0 mt-0.5" />
@@ -278,14 +278,14 @@ export default function LandingPage() {
                   href="/pricing"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-[#9A7B4F] text-white text-sm font-medium rounded-lg hover:bg-[#B8956A] transition-colors"
                 >
-                  See Agency plan <ArrowRight size={14} />
+                  See pricing <ArrowRight size={14} />
                 </Link>
               </div>
               <div className="hidden md:flex flex-col items-center justify-center w-48 flex-shrink-0">
                 <div className="w-20 h-20 rounded-2xl bg-[#C4A46B]/15 flex items-center justify-center mb-4">
                   <Mail size={36} className="text-[#C4A46B]" />
                 </div>
-                <p className="text-white/30 text-xs text-center leading-relaxed">Available on the Agency plan</p>
+                <p className="text-white/30 text-xs text-center leading-relaxed">Included on every plan</p>
               </div>
             </div>
           </div>
