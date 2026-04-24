@@ -1,6 +1,7 @@
 'use client'
+import { useState } from 'react'
 import Link from 'next/link'
-import { Clock, Eye, CheckCircle, XCircle } from 'lucide-react'
+import { Clock, Eye, CheckCircle, XCircle, Bell, BellRing } from 'lucide-react'
 
 interface DashboardRow {
   recipient_id: string
@@ -63,6 +64,64 @@ export function SupplierDashboard({ rows }: Props) {
   )
 }
 
+function NotifyButton({ recipientId }: { recipientId: string }) {
+  const [phase, setPhase] = useState<'idle' | 'open' | 'sent'>('idle')
+  const [sending, setSending] = useState(false)
+  const [notes, setNotes] = useState('')
+
+  if (phase === 'sent') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-medium">
+        <BellRing size={12} /> Studio notified
+      </span>
+    )
+  }
+
+  if (phase === 'open') {
+    return (
+      <div className="flex flex-col gap-1.5 items-end">
+        <textarea
+          rows={2}
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Optional note for studio…"
+          className="w-48 text-xs px-2 py-1 border border-[#D8D3C8] rounded resize-none focus:outline-none focus:border-[#9A7B4F]"
+        />
+        <div className="flex gap-1">
+          <button
+            onClick={() => { setPhase('idle'); setNotes('') }}
+            className="text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer px-2 py-1 transition-colors"
+          >Cancel</button>
+          <button
+            disabled={sending}
+            onClick={async () => {
+              setSending(true)
+              await fetch('/api/supplier-portal/notify-arrival', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ recipientId, notes: notes.trim() || undefined }),
+              })
+              setPhase('sent')
+            }}
+            className="text-xs bg-[#9A7B4F] text-white px-3 py-1 rounded cursor-pointer hover:bg-[#7d6340] transition-colors disabled:opacity-50"
+          >
+            {sending ? 'Sending…' : 'Send notification'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => setPhase('open')}
+      className="inline-flex items-center gap-1 text-xs text-[#9A7B4F] hover:text-[#7d6340] font-medium cursor-pointer transition-colors"
+    >
+      <Bell size={12} /> Notify studio
+    </button>
+  )
+}
+
 function RequestTable({ rows, dim }: { rows: DashboardRow[]; dim?: boolean }) {
   if (rows.length === 0) return null
   return (
@@ -74,7 +133,7 @@ function RequestTable({ rows, dim }: { rows: DashboardRow[]; dim?: boolean }) {
             <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] hidden sm:table-cell">Studio</th>
             <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] hidden md:table-cell">Date</th>
             <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Status</th>
-            <th className="px-4 py-3" />
+            <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -99,12 +158,17 @@ function RequestTable({ rows, dim }: { rows: DashboardRow[]; dim?: boolean }) {
                   </span>
                 </td>
                 <td className="px-4 py-3.5 text-right">
-                  <Link
-                    href={`/supplier-portal/requests/${r.recipient_id}`}
-                    className="text-xs text-[#9A7B4F] hover:underline font-medium"
-                  >
-                    View →
-                  </Link>
+                  <div className="flex flex-col items-end gap-2">
+                    <Link
+                      href={`/supplier-portal/requests/${r.recipient_id}`}
+                      className="text-xs text-[#9A7B4F] hover:underline font-medium"
+                    >
+                      View →
+                    </Link>
+                    {!dim && (
+                      <NotifyButton recipientId={r.recipient_id} />
+                    )}
+                  </div>
                 </td>
               </tr>
             )

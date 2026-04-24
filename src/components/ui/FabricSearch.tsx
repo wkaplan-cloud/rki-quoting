@@ -13,6 +13,7 @@ interface FabricResult {
   product_id: string | null
   price_zar: number | null
   image_url: string | null
+  useable_width_cm: number | null
 }
 
 interface Props {
@@ -124,11 +125,16 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
             </p>
             {fabric.sku && <p className="text-[10px] text-[#8A877F] font-mono truncate">{fabric.sku}</p>}
           </div>
-          {fabric.price_zar != null && (
-            <span className="text-xs font-semibold text-[#2C2C2A] flex-shrink-0">
-              R {fabric.price_zar.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+            {fabric.price_zar != null && (
+              <span className="text-xs font-semibold text-[#2C2C2A]">
+                R {fabric.price_zar.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+              </span>
+            )}
+            {fabric.useable_width_cm != null && (
+              <span className="text-[9px] text-[#8A877F]">{fabric.useable_width_cm}cm wide</span>
+            )}
+          </div>
         </button>
       ))}
     </div>,

@@ -89,6 +89,8 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
     email: supplier?.email ?? '',
     email_cc: supplier?.email_cc ?? '',
     delivery_address: supplier?.delivery_address ?? '',
+    delivery_contact_name: supplier?.delivery_contact_name ?? '',
+    delivery_contact_number: supplier?.delivery_contact_number ?? '',
     markup_percentage: String(supplier?.markup_percentage ?? 0),
     notes: (supplier as any)?.notes ?? '',
   })
@@ -181,10 +183,22 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
             <Input label="Rep Name" placeholder="Your dedicated sales rep" value={contact.rep_name} onChange={e => setC('rep_name', e.target.value)} />
             <Input label="Rep Number" value={contact.rep_number} onChange={e => setC('rep_number', e.target.value)} />
           </div>
-          <p className="text-xs text-[#8A877F] -mt-2">The rep name is used to address purchase orders. The rep email is where POs are sent.</p>
+          <p className="text-xs text-[#8A877F] -mt-2">The rep name is used to address purchase orders. POs are always sent to the default customer services email; your rep email is added as CC.</p>
+          {supplier.email && (
+            <div>
+              <label className="text-xs font-medium text-[#8A877F] block mb-1">Default Customer Services Email</label>
+              <input
+                type="email"
+                value={supplier.email}
+                readOnly
+                className="w-full px-3 py-2 bg-[#F5F2EC] border border-[#D8D3C8] rounded text-sm text-[#8A877F] cursor-not-allowed"
+              />
+              <p className="text-[10px] text-[#C4BFB5] mt-0.5">Managed by QuotingHub — all POs go to this address</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Rep Email (PO recipient)" type="email" value={contact.email} onChange={e => setC('email', e.target.value)} />
-            <Input label="CC Email (PO copies)" type="email" value={contact.email_cc} onChange={e => setC('email_cc', e.target.value)} />
+            <Input label="Rep Email (CC on POs)" type="email" value={contact.email} onChange={e => setC('email', e.target.value)} />
+            <Input label="Additional CC Email" type="email" value={contact.email_cc} onChange={e => setC('email_cc', e.target.value)} />
           </div>
           <div className="flex gap-3 pt-2">
             <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Contact'}</Button>
@@ -238,6 +252,11 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
             <Input label="CC Email (PO copies)" type="email" value={form.email_cc} onChange={e => set('email_cc', e.target.value)} />
           </div>
           <Textarea label="Delivery Address" value={form.delivery_address} onChange={e => set('delivery_address', e.target.value)} rows={2} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Contact at Delivery Address" placeholder="Person receiving deliveries" value={form.delivery_contact_name} onChange={e => set('delivery_contact_name', e.target.value)} />
+            <Input label="Their Contact Number" value={form.delivery_contact_number} onChange={e => set('delivery_contact_number', e.target.value)} />
+          </div>
+          <p className="text-xs text-[#8A877F] -mt-2">Shown on POs in the Deliver To section.</p>
           <Textarea label="Notes" value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} />
         </div>
       </div>

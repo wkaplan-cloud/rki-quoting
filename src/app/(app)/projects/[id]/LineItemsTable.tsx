@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2 } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import toast from 'react-hot-toast'
@@ -26,7 +26,7 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
   )
 }
 
-type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }
+type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; delivery_contact_name: string | null; delivery_contact_number: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }
 
 interface Props {
   projectId: string
@@ -103,9 +103,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const dragOver = useRef<number | null>(null)
   const [showTips, setShowTips] = useState(false)
   // Delivery address prompt modal
-  const [addDeliveryModal, setAddDeliveryModal] = useState<{ supplierId: string; supplierName: string; lineItemId: string; address: string } | null>(null)
+  const [addDeliveryModal, setAddDeliveryModal] = useState<{ supplierId: string; supplierName: string; lineItemId: string; address: string; contactName: string; contactNumber: string } | null>(null)
   // Local delivery address overrides (supplierId → address) for addresses added this session
   const [deliveryOverrides, setDeliveryOverrides] = useState<Record<string, string>>({})
+  // Drops popover: which line item id is open, and form values
+  const [dropsOpen, setDropsOpen] = useState<string | null>(null)
+  const [dropsForm, setDropsForm] = useState<{ drops: string; height: string }>({ drops: '', height: '' })
   // Map of twinbru_product_id → current catalogue price (for stale price detection)
   const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
   // Map of line item id → stock info
@@ -226,7 +229,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }).select().single()
     if (error) { toast.error('Failed to create supplier'); return { id: '' } }
     toast.success(`Supplier "${name}" created`)
-    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, is_platform: false, price_list_id: null, email: data.email ?? null })
+    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, delivery_contact_name: null, delivery_contact_number: null, is_platform: false, price_list_id: null, email: data.email ?? null })
     return { id: data.id }
   }, [supabase, onSupplierCreated])
 
@@ -274,7 +277,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const handleFabricSelect = useCallback(async (lineItemId: string, fabric: {
     design: string | null; collection: string | null; colour: string | null
     sku: string | null; brand: string | null; product_id: string | null
-    price_zar: number | null; image_url: string | null
+    price_zar: number | null; image_url: string | null; useable_width_cm?: number | null
   }) => {
     const description = [fabric.brand, fabric.collection, fabric.design, fabric.colour, fabric.sku]
       .filter(Boolean).join(' · ')
@@ -287,6 +290,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       colour_finish: fabric.colour ?? null,
       twinbru_product_id,
       twinbru_cost_price: fabric.price_zar ?? null,
+      fabric_width_cm: fabric.useable_width_cm ?? null,
       unit: 'm',
     }
     onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
@@ -321,6 +325,24 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     const indent_level = currentLevel > 0 ? 0 : 1
     onChange(lineItems.map(item => item.id === id ? { ...item, indent_level } : item))
     await supabase.from('line_items').update({ indent_level }).eq('id', id)
+  }, [lineItems, onChange, supabase])
+
+  const toggleLink = useCallback(async (id: string, currentParentId: string | null) => {
+    if (currentParentId) {
+      // Unlink: clear parent and remove indent
+      onChange(lineItems.map(item => item.id === id ? { ...item, parent_item_id: null, indent_level: 0 } : item))
+      await supabase.from('line_items').update({ parent_item_id: null, indent_level: 0 }).eq('id', id)
+    } else {
+      // Link: find nearest non-linked item above by sort_order
+      const thisItem = lineItems.find(i => i.id === id)
+      if (!thisItem) return
+      const above = [...lineItems]
+        .filter(i => i.sort_order < thisItem.sort_order && i.row_type === 'item' && !i.parent_item_id)
+        .sort((a, b) => b.sort_order - a.sort_order)[0]
+      if (!above) return
+      onChange(lineItems.map(item => item.id === id ? { ...item, parent_item_id: above.id, indent_level: 1 } : item))
+      await supabase.from('line_items').update({ parent_item_id: above.id, indent_level: 1 }).eq('id', id)
+    }
   }, [lineItems, onChange, supabase])
 
   const deleteRow = useCallback(async (id: string) => {
@@ -421,6 +443,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               // ── Item row ────────────────────────────────────────────────
               const c = computeLineItem(item)
               const indented = item.indent_level > 0
+              const isLinked = !!item.parent_item_id
 
               return (
                 <tr
@@ -433,7 +456,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   className={`border-b border-[#EDE9E1] last:border-0 group transition-colors
                     ${item.received
                       ? 'bg-blue-50 hover:bg-blue-50'
-                      : indented ? 'bg-[#FDFCF9] hover:bg-[#FDFCF9]' : 'hover:bg-[#FDFCF9]'
+                      : isLinked ? 'bg-amber-50/40 hover:bg-amber-50/60' : indented ? 'bg-[#FDFCF9] hover:bg-[#FDFCF9]' : 'hover:bg-[#FDFCF9]'
                     }`}
                 >
                   {/* Drag handle */}
@@ -464,7 +487,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   <td className={COL}>
                     <div className={indented ? 'pl-4' : ''}>
                       <div className="flex items-center gap-1">
-                        {indented && (
+                        {isLinked && (
+                          <Link2 size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
+                        )}
+                        {!isLinked && indented && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
                         <div className="flex-1 min-w-0">
@@ -489,17 +515,30 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           )}
                         </div>
                         {!locked && (
-                          <button
-                            onClick={() => toggleIndent(item.id, item.indent_level)}
-                            title={indented ? 'Remove indent' : 'Attach to item above'}
-                            className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
-                              ${indented
-                                ? 'text-[#9A7B4F] opacity-100'
-                                : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
-                              }`}
-                          >
-                            <CornerDownRight size={12} />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => toggleLink(item.id, item.parent_item_id ?? null)}
+                              title={isLinked ? 'Unlink from parent item' : 'Link to item above'}
+                              className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
+                                ${isLinked
+                                  ? 'text-[#9A7B4F] opacity-100'
+                                  : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
+                                }`}
+                            >
+                              {isLinked ? <Unlink2 size={12} /> : <Link2 size={12} />}
+                            </button>
+                            <button
+                              onClick={() => toggleIndent(item.id, item.indent_level)}
+                              title={indented ? 'Remove indent' : 'Indent item'}
+                              className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
+                                ${indented
+                                  ? 'text-[#9A7B4F] opacity-100'
+                                  : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
+                                }`}
+                            >
+                              <CornerDownRight size={12} />
+                            </button>
+                          </>
                         )}
                       </div>
                       <div className="flex gap-1 mt-0.5">
@@ -520,6 +559,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
                         />
                       </div>
+                      {item.twinbru_product_id && item.fabric_width_cm != null && (
+                        <div className="mt-1">
+                          <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#EDE9E1] text-[#8A877F]">{item.fabric_width_cm}cm wide</span>
+                        </div>
+                      )}
                       {!depositReceived && item.twinbru_product_id && (() => {
                         const s = stockMap[item.id]
                         if (!s) return null
@@ -547,24 +591,25 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         )
                       })()}
                       {item.twinbru_cost_price != null && (() => {
-                        const rollPrice = Math.round(item.twinbru_cost_price * 0.9 * 40 * 100) / 100
-                        const isRoll = item.unit === 'roll'
+                        // Cut = standard per-m price; Roll = 10% off per m. Quantity/unit unchanged.
+                        const rollPricePerM = Math.round(item.twinbru_cost_price * 0.9 * 100) / 100
+                        const isRoll = Math.abs(item.cost_price - rollPricePerM) < 0.001 && item.cost_price !== item.twinbru_cost_price
                         const setMode = async (roll: boolean) => {
-                          const cost_price = roll ? rollPrice : item.twinbru_cost_price!
-                          const quantity = roll ? 1 : item.quantity
-                          const unit = roll ? 'roll' : 'm'
-                          onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, quantity, unit } : i))
-                          await supabase.from('line_items').update({ cost_price, quantity, unit }).eq('id', item.id)
+                          const cost_price = roll ? rollPricePerM : item.twinbru_cost_price!
+                          onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, unit: 'm' } : i))
+                          await supabase.from('line_items').update({ cost_price, unit: 'm' }).eq('id', item.id)
                         }
                         if (locked) return null
                         return (
                           <div className="flex items-center gap-0.5 mt-1">
                             <button
                               onClick={() => setMode(false)}
+                              title="Standard cut price per metre"
                               className={`text-[9px] px-1.5 py-0.5 rounded-l-full border transition-colors cursor-pointer ${!isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
                             >Cut</button>
                             <button
                               onClick={() => setMode(true)}
+                              title="Roll price per metre (10% off)"
                               className={`text-[9px] px-1.5 py-0.5 rounded-r-full border transition-colors cursor-pointer ${isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
                             >Roll</button>
                           </div>
@@ -583,6 +628,54 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       className={INPUT}
                       readOnly={locked}
                     />
+                    {!locked && item.twinbru_product_id && (
+                      <div className="relative mt-0.5">
+                        {dropsOpen === item.id ? (
+                          <div className="bg-white border border-[#D8D3C8] rounded-lg p-2 shadow-sm">
+                            <div className="flex items-center gap-1 mb-1.5">
+                              <input
+                                type="text" inputMode="decimal"
+                                value={dropsForm.drops}
+                                onChange={e => setDropsForm(f => ({ ...f, drops: e.target.value }))}
+                                placeholder="Drops"
+                                className="w-14 text-xs bg-[#F5F2EC] border border-[#D8D3C8] rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                              />
+                              <span className="text-[10px] text-[#8A877F]">×</span>
+                              <input
+                                type="text" inputMode="decimal"
+                                value={dropsForm.height}
+                                onChange={e => setDropsForm(f => ({ ...f, height: e.target.value }))}
+                                placeholder="Height m"
+                                className="w-16 text-xs bg-[#F5F2EC] border border-[#D8D3C8] rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-[#9A7B4F]"
+                              />
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  const text = `${dropsForm.drops} drops × ${dropsForm.height}m`
+                                  const current = item.description ?? ''
+                                  const updated = current ? `${current}\n${text}` : text
+                                  updateLocal(item.id, 'description', updated)
+                                  saveField(item.id, 'description', updated)
+                                  setDropsOpen(null)
+                                  setDropsForm({ drops: '', height: '' })
+                                }}
+                                className="text-[10px] px-2 py-0.5 bg-[#9A7B4F] text-white rounded cursor-pointer hover:bg-[#7d6340] transition-colors"
+                              >Add</button>
+                              <button
+                                onClick={() => { setDropsOpen(null); setDropsForm({ drops: '', height: '' }) }}
+                                className="text-[10px] px-2 py-0.5 text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+                              >Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDropsOpen(item.id)}
+                            className="text-[9px] text-[#C4BFB5] hover:text-[#9A7B4F] transition-colors cursor-pointer"
+                          >+ drops</button>
+                        )}
+                      </div>
+                    )}
                   </td>
 
                   {/* Qty + Unit */}
@@ -658,7 +751,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                                 if (id.startsWith('supplier:')) {
                                   const supplierId = id.replace('supplier:', '')
                                   const sup = suppliers.find(s => s.id === supplierId)
-                                  if (sup) setAddDeliveryModal({ supplierId, supplierName: sup.supplier_name, lineItemId: item.id, address: '' })
+                                  if (sup) setAddDeliveryModal({ supplierId, supplierName: sup.supplier_name, lineItemId: item.id, address: '', contactName: sup.delivery_contact_name ?? '', contactNumber: sup.delivery_contact_number ?? '' })
                                 } else {
                                   const addr = id || label
                                   updateLocal(item.id, 'delivery_address', addr)
@@ -789,16 +882,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       {!locked && (
         <div className="mt-2 flex items-center gap-4">
           <button
-            onClick={addRow}
-            className="flex items-center gap-1.5 text-sm text-[#9A7B4F] hover:text-[#7d6340] transition-colors cursor-pointer"
-          >
-            <Plus size={14} /> Add item
-          </button>
-          <button
             onClick={addSection}
             className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
           >
             <LayoutList size={14} /> Add room / section
+          </button>
+          <button
+            onClick={addRow}
+            className="flex items-center gap-1.5 text-sm text-[#9A7B4F] hover:text-[#7d6340] transition-colors cursor-pointer"
+          >
+            <Plus size={14} /> Add item
           </button>
         </div>
       )}
@@ -846,8 +939,30 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               placeholder="e.g. 12 Industrial Ave, Cape Town, 7441"
               value={addDeliveryModal.address}
               onChange={e => setAddDeliveryModal(prev => prev ? { ...prev, address: e.target.value } : null)}
-              className="w-full px-3 py-2 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F] mb-4 resize-none leading-relaxed"
+              className="w-full px-3 py-2 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F] mb-3 resize-none leading-relaxed"
             />
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div>
+                <label className="text-xs text-[#8A877F] block mb-1">Contact name at delivery</label>
+                <input
+                  type="text"
+                  placeholder="Jane Smith"
+                  value={addDeliveryModal.contactName}
+                  onChange={e => setAddDeliveryModal(prev => prev ? { ...prev, contactName: e.target.value } : null)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[#8A877F] block mb-1">Their contact number</label>
+                <input
+                  type="text"
+                  placeholder="082 000 0000"
+                  value={addDeliveryModal.contactNumber}
+                  onChange={e => setAddDeliveryModal(prev => prev ? { ...prev, contactNumber: e.target.value } : null)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F]"
+                />
+              </div>
+            </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setAddDeliveryModal(null)} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
                 Cancel
@@ -855,16 +970,17 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <button
                 disabled={!addDeliveryModal.address.trim()}
                 onClick={async () => {
-                  const { supplierId, supplierName, lineItemId, address } = addDeliveryModal
+                  const { supplierId, supplierName, lineItemId, address, contactName, contactNumber } = addDeliveryModal
                   const trimmed = address.trim()
                   const combined = `${supplierName}\n${trimmed}`
                   setAddDeliveryModal(null)
-                  // Save to supplier record
+                  // Save to supplier record (address + contact fields)
                   await fetch(`/api/suppliers/${supplierId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ delivery_address: trimmed }),
+                    body: JSON.stringify({ delivery_address: trimmed, delivery_contact_name: contactName || null, delivery_contact_number: contactNumber || null }),
                   })
+                  // Update local supplier so future reads are consistent
                   // Update local override so dropdown reflects the new address immediately
                   setDeliveryOverrides(prev => ({ ...prev, [supplierId]: trimmed }))
                   // Save to the line item with supplier name prepended

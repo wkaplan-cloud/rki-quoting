@@ -6,6 +6,7 @@ import type { Project, LineItem, Supplier } from '../types'
 interface Props {
   project: Project
   lineItems: LineItem[]
+  allLineItems?: LineItem[]
   suppliers: Supplier[]
   supplierId?: string
   vatRate?: number
@@ -18,12 +19,54 @@ interface Props {
   platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null }[]
 }
 
-function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: { project: Project; items: LineItem[]; supplier: Supplier | null; vatRate?: number; logoUrl?: string | null; businessName?: string | null; businessAddress?: string | null; vatNumber?: string | null; companyReg?: string | null; printDate?: string | null; platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null; rep_email?: string | null }[] }) {
+function DeliverToCell({ deliveryAddress, allSuppliers }: { deliveryAddress: string | null; allSuppliers: Supplier[] }) {
+  if (!deliveryAddress) return <Text style={[styles.td, styles.tdMuted, { flex: 2 }]}>—</Text>
+  const lines = deliveryAddress.split('\n')
+  const firstLine = lines[0]
+  const restLines = lines.slice(1).join(', ')
+  // Look up supplier by delivery name match to get contact fields
+  const matchedSup = allSuppliers.find(s => s.supplier_name === firstLine)
+  const contactName = matchedSup?.delivery_contact_name
+  const contactNumber = matchedSup?.delivery_contact_number
+  return (
+    <View style={{ flex: 2 }}>
+      {firstLine ? <Text style={[styles.td, { fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{firstLine}</Text> : null}
+      {(contactName || contactNumber) ? (
+        <Text style={[styles.td, styles.tdMuted, { fontSize: 6, marginTop: 1 }]}>
+          {[contactName, contactNumber].filter(Boolean).join(' · ')}
+        </Text>
+      ) : null}
+      {restLines ? <Text style={[styles.td, styles.tdMuted, { fontSize: 6, marginTop: 1 }]}>{restLines}</Text> : null}
+    </View>
+  )
+}
+
+function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: {
+  project: Project
+  items: LineItem[]
+  allItems: LineItem[]
+  allSuppliers: Supplier[]
+  supplier: Supplier | null
+  vatRate?: number
+  logoUrl?: string | null
+  businessName?: string | null
+  businessAddress?: string | null
+  vatNumber?: string | null
+  companyReg?: string | null
+  printDate?: string | null
+  platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null; rep_email?: string | null }[]
+}) {
   const itemRows = items.filter(i => i.row_type !== 'section')
   const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const vatAmount = subtotal * (vatRate / 100)
   const grandTotal = subtotal + vatAmount
   const poNumber = `${project.project_number}-${supplier?.supplier_name.slice(0, 3).toUpperCase() ?? 'GEN'}`
+
+  // Platform supplier email logic: TO = global supplier.email, CC = platformContact.email (rep)
+  const platformContact = supplier?.is_platform ? platformContacts?.find(c => c.supplier_id === supplier.id) : null
+  const toEmail = supplier?.is_platform ? supplier.email : (platformContact?.email || supplier?.email)
+  const ccEmail = supplier?.is_platform ? platformContact?.email : null
+  const repName = platformContact?.rep_name || (supplier as any)?.rep_name
 
   return (
     <Page size="A4" style={styles.page}>
@@ -58,17 +101,9 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
           <Text style={styles.sectionLabel}>SUPPLIER</Text>
           <View style={{ flexDirection: 'column' }}>
             <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold', marginBottom: 2 }]}>{supplier.supplier_name}</Text>
-            {(() => {
-              const contact = supplier.is_platform ? platformContacts?.find(c => c.supplier_id === supplier.id) : null
-              const repName = contact?.rep_name || (supplier as any).rep_name
-              const repEmail = contact?.email || supplier.email
-              return (
-                <>
-                  {repName && <Text style={[styles.infoVal, { marginBottom: 2 }]}>Attn: {repName}</Text>}
-                  {repEmail && <Text style={styles.infoVal}>{repEmail}</Text>}
-                </>
-              )
-            })()}
+            {repName && <Text style={[styles.infoVal, { marginBottom: 2 }]}>Attn: {repName}</Text>}
+            {toEmail && <Text style={styles.infoVal}>{toEmail}</Text>}
+            {ccEmail && <Text style={[styles.infoVal, { fontSize: 7, color: '#8A877F', marginTop: 1 }]}>CC: {ccEmail}</Text>}
           </View>
         </View>
       )}
@@ -100,22 +135,55 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
                 </View>
               )
             }
+
+            // Skip items that are linked to a parent from another supplier — they show as notes on that supplier's PO
+            if (item.parent_item_id) return null
+
+            // Linked children that belong to other suppliers — show as subtle note under this item
+            const linkedChildren = allItems.filter(
+              li => li.parent_item_id === item.id && li.row_type === 'item' && li.supplier_id !== supplier?.id
+            )
+
             return (
-              <View key={item.id} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
-                <View style={[{ flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>
-                  <Text style={styles.td}>{item.item_name}</Text>
-                  {(item.dimensions || item.colour_finish) ? (
-                    <Text style={[styles.td, styles.tdMuted, { fontSize: 6, marginTop: 1 }]}>
-                      {[item.dimensions, item.colour_finish].filter(Boolean).join(' · ')}
-                    </Text>
-                  ) : null}
+              <View key={item.id}>
+                <View style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                  <View style={[{ flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>
+                    <Text style={styles.td}>{item.item_name}</Text>
+                    {(item.dimensions || item.colour_finish) ? (
+                      <Text style={[styles.td, styles.tdMuted, { fontSize: 6, marginTop: 1 }]}>
+                        {[item.dimensions, item.colour_finish].filter(Boolean).join(' · ')}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text style={[styles.td, styles.tdMuted, { flex: 3, paddingLeft: 6, paddingRight: 8 }]}>{item.description ?? ''}</Text>
+                  <DeliverToCell deliveryAddress={item.delivery_address} allSuppliers={allSuppliers} />
+                  <Text style={[styles.td, styles.tdMuted, { width: 36, textAlign: 'right', paddingRight: 4 }]}>{item.lead_time_days != null ? `${item.lead_time_days}d` : item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
+                  <Text style={[styles.td, { width: 52, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
+                  <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
+                  <Text style={[styles.td, { width: 72, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.cost_price * item.quantity)}</Text>
                 </View>
-                <Text style={[styles.td, styles.tdMuted, { flex: 3, paddingLeft: 6, paddingRight: 8 }]}>{item.description ?? ''}</Text>
-                <Text style={[styles.td, styles.tdMuted, { flex: 2 }]}>{item.delivery_address ?? ''}</Text>
-                <Text style={[styles.td, styles.tdMuted, { width: 36, textAlign: 'right', paddingRight: 4 }]}>{item.lead_time_days != null ? `${item.lead_time_days}d` : item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
-                <Text style={[styles.td, { width: 52, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
-                <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>
-                <Text style={[styles.td, { width: 72, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(item.cost_price * item.quantity)}</Text>
+                {linkedChildren.map(child => {
+                  const childSup = allSuppliers.find(s => s.id === child.supplier_id)
+                  return (
+                    <View key={child.id} style={{ flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#FDFCF9', borderTopWidth: 0.5, borderTopColor: '#EDE9E1' }}>
+                      <View style={{ flex: 2, paddingLeft: 10, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        {child.fabric_image_url ? (
+                          <Image src={child.fabric_image_url} style={{ width: 14, height: 14, borderRadius: 2 }} />
+                        ) : null}
+                        <View>
+                          <Text style={{ fontSize: 6.5, color: '#8A877F' }}>↳ {child.item_name}{child.colour_finish ? ` — ${child.colour_finish}` : ''}</Text>
+                          {childSup ? <Text style={{ fontSize: 5.5, color: '#C4BFB5' }}>via {childSup.supplier_name}</Text> : null}
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 6.5, color: '#8A877F', flex: 3, paddingLeft: 6 }}>{child.description ?? ''}</Text>
+                      <View style={{ flex: 2 }} />
+                      <View style={{ width: 36 }} />
+                      <Text style={{ fontSize: 6.5, color: '#8A877F', width: 52, textAlign: 'right', paddingRight: 8 }}>{child.quantity}{child.unit ? ` ${child.unit}` : ''}</Text>
+                      <View style={{ width: 72 }} />
+                      <View style={{ width: 72 }} />
+                    </View>
+                  )
+                })}
               </View>
             )
           })}
@@ -149,9 +217,10 @@ function POPage({ project, items, supplier, vatRate = 15, logoUrl, businessName,
   )
 }
 
-export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: Props) {
+export function POPDF({ project, lineItems, allLineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
-  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }
+  const fullItems = allLineItems ?? lineItems
+  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts, allItems: fullItems, allSuppliers: suppliers }
 
   // Single supplier mode — lineItems already filtered by API
   if (supplierId) {
@@ -165,7 +234,7 @@ export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15,
 
   // All suppliers mode — one page per supplier with section inheritance
   const supplierIds = [...new Set(
-    lineItems.filter(i => i.row_type !== 'section' && i.supplier_id).map(i => i.supplier_id!)
+    lineItems.filter(i => i.row_type !== 'section' && i.supplier_id && !i.parent_item_id).map(i => i.supplier_id!)
   )]
 
   return (
@@ -176,7 +245,7 @@ export function POPDF({ project, lineItems, suppliers, supplierId, vatRate = 15,
         let pendingSection: LineItem | null = null
         for (const item of lineItems) {
           if (item.row_type === 'section') { pendingSection = item }
-          else if (item.supplier_id === sid) {
+          else if (item.supplier_id === sid && !item.parent_item_id) {
             if (pendingSection) { result.push(pendingSection); pendingSection = null }
             result.push(item)
           }

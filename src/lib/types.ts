@@ -20,6 +20,8 @@ export interface Supplier {
   email: string | null
   email_cc: string | null
   delivery_address: string | null
+  delivery_contact_name: string | null
+  delivery_contact_number: string | null
   markup_percentage: number
   is_platform: boolean
   price_list_id: string | null
@@ -79,6 +81,8 @@ export interface LineItem {
   colour_finish: string | null
   twinbru_product_id: number | null
   twinbru_cost_price: number | null
+  fabric_width_cm: number | null
+  parent_item_id: string | null
   created_at: string
 }
 

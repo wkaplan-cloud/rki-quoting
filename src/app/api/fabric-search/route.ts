@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const words = q.split(/\s+/).filter(Boolean)
   let query = supabase
     .from('price_list_items')
-    .select('id, brand, collection, design, colour, sku, product_id, price_zar, image_url')
+    .select('id, brand, collection, design, colour, sku, product_id, price_zar, image_url, useable_width_cm')
   for (const word of words) {
     query = query.or(`design.ilike.%${word}%,colour.ilike.%${word}%,collection.ilike.%${word}%,sku.ilike.%${word}%,brand.ilike.%${word}%`)
   }
