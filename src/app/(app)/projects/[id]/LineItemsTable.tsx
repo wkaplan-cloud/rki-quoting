@@ -444,6 +444,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               // ── Item row ────────────────────────────────────────────────
               const c = computeLineItem(item)
               const isLinked = !!item.parent_item_id
+              const isParent = lineItems.some(i => i.parent_item_id === item.id)
 
               return (
                 <tr
@@ -456,11 +457,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   className={`border-b border-[#EDE9E1] last:border-0 group transition-colors
                     ${item.received
                       ? 'bg-blue-50 hover:bg-blue-50'
-                      : isLinked ? 'bg-amber-50 hover:bg-amber-100/60' : 'hover:bg-[#FDFCF9]'
+                      : isLinked ? 'bg-amber-50/50 hover:bg-amber-50/70'
+                      : isParent ? 'bg-amber-50/25 hover:bg-amber-50/40'
+                      : 'hover:bg-[#FDFCF9]'
                     }`}
                 >
                   {/* Drag handle */}
-                  <td className={`px-1.5 py-1 text-[#D8D3C8] ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                  <td className={`px-1.5 py-1 text-[#D8D3C8] ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
                     {!locked && <GripVertical size={14} />}
                   </td>
 
