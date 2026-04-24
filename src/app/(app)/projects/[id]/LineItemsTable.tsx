@@ -468,7 +468,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
                         <div className="flex-1 min-w-0">
-                          {(() => { const pl = suppliers.find(s => s.id === item.supplier_id)?.price_list_id; return pl && activePriceListIds.includes(pl) })() ? (
+                          {suppliers.find(s => s.id === item.supplier_id)?.is_platform ? (
                             <FabricSearch
                               value={item.item_name}
                               onChange={v => updateLocal(item.id, 'item_name', v)}
