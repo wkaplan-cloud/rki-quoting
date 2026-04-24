@@ -128,7 +128,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
               <Text style={[s.td, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
               <Text style={[s.td, s.tdMuted, { width: W.supplier, paddingRight: 6 }]}>{supplierMap[item.supplier_id ?? ''] ?? ''}</Text>
               <Text style={[s.td, s.tdMuted, { width: W.deliver, paddingRight: 6 }]}>{item.delivery_address ?? ''}</Text>
-              <Text style={[s.td, s.tdMuted, { width: W.lead, textAlign: 'right', paddingRight: 6 }]}>{item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
+              <Text style={[s.td, s.tdMuted, { width: W.lead, textAlign: 'right', paddingRight: 6 }]}>{item.lead_time_days != null ? `${item.lead_time_days}d` : item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
               <Text style={[s.td, { width: W.cost, textAlign: 'right', paddingRight: 6 }]}>{formatZAR(item.cost_price)}</Text>
               <Text style={[s.td, s.tdMuted, { width: W.mkup, textAlign: 'right', paddingRight: 6 }]}>{item.markup_percentage}%</Text>
               <Text style={[s.td, { width: W.sale, textAlign: 'right', paddingRight: 6 }]}>{formatZAR(c.sale_price)}</Text>

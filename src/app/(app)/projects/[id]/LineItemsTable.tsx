@@ -112,7 +112,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const [stockMap, setStockMap] = useState<Record<string, { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null } | null>>({})
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  const fetchStock = useCallback((lineItemId: string, productId: string, _quantity: number, autoFillLead?: (weeks: number) => void) => {
+  const fetchStock = useCallback((lineItemId: string, productId: string, _quantity: number, autoFillLead?: (info: { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null }) => void) => {
     if (stockDebounceRef.current[lineItemId]) clearTimeout(stockDebounceRef.current[lineItemId])
     stockDebounceRef.current[lineItemId] = setTimeout(async () => {
       try {
@@ -120,9 +120,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         const data = await res.json()
         if (data.weeksUntilAvailable !== undefined) {
           setStockMap(m => ({ ...m, [lineItemId]: data }))
-          if (autoFillLead && data.weeksUntilAvailable != null) {
-            autoFillLead(data.weeksUntilAvailable)
-          }
+          if (autoFillLead) autoFillLead(data)
         }
       } catch { /* silent */ }
     }, 600)
@@ -276,12 +274,25 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     if (fabric.product_id) {
       const currentItem = lineItems.find(i => i.id === lineItemId)
       const qty = currentItem?.quantity ?? 1
-      fetchStock(lineItemId, fabric.product_id, qty, async (weeks) => {
-        // Only auto-fill if lead time is currently empty
-        if (!currentItem?.lead_time_weeks) {
-          onChange(lineItems.map(i => i.id === lineItemId ? { ...i, ...updates, lead_time_weeks: weeks } : i))
-          await supabase.from('line_items').update({ lead_time_weeks: weeks }).eq('id', lineItemId)
+      fetchStock(lineItemId, fabric.product_id, qty, async (stockInfo) => {
+        const transitDays = stockInfo.transitDate
+          ? Math.ceil((new Date(stockInfo.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+          : null
+        const isInStock = (stockInfo.localQty != null && stockInfo.localQty > 0) || (transitDays != null && transitDays <= 1)
+        const transitWeeks = stockInfo.transitDate && transitDays != null && transitDays > 1
+          ? Math.ceil(transitDays / 7)
+          : null
+
+        if (isInStock) {
+          // Green badge — 2 days lead time
+          onChange(lineItems.map(i => i.id === lineItemId ? { ...i, ...updates, lead_time_days: 2, lead_time_weeks: null } : i))
+          await supabase.from('line_items').update({ lead_time_days: 2, lead_time_weeks: null }).eq('id', lineItemId)
+        } else if (transitWeeks != null) {
+          // Blue badge — set weeks, clear days
+          onChange(lineItems.map(i => i.id === lineItemId ? { ...i, ...updates, lead_time_weeks: transitWeeks, lead_time_days: null } : i))
+          await supabase.from('line_items').update({ lead_time_weeks: transitWeeks, lead_time_days: null }).eq('id', lineItemId)
         }
+        // Amber — don't touch lead time
       })
     }
   }, [lineItems, onChange, supabase, fetchStock])
@@ -644,18 +655,33 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
                   {/* Lead time */}
                   <td className={COL}>
-                    <div className="flex items-center gap-0.5 justify-end">
-                      <input
-                        type="number" min="0" step="1"
-                        value={item.lead_time_weeks ?? ''}
-                        onChange={e => updateLocal(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
-                        onBlur={e => saveField(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
-                        readOnly={locked}
-                        className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
-                        placeholder="–"
-                      />
-                      <span className="text-xs text-[#8A877F] flex-shrink-0">wks</span>
-                    </div>
+                    {item.lead_time_days != null ? (
+                      <div className="flex items-center gap-0.5 justify-end">
+                        <input
+                          type="number" min="0" step="1"
+                          value={item.lead_time_days}
+                          onChange={e => updateLocal(item.id, 'lead_time_days', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
+                          onBlur={e => saveField(item.id, 'lead_time_days', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
+                          readOnly={locked}
+                          className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                          placeholder="–"
+                        />
+                        <span className="text-xs text-[#8A877F] flex-shrink-0">days</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-0.5 justify-end">
+                        <input
+                          type="number" min="0" step="1"
+                          value={item.lead_time_weeks ?? ''}
+                          onChange={e => updateLocal(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
+                          onBlur={e => saveField(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
+                          readOnly={locked}
+                          className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                          placeholder="–"
+                        />
+                        <span className="text-xs text-[#8A877F] flex-shrink-0">wks</span>
+                      </div>
+                    )}
                   </td>
 
                   {/* Cost Price */}

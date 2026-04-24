@@ -74,6 +74,7 @@ export interface LineItem {
   fabric_image_url: string | null
   unit: string | null
   lead_time_weeks: number | null
+  lead_time_days: number | null
   dimensions: string | null
   colour_finish: string | null
   twinbru_product_id: number | null
