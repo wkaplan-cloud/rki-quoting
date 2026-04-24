@@ -19,9 +19,16 @@ interface Props {
   platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null }[]
 }
 
-function DeliverToCell({ deliveryAddress, allSuppliers }: { deliveryAddress: string | null; allSuppliers: Supplier[] }) {
+function DeliverToCell({ deliveryAddress, allSuppliers, businessName, businessAddress }: { deliveryAddress: string | null; allSuppliers: Supplier[]; businessName?: string | null; businessAddress?: string | null }) {
   if (!deliveryAddress) return <Text style={[styles.td, styles.tdMuted, { flex: 2 }]}>—</Text>
-  const lines = deliveryAddress.split('\n')
+
+  // Old-style: raw address stored without a name prefix — detect by matching businessAddress
+  let normalised = deliveryAddress
+  if (businessAddress && businessName && deliveryAddress.trim() === businessAddress.trim()) {
+    normalised = `${businessName}\n${businessAddress}`
+  }
+
+  const lines = normalised.split('\n')
   const firstLine = lines[0]
   const restLines = lines.slice(1).join(', ')
   // Look up supplier by delivery name match to get contact fields
@@ -156,7 +163,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
                     ) : null}
                   </View>
                   <Text style={[styles.td, styles.tdMuted, { flex: 3, paddingLeft: 6, paddingRight: 8 }]}>{item.description ?? ''}</Text>
-                  <DeliverToCell deliveryAddress={item.delivery_address} allSuppliers={allSuppliers} />
+                  <DeliverToCell deliveryAddress={item.delivery_address} allSuppliers={allSuppliers} businessName={businessName} businessAddress={businessAddress} />
                   <Text style={[styles.td, styles.tdMuted, { width: 36, textAlign: 'right', paddingRight: 4 }]}>{item.lead_time_days != null ? `${item.lead_time_days}d` : item.lead_time_weeks ? `${item.lead_time_weeks}w` : ''}</Text>
                   <Text style={[styles.td, { width: 52, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                   <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(item.cost_price)}</Text>

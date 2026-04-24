@@ -248,7 +248,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       quantity: 1,
       cost_price: 0,
       markup_percentage: 0,
-      delivery_address: officeAddress.address || '',
+      delivery_address: officeAddress.address ? `${officeAddress.name}\n${officeAddress.address}` : '',
       sort_order,
       row_type: 'item',
       indent_level: 0,
@@ -546,37 +546,27 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         />
                       </div>
                       {item.twinbru_product_id && (() => {
-                        const w = item.twinbru_product_id != null ? (widthMap[item.twinbru_product_id] ?? item.fabric_width_cm) : item.fabric_width_cm
-                        if (!w) return null
+                        const w = widthMap[item.twinbru_product_id] ?? item.fabric_width_cm
+                        const s = !depositReceived ? stockMap[item.id] : null
+                        if (!w && !s) return null
+                        const transitDays = s?.transitDate ? Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null
+                        const transitIsNextDay = transitDays != null && transitDays <= 1
+                        const localQty = ((s?.localQty ?? 0) + (transitIsNextDay && s?.transitQty ? s.transitQty : 0))
+                        const showLocal = localQty > 0
+                        const showTransit = s?.transitQty != null && s?.transitDate && !transitIsNextDay
+                        const showLead = s && !showLocal && !showTransit && !!s.maxLeadTimeDate
                         return (
-                          <div className="mt-1">
-                            <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#EDE9E1] text-[#8A877F]">{w}cm wide</span>
-                          </div>
-                        )
-                      })()}
-                      {!depositReceived && item.twinbru_product_id && (() => {
-                        const s = stockMap[item.id]
-                        if (!s) return null
-                        return (
-                          <div className="flex flex-col gap-0.5 mt-1">
-                            {(() => {
-                              const transitDays = s.transitDate ? Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null
-                              const transitIsNextDay = transitDays != null && transitDays <= 1
-                              const localQty = (s.localQty ?? 0) + (transitIsNextDay && s.transitQty ? s.transitQty : 0)
-                              const showLocal = localQty > 0
-                              const showTransit = s.transitQty != null && s.transitDate && !transitIsNextDay
-                              return <>
-                                {showLocal && (
-                                  <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{localQty.toLocaleString()}m — in stock</span>
-                                )}
-                                {showTransit && (
-                                  <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{s.transitQty!.toLocaleString()}m — in transit (~{Math.ceil((new Date(s.transitDate!).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))}w)</span>
-                                )}
-                                {!showLocal && !showTransit && s.maxLeadTimeDate && (
-                                  <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{Math.max(1, Math.ceil((new Date(s.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time</span>
-                                )}
-                              </>
-                            })()}
+                          <div className="flex flex-row flex-wrap gap-1 mt-1">
+                            {w ? <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#EDE9E1] text-[#8A877F]">{w}cm wide</span> : null}
+                            {showLocal && (
+                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{localQty.toLocaleString()}m — in stock</span>
+                            )}
+                            {showTransit && (
+                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{s!.transitQty!.toLocaleString()}m — in transit (~{Math.ceil((new Date(s!.transitDate!).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))}w)</span>
+                            )}
+                            {showLead && (
+                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{Math.max(1, Math.ceil((new Date(s!.maxLeadTimeDate!).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time</span>
+                            )}
                           </div>
                         )
                       })()}
@@ -723,7 +713,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         })()
                       : (() => {
                           const deliveryOptions = [
-                            ...(officeAddress.address ? [{ id: officeAddress.address, label: officeAddress.name }] : []),
+                            ...(officeAddress.address ? [{ id: `${officeAddress.name}\n${officeAddress.address}`, label: officeAddress.name }] : []),
                             ...suppliers.map(s => {
                               const addr = deliveryOverrides[s.id] ?? s.delivery_address
                               return addr
