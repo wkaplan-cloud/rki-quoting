@@ -456,11 +456,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   className={`border-b border-[#EDE9E1] last:border-0 group transition-colors
                     ${item.received
                       ? 'bg-blue-50 hover:bg-blue-50'
-                      : isLinked ? 'bg-amber-50/40 hover:bg-amber-50/60' : 'hover:bg-[#FDFCF9]'
+                      : isLinked ? 'bg-amber-50 hover:bg-amber-100/60' : 'hover:bg-[#FDFCF9]'
                     }`}
                 >
                   {/* Drag handle */}
-                  <td className={`px-1.5 py-1 text-[#D8D3C8] ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                  <td className={`px-1.5 py-1 text-[#D8D3C8] ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
                     {!locked && <GripVertical size={14} />}
                   </td>
 
@@ -527,6 +527,14 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           </>
                         )}
                       </div>
+                      {isLinked && (() => {
+                        const parent = lineItems.find(i => i.id === item.parent_item_id)
+                        return (
+                          <p className="text-[9px] text-[#9A7B4F] font-medium mt-0.5 pl-1">
+                            ↳ {parent?.item_name || 'linked item'}
+                          </p>
+                        )
+                      })()}
                       <div className="flex gap-1 mt-0.5">
                         <input
                           value={item.dimensions ?? ''}
