@@ -713,7 +713,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         })()
                       : (() => {
                           const deliveryOptions = [
-                            ...(officeAddress.address ? [{ id: `${officeAddress.name}\n${officeAddress.address}`, label: officeAddress.name }] : []),
+                            ...(officeAddress.address ? [{ id: `${officeAddress.name}\n${officeAddress.address}`, label: 'Office' }] : []),
                             ...suppliers.map(s => {
                               const addr = deliveryOverrides[s.id] ?? s.delivery_address
                               return addr
