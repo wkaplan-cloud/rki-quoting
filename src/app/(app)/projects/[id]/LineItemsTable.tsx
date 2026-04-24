@@ -494,15 +494,24 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         if (!s) return null
                         return (
                           <div className="flex flex-col gap-0.5 mt-1">
-                            {s.localQty != null && s.localQty > 0 && (
-                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{s.localQty.toLocaleString()}m in stock — next day</span>
-                            )}
-                            {s.transitQty != null && s.transitDate && (
-                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{s.transitQty.toLocaleString()}m — arriving in ~{Math.max(1, Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))} days</span>
-                            )}
-                            {s.localQty == null && s.transitQty == null && s.maxLeadTimeDate && (
-                              <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{Math.max(1, Math.ceil((new Date(s.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time</span>
-                            )}
+                            {(() => {
+                              const transitDays = s.transitDate ? Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null
+                              const transitIsNextDay = transitDays != null && transitDays <= 1
+                              const localQty = (s.localQty ?? 0) + (transitIsNextDay && s.transitQty ? s.transitQty : 0)
+                              const showLocal = localQty > 0
+                              const showTransit = s.transitQty != null && s.transitDate && !transitIsNextDay
+                              return <>
+                                {showLocal && (
+                                  <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{localQty.toLocaleString()}m — in stock</span>
+                                )}
+                                {showTransit && (
+                                  <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">{s.transitQty!.toLocaleString()}m — in transit (~{Math.ceil((new Date(s.transitDate!).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))}w)</span>
+                                )}
+                                {!showLocal && !showTransit && s.maxLeadTimeDate && (
+                                  <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{Math.max(1, Math.ceil((new Date(s.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time</span>
+                                )}
+                              </>
+                            })()}
                           </div>
                         )
                       })()}
