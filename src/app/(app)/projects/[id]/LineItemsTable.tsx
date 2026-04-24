@@ -683,10 +683,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'lead_time_days', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           onBlur={e => saveField(item.id, 'lead_time_days', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           readOnly={locked}
-                          className="w-6 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-0.5 py-0.5 placeholder-[#C4BFB5]"
+                          className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
                           placeholder="–"
                         />
-                        <span className="text-xs text-[#8A877F] flex-shrink-0">days</span>
+                        <span className="text-xs text-[#8A877F] flex-shrink-0">d</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-0.5 justify-end">
@@ -696,10 +696,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           onBlur={e => saveField(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           readOnly={locked}
-                          className="w-6 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-0.5 py-0.5 placeholder-[#C4BFB5]"
+                          className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
                           placeholder="–"
                         />
-                        <span className="text-xs text-[#8A877F] flex-shrink-0">wks</span>
+                        <span className="text-xs text-[#8A877F] flex-shrink-0">w</span>
                       </div>
                     )}
                   </td>
