@@ -20,6 +20,15 @@ interface Props {
 }
 
 function DeliverToCell({ deliveryAddress, allSuppliers, businessName, businessAddress }: { deliveryAddress: string | null; allSuppliers: Supplier[]; businessName?: string | null; businessAddress?: string | null }) {
+  // Blank → fall back to office address
+  if (!deliveryAddress && businessName && businessAddress) {
+    return (
+      <View style={{ flex: 2 }}>
+        <Text style={[styles.td, { fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{businessName}</Text>
+        <Text style={[styles.td, styles.tdMuted, { fontSize: 6, marginTop: 1 }]}>{businessAddress.replace(/\n/g, ', ')}</Text>
+      </View>
+    )
+  }
   if (!deliveryAddress) return <Text style={[styles.td, styles.tdMuted, { flex: 2 }]}>—</Text>
 
   // Old-style: raw address stored without a name prefix — detect by matching businessAddress
