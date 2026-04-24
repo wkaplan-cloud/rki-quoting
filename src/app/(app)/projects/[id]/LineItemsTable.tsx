@@ -111,6 +111,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const [dropsForm, setDropsForm] = useState<{ drops: string; height: string }>({ drops: '', height: '' })
   // Map of twinbru_product_id → current catalogue price (for stale price detection)
   const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
+  // Map of twinbru_product_id → fabric width in cm (from price list)
+  const [widthMap, setWidthMap] = useState<Record<number, number | null>>({})
   // Map of line item id → stock info
   const [stockMap, setStockMap] = useState<Record<string, { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null } | null>>({})
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -138,16 +140,21 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     if (ids.length === 0) return
     supabase
       .from('price_list_items')
-      .select('product_id, price_zar')
+      .select('product_id, price_zar, useable_width_cm')
       .in('product_id', ids.map(String))
       .then(({ data }) => {
         if (!data) return
-        const map: Record<number, number | null> = {}
+        const priceMap: Record<number, number | null> = {}
+        const wMap: Record<number, number | null> = {}
         for (const row of data) {
           const pid = parseInt(row.product_id, 10)
-          if (!isNaN(pid)) map[pid] = row.price_zar
+          if (!isNaN(pid)) {
+            priceMap[pid] = row.price_zar
+            wMap[pid] = row.useable_width_cm ?? null
+          }
         }
-        setCataloguePrices(map)
+        setCataloguePrices(priceMap)
+        setWidthMap(wMap)
       })
   // Only re-run when the set of twinbru product IDs changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -559,11 +566,15 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
                         />
                       </div>
-                      {item.twinbru_product_id && item.fabric_width_cm != null && (
-                        <div className="mt-1">
-                          <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#EDE9E1] text-[#8A877F]">{item.fabric_width_cm}cm wide</span>
-                        </div>
-                      )}
+                      {item.twinbru_product_id && (() => {
+                        const w = item.twinbru_product_id != null ? (widthMap[item.twinbru_product_id] ?? item.fabric_width_cm) : item.fabric_width_cm
+                        if (!w) return null
+                        return (
+                          <div className="mt-1">
+                            <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#EDE9E1] text-[#8A877F]">{w}cm wide</span>
+                          </div>
+                        )
+                      })()}
                       {!depositReceived && item.twinbru_product_id && (() => {
                         const s = stockMap[item.id]
                         if (!s) return null
