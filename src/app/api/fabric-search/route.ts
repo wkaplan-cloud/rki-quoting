@@ -9,12 +9,15 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Search across design, colour, collection, sku — return top 20
-  const { data, error } = await supabase
+  // Split query into words and AND them — matches "casual pewter" across design + colour fields
+  const words = q.split(/\s+/).filter(Boolean)
+  let query = supabase
     .from('price_list_items')
     .select('id, brand, collection, design, colour, sku, product_id, price_zar, image_url')
-    .or(`design.ilike.%${q}%,colour.ilike.%${q}%,collection.ilike.%${q}%,sku.ilike.%${q}%`)
-    .limit(20)
+  for (const word of words) {
+    query = query.or(`design.ilike.%${word}%,colour.ilike.%${word}%,collection.ilike.%${word}%,sku.ilike.%${word}%,brand.ilike.%${word}%`)
+  }
+  const { data, error } = await query.limit(20)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data ?? [])
