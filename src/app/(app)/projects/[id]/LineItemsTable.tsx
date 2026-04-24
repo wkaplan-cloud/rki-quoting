@@ -153,7 +153,25 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     if (depositReceived) return
     for (const item of lineItems) {
       if (item.twinbru_product_id) {
-        fetchStock(item.id, String(item.twinbru_product_id), item.quantity)
+        const capturedItem = item
+        fetchStock(item.id, String(item.twinbru_product_id), item.quantity, async (stockInfo) => {
+          // Only auto-fill if lead time fields are both empty
+          if (capturedItem.lead_time_days != null || capturedItem.lead_time_weeks != null) return
+          const transitDays = stockInfo.transitDate
+            ? Math.ceil((new Date(stockInfo.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+            : null
+          const isInStock = (stockInfo.localQty != null && stockInfo.localQty > 0) || (transitDays != null && transitDays <= 1)
+          const transitWeeks = stockInfo.transitDate && transitDays != null && transitDays > 1
+            ? Math.ceil(transitDays / 7)
+            : null
+          if (isInStock) {
+            onChange(lineItems.map(i => i.id === capturedItem.id ? { ...i, lead_time_days: 2, lead_time_weeks: null } : i))
+            await supabase.from('line_items').update({ lead_time_days: 2, lead_time_weeks: null }).eq('id', capturedItem.id)
+          } else if (transitWeeks != null) {
+            onChange(lineItems.map(i => i.id === capturedItem.id ? { ...i, lead_time_weeks: transitWeeks, lead_time_days: null } : i))
+            await supabase.from('line_items').update({ lead_time_weeks: transitWeeks, lead_time_days: null }).eq('id', capturedItem.id)
+          }
+        })
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
