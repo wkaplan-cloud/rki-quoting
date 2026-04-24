@@ -111,6 +111,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Map of line item id → stock info
   const [stockMap, setStockMap] = useState<Record<string, { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null } | null>>({})
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const lineItemsRef = useRef(lineItems)
+  useEffect(() => { lineItemsRef.current = lineItems }, [lineItems])
 
   const fetchStock = useCallback((lineItemId: string, productId: string, _quantity: number, autoFillLead?: (info: { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null }) => void) => {
     if (stockDebounceRef.current[lineItemId]) clearTimeout(stockDebounceRef.current[lineItemId])
@@ -153,10 +155,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     if (depositReceived) return
     for (const item of lineItems) {
       if (item.twinbru_product_id) {
-        const capturedItem = item
-        fetchStock(item.id, String(item.twinbru_product_id), item.quantity, async (stockInfo) => {
-          // Only auto-fill if lead time fields are both empty
-          if (capturedItem.lead_time_days != null || capturedItem.lead_time_weeks != null) return
+        const itemId = item.id
+        const productId = String(item.twinbru_product_id)
+        fetchStock(itemId, productId, item.quantity, async (stockInfo) => {
           const transitDays = stockInfo.transitDate
             ? Math.ceil((new Date(stockInfo.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
             : null
@@ -165,12 +166,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
             ? Math.ceil(transitDays / 7)
             : null
           if (isInStock) {
-            onChange(lineItems.map(i => i.id === capturedItem.id ? { ...i, lead_time_days: 2, lead_time_weeks: null } : i))
-            await supabase.from('line_items').update({ lead_time_days: 2, lead_time_weeks: null }).eq('id', capturedItem.id)
+            onChange(lineItemsRef.current.map(i => i.id === itemId ? { ...i, lead_time_days: 2, lead_time_weeks: null } : i))
+            await supabase.from('line_items').update({ lead_time_days: 2, lead_time_weeks: null }).eq('id', itemId)
           } else if (transitWeeks != null) {
-            onChange(lineItems.map(i => i.id === capturedItem.id ? { ...i, lead_time_weeks: transitWeeks, lead_time_days: null } : i))
-            await supabase.from('line_items').update({ lead_time_weeks: transitWeeks, lead_time_days: null }).eq('id', capturedItem.id)
+            onChange(lineItemsRef.current.map(i => i.id === itemId ? { ...i, lead_time_weeks: transitWeeks, lead_time_days: null } : i))
+            await supabase.from('line_items').update({ lead_time_weeks: transitWeeks, lead_time_days: null }).eq('id', itemId)
           }
+          // Amber — leave lead time unchanged
         })
       }
     }
