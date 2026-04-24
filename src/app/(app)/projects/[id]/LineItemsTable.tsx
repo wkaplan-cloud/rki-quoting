@@ -362,7 +362,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <th className="text-right px-2 py-2 min-w-[130px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
-              <th className="text-right px-2 py-2 min-w-[70px] whitespace-nowrap">Lead</th>
+              <th className="text-right px-1 py-2 min-w-[52px] whitespace-nowrap">Lead</th>
               <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Cost</th>
               <th className="text-right px-2 py-2 min-w-[80px] whitespace-nowrap">Mkup%</th>
               <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Sale</th>
@@ -674,7 +674,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Lead time */}
-                  <td className={COL}>
+                  <td className={COL.replace('px-2', 'px-1')}>
                     {item.lead_time_days != null ? (
                       <div className="flex items-center gap-0.5 justify-end">
                         <input
@@ -683,7 +683,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'lead_time_days', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           onBlur={e => saveField(item.id, 'lead_time_days', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           readOnly={locked}
-                          className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                          className="w-6 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-0.5 py-0.5 placeholder-[#C4BFB5]"
                           placeholder="–"
                         />
                         <span className="text-xs text-[#8A877F] flex-shrink-0">days</span>
@@ -696,7 +696,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           onBlur={e => saveField(item.id, 'lead_time_weeks', e.target.value === '' ? null : parseInt(e.target.value) || 0)}
                           readOnly={locked}
-                          className="w-8 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                          className="w-6 bg-transparent outline-none text-xs text-right tabular-nums text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-0.5 py-0.5 placeholder-[#C4BFB5]"
                           placeholder="–"
                         />
                         <span className="text-xs text-[#8A877F] flex-shrink-0">wks</span>
