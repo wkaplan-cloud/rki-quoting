@@ -36,17 +36,25 @@ function StockBadge({ productId }: { productId: string }) {
 
   if (!stock) return null
 
+  const transitDays = stock.transitDate
+    ? Math.ceil((new Date(stock.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    : null
+  const transitIsNextDay = transitDays != null && transitDays <= 1
+  const localQty = (stock.localQty ?? 0) + (transitIsNextDay && stock.transitQty ? stock.transitQty : 0)
+  const showLocal = localQty > 0
+  const showTransit = stock.transitQty != null && stock.transitDate && !transitIsNextDay
+
   return (
     <div className="flex flex-col gap-0.5">
-      {stock.localQty != null && stock.localQty > 0 && (
-        <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{stock.localQty.toLocaleString()}m in stock — next day</span>
+      {showLocal && (
+        <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{localQty.toLocaleString()}m — in stock</span>
       )}
-      {stock.transitQty != null && stock.transitDate && (
+      {showTransit && (
         <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-          {stock.transitQty.toLocaleString()}m — arriving in ~{Math.max(1, Math.ceil((new Date(stock.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))} days
+          {stock.transitQty!.toLocaleString()}m — in transit (~{Math.ceil((new Date(stock.transitDate!).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))}w)
         </span>
       )}
-      {stock.localQty == null && stock.transitQty == null && stock.maxLeadTimeDate && (
+      {!showLocal && !showTransit && stock.maxLeadTimeDate && (
         <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
           ~{Math.max(1, Math.ceil((new Date(stock.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time
         </span>
