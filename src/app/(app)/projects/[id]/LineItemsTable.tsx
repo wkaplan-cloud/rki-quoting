@@ -94,7 +94,6 @@ const LINE_ITEM_TIPS = [
   { col: 'Profit', tip: 'Your profit per unit (Sale minus Cost). Shown for your reference only.' },
   { col: 'Tot. Cost', tip: 'Total cost for this line (Cost × Qty).' },
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
-  { col: 'Indent', tip: 'Use the indent button (↳) to nest a line under the one above — useful for sub-items like fabric under a sofa. Indented rows are slightly inset on the Production Sheet.' },
 ]
 
 export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived }: Props) {
@@ -328,11 +327,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }
   }, [lineItems, onChange, supabase, fetchStock])
 
-  const toggleIndent = useCallback(async (id: string, currentLevel: number) => {
-    const indent_level = currentLevel > 0 ? 0 : 1
-    onChange(lineItems.map(item => item.id === id ? { ...item, indent_level } : item))
-    await supabase.from('line_items').update({ indent_level }).eq('id', id)
-  }, [lineItems, onChange, supabase])
 
   const toggleLink = useCallback(async (id: string, currentParentId: string | null) => {
     if (currentParentId) {
@@ -449,7 +443,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
               // ── Item row ────────────────────────────────────────────────
               const c = computeLineItem(item)
-              const indented = item.indent_level > 0
               const isLinked = !!item.parent_item_id
 
               return (
@@ -463,7 +456,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   className={`border-b border-[#EDE9E1] last:border-0 group transition-colors
                     ${item.received
                       ? 'bg-blue-50 hover:bg-blue-50'
-                      : isLinked ? 'bg-amber-50/40 hover:bg-amber-50/60' : indented ? 'bg-[#FDFCF9] hover:bg-[#FDFCF9]' : 'hover:bg-[#FDFCF9]'
+                      : isLinked ? 'bg-amber-50/40 hover:bg-amber-50/60' : 'hover:bg-[#FDFCF9]'
                     }`}
                 >
                   {/* Drag handle */}
@@ -490,14 +483,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     </button>
                   </td>
 
-                  {/* Item name — with indent toggle + visual indent + dimensions/colour */}
+                  {/* Item name — with link toggle + dimensions/colour */}
                   <td className={COL}>
-                    <div className={indented ? 'pl-4' : ''}>
+                    <div className={isLinked ? 'pl-4' : ''}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
-                          <Link2 size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
-                        )}
-                        {!isLinked && indented && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
                         <div className="flex-1 min-w-0">
@@ -533,17 +523,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                                 }`}
                             >
                               {isLinked ? <Unlink2 size={12} /> : <Link2 size={12} />}
-                            </button>
-                            <button
-                              onClick={() => toggleIndent(item.id, item.indent_level)}
-                              title={indented ? 'Remove indent' : 'Indent item'}
-                              className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
-                                ${indented
-                                  ? 'text-[#9A7B4F] opacity-100'
-                                  : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
-                                }`}
-                            >
-                              <CornerDownRight size={12} />
                             </button>
                           </>
                         )}
