@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { apiError } from '@/lib/api-error'
 
 const PLANS: Record<string, { price: number; planCode: string }> = {
   solo:   { price: 699,  planCode: process.env.PAYSTACK_PLAN_SOLO   ?? '' },
@@ -9,6 +10,7 @@ const PLANS: Record<string, { price: number; planCode: string }> = {
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -77,4 +79,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ authorization_url: paystackData.data.authorization_url })
+  } catch (e) {
+    return apiError(e)
+  }
 }

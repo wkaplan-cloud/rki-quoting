@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-error'
 
 // Debug route — fetches a single product by ID and returns all raw fields
 // Usage: GET /api/admin/twinbru-test?productId=35250
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Test 1: GET single product by ID
+  try {
   const productId = req.nextUrl.searchParams.get('productId') ?? '35250'
   const getRes = await fetch(`${BASE}/products/${productId}`, { headers: productHeaders })
   const getText = await getRes.text()
@@ -44,4 +46,7 @@ export async function GET(req: NextRequest) {
     get:   { status: getRes.status,   ok: getRes.ok,   raw: getJson   ?? getText.slice(0, 500) },
     stock: { status: stockRes.status, ok: stockRes.ok, raw: stockJson ?? stockText.slice(0, 500) },
   })
+  } catch (e) {
+    return apiError(e)
+  }
 }

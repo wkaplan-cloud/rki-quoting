@@ -3,9 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import Papa from 'papaparse'
 import * as XLSX from 'xlsx'
+import { apiError } from '@/lib/api-error'
 
 // POST /api/supplier-portal/price-list/import — CSV or XLSX bulk import
 export async function POST(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -74,4 +76,7 @@ export async function POST(req: NextRequest) {
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
 
   return NextResponse.json({ success: true, count: items.length })
+  } catch (e) {
+    return apiError(e)
+  }
 }

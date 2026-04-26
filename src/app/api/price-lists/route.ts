@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-error'
 
 function isPlatformAdmin(email: string | undefined) {
   return !!(email && process.env.PLATFORM_ADMIN_EMAIL && email.toLowerCase() === process.env.PLATFORM_ADMIN_EMAIL.toLowerCase())
@@ -7,6 +8,7 @@ function isPlatformAdmin(email: string | undefined) {
 
 // POST — create a new price list (metadata only, no items)
 export async function POST(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user || !isPlatformAdmin(user.email)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -22,10 +24,14 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ id: data.id })
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 // DELETE — remove a price list (cascades to items)
 export async function DELETE(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user || !isPlatformAdmin(user.email)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -36,4 +42,7 @@ export async function DELETE(req: NextRequest) {
   const { error } = await supabase.from('price_lists').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

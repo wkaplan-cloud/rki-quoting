@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { apiError } from '@/lib/api-error'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
+
+function escHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
 
 // GET /api/sourcing/[id]/messages?recipient_id=X — designer fetches message thread
 export async function GET(
@@ -33,6 +38,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id } = await params
   const resend = new Resend(process.env.RESEND_API_KEY)
   const supabase = await createClient()
@@ -102,7 +108,7 @@ export async function POST(
           <td style="background-color:#ffffff;padding:32px 40px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
             <p style="margin:0 0 8px;font-size:13px;color:#8A877F;">Re: <strong style="color:#2C2C2A;">${request.title}</strong></p>
             <div style="background:#F5F2EC;border:1px solid #EDE9E1;border-left:3px solid #C4A46B;border-radius:4px;padding:14px 18px;margin:16px 0;">
-              <p style="margin:0;font-size:14px;color:#2C2C2A;line-height:1.7;white-space:pre-wrap;">${body.body.trim()}</p>
+              <p style="margin:0;font-size:14px;color:#2C2C2A;line-height:1.7;white-space:pre-wrap;">${escHtml(body.body.trim())}</p>
             </div>
             <a href="${respondUrl}" style="display:inline-block;background-color:#2C2C2A;color:#F5F2EC;font-size:13px;font-weight:600;padding:12px 24px;border-radius:6px;text-decoration:none;margin-top:8px;">View &amp; Reply →</a>
           </td>
@@ -118,7 +124,12 @@ export async function POST(
 </body>
 </html>`,
     text: `${studioName} sent you a message about "${request.title}":\n\n${body.body.trim()}\n\nReply here: ${respondUrl}`,
-  }).catch(() => {})
+  }).catch((err: unknown) => {
+    console.error('[sourcing/messages] supplier email notification failed:', err)
+  })
 
   return NextResponse.json({ message })
+  } catch (e) {
+    return apiError(e)
+  }
 }

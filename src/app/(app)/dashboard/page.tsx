@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const { data: orgId } = await supabase.rpc('get_current_org_id')
   const [{ data: projects }, { data: allLineItems }, { data: settings }, { data: org }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
-    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
+    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').neq('row_type', 'section').limit(5000),
     supabase.from('settings').select('sage_access_token, sage_company_id').maybeSingle(),
     orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null }),
   ])

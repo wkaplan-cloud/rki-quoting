@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-error'
 
 // POST /api/sourcing/[id]/cancel — cancel a request at any non-terminal state
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,4 +30,7 @@ export async function POST(
     .eq('id', id)
 
   return NextResponse.json({ success: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

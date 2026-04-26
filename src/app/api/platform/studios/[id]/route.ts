@@ -11,7 +11,7 @@ export async function DELETE(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.email !== process.env.PLATFORM_ADMIN_EMAIL) {
+  if (!user || user.email?.toLowerCase() !== process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -39,7 +39,7 @@ export async function POST(
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.email !== process.env.PLATFORM_ADMIN_EMAIL) {
+  if (!user || user.email?.toLowerCase() !== process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase()) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

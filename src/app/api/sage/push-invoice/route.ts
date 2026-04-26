@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { sageGet, sagePost } from '@/lib/sage'
 import { computeLineItems } from '@/lib/quoting'
 
+export const maxDuration = 30
+
 export async function POST(req: NextRequest) {
   try {
     const { projectId, sageContactId } = await req.json()

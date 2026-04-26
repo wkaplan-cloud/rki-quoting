@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { apiError } from '@/lib/api-error'
 
 const BASE      = process.env.TWINBRU_BASE_URL ?? 'https://api.twinbru.com'
 const STOCK_KEY = process.env.TWINBRU_STOCK_KEY ?? ''
@@ -27,6 +28,7 @@ function weeksUntil(dateStr: string): number {
 }
 
 export async function GET(req: NextRequest) {
+  try {
   const productId = req.nextUrl.searchParams.get('productId')
   if (!productId) return NextResponse.json({ error: 'Missing productId' }, { status: 400 })
 
@@ -74,4 +76,7 @@ export async function GET(req: NextRequest) {
 
   const info: StockInfo = { localQty, transitQty, transitDate, maxLeadTimeDate, weeksUntilAvailable }
   return NextResponse.json(info)
+  } catch (e) {
+    return apiError(e)
+  }
 }

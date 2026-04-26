@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
+import { apiError } from '@/lib/api-error'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
 
@@ -34,6 +35,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  try {
   const { token } = await params
   const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -111,8 +113,13 @@ export async function POST(
 </body>
 </html>`,
       text: `${recipient.supplier_name} sent a message about "${request.title}":\n\n${body.body.trim()}\n\nView request: ${requestUrl}`,
-    }).catch(() => {})
+    }).catch((err: unknown) => {
+      console.error('[sourcing/respond/messages] designer notification email failed:', err)
+    })
   }
 
   return NextResponse.json({ message })
+  } catch (e) {
+    return apiError(e)
+  }
 }

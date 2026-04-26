@@ -5,8 +5,12 @@ import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { POPDF } from '@/lib/pdf/POPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
+import { apiError } from '@/lib/api-error'
+
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  try {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { projectId, supplierId } = await req.json() as { projectId: string; supplierId?: string }
 
@@ -174,4 +178,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ success: true, results }, { status: allOk ? 200 : 207 })
+  } catch (e) {
+    return apiError(e)
+  }
 }

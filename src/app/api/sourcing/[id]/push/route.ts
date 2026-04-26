@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-error'
 
 // POST /api/sourcing/[id]/push — push accepted response into a project as a new line item
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -119,4 +121,7 @@ export async function POST(
     .eq('id', id)
 
   return NextResponse.json({ success: true, line_item_id: lineItem.id })
+  } catch (e) {
+    return apiError(e)
+  }
 }

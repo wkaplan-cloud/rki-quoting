@@ -5,8 +5,12 @@ import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
+import { apiError } from '@/lib/api-error'
+
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  try {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { projectId, type, overrideEmail, customBody } = await req.json() as { projectId: string; type: 'quote' | 'invoice'; overrideEmail?: string; customBody?: string }
 
@@ -154,5 +158,8 @@ export async function POST(req: NextRequest) {
   } catch (e: unknown) {
     console.error('[email/send]', e)
     return NextResponse.json({ error: 'Failed to send email. Please try again.' }, { status: 500 })
+  }
+  } catch (e) {
+    return apiError(e)
   }
 }

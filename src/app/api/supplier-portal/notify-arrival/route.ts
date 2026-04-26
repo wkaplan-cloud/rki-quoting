@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
+import { apiError } from '@/lib/api-error'
 
 // POST /api/supplier-portal/notify-arrival — supplier notifies studio that fabric/item is ready
 export async function POST(req: NextRequest) {
+  try {
   const { recipientId, notes } = await req.json() as { recipientId: string; notes?: string }
   if (!recipientId) return NextResponse.json({ error: 'Missing recipientId' }, { status: 400 })
 
@@ -68,4 +70,7 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json({ success: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

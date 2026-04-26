@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { apiError } from '@/lib/api-error'
 
 // GET /api/supplier-portal/requests — list all price requests for this supplier's email
 export async function GET() {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -84,4 +86,7 @@ export async function GET() {
   })
 
   return NextResponse.json({ requests: result })
+  } catch (e) {
+    return apiError(e)
+  }
 }

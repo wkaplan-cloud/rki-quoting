@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { apiError } from '@/lib/api-error'
 
 async function getPortalAccountId(userId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
@@ -13,6 +14,7 @@ async function getPortalAccountId(userId: string): Promise<string | null> {
 
 // GET /api/supplier-portal/price-list — list items
 export async function GET() {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -29,10 +31,14 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ items: items ?? [] })
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 // POST /api/supplier-portal/price-list — create a single item
 export async function POST(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -71,10 +77,14 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ item })
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 // PATCH /api/supplier-portal/price-list?item_id=X — update item
 export async function PATCH(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -105,10 +115,14 @@ export async function PATCH(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ item })
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 // DELETE /api/supplier-portal/price-list?item_id=X — delete item
 export async function DELETE(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -127,4 +141,7 @@ export async function DELETE(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

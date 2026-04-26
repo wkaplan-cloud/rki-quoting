@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { apiError } from '@/lib/api-error'
 
 // POST /api/sourcing/images — upload an image and attach it to a sourcing request
 // Body: multipart/form-data with fields: file, sourcing_request_id, caption (optional)
 export async function POST(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -68,10 +70,14 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ data }, { status: 201 })
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 // DELETE /api/sourcing/images?image_id=xxx — remove an image
 export async function DELETE(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -98,4 +104,7 @@ export async function DELETE(req: NextRequest) {
   await supabase.from('sourcing_request_images').delete().eq('id', imageId)
 
   return NextResponse.json({ success: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

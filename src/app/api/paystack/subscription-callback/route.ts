@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { apiError } from '@/lib/api-error'
 
 export async function GET(req: NextRequest) {
+  try {
   const ref = req.nextUrl.searchParams.get('ref') ?? req.nextUrl.searchParams.get('trxref') ?? req.nextUrl.searchParams.get('reference')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
 
@@ -41,4 +43,7 @@ export async function GET(req: NextRequest) {
     .eq('id', org.id)
 
   return NextResponse.redirect(`${appUrl}/dashboard?subscribed=1`)
+  } catch (e) {
+    return apiError(e)
+  }
 }

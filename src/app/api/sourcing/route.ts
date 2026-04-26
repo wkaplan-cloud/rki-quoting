@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { apiError } from '@/lib/api-error'
 
 // Guard: returns 403 if sourcing is not enabled for this user's settings
 async function guardSourcing(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -12,6 +13,7 @@ async function guardSourcing(supabase: Awaited<ReturnType<typeof createClient>>)
 
 // POST /api/sourcing — create a new sourcing request (draft)
 export async function POST(req: NextRequest) {
+  try {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -46,4 +48,7 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ data }, { status: 201 })
+  } catch (e) {
+    return apiError(e)
+  }
 }

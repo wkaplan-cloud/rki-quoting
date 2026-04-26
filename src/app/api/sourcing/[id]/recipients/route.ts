@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
+import { apiError } from '@/lib/api-error'
 
 // POST /api/sourcing/[id]/recipients — add a supplier as a recipient (draft only)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -64,6 +66,9 @@ export async function POST(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ data }, { status: 201 })
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 // DELETE /api/sourcing/[id]/recipients?recipient_id=xxx — remove a recipient (draft only)
@@ -71,6 +76,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -97,4 +103,7 @@ export async function DELETE(
     .eq('sourcing_request_id', id)
 
   return NextResponse.json({ success: true })
+  } catch (e) {
+    return apiError(e)
+  }
 }

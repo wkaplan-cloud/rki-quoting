@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 30
 
@@ -9,6 +10,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  try {
   const { token } = await params
 
   // Validate token is a real, active sourcing request
@@ -44,4 +46,7 @@ export async function POST(
     .getPublicUrl(path)
 
   return NextResponse.json({ url: publicUrl })
+  } catch (e) {
+    return apiError(e)
+  }
 }
