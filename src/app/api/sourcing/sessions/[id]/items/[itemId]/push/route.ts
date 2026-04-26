@@ -38,6 +38,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const response = Array.isArray(assignment.response) ? assignment.response[0] : assignment.response
     const supplierData = Array.isArray(assignment.supplier) ? assignment.supplier[0] : assignment.supplier
 
+    // Fetch office address for default delivery_address
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('business_name, business_address')
+      .maybeSingle()
+
+    const deliveryAddress = settings?.business_address
+      ? `${settings.business_name ?? ''}\n${settings.business_address}`.trim()
+      : ''
+
     // Get max sort_order in project
     const { data: lastItem } = await supabase
       .from('line_items')
@@ -64,6 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         dimensions: item.dimensions ?? null,
         colour_finish: item.colour_finish ?? null,
         lead_time_weeks: response.lead_time_weeks ?? null,
+        delivery_address: deliveryAddress,
         sort_order,
         row_type: 'item',
       })

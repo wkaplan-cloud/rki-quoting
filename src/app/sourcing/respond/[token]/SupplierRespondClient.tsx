@@ -43,6 +43,7 @@ interface Props {
   studioName: string
   assignments: Assignment[]
   initialMessages: Message[]
+  showBackLink?: boolean
 }
 
 const INPUT = {
@@ -315,6 +316,7 @@ export function SupplierRespondClient({
   studioName,
   assignments,
   initialMessages,
+  showBackLink = false,
 }: Props) {
   const [items, setItems] = useState(assignments)
 
@@ -336,13 +338,15 @@ export function SupplierRespondClient({
           <div className="flex items-center justify-between mb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="QuotingHub" className="h-6 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.6)' }} />
-            <a
-              href="/supplier-portal/dashboard"
-              className="text-xs font-medium transition-opacity hover:opacity-60"
-              style={{ color: '#71717A' }}
-            >
-              ← Back to portal
-            </a>
+            {showBackLink && (
+              <a
+                href="/supplier-portal/dashboard"
+                className="text-xs font-medium transition-opacity hover:opacity-60"
+                style={{ color: '#71717A' }}
+              >
+                ← Back to portal
+              </a>
+            )}
           </div>
           <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Pricing Request</p>
           <p className="text-lg font-semibold" style={{ color: '#FAFAFA' }}>{sessionTitle}</p>

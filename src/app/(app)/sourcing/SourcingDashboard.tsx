@@ -31,6 +31,7 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [tab, setTab] = useState<'active' | 'archived'>('active')
+  const [showNewForm, setShowNewForm] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [archiving, setArchiving] = useState<string | null>(null)
@@ -53,6 +54,7 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setNewTitle('')
+      setShowNewForm(false)
       startTransition(() => router.push(`/sourcing/${json.data.id}`))
     } catch (err: any) {
       alert(err.message)
@@ -86,23 +88,41 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* New session form */}
-      <form onSubmit={handleCreate} className="flex gap-2">
-        <input
-          value={newTitle}
-          onChange={e => setNewTitle(e.target.value)}
-          placeholder={`Session title, e.g. "Living Room Furniture Q3"`}
-          className="flex-1 px-4 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
-        />
+      {/* New session — button that expands into form */}
+      {showNewForm ? (
+        <form onSubmit={handleCreate} className="flex gap-2">
+          <input
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder={`Session title, e.g. "Living Room Furniture Q3"`}
+            className="flex-1 px-4 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={creating || !newTitle.trim()}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-50 transition-colors shrink-0"
+          >
+            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Create
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowNewForm(false); setNewTitle('') }}
+            className="px-4 py-2.5 text-sm text-[#8A877F] border border-[#D4CFC7] rounded-lg hover:bg-[#F5F2EC] transition-colors"
+          >
+            Cancel
+          </button>
+        </form>
+      ) : (
         <button
-          type="submit"
-          disabled={creating || !newTitle.trim()}
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-50 transition-colors shrink-0"
+          onClick={() => setShowNewForm(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] transition-colors"
         >
-          {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          <Plus size={14} />
           New Session
         </button>
-      </form>
+      )}
 
       {/* Tabs */}
       {archived.length > 0 && (
