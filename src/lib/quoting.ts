@@ -37,6 +37,7 @@ export function computeTotals(
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
 
+//   = non-breaking space — keeps "R" and the number on the same line in narrow PDF columns
 export function formatZAR(amount: number): string {
-  return `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return 'R ' + amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }

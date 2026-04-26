@@ -16,6 +16,7 @@ const s = StyleSheet.create({
   th: { fontSize: 9, color: '#F5F2EC', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
   row: { flexDirection: 'row', paddingVertical: 6, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   rowAlt: { backgroundColor: '#F5F2EC' },
+  rowLinked: { borderLeftWidth: 3, borderLeftColor: '#C4A46B' },
   sectionRow: { flexDirection: 'row', backgroundColor: '#D8D3C8', paddingVertical: 5, paddingHorizontal: 3, borderBottomWidth: 0.5, borderBottomColor: '#C4BFB5', marginTop: 4 },
   sectionLabel: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#4A4845', textTransform: 'uppercase', letterSpacing: 0.8 },
   td: { fontSize: 9, color: '#2C2C2A' },
@@ -35,8 +36,9 @@ const s = StyleSheet.create({
 
 // Column widths (landscape A4 usable ~778px)
 const W = {
-  item:     130,
-  desc:     150,
+  num:      20,
+  item:     118,
+  desc:     148,
   qty:      40,
   lead:     36,
   supplier: 60,
@@ -47,6 +49,11 @@ const W = {
   profit:   52,
   totCost:  56,
   totPrice: 60,
+}
+
+function cap(s: string | null | undefined): string {
+  if (!s) return ''
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 interface Props {
@@ -70,6 +77,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
   })()
   const printedOn = new Date(printDate ?? new Date()).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
   let itemIndex = 0
+  let itemNum = 0
 
   return (
     <Document>
@@ -89,6 +97,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
 
         {/* Table header */}
         <View style={s.tableHeader}>
+          <Text style={[s.th, { width: W.num, paddingRight: 4, textAlign: 'right' }]}>#</Text>
           <Text style={[s.th, { width: W.item, paddingRight: 6 }]}>Item</Text>
           <Text style={[s.th, { width: W.desc, paddingRight: 6 }]}>Description</Text>
           <Text style={[s.th, { width: W.qty, textAlign: 'right', paddingRight: 6 }]}>Qty / Unit</Text>
@@ -108,16 +117,19 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
           if (item.row_type === 'section') {
             return (
               <View key={item.id} style={s.sectionRow}>
-                <Text style={s.sectionLabel}>{item.item_name || 'Section'}</Text>
+                <Text style={s.sectionLabel}>{(item.item_name || 'Section').toUpperCase()}</Text>
               </View>
             )
           }
           const c = computeLineItem(item)
           const alt = itemIndex++ % 2 === 1
+          itemNum++
+          const isLinked = !!item.parent_item_id
           return (
-            <View key={item.id} style={[s.row, alt ? s.rowAlt : {}]}>
-              <View style={[{ width: W.item, paddingRight: 6, paddingLeft: item.indent_level > 0 ? 6 : 0 }]}>
-                <Text style={s.td}>{item.item_name}</Text>
+            <View key={item.id} style={[s.row, alt ? s.rowAlt : {}, isLinked ? s.rowLinked : {}]}>
+              <Text style={[s.td, s.tdMuted, { width: W.num, textAlign: 'right', paddingRight: 4, fontSize: 6.5 }]}>{itemNum}.</Text>
+              <View style={[{ width: W.item, paddingRight: 6, paddingLeft: isLinked ? 4 : 0 }]}>
+                <Text style={s.td}>{cap(item.item_name)}</Text>
                 {(item.dimensions || item.colour_finish) ? (
                   <Text style={[s.td, s.tdMuted, { fontSize: 7, marginTop: 1 }]}>
                     {[item.dimensions, item.colour_finish].filter(Boolean).join(' · ')}

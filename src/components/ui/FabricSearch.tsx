@@ -119,11 +119,16 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
         >
           <Thumb url={fabric.image_url} />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-[#2C2C2A] truncate">{fabric.design || '—'}</p>
-            <p className="text-[10px] text-[#8A877F] truncate">
-              {[fabric.collection, fabric.colour].filter(Boolean).join(' · ')}
+            <p className="text-xs font-medium text-[#2C2C2A] truncate">
+              {[fabric.design, fabric.colour].filter(Boolean).join(' — ') || '—'}
             </p>
-            {fabric.sku && <p className="text-[10px] text-[#8A877F] font-mono truncate">{fabric.sku}</p>}
+            <p className="text-[10px] text-[#8A877F] truncate">
+              {[
+                fabric.brand,
+                fabric.collection !== fabric.design ? fabric.collection : null,
+                fabric.sku,
+              ].filter(Boolean).join(' · ')}
+            </p>
           </div>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
             {fabric.price_zar != null && (

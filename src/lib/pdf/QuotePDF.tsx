@@ -26,6 +26,11 @@ interface Props {
   leadTime?: string | null
 }
 
+function cap(s: string | null | undefined): string {
+  if (!s) return ''
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
 }
@@ -98,6 +103,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
           <View style={styles.table}>
             {/* Header */}
             <View style={styles.tableHeader}>
+              <Text style={[styles.th, { width: 20 }]}>#</Text>
               <Text style={[styles.th, { flex: 1 }]}>ITEM</Text>
               <Text style={[styles.th, { width: 44, textAlign: 'right', paddingRight: 8 }]}>QTY</Text>
               <Text style={[styles.th, { width: 72, textAlign: 'right' }]}>SALE PRICE</Text>
@@ -106,6 +112,7 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
             {/* Rows — sections + items */}
             {(() => {
               let itemIndex = 0
+              let itemNum = 0
               return lineItems.map(item => {
                 if (item.row_type === 'section') {
                   return (
@@ -117,9 +124,11 @@ export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depos
                 const c = computed.find(ci => ci.id === item.id)
                 if (!c) return null
                 const alt = itemIndex++ % 2 === 1
+                itemNum++
                 return (
                   <View key={item.id} style={[styles.tableRow, alt ? styles.tableRowAlt : {}]}>
-                    <Text style={[styles.td, { flex: 1, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{item.item_name}</Text>
+                    <Text style={[styles.td, styles.tdMuted, { width: 20, fontSize: 6.5 }]}>{itemNum}.</Text>
+                    <Text style={[styles.td, { flex: 1, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>{cap(item.item_name)}</Text>
                     <Text style={[styles.td, { width: 44, textAlign: 'right', paddingRight: 8 }]}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                     <Text style={[styles.td, { width: 72, textAlign: 'right' }]}>{formatZAR(c.sale_price)}</Text>
                     <Text style={[styles.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>{formatZAR(c.total_price)}</Text>
