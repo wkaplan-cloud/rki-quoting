@@ -6,6 +6,42 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+const INPUT_STYLE = {
+  background: '#1C2B3A',
+  border: '1px solid #2D4159',
+  color: '#E8F0F8',
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+function StyledInput({ type = 'text', value, onChange, placeholder, required, autoFocus, autoComplete }: {
+  type?: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; required?: boolean; autoFocus?: boolean; autoComplete?: string
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      required={required}
+      autoFocus={autoFocus}
+      autoComplete={autoComplete}
+      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors"
+      style={INPUT_STYLE}
+      onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
+      onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+    />
+  )
+}
+
 function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -22,7 +58,6 @@ function RegisterForm() {
   const [error, setError] = useState('')
   const widgetRef = useRef<HTMLDivElement>(null)
   const widgetId = useRef<string | null>(null)
-
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
   useEffect(() => {
@@ -30,19 +65,12 @@ function RegisterForm() {
     function render() {
       if (!widgetRef.current || !(window as any).turnstile) return
       if (widgetId.current != null) return
-      widgetId.current = (window as any).turnstile.render(widgetRef.current, {
-        sitekey: siteKey,
-        theme: 'light',
-      })
+      widgetId.current = (window as any).turnstile.render(widgetRef.current, { sitekey: siteKey, theme: 'dark' })
     }
-    if ((window as any).turnstile) {
-      render()
-    } else {
+    if ((window as any).turnstile) { render() }
+    else {
       const prev = (window as any).onloadTurnstileCallback
-      ;(window as any).onloadTurnstileCallback = () => {
-        render()
-        if (prev) prev()
-      }
+      ;(window as any).onloadTurnstileCallback = () => { render(); if (prev) prev() }
     }
     return () => {
       if (widgetId.current != null && (window as any).turnstile) {
@@ -69,98 +97,84 @@ function RegisterForm() {
     const cfToken = siteKey && widgetId.current != null
       ? (window as any).turnstile.getResponse(widgetId.current)
       : undefined
-    if (siteKey && !cfToken) {
-      setError('Please complete the security check.')
-      return
-    }
+    if (siteKey && !cfToken) { setError('Please complete the security check.'); return }
 
     setLoading(true)
-
-    // Create portal account
     const res = await fetch('/api/supplier-portal/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), cf_token: cfToken }),
     })
     const data = await res.json() as { error?: string }
-    if (!res.ok) {
-      setError(data.error ?? 'Registration failed')
-      setLoading(false)
-      return
-    }
+    if (!res.ok) { setError(data.error ?? 'Registration failed'); setLoading(false); return }
 
-    // Sign in immediately
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
+      email: email.trim().toLowerCase(), password,
     })
-
-    if (signInError) {
-      setError('Account created. Please sign in.')
-      setLoading(false)
-      router.push('/supplier-portal/login')
-      return
-    }
-
+    if (signInError) { router.push('/supplier-portal/login'); return }
     router.push('/supplier-portal/dashboard')
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F2EC] flex items-center justify-center p-6">
+    <div className="min-h-screen flex" style={{ background: '#0F1C28' }}>
       {siteKey && (
-        <Script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit"
-          strategy="lazyOnload"
-        />
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" strategy="lazyOnload" />
       )}
-      <div className="w-full max-w-sm">
-        {/* Header */}
-        <div className="text-center mb-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto mx-auto mb-4 object-contain" />
-          <h1 className="text-2xl font-semibold text-[#2C2C2A] tracking-tight">Supplier Portal</h1>
-          <p className="text-sm text-[#8A877F] mt-1">Create your free supplier account</p>
-        </div>
 
-        <div className="bg-white rounded-2xl border border-[#EDE9E1] p-8" style={{ boxShadow: '0 4px 24px rgba(44,44,42,0.08)' }}>
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12" style={{ background: '#1C2B3A' }}>
+        <div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="QuotingHub" className="h-7 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
+        </div>
+        <div>
+          <p className="text-3xl font-bold leading-snug mb-4" style={{ color: '#E8F0F8' }}>
+            Join the QuotingHub<br />supplier network.
+          </p>
+          <p className="text-sm leading-relaxed" style={{ color: '#5A7A95' }}>
+            Receive price requests directly from interior design studios. Respond faster, win more business.
+          </p>
+          <div className="mt-8 space-y-3">
+            {['Free to join — no monthly fees', 'All price requests in one dashboard', 'Message designers directly per request'].map(f => (
+              <div key={f} className="flex items-center gap-2.5">
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3B82F6' }} />
+                <p className="text-sm" style={{ color: '#7A9AB8' }}>{f}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs" style={{ color: '#2D4159' }}>© QuotingHub · Supplier Portal</p>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-start justify-center p-6 overflow-y-auto">
+        <div className="w-full max-w-sm py-10">
+          <div className="lg:hidden mb-8 text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto mx-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
+          </div>
+
+          <h1 className="text-2xl font-bold mb-1" style={{ color: '#E8F0F8' }}>Create account</h1>
+          <p className="text-sm mb-7" style={{ color: '#5A7A95' }}>Supplier Portal · Free forever</p>
+
           {noPortalAccount && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5 text-xs text-amber-800 leading-relaxed">
-              <strong>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
+            <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1C3050', border: '1px solid #2D4F7A', color: '#7AB0DC' }}>
+              <strong style={{ color: '#A8CFF0' }}>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
             </div>
           )}
 
-          <div className="bg-[#F5F2EC] border border-[#EDE9E1] rounded-lg px-4 py-3 mb-5 text-xs text-[#6B6860] leading-relaxed">
-            <strong className="text-[#2C2C2A]">Important:</strong> Use the same email address that design studios use when sending you price requests. This lets us automatically show your requests in your dashboard.
+          <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1C2B3A', border: '1px solid #2D4159', color: '#7A9AB8' }}>
+            <strong style={{ color: '#A8C4DC' }}>Important:</strong> Use the same email address that design studios use when sending you price requests.
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Company Name</label>
-              <input
-                type="text"
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-                placeholder="e.g. ABC Fabrics (Pty) Ltd"
-                required
-                autoFocus
-                className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Password</label>
+            <Field label="Company Name">
+              <StyledInput value={companyName} onChange={setCompanyName} placeholder="e.g. ABC Fabrics (Pty) Ltd" required autoFocus />
+            </Field>
+            <Field label="Email">
+              <StyledInput type="email" value={email} onChange={setEmail} required autoComplete="email" />
+            </Field>
+            <Field label="Password">
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -168,18 +182,18 @@ function RegisterForm() {
                   onChange={e => setPassword(e.target.value)}
                   required
                   autoComplete="new-password"
-                  className="w-full px-3.5 py-2.5 pr-10 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors"
+                  className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none transition-colors"
+                  style={INPUT_STYLE}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
                 />
-                <button type="button" onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C4BFB5] hover:text-[#8A877F] transition-colors cursor-pointer">
+                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#4A7FA5' }}>
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              <p className="text-xs text-[#C4BFB5] mt-1">Min. 8 characters</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Confirm Password</label>
+              <p className="text-xs mt-1" style={{ color: '#2D4159' }}>Min. 8 characters</p>
+            </Field>
+            <Field label="Confirm Password">
               <div className="relative">
                 <input
                   type={showConfirm ? 'text' : 'password'}
@@ -187,19 +201,21 @@ function RegisterForm() {
                   onChange={e => setConfirm(e.target.value)}
                   required
                   autoComplete="new-password"
-                  className="w-full px-3.5 py-2.5 pr-10 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors"
+                  className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none transition-colors"
+                  style={INPUT_STYLE}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
                 />
-                <button type="button" onClick={() => setShowConfirm(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C4BFB5] hover:text-[#8A877F] transition-colors cursor-pointer">
+                <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#4A7FA5' }}>
                   {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-            </div>
+            </Field>
 
-            {/* Terms & Conditions */}
-            <div className="bg-[#FFF9F0] border border-[#F0D9B0] rounded-lg px-4 py-3 text-xs text-[#6B6860] leading-relaxed">
-              <p className="font-semibold text-[#2C2C2A] mb-1">Platform Fee</p>
-              <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through the QuotingHub platform. By registering you agree to this fee structure.</p>
+            {/* Platform fee notice */}
+            <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1A2A1A', border: '1px solid #2A4A2A', color: '#7AB87A' }}>
+              <p className="font-semibold mb-1" style={{ color: '#A8D4A8' }}>Platform Fee</p>
+              <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
             </div>
 
             <label className="flex items-start gap-2.5 cursor-pointer select-none">
@@ -207,31 +223,33 @@ function RegisterForm() {
                 type="checkbox"
                 checked={tcAccepted}
                 onChange={e => setTcAccepted(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#D8D3C8] accent-[#9A7B4F] flex-shrink-0 cursor-pointer"
+                className="mt-0.5 w-4 h-4 rounded cursor-pointer shrink-0"
+                style={{ accentColor: '#3B82F6' }}
               />
-              <span className="text-xs text-[#6B6860] leading-relaxed">
-                I have read and agree to the <strong className="text-[#2C2C2A]">Terms &amp; Conditions</strong>, including the 1% platform fee on confirmed deals processed through QuotingHub.
+              <span className="text-xs leading-relaxed" style={{ color: '#7A9AB8' }}>
+                I agree to the <strong style={{ color: '#A8C4DC' }}>Terms &amp; Conditions</strong>, including the 1% platform fee on confirmed deals.
               </span>
             </label>
 
             {siteKey && <div ref={widgetRef} />}
 
             {error && (
-              <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+              <p className="text-sm px-3 py-2 rounded-lg" style={{ background: '#1A1020', color: '#F87171', border: '1px solid #3B1F1F' }}>{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading || !tcAccepted}
-              className="w-full py-3 bg-[#2C2C2A] text-white text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer mt-1"
+              className="w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+              style={{ background: '#3B82F6', color: '#FFFFFF' }}
             >
               {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-[#8A877F] mt-5">
+          <p className="text-center text-sm mt-6" style={{ color: '#5A7A95' }}>
             Already have an account?{' '}
-            <Link href="/supplier-portal/login" className="text-[#9A7B4F] hover:underline">Sign in</Link>
+            <Link href="/supplier-portal/login" className="font-medium" style={{ color: '#3B82F6' }}>Sign in</Link>
           </p>
         </div>
       </div>
