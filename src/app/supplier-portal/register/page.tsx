@@ -16,6 +16,7 @@ function RegisterForm() {
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [tcAccepted, setTcAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,6 +26,7 @@ function RegisterForm() {
     if (!companyName.trim()) { setError('Please enter your company name'); return }
     if (password !== confirm) { setError('Passwords do not match'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
+    if (!tcAccepted) { setError('Please accept the terms and conditions to continue'); return }
     setLoading(true)
 
     // Create portal account
@@ -141,13 +143,31 @@ function RegisterForm() {
               </div>
             </div>
 
+            {/* Terms & Conditions */}
+            <div className="bg-[#FFF9F0] border border-[#F0D9B0] rounded-lg px-4 py-3 text-xs text-[#6B6860] leading-relaxed">
+              <p className="font-semibold text-[#2C2C2A] mb-1">Platform Fee</p>
+              <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through the QuotingHub platform. By registering you agree to this fee structure.</p>
+            </div>
+
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={tcAccepted}
+                onChange={e => setTcAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-[#D8D3C8] accent-[#9A7B4F] flex-shrink-0 cursor-pointer"
+              />
+              <span className="text-xs text-[#6B6860] leading-relaxed">
+                I have read and agree to the <strong className="text-[#2C2C2A]">Terms &amp; Conditions</strong>, including the 1% platform fee on confirmed deals processed through QuotingHub.
+              </span>
+            </label>
+
             {error && (
               <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
             )}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !tcAccepted}
               className="w-full py-3 bg-[#2C2C2A] text-white text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer mt-1"
             >
               {loading ? 'Creating account…' : 'Create Account'}

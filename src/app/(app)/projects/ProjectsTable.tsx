@@ -13,12 +13,14 @@ const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Paid', 'Complet
 interface Props {
   projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[] })[]
   userEmailMap: Record<string, string>
+  currentUserId: string
 }
 
-export function ProjectsTable({ projects, userEmailMap }: Props) {
+export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
   const [showArchived, setShowArchived] = useState(false)
+  const [myProjects, setMyProjects] = useState(true)
   const router = useRouter()
   const supabase = createClient()
 
@@ -33,12 +35,13 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
   const filtered = (showArchived ? archived : active)
     .filter(p => {
       const matchStatus = showArchived || statusFilter === 'All' || p.status === statusFilter
+      const matchMine = showArchived || !myProjects || p.user_id === currentUserId
       const q = search.toLowerCase()
       const matchSearch = !q ||
         p.project_name.toLowerCase().includes(q) ||
         p.project_number.toLowerCase().includes(q) ||
         (p.client?.client_name ?? '').toLowerCase().includes(q)
-      return matchStatus && matchSearch
+      return matchStatus && matchMine && matchSearch
     })
     .sort((a, b) => {
       const aComp = a.status === 'Completed'
@@ -60,6 +63,17 @@ export function ProjectsTable({ projects, userEmailMap }: Props) {
         />
         {!showArchived && (
           <div className="flex items-center gap-1 flex-wrap">
+            <button
+              onClick={() => setMyProjects(v => !v)}
+              className={`px-3 py-1.5 text-xs rounded font-medium transition-colors cursor-pointer border ${
+                myProjects
+                  ? 'bg-[#9A7B4F] text-white border-[#9A7B4F]'
+                  : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
+              }`}
+            >
+              My Projects
+            </button>
+            <span className="text-[#D8D3C8] text-xs">|</span>
             {(['All', ...STATUSES] as const).map(s => (
               <button
                 key={s}

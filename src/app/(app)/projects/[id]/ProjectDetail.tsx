@@ -145,6 +145,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   }, [project, lineItems, supabase, router])
 
   const handleGeneratePDF = useCallback(async (type: 'quote' | 'invoice' | 'po' | 'production', supplierIdParam?: string) => {
+    if ((type === 'quote' || type === 'invoice') && !project.client?.client_name) {
+      toast.error('Please add a client to this project before generating a document.')
+      return
+    }
     const url = type === 'po'
       ? `/api/pdf/po?projectId=${project.id}${supplierIdParam ? `&supplierId=${supplierIdParam}` : ''}`
       : `/api/pdf/${type}?projectId=${project.id}`
@@ -211,6 +215,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   }, [project.id])
 
   const handleOpenEmailModal = useCallback((type: 'quote' | 'invoice') => {
+    if (!project.client?.client_name) {
+      toast.error('Please add a client to this project before sending a document.')
+      return
+    }
     setEmailModalType(type)
     setEmailInput(project.client?.email ?? '')
     const template = type === 'quote' ? emailTemplateQuote : emailTemplateInvoice

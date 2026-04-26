@@ -24,6 +24,8 @@ export default async function ProjectsPage() {
     if (m.user_id) userEmailMap[m.user_id] = m.full_name ?? m.invited_email.split('@')[0]
   }
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -39,7 +41,7 @@ export default async function ProjectsPage() {
         }
       />
       <div className="flex-1 p-8">
-        <ProjectsTable projects={projects ?? []} userEmailMap={userEmailMap} />
+        <ProjectsTable projects={projects ?? []} userEmailMap={userEmailMap} currentUserId={user?.id ?? ''} />
       </div>
     </div>
   )
