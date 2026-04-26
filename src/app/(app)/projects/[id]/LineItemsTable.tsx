@@ -285,7 +285,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     sku: string | null; brand: string | null; product_id: string | null
     price_zar: number | null; image_url: string | null; useable_width_cm?: number | null
   }) => {
-    const description = [fabric.brand, fabric.collection, fabric.design, fabric.colour, fabric.sku]
+    const description = [fabric.brand, fabric.collection]
       .filter(Boolean).join(' · ')
     const twinbru_product_id = fabric.product_id ? parseInt(fabric.product_id, 10) || null : null
     const updates = {
