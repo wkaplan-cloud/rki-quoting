@@ -197,11 +197,11 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
                         <Image src={child.fabric_image_url} style={{ width: 26, height: 26, borderRadius: 3, flexShrink: 0 }} />
                       ) : null}
                       <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                          <Text style={{ fontSize: 7.5, color: '#2C2C2A', fontFamily: 'Helvetica-Bold', flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 7.5, color: '#2C2C2A', fontFamily: 'Helvetica-Bold' }}>
                             {cap(child.item_name)}{child.colour_finish ? ` — ${child.colour_finish}` : ''}
                           </Text>
-                          <Text style={{ fontSize: 7.5, color: '#4A4845', fontFamily: 'Helvetica-Bold', flexShrink: 0 }}>
+                          <Text style={{ fontSize: 7.5, color: '#8A877F' }}>
                             {child.quantity}{child.unit ? ` ${child.unit}` : ''}
                           </Text>
                         </View>
