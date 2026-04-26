@@ -11,6 +11,7 @@ export function AppLayout({
   isAdmin,
   businessName,
   sourcingEnabled,
+  sourcingBadge,
   userEmail,
   userName,
   plan,
@@ -23,6 +24,7 @@ export function AppLayout({
   isAdmin: boolean
   businessName: string
   sourcingEnabled: boolean
+  sourcingBadge: number
   userEmail: string
   userName: string
   plan: string
@@ -44,6 +46,7 @@ export function AppLayout({
         isAdmin={isAdmin}
         businessName={businessName}
         sourcingEnabled={sourcingEnabled}
+        sourcingBadge={sourcingBadge}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onContactClick={() => setFeedbackOpen(true)}

@@ -21,6 +21,7 @@ interface Props {
   isAdmin?: boolean
   businessName: string
   sourcingEnabled: boolean
+  sourcingBadge?: number
   isOpen: boolean
   onClose: () => void
   onContactClick: () => void
@@ -29,7 +30,7 @@ interface Props {
   trialDaysLeft: number | null
 }
 
-export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft }: Props) {
+export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge = 0, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft }: Props) {
   const path = usePathname()
   const isActive = (href: string) =>
     href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
@@ -166,9 +167,14 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, isOpen, onClos
                 <span className="flex items-center justify-center w-10 flex-shrink-0">
                   <Tag size={15} className={isActive('/sourcing') ? 'text-[#C4A46B]' : 'opacity-60'} />
                 </span>
-                <span className={`text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3`}>
+                <span className={`text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150`}>
                   Price Request
                 </span>
+                {sourcingBadge > 0 && (
+                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center bg-orange-500 text-white">
+                    {sourcingBadge > 99 ? '99+' : sourcingBadge}
+                  </span>
+                )}
               </Link>
             </>
           )}
