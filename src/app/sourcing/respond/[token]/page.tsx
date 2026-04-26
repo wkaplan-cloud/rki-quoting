@@ -1,95 +1,73 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { SupplierResponseForm } from './SupplierResponseForm'
+import { SupplierRespondClient } from './SupplierRespondClient'
 
-export default async function SupplierResponsePage({
+export default async function SupplierRespondPage({
   params,
 }: {
   params: Promise<{ token: string }>
 }) {
   const { token } = await params
 
-  // Step 1 — look up recipient by token (no joins, just the row)
-  const { data: recipient, error: recipientError } = await supabaseAdmin
-    .from('sourcing_request_recipients')
-    .select('id, sourcing_request_id, supplier_name, email, status, viewed_at, responded_at')
+  const { data: ss } = await supabaseAdmin
+    .from('sourcing_session_suppliers')
+    .select('id, supplier_name, status, viewed_at, session_id, session:sourcing_sessions(id, title, status, user_id, project:projects(project_name))')
     .eq('token', token)
     .maybeSingle()
 
-  if (recipientError || !recipient) {
-    return <ErrorPage message="This link is invalid or has expired." />
+  if (!ss) return <ErrorPage message="This link is invalid or has expired." />
+
+  const session = Array.isArray(ss.session) ? ss.session[0] : ss.session
+  if (!session) return <ErrorPage message="This pricing request could not be found." />
+
+  if (['cancelled', 'archived'].includes(session.status)) {
+    return <ErrorPage message="This pricing request is no longer active." />
   }
 
-  // Step 2 — fetch the sourcing request
-  const { data: request, error: requestError } = await supabaseAdmin
-    .from('sourcing_requests')
-    .select('id, user_id, title, work_type, specifications, item_quantity, dimensions, colour_finish, status')
-    .eq('id', recipient.sourcing_request_id)
-    .maybeSingle()
-
-  if (requestError || !request) {
-    return <ErrorPage message="This pricing request could not be found." />
+  // Mark viewed
+  if (!ss.viewed_at) {
+    await supabaseAdmin
+      .from('sourcing_session_suppliers')
+      .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
+      .eq('id', ss.id)
   }
 
-  if (request.status === 'cancelled') {
-    return <ErrorPage message="This pricing request has been cancelled." />
-  }
-
-  // Step 3 — fetch all remaining data in parallel
-  const [
-    { data: images },
-    { data: responses },
-    { data: settings },
-    { data: messages },
-  ] = await Promise.all([
+  const [{ data: assignments }, { data: settings }, { data: messages }] = await Promise.all([
     supabaseAdmin
-      .from('sourcing_request_images')
-      .select('id, url, caption, sort_order')
-      .eq('sourcing_request_id', request.id)
-      .order('sort_order'),
-    supabaseAdmin
-      .from('sourcing_request_responses')
-      .select('id, unit_price, lead_time_weeks, notes, valid_until, submitted_at, supplier_edits, changed_fields')
-      .eq('recipient_id', recipient.id)
-      .limit(1),
+      .from('sourcing_item_assignments')
+      .select('id, status, responded_at, item:sourcing_session_items(*), response:sourcing_item_responses(*)')
+      .eq('session_supplier_id', ss.id)
+      .order('created_at', { ascending: true }),
     supabaseAdmin
       .from('settings')
       .select('business_name')
-      .eq('user_id', request.user_id)
+      .eq('user_id', (session as any).user_id)
       .maybeSingle(),
     supabaseAdmin
-      .from('sourcing_messages')
+      .from('sourcing_thread_messages')
       .select('id, sender_type, body, created_at')
-      .eq('recipient_id', recipient.id)
-      .order('created_at'),
+      .eq('session_supplier_id', ss.id)
+      .order('created_at', { ascending: true }),
   ])
 
+  const mappedAssignments = (assignments ?? []).map((a: any) => ({
+    id: a.id,
+    status: a.status,
+    responded_at: a.responded_at,
+    item: Array.isArray(a.item) ? a.item[0] : a.item,
+    response: Array.isArray(a.response) ? (a.response[0] ?? null) : a.response,
+  }))
+
   return (
-    <SupplierResponseForm
+    <SupplierRespondClient
       token={token}
-      data={{
-        request: {
-          id: request.id,
-          title: request.title,
-          work_type: request.work_type ?? null,
-          specifications: request.specifications,
-          item_quantity: request.item_quantity,
-          dimensions: request.dimensions,
-          colour_finish: request.colour_finish,
-          status: request.status,
-        },
-        recipient: {
-          id: recipient.id,
-          supplier_name: recipient.supplier_name,
-          status: recipient.status,
-          viewed_at: recipient.viewed_at,
-          responded_at: recipient.responded_at,
-        },
-        response: responses?.[0] ?? null,
-        images: images ?? [],
-        studio_name: settings?.business_name ?? 'Your Studio',
-        initialMessages: (messages ?? []) as { id: string; sender_type: 'designer' | 'supplier'; body: string; created_at: string }[],
-      }}
+      sessionSupplierId={ss.id}
+      supplierName={ss.supplier_name}
+      sessionTitle={(session as any).title}
+      projectName={(session?.project as any)?.project_name ?? null}
+      studioName={settings?.business_name ?? 'Your Studio'}
+      assignments={mappedAssignments}
+      initialMessages={(messages ?? []) as { id: string; sender_type: 'designer' | 'supplier'; body: string; created_at: string }[]}
     />
   )
 }

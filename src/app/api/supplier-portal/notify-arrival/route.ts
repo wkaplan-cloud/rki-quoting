@@ -7,12 +7,12 @@ import { apiError } from '@/lib/api-error'
 // POST /api/supplier-portal/notify-arrival — supplier notifies studio that fabric/item is ready
 export async function POST(req: NextRequest) {
   try {
+  // session_supplier_id passed as recipientId for backwards compat
   const { recipientId, notes } = await req.json() as { recipientId: string; notes?: string }
   if (!recipientId) return NextResponse.json({ error: 'Missing recipientId' }, { status: 400 })
 
   const resend = new Resend(process.env.RESEND_API_KEY)
 
-  // Authenticate supplier portal user
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -25,44 +25,39 @@ export async function POST(req: NextRequest) {
 
   if (!portalAccount) return NextResponse.json({ error: 'Portal account not found' }, { status: 404 })
 
-  // Fetch sourcing request via recipient
-  const { data: recipient } = await supabaseAdmin
-    .from('sourcing_request_recipients')
-    .select('id, supplier_name, email, sourcing_requests(id, title, org_id, user_id)')
+  const { data: ss } = await supabaseAdmin
+    .from('sourcing_session_suppliers')
+    .select('id, supplier_name, email, session:sourcing_sessions(id, title, org_id, user_id)')
     .eq('id', recipientId)
     .maybeSingle()
 
-  if (!recipient || recipient.email.toLowerCase() !== portalAccount.email.toLowerCase()) {
+  if (!ss || (ss.email as string).toLowerCase() !== portalAccount.email.toLowerCase()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const request = Array.isArray(recipient.sourcing_requests)
-    ? recipient.sourcing_requests[0]
-    : recipient.sourcing_requests as { id: string; title: string; org_id: string; user_id: string } | null
+  const session = Array.isArray(ss.session) ? ss.session[0] : ss.session as { id: string; title: string; org_id: string; user_id: string } | null
+  if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
 
-  if (!request) return NextResponse.json({ error: 'Request not found' }, { status: 404 })
-
-  // Get studio email from settings for this org
   const { data: settings } = await supabaseAdmin
     .from('settings')
     .select('email_from, business_name')
-    .eq('org_id', request.org_id)
+    .eq('org_id', session.org_id)
     .maybeSingle()
 
   const studioEmail = settings?.email_from
   if (!studioEmail) return NextResponse.json({ error: 'Studio email not configured' }, { status: 400 })
 
-  const supplierDisplay = portalAccount.company_name || recipient.supplier_name || 'Your supplier'
+  const supplierDisplay = portalAccount.company_name || ss.supplier_name || 'Your supplier'
   const studioName = settings?.business_name || 'Studio'
 
   await resend.emails.send({
     from: `QuotingHub Notifications <notifications@quotinghub.co.za>`,
     to: studioEmail,
-    subject: `Fabric/Item Ready — ${request.title} (${supplierDisplay})`,
+    subject: `Item Ready — ${session.title} (${supplierDisplay})`,
     html: `
       <p>Hi ${studioName},</p>
-      <p><strong>${supplierDisplay}</strong> has notified you that the following is ready:</p>
-      <p style="font-size:16px;font-weight:bold;">${request.title}</p>
+      <p><strong>${supplierDisplay}</strong> has notified you that items from the following price request are ready:</p>
+      <p style="font-size:16px;font-weight:bold;">${session.title}</p>
       ${notes ? `<p><em>Note from supplier: ${notes}</em></p>` : ''}
       <p>Please arrange collection or delivery at your earliest convenience.</p>
       <p>— QuotingHub Notifications</p>

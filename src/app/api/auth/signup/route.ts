@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 const SITE_URL = 'https://quotinghub.co.za'
 
 export async function POST(req: NextRequest) {
-  const { email, password, full_name } = await req.json()
+  const { email, password, full_name, cf_token } = await req.json()
 
   if (!email || !password || !full_name?.trim()) {
     return NextResponse.json({ error: 'Name, email and password are required' }, { status: 400 })
@@ -18,6 +18,22 @@ export async function POST(req: NextRequest) {
   }
   if (!/[0-9]/.test(password)) {
     return NextResponse.json({ error: 'Password must contain at least one number' }, { status: 400 })
+  }
+
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY
+  if (turnstileSecret) {
+    if (!cf_token) {
+      return NextResponse.json({ error: 'Security check required' }, { status: 400 })
+    }
+    const verify = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: turnstileSecret, response: cf_token }),
+    })
+    const verifyData = await verify.json()
+    if (!verifyData.success) {
+      return NextResponse.json({ error: 'Security check failed. Please try again.' }, { status: 400 })
+    }
   }
 
   // Create user without auto-confirming — we send our own branded email.

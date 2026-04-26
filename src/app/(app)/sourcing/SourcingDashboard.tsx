@@ -1,266 +1,181 @@
 'use client'
+
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Tag, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { WORK_CATEGORIES } from '@/lib/categories'
-import type { SourcingRequest, SourcingRequestStatus, SourcingRecipientStatus } from '@/lib/types'
+import { Plus, Archive, Trash2, Loader2 } from 'lucide-react'
 
-interface RecipientRow {
-  sourcing_request_id: string
-  status: SourcingRecipientStatus
+interface Session {
+  id: string
+  title: string
+  status: string
+  archived: boolean
+  created_at: string
+  project_name: string | null
+  item_count: number
+  supplier_count: number
 }
 
-interface Props {
-  requests: SourcingRequest[]
-  recipients: RecipientRow[]
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  draft:       { label: 'Draft',       color: 'bg-[#F5F2EC] text-[#8A877F] border border-[#D4CFC7]' },
+  sent:        { label: 'Sent',        color: 'bg-blue-50 text-blue-600 border border-blue-200' },
+  in_progress: { label: 'In Progress', color: 'bg-amber-50 text-amber-600 border border-amber-200' },
+  completed:   { label: 'Completed',   color: 'bg-emerald-50 text-emerald-600 border border-emerald-200' },
+  archived:    { label: 'Archived',    color: 'bg-[#F5F2EC] text-[#8A877F] border border-[#D4CFC7]' },
 }
 
-const STATUS_CONFIG: Record<SourcingRequestStatus, { label: string; color: string }> = {
-  draft:     { label: 'Draft',     color: 'bg-[#EDE9E1] text-[#6B6860]' },
-  sent:      { label: 'Sent',      color: 'bg-blue-50 text-blue-700' },
-  responded: { label: 'Responded', color: 'bg-amber-50 text-amber-700' },
-  accepted:  { label: 'Accepted',  color: 'bg-emerald-50 text-emerald-700' },
-  pushed:    { label: 'Pushed',    color: 'bg-purple-50 text-purple-700' },
-  cancelled: { label: 'Cancelled', color: 'bg-red-50 text-red-600' },
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function StatusBadge({ status }: { status: SourcingRequestStatus }) {
-  const cfg = STATUS_CONFIG[status]
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${cfg.color}`}>
-      {cfg.label}
-    </span>
-  )
-}
-
-function recipientSummary(reqs: RecipientRow[], requestId: string): string {
-  const rows = reqs.filter(r => r.sourcing_request_id === requestId)
-  if (rows.length === 0) return 'No suppliers added'
-  const responded = rows.filter(r => ['responded', 'accepted', 'rejected'].includes(r.status)).length
-  return `${responded} / ${rows.length} responded`
-}
-
-const emptyForm = {
-  title: '',
-  work_type: '',
-  item_quantity: '',
-  dimensions: '',
-  colour_finish: '',
-  specifications: '',
-}
-
-export function SourcingDashboard({ requests, recipients }: Props) {
+export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
+  const [tab, setTab] = useState<'active' | 'archived'>('active')
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState(emptyForm)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [newTitle, setNewTitle] = useState('')
+  const [archiving, setArchiving] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
-  const set = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const active   = sessions.filter(s => !s.archived)
+  const archived = sessions.filter(s => s.archived)
+  const displayed = tab === 'active' ? active : archived
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.title.trim()) return
-    setError(null)
-    setSubmitting(true)
-    const res = await fetch('/api/sourcing', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: form.title.trim(),
-        work_type: form.work_type || null,
-        item_quantity: form.item_quantity ? parseInt(form.item_quantity) : null,
-        dimensions: form.dimensions.trim() || null,
-        colour_finish: form.colour_finish.trim() || null,
-        specifications: form.specifications.trim() || null,
-      }),
-    })
-    const json = await res.json()
-    if (!res.ok) { setError(json.error); setSubmitting(false); return }
-    startTransition(() => {
-      router.push(`/sourcing/${json.data.id}`)
-    })
+    if (!newTitle.trim()) return
+    setCreating(true)
+    try {
+      const res = await fetch('/api/sourcing/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      setNewTitle('')
+      startTransition(() => router.push(`/sourcing/${json.data.id}`))
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setCreating(false)
+    }
   }
 
-  function cancelCreate() {
-    setCreating(false)
-    setForm(emptyForm)
-    setError(null)
+  async function handleArchive(e: React.MouseEvent, id: string) {
+    e.stopPropagation()
+    setArchiving(id)
+    try {
+      await fetch(`/api/sourcing/sessions/${id}/archive`, { method: 'POST' })
+      startTransition(() => router.refresh())
+    } finally {
+      setArchiving(null)
+    }
   }
 
-  if (requests.length === 0 && !creating) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="w-14 h-14 rounded-full bg-[#EDE9E1] flex items-center justify-center mb-5">
-          <Tag size={22} className="text-[#9A7B4F]" />
-        </div>
-        <h2 className="text-lg font-semibold text-[#2C2C2A] mb-2">No pricing requests yet</h2>
-        <p className="text-sm text-[#8A877F] max-w-xs mb-8">
-          Request pricing from suppliers by sending them images and specs. Compare responses and push the best price into your quote.
-        </p>
-        <Button onClick={() => setCreating(true)}>
-          <Plus size={14} /> New Request
-        </Button>
-      </div>
-    )
+  async function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation()
+    if (!window.confirm('Permanently delete this session? This cannot be undone.')) return
+    setDeleting(id)
+    try {
+      await fetch(`/api/sourcing/sessions/${id}`, { method: 'DELETE' })
+      startTransition(() => router.refresh())
+    } finally {
+      setDeleting(null)
+    }
   }
 
   return (
-    <div>
-      {/* New request form */}
-      {creating ? (
-        <form
-          onSubmit={handleCreate}
-          className="mb-6 bg-white rounded-xl border border-[#EDE9E1] shadow-sm overflow-hidden"
+    <div className="max-w-3xl space-y-6">
+      {/* New session form */}
+      <form onSubmit={handleCreate} className="flex gap-2">
+        <input
+          value={newTitle}
+          onChange={e => setNewTitle(e.target.value)}
+          placeholder="Session title, e.g. "Living Room Furniture Q3""
+          className="flex-1 px-4 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
+        />
+        <button
+          type="submit"
+          disabled={creating || !newTitle.trim()}
+          className="flex items-center gap-2 px-4 py-2.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-50 transition-colors shrink-0"
         >
-          <div className="px-5 py-4 border-b border-[#EDE9E1]">
-            <p className="text-sm font-semibold text-[#2C2C2A]">New Pricing Request</p>
-            <p className="text-xs text-[#8A877F] mt-0.5">Fill in as much detail as possible — suppliers will see all of this.</p>
-          </div>
+          {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          New Session
+        </button>
+      </form>
 
-          <div className="p-5 space-y-4">
-            {/* Item name */}
-            <div>
-              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">
-                Item Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                autoFocus
-                type="text"
-                placeholder="e.g. Custom sectional sofa, Bedroom curtains"
-                value={form.title}
-                onChange={e => set('title', e.target.value)}
-                required
-                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
-              />
-            </div>
-
-            {/* Work type */}
-            <div>
-              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Type of Work</label>
-              <select
-                value={form.work_type}
-                onChange={e => set('work_type', e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] text-[#2C2C2A]"
-              >
-                <option value="">Select category…</option>
-                {WORK_CATEGORIES.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Size + Quantity */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Size / Dimensions</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 2200W × 900D × 800H"
-                  value={form.dimensions}
-                  onChange={e => set('dimensions', e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Quantity of Items</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="e.g. 3"
-                  value={form.item_quantity}
-                  onChange={e => set('item_quantity', e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
-                />
-              </div>
-            </div>
-
-            {/* Colour */}
-            <div>
-              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Colour / Finish</label>
-              <input
-                type="text"
-                placeholder="e.g. Sage green, Natural linen"
-                value={form.colour_finish}
-                onChange={e => set('colour_finish', e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]"
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Description / Notes</label>
-              <textarea
-                rows={3}
-                placeholder="Describe the item — construction, special requirements, references…"
-                value={form.specifications}
-                onChange={e => set('specifications', e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] resize-none"
-              />
-            </div>
-
-            {/* Supplier section — read-only indicator */}
-            <div className="rounded-lg border border-dashed border-[#D8D3C8] bg-[#FAFAF8] px-4 py-3 space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#B0AA9F]">Supplier fills in</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-[#C4BFB5] mb-1">Fabric / Material Qty needed</p>
-                  <div className="h-8 rounded bg-[#F0EDE8] border border-[#E8E4DE]" />
-                </div>
-                <div>
-                  <p className="text-xs text-[#C4BFB5] mb-1">Supplier Notes</p>
-                  <div className="h-8 rounded bg-[#F0EDE8] border border-[#E8E4DE]" />
-                </div>
-              </div>
-              <p className="text-[10px] text-[#C4BFB5]">The supplier will complete these fields when they respond.</p>
-            </div>
-
-            {error && <p className="text-xs text-red-600">{error}</p>}
-          </div>
-
-          <div className="px-5 py-4 border-t border-[#EDE9E1] flex gap-2">
-            <Button type="submit" disabled={!form.title.trim() || submitting || isPending}>
-              <Plus size={13} />
-              {submitting || isPending ? 'Creating…' : 'Create Request'}
-            </Button>
-            <Button variant="ghost" type="button" onClick={cancelCreate}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <div className="flex justify-end mb-4">
-          <Button onClick={() => setCreating(true)} size="sm">
-            <Plus size={13} /> New Request
-          </Button>
+      {/* Tabs */}
+      {archived.length > 0 && (
+        <div className="flex gap-1 bg-[#EFECE5] p-1 rounded-lg w-fit">
+          <button
+            onClick={() => setTab('active')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === 'active' ? 'bg-white text-[#2C2C2A] shadow-sm' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+          >
+            Active ({active.length})
+          </button>
+          <button
+            onClick={() => setTab('archived')}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${tab === 'archived' ? 'bg-white text-[#2C2C2A] shadow-sm' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+          >
+            Archived ({archived.length})
+          </button>
         </div>
       )}
 
-      {/* Request list */}
-      <div className="space-y-2">
-        {requests.map(req => (
-          <button
-            key={req.id}
-            onClick={() => router.push(`/sourcing/${req.id}`)}
-            className="w-full text-left bg-white rounded-xl border border-[#EDE9E1] px-5 py-4 hover:border-[#C4A46B] hover:shadow-sm transition-all duration-150 flex items-center gap-4 group"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <StatusBadge status={req.status} />
-                <span className="text-[11px] text-[#C4BFB5]">
-                  {new Date(req.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </span>
+      {/* Session list */}
+      {displayed.length === 0 ? (
+        <div className="bg-white border border-[#EDE9E1] rounded-xl p-10 text-center">
+          <p className="text-sm font-medium text-[#2C2C2A] mb-1">No sessions yet</p>
+          <p className="text-xs text-[#8A877F]">Create a session above to get started.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {displayed.map(s => {
+            const badge = STATUS_LABELS[s.status] ?? STATUS_LABELS.draft
+            return (
+              <div
+                key={s.id}
+                className="group bg-white border border-[#EDE9E1] rounded-xl px-5 py-4 flex items-center gap-4 cursor-pointer hover:border-[#C4A46B] hover:shadow-sm transition-all"
+                onClick={() => router.push(`/sourcing/${s.id}`)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-semibold text-sm text-[#2C2C2A] truncate">{s.title}</p>
+                    <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
+                      {badge.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#8A877F]">
+                    {s.project_name ? `${s.project_name} · ` : ''}
+                    {s.item_count} item{s.item_count !== 1 ? 's' : ''} · {s.supplier_count} supplier{s.supplier_count !== 1 ? 's' : ''} · {formatDate(s.created_at)}
+                  </p>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  {tab === 'active' ? (
+                    <button
+                      onClick={e => handleArchive(e, s.id)}
+                      disabled={archiving === s.id}
+                      title="Archive"
+                      className="p-2 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
+                    >
+                      {archiving === s.id ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={e => handleDelete(e, s.id)}
+                      disabled={deleting === s.id}
+                      title="Delete permanently"
+                      className="p-2 text-[#8A877F] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      {deleting === s.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    </button>
+                  )}
+                </div>
               </div>
-              <p className="text-sm font-medium text-[#2C2C2A] truncate">{req.title}</p>
-              <p className="text-xs text-[#8A877F] mt-0.5">{recipientSummary(recipients, req.id)}</p>
-            </div>
-            <ChevronRight size={15} className="text-[#C4BFB5] group-hover:text-[#9A7B4F] flex-shrink-0 transition-colors" />
-          </button>
-        ))}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

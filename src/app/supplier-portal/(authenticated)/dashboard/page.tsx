@@ -9,29 +9,24 @@ export default async function SupplierDashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  const { data: portalAccount } = await supabaseAdmin
+  const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
     .select('id, email')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
-  if (!portalAccount) redirect('/supplier-portal/login')
+  if (!account) redirect('/supplier-portal/login')
 
-  // Fetch recipients matching this supplier's email
-  const { data: recipients } = await supabaseAdmin
-    .from('sourcing_request_recipients')
-    .select(`
-      id, supplier_name, email, status, sent_at, viewed_at, responded_at,
-      sourcing_requests ( id, title, work_type, status, sent_at, user_id )
-    `)
-    .eq('email', portalAccount.email)
+  const { data } = await supabaseAdmin
+    .from('sourcing_session_suppliers')
+    .select('id, supplier_name, status, sent_at, token, session:sourcing_sessions(id, title, status, user_id, project:projects(project_name))')
+    .or(`portal_account_id.eq.${account.id},email.eq.${account.email}`)
     .order('created_at', { ascending: false })
 
-  // Collect studio names
   const userIds = [...new Set(
-    (recipients ?? []).map(r => {
-      const req = Array.isArray(r.sourcing_requests) ? r.sourcing_requests[0] : r.sourcing_requests
-      return req?.user_id as string | undefined
+    (data ?? []).map((ss: any) => {
+      const session = Array.isArray(ss.session) ? ss.session[0] : ss.session
+      return session?.user_id as string | undefined
     }).filter(Boolean)
   )]
 
@@ -44,15 +39,20 @@ export default async function SupplierDashboardPage() {
     }
   }
 
-  const rows = (recipients ?? []).map(r => {
-    const req = Array.isArray(r.sourcing_requests) ? r.sourcing_requests[0] : r.sourcing_requests
+  const rows = (data ?? []).map((ss: any) => {
+    const session = Array.isArray(ss.session) ? ss.session[0] : ss.session
     return {
-      recipient_id: r.id,
-      status: r.status as string,
-      sent_at: r.sent_at,
-      responded_at: r.responded_at,
-      request: req ? { id: req.id, title: req.title, work_type: req.work_type, status: req.status } : null,
-      studio_name: req?.user_id ? (studioMap[req.user_id] ?? 'Studio') : 'Studio',
+      id: ss.id,
+      status: ss.status as string,
+      sent_at: ss.sent_at as string | null,
+      token: ss.token as string,
+      session: session ? {
+        id: session.id,
+        title: session.title,
+        status: session.status,
+        project_name: (session.project as any)?.project_name ?? null,
+      } : null,
+      studio_name: session?.user_id ? (studioMap[session.user_id] ?? 'Studio') : 'Studio',
     }
   })
 

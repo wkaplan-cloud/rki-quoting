@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SourcingDashboard } from './SourcingDashboard'
-import type { SourcingRequest } from '@/lib/types'
 
 export default async function SourcingPage() {
   const supabase = await createClient()
@@ -17,33 +16,47 @@ export default async function SourcingPage() {
 
   if (!settings?.sourcing_enabled) redirect('/dashboard')
 
-
-  const { data: requests } = await supabase
-    .from('sourcing_requests')
-    .select('*')
-    .neq('status', 'cancelled')
+  const { data: sessions } = await supabase
+    .from('sourcing_sessions')
+    .select('id, title, status, archived, created_at, project_id, project:projects(project_name)')
     .order('created_at', { ascending: false })
 
-  // Fetch recipient counts per request
-  const ids = (requests ?? []).map(r => r.id)
-  const { data: recipients } = ids.length > 0
-    ? await supabase
-        .from('sourcing_request_recipients')
-        .select('sourcing_request_id, status')
-        .in('sourcing_request_id', ids)
-    : { data: [] }
+  // Fetch item + supplier counts per session
+  const ids = (sessions ?? []).map(s => s.id)
+
+  const [{ data: itemCounts }, { data: supplierCounts }] = await Promise.all(
+    ids.length > 0
+      ? [
+          supabase.from('sourcing_session_items').select('session_id').in('session_id', ids),
+          supabase.from('sourcing_session_suppliers').select('session_id, status').in('session_id', ids),
+        ]
+      : [{ data: [] }, { data: [] }]
+  )
+
+  const enriched = (sessions ?? []).map(s => {
+    const project = Array.isArray(s.project) ? s.project[0] : s.project
+    return {
+      id: s.id,
+      title: s.title,
+      status: s.status as string,
+      archived: s.archived as boolean,
+      created_at: s.created_at as string,
+      project_name: (project as any)?.project_name ?? null,
+      item_count: (itemCounts ?? []).filter((i: any) => i.session_id === s.id).length,
+      supplier_count: (supplierCounts ?? []).filter((ss: any) => ss.session_id === s.id).length,
+    }
+  })
+
+  const active = enriched.filter(s => !s.archived)
 
   return (
     <div>
       <PageHeader
-        title="Request Price"
-        subtitle={`${requests?.length ?? 0} request${requests?.length !== 1 ? 's' : ''}`}
+        title="Price Requests"
+        subtitle={`${active.length} active session${active.length !== 1 ? 's' : ''}`}
       />
       <div className="p-6 lg:p-8">
-        <SourcingDashboard
-          requests={(requests ?? []) as SourcingRequest[]}
-          recipients={recipients ?? []}
-        />
+        <SourcingDashboard sessions={enriched} />
       </div>
     </div>
   )

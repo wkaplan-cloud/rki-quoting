@@ -144,102 +144,89 @@ export interface ProjectTotals {
   balance_due: number
 }
 
-// ─── Sourcing Requests ────────────────────────────────────────────────────────
+// ─── Sourcing Sessions ────────────────────────────────────────────────────────
 
-export type SourcingRequestStatus =
-  | 'draft'
-  | 'sent'
-  | 'responded'
-  | 'accepted'
-  | 'pushed'
-  | 'cancelled'
+export type SourcingSessionStatus = 'draft' | 'sent' | 'in_progress' | 'completed' | 'archived'
+export type SourcingItemStatus    = 'open' | 'accepted' | 'manual'
+export type SourcingSupplierStatus = 'pending' | 'viewed' | 'in_progress' | 'completed' | 'declined'
+export type SourcingAssignmentStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'manual'
 
-export type SourcingRecipientStatus =
-  | 'pending'
-  | 'viewed'
-  | 'responded'
-  | 'accepted'
-  | 'rejected'
-  | 'declined'
-
-export interface SourcingRequest {
+export interface SourcingSession {
   id: string
+  org_id: string
   user_id: string
   project_id: string | null
   title: string
-  work_type: string | null
-  specifications: string | null
-  quantity: number
-  unit: string | null
-  item_quantity: number | null
-  dimensions: string | null
-  colour_finish: string | null
-  status: SourcingRequestStatus
-  sent_at: string | null
-  accepted_at: string | null
-  accepted_response_id: string | null
-  pushed_at: string | null
+  status: SourcingSessionStatus
+  archived: boolean
   created_at: string
 }
 
-export interface SupplierEdits {
-  title?: string
-  fabric_quantity?: number
-  fabric_unit?: string
-  item_quantity?: number
-  dimensions?: string
-  colour_finish?: string
-  specifications?: string
-  [key: string]: unknown
+export interface SourcingSessionItem {
+  id: string
+  session_id: string
+  line_item_id: string | null
+  title: string
+  work_type: string | null
+  specifications: string | null
+  item_quantity: number | null
+  dimensions: string | null
+  colour_finish: string | null
+  status: SourcingItemStatus
+  sort_order: number
+  created_at: string
 }
 
-export interface SourcingRequestImage {
+export interface SourcingItemImage {
   id: string
-  sourcing_request_id: string
+  item_id: string
   url: string
   caption: string | null
   sort_order: number
   created_at: string
 }
 
-export interface SourcingRequestRecipient {
+export interface SourcingSessionSupplier {
   id: string
-  sourcing_request_id: string
+  session_id: string
   supplier_id: string | null
+  portal_account_id: string | null
   supplier_name: string
   email: string
   token: string
-  status: SourcingRecipientStatus
+  status: SourcingSupplierStatus
   sent_at: string | null
   viewed_at: string | null
-  responded_at: string | null
   created_at: string
 }
 
-export interface SourcingRequestResponse {
+export interface SourcingItemAssignment {
   id: string
-  recipient_id: string
+  item_id: string
+  session_supplier_id: string
+  status: SourcingAssignmentStatus
+  responded_at: string | null
+  accepted_at: string | null
+  created_at: string
+}
+
+export interface SourcingItemResponse {
+  id: string
+  assignment_id: string
   unit_price: number
+  fabric_quantity: number | null
+  fabric_unit: string | null
   lead_time_weeks: number | null
-  notes: string | null
   valid_until: string | null
-  submitted_at: string
-  supplier_edits: SupplierEdits | null
-  changed_fields: string[] | null
+  notes: string | null
   attachment_url: string | null
+  submitted_at: string
+  updated_at: string
 }
 
-export interface SourcingRequestWithRelations extends SourcingRequest {
-  images: SourcingRequestImage[]
-  recipients: (SourcingRequestRecipient & {
-    response: SourcingRequestResponse | null
-    supplier: Pick<Supplier, 'id' | 'supplier_name' | 'markup_percentage'> | null
-  })[]
-}
-
-export interface SourcingMessage {
+export interface SourcingThreadMessage {
   id: string
-  recipient_id: string
+  session_supplier_id: string
   sender_type: 'designer' | 'supplier'
   body: string
   created_at: string
@@ -252,6 +239,12 @@ export interface SupplierPortalAccount {
   auth_user_id: string
   email: string
   company_name: string | null
+  phone: string | null
+  address: string | null
+  categories: string[] | null
+  description: string | null
+  website: string | null
+  logo_url: string | null
   created_at: string
 }
 

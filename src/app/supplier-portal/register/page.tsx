@@ -1,6 +1,7 @@
 'use client'
-import { useState, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
+import Script from 'next/script'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -19,6 +20,43 @@ function RegisterForm() {
   const [tcAccepted, setTcAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const widgetRef = useRef<HTMLDivElement>(null)
+  const widgetId = useRef<string | null>(null)
+
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+  useEffect(() => {
+    if (!siteKey) return
+    function render() {
+      if (!widgetRef.current || !(window as any).turnstile) return
+      if (widgetId.current != null) return
+      widgetId.current = (window as any).turnstile.render(widgetRef.current, {
+        sitekey: siteKey,
+        theme: 'light',
+      })
+    }
+    if ((window as any).turnstile) {
+      render()
+    } else {
+      const prev = (window as any).onloadTurnstileCallback
+      ;(window as any).onloadTurnstileCallback = () => {
+        render()
+        if (prev) prev()
+      }
+    }
+    return () => {
+      if (widgetId.current != null && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetId.current)
+        widgetId.current = null
+      }
+    }
+  }, [siteKey])
+
+  useEffect(() => {
+    if (error && siteKey && (window as any).turnstile && widgetId.current != null) {
+      (window as any).turnstile.reset(widgetId.current)
+    }
+  }, [error, siteKey])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -27,13 +65,22 @@ function RegisterForm() {
     if (password !== confirm) { setError('Passwords do not match'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     if (!tcAccepted) { setError('Please accept the terms and conditions to continue'); return }
+
+    const cfToken = siteKey && widgetId.current != null
+      ? (window as any).turnstile.getResponse(widgetId.current)
+      : undefined
+    if (siteKey && !cfToken) {
+      setError('Please complete the security check.')
+      return
+    }
+
     setLoading(true)
 
     // Create portal account
     const res = await fetch('/api/supplier-portal/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim() }),
+      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), cf_token: cfToken }),
     })
     const data = await res.json() as { error?: string }
     if (!res.ok) {
@@ -60,6 +107,12 @@ function RegisterForm() {
 
   return (
     <div className="min-h-screen bg-[#F5F2EC] flex items-center justify-center p-6">
+      {siteKey && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit"
+          strategy="lazyOnload"
+        />
+      )}
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
@@ -160,6 +213,8 @@ function RegisterForm() {
                 I have read and agree to the <strong className="text-[#2C2C2A]">Terms &amp; Conditions</strong>, including the 1% platform fee on confirmed deals processed through QuotingHub.
               </span>
             </label>
+
+            {siteKey && <div ref={widgetRef} />}
 
             {error && (
               <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>

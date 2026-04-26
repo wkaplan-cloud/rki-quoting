@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Script from 'next/script'
 import { Eye, EyeOff } from 'lucide-react'
 
 export default function SignupPage() {
@@ -14,6 +15,43 @@ export default function SignupPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const widgetRef = useRef<HTMLDivElement>(null)
+  const widgetId = useRef<string | null>(null)
+
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+  useEffect(() => {
+    if (!siteKey) return
+    function render() {
+      if (!widgetRef.current || !(window as any).turnstile) return
+      if (widgetId.current != null) return
+      widgetId.current = (window as any).turnstile.render(widgetRef.current, {
+        sitekey: siteKey,
+        theme: 'light',
+      })
+    }
+    if ((window as any).turnstile) {
+      render()
+    } else {
+      const prev = (window as any).onloadTurnstileCallback
+      ;(window as any).onloadTurnstileCallback = () => {
+        render()
+        if (prev) prev()
+      }
+    }
+    return () => {
+      if (widgetId.current != null && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetId.current)
+        widgetId.current = null
+      }
+    }
+  }, [siteKey])
+
+  useEffect(() => {
+    if (error && siteKey && (window as any).turnstile && widgetId.current != null) {
+      (window as any).turnstile.reset(widgetId.current)
+    }
+  }, [error, siteKey])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,11 +62,20 @@ export default function SignupPage() {
     if (!/[A-Z]/.test(password)) { setError('Password must contain at least one uppercase letter'); return }
     if (!/[0-9]/.test(password)) { setError('Password must contain at least one number'); return }
     if (!acceptedTerms) { setError('Please accept the Terms of Service and Privacy Policy to continue'); return }
+
+    const cfToken = siteKey && widgetId.current != null
+      ? (window as any).turnstile.getResponse(widgetId.current)
+      : undefined
+    if (siteKey && !cfToken) {
+      setError('Please complete the security check.')
+      return
+    }
+
     setLoading(true)
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, full_name: fullName }),
+      body: JSON.stringify({ email, password, full_name: fullName, cf_token: cfToken }),
     })
     const data = await res.json()
     if (!res.ok) {
@@ -44,6 +91,12 @@ export default function SignupPage() {
       className="min-h-screen flex"
       style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
+      {siteKey && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit"
+          strategy="lazyOnload"
+        />
+      )}
       {/* Left panel */}
       <div className="hidden lg:flex w-2/5 flex-col justify-between p-12 relative">
         <div className="relative z-10">
@@ -183,6 +236,8 @@ export default function SignupPage() {
                     <Link href="/privacy" target="_blank" className="text-[#9A7B4F] hover:underline">Privacy Policy</Link>
                   </label>
                 </div>
+
+                {siteKey && <div ref={widgetRef} />}
 
                 {error && (
                   <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
