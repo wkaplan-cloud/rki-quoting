@@ -66,10 +66,10 @@ export default async function SourcingDetailPage({
     <div>
       <PageHeader
         title={session.title}
-        subtitle={(sessionProject as any)?.project_name ?? 'Price Request Session'}
+        subtitle={(sessionProject as any)?.project_name ?? 'Price Request'}
         actions={
           <Link href="/sourcing" className="inline-flex items-center gap-1 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
-            <ChevronLeft size={15} /> All Sessions
+            <ChevronLeft size={15} /> All Price Requests
           </Link>
         }
       />

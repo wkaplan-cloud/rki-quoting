@@ -76,7 +76,7 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
 
   async function handleDelete(e: React.MouseEvent, id: string) {
     e.stopPropagation()
-    if (!window.confirm('Permanently delete this session? This cannot be undone.')) return
+    if (!window.confirm('Permanently delete this price request? This cannot be undone.')) return
     setDeleting(id)
     try {
       await fetch(`/api/sourcing/sessions/${id}`, { method: 'DELETE' })
@@ -94,7 +94,7 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
           <input
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
-            placeholder={`Session title, e.g. "Living Room Furniture Q3"`}
+            placeholder={`e.g. "Living Room Furniture Q3"`}
             className="flex-1 px-4 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
             autoFocus
           />
@@ -120,7 +120,7 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
           className="flex items-center gap-2 px-4 py-2.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] transition-colors"
         >
           <Plus size={14} />
-          New Session
+          New Price Request
         </button>
       )}
 
@@ -145,8 +145,8 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
       {/* Session list */}
       {displayed.length === 0 ? (
         <div className="bg-white border border-[#EDE9E1] rounded-xl p-10 text-center">
-          <p className="text-sm font-medium text-[#2C2C2A] mb-1">No sessions yet</p>
-          <p className="text-xs text-[#8A877F]">Create a session above to get started.</p>
+          <p className="text-sm font-medium text-[#2C2C2A] mb-1">No price requests yet</p>
+          <p className="text-xs text-[#8A877F]">Create a new price request to get started.</p>
         </div>
       ) : (
         <div className="space-y-2">

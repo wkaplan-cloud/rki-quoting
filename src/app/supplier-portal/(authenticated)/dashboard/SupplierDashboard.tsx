@@ -48,7 +48,7 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
           </div>
           <p className="text-sm font-semibold mb-1" style={{ color: '#18181B' }}>No price requests yet</p>
           <p className="text-sm max-w-xs mx-auto" style={{ color: '#71717A' }}>
-            Pricing requests from design studios will appear here once they send you a session.
+            Pricing requests from design studios will appear here once they send you one.
           </p>
         </div>
       ) : (
@@ -72,7 +72,7 @@ function RequestTable({ rows, dim }: { rows: Row[]; dim?: boolean }) {
       <table className="w-full text-sm">
         <thead>
           <tr style={{ borderBottom: '1px solid #E4E4E7', background: '#FAFAFA' }}>
-            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>Session</th>
+            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>Price Request</th>
             <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest hidden sm:table-cell" style={{ color: '#A1A1AA' }}>Studio</th>
             <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell" style={{ color: '#A1A1AA' }}>Received</th>
             <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>Status</th>

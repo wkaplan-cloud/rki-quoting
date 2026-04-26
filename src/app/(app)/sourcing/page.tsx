@@ -53,7 +53,7 @@ export default async function SourcingPage() {
     <div>
       <PageHeader
         title="Price Requests"
-        subtitle={`${active.length} active session${active.length !== 1 ? 's' : ''}`}
+        subtitle={`${active.length} active price request${active.length !== 1 ? 's' : ''}`}
       />
       <div className="p-6 lg:p-8">
         <SourcingDashboard sessions={enriched} />

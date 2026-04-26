@@ -426,7 +426,7 @@ function SupplierCard({
           <div className="px-5 py-3">
             <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wide mb-2">Assign Items</p>
             <div className="space-y-1.5">
-              {items.length === 0 && <p className="text-xs text-[#C4BFB5]">No items in session yet.</p>}
+              {items.length === 0 && <p className="text-xs text-[#C4BFB5]">No items added yet.</p>}
               {items.map(item => {
                 const isAssigned = assignedItemIds.has(item.id)
                 const assignment = ss.assignments.find(a => a.item_id === item.id)
@@ -574,7 +574,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   }
 
   async function handleRemoveSupplier(ssId: string) {
-    if (!window.confirm('Remove this supplier from the session?')) return
+    if (!window.confirm('Remove this supplier from this price request?')) return
     await fetch(`/api/sourcing/sessions/${session.id}/suppliers/${ssId}`, { method: 'DELETE' })
     setSuppliers(prev => prev.filter(s => s.id !== ssId))
   }
@@ -631,7 +631,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   }
 
   async function handleArchive() {
-    if (!window.confirm('Archive this session?')) return
+    if (!window.confirm('Archive this price request?')) return
     setArchiving(true)
     try {
       await fetch(`/api/sourcing/sessions/${session.id}/archive`, { method: 'POST' })
