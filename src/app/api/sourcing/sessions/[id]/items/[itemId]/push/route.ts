@@ -54,7 +54,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from('line_items')
       .insert({
         project_id,
-        user_id: user.id,
         item_name: item.title,
         description: item.specifications ?? null,
         quantity: item.item_quantity ?? 1,
