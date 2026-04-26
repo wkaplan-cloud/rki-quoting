@@ -91,7 +91,7 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
         <input
           value={newTitle}
           onChange={e => setNewTitle(e.target.value)}
-          placeholder="Session title, e.g. "Living Room Furniture Q3""
+          placeholder={`Session title, e.g. "Living Room Furniture Q3"`}
           className="flex-1 px-4 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
         />
         <button
