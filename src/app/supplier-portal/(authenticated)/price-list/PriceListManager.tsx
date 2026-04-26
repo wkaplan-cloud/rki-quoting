@@ -41,9 +41,9 @@ function itemToForm(item: SupplierPriceListItem): ItemForm {
 }
 
 const INPUT_STYLE = {
-  background: '#1C2B3A',
-  border: '1px solid #2D4159',
-  color: '#E8F0F8',
+  background: '#27272A',
+  border: '1px solid #3F3F46',
+  color: '#FAFAFA',
 }
 
 export function PriceListManager({ initialItems }: Props) {
@@ -166,13 +166,13 @@ export function PriceListManager({ initialItems }: Props) {
     <div className="space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#1C2B3A' }}>My Price List</h1>
-          <p className="text-sm mt-0.5" style={{ color: '#5A7A95' }}>Add your products and services with pricing.</p>
+          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>My Price List</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>Add your products and services with pricing.</p>
         </div>
         <div className="flex items-center gap-2">
           <label
             className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border cursor-pointer transition-colors ${importing ? 'opacity-50 pointer-events-none' : ''}`}
-            style={{ background: '#EBF0F5', border: '1px solid #C5D5E5', color: '#4A7FA5' }}
+            style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#71717A' }}
           >
             <Upload size={13} />
             {importing ? 'Importing…' : 'Import CSV / Excel'}
@@ -181,7 +181,7 @@ export function PriceListManager({ initialItems }: Props) {
           <button
             onClick={startNew}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors"
-            style={{ background: '#3B82F6', color: '#FFFFFF' }}
+            style={{ background: '#18181B', color: '#FFFFFF' }}
           >
             <Plus size={13} />
             Add Item
@@ -204,22 +204,22 @@ export function PriceListManager({ initialItems }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         {/* Items table */}
-        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#D8E4EF' }}>
+        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E4E4E7' }}>
           {items.length === 0 && editingId !== 'new' ? (
             <div className="p-12 text-center">
-              <p className="text-sm font-semibold mb-1" style={{ color: '#1C2B3A' }}>No items yet</p>
-              <p className="text-sm mb-4" style={{ color: '#5A7A95' }}>Add items manually or import a CSV/Excel file.</p>
-              <button onClick={startNew} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: '#3B82F6' }}>
+              <p className="text-sm font-semibold mb-1" style={{ color: '#3F3F46' }}>No items yet</p>
+              <p className="text-sm mb-4" style={{ color: '#71717A' }}>Add items manually or import a CSV/Excel file.</p>
+              <button onClick={startNew} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: '#18181B' }}>
                 Add your first item →
               </button>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: '1px solid #E8F0F8', background: '#F7FAFC' }}>
-                  <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#7A9AB8' }}>Item</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest hidden sm:table-cell" style={{ color: '#7A9AB8' }}>Price</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell" style={{ color: '#7A9AB8' }}>Lead Time</th>
+                <tr style={{ borderBottom: '1px solid #FAFAFA', background: '#FAFAFA' }}>
+                  <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>Item</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest hidden sm:table-cell" style={{ color: '#A1A1AA' }}>Price</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell" style={{ color: '#A1A1AA' }}>Lead Time</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -227,33 +227,33 @@ export function PriceListManager({ initialItems }: Props) {
                 {items.map(item => (
                   <tr
                     key={item.id}
-                    className="transition-colors hover:bg-[#F7FAFC]"
+                    className="transition-colors hover:bg-[#FAFAFA]"
                     style={{ borderBottom: '1px solid #F0F4F8' }}
                   >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         {item.image_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.image_url} alt={item.item_name} className="w-9 h-9 rounded object-cover flex-shrink-0" style={{ border: '1px solid #D8E4EF' }} />
+                          <img src={item.image_url} alt={item.item_name} className="w-9 h-9 rounded object-cover flex-shrink-0" style={{ border: '1px solid #E4E4E7' }} />
                         ) : (
-                          <div className="w-9 h-9 rounded flex-shrink-0" style={{ background: '#EBF0F5', border: '1px solid #D8E4EF' }} />
+                          <div className="w-9 h-9 rounded flex-shrink-0" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7' }} />
                         )}
                         <div>
-                          <p className="font-semibold" style={{ color: '#1C2B3A' }}>{item.item_name}</p>
-                          {item.sku && <p className="text-xs" style={{ color: '#7A9AB8' }}>SKU: {item.sku}</p>}
-                          {item.description && <p className="text-xs truncate max-w-[200px]" style={{ color: '#7A9AB8' }}>{item.description}</p>}
+                          <p className="font-semibold" style={{ color: '#3F3F46' }}>{item.item_name}</p>
+                          {item.sku && <p className="text-xs" style={{ color: '#A1A1AA' }}>SKU: {item.sku}</p>}
+                          {item.description && <p className="text-xs truncate max-w-[200px]" style={{ color: '#A1A1AA' }}>{item.description}</p>}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-right text-sm hidden sm:table-cell" style={{ color: '#1C2B3A' }}>
+                    <td className="px-4 py-3.5 text-right text-sm hidden sm:table-cell" style={{ color: '#3F3F46' }}>
                       {item.price != null ? `R ${item.price.toFixed(2)}${item.unit ? ` / ${item.unit}` : ''}` : '—'}
                     </td>
-                    <td className="px-4 py-3.5 text-right text-xs hidden md:table-cell" style={{ color: '#7A9AB8' }}>
+                    <td className="px-4 py-3.5 text-right text-xs hidden md:table-cell" style={{ color: '#A1A1AA' }}>
                       {item.lead_time_weeks != null ? `${item.lead_time_weeks}w` : '—'}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => startEdit(item)} className="transition-opacity hover:opacity-60" style={{ color: '#7A9AB8' }}><Pencil size={13} /></button>
+                        <button onClick={() => startEdit(item)} className="transition-opacity hover:opacity-60" style={{ color: '#A1A1AA' }}><Pencil size={13} /></button>
                         <button
                           onClick={() => handleDelete(item.id)}
                           disabled={deletingId === item.id}
@@ -273,17 +273,17 @@ export function PriceListManager({ initialItems }: Props) {
 
         {/* Add / Edit form */}
         {editingId !== null && (
-          <div className="rounded-xl overflow-hidden sticky top-4" style={{ background: '#162231', border: '1px solid #1C2B3A' }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #1C2B3A' }}>
-              <p className="text-sm font-semibold" style={{ color: '#E8F0F8' }}>{editingId === 'new' ? 'Add Item' : 'Edit Item'}</p>
-              <button onClick={cancelEdit} className="transition-opacity hover:opacity-60" style={{ color: '#4A7FA5' }}><X size={14} /></button>
+          <div className="rounded-xl overflow-hidden sticky top-4" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #3F3F46' }}>
+              <p className="text-sm font-semibold" style={{ color: '#FAFAFA' }}>{editingId === 'new' ? 'Add Item' : 'Edit Item'}</p>
+              <button onClick={cancelEdit} className="transition-opacity hover:opacity-60" style={{ color: '#71717A' }}><X size={14} /></button>
             </div>
             <div className="p-5 space-y-4">
               {/* Image */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>Image</label>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Image</label>
                 {form.image_url ? (
-                  <div className="relative w-full h-32 rounded-lg overflow-hidden" style={{ border: '1px solid #2D4159' }}>
+                  <div className="relative w-full h-32 rounded-lg overflow-hidden" style={{ border: '1px solid #3F3F46' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.image_url} alt="" className="w-full h-full object-cover" />
                     <button
@@ -297,9 +297,9 @@ export function PriceListManager({ initialItems }: Props) {
                 ) : (
                   <label
                     className={`flex items-center justify-center gap-2 h-20 rounded-lg cursor-pointer transition-colors text-sm ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
-                    style={{ border: '1px dashed #2D4159', color: '#4A7FA5' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                    style={{ border: '1px dashed #3F3F46', color: '#71717A' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#18181B')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#3F3F46')}
                   >
                     <Upload size={13} />
                     {uploadingImage ? 'Uploading…' : 'Upload image'}
@@ -309,7 +309,7 @@ export function PriceListManager({ initialItems }: Props) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
                   Item Name <span style={{ color: '#F87171' }}>*</span>
                 </label>
                 <input
@@ -319,13 +319,13 @@ export function PriceListManager({ initialItems }: Props) {
                   placeholder="e.g. Linen Fabric — Natural"
                   className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                   style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>Description</label>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Description</label>
                 <textarea
                   rows={2}
                   value={form.description}
@@ -333,14 +333,14 @@ export function PriceListManager({ initialItems }: Props) {
                   placeholder="Material specs, colours, etc."
                   className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
                   style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>SKU / Code</label>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>SKU / Code</label>
                   <input
                     type="text"
                     value={form.sku}
@@ -348,12 +348,12 @@ export function PriceListManager({ initialItems }: Props) {
                     placeholder="ABC-001"
                     className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                    onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
+                    onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>Unit</label>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Unit</label>
                   <input
                     type="text"
                     value={form.unit}
@@ -361,15 +361,15 @@ export function PriceListManager({ initialItems }: Props) {
                     placeholder="e.g. m, m², each"
                     className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                    onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
+                    onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>Price (R)</label>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Price (R)</label>
                   <input
                     type="number"
                     min="0"
@@ -379,12 +379,12 @@ export function PriceListManager({ initialItems }: Props) {
                     placeholder="0.00"
                     className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                    onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
+                    onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>Lead Time (wks)</label>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Lead Time (wks)</label>
                   <input
                     type="number"
                     min="0"
@@ -394,8 +394,8 @@ export function PriceListManager({ initialItems }: Props) {
                     placeholder="e.g. 4"
                     className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                    onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
+                    onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
                   />
                 </div>
               </div>
@@ -409,22 +409,22 @@ export function PriceListManager({ initialItems }: Props) {
                   onClick={handleSave}
                   disabled={saving}
                   className="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                  style={{ background: '#3B82F6', color: '#FFFFFF' }}
+                  style={{ background: '#18181B', color: '#FFFFFF' }}
                 >
                   {saving ? 'Saving…' : editingId === 'new' ? 'Add Item' : 'Save Changes'}
                 </button>
                 <button
                   onClick={cancelEdit}
                   className="px-4 py-2.5 text-sm rounded-lg transition-colors"
-                  style={{ color: '#7A9AB8', border: '1px solid #2D4159' }}
+                  style={{ color: '#A1A1AA', border: '1px solid #3F3F46' }}
                 >
                   Cancel
                 </button>
               </div>
 
               {editingId === null && (
-                <div className="pt-2" style={{ borderTop: '1px solid #1C2B3A' }}>
-                  <div className="flex items-center gap-2 text-xs" style={{ color: '#4A7FA5' }}>
+                <div className="pt-2" style={{ borderTop: '1px solid #3F3F46' }}>
+                  <div className="flex items-center gap-2 text-xs" style={{ color: '#71717A' }}>
                     <Download size={11} />
                     <span>Columns: item_name, description, sku, unit, price, lead_time_weeks</span>
                   </div>
@@ -436,16 +436,16 @@ export function PriceListManager({ initialItems }: Props) {
 
         {/* Import hint when no form open */}
         {editingId === null && items.length > 0 && (
-          <div className="rounded-xl p-5" style={{ background: '#162231', border: '1px solid #1C2B3A' }}>
-            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#4A7FA5' }}>CSV / Excel Import</p>
-            <p className="text-xs leading-relaxed mb-3" style={{ color: '#5A7A95' }}>
+          <div className="rounded-xl p-5" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>CSV / Excel Import</p>
+            <p className="text-xs leading-relaxed mb-3" style={{ color: '#71717A' }}>
               Import multiple items at once. Your file should have these columns:
             </p>
-            <code className="block text-xs rounded px-3 py-2 leading-relaxed" style={{ background: '#1C2B3A', color: '#7A9AB8', border: '1px solid #2D4159' }}>
+            <code className="block text-xs rounded px-3 py-2 leading-relaxed" style={{ background: '#3F3F46', color: '#A1A1AA', border: '1px solid #3F3F46' }}>
               item_name, description, sku,<br />
               unit, price, lead_time_weeks
             </code>
-            <p className="text-xs mt-2" style={{ color: '#2D4159' }}>Supports .csv, .xlsx, .xls — max 500 rows</p>
+            <p className="text-xs mt-2" style={{ color: '#3F3F46' }}>Supports .csv, .xlsx, .xls — max 500 rows</p>
           </div>
         )}
       </div>

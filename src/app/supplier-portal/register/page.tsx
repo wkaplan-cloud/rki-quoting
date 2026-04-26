@@ -7,15 +7,15 @@ import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const INPUT_STYLE = {
-  background: '#1C2B3A',
-  border: '1px solid #2D4159',
-  color: '#E8F0F8',
+  background: '#18181B',
+  border: '1px solid #27272A',
+  color: '#FAFAFA',
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>{label}</label>
+      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>{label}</label>
       {children}
     </div>
   )
@@ -36,8 +36,8 @@ function StyledInput({ type = 'text', value, onChange, placeholder, required, au
       autoComplete={autoComplete}
       className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors"
       style={INPUT_STYLE}
-      onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-      onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+      onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+      onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
     />
   )
 }
@@ -116,34 +116,34 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0F1C28' }}>
+    <div className="min-h-screen flex" style={{ background: '#0F0F10' }}>
       {siteKey && (
         <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" strategy="lazyOnload" />
       )}
 
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12" style={{ background: '#1C2B3A' }}>
+      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12" style={{ background: '#18181B' }}>
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="QuotingHub" className="h-7 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
         </div>
         <div>
-          <p className="text-3xl font-bold leading-snug mb-4" style={{ color: '#E8F0F8' }}>
+          <p className="text-3xl font-bold leading-snug mb-4" style={{ color: '#FAFAFA' }}>
             Join the QuotingHub<br />supplier network.
           </p>
-          <p className="text-sm leading-relaxed" style={{ color: '#5A7A95' }}>
+          <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
             Receive price requests directly from interior design studios. Respond faster, win more business.
           </p>
           <div className="mt-8 space-y-3">
             {['Free to join — no monthly fees', 'All price requests in one dashboard', 'Message designers directly per request'].map(f => (
               <div key={f} className="flex items-center gap-2.5">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3B82F6' }} />
-                <p className="text-sm" style={{ color: '#7A9AB8' }}>{f}</p>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3F3F46' }} />
+                <p className="text-sm" style={{ color: '#A1A1AA' }}>{f}</p>
               </div>
             ))}
           </div>
         </div>
-        <p className="text-xs" style={{ color: '#2D4159' }}>© QuotingHub · Supplier Portal</p>
+        <p className="text-xs" style={{ color: '#27272A' }}>© QuotingHub · Supplier Portal</p>
       </div>
 
       {/* Right panel — form */}
@@ -154,17 +154,17 @@ function RegisterForm() {
             <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto mx-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
           </div>
 
-          <h1 className="text-2xl font-bold mb-1" style={{ color: '#E8F0F8' }}>Create account</h1>
-          <p className="text-sm mb-7" style={{ color: '#5A7A95' }}>Supplier Portal · Free forever</p>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: '#FAFAFA' }}>Create account</h1>
+          <p className="text-sm mb-7" style={{ color: '#71717A' }}>Supplier Portal · Free forever</p>
 
           {noPortalAccount && (
-            <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1C3050', border: '1px solid #2D4F7A', color: '#7AB0DC' }}>
-              <strong style={{ color: '#A8CFF0' }}>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
+            <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#A1A1AA' }}>
+              <strong style={{ color: '#D4D4D8' }}>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
             </div>
           )}
 
-          <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1C2B3A', border: '1px solid #2D4159', color: '#7A9AB8' }}>
-            <strong style={{ color: '#A8C4DC' }}>Important:</strong> Use the same email address that design studios use when sending you price requests.
+          <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#18181B', border: '1px solid #27272A', color: '#A1A1AA' }}>
+            <strong style={{ color: '#D4D4D8' }}>Important:</strong> Use the same email address that design studios use when sending you price requests.
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -184,14 +184,14 @@ function RegisterForm() {
                   autoComplete="new-password"
                   className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none transition-colors"
                   style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
                 />
-                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#4A7FA5' }}>
+                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#52525B' }}>
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              <p className="text-xs mt-1" style={{ color: '#2D4159' }}>Min. 8 characters</p>
+              <p className="text-xs mt-1" style={{ color: '#27272A' }}>Min. 8 characters</p>
             </Field>
             <Field label="Confirm Password">
               <div className="relative">
@@ -203,18 +203,18 @@ function RegisterForm() {
                   autoComplete="new-password"
                   className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none transition-colors"
                   style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
                 />
-                <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#4A7FA5' }}>
+                <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#52525B' }}>
                   {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </Field>
 
             {/* Platform fee notice */}
-            <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1A2A1A', border: '1px solid #2A4A2A', color: '#7AB87A' }}>
-              <p className="font-semibold mb-1" style={{ color: '#A8D4A8' }}>Platform Fee</p>
+            <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1A2820', border: '1px solid #2A4A3A', color: '#6EE7B7' }}>
+              <p className="font-semibold mb-1" style={{ color: '#A7F3D0' }}>Platform Fee</p>
               <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
             </div>
 
@@ -224,10 +224,10 @@ function RegisterForm() {
                 checked={tcAccepted}
                 onChange={e => setTcAccepted(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded cursor-pointer shrink-0"
-                style={{ accentColor: '#3B82F6' }}
+                style={{ accentColor: '#3F3F46' }}
               />
-              <span className="text-xs leading-relaxed" style={{ color: '#7A9AB8' }}>
-                I agree to the <strong style={{ color: '#A8C4DC' }}>Terms &amp; Conditions</strong>, including the 1% platform fee on confirmed deals.
+              <span className="text-xs leading-relaxed" style={{ color: '#A1A1AA' }}>
+                I agree to the <strong style={{ color: '#D4D4D8' }}>Terms &amp; Conditions</strong>, including the 1% platform fee on confirmed deals.
               </span>
             </label>
 
@@ -241,15 +241,15 @@ function RegisterForm() {
               type="submit"
               disabled={loading || !tcAccepted}
               className="w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-              style={{ background: '#3B82F6', color: '#FFFFFF' }}
+              style={{ background: '#3F3F46', color: '#FFFFFF' }}
             >
               {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>
 
-          <p className="text-center text-sm mt-6" style={{ color: '#5A7A95' }}>
+          <p className="text-center text-sm mt-6" style={{ color: '#71717A' }}>
             Already have an account?{' '}
-            <Link href="/supplier-portal/login" className="font-medium" style={{ color: '#3B82F6' }}>Sign in</Link>
+            <Link href="/supplier-portal/login" className="font-medium" style={{ color: '#3F3F46' }}>Sign in</Link>
           </p>
         </div>
       </div>

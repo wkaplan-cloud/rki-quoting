@@ -31,22 +31,22 @@ export default function SupplierLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0F1C28' }}>
+    <div className="min-h-screen flex" style={{ background: '#0F0F10' }}>
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12" style={{ background: '#1C2B3A' }}>
+      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12" style={{ background: '#18181B' }}>
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="QuotingHub" className="h-7 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
         </div>
         <div>
-          <p className="text-3xl font-bold leading-snug mb-4" style={{ color: '#E8F0F8' }}>
+          <p className="text-3xl font-bold leading-snug mb-4" style={{ color: '#FAFAFA' }}>
             Manage price requests<br />in one place.
           </p>
-          <p className="text-sm leading-relaxed" style={{ color: '#5A7A95' }}>
+          <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
             Respond to pricing requests from interior design studios — without digging through email.
           </p>
         </div>
-        <p className="text-xs" style={{ color: '#2D4159' }}>© QuotingHub · Supplier Portal</p>
+        <p className="text-xs" style={{ color: '#27272A' }}>© QuotingHub · Supplier Portal</p>
       </div>
 
       {/* Right panel */}
@@ -57,12 +57,12 @@ export default function SupplierLoginPage() {
             <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto mx-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
           </div>
 
-          <h1 className="text-2xl font-bold mb-1" style={{ color: '#E8F0F8' }}>Sign in</h1>
-          <p className="text-sm mb-8" style={{ color: '#5A7A95' }}>Supplier Portal</p>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: '#FAFAFA' }}>Sign in</h1>
+          <p className="text-sm mb-8" style={{ color: '#71717A' }}>Supplier Portal</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>Email</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Email</label>
               <input
                 type="email"
                 value={email}
@@ -71,13 +71,13 @@ export default function SupplierLoginPage() {
                 autoComplete="email"
                 autoFocus
                 className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors"
-                style={{ background: '#1C2B3A', border: '1px solid #2D4159', color: '#E8F0F8' }}
-                onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                style={{ background: '#18181B', border: '1px solid #27272A', color: '#FAFAFA' }}
+                onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#5A7A95' }}>Password</label>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -86,15 +86,15 @@ export default function SupplierLoginPage() {
                   required
                   autoComplete="current-password"
                   className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none transition-colors"
-                  style={{ background: '#1C2B3A', border: '1px solid #2D4159', color: '#E8F0F8' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#3B82F6')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#2D4159')}
+                  style={{ background: '#18181B', border: '1px solid #27272A', color: '#FAFAFA' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                  style={{ color: '#4A7FA5' }}
+                  style={{ color: '#52525B' }}
                 >
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -109,23 +109,23 @@ export default function SupplierLoginPage() {
               type="submit"
               disabled={loading}
               className="w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 mt-1"
-              style={{ background: '#3B82F6', color: '#FFFFFF' }}
+              style={{ background: '#3F3F46', color: '#FFFFFF' }}
             >
               {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
 
-          <div className="mt-6 pt-5 space-y-2 text-center" style={{ borderTop: '1px solid #1C2B3A' }}>
-            <p className="text-sm" style={{ color: '#5A7A95' }}>
+          <div className="mt-6 pt-5 space-y-2 text-center" style={{ borderTop: '1px solid #18181B' }}>
+            <p className="text-sm" style={{ color: '#71717A' }}>
               New supplier?{' '}
-              <Link href="/supplier-portal/register" className="font-medium" style={{ color: '#3B82F6' }}>Create an account</Link>
+              <Link href="/supplier-portal/register" className="font-medium" style={{ color: '#3F3F46' }}>Create an account</Link>
             </p>
-            <p className="text-xs" style={{ color: '#2D4159' }}>
-              <Link href="/forgot-password" style={{ color: '#4A7FA5' }}>Forgot password?</Link>
+            <p className="text-xs" style={{ color: '#27272A' }}>
+              <Link href="/forgot-password" style={{ color: '#52525B' }}>Forgot password?</Link>
             </p>
-            <p className="text-xs" style={{ color: '#2D4159' }}>
+            <p className="text-xs" style={{ color: '#27272A' }}>
               Are you a designer?{' '}
-              <Link href="/login" style={{ color: '#4A7FA5' }}>Sign in here →</Link>
+              <Link href="/login" style={{ color: '#52525B' }}>Sign in here →</Link>
             </p>
           </div>
         </div>

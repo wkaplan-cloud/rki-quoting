@@ -59,7 +59,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     supabaseAdmin.from('org_members').select('full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
   ])
 
-  // Sourcing badge: count responded assignments + unread supplier messages
+  // Sourcing badge: supplier responses waiting for designer to review
   let sourcingBadge = 0
   if (settings?.sourcing_enabled && orgId) {
     const { data: activeSessions } = await supabaseAdmin
@@ -79,19 +79,12 @@ export default async function Layout({ children }: { children: React.ReactNode }
       const ssIds = (ssRows ?? []).map((s: any) => s.id)
 
       if (ssIds.length > 0) {
-        const [{ count: respondedCount }, { count: msgCount }] = await Promise.all([
-          supabaseAdmin
-            .from('sourcing_item_assignments')
-            .select('id', { count: 'exact', head: true })
-            .in('session_supplier_id', ssIds)
-            .eq('status', 'responded'),
-          supabaseAdmin
-            .from('sourcing_thread_messages')
-            .select('id', { count: 'exact', head: true })
-            .in('session_supplier_id', ssIds)
-            .eq('sender_type', 'supplier'),
-        ])
-        sourcingBadge = (respondedCount ?? 0) + (msgCount ?? 0)
+        const { count: respondedCount } = await supabaseAdmin
+          .from('sourcing_item_assignments')
+          .select('id', { count: 'exact', head: true })
+          .in('session_supplier_id', ssIds)
+          .eq('status', 'responded')
+        sourcingBadge = respondedCount ?? 0
       }
     }
   }
