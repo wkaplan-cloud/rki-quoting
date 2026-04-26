@@ -515,11 +515,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           )}
                         </div>
                         {!locked && (
-                          <>
+                          <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
                             <button
                               onClick={() => toggleLink(item.id, item.parent_item_id ?? null)}
                               title={isLinked ? 'Unlink from parent item' : 'Link to item above'}
-                              className={`flex-shrink-0 p-0.5 rounded transition-colors cursor-pointer
+                              className={`p-0.5 rounded transition-colors cursor-pointer
                                 ${isLinked
                                   ? 'text-[#9A7B4F] opacity-100'
                                   : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
@@ -527,17 +527,17 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             >
                               {isLinked ? <Unlink2 size={12} /> : <Link2 size={12} />}
                             </button>
-                          </>
+                            {isLinked && (() => {
+                              const parent = lineItems.find(i => i.id === item.parent_item_id)
+                              return (
+                                <p className="text-[8px] text-[#9A7B4F] font-medium leading-tight text-center whitespace-nowrap">
+                                  linked to<br />'{parent?.item_name || 'item'}'
+                                </p>
+                              )
+                            })()}
+                          </div>
                         )}
                       </div>
-                      {isLinked && (() => {
-                        const parent = lineItems.find(i => i.id === item.parent_item_id)
-                        return (
-                          <p className="text-[9px] text-[#9A7B4F] font-medium mt-0.5 pl-1">
-                            ↳ {parent?.item_name || 'linked item'}
-                          </p>
-                        )
-                      })()}
                       <div className="flex gap-1 mt-0.5">
                         <input
                           value={item.dimensions ?? ''}
