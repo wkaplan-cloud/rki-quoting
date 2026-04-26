@@ -171,7 +171,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
               <View key={item.id}>
                 <View style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
                   <Text style={[styles.td, styles.tdMuted, { width: 20, fontSize: 6.5 }]}>{itemNumber}.</Text>
-                  <View style={[{ flex: 2, paddingLeft: item.indent_level > 0 ? 8 : 0 }]}>
+                  <View style={[{ flex: 2 }]}>
                     <Text style={styles.td}>{cap(item.item_name)}</Text>
                     {(item.dimensions || item.colour_finish) ? (
                       <Text style={[styles.td, styles.tdMuted, { fontSize: 6, marginTop: 1 }]}>
@@ -190,26 +190,25 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
                 {linkedChildren.map(child => {
                   const childSup = allSuppliers.find(s => s.id === child.supplier_id)
                   return (
-                    <View key={child.id} style={{ flexDirection: 'row', paddingLeft: 28, paddingRight: 8, paddingVertical: 4, backgroundColor: '#F8F6F2', borderTopWidth: 0.5, borderTopColor: '#EDE9E1', alignItems: 'flex-start', gap: 6 }}>
+                    <View key={child.id} style={{ flexDirection: 'row', paddingLeft: 28, paddingRight: 8, paddingVertical: 4, backgroundColor: '#F8F6F2', borderTopWidth: 0.5, borderTopColor: '#EDE9E1', alignItems: 'center', gap: 6 }}>
                       {/* Visual link indicator */}
-                      <View style={{ width: 2, height: 22, backgroundColor: '#C4A46B', borderRadius: 1, marginTop: 1, flexShrink: 0 }} />
+                      <View style={{ width: 2, height: 26, backgroundColor: '#C4A46B', borderRadius: 1, flexShrink: 0 }} />
                       {child.fabric_image_url ? (
-                        <Image src={child.fabric_image_url} style={{ width: 20, height: 20, borderRadius: 3, flexShrink: 0 }} />
+                        <Image src={child.fabric_image_url} style={{ width: 26, height: 26, borderRadius: 3, flexShrink: 0 }} />
                       ) : null}
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 7, color: '#5A5854', fontFamily: 'Helvetica-Bold' }}>
-                          {cap(child.item_name)}{child.colour_finish ? ` — ${child.colour_finish}` : ''}
-                        </Text>
-                        {child.description ? (
-                          <Text style={{ fontSize: 6, color: '#8A877F', marginTop: 1 }}>{child.description}</Text>
-                        ) : null}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                          <Text style={{ fontSize: 7.5, color: '#2C2C2A', fontFamily: 'Helvetica-Bold', flex: 1 }}>
+                            {cap(child.item_name)}{child.colour_finish ? ` — ${child.colour_finish}` : ''}
+                          </Text>
+                          <Text style={{ fontSize: 7.5, color: '#4A4845', fontFamily: 'Helvetica-Bold', flexShrink: 0 }}>
+                            {child.quantity}{child.unit ? ` ${child.unit}` : ''}
+                          </Text>
+                        </View>
                         {childSup ? (
-                          <Text style={{ fontSize: 5.5, color: '#C4A46B', marginTop: 2 }}>via {childSup.supplier_name}</Text>
+                          <Text style={{ fontSize: 6, color: '#C4A46B', marginTop: 2 }}>via {childSup.supplier_name}</Text>
                         ) : null}
                       </View>
-                      <Text style={{ fontSize: 7, color: '#8A877F', textAlign: 'right', minWidth: 44 }}>
-                        {child.quantity}{child.unit ? ` ${child.unit}` : ''}
-                      </Text>
                     </View>
                   )
                 })}
