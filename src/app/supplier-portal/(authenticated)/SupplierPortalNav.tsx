@@ -29,7 +29,7 @@ export function SupplierPortalNav({ companyName }: Props) {
       <div className="px-5 py-5 border-b" style={{ borderColor: '#2D3F52' }}>
         <Link href="/supplier-portal/dashboard" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-6 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.75)' }} />
+          <img src="/logo.png" alt="QuotingHub" className="w-24 h-auto object-contain" style={{ filter: 'invert(1) brightness(0.75)' }} />
         </Link>
         <p className="text-[10px] font-semibold uppercase tracking-widest mt-2" style={{ color: '#4A7FA5' }}>
           Supplier Portal
