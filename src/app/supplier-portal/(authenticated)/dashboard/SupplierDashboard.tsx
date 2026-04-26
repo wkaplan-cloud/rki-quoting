@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { Clock, Eye, CheckCircle, AlertCircle } from 'lucide-react'
+import { Clock, Eye, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react'
 
 interface Row {
   id: string
@@ -16,47 +16,54 @@ interface Row {
   studio_name: string
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  pending:     { label: 'Awaiting your prices', color: 'text-[#8A877F] bg-[#F5F2EC]',       icon: <Clock size={11} /> },
-  viewed:      { label: 'Viewed',               color: 'text-blue-600 bg-blue-50',          icon: <Eye size={11} /> },
-  in_progress: { label: 'In progress',          color: 'text-amber-600 bg-amber-50',        icon: <AlertCircle size={11} /> },
-  completed:   { label: 'All prices submitted', color: 'text-emerald-700 bg-emerald-50',    icon: <CheckCircle size={11} /> },
-  declined:    { label: 'Declined',             color: 'text-[#8A877F] bg-[#F5F2EC]',       icon: <Clock size={11} /> },
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
+  pending:     { label: 'Awaiting response', bg: '#EBF0F5', text: '#4A7FA5', icon: <Clock size={11} /> },
+  viewed:      { label: 'Viewed',            bg: '#EBF5FF', text: '#2563EB', icon: <Eye size={11} /> },
+  in_progress: { label: 'In progress',       bg: '#FFF7ED', text: '#C2610C', icon: <AlertCircle size={11} /> },
+  completed:   { label: 'Completed',         bg: '#ECFDF5', text: '#059669', icon: <CheckCircle size={11} /> },
+  declined:    { label: 'Declined',          bg: '#F5F5F5', text: '#737373', icon: <Clock size={11} /> },
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export function SupplierDashboard({ rows }: { rows: Row[] }) {
   const active   = rows.filter(r => !['completed', 'declined'].includes(r.status))
   const archived = rows.filter(r => ['completed', 'declined'].includes(r.status))
 
-  if (rows.length === 0) {
-    return (
-      <div>
-        <h1 className="text-xl font-semibold text-[#2C2C2A] mb-1">Price Requests</h1>
-        <p className="text-sm text-[#8A877F] mb-8">All pricing requests sent to your email address.</p>
-        <div className="bg-white rounded-2xl border border-[#EDE9E1] p-12 text-center">
-          <p className="text-sm font-medium text-[#2C2C2A] mb-1">No price requests yet</p>
-          <p className="text-sm text-[#8A877F] max-w-sm mx-auto">
-            Pricing requests from design studios will appear here. Make sure designers have your registered email address.
+  return (
+    <div className="space-y-7">
+      {/* Page header */}
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#1C2B3A' }}>Price Requests</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#5A7A95' }}>
+            {active.length} open · {archived.length} completed
           </p>
         </div>
       </div>
-    )
-  }
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-[#2C2C2A]">Price Requests</h1>
-        <p className="text-sm text-[#8A877F] mt-0.5">{active.length} open, {archived.length} completed</p>
-      </div>
-
-      {active.length > 0 && <RequestTable rows={active} />}
-
-      {archived.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8A877F] mb-3 px-1">Completed</p>
-          <RequestTable rows={archived} dim />
+      {rows.length === 0 ? (
+        <div className="bg-white rounded-xl border p-14 text-center" style={{ borderColor: '#D8E4EF' }}>
+          <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: '#EBF0F5' }}>
+            <Clock size={20} style={{ color: '#4A7FA5' }} />
+          </div>
+          <p className="text-sm font-semibold mb-1" style={{ color: '#1C2B3A' }}>No price requests yet</p>
+          <p className="text-sm max-w-xs mx-auto" style={{ color: '#5A7A95' }}>
+            Pricing requests from design studios will appear here once they send you a session.
+          </p>
         </div>
+      ) : (
+        <>
+          {active.length > 0 && <RequestTable rows={active} />}
+          {archived.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3 px-0.5" style={{ color: '#7A9AB8' }}>Completed</p>
+              <RequestTable rows={archived} dim />
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -64,34 +71,37 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
 
 function RequestTable({ rows, dim }: { rows: Row[]; dim?: boolean }) {
   return (
-    <div className={`bg-white rounded-2xl border border-[#EDE9E1] overflow-hidden ${dim ? 'opacity-60' : ''}`}>
+    <div className={`bg-white rounded-xl border overflow-hidden ${dim ? 'opacity-60' : ''}`} style={{ borderColor: '#D8E4EF' }}>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#EDE9E1] bg-[#FAFAF8]">
-            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Session</th>
-            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] hidden sm:table-cell">Studio</th>
-            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] hidden md:table-cell">Received</th>
-            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Status</th>
-            <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]"></th>
+          <tr style={{ borderBottom: '1px solid #E8F0F8', background: '#F7FAFC' }}>
+            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#7A9AB8' }}>Session</th>
+            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest hidden sm:table-cell" style={{ color: '#7A9AB8' }}>Studio</th>
+            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest hidden md:table-cell" style={{ color: '#7A9AB8' }}>Received</th>
+            <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#7A9AB8' }}>Status</th>
+            <th className="px-4 py-3"></th>
           </tr>
         </thead>
         <tbody>
           {rows.map(r => {
             const cfg = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.pending
             return (
-              <tr key={r.id} className="border-b border-[#F5F2EC] last:border-0 hover:bg-[#FAFAF8] transition-colors">
+              <tr key={r.id} className="transition-colors hover:bg-[#F7FAFC]" style={{ borderBottom: '1px solid #F0F4F8' }}>
                 <td className="px-5 py-3.5">
-                  <p className="font-medium text-[#2C2C2A]">{r.session?.title ?? '—'}</p>
+                  <p className="font-semibold text-sm" style={{ color: '#1C2B3A' }}>{r.session?.title ?? '—'}</p>
                   {r.session?.project_name && (
-                    <p className="text-xs text-[#8A877F] mt-0.5">{r.session.project_name}</p>
+                    <p className="text-xs mt-0.5" style={{ color: '#7A9AB8' }}>{r.session.project_name}</p>
                   )}
                 </td>
-                <td className="px-5 py-3.5 text-sm text-[#8A877F] hidden sm:table-cell">{r.studio_name}</td>
-                <td className="px-5 py-3.5 text-xs text-[#8A877F] hidden md:table-cell">
-                  {r.sent_at ? new Date(r.sent_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                <td className="px-5 py-3.5 text-sm hidden sm:table-cell" style={{ color: '#5A7A95' }}>{r.studio_name}</td>
+                <td className="px-5 py-3.5 text-xs hidden md:table-cell" style={{ color: '#7A9AB8' }}>
+                  {r.sent_at ? formatDate(r.sent_at) : '—'}
                 </td>
                 <td className="px-5 py-3.5">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.color}`}>
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                    style={{ background: cfg.bg, color: cfg.text }}
+                  >
                     {cfg.icon}
                     {cfg.label}
                   </span>
@@ -99,9 +109,10 @@ function RequestTable({ rows, dim }: { rows: Row[]; dim?: boolean }) {
                 <td className="px-4 py-3.5 text-right">
                   <Link
                     href={`/sourcing/respond/${r.token}`}
-                    className="text-xs text-[#9A7B4F] hover:underline font-medium"
+                    className="inline-flex items-center gap-1 text-xs font-semibold transition-colors hover:opacity-80"
+                    style={{ color: '#3B82F6' }}
                   >
-                    View &amp; Price →
+                    View &amp; Price <ArrowRight size={11} />
                   </Link>
                 </td>
               </tr>

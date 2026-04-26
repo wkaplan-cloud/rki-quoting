@@ -15,7 +15,6 @@ export default async function SupplierPortalLayout({
     redirect('/supplier-portal/login')
   }
 
-  // Check portal account exists
   const { data: portalAccount } = await supabaseAdmin
     .from('supplier_portal_accounts')
     .select('id, company_name, email')
@@ -26,12 +25,16 @@ export default async function SupplierPortalLayout({
     redirect('/supplier-portal/login')
   }
 
+  const displayName = portalAccount.company_name ?? portalAccount.email
+
   return (
-    <div className="min-h-screen bg-[#F5F2EC]">
-      <SupplierPortalNav companyName={portalAccount.company_name ?? portalAccount.email} />
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {children}
-      </main>
+    <div className="min-h-screen" style={{ background: '#F0F4F8' }}>
+      <SupplierPortalNav companyName={displayName} />
+      <div className="pl-56">
+        <main className="max-w-5xl mx-auto px-6 py-8">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

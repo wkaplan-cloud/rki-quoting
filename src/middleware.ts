@@ -21,54 +21,72 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Subdomain routing: suppliers.quotinghub.co.za → /supplier-portal/*
+  const host = request.headers.get('host') ?? ''
+  const isSupplierSubdomain = host.startsWith('suppliers.')
+  const { pathname } = request.nextUrl
+
+  if (isSupplierSubdomain) {
+    // Already on a supplier-portal path — let it through
+    if (pathname.startsWith('/supplier-portal') || pathname.startsWith('/sourcing/respond') || pathname.startsWith('/api/')) {
+      // fall through to auth check below
+    } else if (pathname === '/') {
+      return NextResponse.redirect(new URL('/supplier-portal', request.url))
+    } else {
+      // Any other path on the subdomain → redirect to supplier portal home
+      return NextResponse.redirect(new URL('/supplier-portal', request.url))
+    }
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
 
   // Platform admin routes — handled by their own layout auth check
-  if (request.nextUrl.pathname.startsWith('/platform')) {
+  if (pathname.startsWith('/platform')) {
     return supabaseResponse
   }
 
-  const isPublic = request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/forgot-password') ||
-    request.nextUrl.pathname.startsWith('/signup') ||
-    request.nextUrl.pathname.startsWith('/pricing') ||
-    request.nextUrl.pathname.startsWith('/subscribe') ||
-    request.nextUrl.pathname.startsWith('/onboarding') ||
-    request.nextUrl.pathname.startsWith('/welcome') ||
-    request.nextUrl.pathname.startsWith('/confirming') ||
-    request.nextUrl.pathname.startsWith('/set-password') ||
-    request.nextUrl.pathname.startsWith('/auth/callback') ||
-    request.nextUrl.pathname.startsWith('/api/auth/set-password') ||
-    request.nextUrl.pathname.startsWith('/api/auth') ||
-    request.nextUrl.pathname === '/opengraph-image' ||
-    request.nextUrl.pathname === '/sitemap.xml' ||
-    request.nextUrl.pathname === '/robots.txt' ||
-    request.nextUrl.pathname === '/llms.txt' ||
-    request.nextUrl.pathname.startsWith('/api/contact') ||
-    request.nextUrl.pathname.startsWith('/api/admin') ||
-    request.nextUrl.pathname.startsWith('/api/cron') ||
-    request.nextUrl.pathname.endsWith('.xml') ||
-    request.nextUrl.pathname.endsWith('.html') ||
-    request.nextUrl.pathname.startsWith('/interior-design-software-') ||
-    request.nextUrl.pathname.startsWith('/sourcing/respond') ||
-    request.nextUrl.pathname.startsWith('/api/sourcing/respond') ||
-    request.nextUrl.pathname.startsWith('/api/paystack/subscription-callback') ||
-    request.nextUrl.pathname.startsWith('/api/paystack/webhook') ||
-    request.nextUrl.pathname.startsWith('/supplier-portal/login') ||
-    request.nextUrl.pathname.startsWith('/supplier-portal/register') ||
-    request.nextUrl.pathname === '/supplier-portal' ||
-    request.nextUrl.pathname.startsWith('/api/supplier-portal/auth')
+  const isPublic =
+    pathname === '/' ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/pricing') ||
+    pathname.startsWith('/subscribe') ||
+    pathname.startsWith('/onboarding') ||
+    pathname.startsWith('/welcome') ||
+    pathname.startsWith('/confirming') ||
+    pathname.startsWith('/set-password') ||
+    pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/api/auth/set-password') ||
+    pathname.startsWith('/api/auth') ||
+    pathname === '/opengraph-image' ||
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt' ||
+    pathname === '/llms.txt' ||
+    pathname.startsWith('/api/contact') ||
+    pathname.startsWith('/api/admin') ||
+    pathname.startsWith('/api/cron') ||
+    pathname.endsWith('.xml') ||
+    pathname.endsWith('.html') ||
+    pathname.startsWith('/interior-design-software-') ||
+    pathname.startsWith('/sourcing/respond') ||
+    pathname.startsWith('/api/sourcing/respond') ||
+    pathname.startsWith('/api/paystack/subscription-callback') ||
+    pathname.startsWith('/api/paystack/webhook') ||
+    pathname.startsWith('/supplier-portal/login') ||
+    pathname.startsWith('/supplier-portal/register') ||
+    pathname === '/supplier-portal' ||
+    pathname.startsWith('/api/supplier-portal/auth')
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && request.nextUrl.pathname === '/login') {
+  if (user && pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  if (user && request.nextUrl.pathname === '/supplier-portal/login') {
+  if (user && pathname === '/supplier-portal/login') {
     return NextResponse.redirect(new URL('/supplier-portal/dashboard', request.url))
   }
 
