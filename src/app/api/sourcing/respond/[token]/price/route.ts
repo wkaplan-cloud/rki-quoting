@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .from('sourcing_session_suppliers')
       .select('id, status')
       .eq('token', token)
-      .single()
+      .maybeSingle()
 
     if (!ss) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .select('id, status')
       .eq('id', assignment_id)
       .eq('session_supplier_id', ss.id)
-      .single()
+      .maybeSingle()
 
     if (!assignment) return NextResponse.json({ error: 'Assignment not found' }, { status: 404 })
 

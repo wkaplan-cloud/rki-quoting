@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       .from('sourcing_session_suppliers')
       .select('*, session:sourcing_sessions(id, title, status, project:projects(project_name))')
       .eq('token', token)
-      .single()
+      .maybeSingle()
 
     if (!ss) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
