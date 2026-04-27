@@ -320,7 +320,7 @@ function PriceForm({
   )
 }
 
-function QuoteUpload({ token }: { token: string }) {
+function QuoteUpload({ token, locked }: { token: string; locked?: boolean }) {
   const [uploads, setUploads] = useState<{ name: string; url: string }[]>([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -368,13 +368,21 @@ function QuoteUpload({ token }: { token: string }) {
             </button>
           </div>
         ))}
-        <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-opacity ${uploading ? 'opacity-50 pointer-events-none' : 'hover:opacity-80'}`}
-          style={{ background: '#F4F4F5', color: '#71717A', border: '1px dashed #D4D4D8' }}>
-          <Upload size={14} />
-          {uploading ? 'Uploading…' : 'Choose file'}
-          <input type="file" className="hidden" onChange={handleFile} disabled={uploading}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" />
-        </label>
+        {locked ? (
+          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed select-none"
+            style={{ background: '#F4F4F5', color: '#71717A', border: '1px dashed #D4D4D8' }}>
+            <Upload size={14} />
+            Upload locked — pricing accepted
+          </div>
+        ) : (
+          <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-opacity ${uploading ? 'opacity-50 pointer-events-none' : 'hover:opacity-80'}`}
+            style={{ background: '#F4F4F5', color: '#71717A', border: '1px dashed #D4D4D8' }}>
+            <Upload size={14} />
+            {uploading ? 'Uploading…' : 'Choose file'}
+            <input type="file" className="hidden" onChange={handleFile} disabled={uploading}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" />
+          </label>
+        )}
         {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
       </div>
     </div>
@@ -578,7 +586,7 @@ export function SupplierRespondClient({
       {/* Header — only shown for standalone (unauthenticated) token access */}
       {showBackLink && (
         <div style={{ background: '#27272A' }}>
-          <div className="max-w-2xl mx-auto px-6 py-5">
+          <div className="px-6 py-5">
             <div className="flex items-center justify-between mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="QuotingHub" className="h-6 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.6)' }} />
@@ -600,7 +608,7 @@ export function SupplierRespondClient({
 
       {/* Session info — shown in portal context instead of dark header */}
       {!showBackLink && (
-        <div className="max-w-2xl mx-auto px-4 pt-6">
+        <div className="px-6 pt-6">
           <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>Pricing Request</p>
           <h1 className="text-lg font-semibold" style={{ color: '#18181B' }}>{sessionTitle}</h1>
           {projectName && <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>{projectName}</p>}
@@ -608,66 +616,69 @@ export function SupplierRespondClient({
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* Progress banner */}
-        {allDone ? (
-          <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
-            <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
-              <p className="text-xs text-emerald-600">You can still update individual prices or send a message.</p>
+      <div className="px-4 py-6">
+        {/* Progress banner — full width above columns */}
+        <div className="mb-4">
+          {allDone ? (
+            <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+              <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
+                <p className="text-xs text-emerald-600">You can still update individual prices or send a message.</p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="px-5 py-3.5 rounded-xl flex items-center justify-between" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
-            <p className="text-sm" style={{ color: '#18181B' }}>
-              <span className="font-semibold">{responded} of {total}</span> item{total !== 1 ? 's' : ''} priced
-            </p>
-            <div className="flex-1 mx-6 rounded-full h-1.5 overflow-hidden" style={{ background: '#E4E4E7' }}>
-              <div
-                className="h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }}
-              />
+          ) : (
+            <div className="px-5 py-3.5 rounded-xl flex items-center justify-between" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+              <p className="text-sm" style={{ color: '#18181B' }}>
+                <span className="font-semibold">{responded} of {total}</span> item{total !== 1 ? 's' : ''} priced
+              </p>
+              <div className="flex-1 mx-6 rounded-full h-1.5 overflow-hidden" style={{ background: '#E4E4E7' }}>
+                <div
+                  className="h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }}
+                />
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Items */}
-        <div className="space-y-3">
-          {items.map(assignment => (
-            <PriceForm
-              key={assignment.id}
-              assignment={assignment}
-              token={token}
-              onSaved={handleSaved}
-              onDeclined={handleDeclined}
-            />
-          ))}
+          )}
         </div>
 
-        {/* Quote upload */}
-        <QuoteUpload token={token} />
-
-        {/* Message thread */}
-        <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
-
-        {/* Decline entire request */}
-        {!allAccepted && (
-          <div className="pt-2 border-t border-[#E4E4E7]">
-            <button
-              type="button"
-              onClick={handleDeclineAll}
-              disabled={declining}
-              className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
-              style={{ color: '#EF4444' }}
-            >
-              <AlertTriangle size={13} />
-              {declining ? 'Declining…' : 'Decline entire request'}
-            </button>
+        {/* 2-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 items-start">
+          {/* Left — pricing items */}
+          <div className="space-y-3">
+            {items.map(assignment => (
+              <PriceForm
+                key={assignment.id}
+                assignment={assignment}
+                token={token}
+                onSaved={handleSaved}
+                onDeclined={handleDeclined}
+              />
+            ))}
           </div>
-        )}
 
-        <p className="text-center text-xs pb-4" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
+          {/* Right — upload, messages, decline */}
+          <div className="space-y-4">
+            <QuoteUpload token={token} locked={allAccepted} />
+            <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
+            {!allAccepted && (
+              <div className="pt-2 border-t border-[#E4E4E7]">
+                <button
+                  type="button"
+                  onClick={handleDeclineAll}
+                  disabled={declining}
+                  className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
+                  style={{ color: '#EF4444' }}
+                >
+                  <AlertTriangle size={13} />
+                  {declining ? 'Declining…' : 'Decline entire request'}
+                </button>
+              </div>
+            )}
+            <p className="text-center text-xs pb-2" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   )
