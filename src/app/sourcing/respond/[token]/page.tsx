@@ -110,12 +110,12 @@ export default async function SupplierRespondPage({
 
   if (portalAccount) {
     return (
-      <div className="min-h-screen" style={{ background: '#F4F4F5' }}>
+      <div className="flex min-h-screen" style={{ background: '#F4F4F5' }}>
         <SupplierPortalNav
           companyName={portalAccount.company_name ?? portalAccount.email}
           pendingCount={pendingCount}
         />
-        <div className="pl-56">
+        <div className="md:ml-12 flex-1 pt-14 md:pt-0">
           {content}
         </div>
       </div>

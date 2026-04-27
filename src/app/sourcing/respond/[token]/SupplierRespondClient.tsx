@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw } from 'lucide-react'
+import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw, Upload, FileText, X } from 'lucide-react'
 
 interface Assignment {
   id: string
@@ -230,6 +230,67 @@ function PriceForm({
   )
 }
 
+function QuoteUpload({ token }: { token: string }) {
+  const [uploads, setUploads] = useState<{ name: string; url: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`/api/sourcing/respond/${token}/upload`, {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      setUploads(prev => [...prev, { name: file.name, url: json.url }])
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setUploading(false)
+    }
+    e.target.value = ''
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+      <div className="px-5 py-3" style={{ borderBottom: '1px solid #E4E4E7' }}>
+        <p className="text-sm font-semibold" style={{ color: '#18181B' }}>Upload Quote</p>
+        <p className="text-xs mt-0.5" style={{ color: '#A1A1AA' }}>Attach your formal quote document (PDF, Excel, etc.)</p>
+      </div>
+      <div className="px-5 py-4 space-y-3">
+        {uploads.map((u, i) => (
+          <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg" style={{ background: '#F4F4F5' }}>
+            <FileText size={14} style={{ color: '#71717A' }} className="shrink-0" />
+            <a href={u.url} target="_blank" rel="noopener noreferrer"
+              className="text-sm flex-1 truncate hover:underline" style={{ color: '#18181B' }}>
+              {u.name}
+            </a>
+            <button onClick={() => setUploads(prev => prev.filter((_, j) => j !== i))}
+              className="shrink-0 transition-opacity hover:opacity-60" style={{ color: '#A1A1AA' }}>
+              <X size={13} />
+            </button>
+          </div>
+        ))}
+        <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-opacity ${uploading ? 'opacity-50 pointer-events-none' : 'hover:opacity-80'}`}
+          style={{ background: '#F4F4F5', color: '#71717A', border: '1px dashed #D4D4D8' }}>
+          <Upload size={14} />
+          {uploading ? 'Uploading…' : 'Choose file'}
+          <input type="file" className="hidden" onChange={handleFile} disabled={uploading}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" />
+        </label>
+        {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+      </div>
+    </div>
+  )
+}
+
 function MessageThread({
   token,
   messages: initialMessages,
@@ -441,6 +502,9 @@ export function SupplierRespondClient({
             />
           ))}
         </div>
+
+        {/* Quote upload */}
+        <QuoteUpload token={token} />
 
         {/* Message thread */}
         <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />

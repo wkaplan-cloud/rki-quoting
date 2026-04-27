@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
-  MessageSquare, X, Check, CheckCircle2, RefreshCw, Lock,
+  MessageSquare, X, Check, CheckCircle2, RefreshCw, Lock, ImagePlus,
 } from 'lucide-react'
 
 // ---- Types ----
@@ -75,13 +75,36 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
   const [dimensions, setDimensions] = useState('')
   const [colourFinish, setColourFinish] = useState('')
   const [specs, setSpecs] = useState('')
+  const [refImages, setRefImages] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    setRefImages(prev => [...prev, ...files].slice(0, 5))
+    e.target.value = ''
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
     setSaving(true)
     try {
+      // Upload ref images first if any
+      let refImageUrls: string[] = []
+      if (refImages.length > 0) {
+        const formData = new FormData()
+        refImages.forEach(f => formData.append('files', f))
+        formData.append('session_id', sessionId)
+        const uploadRes = await fetch(`/api/sourcing/sessions/${sessionId}/item-images`, {
+          method: 'POST',
+          body: formData,
+        })
+        if (uploadRes.ok) {
+          const uploadJson = await uploadRes.json()
+          refImageUrls = uploadJson.urls ?? []
+        }
+      }
+
       const res = await fetch(`/api/sourcing/sessions/${sessionId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,12 +115,13 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
           dimensions: dimensions.trim() || null,
           colour_finish: colourFinish.trim() || null,
           specifications: specs.trim() || null,
+          ref_image_urls: refImageUrls.length > 0 ? refImageUrls : null,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       onAdded(json.data)
-      setTitle(''); setWorkType(''); setQty(''); setDimensions(''); setColourFinish(''); setSpecs('')
+      setTitle(''); setWorkType(''); setQty(''); setDimensions(''); setColourFinish(''); setSpecs(''); setRefImages([])
       setOpen(false)
     } catch (err: any) {
       alert(err.message)
@@ -128,9 +152,39 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
           <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} placeholder="Colour / Finish" className={INPUT} />
         </div>
         <textarea value={specs} onChange={e => setSpecs(e.target.value)} rows={2} placeholder="Specifications" className={`${INPUT} resize-none`} />
+
+        {/* Ref images */}
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors w-fit">
+            <ImagePlus size={13} />
+            Add reference images (up to 5)
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+          </label>
+          {refImages.length > 0 && (
+            <div className="flex gap-2 mt-2 flex-wrap">
+              {refImages.map((f, i) => (
+                <div key={i} className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={URL.createObjectURL(f)}
+                    alt={f.name}
+                    className="w-14 h-14 object-cover rounded-lg border border-[#D4CFC7]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRefImages(prev => prev.filter((_, j) => j !== i))}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
+        <button type="button" onClick={() => { setOpen(false); setRefImages([]) }} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
         <button type="submit" disabled={saving || !title.trim()} className="px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg disabled:opacity-50">
           {saving ? 'Adding…' : 'Add Item'}
         </button>
@@ -548,16 +602,16 @@ function SupplierCard({
               {showAddItems && (
                 <div className="mt-2 space-y-1.5">
                   {unassignedItems.map(item => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleAssign(item.id)}
-                      disabled={togglingItem === item.id}
-                      className="flex items-center gap-2 text-sm text-[#2C2C2A] hover:text-[#C4A46B] transition-colors disabled:opacity-40"
-                    >
-                      {togglingItem === item.id ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                      {item.title}
-                    </button>
+                    <label key={item.id} className="flex items-center gap-2.5 cursor-pointer group">
+                      <div
+                        onClick={() => !togglingItem && toggleAssign(item.id)}
+                        className="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors border-[#D4CFC7] group-hover:border-[#C4A46B]"
+                      >
+                        {togglingItem === item.id && <Loader2 size={9} className="animate-spin text-[#8A877F]" />}
+                      </div>
+                      <span className="text-sm text-[#2C2C2A]">{item.title}</span>
+                      {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
+                    </label>
                   ))}
                 </div>
               )}
@@ -728,7 +782,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
       <div className="flex items-center justify-between">
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${badge.color}`}>{badge.label}</span>
         <div className="flex items-center gap-2">
-          {!isArchived && (
+          {session.status === 'completed' && !isArchived && (
             <button onClick={handleArchive} disabled={archiving}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] border border-[#D4CFC7] rounded-lg hover:border-[#8A877F] transition-colors">
               {archiving ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
