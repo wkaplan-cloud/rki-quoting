@@ -48,6 +48,16 @@ export default async function BlogPostPage(
     mainEntityOfPage: { '@type': 'WebPage', '@id': `https://quotinghub.co.za/blog/${post.slug}` },
   }
 
+  const faqSchema = post.faqs && post.faqs.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: post.faqs.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  } : null
+
   const Content = post.content
 
   return (
@@ -56,6 +66,12 @@ export default async function BlogPostPage(
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema).replace(/</g, '\\u003c') }}
       />
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema).replace(/</g, '\\u003c') }}
+        />
+      )}
 
       <div className="max-w-2xl mx-auto px-6 pt-10 sm:pt-16 pb-24">
 
