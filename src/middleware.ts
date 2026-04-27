@@ -71,6 +71,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/interior-design-software-') ||
     pathname.startsWith('/blog') ||
     pathname.startsWith('/faq') ||
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/privacy') ||
     pathname.startsWith('/sourcing/respond') ||
     pathname.startsWith('/api/sourcing/respond') ||
     pathname.startsWith('/api/paystack/subscription-callback') ||
