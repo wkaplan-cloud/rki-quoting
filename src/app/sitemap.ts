@@ -9,6 +9,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://quotinghub.co.za/interior-design-software-durban', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://quotinghub.co.za/interior-design-software-pretoria', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://quotinghub.co.za/interior-design-software-port-elizabeth', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://quotinghub.co.za/interior-design-software-stellenbosch', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://quotinghub.co.za/interior-design-software-george', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://quotinghub.co.za/interior-design-software-bloemfontein', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://quotinghub.co.za/interior-design-software-east-london', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://quotinghub.co.za/faq', changeFrequency: 'monthly', priority: 0.7 },
   ]
 }
