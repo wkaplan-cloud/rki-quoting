@@ -26,7 +26,7 @@ export default function SupplierPortalLandingPage() {
       <header className="bg-[#2C2C2A]">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-7 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.8)' }} />
+          <img src="/logo.png" alt="QuotingHub" className="h-12 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.8)' }} />
           <div className="flex items-center gap-3">
             <Link href="/supplier-portal/login" className="text-sm text-white/60 hover:text-white transition-colors">Sign in</Link>
             <Link href="/supplier-portal/register"
@@ -101,8 +101,8 @@ export default function SupplierPortalLandingPage() {
         <p className="text-xs text-[#C4BFB5]">© QuotingHub · quotinghub.co.za</p>
         <div className="flex items-center gap-4">
           <Link href="/login" className="text-xs text-[#C4BFB5] hover:text-[#8A877F] transition-colors">Designer sign in</Link>
-          <Link href="/privacy" className="text-xs text-[#C4BFB5] hover:text-[#8A877F] transition-colors">Privacy</Link>
-          <Link href="/terms" className="text-xs text-[#C4BFB5] hover:text-[#8A877F] transition-colors">Terms</Link>
+          <Link href="/supplier-portal/privacy" className="text-xs text-[#C4BFB5] hover:text-[#8A877F] transition-colors">Privacy</Link>
+          <Link href="/supplier-portal/terms" className="text-xs text-[#C4BFB5] hover:text-[#8A877F] transition-colors">Terms</Link>
         </div>
       </footer>
     </div>

@@ -227,7 +227,11 @@ function RegisterForm() {
                 style={{ accentColor: '#3F3F46' }}
               />
               <span className="text-xs leading-relaxed" style={{ color: '#A1A1AA' }}>
-                I agree to the <strong style={{ color: '#D4D4D8' }}>Terms &amp; Conditions</strong>, including the 1% platform fee on confirmed deals.
+                I agree to the{' '}
+                <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="hover:underline" style={{ color: '#D4D4D8' }}>Terms &amp; Conditions</a>
+                {' '}and{' '}
+                <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="hover:underline" style={{ color: '#D4D4D8' }}>Privacy Policy</a>
+                , including the 1% platform fee on confirmed deals.
               </span>
             </label>
 

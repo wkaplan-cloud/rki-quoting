@@ -76,6 +76,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/supplier-portal/login') ||
     pathname.startsWith('/supplier-portal/register') ||
     pathname === '/supplier-portal' ||
+    pathname.startsWith('/supplier-portal/privacy') ||
+    pathname.startsWith('/supplier-portal/terms') ||
     pathname.startsWith('/api/supplier-portal/auth')
 
   if (!user && !isPublic) {
