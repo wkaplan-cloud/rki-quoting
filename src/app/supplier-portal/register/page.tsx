@@ -240,7 +240,8 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={loading || !tcAccepted}
-              className="w-full py-3 bg-[#1A1A18] hover:bg-[#2C2C2A] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer mt-1"
+              className="w-full py-3 text-white text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50 cursor-pointer mt-1 hover:opacity-90"
+              style={{ background: '#1B4F8A' }}
             >
               {loading ? 'Creating account…' : 'Create Account'}
             </button>
