@@ -623,8 +623,17 @@ export function SupplierRespondClient({
             <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
               <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
-                <p className="text-xs text-emerald-600">You can still update individual prices or send a message.</p>
+                {allAccepted ? (
+                  <>
+                    <p className="text-sm font-semibold text-emerald-800">Pricing accepted</p>
+                    <p className="text-xs text-emerald-600">The studio has accepted your quotes. No further action needed.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
+                    <p className="text-xs text-emerald-600">Awaiting review from the studio.</p>
+                  </>
+                )}
               </div>
             </div>
           ) : (
