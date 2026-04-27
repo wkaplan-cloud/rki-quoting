@@ -69,6 +69,8 @@ export async function middleware(request: NextRequest) {
     pathname.endsWith('.xml') ||
     pathname.endsWith('.html') ||
     pathname.startsWith('/interior-design-software-') ||
+    pathname.startsWith('/blog') ||
+    pathname.startsWith('/faq') ||
     pathname.startsWith('/sourcing/respond') ||
     pathname.startsWith('/api/sourcing/respond') ||
     pathname.startsWith('/api/paystack/subscription-callback') ||
