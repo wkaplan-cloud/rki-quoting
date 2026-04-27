@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from('pieces')
       .select('*')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     if (!piece) return NextResponse.json({ error: 'Piece not found' }, { status: 404 })

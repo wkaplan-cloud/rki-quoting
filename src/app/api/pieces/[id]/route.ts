@@ -23,6 +23,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       image_urls?: string[]
     }
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
     const { data, error } = await supabase
       .from('pieces')
       .update({
@@ -39,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .select()
       .single()
 
@@ -58,11 +61,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
     const { error } = await supabase
       .from('pieces')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

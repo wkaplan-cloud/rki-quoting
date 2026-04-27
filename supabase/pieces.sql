@@ -1,10 +1,10 @@
--- Our Pieces: designer catalog of pieces with images, specs, supplier, and reference pricing
+-- Our Pieces: shared company catalog of pieces (org-level, all team members can see/edit)
 -- Run this in Supabase SQL Editor
 
 create table if not exists pieces (
   id              uuid primary key default gen_random_uuid(),
-  org_id          uuid references organizations(id) on delete cascade,
-  user_id         uuid references auth.users(id) on delete cascade not null,
+  org_id          uuid references organizations(id) on delete cascade not null,
+  user_id         uuid references auth.users(id) on delete set null,
   name            text not null,
   description     text,
   work_type       text,
@@ -22,13 +22,20 @@ create table if not exists pieces (
 -- Enable RLS
 alter table pieces enable row level security;
 
--- Policy: user owns the row (same pattern as suppliers, clients, projects)
-create policy "Users manage own pieces"
+-- Everyone in the same org can read and write all pieces
+create policy "Org members can manage pieces"
   on pieces for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  using (
+    org_id in (
+      select org_id from org_members where user_id = auth.uid()
+    )
+  )
+  with check (
+    org_id in (
+      select org_id from org_members where user_id = auth.uid()
+    )
+  );
 
 -- Optional: lets sourcing items track which piece they came from
--- (enables future "update piece reference price" prompt after sourcing accept)
 alter table sourcing_session_items
   add column if not exists piece_id uuid references pieces(id) on delete set null;

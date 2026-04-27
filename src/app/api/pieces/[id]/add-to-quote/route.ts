@@ -19,11 +19,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (!project_id) return NextResponse.json({ error: 'project_id is required' }, { status: 400 })
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
     const { data: piece } = await supabase
       .from('pieces')
       .select('*')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     if (!piece) return NextResponse.json({ error: 'Piece not found' }, { status: 404 })

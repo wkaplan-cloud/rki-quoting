@@ -15,12 +15,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const files = formData.getAll('files') as File[]
     if (!files.length) return NextResponse.json({ error: 'No files provided' }, { status: 400 })
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
     // Fetch existing image_urls
     const { data: piece } = await supabase
       .from('pieces')
-      .select('image_urls, user_id')
+      .select('image_urls')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     if (!piece) return NextResponse.json({ error: 'Piece not found' }, { status: 404 })
@@ -69,11 +72,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const { url } = await req.json() as { url: string }
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
     const { data: piece } = await supabase
       .from('pieces')
       .select('image_urls')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     if (!piece) return NextResponse.json({ error: 'Not found' }, { status: 404 })
