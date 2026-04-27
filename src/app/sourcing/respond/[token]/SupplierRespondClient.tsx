@@ -266,14 +266,14 @@ function MessageThread({
         {messages.map(m => (
           <div key={m.id} className={`flex ${m.sender_type === 'supplier' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className="max-w-[80%] rounded-xl px-4 py-2.5"
+              className="max-w-[75%] rounded-2xl px-4 py-2.5"
               style={m.sender_type === 'supplier'
-                ? { background: '#18181B', color: '#FAFAFA' }
-                : { background: '#F4F4F5', color: '#18181B', border: '1px solid #E4E4E7' }
+                ? { background: '#7C3AED', color: '#FFFFFF', borderBottomRightRadius: 4 }
+                : { background: '#0D9488', color: '#FFFFFF', borderBottomLeftRadius: 4 }
               }
             >
               <p className="text-sm leading-relaxed">{m.body}</p>
-              <p className="text-xs mt-1" style={{ color: m.sender_type === 'supplier' ? '#71717A' : '#A1A1AA' }}>
+              <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 {m.sender_type === 'supplier' ? 'You' : studioName} · {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>

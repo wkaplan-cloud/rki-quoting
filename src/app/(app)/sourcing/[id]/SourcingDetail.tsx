@@ -530,9 +530,15 @@ function SupplierCard({
             {messages.length === 0 && <p className="text-xs text-[#C4BFB5]">No messages yet.</p>}
             {messages.map(m => (
               <div key={m.id} className={`flex ${m.sender_type === 'designer' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-xl px-3 py-2 ${m.sender_type === 'designer' ? 'bg-[#2C2C2A] text-[#F5F2EC]' : 'bg-[#F5F2EC] text-[#2C2C2A] border border-[#EDE9E1]'}`}>
+                <div
+                  className="max-w-[80%] rounded-2xl px-3 py-2"
+                  style={m.sender_type === 'designer'
+                    ? { background: '#7C3AED', color: '#FFFFFF', borderBottomRightRadius: 4 }
+                    : { background: '#0D9488', color: '#FFFFFF', borderBottomLeftRadius: 4 }
+                  }
+                >
                   <p className="text-xs leading-relaxed">{m.body}</p>
-                  <p className={`text-[10px] mt-0.5 ${m.sender_type === 'designer' ? 'text-[#A09A8E]' : 'text-[#C4BFB5]'}`}>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>
                     {m.sender_type === 'designer' ? 'You' : ss.supplier_name}
                   </p>
                 </div>
