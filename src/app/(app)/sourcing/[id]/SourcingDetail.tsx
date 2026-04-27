@@ -349,7 +349,7 @@ interface PushModalProps {
   projects: Props['projects']
   sessionId: string
   onClose: () => void
-  onPushed: () => void
+  onPushed: (projectId: string) => void
 }
 
 function PushModal({ item, assignment, response, supplierName, projects, sessionId, onClose, onPushed }: PushModalProps) {
@@ -389,7 +389,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
         }),
       })
       if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
-      onPushed()
+      onPushed(projectId)
       onClose()
     } catch (err: any) {
       alert(err.message)
@@ -530,13 +530,15 @@ function PushModal({ item, assignment, response, supplierName, projects, session
 
 // ---- Comparison Table ----
 function ComparisonTable({
-  items, suppliers, onAccept, accepting, onOpenPush,
+  items, suppliers, onAccept, accepting, onOpenPush, pushedItems, projects,
 }: {
   items: SessionItem[]
   suppliers: SessionSupplier[]
   onAccept: (itemId: string, assignmentId: string) => void
   accepting: string | null
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
+  pushedItems: Record<string, string>
+  projects: Props['projects']
 }) {
   const hasAnyResponse = suppliers.some(ss => ss.assignments.some(a => a.response !== null || a.status === 'supplier_declined'))
   if (!hasAnyResponse) return null
@@ -612,14 +614,23 @@ function ComparisonTable({
                           )}
                         </div>
                         {isAccepted ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
                             <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                            <button
-                              onClick={() => onOpenPush(item, assignment, response, ss.supplier_name)}
-                              className="text-[10px] text-[#C4A46B] hover:text-[#9A7B4F] font-medium whitespace-nowrap transition-colors"
-                            >
-                              Push →
-                            </button>
+                            {pushedItems[item.id] ? (
+                              <a
+                                href={`/projects/${pushedItems[item.id]}`}
+                                className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium whitespace-nowrap transition-colors underline underline-offset-2"
+                              >
+                                {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
+                              </a>
+                            ) : (
+                              <button
+                                onClick={() => onOpenPush(item, assignment, response, ss.supplier_name)}
+                                className="text-[10px] text-[#C4A46B] hover:text-[#9A7B4F] font-medium whitespace-nowrap transition-colors"
+                              >
+                                Push →
+                              </button>
+                            )}
                           </div>
                         ) : (
                           item.status !== 'accepted' && (
@@ -648,7 +659,7 @@ function ComparisonTable({
 // ---- Supplier Card ----
 function SupplierCard({
   ss, items, sessionId, sessionStatus,
-  onAssignToggle, onAccept, onOpenPush, onRemove,
+  onAssignToggle, onAccept, onOpenPush, onRemove, pushedItems, projects,
 }: {
   ss: SessionSupplier
   items: SessionItem[]
@@ -658,6 +669,8 @@ function SupplierCard({
   onAccept: (itemId: string, assignmentId: string) => void
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   onRemove: (ssId: string) => void
+  pushedItems: Record<string, string>
+  projects: Props['projects']
 }) {
   const [expanded, setExpanded] = useState(false)
   const [showAddItems, setShowAddItems] = useState(false)
@@ -835,13 +848,22 @@ function SupplierCard({
                           </button>
                         )}
                         {isAccepted && assignment?.response && (
-                          <button
-                            type="button"
-                            onClick={() => onOpenPush(item, assignment, assignment.response!, ss.supplier_name)}
-                            className="text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors"
-                          >
-                            Push to project →
-                          </button>
+                          pushedItems[item.id] ? (
+                            <a
+                              href={`/projects/${pushedItems[item.id]}`}
+                              className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors underline underline-offset-2"
+                            >
+                              {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
+                            </a>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPush(item, assignment, assignment.response!, ss.supplier_name)}
+                              className="text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors"
+                            >
+                              Push to project →
+                            </button>
+                          )
                         )}
                       </div>
                     )}
@@ -957,6 +979,8 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   const [pushModal, setPushModal] = useState<{
     item: SessionItem; assignment: Assignment; response: Response; supplierName: string
   } | null>(null)
+  // keyed by item.id → project_id that was pushed to
+  const [pushedItems, setPushedItems] = useState<Record<string, string>>({})
 
   const isDraft = session.status === 'draft'
   const isArchived = session.archived
@@ -1015,7 +1039,10 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     startTransition(() => router.refresh())
   }
 
-  function handlePushToProject() {
+  function handlePushToProject(projectId: string) {
+    if (pushModal) {
+      setPushedItems(prev => ({ ...prev, [pushModal.item.id]: projectId }))
+    }
     startTransition(() => router.refresh())
   }
 
@@ -1109,6 +1136,8 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
         onOpenPush={(item, assignment, response, supplierName) =>
           setPushModal({ item, assignment, response, supplierName })
         }
+        pushedItems={pushedItems}
+        projects={projects}
       />
 
       {/* 2-column layout */}
@@ -1164,6 +1193,8 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                     setPushModal({ item, assignment, response, supplierName })
                   }
                   onRemove={handleRemoveSupplier}
+                  pushedItems={pushedItems}
+                  projects={projects}
                 />
               ))}
             </div>
