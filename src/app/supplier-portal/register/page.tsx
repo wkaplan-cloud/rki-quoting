@@ -240,8 +240,7 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={loading || !tcAccepted}
-              className="w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
-              style={{ background: '#3F3F46', color: '#FFFFFF' }}
+              className="w-full py-3 bg-[#1A1A18] hover:bg-[#2C2C2A] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 cursor-pointer mt-1"
             >
               {loading ? 'Creating account…' : 'Create Account'}
             </button>
@@ -249,7 +248,7 @@ function RegisterForm() {
 
           <p className="text-center text-sm mt-6" style={{ color: '#71717A' }}>
             Already have an account?{' '}
-            <Link href="/supplier-portal/login" className="font-medium" style={{ color: '#3F3F46' }}>Sign in</Link>
+            <Link href="/supplier-portal/login" className="font-medium hover:underline" style={{ color: '#9A7B4F' }}>Sign in</Link>
           </p>
         </div>
       </div>
