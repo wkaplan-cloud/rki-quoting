@@ -25,16 +25,8 @@ alter table pieces enable row level security;
 -- Everyone in the same org can read and write all pieces
 create policy "Org members can manage pieces"
   on pieces for all
-  using (
-    org_id in (
-      select org_id from org_members where user_id = auth.uid()
-    )
-  )
-  with check (
-    org_id in (
-      select org_id from org_members where user_id = auth.uid()
-    )
-  );
+  using (org_id = get_current_org_id())
+  with check (org_id = get_current_org_id());
 
 -- Optional: lets sourcing items track which piece they came from
 alter table sourcing_session_items
