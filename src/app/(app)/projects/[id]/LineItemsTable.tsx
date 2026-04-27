@@ -41,7 +41,7 @@ interface Props {
   depositReceived?: boolean
 }
 
-const COL = 'px-2 py-1.5 border-r border-[#EDE9E1] last:border-0'
+const COL = 'px-2 py-1.5'
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
@@ -374,18 +374,18 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         <span className="text-xs text-[#8A877F]">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
       </div>
 
-      <div className="bg-white border border-[#D8D3C8] rounded overflow-x-auto overflow-y-visible">
+      <div className="bg-[#FDFCFB] rounded-xl overflow-x-auto overflow-y-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_4px_24px_rgba(0,0,0,0.06)]">
         <table className="w-full text-sm min-w-[1120px]">
           <thead>
-            <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC] text-xs text-[#8A877F] uppercase tracking-wider">
-              <th className="w-6 px-2 py-2" />
-              <th className="w-7 px-2 py-2" title="Received" />
-              <th className="text-left px-2 py-2 min-w-[140px]">Item</th>
-              <th className="text-left px-2 py-2 min-w-[160px]">Description</th>
+            <tr className="border-b border-[#E8E4DC] bg-[#F7F4EF] text-xs text-[#8A877F] uppercase tracking-wider">
+              <th className="w-6 px-2 py-2 sticky left-0 z-10 bg-[#F7F4EF]" />
+              <th className="w-7 px-2 py-2 sticky left-6 z-10 bg-[#F7F4EF]" title="Received" />
+              <th className="text-left px-2 py-2 min-w-[140px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
+              <th className="text-left px-2 py-2 min-w-[160px] border-r border-[#EDEBE6]">Description</th>
               <th className="text-right px-2 py-2 min-w-[130px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
-              <th className="text-right px-1 py-2 min-w-[52px] whitespace-nowrap">Lead</th>
+              <th className="text-right px-1 py-2 min-w-[52px] whitespace-nowrap border-r border-[#EDEBE6]">Lead</th>
               <th className="text-right px-2 py-2 min-w-[100px] whitespace-nowrap">Cost</th>
               <th className="text-right px-2 py-2 min-w-[80px] whitespace-nowrap">Mkup%</th>
               <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Sale</th>
@@ -408,13 +408,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     onDragEnter={!locked ? () => { dragOver.current = index } : undefined}
                     onDragEnd={!locked ? handleDragEnd : undefined}
                     onDragOver={!locked ? e => e.preventDefault() : undefined}
-                    className="border-b border-[#D8D3C8] bg-[#F5F2EC] group"
+                    className="border-b border-[#E0DDD6] bg-[#F5F2EC] group"
                   >
-                    <td className={`px-1.5 py-2 text-[#C4BFB5] ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                    <td className={`px-1.5 py-2 text-[#C4BFB5] sticky left-0 z-10 bg-[#F5F2EC] ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
                       {!locked && <GripVertical size={14} />}
                     </td>
-                    <td />
-                    <td colSpan={12} className="px-2 py-2 border-r border-[#EDE9E1]">
+                    <td className="sticky left-6 z-10 bg-[#F5F2EC]" />
+                    <td colSpan={12} className="px-2 py-2">
                       <div className="flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
                         <input
@@ -454,21 +454,21 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   onDragEnter={!locked ? () => { dragOver.current = index } : undefined}
                   onDragEnd={!locked ? handleDragEnd : undefined}
                   onDragOver={!locked ? e => e.preventDefault() : undefined}
-                  className={`border-b border-[#EDE9E1] last:border-0 group transition-colors
+                  className={`border-b border-[#F2EFE9] last:border-0 group transition-colors
                     ${item.received
                       ? 'bg-blue-50 hover:bg-blue-50'
-                      : isLinked ? 'bg-amber-50/50 hover:bg-amber-50/70'
-                      : isParent ? 'bg-amber-50/25 hover:bg-amber-50/40'
+                      : isLinked ? 'bg-amber-50/30 hover:bg-amber-50/50'
+                      : isParent ? 'bg-amber-50/15 hover:bg-amber-50/30'
                       : 'hover:bg-[#FDFCF9]'
                     }`}
                 >
                   {/* Drag handle */}
-                  <td className={`px-1.5 py-1 text-[#D8D3C8] ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                  <td className={`px-1.5 py-1 sticky left-0 z-10 bg-inherit text-[#D8D3C8] ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
                     {!locked && <GripVertical size={14} />}
                   </td>
 
                   {/* Received checkbox */}
-                  <td className="px-1.5 py-1">
+                  <td className="px-1.5 py-1 sticky left-6 z-10 bg-inherit">
                     <button
                       onClick={() => toggleReceived(item.id, item.received)}
                       title={item.received ? 'Mark as not received' : 'Mark as received'}
@@ -487,7 +487,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Item name — with link toggle + dimensions/colour */}
-                  <td className={COL}>
+                  <td className={COL + ' sticky left-[52px] z-10 bg-inherit border-r border-[#E8E4DC]'}>
                     <div className={isLinked ? 'pl-4' : ''}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
@@ -610,7 +610,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Description */}
-                  <td className={COL + ' align-top pr-4'}>
+                  <td className={COL + ' align-top pr-4 border-r border-[#EDEBE6]'}>
                     <AutoTextarea
                       value={item.description ?? ''}
                       onChange={v => updateLocal(item.id, 'description', v)}
@@ -758,7 +758,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Lead time */}
-                  <td className={COL.replace('px-2', 'px-1')}>
+                  <td className={COL.replace('px-2', 'px-1') + ' border-r border-[#EDEBE6]'}>
                     {item.lead_time_days != null ? (
                       <div className="flex items-center gap-0.5 justify-end">
                         <input
