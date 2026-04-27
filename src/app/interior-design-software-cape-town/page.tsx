@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { CityLandingPage } from '../_components/CityLandingPage'
 
 export const metadata: Metadata = {
-  title: 'Quoting Software for Cape Town Interior Designers | QuotingHub',
+  title: 'Quoting Software for Cape Town Interior Designers',
   description: 'QuotingHub is built for Cape Town interior designers and decorators. Create professional quotes, invoices, and purchase orders with real-time pricing. Serving Atlantic Seaboard, Constantia, Bishopscourt, De Waterkant and beyond.',
   alternates: {
     canonical: 'https://quotinghub.co.za/interior-design-software-cape-town',

@@ -1,6 +1,56 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Check, ArrowRight } from 'lucide-react'
 import { PublicLayout } from '@/components/layout/PublicLayout'
+
+export const metadata: Metadata = {
+  title: 'Pricing — Quoting Software for Interior Designers',
+  description: 'Solo from R699/month. Studio from R1,499/month. Agency from R2,499/month. Unlimited quotes, invoices, and purchase orders. 30-day free trial. No credit card required.',
+  alternates: {
+    canonical: 'https://quotinghub.co.za/pricing',
+  },
+  openGraph: {
+    title: 'Pricing — QuotingHub for Interior Designers',
+    description: 'Solo from R699/month. Studio from R1,499/month. 30-day free trial, no credit card required.',
+    url: 'https://quotinghub.co.za/pricing',
+    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+  },
+}
+
+const pricingSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'QuotingHub',
+  url: 'https://quotinghub.co.za',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'All',
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Solo',
+      price: '699',
+      priceCurrency: 'ZAR',
+      description: 'For independent designers running their own studio. 1 user, unlimited projects, quotes, and invoices.',
+      eligibleCustomerType: 'https://schema.org/Business',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Studio',
+      price: '1499',
+      priceCurrency: 'ZAR',
+      description: 'For growing studios with a team. Up to 5 team members, pipeline dashboard, profit analytics.',
+      eligibleCustomerType: 'https://schema.org/Business',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Agency',
+      price: '2499',
+      priceCurrency: 'ZAR',
+      description: 'For established firms and high-volume studios. Unlimited team members, Sage integration, custom branded PDFs.',
+      eligibleCustomerType: 'https://schema.org/Business',
+    },
+  ],
+}
 
 const plans = [
   {
@@ -60,6 +110,10 @@ const plans = [
 export default function PricingPage() {
   return (
     <PublicLayout>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingSchema).replace(/</g, '\\u003c') }}
+      />
       {/* Hero */}
       <section className="pt-10 sm:pt-16 pb-10 px-6 text-center">
         <div className="max-w-2xl mx-auto">

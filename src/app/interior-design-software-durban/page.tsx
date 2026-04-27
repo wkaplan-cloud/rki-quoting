@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { CityLandingPage } from '../_components/CityLandingPage'
 
 export const metadata: Metadata = {
-  title: 'Quoting Software for Durban Interior Designers | QuotingHub',
+  title: 'Quoting Software for Durban Interior Designers',
   description: 'QuotingHub is built for Durban interior designers and decorators. Create professional quotes, invoices, and purchase orders with real-time pricing. Serving Umhlanga, Ballito, La Lucia, Berea and beyond.',
   alternates: {
     canonical: 'https://quotinghub.co.za/interior-design-software-durban',

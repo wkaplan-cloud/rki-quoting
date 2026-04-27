@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { CityLandingPage } from '../_components/CityLandingPage'
 
 export const metadata: Metadata = {
-  title: 'Quoting Software for Johannesburg Interior Designers | QuotingHub',
+  title: 'Quoting Software for Johannesburg Interior Designers',
   description: 'QuotingHub is built for Johannesburg interior designers and decorators. Create professional quotes, invoices, and purchase orders with real-time pricing. Serving Sandton, Rosebank, Bryanston, Melrose and beyond.',
   alternates: {
     canonical: 'https://quotinghub.co.za/interior-design-software-johannesburg',
