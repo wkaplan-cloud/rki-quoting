@@ -454,21 +454,15 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   onDragEnter={!locked ? () => { dragOver.current = index } : undefined}
                   onDragEnd={!locked ? handleDragEnd : undefined}
                   onDragOver={!locked ? e => e.preventDefault() : undefined}
-                  className={`border-b border-[#F2EFE9] last:border-0 group transition-colors
-                    ${item.received
-                      ? 'bg-blue-50 hover:bg-blue-50'
-                      : isLinked ? 'bg-amber-50/30 hover:bg-amber-50/50'
-                      : isParent ? 'bg-amber-50/15 hover:bg-amber-50/30'
-                      : 'hover:bg-[#FDFCF9]'
-                    }`}
+                  className={`border-b border-[#F2EFE9] last:border-0 group transition-colors ${item.received ? 'bg-blue-50 hover:bg-blue-50' : 'hover:bg-[#FDFCF9]'}`}
                 >
                   {/* Drag handle */}
-                  <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.received ? 'bg-blue-50' : isLinked ? 'bg-amber-50' : isParent ? 'bg-[#FEFCF3]' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                  <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
                     {!locked && <GripVertical size={14} />}
                   </td>
 
                   {/* Received checkbox */}
-                  <td className={`px-1.5 py-1 sticky left-6 z-10 ${item.received ? 'bg-blue-50' : isLinked ? 'bg-amber-50' : isParent ? 'bg-[#FEFCF3]' : 'bg-[#FDFCFB]'}`}>
+                  <td className={`px-1.5 py-1 sticky left-6 z-10 ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
                     <button
                       onClick={() => toggleReceived(item.id, item.received)}
                       title={item.received ? 'Mark as not received' : 'Mark as received'}
@@ -487,7 +481,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Item name — with link toggle + dimensions/colour */}
-                  <td className={COL + ` sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.received ? 'bg-blue-50' : isLinked ? 'bg-amber-50' : isParent ? 'bg-[#FEFCF3]' : 'bg-[#FDFCFB]'}`}>
+                  <td className={COL + ` sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
                     <div className={isLinked ? 'pl-4' : ''}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
@@ -514,6 +508,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             />
                           )}
                         </div>
+                        {item.twinbru_product_id && (
+                          <input
+                            value={item.colour_finish ?? ''}
+                            onChange={e => updateLocal(item.id, 'colour_finish', e.target.value)}
+                            onBlur={e => saveField(item.id, 'colour_finish', e.target.value)}
+                            placeholder="Colour…"
+                            readOnly={locked}
+                            className="w-20 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
+                          />
+                        )}
                         {!locked && (
                           <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
                             <button
@@ -538,36 +542,46 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           </div>
                         )}
                       </div>
-                      <div className="flex gap-1 mt-0.5">
-                        <input
-                          value={item.dimensions ?? ''}
-                          onChange={e => updateLocal(item.id, 'dimensions', e.target.value)}
-                          onBlur={e => saveField(item.id, 'dimensions', e.target.value)}
-                          placeholder="Dimensions…"
-                          readOnly={locked}
-                          className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
-                        />
-                        <input
-                          value={item.colour_finish ?? ''}
-                          onChange={e => updateLocal(item.id, 'colour_finish', e.target.value)}
-                          onBlur={e => saveField(item.id, 'colour_finish', e.target.value)}
-                          placeholder="Colour/finish…"
-                          readOnly={locked}
-                          className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
-                        />
-                      </div>
+                      {!item.twinbru_product_id && (
+                        <div className="flex gap-1 mt-0.5">
+                          <input
+                            value={item.dimensions ?? ''}
+                            onChange={e => updateLocal(item.id, 'dimensions', e.target.value)}
+                            onBlur={e => saveField(item.id, 'dimensions', e.target.value)}
+                            placeholder="Dimensions…"
+                            readOnly={locked}
+                            className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
+                          />
+                          <input
+                            value={item.colour_finish ?? ''}
+                            onChange={e => updateLocal(item.id, 'colour_finish', e.target.value)}
+                            onBlur={e => saveField(item.id, 'colour_finish', e.target.value)}
+                            placeholder="Colour/finish…"
+                            readOnly={locked}
+                            className="flex-1 min-w-0 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
+                          />
+                        </div>
+                      )}
                       {item.twinbru_product_id && (() => {
                         const w = widthMap[item.twinbru_product_id] ?? item.fabric_width_cm
                         const s = !depositReceived ? stockMap[item.id] : null
-                        if (!w && !s) return null
                         const transitDays = s?.transitDate ? Math.ceil((new Date(s.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null
                         const transitIsNextDay = transitDays != null && transitDays <= 1
                         const localQty = ((s?.localQty ?? 0) + (transitIsNextDay && s?.transitQty ? s.transitQty : 0))
                         const showLocal = localQty > 0
                         const showTransit = s?.transitQty != null && s?.transitDate && !transitIsNextDay
                         const showLead = s && !showLocal && !showTransit && !!s.maxLeadTimeDate
+                        const rollPricePerM = item.twinbru_cost_price != null ? Math.round(item.twinbru_cost_price * 0.9 * 100) / 100 : 0
+                        const isRoll = item.twinbru_cost_price != null && Math.abs(item.cost_price - rollPricePerM) < 0.001 && item.cost_price !== item.twinbru_cost_price
+                        const setMode = async (roll: boolean) => {
+                          const cost_price = roll ? rollPricePerM : item.twinbru_cost_price!
+                          onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, unit: 'm' } : i))
+                          await supabase.from('line_items').update({ cost_price, unit: 'm' }).eq('id', item.id)
+                        }
+                        const showCutRoll = item.twinbru_cost_price != null && !locked
+                        if (!w && !s && !showCutRoll) return null
                         return (
-                          <div className="flex flex-row flex-wrap gap-1 mt-1">
+                          <div className="flex flex-row flex-wrap items-center gap-1 mt-1">
                             {w ? <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-[#EDE9E1] text-[#8A877F]">{w}cm wide</span> : null}
                             {showLocal && (
                               <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{localQty.toLocaleString()}m — in stock</span>
@@ -578,31 +592,20 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             {showLead && (
                               <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">~{Math.max(1, Math.ceil((new Date(s!.maxLeadTimeDate!).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time</span>
                             )}
-                          </div>
-                        )
-                      })()}
-                      {item.twinbru_cost_price != null && (() => {
-                        // Cut = standard per-m price; Roll = 10% off per m. Quantity/unit unchanged.
-                        const rollPricePerM = Math.round(item.twinbru_cost_price * 0.9 * 100) / 100
-                        const isRoll = Math.abs(item.cost_price - rollPricePerM) < 0.001 && item.cost_price !== item.twinbru_cost_price
-                        const setMode = async (roll: boolean) => {
-                          const cost_price = roll ? rollPricePerM : item.twinbru_cost_price!
-                          onChange(lineItems.map(i => i.id === item.id ? { ...i, cost_price, unit: 'm' } : i))
-                          await supabase.from('line_items').update({ cost_price, unit: 'm' }).eq('id', item.id)
-                        }
-                        if (locked) return null
-                        return (
-                          <div className="flex items-center gap-0.5 mt-1">
-                            <button
-                              onClick={() => setMode(false)}
-                              title="Standard cut price per metre"
-                              className={`text-[9px] px-1.5 py-0.5 rounded-l-full border transition-colors cursor-pointer ${!isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
-                            >Cut</button>
-                            <button
-                              onClick={() => setMode(true)}
-                              title="Roll price per metre (10% off)"
-                              className={`text-[9px] px-1.5 py-0.5 rounded-r-full border transition-colors cursor-pointer ${isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
-                            >Roll</button>
+                            {showCutRoll && (
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  onClick={() => setMode(false)}
+                                  title="Standard cut price per metre"
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-l-full border transition-colors cursor-pointer ${!isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
+                                >Cut</button>
+                                <button
+                                  onClick={() => setMode(true)}
+                                  title="Roll price per metre (10% off)"
+                                  className={`text-[9px] px-1.5 py-0.5 rounded-r-full border transition-colors cursor-pointer ${isRoll ? 'bg-[#9A7B4F] border-[#9A7B4F] text-white' : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#9A7B4F]'}`}
+                                >Roll</button>
+                              </div>
+                            )}
                           </div>
                         )
                       })()}
