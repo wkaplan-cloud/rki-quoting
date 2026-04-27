@@ -27,13 +27,14 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
+export function SourcingDashboard({ sessions, projects }: { sessions: Session[]; projects: { id: string; project_name: string }[] }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [tab, setTab] = useState<'active' | 'archived'>('active')
   const [showNewForm, setShowNewForm] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [newProjectId, setNewProjectId] = useState('')
   const [archiving, setArchiving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
 
@@ -49,11 +50,12 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
       const res = await fetch('/api/sourcing/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle.trim() }),
+        body: JSON.stringify({ title: newTitle.trim(), project_id: newProjectId || undefined }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setNewTitle('')
+      setNewProjectId('')
       setShowNewForm(false)
       startTransition(() => router.push(`/sourcing/${json.data.id}`))
     } catch (err: any) {
@@ -90,29 +92,43 @@ export function SourcingDashboard({ sessions }: { sessions: Session[] }) {
     <div className="max-w-3xl space-y-6">
       {/* New session — button that expands into form */}
       {showNewForm ? (
-        <form onSubmit={handleCreate} className="flex gap-2">
-          <input
-            value={newTitle}
-            onChange={e => setNewTitle(e.target.value)}
-            placeholder={`e.g. "Living Room Furniture Q3"`}
-            className="flex-1 px-4 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={creating || !newTitle.trim()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-50 transition-colors shrink-0"
-          >
-            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            Create
-          </button>
-          <button
-            type="button"
-            onClick={() => { setShowNewForm(false); setNewTitle('') }}
-            className="px-4 py-2.5 text-sm text-[#8A877F] border border-[#D4CFC7] rounded-lg hover:bg-[#F5F2EC] transition-colors"
-          >
-            Cancel
-          </button>
+        <form onSubmit={handleCreate} className="border border-[#C4A46B] rounded-xl p-4 space-y-3 bg-[#FEFDF9]">
+          <div className="flex gap-2">
+            <input
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder={`e.g. "Living Room Furniture Q3"`}
+              className="flex-1 px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
+              autoFocus
+            />
+            {projects.length > 0 && (
+              <select
+                value={newProjectId}
+                onChange={e => setNewProjectId(e.target.value)}
+                className="px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white text-[#8A877F]"
+              >
+                <option value="">No client (optional)</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+              </select>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => { setShowNewForm(false); setNewTitle(''); setNewProjectId('') }}
+              className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={creating || !newTitle.trim()}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-50 transition-colors"
+            >
+              {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+              Create
+            </button>
+          </div>
         </form>
       ) : (
         <button

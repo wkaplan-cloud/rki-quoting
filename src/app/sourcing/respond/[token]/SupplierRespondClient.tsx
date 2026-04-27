@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw } from 'lucide-react'
 
 interface Assignment {
   id: string
@@ -100,6 +100,23 @@ function PriceForm({
 
   const item = assignment.item
   if (!item) return null
+
+  // Locked state — designer accepted this price
+  if (assignment.status === 'accepted') {
+    return (
+      <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#F0FDF4', border: '1px solid #A7F3D0' }}>
+        <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm" style={{ color: '#18181B' }}>{item.title}</p>
+          <p className="text-sm text-emerald-700 font-medium mt-0.5">
+            R{assignment.response?.unit_price.toLocaleString()} accepted
+            {assignment.response?.lead_time_weeks ? ` · ${assignment.response.lead_time_weeks}w lead` : ''}
+          </p>
+        </div>
+        <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full shrink-0">Accepted</span>
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
@@ -217,20 +234,34 @@ function MessageThread({
   token,
   messages: initialMessages,
   studioName,
+  locked,
 }: {
   token: string
   messages: Message[]
   studioName: string
+  locked?: boolean
 }) {
   const [messages, setMessages] = useState(initialMessages)
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    try {
+      const res = await fetch(`/api/sourcing/respond/${token}/messages`)
+      const json = await res.json()
+      if (json.data) setMessages(json.data)
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
@@ -256,8 +287,18 @@ function MessageThread({
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
-      <div className="px-5 py-3" style={{ borderBottom: '1px solid #E4E4E7' }}>
+      <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #E4E4E7' }}>
         <p className="text-sm font-semibold" style={{ color: '#18181B' }}>Messages with {studioName}</p>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Refresh messages"
+          className="p-1 transition-opacity disabled:opacity-40"
+          style={{ color: '#A1A1AA' }}
+        >
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+        </button>
       </div>
       <div className="px-5 py-4 space-y-3 max-h-64 overflow-y-auto">
         {messages.length === 0 && (
@@ -282,26 +323,35 @@ function MessageThread({
         <div ref={bottomRef} />
       </div>
       <div className="px-5 py-3" style={{ borderTop: '1px solid #E4E4E7' }}>
-        <form onSubmit={handleSend} className="flex gap-2">
-          <input
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            placeholder="Type a message…"
-            className="flex-1 px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
-            onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-            onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-          />
-          <button
-            type="submit"
-            disabled={sending || !body.trim()}
-            className="px-3 py-2 rounded-lg transition-opacity disabled:opacity-40"
-            style={{ background: '#18181B', color: '#FAFAFA' }}
-          >
-            <Send size={14} />
-          </button>
-        </form>
-        {error && <p className="text-xs mt-1" style={{ color: '#EF4444' }}>{error}</p>}
+        {locked ? (
+          <div className="flex items-center gap-2 py-1" style={{ color: '#71717A' }}>
+            <Lock size={13} />
+            <p className="text-xs">Pricing accepted — thread closed</p>
+          </div>
+        ) : (
+          <>
+            <form onSubmit={handleSend} className="flex gap-2">
+              <input
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder="Type a message…"
+                className="flex-1 px-3 py-2 text-sm rounded-lg outline-none"
+                style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+              />
+              <button
+                type="submit"
+                disabled={sending || !body.trim()}
+                className="px-3 py-2 rounded-lg transition-opacity disabled:opacity-40"
+                style={{ background: '#18181B', color: '#FAFAFA' }}
+              >
+                <Send size={14} />
+              </button>
+            </form>
+            {error && <p className="text-xs mt-1" style={{ color: '#EF4444' }}>{error}</p>}
+          </>
+        )}
       </div>
     </div>
   )
@@ -319,6 +369,7 @@ export function SupplierRespondClient({
   showBackLink = false,
 }: Props) {
   const [items, setItems] = useState(assignments)
+  const allAccepted = items.length > 0 && items.every(a => a.status === 'accepted')
 
   function handleSaved(assignmentId: string, response: Assignment['response']) {
     setItems(prev =>
@@ -392,7 +443,7 @@ export function SupplierRespondClient({
         </div>
 
         {/* Message thread */}
-        <MessageThread token={token} messages={initialMessages} studioName={studioName} />
+        <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
 
         <p className="text-center text-xs pb-4" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
       </div>

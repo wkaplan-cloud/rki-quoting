@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, Trash2, Send, CheckCircle2, Archive, Loader2,
-  ChevronDown, ChevronUp, MessageSquare, X, Check
+  Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
+  MessageSquare, X, Check, CheckCircle2, RefreshCw, Lock,
 } from 'lucide-react'
 
 // ---- Types ----
@@ -64,17 +64,7 @@ interface Props {
   projects: { id: string; project_number: string | null; project_name: string }[]
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  open:        'bg-[#F5F2EC] text-[#8A877F] border border-[#D4CFC7]',
-  accepted:    'bg-emerald-50 text-emerald-600 border border-emerald-200',
-  draft:       'bg-[#F5F2EC] text-[#8A877F]',
-  sent:        'bg-blue-50 text-blue-600',
-  in_progress: 'bg-amber-50 text-amber-600',
-  completed:   'bg-emerald-50 text-emerald-600',
-  pending:     'bg-[#F5F2EC] text-[#8A877F]',
-  viewed:      'bg-sky-50 text-sky-600',
-  responded:   'bg-amber-50 text-amber-600',
-}
+const INPUT = 'w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white'
 
 // ---- Add Item Form ----
 function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item: SessionItem) => void }) {
@@ -129,24 +119,15 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
 
   return (
     <form onSubmit={handleSubmit} className="border border-[#C4A46B] rounded-xl p-4 space-y-3 bg-[#FEFDF9]">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
-          <input
-            autoFocus
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Item name *"
-            required
-            className="w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
-          />
+      <div className="space-y-2">
+        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Item name *" required className={INPUT} />
+        <div className="grid grid-cols-2 gap-2">
+          <input value={workType} onChange={e => setWorkType(e.target.value)} placeholder="Category" className={INPUT} />
+          <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Quantity" className={INPUT} />
+          <input value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="Dimensions" className={INPUT} />
+          <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} placeholder="Colour / Finish" className={INPUT} />
         </div>
-        <input value={workType} onChange={e => setWorkType(e.target.value)} placeholder="Category (e.g. Upholstery)" className="px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white" />
-        <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Quantity" className="px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white" />
-        <input value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="Dimensions" className="px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white" />
-        <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} placeholder="Colour / Finish" className="px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white" />
-        <div className="col-span-2">
-          <textarea value={specs} onChange={e => setSpecs(e.target.value)} rows={2} placeholder="Specifications / Notes" className="w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white resize-none" />
-        </div>
+        <textarea value={specs} onChange={e => setSpecs(e.target.value)} rows={2} placeholder="Specifications" className={`${INPUT} resize-none`} />
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
@@ -158,23 +139,30 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
   )
 }
 
-// ---- Add Supplier Form ----
+// ---- Add Supplier Form (with inline item assignment) ----
 function AddSupplierForm({
   sessionId,
   allSuppliers,
   existingEmails,
   onAdded,
+  items,
 }: {
   sessionId: string
   allSuppliers: { id: string; supplier_name: string; email: string | null }[]
   existingEmails: string[]
   onAdded: (ss: SessionSupplier) => void
+  items: SessionItem[]
 }) {
   const [open, setOpen] = useState(false)
   const [supplierName, setSupplierName] = useState('')
   const [email, setEmail] = useState('')
   const [supplierId, setSupplierId] = useState<string | null>(null)
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+
+  function toggleItem(id: string) {
+    setSelectedItemIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+  }
 
   function handleSelectSupplier(s: { id: string; supplier_name: string; email: string | null }) {
     setSupplierName(s.supplier_name)
@@ -194,14 +182,42 @@ function AddSupplierForm({
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      onAdded({ ...json.data, assignments: [] })
-      setSupplierName(''); setEmail(''); setSupplierId(null); setOpen(false)
+      const newSS = json.data
+
+      // Assign selected items in parallel
+      const assignResults = await Promise.all(
+        selectedItemIds.map(itemId =>
+          fetch(`/api/sourcing/sessions/${sessionId}/suppliers/${newSS.id}/assignments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: itemId }),
+          }).then(r => r.json())
+        )
+      )
+
+      const assignments: Assignment[] = assignResults
+        .filter(r => r.data)
+        .map(r => ({
+          id: r.data.id,
+          item_id: r.data.item_id,
+          status: 'pending',
+          responded_at: null,
+          accepted_at: null,
+          response: null,
+        }))
+
+      onAdded({ ...newSS, assignments })
+      setSupplierName(''); setEmail(''); setSupplierId(null); setSelectedItemIds([]); setOpen(false)
     } catch (err: any) {
       alert(err.message)
     } finally {
       setSaving(false)
     }
   }
+
+  const filtered = allSuppliers.filter(
+    s => s.supplier_name.toLowerCase().includes(supplierName.toLowerCase()) && !existingEmails.includes(s.email ?? '')
+  )
 
   if (!open) {
     return (
@@ -211,8 +227,6 @@ function AddSupplierForm({
     )
   }
 
-  const filtered = allSuppliers.filter(s => s.supplier_name.toLowerCase().includes(supplierName.toLowerCase()) && !existingEmails.includes(s.email ?? ''))
-
   return (
     <form onSubmit={handleSubmit} className="border border-[#C4A46B] rounded-xl p-4 space-y-3 bg-[#FEFDF9]">
       <div className="relative">
@@ -220,19 +234,15 @@ function AddSupplierForm({
           autoFocus
           value={supplierName}
           onChange={e => { setSupplierName(e.target.value); setSupplierId(null) }}
-          placeholder="Supplier / manufacturer name *"
+          placeholder="Supplier name *"
           required
-          className="w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
+          className={INPUT}
         />
         {supplierName.length > 1 && filtered.length > 0 && !supplierId && (
           <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-[#EDE9E1] rounded-lg shadow-lg overflow-hidden max-h-40 overflow-y-auto">
             {filtered.slice(0, 6).map(s => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => handleSelectSupplier(s)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] transition-colors"
-              >
+              <button key={s.id} type="button" onClick={() => handleSelectSupplier(s)}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] transition-colors">
                 <span className="font-medium text-[#2C2C2A]">{s.supplier_name}</span>
                 {s.email && <span className="text-[#8A877F] ml-2">{s.email}</span>}
               </button>
@@ -240,16 +250,33 @@ function AddSupplierForm({
           </div>
         )}
       </div>
-      <input
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        placeholder="Email address *"
-        required
-        className="w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
-      />
+      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address *" required className={INPUT} />
+
+      {items.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-[#8A877F] uppercase tracking-wide mb-2">Assign items</p>
+          <div className="space-y-1.5">
+            {items.map(item => {
+              const checked = selectedItemIds.includes(item.id)
+              return (
+                <label key={item.id} className="flex items-center gap-2.5 cursor-pointer group">
+                  <div
+                    onClick={() => toggleItem(item.id)}
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-[#2C2C2A] border-[#2C2C2A]' : 'border-[#D4CFC7] group-hover:border-[#C4A46B]'}`}
+                  >
+                    {checked && <Check size={10} className="text-white" />}
+                  </div>
+                  <span className="text-sm text-[#2C2C2A]">{item.title}</span>
+                  {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
+        <button type="button" onClick={() => { setOpen(false); setSelectedItemIds([]) }} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
         <button type="submit" disabled={saving || !supplierName.trim() || !email.trim()} className="px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg disabled:opacity-50">
           {saving ? 'Adding…' : 'Add Supplier'}
         </button>
@@ -260,15 +287,8 @@ function AddSupplierForm({
 
 // ---- Supplier Card ----
 function SupplierCard({
-  ss,
-  items,
-  sessionId,
-  sessionStatus,
-  onAssignToggle,
-  onAccept,
-  onPushToProject,
-  onRemove,
-  projects,
+  ss, items, sessionId, sessionStatus,
+  onAssignToggle, onAccept, onPushToProject, onRemove, projects,
 }: {
   ss: SessionSupplier
   items: SessionItem[]
@@ -281,8 +301,10 @@ function SupplierCard({
   projects: Props['projects']
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [showAddItems, setShowAddItems] = useState(false)
   const [showMessages, setShowMessages] = useState(false)
   const [messages, setMessages] = useState<{ id: string; sender_type: string; body: string; created_at: string }[]>([])
+  const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [msgBody, setMsgBody] = useState('')
   const [sendingMsg, setSendingMsg] = useState(false)
   const [togglingItem, setTogglingItem] = useState<string | null>(null)
@@ -293,6 +315,51 @@ function SupplierCard({
   const [pushMarkup, setPushMarkup] = useState('')
 
   const assignedItemIds = new Set(ss.assignments.map(a => a.item_id))
+  const assignedItems = items.filter(item => assignedItemIds.has(item.id))
+  const unassignedItems = items.filter(item => !assignedItemIds.has(item.id))
+  const isDraft = sessionStatus === 'draft'
+  const isArchived = ss.status === 'declined'
+  const allAccepted = ss.assignments.length > 0 && ss.assignments.every(a => a.status === 'accepted')
+
+  const STATUS_COLORS: Record<string, string> = {
+    pending:     'bg-[#F5F2EC] text-[#8A877F]',
+    viewed:      'bg-sky-50 text-sky-600',
+    in_progress: 'bg-amber-50 text-amber-600',
+    responded:   'bg-amber-50 text-amber-600',
+    completed:   'bg-emerald-50 text-emerald-600',
+    declined:    'bg-red-50 text-red-400',
+  }
+
+  async function loadMessages() {
+    setLoadingMsgs(true)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/messages/${ss.id}`)
+      const json = await res.json()
+      if (json.data) setMessages(json.data)
+      setShowMessages(true)
+    } finally {
+      setLoadingMsgs(false)
+    }
+  }
+
+  async function sendMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!msgBody.trim()) return
+    setSendingMsg(true)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/messages/${ss.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: msgBody.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      setMessages(prev => [...prev, json.data])
+      setMsgBody('')
+    } finally {
+      setSendingMsg(false)
+    }
+  }
 
   async function toggleAssign(itemId: string) {
     const assigned = assignedItemIds.has(itemId)
@@ -315,32 +382,6 @@ function SupplierCard({
       alert(err.message)
     } finally {
       setTogglingItem(null)
-    }
-  }
-
-  async function loadMessages() {
-    const res = await fetch(`/api/sourcing/sessions/${sessionId}/messages/${ss.id}`)
-    const json = await res.json()
-    if (json.data) setMessages(json.data)
-    setShowMessages(true)
-  }
-
-  async function sendMessage(e: React.FormEvent) {
-    e.preventDefault()
-    if (!msgBody.trim()) return
-    setSendingMsg(true)
-    try {
-      const res = await fetch(`/api/sourcing/sessions/${sessionId}/messages/${ss.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: msgBody.trim() }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setMessages(prev => [...prev, json.data])
-      setMsgBody('')
-    } finally {
-      setSendingMsg(false)
     }
   }
 
@@ -380,152 +421,166 @@ function SupplierCard({
     }
   }
 
-  const statusBg = STATUS_COLORS[ss.status] ?? STATUS_COLORS.pending
+  const statusColor = STATUS_COLORS[ss.status] ?? STATUS_COLORS.pending
 
   return (
     <div className="border border-[#EDE9E1] rounded-xl overflow-hidden bg-white">
-      {/* Supplier header */}
+      {/* Header */}
       <div
-        className="flex items-center gap-3 px-5 py-3.5 cursor-pointer hover:bg-[#FAFAF8] transition-colors"
+        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#FAFAF8] transition-colors"
         onClick={() => setExpanded(e => !e)}
       >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-sm text-[#2C2C2A] truncate">{ss.supplier_name}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBg}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
               {ss.status.replace('_', ' ')}
             </span>
-            {ss.sent_at && <span className="text-xs text-[#8A877F]">Sent {new Date(ss.sent_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>}
           </div>
-          <p className="text-xs text-[#8A877F]">{ss.email} · {assignedItemIds.size} item{assignedItemIds.size !== 1 ? 's' : ''} assigned</p>
+          <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); showMessages ? setShowMessages(false) : loadMessages() }}
-            title="Messages"
-            className="p-1.5 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
-          >
-            <MessageSquare size={14} />
-          </button>
+        <div className="flex items-center gap-1 shrink-0">
+          {!isDraft && (
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); showMessages ? setShowMessages(false) : loadMessages() }}
+              title="Messages"
+              className="p-1.5 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
+            >
+              <MessageSquare size={13} />
+            </button>
+          )}
           <button
             type="button"
             onClick={e => { e.stopPropagation(); onRemove(ss.id) }}
-            title="Remove supplier"
             className="p-1.5 text-[#8A877F] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           >
-            <X size={14} />
+            <X size={13} />
           </button>
-          {expanded ? <ChevronUp size={14} className="text-[#8A877F]" /> : <ChevronDown size={14} className="text-[#8A877F]" />}
+          {expanded ? <ChevronUp size={13} className="text-[#8A877F]" /> : <ChevronDown size={13} className="text-[#8A877F]" />}
         </div>
       </div>
 
-      {/* Expanded: items + assignments + prices */}
+      {/* Expanded: assigned items with responses */}
       {expanded && (
         <div className="border-t border-[#EDE9E1]">
-          <div className="px-5 py-3">
-            <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wide mb-2">Assign Items</p>
-            <div className="space-y-1.5">
-              {items.length === 0 && <p className="text-xs text-[#C4BFB5]">No items added yet.</p>}
-              {items.map(item => {
-                const isAssigned = assignedItemIds.has(item.id)
+          {assignedItems.length === 0 ? (
+            <p className="text-xs text-[#C4BFB5] px-4 py-3">No items assigned yet.</p>
+          ) : (
+            <div className="px-4 py-3 space-y-3">
+              {assignedItems.map(item => {
                 const assignment = ss.assignments.find(a => a.item_id === item.id)
-                const hasResponse = !!assignment?.response
                 const isAccepted = assignment?.status === 'accepted'
+                const hasResponse = !!assignment?.response
 
                 return (
-                  <div key={item.id} className="flex items-start gap-3 py-2 border-b border-[#F5F2EC] last:border-0">
-                    {/* Toggle assign */}
-                    <button
-                      type="button"
-                      onClick={() => toggleAssign(item.id)}
-                      disabled={togglingItem === item.id || isAccepted}
-                      className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${isAssigned ? 'bg-[#2C2C2A] border-[#2C2C2A]' : 'border-[#D4CFC7] hover:border-[#C4A46B]'} disabled:opacity-40`}
-                    >
-                      {isAssigned && <Check size={11} className="text-white" />}
-                    </button>
+                  <div key={item.id} className="py-2 border-b border-[#F5F2EC] last:border-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {isAccepted && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
+                      <p className="text-sm font-medium text-[#2C2C2A]">{item.title}</p>
+                      {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
+                      {isAccepted && <span className="text-xs text-emerald-600 font-medium">Accepted</span>}
+                    </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-sm font-medium truncate ${isAssigned ? 'text-[#2C2C2A]' : 'text-[#8A877F]'}`}>{item.title}</p>
-                        {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
-                        {isAccepted && <span className="text-xs text-emerald-600 font-medium">Accepted</span>}
-                      </div>
-
-                      {/* Price response */}
-                      {hasResponse && assignment?.response && (
-                        <div className="mt-1.5 flex items-center gap-3 flex-wrap">
-                          <span className="text-sm font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
-                          {assignment.response.lead_time_weeks && <span className="text-xs text-[#8A877F]">{assignment.response.lead_time_weeks}w lead</span>}
-                          {assignment.response.notes && <span className="text-xs text-[#8A877F] italic truncate max-w-xs">{assignment.response.notes}</span>}
-                          {!isAccepted && item.status !== 'accepted' && (
-                            <button
-                              type="button"
-                              onClick={() => handleAccept(item.id, assignment.id)}
-                              disabled={accepting === assignment.id}
-                              className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                            >
-                              {accepting === assignment.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                              Accept
-                            </button>
-                          )}
-                          {isAccepted && !showPush && (
-                            <button
-                              type="button"
-                              onClick={() => setShowPush(item.id)}
-                              className="text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors"
-                            >
-                              Push to project →
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Push to project */}
-                      {showPush === item.id && (
-                        <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          <select
-                            value={pushProjectId}
-                            onChange={e => setPushProjectId(e.target.value)}
-                            className="text-xs border border-[#D4CFC7] rounded-lg px-2 py-1 focus:outline-none focus:border-[#C4A46B] bg-white"
-                          >
-                            {projects.map(p => (
-                              <option key={p.id} value={p.id}>{p.project_name}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            min="0"
-                            max="200"
-                            value={pushMarkup}
-                            onChange={e => setPushMarkup(e.target.value)}
-                            placeholder="Markup %"
-                            className="text-xs border border-[#D4CFC7] rounded-lg px-2 py-1 w-24 focus:outline-none focus:border-[#C4A46B] bg-white"
-                          />
+                    {hasResponse && assignment?.response && (
+                      <div className="flex items-center gap-3 flex-wrap mt-1">
+                        <span className="text-sm font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
+                        {assignment.response.lead_time_weeks && <span className="text-xs text-[#8A877F]">{assignment.response.lead_time_weeks}w lead</span>}
+                        {assignment.response.notes && <span className="text-xs text-[#8A877F] italic truncate max-w-[180px]">{assignment.response.notes}</span>}
+                        {!isAccepted && item.status !== 'accepted' && (
                           <button
                             type="button"
-                            onClick={() => handlePush(item.id)}
-                            disabled={pushing === item.id || !pushProjectId}
-                            className="text-xs bg-[#2C2C2A] text-[#F5F2EC] px-3 py-1 rounded-lg font-medium disabled:opacity-50"
+                            onClick={() => handleAccept(item.id, assignment.id)}
+                            disabled={accepting === assignment.id}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                           >
-                            {pushing === item.id ? 'Pushing…' : 'Push'}
+                            {accepting === assignment.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+                            Accept
                           </button>
-                          <button type="button" onClick={() => setShowPush(null)} className="text-xs text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                        {isAccepted && !showPush && (
+                          <button
+                            type="button"
+                            onClick={() => setShowPush(item.id)}
+                            className="text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors"
+                          >
+                            Push to project →
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {!hasResponse && !isAccepted && (
+                      <p className="text-xs text-[#C4BFB5] mt-1">Awaiting response</p>
+                    )}
+
+                    {showPush === item.id && (
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        <select value={pushProjectId} onChange={e => setPushProjectId(e.target.value)}
+                          className="text-xs border border-[#D4CFC7] rounded-lg px-2 py-1 focus:outline-none bg-white">
+                          {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+                        </select>
+                        <input type="number" min="0" max="200" value={pushMarkup} onChange={e => setPushMarkup(e.target.value)}
+                          placeholder="Markup %" className="text-xs border border-[#D4CFC7] rounded-lg px-2 py-1 w-24 focus:outline-none bg-white" />
+                        <button type="button" onClick={() => handlePush(item.id)} disabled={pushing === item.id || !pushProjectId}
+                          className="text-xs bg-[#2C2C2A] text-[#F5F2EC] px-3 py-1 rounded-lg font-medium disabled:opacity-50">
+                          {pushing === item.id ? 'Pushing…' : 'Push'}
+                        </button>
+                        <button type="button" onClick={() => setShowPush(null)} className="text-xs text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
+                      </div>
+                    )}
                   </div>
                 )
               })}
             </div>
-          </div>
+          )}
+
+          {/* Assign more items (unassigned only) */}
+          {unassignedItems.length > 0 && (
+            <div className="px-4 pb-3">
+              <button
+                type="button"
+                onClick={() => setShowAddItems(s => !s)}
+                className="text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors flex items-center gap-1"
+              >
+                <Plus size={11} /> Assign more items
+              </button>
+              {showAddItems && (
+                <div className="mt-2 space-y-1.5">
+                  {unassignedItems.map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleAssign(item.id)}
+                      disabled={togglingItem === item.id}
+                      className="flex items-center gap-2 text-sm text-[#2C2C2A] hover:text-[#C4A46B] transition-colors disabled:opacity-40"
+                    >
+                      {togglingItem === item.id ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                      {item.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Messages */}
-      {showMessages && (
-        <div className="border-t border-[#EDE9E1] px-5 py-4 space-y-3">
-          <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wide">Thread</p>
+      {/* Messages — only visible after sending */}
+      {!isDraft && showMessages && (
+        <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-[#8A877F] uppercase tracking-wide">Thread</p>
+            <button
+              type="button"
+              onClick={loadMessages}
+              disabled={loadingMsgs}
+              title="Refresh messages"
+              className="p-1 text-[#8A877F] hover:text-[#2C2C2A] transition-colors disabled:opacity-40"
+            >
+              <RefreshCw size={11} className={loadingMsgs ? 'animate-spin' : ''} />
+            </button>
+          </div>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {messages.length === 0 && <p className="text-xs text-[#C4BFB5]">No messages yet.</p>}
             {messages.map(m => (
@@ -545,17 +600,25 @@ function SupplierCard({
               </div>
             ))}
           </div>
-          <form onSubmit={sendMessage} className="flex gap-2">
-            <input
-              value={msgBody}
-              onChange={e => setMsgBody(e.target.value)}
-              placeholder="Message…"
-              className="flex-1 px-3 py-1.5 text-xs border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
-            />
-            <button type="submit" disabled={sendingMsg || !msgBody.trim()} className="px-3 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] rounded-lg text-xs disabled:opacity-40">
-              {sendingMsg ? '…' : 'Send'}
-            </button>
-          </form>
+
+          {allAccepted ? (
+            <div className="flex items-center gap-2 py-2 text-xs text-[#8A877F]">
+              <Lock size={11} />
+              <span>Pricing accepted — thread closed</span>
+            </div>
+          ) : (
+            <form onSubmit={sendMessage} className="flex gap-2 pt-1">
+              <input
+                value={msgBody}
+                onChange={e => setMsgBody(e.target.value)}
+                placeholder="Message…"
+                className="flex-1 px-3 py-1.5 text-xs border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
+              />
+              <button type="submit" disabled={sendingMsg || !msgBody.trim()} className="px-3 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] rounded-lg text-xs disabled:opacity-40">
+                {sendingMsg ? '…' : 'Send'}
+              </button>
+            </form>
+          )}
         </div>
       )}
     </div>
@@ -570,6 +633,18 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   const [suppliers, setSuppliers] = useState<SessionSupplier[]>(initialSuppliers)
   const [sending, setSending] = useState(false)
   const [archiving, setArchiving] = useState(false)
+
+  const isDraft = session.status === 'draft'
+  const isArchived = session.archived
+
+  const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    draft:       { label: 'Draft',       color: 'bg-[#F5F2EC] text-[#8A877F] border border-[#D4CFC7]' },
+    sent:        { label: 'Sent',        color: 'bg-blue-50 text-blue-600 border border-blue-200' },
+    in_progress: { label: 'In Progress', color: 'bg-amber-50 text-amber-600 border border-amber-200' },
+    completed:   { label: 'Completed',   color: 'bg-emerald-50 text-emerald-600 border border-emerald-200' },
+    archived:    { label: 'Archived',    color: 'bg-[#F5F2EC] text-[#8A877F] border border-[#D4CFC7]' },
+  }
+  const badge = STATUS_LABELS[session.status] ?? STATUS_LABELS.draft
 
   function handleItemAdded(item: SessionItem) {
     setItems(prev => [...prev, item])
@@ -598,14 +673,12 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           response: null,
         }
         return { ...s, assignments: [...s.assignments, newAssignment] }
-      } else {
-        return { ...s, assignments: s.assignments.filter(a => a.item_id !== itemId) }
       }
+      return { ...s, assignments: s.assignments.filter(a => a.item_id !== itemId) }
     }))
   }
 
   function handleAccept(itemId: string, assignmentId: string) {
-    // Update all suppliers: the winner gets 'accepted', others get 'declined' for this item
     setSuppliers(prev => prev.map(ss => ({
       ...ss,
       assignments: ss.assignments.map(a => {
@@ -648,117 +721,99 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   }
 
   const canSend = items.length > 0 && suppliers.some(ss => ss.assignments.length > 0)
-  const isArchived = session.archived
-  const isTerminal = ['completed', 'archived'].includes(session.status)
-
-  const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft:       { label: 'Draft',       color: 'bg-[#F5F2EC] text-[#8A877F] border border-[#D4CFC7]' },
-    sent:        { label: 'Sent',        color: 'bg-blue-50 text-blue-600 border border-blue-200' },
-    in_progress: { label: 'In Progress', color: 'bg-amber-50 text-amber-600 border border-amber-200' },
-    completed:   { label: 'Completed',   color: 'bg-emerald-50 text-emerald-600 border border-emerald-200' },
-    archived:    { label: 'Archived',    color: 'bg-[#F5F2EC] text-[#8A877F] border border-[#D4CFC7]' },
-  }
-  const badge = STATUS_LABELS[session.status] ?? STATUS_LABELS.draft
 
   return (
-    <div className="max-w-3xl space-y-6">
-      {/* Status bar */}
+    <div className="max-w-5xl space-y-5">
+      {/* Status + actions bar */}
       <div className="flex items-center justify-between">
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${badge.color}`}>{badge.label}</span>
         <div className="flex items-center gap-2">
           {!isArchived && (
-            <button
-              onClick={handleArchive}
-              disabled={archiving}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] border border-[#D4CFC7] rounded-lg hover:border-[#8A877F] transition-colors"
-            >
+            <button onClick={handleArchive} disabled={archiving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] border border-[#D4CFC7] rounded-lg hover:border-[#8A877F] transition-colors">
               {archiving ? <Loader2 size={13} className="animate-spin" /> : <Archive size={13} />}
               Archive
             </button>
           )}
           {!isArchived && (
-            <button
-              onClick={handleSend}
-              disabled={sending || !canSend}
-              className="flex items-center gap-2 px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-40 transition-colors"
-            >
+            <button onClick={handleSend} disabled={sending || !canSend}
+              className="flex items-center gap-2 px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-40 transition-colors">
               {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {session.status === 'draft' ? 'Send to Suppliers' : 'Resend'}
+              {isDraft ? 'Send to Suppliers' : 'Resend'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Items section */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
+      {/* 2-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Items */}
+        <div className="space-y-3">
           <h2 className="text-sm font-semibold text-[#2C2C2A]">Items ({items.length})</h2>
-        </div>
-        <div className="space-y-2 mb-3">
-          {items.length === 0 && (
+          {items.length === 0 ? (
             <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
               <p className="text-xs text-[#8A877F]">Add items to request prices for.</p>
             </div>
-          )}
-          {items.map(item => (
-            <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl px-4 py-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[item.status] ?? STATUS_COLORS.open}`}>
-                    {item.status}
-                  </span>
+          ) : (
+            <div className="space-y-2">
+              {items.map(item => (
+                <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
+                    <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
+                    {item.status === 'accepted' && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#8A877F] mt-0.5">
+                    {[item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish]
+                      .filter(Boolean).join(' · ')}
+                  </p>
                 </div>
-                <p className="text-xs text-[#8A877F] mt-0.5">
-                  {[item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish]
-                    .filter(Boolean).join(' · ')}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-        {!isArchived && (
-          <AddItemForm sessionId={session.id} onAdded={handleItemAdded} />
-        )}
-      </div>
-
-      {/* Suppliers section */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
-        </div>
-        <div className="space-y-2 mb-3">
-          {suppliers.length === 0 && (
-            <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
-              <p className="text-xs text-[#8A877F]">Add suppliers to assign items and send price requests.</p>
+              ))}
             </div>
           )}
-          {suppliers.map(ss => (
-            <SupplierCard
-              key={ss.id}
-              ss={ss}
-              items={items}
-              sessionId={session.id}
-              sessionStatus={session.status}
-              onAssignToggle={handleAssignToggle}
-              onAccept={handleAccept}
-              onPushToProject={handlePushToProject}
-              onRemove={handleRemoveSupplier}
-              projects={projects}
-            />
-          ))}
+          {!isArchived && <AddItemForm sessionId={session.id} onAdded={handleItemAdded} />}
         </div>
-        {!isArchived && (
-          <AddSupplierForm
-            sessionId={session.id}
-            allSuppliers={allSuppliers}
-            existingEmails={suppliers.map(s => s.email)}
-            onAdded={handleSupplierAdded}
-          />
-        )}
+
+        {/* Right: Suppliers */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
+          {suppliers.length === 0 ? (
+            <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
+              <p className="text-xs text-[#8A877F]">Add suppliers to assign items to.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {suppliers.map(ss => (
+                <SupplierCard
+                  key={ss.id}
+                  ss={ss}
+                  items={items}
+                  sessionId={session.id}
+                  sessionStatus={session.status}
+                  onAssignToggle={handleAssignToggle}
+                  onAccept={handleAccept}
+                  onPushToProject={handlePushToProject}
+                  onRemove={handleRemoveSupplier}
+                  projects={projects}
+                />
+              ))}
+            </div>
+          )}
+          {!isArchived && (
+            <AddSupplierForm
+              sessionId={session.id}
+              allSuppliers={allSuppliers}
+              existingEmails={suppliers.map(s => s.email)}
+              onAdded={handleSupplierAdded}
+              items={items}
+            />
+          )}
+        </div>
       </div>
 
-      {!canSend && !isArchived && items.length > 0 && suppliers.length > 0 && (
+      {!canSend && !isArchived && items.length > 0 && suppliers.length > 0 && isDraft && (
         <p className="text-xs text-[#8A877F]">Assign at least one item to a supplier before sending.</p>
       )}
     </div>
