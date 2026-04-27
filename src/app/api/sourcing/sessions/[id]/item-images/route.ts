@@ -19,10 +19,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const path = `item-refs/${sessionId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
       const bytes = await file.arrayBuffer()
       const { error } = await supabase.storage
-        .from('sourcing-uploads')
+        .from('sourcing-images')
         .upload(path, bytes, { contentType: file.type, upsert: false })
       if (!error) {
-        const { data } = supabase.storage.from('sourcing-uploads').getPublicUrl(path)
+        const { data } = supabase.storage.from('sourcing-images').getPublicUrl(path)
         urls.push(data.publicUrl)
       }
     }

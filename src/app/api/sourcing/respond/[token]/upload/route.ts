@@ -24,13 +24,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     const bytes = await file.arrayBuffer()
     const { error: uploadError } = await supabaseAdmin.storage
-      .from('sourcing-uploads')
+      .from('sourcing-attachments')
       .upload(path, bytes, { contentType: file.type, upsert: false })
 
     if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
     const { data: urlData } = supabaseAdmin.storage
-      .from('sourcing-uploads')
+      .from('sourcing-attachments')
       .getPublicUrl(path)
 
     return NextResponse.json({ url: urlData.publicUrl, name: file.name })
