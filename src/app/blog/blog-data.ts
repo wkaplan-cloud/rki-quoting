@@ -15,6 +15,11 @@ import FeeStructure from './posts/interior-design-fee-structure-south-africa'
 import QuotationTemplate from './posts/interior-design-quotation-template-south-africa'
 import DesignerVsDecorator from './posts/interior-designer-vs-interior-decorator-south-africa'
 import VatGuide from './posts/vat-on-interior-design-services-south-africa'
+import BestSoftware from './posts/best-interior-design-software-south-africa'
+import WhySpreadsheets from './posts/why-spreadsheets-are-costing-your-interior-design-studio'
+import PurchaseOrders from './posts/purchase-orders-for-interior-designers-south-africa'
+import HowToStart from './posts/how-to-start-interior-design-business-south-africa'
+import ProgramaVsQuotingHub from './posts/programa-vs-quotinghub-south-africa'
 
 export const blogPosts: BlogPost[] = [
   {
@@ -61,6 +66,51 @@ export const blogPosts: BlogPost[] = [
     category: 'Business Guides',
     readTime: 8,
     content: VatGuide,
+  },
+  {
+    slug: 'best-interior-design-software-south-africa',
+    title: 'Best Interior Design Software in South Africa (2026)',
+    description: 'An honest comparison of the best interior design software for South African studios — QuotingHub, Programa, Houzz Pro, DesignFiles, and more, rated for SA-specific needs.',
+    date: '2026-04-27',
+    category: 'Software Reviews',
+    readTime: 7,
+    content: BestSoftware,
+  },
+  {
+    slug: 'why-spreadsheets-are-costing-your-interior-design-studio',
+    title: 'Why Spreadsheets Are Costing Your Interior Design Studio Money',
+    description: 'Seven ways Excel-based quoting is costing South African interior design studios money — VAT errors, time waste, stale prices, unprofessional presentation, and more.',
+    date: '2026-04-27',
+    category: 'Business Guides',
+    readTime: 6,
+    content: WhySpreadsheets,
+  },
+  {
+    slug: 'purchase-orders-for-interior-designers-south-africa',
+    title: 'Purchase Orders for Interior Designers in South Africa: A Complete Guide',
+    description: 'What purchase orders are, why SA interior designers need them, what to include, and a five-step process for creating and sending POs to your suppliers.',
+    date: '2026-04-27',
+    category: 'Business Guides',
+    readTime: 7,
+    content: PurchaseOrders,
+  },
+  {
+    slug: 'how-to-start-interior-design-business-south-africa',
+    title: 'How to Start an Interior Design Business in South Africa (2026 Guide)',
+    description: 'Step-by-step guide to starting an interior design studio in South Africa — CIPC registration, IID membership, SARS, branding, first clients, and the tools you need from day one.',
+    date: '2026-04-27',
+    category: 'Business Guides',
+    readTime: 9,
+    content: HowToStart,
+  },
+  {
+    slug: 'programa-vs-quotinghub-south-africa',
+    title: 'Programa vs QuotingHub: Which Is Better for South African Interior Designers?',
+    description: 'An honest comparison of Programa and QuotingHub for South African interior design studios — features, SA-specific fit, pricing in ZAR vs AUD, and which to choose.',
+    date: '2026-04-27',
+    category: 'Software Reviews',
+    readTime: 7,
+    content: ProgramaVsQuotingHub,
   },
 ]
 

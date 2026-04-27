@@ -25,6 +25,9 @@ export function CityLandingPage({ config }: { config: CityConfig }) {
             <Link href="/pricing" className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">
               Pricing
             </Link>
+            <Link href="/blog" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">
+              Blog
+            </Link>
             <Link href="/login" className="px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">
               Log in
             </Link>

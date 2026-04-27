@@ -20,5 +20,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://quotinghub.co.za/blog/interior-design-quotation-template-south-africa', changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://quotinghub.co.za/blog/interior-designer-vs-interior-decorator-south-africa', changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://quotinghub.co.za/blog/vat-on-interior-design-services-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/best-interior-design-software-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/why-spreadsheets-are-costing-your-interior-design-studio', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/purchase-orders-for-interior-designers-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/how-to-start-interior-design-business-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/programa-vs-quotinghub-south-africa', changeFrequency: 'monthly', priority: 0.8 },
   ]
 }
