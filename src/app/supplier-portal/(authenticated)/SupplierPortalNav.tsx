@@ -32,45 +32,45 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
     <>
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
+        <div className="md:hidden fixed inset-0 bg-black/30 z-40" onClick={() => setMobileOpen(false)} />
       )}
 
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-2 h-14" style={{ background: '#18181B' }}>
-        <button onClick={() => setMobileOpen(true)} className="text-white/70 hover:text-white transition-colors">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-2 h-14 bg-white border-b border-[#E4E4E7]">
+        <button onClick={() => setMobileOpen(true)} className="text-[#71717A] hover:text-[#18181B] transition-colors">
           <Menu size={20} />
         </button>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-7 object-contain" style={{ filter: 'invert(1) brightness(0.55)' }} />
+        <img src="/logo.png" alt="QuotingHub" className="h-7 object-contain opacity-70" />
         <div className="flex-1" />
-        <span className="text-[10px] font-semibold uppercase tracking-widest truncate" style={{ color: '#52525B' }}>Supplier</span>
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-[#A1A1AA] truncate">Supplier</span>
       </div>
 
       {/* Sidebar */}
       <aside
         className={`group flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden
           w-48 md:w-12 md:hover:w-48 md:transition-[width] md:duration-200
-          ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-        style={{ background: '#18181B' }}
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          bg-white border-r border-[#E4E4E7]`}
       >
         {/* Mobile close */}
         <div className="md:hidden flex justify-end px-3 pt-3 pb-1">
-          <button onClick={() => setMobileOpen(false)} className="text-white/60 hover:text-white transition-colors">
+          <button onClick={() => setMobileOpen(false)} className="text-[#71717A] hover:text-[#18181B] transition-colors">
             <X size={18} />
           </button>
         </div>
 
         {/* Logo area */}
-        <div className="flex-shrink-0 relative border-b" style={{ borderColor: '#27272A' }}>
+        <div className="flex-shrink-0 relative border-b border-[#E4E4E7]">
           {/* Collapsed icon */}
-          <span className="hidden md:flex md:group-hover:opacity-0 absolute inset-0 items-center justify-center font-bold text-base select-none transition-opacity duration-150 pointer-events-none" style={{ color: '#52525B' }}>
+          <span className="hidden md:flex md:group-hover:opacity-0 absolute inset-0 items-center justify-center font-bold text-sm select-none transition-opacity duration-150 pointer-events-none text-[#A1A1AA]">
             S
           </span>
           {/* Full logo */}
           <div className="px-4 py-5 flex flex-col items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="w-20 h-auto object-contain" style={{ filter: 'invert(1) brightness(0.55)' }} />
-            <p className="text-[9px] font-semibold uppercase tracking-widest mt-2 text-center" style={{ color: '#52525B' }}>
+            <img src="/logo.png" alt="QuotingHub" className="w-20 h-auto object-contain opacity-60" />
+            <p className="text-[9px] font-semibold uppercase tracking-widest mt-2 text-center text-[#A1A1AA]">
               Supplier Portal
             </p>
           </div>
@@ -88,20 +88,19 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center h-9 rounded mx-1 transition-colors duration-150"
                 style={{
-                  background: active ? '#27272A' : 'transparent',
-                  color: active ? '#FAFAFA' : '#71717A',
-                  borderLeft: active ? '3px solid #FFFFFF' : '3px solid transparent',
+                  background: active ? '#F4F4F5' : 'transparent',
+                  borderLeft: active ? '3px solid #3F3F46' : '3px solid transparent',
                 }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F9F9F9' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
               >
                 <span className="flex items-center justify-center w-9 flex-shrink-0">
-                  <Icon size={15} style={{ color: active ? '#FAFAFA' : '#52525B' }} />
+                  <Icon size={15} style={{ color: active ? '#18181B' : '#A1A1AA' }} />
                 </span>
-                <span className={labelCls} style={{ color: active ? '#FAFAFA' : '#71717A' }}>{label}</span>
+                <span className={`${labelCls} font-medium`} style={{ color: active ? '#18181B' : '#71717A' }}>{label}</span>
                 {badgeCount > 0 && (
                   <span className={`${labelCls} ml-auto`}>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block" style={{ background: '#F59E0B', color: '#18181B' }}>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block bg-amber-400 text-[#18181B]">
                       {badgeCount > 99 ? '99+' : badgeCount}
                     </span>
                   </span>
@@ -112,30 +111,28 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
         </nav>
 
         {/* Footer */}
-        <div className="flex-shrink-0 py-2 border-t space-y-0.5" style={{ borderColor: '#27272A' }}>
+        <div className="flex-shrink-0 py-2 border-t border-[#E4E4E7] space-y-0.5">
           <Link
             href="/supplier-portal/profile"
             onClick={() => setMobileOpen(false)}
             className="flex items-center h-9 rounded mx-1 transition-colors duration-150"
-            style={{ color: '#71717A' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#FAFAFA'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#71717A'; e.currentTarget.style.background = 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#F9F9F9' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
           >
             <span className="flex items-center justify-center w-9 flex-shrink-0">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: '#27272A', color: '#A1A1AA' }}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-[#E4E4E7] text-[#52525B]">
                 {companyName.charAt(0).toUpperCase()}
               </div>
             </span>
-            <span className={`${labelCls} flex-1 truncate`}>{companyName}</span>
-            <User size={11} className={`${labelCls} shrink-0 !pr-2`} style={{ color: '#52525B' }} />
+            <span className={`${labelCls} flex-1 truncate text-[#71717A]`}>{companyName}</span>
+            <User size={11} className={`${labelCls} shrink-0 !pr-2 text-[#A1A1AA]`} />
           </Link>
 
           <button
             onClick={handleSignOut}
-            className="flex items-center h-8 rounded mx-1 transition-colors duration-150 w-[calc(100%-8px)]"
-            style={{ color: '#52525B' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#A1A1AA'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#52525B'; e.currentTarget.style.background = 'transparent' }}
+            className="flex items-center h-8 rounded mx-1 transition-colors duration-150 w-[calc(100%-8px)] text-[#A1A1AA] hover:text-[#71717A]"
+            onMouseEnter={e => { e.currentTarget.style.background = '#F9F9F9' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
           >
             <span className="flex items-center justify-center w-9 flex-shrink-0">
               <LogOut size={14} />

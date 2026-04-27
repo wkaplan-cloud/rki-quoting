@@ -54,7 +54,7 @@ function StudioCard({ studioName, rows, onClick }: { studioName: string; rows: R
     >
       {/* Avatar */}
       <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-bold shrink-0"
-        style={{ background: '#18181B', color: '#FAFAFA' }}>
+        style={{ background: '#3F3F46', color: '#FAFAFA' }}>
         {studioName.charAt(0).toUpperCase()}
       </div>
 
@@ -107,7 +107,7 @@ function RequestCard({ row }: { row: Row }) {
       <Link
         href={`/sourcing/respond/${row.token}`}
         className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold shrink-0 transition-opacity hover:opacity-70"
-        style={{ background: '#18181B', color: '#FAFAFA' }}
+        style={{ background: '#3F3F46', color: '#FAFAFA' }}
       >
         View &amp; Price <ArrowRight size={11} />
       </Link>
@@ -130,7 +130,7 @@ function StudioDetail({ studioName, rows, onBack }: { studioName: string; rows: 
         </button>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-            style={{ background: '#18181B', color: '#FAFAFA' }}>
+            style={{ background: '#3F3F46', color: '#FAFAFA' }}>
             {studioName.charAt(0).toUpperCase()}
           </div>
           <div>

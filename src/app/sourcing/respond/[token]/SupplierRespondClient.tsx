@@ -445,7 +445,7 @@ export function SupplierRespondClient({
   return (
     <div className="min-h-screen" style={{ background: '#F4F4F5' }}>
       {/* Header */}
-      <div style={{ background: '#18181B' }}>
+      <div style={{ background: '#27272A' }}>
         <div className="max-w-2xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between mb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
