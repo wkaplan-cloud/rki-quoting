@@ -206,6 +206,8 @@ export function CityLandingPage({ config }: { config: CityConfig }) {
             <Link href="/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Log in</Link>
             <Link href="/signup" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Sign up</Link>
             <Link href="/" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Home</Link>
+            <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
+            <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
           </div>
         </div>
       </footer>
