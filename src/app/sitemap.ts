@@ -16,5 +16,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://quotinghub.co.za/faq', changeFrequency: 'monthly', priority: 0.7 },
     { url: 'https://quotinghub.co.za/blog', changeFrequency: 'weekly', priority: 0.8 },
     { url: 'https://quotinghub.co.za/blog/how-to-write-interior-design-quotation-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/interior-design-fee-structure-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/interior-design-quotation-template-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/interior-designer-vs-interior-decorator-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/vat-on-interior-design-services-south-africa', changeFrequency: 'monthly', priority: 0.8 },
   ]
 }
