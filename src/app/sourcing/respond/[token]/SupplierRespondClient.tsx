@@ -616,9 +616,9 @@ export function SupplierRespondClient({
         </div>
       )}
 
-      <div className="px-4 py-6">
-        {/* Progress banner — full width above columns */}
-        <div className="mb-4">
+      {showBackLink ? (
+        /* ── Standalone / email view — narrow single column ── */
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
           {allDone ? (
             <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
               <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
@@ -633,53 +633,78 @@ export function SupplierRespondClient({
                 <span className="font-semibold">{responded} of {total}</span> item{total !== 1 ? 's' : ''} priced
               </p>
               <div className="flex-1 mx-6 rounded-full h-1.5 overflow-hidden" style={{ background: '#E4E4E7' }}>
-                <div
-                  className="h-1.5 rounded-full transition-all duration-500"
-                  style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }}
-                />
+                <div className="h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }} />
               </div>
             </div>
           )}
-        </div>
-
-        {/* 2-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 items-start">
-          {/* Left — pricing items */}
           <div className="space-y-3">
             {items.map(assignment => (
-              <PriceForm
-                key={assignment.id}
-                assignment={assignment}
-                token={token}
-                onSaved={handleSaved}
-                onDeclined={handleDeclined}
-              />
+              <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} />
             ))}
           </div>
-
-          {/* Right — upload, messages, decline */}
-          <div className="space-y-4">
-            <QuoteUpload token={token} locked={allAccepted} />
-            <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
-            {!allAccepted && (
-              <div className="pt-2 border-t border-[#E4E4E7]">
-                <button
-                  type="button"
-                  onClick={handleDeclineAll}
-                  disabled={declining}
-                  className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
-                  style={{ color: '#EF4444' }}
-                >
-                  <AlertTriangle size={13} />
-                  {declining ? 'Declining…' : 'Decline entire request'}
-                </button>
+          <QuoteUpload token={token} locked={allAccepted} />
+          <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
+          {!allAccepted && (
+            <div className="pt-2 border-t border-[#E4E4E7]">
+              <button type="button" onClick={handleDeclineAll} disabled={declining}
+                className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
+                style={{ color: '#EF4444' }}>
+                <AlertTriangle size={13} />
+                {declining ? 'Declining…' : 'Decline entire request'}
+              </button>
+            </div>
+          )}
+          <p className="text-center text-xs pb-4" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
+        </div>
+      ) : (
+        /* ── Portal view — full width 2-column ── */
+        <div className="px-4 py-6">
+          <div className="mb-4">
+            {allDone ? (
+              <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
+                  <p className="text-xs text-emerald-600">You can still update individual prices or send a message.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="px-5 py-3.5 rounded-xl flex items-center justify-between" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+                <p className="text-sm" style={{ color: '#18181B' }}>
+                  <span className="font-semibold">{responded} of {total}</span> item{total !== 1 ? 's' : ''} priced
+                </p>
+                <div className="flex-1 mx-6 rounded-full h-1.5 overflow-hidden" style={{ background: '#E4E4E7' }}>
+                  <div className="h-1.5 rounded-full transition-all duration-500"
+                    style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }} />
+                </div>
               </div>
             )}
-            <p className="text-center text-xs pb-2" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 items-start">
+            <div className="space-y-3">
+              {items.map(assignment => (
+                <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} />
+              ))}
+            </div>
+            <div className="space-y-4">
+              <QuoteUpload token={token} locked={allAccepted} />
+              <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
+              {!allAccepted && (
+                <div className="pt-2 border-t border-[#E4E4E7]">
+                  <button type="button" onClick={handleDeclineAll} disabled={declining}
+                    className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
+                    style={{ color: '#EF4444' }}>
+                    <AlertTriangle size={13} />
+                    {declining ? 'Declining…' : 'Decline entire request'}
+                  </button>
+                </div>
+              )}
+              <p className="text-center text-xs pb-2" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
+            </div>
           </div>
         </div>
-      </div>
-      </div>
+      )}
     </div>
   )
 }
