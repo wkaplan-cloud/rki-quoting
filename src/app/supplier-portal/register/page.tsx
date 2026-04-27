@@ -7,9 +7,10 @@ import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const INPUT_STYLE = {
-  background: '#18181B',
-  border: '1px solid #27272A',
-  color: '#FAFAFA',
+  background: '#F4F4F5',
+  border: '1.5px solid #E4E4E7',
+  color: '#18181B',
+  transition: 'border-color 0.15s, background 0.15s',
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -34,10 +35,10 @@ function StyledInput({ type = 'text', value, onChange, placeholder, required, au
       required={required}
       autoFocus={autoFocus}
       autoComplete={autoComplete}
-      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors"
+      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
       style={INPUT_STYLE}
-      onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
-      onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
+      onFocus={e => { e.currentTarget.style.borderColor = '#1B4F8A'; e.currentTarget.style.background = '#FFFFFF' }}
+      onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
     />
   )
 }
@@ -65,7 +66,7 @@ function RegisterForm() {
     function render() {
       if (!widgetRef.current || !(window as any).turnstile) return
       if (widgetId.current != null) return
-      widgetId.current = (window as any).turnstile.render(widgetRef.current, { sitekey: siteKey, theme: 'dark' })
+      widgetId.current = (window as any).turnstile.render(widgetRef.current, { sitekey: siteKey, theme: 'light' })
     }
     if ((window as any).turnstile) { render() }
     else {
@@ -116,145 +117,148 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0F0F10' }}>
+    <div className="min-h-screen flex">
       {siteKey && (
         <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" strategy="lazyOnload" />
       )}
 
-      {/* Left panel */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between p-12" style={{ background: '#18181B' }}>
-        <div>
+      {/* Left panel — brand blue with large logo */}
+      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between py-16 px-12" style={{ background: '#1B4F8A' }}>
+        <div className="flex flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-7 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
+          <img src="/logo.png" alt="QuotingHub" className="w-64 object-contain" style={{ filter: 'invert(1) brightness(1)' }} />
+          <p className="text-sm font-medium tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>Supplier Portal</p>
         </div>
         <div>
-          <p className="text-3xl font-bold leading-snug mb-4" style={{ color: '#FAFAFA' }}>
+          <p className="text-2xl font-bold leading-snug mb-3" style={{ color: '#FFFFFF' }}>
             Join the QuotingHub<br />supplier network.
           </p>
-          <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
+          <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.6)' }}>
             Receive price requests directly from interior design studios. Respond faster, win more business.
           </p>
-          <div className="mt-8 space-y-3">
+          <div className="space-y-3">
             {['Free to join — no monthly fees', 'All price requests in one dashboard', 'Message designers directly per request'].map(f => (
               <div key={f} className="flex items-center gap-2.5">
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3F3F46' }} />
-                <p className="text-sm" style={{ color: '#A1A1AA' }}>{f}</p>
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.4)' }} />
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{f}</p>
               </div>
             ))}
           </div>
         </div>
-        <p className="text-xs" style={{ color: '#27272A' }}>© QuotingHub · Supplier Portal</p>
+        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>© QuotingHub · quotinghub.co.za</p>
       </div>
 
       {/* Right panel — form */}
-      <div className="flex-1 flex items-start justify-center p-6 overflow-y-auto">
-        <div className="w-full max-w-sm py-10">
+      <div className="flex-1 flex items-start justify-center p-8 overflow-y-auto" style={{ background: '#F8F9FA' }}>
+        <div className="w-full max-w-sm py-8">
           <div className="lg:hidden mb-8 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto mx-auto object-contain" style={{ filter: 'invert(1) brightness(0.7)' }} />
+            <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto mx-auto object-contain" />
           </div>
 
-          <h1 className="text-2xl font-bold mb-1" style={{ color: '#FAFAFA' }}>Create account</h1>
-          <p className="text-sm mb-7" style={{ color: '#71717A' }}>Supplier Portal · Free forever</p>
+          <div className="bg-white rounded-2xl p-8" style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)' }}>
+            <h1 className="text-2xl font-bold mb-1" style={{ color: '#18181B' }}>Create account</h1>
+            <p className="text-sm mb-6" style={{ color: '#71717A' }}>Supplier Portal · Free forever</p>
 
-          {noPortalAccount && (
-            <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#A1A1AA' }}>
-              <strong style={{ color: '#D4D4D8' }}>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
-            </div>
-          )}
-
-          <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#18181B', border: '1px solid #27272A', color: '#A1A1AA' }}>
-            <strong style={{ color: '#D4D4D8' }}>Important:</strong> Use the same email address that design studios use when sending you price requests.
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Company Name">
-              <StyledInput value={companyName} onChange={setCompanyName} placeholder="e.g. ABC Fabrics (Pty) Ltd" required autoFocus />
-            </Field>
-            <Field label="Email">
-              <StyledInput type="email" value={email} onChange={setEmail} required autoComplete="email" />
-            </Field>
-            <Field label="Password">
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none transition-colors"
-                  style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
-                />
-                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#52525B' }}>
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
+            {noPortalAccount && (
+              <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1D4ED8' }}>
+                <strong>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
               </div>
-              <p className="text-xs mt-1" style={{ color: '#27272A' }}>Min. 8 characters</p>
-            </Field>
-            <Field label="Confirm Password">
-              <div className="relative">
-                <input
-                  type={showConfirm ? 'text' : 'password'}
-                  value={confirm}
-                  onChange={e => setConfirm(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                  className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none transition-colors"
-                  style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#3F3F46')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#27272A')}
-                />
-                <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#52525B' }}>
-                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
-            </Field>
-
-            {/* Platform fee notice */}
-            <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#1A2820', border: '1px solid #2A4A3A', color: '#6EE7B7' }}>
-              <p className="font-semibold mb-1" style={{ color: '#A7F3D0' }}>Platform Fee</p>
-              <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
-            </div>
-
-            <label className="flex items-start gap-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={tcAccepted}
-                onChange={e => setTcAccepted(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded cursor-pointer shrink-0"
-                style={{ accentColor: '#3F3F46' }}
-              />
-              <span className="text-xs leading-relaxed" style={{ color: '#A1A1AA' }}>
-                I agree to the{' '}
-                <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="hover:underline" style={{ color: '#D4D4D8' }}>Terms &amp; Conditions</a>
-                {' '}and{' '}
-                <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="hover:underline" style={{ color: '#D4D4D8' }}>Privacy Policy</a>
-                , including the 1% platform fee on confirmed deals.
-              </span>
-            </label>
-
-            {siteKey && <div ref={widgetRef} />}
-
-            {error && (
-              <p className="text-sm px-3 py-2 rounded-lg" style={{ background: '#1A1020', color: '#F87171', border: '1px solid #3B1F1F' }}>{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading || !tcAccepted}
-              className="w-full py-3 text-white text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50 cursor-pointer mt-1 hover:opacity-90"
-              style={{ background: '#1B4F8A' }}
-            >
-              {loading ? 'Creating account…' : 'Create Account'}
-            </button>
-          </form>
+            <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#52525B' }}>
+              <strong style={{ color: '#18181B' }}>Important:</strong> Use the same email address that design studios use when sending you price requests.
+            </div>
 
-          <p className="text-center text-sm mt-6" style={{ color: '#71717A' }}>
-            Already have an account?{' '}
-            <Link href="/supplier-portal/login" className="font-medium hover:underline" style={{ color: '#9A7B4F' }}>Sign in</Link>
-          </p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Field label="Company Name">
+                <StyledInput value={companyName} onChange={setCompanyName} placeholder="e.g. ABC Fabrics (Pty) Ltd" required autoFocus />
+              </Field>
+              <Field label="Email">
+                <StyledInput type="email" value={email} onChange={setEmail} required autoComplete="email" />
+              </Field>
+              <Field label="Password">
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none"
+                    style={INPUT_STYLE}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#1B4F8A'; e.currentTarget.style.background = '#FFFFFF' }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
+                  />
+                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#A1A1AA' }}>
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                <p className="text-xs mt-1" style={{ color: '#A1A1AA' }}>Min. 8 characters</p>
+              </Field>
+              <Field label="Confirm Password">
+                <div className="relative">
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    value={confirm}
+                    onChange={e => setConfirm(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none"
+                    style={INPUT_STYLE}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#1B4F8A'; e.currentTarget.style.background = '#FFFFFF' }}
+                    onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
+                  />
+                  <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#A1A1AA' }}>
+                    {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </Field>
+
+              {/* Platform fee notice */}
+              <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E40AF' }}>
+                <p className="font-semibold mb-1" style={{ color: '#1D4ED8' }}>Platform Fee</p>
+                <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
+              </div>
+
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={tcAccepted}
+                  onChange={e => setTcAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded cursor-pointer shrink-0"
+                  style={{ accentColor: '#1B4F8A' }}
+                />
+                <span className="text-xs leading-relaxed" style={{ color: '#71717A' }}>
+                  I agree to the{' '}
+                  <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#1B4F8A' }}>Terms &amp; Conditions</a>
+                  {' '}and{' '}
+                  <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#1B4F8A' }}>Privacy Policy</a>
+                  , including the 1% platform fee on confirmed deals.
+                </span>
+              </label>
+
+              {siteKey && <div ref={widgetRef} />}
+
+              {error && (
+                <p className="text-sm px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !tcAccepted}
+                className="w-full py-3 text-white text-sm font-semibold rounded-lg disabled:opacity-50 cursor-pointer mt-1"
+                style={{ background: '#1B4F8A', transition: 'opacity 0.15s' }}
+              >
+                {loading ? 'Creating account…' : 'Create Account'}
+              </button>
+            </form>
+
+            <p className="text-center text-sm mt-6 pt-5" style={{ color: '#71717A', borderTop: '1px solid #F4F4F5' }}>
+              Already have an account?{' '}
+              <Link href="/supplier-portal/login" className="font-medium hover:underline" style={{ color: '#1B4F8A' }}>Sign in</Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
