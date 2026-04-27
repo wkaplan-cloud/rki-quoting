@@ -463,12 +463,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     }`}
                 >
                   {/* Drag handle */}
-                  <td className={`px-1.5 py-1 sticky left-0 z-10 bg-inherit text-[#D8D3C8] ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
+                  <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
                     {!locked && <GripVertical size={14} />}
                   </td>
 
                   {/* Received checkbox */}
-                  <td className="px-1.5 py-1 sticky left-6 z-10 bg-inherit">
+                  <td className={`px-1.5 py-1 sticky left-6 z-10 ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
                     <button
                       onClick={() => toggleReceived(item.id, item.received)}
                       title={item.received ? 'Mark as not received' : 'Mark as received'}
@@ -487,7 +487,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Item name — with link toggle + dimensions/colour */}
-                  <td className={COL + ' sticky left-[52px] z-10 bg-inherit border-r border-[#E8E4DC]'}>
+                  <td className={COL + ` sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
                     <div className={isLinked ? 'pl-4' : ''}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
