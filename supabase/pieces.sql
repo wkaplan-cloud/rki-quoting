@@ -3,7 +3,7 @@
 
 create table if not exists pieces (
   id              uuid primary key default gen_random_uuid(),
-  org_id          uuid references organisations(id) on delete cascade,
+  org_id          uuid references organizations(id) on delete cascade,
   user_id         uuid references auth.users(id) on delete cascade not null,
   name            text not null,
   description     text,
@@ -22,16 +22,13 @@ create table if not exists pieces (
 -- Enable RLS
 alter table pieces enable row level security;
 
--- Policy: users can manage pieces that belong to their org
-create policy "Users can manage their org pieces"
+-- Policy: user owns the row (same pattern as suppliers, clients, projects)
+create policy "Users manage own pieces"
   on pieces for all
-  using (
-    org_id in (
-      select org_id from settings where user_id = auth.uid()
-    )
-  );
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
--- Optional: allow sourcing_session_items to reference a piece
--- (tracks which sourcing items were created from a piece — for future "update piece price" prompt)
+-- Optional: lets sourcing items track which piece they came from
+-- (enables future "update piece reference price" prompt after sourcing accept)
 alter table sourcing_session_items
   add column if not exists piece_id uuid references pieces(id) on delete set null;
