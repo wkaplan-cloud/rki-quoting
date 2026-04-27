@@ -83,7 +83,14 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Check if this is a supplier portal account — send them to their portal, not the main app
+    const { data: supplierAccount } = await supabase
+      .from('supplier_portal_accounts')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+    const dest = supplierAccount ? '/supplier-portal/dashboard' : '/dashboard'
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
   if (user && pathname === '/supplier-portal/login') {

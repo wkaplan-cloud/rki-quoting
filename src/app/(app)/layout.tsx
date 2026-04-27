@@ -17,7 +17,15 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // Check org membership via RPC (security definer — bypasses RLS circular dependency)
   const { data: orgId } = await supabase.rpc('get_current_org_id')
 
-  if (!orgId) redirect('/onboarding')
+  if (!orgId) {
+    // Supplier portal accounts share the same Supabase auth but have no org — send them home
+    const { data: supplierAccount } = await supabaseAdmin
+      .from('supplier_portal_accounts')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+    redirect(supplierAccount ? '/supplier-portal/dashboard' : '/onboarding')
+  }
 
   // Check subscription / trial status
   const { data: org } = await supabaseAdmin
