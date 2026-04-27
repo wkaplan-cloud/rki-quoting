@@ -382,7 +382,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <th className="w-7 px-2 py-2 sticky left-6 z-10 bg-[#F7F4EF]" title="Received" />
               <th className="text-left px-2 py-2 min-w-[140px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px] border-r border-[#EDEBE6]">Description</th>
-              <th className="text-right px-2 py-2 min-w-[90px] whitespace-nowrap">Qty / Unit</th>
+              <th className="text-right px-2 py-2 min-w-[105px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
               <th className="text-left px-2 py-2 min-w-[120px] whitespace-nowrap">Deliver To</th>
               <th className="text-right px-1 py-2 min-w-[52px] whitespace-nowrap border-r border-[#EDEBE6]">Lead</th>
@@ -691,7 +691,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         onFocus={e => e.target.select()}
                         placeholder="unit"
                         readOnly={locked}
-                        className="w-12 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
+                        className="w-10 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#C4BFB5]"
                       />
                       <datalist id={`units-${item.id}`}>
                         {['each','m','m²','lm','roll','pair','set','kg'].map(u => <option key={u} value={u} />)}
