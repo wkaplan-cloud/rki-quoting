@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
   MessageSquare, X, Check, CheckCircle2, RefreshCw, Lock, ImagePlus,
+  AlertTriangle, ArrowRight, BarChart3,
 } from 'lucide-react'
 
 // ---- Types ----
@@ -339,10 +340,315 @@ function AddSupplierForm({
   )
 }
 
+// ---- Push Preview Modal ----
+interface PushModalProps {
+  item: SessionItem
+  assignment: Assignment
+  response: Response
+  supplierName: string
+  projects: Props['projects']
+  sessionId: string
+  onClose: () => void
+  onPushed: () => void
+}
+
+function PushModal({ item, assignment, response, supplierName, projects, sessionId, onClose, onPushed }: PushModalProps) {
+  const [projectId, setProjectId] = useState(projects[0]?.id ?? '')
+  const [markup, setMarkup] = useState('0')
+  const [itemName, setItemName] = useState(item.title)
+  const [description, setDescription] = useState(item.specifications ?? '')
+  const [quantity, setQuantity] = useState(String(item.item_quantity ?? 1))
+  const [dimensions, setDimensions] = useState(item.dimensions ?? '')
+  const [colourFinish, setColourFinish] = useState(item.colour_finish ?? '')
+  const [pushing, setPushing] = useState(false)
+
+  const costPrice = response.unit_price
+  const markupNum = Number(markup) || 0
+  const sellPrice = costPrice * (1 + markupNum / 100)
+  const lineTotal = (Number(quantity) || 1) * sellPrice
+
+  const hasVariation = response.notes && !response.notes.startsWith("[CAN'T SUPPLY]")
+
+  async function handlePush() {
+    if (!projectId) return
+    setPushing(true)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/items/${item.id}/push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          markup_percentage: markupNum,
+          overrides: {
+            item_name: itemName.trim() || item.title,
+            description: description.trim() || null,
+            quantity: Number(quantity) || 1,
+            dimensions: dimensions.trim() || null,
+            colour_finish: colourFinish.trim() || null,
+          },
+        }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      onPushed()
+      onClose()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setPushing(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#EDE9E1]">
+          <div>
+            <h2 className="text-base font-bold text-[#2C2C2A]">Review & Push to Quote</h2>
+            <p className="text-xs text-[#8A877F] mt-0.5">Edit any details before adding to the project</p>
+          </div>
+          <button onClick={onClose} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Supplier notes / variations — prominent warning */}
+          {hasVariation && (
+            <div className="flex gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+              <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-amber-700 mb-0.5">Supplier notes / variations</p>
+                <p className="text-sm text-amber-800 leading-relaxed">{response.notes}</p>
+                <p className="text-[11px] text-amber-600 mt-1.5">Review the details below and edit if needed before pushing.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Supplier + cost summary */}
+          <div className="bg-[#F5F2EC] rounded-xl p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-[#8A877F]">Supplier</span>
+              <span className="font-medium text-[#2C2C2A]">{supplierName}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-[#8A877F]">Cost price (excl. VAT)</span>
+              <span className="font-semibold text-[#2C2C2A]">R{costPrice.toLocaleString()}</span>
+            </div>
+            {response.lead_time_weeks && (
+              <div className="flex justify-between text-sm">
+                <span className="text-[#8A877F]">Lead time</span>
+                <span className="text-[#2C2C2A]">{response.lead_time_weeks} weeks</span>
+              </div>
+            )}
+          </div>
+
+          {/* Editable line item fields */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Line Item Details</p>
+            <div>
+              <label className="block text-xs font-medium text-[#8A877F] mb-1">Item name</label>
+              <input value={itemName} onChange={e => setItemName(e.target.value)} className={INPUT} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#8A877F] mb-1">Description / Specification</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+                className={`${INPUT} resize-none`} placeholder="Leave blank to omit" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-[#8A877F] mb-1">Quantity</label>
+                <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} className={INPUT} />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-[#8A877F] mb-1">Dimensions</label>
+                <input value={dimensions} onChange={e => setDimensions(e.target.value)} className={INPUT} placeholder="e.g. 2400 × 900 × 760" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#8A877F] mb-1">Colour / Finish</label>
+              <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} className={INPUT} />
+            </div>
+          </div>
+
+          {/* Markup + sell price */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Pricing</p>
+            <div className="flex gap-3 items-end">
+              <div className="w-28">
+                <label className="block text-xs font-medium text-[#8A877F] mb-1">Markup %</label>
+                <input type="number" min="0" max="500" value={markup} onChange={e => setMarkup(e.target.value)} className={INPUT} />
+              </div>
+              <div className="flex-1 bg-[#F5F2EC] rounded-xl p-3 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#8A877F]">Sell price (per unit)</span>
+                  <span className="font-semibold text-[#2C2C2A]">R{sellPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-sm border-t border-[#D4CFC7] pt-1.5">
+                  <span className="text-[#8A877F]">Line total (×{quantity})</span>
+                  <span className="font-bold text-[#2C2C2A]">R{lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Project picker */}
+          {projects.length > 0 ? (
+            <div>
+              <label className="block text-xs font-medium text-[#8A877F] mb-1">Push to project</label>
+              <select value={projectId} onChange={e => setProjectId(e.target.value)} className={INPUT}>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+              </select>
+            </div>
+          ) : (
+            <p className="text-xs text-[#8A877F] bg-[#F5F2EC] rounded-lg p-3">No projects found. Create a project first.</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 text-sm text-[#8A877F] border border-[#D4CFC7] rounded-xl hover:border-[#8A877F] transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handlePush}
+            disabled={pushing || !projectId}
+            className="flex-1 py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+            style={{ background: '#2C2C2A', color: '#F5F2EC' }}
+          >
+            {pushing ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+            {pushing ? 'Pushing…' : 'Push to Quote'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---- Comparison Table ----
+function ComparisonTable({
+  items, suppliers, onAccept, accepting, onOpenPush,
+}: {
+  items: SessionItem[]
+  suppliers: SessionSupplier[]
+  onAccept: (itemId: string, assignmentId: string) => void
+  accepting: string | null
+  onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
+}) {
+  const hasAnyResponse = suppliers.some(ss => ss.assignments.some(a => a.response !== null || a.status === 'supplier_declined'))
+  if (!hasAnyResponse) return null
+
+  const assignedItems = items.filter(item =>
+    suppliers.some(ss => ss.assignments.some(a => a.item_id === item.id))
+  )
+  if (assignedItems.length === 0) return null
+
+  return (
+    <div className="bg-white border border-[#EDE9E1] rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-3 border-b border-[#EDE9E1]">
+        <BarChart3 size={14} className="text-[#8A877F]" />
+        <p className="text-sm font-semibold text-[#2C2C2A]">Pricing Comparison</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#F5F2EC]" style={{ background: '#FAFAF8' }}>
+              <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-[#A1A1AA] min-w-[140px]">Item</th>
+              {suppliers.map(ss => (
+                <th key={ss.id} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-[#A1A1AA] min-w-[140px]">
+                  {ss.supplier_name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {assignedItems.map(item => (
+              <tr key={item.id} className="border-b border-[#F5F2EC] last:border-0">
+                <td className="px-4 py-3">
+                  <p className="font-medium text-[#2C2C2A] text-sm">{item.title}</p>
+                  {item.item_quantity && <p className="text-xs text-[#C4BFB5]">×{item.item_quantity}</p>}
+                </td>
+                {suppliers.map(ss => {
+                  const assignment = ss.assignments.find(a => a.item_id === item.id)
+                  const isAccepted = assignment?.status === 'accepted'
+                  const isSupplierDeclined = assignment?.status === 'supplier_declined'
+                  const hasResponse = !!assignment?.response && !isSupplierDeclined
+
+                  if (!assignment) {
+                    return <td key={ss.id} className="px-4 py-3 text-xs text-[#C4BFB5]">Not assigned</td>
+                  }
+                  if (isSupplierDeclined) {
+                    return (
+                      <td key={ss.id} className="px-4 py-3">
+                        <span className="text-xs font-medium text-red-500">Can&apos;t supply</span>
+                        {assignment.response?.notes && (
+                          <p className="text-[10px] text-[#A1A1AA] mt-0.5 max-w-[140px] truncate">
+                            {assignment.response.notes.replace("[CAN'T SUPPLY] ", '')}
+                          </p>
+                        )}
+                      </td>
+                    )
+                  }
+                  if (!hasResponse) {
+                    return <td key={ss.id} className="px-4 py-3 text-xs text-[#C4BFB5]">Awaiting</td>
+                  }
+
+                  const response = assignment.response!
+                  return (
+                    <td key={ss.id} className="px-4 py-3" style={{ background: isAccepted ? '#F0FDF4' : undefined }}>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[#2C2C2A]">R{response.unit_price.toLocaleString()}</p>
+                          {response.lead_time_weeks && (
+                            <p className="text-[10px] text-[#8A877F]">{response.lead_time_weeks}w lead</p>
+                          )}
+                          {response.notes && !response.notes.startsWith("[CAN'T SUPPLY]") && (
+                            <p className="text-[10px] text-amber-600 mt-0.5 max-w-[120px] truncate" title={response.notes}>
+                              ⚠ {response.notes}
+                            </p>
+                          )}
+                        </div>
+                        {isAccepted ? (
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                            <button
+                              onClick={() => onOpenPush(item, assignment, response, ss.supplier_name)}
+                              className="text-[10px] text-[#C4A46B] hover:text-[#9A7B4F] font-medium whitespace-nowrap transition-colors"
+                            >
+                              Push →
+                            </button>
+                          </div>
+                        ) : (
+                          item.status !== 'accepted' && (
+                            <button
+                              onClick={() => onAccept(item.id, assignment.id)}
+                              disabled={accepting === assignment.id}
+                              className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                            >
+                              {accepting === assignment.id ? '…' : 'Accept'}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ---- Supplier Card ----
 function SupplierCard({
   ss, items, sessionId, sessionStatus,
-  onAssignToggle, onAccept, onPushToProject, onRemove, projects,
+  onAssignToggle, onAccept, onOpenPush, onRemove,
 }: {
   ss: SessionSupplier
   items: SessionItem[]
@@ -350,9 +656,8 @@ function SupplierCard({
   sessionStatus: string
   onAssignToggle: (ssId: string, itemId: string, assigned: boolean) => void
   onAccept: (itemId: string, assignmentId: string) => void
-  onPushToProject: (itemId: string, projectId: string, markup: number) => void
+  onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   onRemove: (ssId: string) => void
-  projects: Props['projects']
 }) {
   const [expanded, setExpanded] = useState(false)
   const [showAddItems, setShowAddItems] = useState(false)
@@ -363,10 +668,6 @@ function SupplierCard({
   const [sendingMsg, setSendingMsg] = useState(false)
   const [togglingItem, setTogglingItem] = useState<string | null>(null)
   const [accepting, setAccepting] = useState<string | null>(null)
-  const [pushing, setPushing] = useState<string | null>(null)
-  const [showPush, setShowPush] = useState<string | null>(null)
-  const [pushProjectId, setPushProjectId] = useState(projects[0]?.id ?? '')
-  const [pushMarkup, setPushMarkup] = useState('')
 
   const assignedItemIds = new Set(ss.assignments.map(a => a.item_id))
   const assignedItems = items.filter(item => assignedItemIds.has(item.id))
@@ -456,25 +757,6 @@ function SupplierCard({
     }
   }
 
-  async function handlePush(itemId: string) {
-    if (!pushProjectId) return
-    setPushing(itemId)
-    try {
-      const res = await fetch(`/api/sourcing/sessions/${sessionId}/items/${itemId}/push`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_id: pushProjectId, markup_percentage: pushMarkup ? Number(pushMarkup) : 0 }),
-      })
-      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
-      onPushToProject(itemId, pushProjectId, pushMarkup ? Number(pushMarkup) : 0)
-      setShowPush(null)
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setPushing(null)
-    }
-  }
-
   const statusColor = STATUS_COLORS[ss.status] ?? STATUS_COLORS.pending
 
   return (
@@ -552,10 +834,10 @@ function SupplierCard({
                             Accept
                           </button>
                         )}
-                        {isAccepted && !showPush && (
+                        {isAccepted && assignment?.response && (
                           <button
                             type="button"
-                            onClick={() => setShowPush(item.id)}
+                            onClick={() => onOpenPush(item, assignment, assignment.response!, ss.supplier_name)}
                             className="text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors"
                           >
                             Push to project →
@@ -566,22 +848,6 @@ function SupplierCard({
 
                     {!hasResponse && !isAccepted && (
                       <p className="text-xs text-[#C4BFB5] mt-1">Awaiting response</p>
-                    )}
-
-                    {showPush === item.id && (
-                      <div className="mt-2 flex items-center gap-2 flex-wrap">
-                        <select value={pushProjectId} onChange={e => setPushProjectId(e.target.value)}
-                          className="text-xs border border-[#D4CFC7] rounded-lg px-2 py-1 focus:outline-none bg-white">
-                          {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-                        </select>
-                        <input type="number" min="0" max="200" value={pushMarkup} onChange={e => setPushMarkup(e.target.value)}
-                          placeholder="Markup %" className="text-xs border border-[#D4CFC7] rounded-lg px-2 py-1 w-24 focus:outline-none bg-white" />
-                        <button type="button" onClick={() => handlePush(item.id)} disabled={pushing === item.id || !pushProjectId}
-                          className="text-xs bg-[#2C2C2A] text-[#F5F2EC] px-3 py-1 rounded-lg font-medium disabled:opacity-50">
-                          {pushing === item.id ? 'Pushing…' : 'Push'}
-                        </button>
-                        <button type="button" onClick={() => setShowPush(null)} className="text-xs text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
-                      </div>
                     )}
                   </div>
                 )
@@ -687,6 +953,10 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   const [suppliers, setSuppliers] = useState<SessionSupplier[]>(initialSuppliers)
   const [sending, setSending] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [accepting, setAccepting] = useState<string | null>(null)
+  const [pushModal, setPushModal] = useState<{
+    item: SessionItem; assignment: Assignment; response: Response; supplierName: string
+  } | null>(null)
 
   const isDraft = session.status === 'draft'
   const isArchived = session.archived
@@ -745,8 +1015,25 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     startTransition(() => router.refresh())
   }
 
-  function handlePushToProject(itemId: string) {
+  function handlePushToProject() {
     startTransition(() => router.refresh())
+  }
+
+  async function handleAcceptFromTable(itemId: string, assignmentId: string) {
+    setAccepting(assignmentId)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${session.id}/items/${itemId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignment_id: assignmentId }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      handleAccept(itemId, assignmentId)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setAccepting(null)
+    }
   }
 
   async function handleSend() {
@@ -778,6 +1065,20 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
 
   return (
     <div className="max-w-5xl space-y-5">
+      {/* Push Preview Modal */}
+      {pushModal && (
+        <PushModal
+          item={pushModal.item}
+          assignment={pushModal.assignment}
+          response={pushModal.response}
+          supplierName={pushModal.supplierName}
+          projects={projects}
+          sessionId={session.id}
+          onClose={() => setPushModal(null)}
+          onPushed={handlePushToProject}
+        />
+      )}
+
       {/* Status + actions bar */}
       <div className="flex items-center justify-between">
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${badge.color}`}>{badge.label}</span>
@@ -798,6 +1099,17 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           )}
         </div>
       </div>
+
+      {/* Pricing Comparison Table */}
+      <ComparisonTable
+        items={items}
+        suppliers={suppliers}
+        onAccept={handleAcceptFromTable}
+        accepting={accepting}
+        onOpenPush={(item, assignment, response, supplierName) =>
+          setPushModal({ item, assignment, response, supplierName })
+        }
+      />
 
       {/* 2-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -848,9 +1160,10 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                   sessionStatus={session.status}
                   onAssignToggle={handleAssignToggle}
                   onAccept={handleAccept}
-                  onPushToProject={handlePushToProject}
+                  onOpenPush={(item, assignment, response, supplierName) =>
+                    setPushModal({ item, assignment, response, supplierName })
+                  }
                   onRemove={handleRemoveSupplier}
-                  projects={projects}
                 />
               ))}
             </div>

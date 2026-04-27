@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw, Upload, FileText, X } from 'lucide-react'
+import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw, Upload, FileText, X, AlertTriangle, Ban } from 'lucide-react'
 
 interface Assignment {
   id: string
@@ -56,12 +56,16 @@ function PriceForm({
   assignment,
   token,
   onSaved,
+  onDeclined,
 }: {
   assignment: Assignment
   token: string
   onSaved: (assignmentId: string, response: Assignment['response']) => void
+  onDeclined: (assignmentId: string) => void
 }) {
   const [expanded, setExpanded] = useState(!assignment.response)
+  const [cantSupply, setCantSupply] = useState(assignment.status === 'supplier_declined')
+  const [cantReason, setCantReason] = useState('')
   const [unitPrice, setUnitPrice] = useState(assignment.response?.unit_price?.toString() ?? '')
   const [leadTime, setLeadTime] = useState(assignment.response?.lead_time_weeks?.toString() ?? '')
   const [notes, setNotes] = useState(assignment.response?.notes ?? '')
@@ -98,10 +102,47 @@ function PriceForm({
     }
   }
 
+  async function handleCantSupply() {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/sourcing/respond/${token}/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignment_id: assignment.id, reason: cantReason.trim() || undefined }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      onDeclined(assignment.id)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const item = assignment.item
   if (!item) return null
 
-  // Locked state — designer accepted this price
+  // Locked red tile — supplier can't supply this item
+  if (assignment.status === 'supplier_declined') {
+    const reason = assignment.response?.notes?.replace("[CAN'T SUPPLY] ", '')
+    return (
+      <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
+        <Ban size={16} className="text-red-400 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm" style={{ color: '#18181B' }}>{item.title}</p>
+          {reason ? (
+            <p className="text-xs text-red-600 mt-0.5">{reason}</p>
+          ) : (
+            <p className="text-xs text-red-400 mt-0.5">Marked as can&apos;t supply</p>
+          )}
+        </div>
+        <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-full shrink-0">Can&apos;t supply</span>
+      </div>
+    )
+  }
+
+  // Locked green tile — designer accepted this price
   if (assignment.status === 'accepted') {
     return (
       <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#F0FDF4', border: '1px solid #A7F3D0' }}>
@@ -130,7 +171,7 @@ function PriceForm({
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            {assignment.response && (
+            {assignment.response && !cantSupply && (
               <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
             )}
             <p className="font-semibold text-sm truncate" style={{ color: '#18181B' }}>{item.title}</p>
@@ -141,7 +182,7 @@ function PriceForm({
             {item.dimensions && <span className="text-xs" style={{ color: '#71717A' }}>{item.dimensions}</span>}
             {item.colour_finish && <span className="text-xs" style={{ color: '#71717A' }}>{item.colour_finish}</span>}
           </div>
-          {assignment.response && !expanded && (
+          {assignment.response && !expanded && !cantSupply && (
             <p className="text-xs text-emerald-600 mt-1 font-medium">
               R{assignment.response.unit_price.toLocaleString()} submitted
               {assignment.response.lead_time_weeks ? ` · ${assignment.response.lead_time_weeks}w lead` : ''}
@@ -160,23 +201,87 @@ function PriceForm({
               <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
             </div>
           )}
-          <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+
+          {/* Can't supply toggle */}
+          <div className="px-5 pt-4">
+            <label className="flex items-center gap-2.5 cursor-pointer w-fit">
+              <div
+                onClick={() => setCantSupply(v => !v)}
+                className={`w-9 h-5 rounded-full flex items-center transition-colors ${cantSupply ? 'bg-red-400' : 'bg-[#E4E4E7]'}`}
+              >
+                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform mx-0.5 ${cantSupply ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+              <span className="text-xs font-medium" style={{ color: cantSupply ? '#EF4444' : '#71717A' }}>
+                Can&apos;t supply this item
+              </span>
+            </label>
+          </div>
+
+          {cantSupply ? (
+            <div className="px-5 py-4 space-y-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
-                  Unit Price (excl. VAT) <span style={{ color: '#EF4444' }}>*</span>
+                  Reason (optional)
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+                <textarea
+                  value={cantReason}
+                  onChange={e => setCantReason(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Out of stock, discontinued, outside our scope…"
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
+                  style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+                />
+              </div>
+              {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setCantSupply(false)}
+                  className="px-4 py-2 text-sm rounded-lg transition-opacity hover:opacity-70"
+                  style={{ color: '#71717A', border: '1px solid #E4E4E7' }}>
+                  Cancel
+                </button>
+                <button type="button" onClick={handleCantSupply} disabled={saving}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+                  style={{ background: '#EF4444', color: '#FFFFFF' }}>
+                  {saving ? 'Saving…' : 'Confirm can\'t supply'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
+                    Unit Price (excl. VAT) <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={unitPrice}
+                      onChange={e => setUnitPrice(e.target.value)}
+                      placeholder="0.00"
+                      required
+                      className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                      style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                      onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Lead Time (weeks)</label>
                   <input
                     type="number"
                     min="0"
-                    step="0.01"
-                    value={unitPrice}
-                    onChange={e => setUnitPrice(e.target.value)}
-                    placeholder="0.00"
-                    required
-                    className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                    step="1"
+                    value={leadTime}
+                    onChange={e => setLeadTime(e.target.value)}
+                    placeholder="e.g. 6"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
                     style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                     onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                     onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
@@ -184,46 +289,31 @@ function PriceForm({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Lead Time (weeks)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={leadTime}
-                  onChange={e => setLeadTime(e.target.value)}
-                  placeholder="e.g. 6"
-                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Notes</label>
+                <textarea
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Any conditions, exclusions, or comments…"
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
                   style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                   onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                   onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Notes</label>
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={2}
-                placeholder="Any conditions, exclusions, or comments…"
-                className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
-                style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
-                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-              />
-            </div>
-            {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                style={{ background: '#18181B', color: '#FAFAFA' }}
-              >
-                {saving ? 'Saving…' : assignment.response ? 'Update Price' : 'Submit Price'}
-              </button>
-            </div>
-          </form>
+              {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+                  style={{ background: '#18181B', color: '#FAFAFA' }}
+                >
+                  {saving ? 'Saving…' : assignment.response ? 'Update Price' : 'Submit Price'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       )}
     </div>
@@ -430,6 +520,9 @@ export function SupplierRespondClient({
   showBackLink = false,
 }: Props) {
   const [items, setItems] = useState(assignments)
+  const [declining, setDeclining] = useState(false)
+  const [fullyDeclined, setFullyDeclined] = useState(false)
+
   const allAccepted = items.length > 0 && items.every(a => a.status === 'accepted')
 
   function handleSaved(assignmentId: string, response: Assignment['response']) {
@@ -438,9 +531,47 @@ export function SupplierRespondClient({
     )
   }
 
-  const responded = items.filter(a => a.response).length
+  function handleDeclined(assignmentId: string) {
+    setItems(prev =>
+      prev.map(a => a.id === assignmentId ? { ...a, status: 'supplier_declined' } : a)
+    )
+  }
+
+  async function handleDeclineAll() {
+    if (!window.confirm('Decline this entire price request? The designer will be notified.')) return
+    setDeclining(true)
+    try {
+      const res = await fetch(`/api/sourcing/respond/${token}/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      setFullyDeclined(true)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setDeclining(false)
+    }
+  }
+
+  const responded = items.filter(a => a.response && a.status !== 'supplier_declined').length
   const total = items.length
   const allDone = responded === total && total > 0
+
+  if (fullyDeclined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F4F4F5' }}>
+        <div className="text-center px-6 py-12">
+          <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: '#FFF1F2' }}>
+            <Ban size={22} className="text-red-400" />
+          </div>
+          <p className="text-base font-semibold mb-1" style={{ color: '#18181B' }}>Request declined</p>
+          <p className="text-sm" style={{ color: '#71717A' }}>The design studio has been notified.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen" style={{ background: '#F4F4F5' }}>
@@ -499,6 +630,7 @@ export function SupplierRespondClient({
               assignment={assignment}
               token={token}
               onSaved={handleSaved}
+              onDeclined={handleDeclined}
             />
           ))}
         </div>
@@ -508,6 +640,22 @@ export function SupplierRespondClient({
 
         {/* Message thread */}
         <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
+
+        {/* Decline entire request */}
+        {!allAccepted && (
+          <div className="pt-2 border-t border-[#E4E4E7]">
+            <button
+              type="button"
+              onClick={handleDeclineAll}
+              disabled={declining}
+              className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
+              style={{ color: '#EF4444' }}
+            >
+              <AlertTriangle size={13} />
+              {declining ? 'Declining…' : 'Decline entire request'}
+            </button>
+          </div>
+        )}
 
         <p className="text-center text-xs pb-4" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
       </div>

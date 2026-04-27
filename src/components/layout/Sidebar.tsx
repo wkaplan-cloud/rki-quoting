@@ -3,12 +3,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid,
 } from 'lucide-react'
 
 const mainLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/projects',  label: 'Projects',  icon: FolderOpen },
+  { href: '/pieces',    label: 'Our Pieces', icon: LayoutGrid },
 ]
 
 const secondaryLinks = [

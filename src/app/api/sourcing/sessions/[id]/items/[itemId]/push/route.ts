@@ -11,9 +11,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { project_id, markup_percentage } = await req.json() as {
+    const { project_id, markup_percentage, overrides } = await req.json() as {
       project_id: string
       markup_percentage?: number
+      overrides?: {
+        item_name?: string
+        description?: string
+        quantity?: number
+        dimensions?: string
+        colour_finish?: string
+      }
     }
     if (!project_id) return NextResponse.json({ error: 'project_id is required' }, { status: 400 })
 
@@ -64,15 +71,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from('line_items')
       .insert({
         project_id,
-        item_name: item.title,
-        description: item.specifications ?? null,
-        quantity: item.item_quantity ?? 1,
+        item_name: overrides?.item_name ?? item.title,
+        description: overrides?.description ?? item.specifications ?? null,
+        quantity: overrides?.quantity ?? item.item_quantity ?? 1,
         cost_price: response.unit_price,
         markup_percentage: markup,
         supplier_id: supplierData?.supplier_id ?? null,
         supplier_name: supplierData?.supplier_name ?? null,
-        dimensions: item.dimensions ?? null,
-        colour_finish: item.colour_finish ?? null,
+        dimensions: overrides?.dimensions ?? item.dimensions ?? null,
+        colour_finish: overrides?.colour_finish ?? item.colour_finish ?? null,
         lead_time_weeks: response.lead_time_weeks ?? null,
         delivery_address: deliveryAddress,
         sort_order,
