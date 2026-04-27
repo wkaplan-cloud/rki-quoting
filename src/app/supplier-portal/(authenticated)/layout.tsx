@@ -47,7 +47,7 @@ export default async function SupplierPortalLayout({
         pendingCount={pendingCount}
       />
       <main className="md:ml-12 flex-1 pt-14 md:pt-0">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="px-6 py-8">
           {children}
         </div>
       </main>

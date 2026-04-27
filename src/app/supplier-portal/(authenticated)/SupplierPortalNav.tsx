@@ -69,7 +69,7 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
           {/* Full logo */}
           <div className="px-4 py-5 flex flex-col items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="w-20 h-auto object-contain opacity-60" />
+            <img src="/logo.png" alt="QuotingHub" className="w-32 h-auto object-contain opacity-80" />
             <p className="text-[9px] font-semibold uppercase tracking-widest mt-2 text-center text-[#A1A1AA]">
               Supplier Portal
             </p>
@@ -89,7 +89,7 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
                 className="flex items-center h-9 rounded mx-1 transition-colors duration-150"
                 style={{
                   background: active ? '#F4F4F5' : 'transparent',
-                  borderLeft: active ? '3px solid #3F3F46' : '3px solid transparent',
+                  borderLeft: active ? '3px solid #1B4F8A' : '3px solid transparent',
                 }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F9F9F9' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}

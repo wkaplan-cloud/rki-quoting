@@ -17,9 +17,9 @@ interface Props {
 }
 
 const INPUT_STYLE = {
-  background: '#27272A',
-  border: '1px solid #3F3F46',
-  color: '#FAFAFA',
+  background: '#F4F4F5',
+  border: '1px solid #E4E4E7',
+  color: '#18181B',
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -82,13 +82,13 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
 
       <form onSubmit={handleSave} className="space-y-5">
         {/* Read-only email */}
-        <div className="p-4 rounded-xl" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
+        <div className="p-4 rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Email</p>
-          <p className="text-sm font-medium" style={{ color: '#A1A1AA' }}>{account.email}</p>
-          <p className="text-xs mt-1" style={{ color: '#3F3F46' }}>Email cannot be changed. Contact support if needed.</p>
+          <p className="text-sm font-medium" style={{ color: '#52525B' }}>{account.email}</p>
+          <p className="text-xs mt-1" style={{ color: '#A1A1AA' }}>Email cannot be changed. Contact support if needed.</p>
         </div>
 
-        <div className="p-5 rounded-xl space-y-5" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
+        <div className="p-5 rounded-xl space-y-5" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#71717A' }}>Business Details</p>
 
           <Field label="Company / Trading Name">
@@ -99,7 +99,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
               className={inputCls}
               style={INPUT_STYLE}
               onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-              onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
             />
           </Field>
 
@@ -113,7 +113,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
                 className={inputCls}
                 style={INPUT_STYLE}
                 onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
               />
             </Field>
             <Field label="Website">
@@ -125,7 +125,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
                 className={inputCls}
                 style={INPUT_STYLE}
                 onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
               />
             </Field>
           </div>
@@ -139,7 +139,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
               className={inputCls}
               style={INPUT_STYLE}
               onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-              onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
             />
           </Field>
 
@@ -152,12 +152,12 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
               className={`${inputCls} resize-none`}
               style={INPUT_STYLE}
               onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-              onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
             />
           </Field>
         </div>
 
-        <div className="p-5 rounded-xl space-y-4" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
+        <div className="p-5 rounded-xl space-y-4" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#71717A' }}>What do you supply?</p>
           <div className="flex flex-wrap gap-2">
             {categoryOptions.map(cat => {
@@ -169,9 +169,9 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
                   onClick={() => toggleCategory(cat)}
                   className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                   style={{
-                    background: active ? '#3F3F46' : '#27272A',
-                    color: active ? '#FAFAFA' : '#71717A',
-                    border: active ? '1px solid #71717A' : '1px solid #3F3F46',
+                    background: active ? '#1B4F8A' : '#F4F4F5',
+                    color: active ? '#FFFFFF' : '#71717A',
+                    border: active ? '1px solid #1B4F8A' : '1px solid #E4E4E7',
                   }}
                 >
                   {active && <span className="mr-1">✓</span>}
@@ -191,7 +191,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
             type="submit"
             disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-            style={{ background: '#18181B', color: '#FAFAFA' }}
+            style={{ background: '#1B4F8A', color: '#FFFFFF' }}
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : null}
             {saving ? 'Saving…' : 'Save Profile'}

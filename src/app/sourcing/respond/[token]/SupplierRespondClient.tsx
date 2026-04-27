@@ -307,7 +307,7 @@ function PriceForm({
                   type="submit"
                   disabled={saving}
                   className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                  style={{ background: '#18181B', color: '#FAFAFA' }}
+                  style={{ background: '#1B4F8A', color: '#FFFFFF' }}
                 >
                   {saving ? 'Saving…' : assignment.response ? 'Update Price' : 'Submit Price'}
                 </button>
@@ -495,7 +495,7 @@ function MessageThread({
                 type="submit"
                 disabled={sending || !body.trim()}
                 className="px-3 py-2 rounded-lg transition-opacity disabled:opacity-40"
-                style={{ background: '#18181B', color: '#FAFAFA' }}
+                style={{ background: '#1B4F8A', color: '#FFFFFF' }}
               >
                 <Send size={14} />
               </button>
@@ -575,13 +575,13 @@ export function SupplierRespondClient({
 
   return (
     <div className="min-h-screen" style={{ background: '#F4F4F5' }}>
-      {/* Header */}
-      <div style={{ background: '#27272A' }}>
-        <div className="max-w-2xl mx-auto px-6 py-5">
-          <div className="flex items-center justify-between mb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="h-6 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.6)' }} />
-            {showBackLink && (
+      {/* Header — only shown for standalone (unauthenticated) token access */}
+      {showBackLink && (
+        <div style={{ background: '#27272A' }}>
+          <div className="max-w-2xl mx-auto px-6 py-5">
+            <div className="flex items-center justify-between mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="QuotingHub" className="h-6 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.6)' }} />
               <a
                 href="/supplier-portal/dashboard"
                 className="text-xs font-medium transition-opacity hover:opacity-60"
@@ -589,14 +589,24 @@ export function SupplierRespondClient({
               >
                 ← Back to portal
               </a>
-            )}
+            </div>
+            <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Pricing Request</p>
+            <p className="text-lg font-semibold" style={{ color: '#FAFAFA' }}>{sessionTitle}</p>
+            {projectName && <p className="text-sm mt-0.5" style={{ color: '#A1A1AA' }}>{projectName}</p>}
+            <p className="text-xs mt-2" style={{ color: '#52525B' }}>From {studioName} · To {supplierName}</p>
           </div>
-          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Pricing Request</p>
-          <p className="text-lg font-semibold" style={{ color: '#FAFAFA' }}>{sessionTitle}</p>
-          {projectName && <p className="text-sm mt-0.5" style={{ color: '#A1A1AA' }}>{projectName}</p>}
-          <p className="text-xs mt-2" style={{ color: '#52525B' }}>From {studioName} · To {supplierName}</p>
         </div>
-      </div>
+      )}
+
+      {/* Session info — shown in portal context instead of dark header */}
+      {!showBackLink && (
+        <div className="max-w-2xl mx-auto px-4 pt-6">
+          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>Pricing Request</p>
+          <h1 className="text-lg font-semibold" style={{ color: '#18181B' }}>{sessionTitle}</h1>
+          {projectName && <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>{projectName}</p>}
+          <p className="text-xs mt-1" style={{ color: '#A1A1AA' }}>From {studioName} · To {supplierName}</p>
+        </div>
+      )}
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {/* Progress banner */}
@@ -616,7 +626,7 @@ export function SupplierRespondClient({
             <div className="flex-1 mx-6 rounded-full h-1.5 overflow-hidden" style={{ background: '#E4E4E7' }}>
               <div
                 className="h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#3F3F46' }}
+                style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }}
               />
             </div>
           </div>

@@ -41,9 +41,9 @@ function itemToForm(item: SupplierPriceListItem): ItemForm {
 }
 
 const INPUT_STYLE = {
-  background: '#27272A',
-  border: '1px solid #3F3F46',
-  color: '#FAFAFA',
+  background: '#F4F4F5',
+  border: '1px solid #E4E4E7',
+  color: '#18181B',
 }
 
 export function PriceListManager({ initialItems }: Props) {
@@ -181,7 +181,7 @@ export function PriceListManager({ initialItems }: Props) {
           <button
             onClick={startNew}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors"
-            style={{ background: '#18181B', color: '#FFFFFF' }}
+            style={{ background: '#1B4F8A', color: '#FFFFFF' }}
           >
             <Plus size={13} />
             Add Item
@@ -207,9 +207,9 @@ export function PriceListManager({ initialItems }: Props) {
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#E4E4E7' }}>
           {items.length === 0 && editingId !== 'new' ? (
             <div className="p-12 text-center">
-              <p className="text-sm font-semibold mb-1" style={{ color: '#3F3F46' }}>No items yet</p>
+              <p className="text-sm font-semibold mb-1" style={{ color: '#52525B' }}>No items yet</p>
               <p className="text-sm mb-4" style={{ color: '#71717A' }}>Add items manually or import a CSV/Excel file.</p>
-              <button onClick={startNew} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: '#18181B' }}>
+              <button onClick={startNew} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: '#1B4F8A' }}>
                 Add your first item →
               </button>
             </div>
@@ -239,13 +239,13 @@ export function PriceListManager({ initialItems }: Props) {
                           <div className="w-9 h-9 rounded flex-shrink-0" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7' }} />
                         )}
                         <div>
-                          <p className="font-semibold" style={{ color: '#3F3F46' }}>{item.item_name}</p>
+                          <p className="font-semibold" style={{ color: '#18181B' }}>{item.item_name}</p>
                           {item.sku && <p className="text-xs" style={{ color: '#A1A1AA' }}>SKU: {item.sku}</p>}
                           {item.description && <p className="text-xs truncate max-w-[200px]" style={{ color: '#A1A1AA' }}>{item.description}</p>}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-right text-sm hidden sm:table-cell" style={{ color: '#3F3F46' }}>
+                    <td className="px-4 py-3.5 text-right text-sm hidden sm:table-cell" style={{ color: '#52525B' }}>
                       {item.price != null ? `R ${item.price.toFixed(2)}${item.unit ? ` / ${item.unit}` : ''}` : '—'}
                     </td>
                     <td className="px-4 py-3.5 text-right text-xs hidden md:table-cell" style={{ color: '#A1A1AA' }}>
@@ -273,9 +273,9 @@ export function PriceListManager({ initialItems }: Props) {
 
         {/* Add / Edit form */}
         {editingId !== null && (
-          <div className="rounded-xl overflow-hidden sticky top-4" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #3F3F46' }}>
-              <p className="text-sm font-semibold" style={{ color: '#FAFAFA' }}>{editingId === 'new' ? 'Add Item' : 'Edit Item'}</p>
+          <div className="rounded-xl overflow-hidden sticky top-4" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #E4E4E7' }}>
+              <p className="text-sm font-semibold" style={{ color: '#18181B' }}>{editingId === 'new' ? 'Add Item' : 'Edit Item'}</p>
               <button onClick={cancelEdit} className="transition-opacity hover:opacity-60" style={{ color: '#71717A' }}><X size={14} /></button>
             </div>
             <div className="p-5 space-y-4">
@@ -283,7 +283,7 @@ export function PriceListManager({ initialItems }: Props) {
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Image</label>
                 {form.image_url ? (
-                  <div className="relative w-full h-32 rounded-lg overflow-hidden" style={{ border: '1px solid #3F3F46' }}>
+                  <div className="relative w-full h-32 rounded-lg overflow-hidden" style={{ border: '1px solid #E4E4E7' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={form.image_url} alt="" className="w-full h-full object-cover" />
                     <button
@@ -297,9 +297,9 @@ export function PriceListManager({ initialItems }: Props) {
                 ) : (
                   <label
                     className={`flex items-center justify-center gap-2 h-20 rounded-lg cursor-pointer transition-colors text-sm ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
-                    style={{ border: '1px dashed #3F3F46', color: '#71717A' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#18181B')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                    style={{ border: '1px dashed #D4D4D8', color: '#71717A' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#1B4F8A')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#D4D4D8')}
                   >
                     <Upload size={13} />
                     {uploadingImage ? 'Uploading…' : 'Upload image'}
@@ -319,8 +319,8 @@ export function PriceListManager({ initialItems }: Props) {
                   placeholder="e.g. Linen Fabric — Natural"
                   className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                   style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
                 />
               </div>
 
@@ -333,8 +333,8 @@ export function PriceListManager({ initialItems }: Props) {
                   placeholder="Material specs, colours, etc."
                   className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
                   style={INPUT_STYLE}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#18181B')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#3F3F46')}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
                 />
               </div>
 
@@ -409,14 +409,14 @@ export function PriceListManager({ initialItems }: Props) {
                   onClick={handleSave}
                   disabled={saving}
                   className="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                  style={{ background: '#18181B', color: '#FFFFFF' }}
+                  style={{ background: '#1B4F8A', color: '#FFFFFF' }}
                 >
                   {saving ? 'Saving…' : editingId === 'new' ? 'Add Item' : 'Save Changes'}
                 </button>
                 <button
                   onClick={cancelEdit}
                   className="px-4 py-2.5 text-sm rounded-lg transition-colors"
-                  style={{ color: '#A1A1AA', border: '1px solid #3F3F46' }}
+                  style={{ color: '#71717A', border: '1px solid #E4E4E7' }}
                 >
                   Cancel
                 </button>
@@ -436,16 +436,16 @@ export function PriceListManager({ initialItems }: Props) {
 
         {/* Import hint when no form open */}
         {editingId === null && items.length > 0 && (
-          <div className="rounded-xl p-5" style={{ background: '#27272A', border: '1px solid #3F3F46' }}>
+          <div className="rounded-xl p-5" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
             <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>CSV / Excel Import</p>
             <p className="text-xs leading-relaxed mb-3" style={{ color: '#71717A' }}>
               Import multiple items at once. Your file should have these columns:
             </p>
-            <code className="block text-xs rounded px-3 py-2 leading-relaxed" style={{ background: '#3F3F46', color: '#A1A1AA', border: '1px solid #3F3F46' }}>
+            <code className="block text-xs rounded px-3 py-2 leading-relaxed" style={{ background: '#F4F4F5', color: '#52525B', border: '1px solid #E4E4E7' }}>
               item_name, description, sku,<br />
               unit, price, lead_time_weeks
             </code>
-            <p className="text-xs mt-2" style={{ color: '#3F3F46' }}>Supports .csv, .xlsx, .xls — max 500 rows</p>
+            <p className="text-xs mt-2" style={{ color: '#A1A1AA' }}>Supports .csv, .xlsx, .xls — max 500 rows</p>
           </div>
         )}
       </div>
