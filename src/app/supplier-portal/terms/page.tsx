@@ -20,7 +20,7 @@ export default function SupplierTermsPage() {
 
       <main className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-3xl font-semibold text-[#2C2C2A] tracking-tight mb-2">Terms &amp; Conditions</h1>
-        <p className="text-sm text-[#8A877F] mb-10">Supplier Portal · Last updated January 2025</p>
+        <p className="text-sm text-[#8A877F] mb-10">Supplier Portal · Last updated 10 April 2026</p>
 
         <div className="space-y-8 text-[#4A4845]">
           <section>

@@ -20,13 +20,13 @@ export default function SupplierPrivacyPage() {
 
       <main className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-3xl font-semibold text-[#2C2C2A] tracking-tight mb-2">Privacy Policy</h1>
-        <p className="text-sm text-[#8A877F] mb-10">Supplier Portal · Last updated January 2025</p>
+        <p className="text-sm text-[#8A877F] mb-10">Supplier Portal · Last updated 10 April 2026</p>
 
         <div className="space-y-8 text-[#4A4845]">
           <section>
             <h2 className="text-base font-semibold text-[#2C2C2A] mb-3">1. Who we are</h2>
             <p className="text-sm leading-relaxed">
-              QuotingHub is operated by Kaplan Advisory Group (Pty) Ltd, registered in South Africa. This Privacy Policy
+              QuotingHub is operated by QuotingHub (Pty) Ltd, registered in South Africa. This Privacy Policy
               applies to the QuotingHub Supplier Portal available at suppliers.quotinghub.co.za. We act as the responsible
               party for personal information processed through this portal.
             </p>
