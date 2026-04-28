@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Store, Globe, Phone, MapPin } from 'lucide-react'
+import { Store, Globe, Phone, MapPin, BarChart3 } from 'lucide-react'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -14,14 +14,87 @@ export default async function PlatformSuppliersPage() {
 
   const rows = accounts ?? []
 
-  // Count active (have responded or completed at least one session)
-  const { data: activeSuppliersData } = await supabaseAdmin
+  // All session-supplier rows for analytics
+  const { data: sessionSuppliers } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('email')
-    .not('status', 'eq', 'pending')
+    .select('email, status, supplier_name, session:sourcing_sessions(user_id)')
 
-  const activeEmails = new Set((activeSuppliersData ?? []).map((s: any) => s.email?.toLowerCase()))
+  // Build per-email analytics
+  const supplierStats: Record<string, {
+    contactCount: number
+    respondedCount: number
+    acceptedCount: number
+    studioIds: Set<string>
+  }> = {}
+
+  const userIds = new Set<string>()
+  for (const ss of sessionSuppliers ?? []) {
+    const email = (ss.email ?? '').toLowerCase()
+    if (!supplierStats[email]) {
+      supplierStats[email] = { contactCount: 0, respondedCount: 0, acceptedCount: 0, studioIds: new Set() }
+    }
+    supplierStats[email].contactCount++
+    if (['responded', 'completed', 'in_progress'].includes(ss.status)) {
+      supplierStats[email].respondedCount++
+    }
+    const session = Array.isArray(ss.session) ? ss.session[0] : ss.session
+    if (session?.user_id) {
+      supplierStats[email].studioIds.add(session.user_id)
+      userIds.add(session.user_id)
+    }
+  }
+
+  // Also track accepted assignments per supplier email
+  const { data: acceptedItems } = await supabaseAdmin
+    .from('sourcing_item_assignments')
+    .select('supplier:sourcing_session_suppliers(email)')
+    .eq('status', 'accepted')
+
+  for (const a of acceptedItems ?? []) {
+    const supplier = Array.isArray((a as any).supplier) ? (a as any).supplier[0] : (a as any).supplier
+    const email = (supplier?.email ?? '').toLowerCase()
+    if (supplierStats[email]) {
+      supplierStats[email].acceptedCount++
+    }
+  }
+
+  // Studio name map
+  const studioMap: Record<string, string> = {}
+  if (userIds.size > 0) {
+    const { data: settingsRows } = await supabaseAdmin
+      .from('settings')
+      .select('user_id, business_name')
+      .in('user_id', [...userIds])
+    for (const s of settingsRows ?? []) {
+      if (s.user_id) studioMap[s.user_id] = s.business_name ?? 'Studio'
+    }
+  }
+
+  const activeEmails = new Set(
+    Object.entries(supplierStats)
+      .filter(([, s]) => s.respondedCount > 0 || s.acceptedCount > 0)
+      .map(([email]) => email)
+  )
   const activeCount = rows.filter(r => activeEmails.has(r.email?.toLowerCase())).length
+
+  // Top suppliers by accepted items (all, not just registered)
+  const topSuppliers = Object.entries(supplierStats)
+    .filter(([, s]) => s.acceptedCount > 0)
+    .sort((a, b) => b[1].acceptedCount - a[1].acceptedCount)
+    .slice(0, 10)
+    .map(([email, s]) => {
+      const account = rows.find(r => r.email?.toLowerCase() === email)
+      return {
+        email,
+        name: account?.company_name ?? email,
+        contactCount: s.contactCount,
+        respondedCount: s.respondedCount,
+        acceptedCount: s.acceptedCount,
+        studioCount: s.studioIds.size,
+        studios: [...s.studioIds].map(id => studioMap[id] ?? 'Studio'),
+        registered: !!account,
+      }
+    })
 
   return (
     <div className="p-8">
@@ -30,7 +103,7 @@ export default async function PlatformSuppliersPage() {
           <Store size={18} className="text-[#C4A46B]" />
           <h1 className="font-serif text-3xl text-white">Registered Suppliers</h1>
         </div>
-        <p className="text-sm text-white/40">Supplier portal accounts and their profile details</p>
+        <p className="text-sm text-white/40">Supplier portal accounts, activity analytics &amp; studio usage</p>
       </div>
 
       {/* Stats */}
@@ -52,7 +125,64 @@ export default async function PlatformSuppliersPage() {
         ))}
       </div>
 
-      {/* Supplier table */}
+      {/* Studio ↔ Supplier analytics */}
+      {topSuppliers.length > 0 && (
+        <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-8">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center gap-2">
+            <BarChart3 size={14} className="text-[#C4A46B]" />
+            <h2 className="text-sm font-medium text-white">Supplier Usage Analytics</h2>
+            <p className="text-xs text-white/30 ml-2">Top suppliers by accepted items across all studios</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5">
+                  {['Supplier', 'Studios', 'Contacted', 'Responded', 'Items accepted', 'Registered'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {topSuppliers.map(s => (
+                  <tr key={s.email} className="hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-white font-medium">{s.name}</p>
+                      <p className="text-white/30 text-xs">{s.email}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {s.studios.slice(0, 3).map(studio => (
+                          <span key={studio} className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/50 whitespace-nowrap">{studio}</span>
+                        ))}
+                        {s.studios.length > 3 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/30 whitespace-nowrap">+{s.studios.length - 3}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-white/60 whitespace-nowrap tabular-nums">{s.contactCount}</td>
+                    <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                      <span className="text-white/60">{s.respondedCount}</span>
+                      {s.contactCount > 0 && (
+                        <span className="text-white/30 text-xs ml-1">({Math.round(s.respondedCount / s.contactCount * 100)}%)</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-[#C4A46B] font-semibold tabular-nums">{s.acceptedCount}</span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.registered ? 'bg-emerald-950 text-emerald-400' : 'bg-white/5 text-white/30'}`}>
+                        {s.registered ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Supplier accounts table */}
       <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-white/10">
           <h2 className="text-sm font-medium text-white">Supplier Accounts</h2>
@@ -66,7 +196,7 @@ export default async function PlatformSuppliersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  {['Company', 'Email', 'Categories', 'Contact', 'Registered', 'Status'].map(h => (
+                  {['Company', 'Email', 'Categories', 'Contact', 'Requests', 'Registered', 'Status'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -75,6 +205,7 @@ export default async function PlatformSuppliersPage() {
                 {rows.map(row => {
                   const isActive = activeEmails.has(row.email?.toLowerCase())
                   const cats: string[] = Array.isArray(row.categories) ? row.categories : []
+                  const stats = supplierStats[row.email?.toLowerCase()] ?? { contactCount: 0, respondedCount: 0, acceptedCount: 0 }
                   return (
                     <tr key={row.id} className="hover:bg-white/5 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -118,14 +249,17 @@ export default async function PlatformSuppliersPage() {
                           {!row.phone && !row.website && <span className="text-white/20 text-xs">—</span>}
                         </div>
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-xs text-white/50 tabular-nums">
+                        {stats.contactCount > 0 ? (
+                          <span>{stats.contactCount} sent · {stats.acceptedCount} accepted</span>
+                        ) : <span className="text-white/20">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-white/40 whitespace-nowrap text-xs">
                         {row.created_at ? fmtDate(row.created_at) : '—'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          isActive
-                            ? 'bg-emerald-950 text-emerald-400'
-                            : 'bg-white/5 text-white/30'
+                          isActive ? 'bg-emerald-950 text-emerald-400' : 'bg-white/5 text-white/30'
                         }`}>
                           {isActive ? 'Active' : 'Registered'}
                         </span>

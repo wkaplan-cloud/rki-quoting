@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut, ArrowLeftRight, Store } from 'lucide-react'
+import { LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut, ArrowLeftRight, Store, FolderOpen, Activity } from 'lucide-react'
 
 const PLATFORM_ADMIN = process.env.PLATFORM_ADMIN_EMAIL
 
@@ -30,8 +30,10 @@ export default async function PlatformLayout({ children }: { children: React.Rea
     { href: '/platform/studios', label: 'Studios', icon: Building2 },
     { href: '/platform/sourcing', label: 'Sourcing', icon: ArrowLeftRight },
     { href: '/platform/suppliers', label: 'Suppliers', icon: Store },
+    { href: '/platform/quotes', label: 'Quotes', icon: FolderOpen },
     { href: '/platform/messages', label: 'Messages', icon: MessageSquare },
     { href: '/platform/price-lists', label: 'Price Lists', icon: BookOpen },
+    { href: '/platform/health', label: 'Health', icon: Activity },
   ]
 
   return (

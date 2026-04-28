@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Users, FolderOpen } from 'lucide-react'
+import { ArrowLeft, Users, FolderOpen, ArrowLeftRight } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
 import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
@@ -21,14 +21,45 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
 
   const adminMember = members?.find(m => m.role === 'admin' && m.status === 'active')
 
-  const [{ data: settings }, { data: projects }] = await Promise.all([
+  const [{ data: settings }, { data: projects }, { data: sourcingSessions }] = await Promise.all([
     adminMember?.user_id
       ? supabaseAdmin.from('settings').select('*').eq('user_id', adminMember.user_id).maybeSingle()
       : Promise.resolve({ data: null }),
     adminMember?.user_id
       ? supabaseAdmin.from('projects').select('id, project_name, project_number, status, created_at').eq('user_id', adminMember.user_id).order('created_at', { ascending: false }).limit(20)
       : Promise.resolve({ data: [] }),
+    adminMember?.user_id
+      ? supabaseAdmin.from('sourcing_sessions').select('id, title, status, created_at').eq('user_id', adminMember.user_id).order('created_at', { ascending: false }).limit(20)
+      : Promise.resolve({ data: [] }),
   ])
+
+  // Sourcing fee for this studio
+  let studioTotalFee = 0
+  let studioAcceptedCount = 0
+  if (adminMember?.user_id && sourcingSessions && sourcingSessions.length > 0) {
+    const sessionIds = sourcingSessions.map((s: any) => s.id)
+    const { data: itemsInSessions } = await supabaseAdmin
+      .from('sourcing_session_items')
+      .select('id')
+      .in('session_id', sessionIds)
+    const itemIds = (itemsInSessions ?? []).map((i: any) => i.id)
+    if (itemIds.length > 0) {
+      const { data: accepted } = await supabaseAdmin
+        .from('sourcing_item_assignments')
+        .select('response:sourcing_item_responses(unit_price)')
+        .in('item_id', itemIds)
+        .eq('status', 'accepted')
+      studioAcceptedCount = (accepted ?? []).length
+      for (const a of accepted ?? []) {
+        const response = Array.isArray((a as any).response) ? (a as any).response[0] : (a as any).response
+        studioTotalFee += (response?.unit_price ?? 0) * 0.01
+      }
+    }
+  }
+
+  function fmtFee(n: number) {
+    return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
 
   const statusColour: Record<string, string> = {
     Quote: 'bg-blue-500/10 text-blue-400',
@@ -118,6 +149,17 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
               <p className="text-xs text-white/40">Projects</p>
             </div>
           </div>
+          {settings?.sourcing_enabled && (
+            <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center">
+                <ArrowLeftRight size={16} className="text-[#C4A46B]" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-white">{sourcingSessions?.length ?? 0}</p>
+                <p className="text-xs text-white/40">Sourcing sessions</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -169,7 +211,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {/* Recent projects */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
+      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
         <div className="px-5 py-4 border-b border-white/10">
           <h2 className="text-sm font-medium text-white flex items-center gap-2"><FolderOpen size={14} className="text-[#C4A46B]" /> Recent projects</h2>
         </div>
@@ -204,6 +246,56 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
           </table>
         )}
       </div>
+
+      {/* Sourcing activity */}
+      {settings?.sourcing_enabled && (
+        <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-white flex items-center gap-2">
+              <ArrowLeftRight size={14} className="text-[#C4A46B]" /> Sourcing activity
+            </h2>
+            <div className="flex items-center gap-4 text-xs text-white/40">
+              <span>{sourcingSessions?.length ?? 0} sessions</span>
+              <span>{studioAcceptedCount} items accepted</span>
+              <span className="text-[#C4A46B] font-semibold">{fmtFee(studioTotalFee)} fees generated</span>
+            </div>
+          </div>
+          {!sourcingSessions?.length ? (
+            <p className="px-5 py-8 text-sm text-white/30 text-center">No sourcing sessions yet</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5">
+                  <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Session</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Status</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {(sourcingSessions ?? []).map((s: any) => {
+                  const statusColor: Record<string, string> = {
+                    draft: '#71717A', sent: '#60A5FA', in_progress: '#F59E0B',
+                    completed: '#34D399', archived: '#52525B',
+                  }
+                  return (
+                    <tr key={s.id}>
+                      <td className="px-5 py-3 text-white/80">{s.title}</td>
+                      <td className="px-5 py-3">
+                        <span className="text-xs font-medium capitalize" style={{ color: statusColor[s.status] ?? '#71717A' }}>
+                          {s.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-white/40 text-xs">
+                        {new Date(s.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   )
 }

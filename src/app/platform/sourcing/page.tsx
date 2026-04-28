@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { ArrowLeftRight, CheckCircle2, Clock, DollarSign, AlertCircle } from 'lucide-react'
+import { ArrowLeftRight, CheckCircle2, Clock, DollarSign, AlertCircle, Mail, AlertTriangle } from 'lucide-react'
 
 function fmt(n: number) {
   return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -8,6 +8,10 @@ function fmt(n: number) {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function daysSince(iso: string) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
 }
 
 const PROJECT_STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
@@ -26,6 +30,15 @@ const FEE_STATUS: Record<string, { label: string; color: string }> = {
   collectible: { label: 'Collectible',  color: '#34D399' },
 }
 
+const SUPPLIER_STATUS_COLOR: Record<string, string> = {
+  pending:     '#71717A',
+  viewed:      '#60A5FA',
+  in_progress: '#F59E0B',
+  responded:   '#34D399',
+  completed:   '#34D399',
+  declined:    '#F87171',
+}
+
 function getFeeStatus(projectStatus: string | null): keyof typeof FEE_STATUS {
   if (!projectStatus) return 'unlinked'
   if (['Paid', 'Completed'].includes(projectStatus)) return 'collectible'
@@ -34,6 +47,8 @@ function getFeeStatus(projectStatus: string | null): keyof typeof FEE_STATUS {
 }
 
 export default async function PlatformSourcingPage() {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+
   // Fetch all accepted assignments with full context
   const { data: assignments } = await supabaseAdmin
     .from('sourcing_item_assignments')
@@ -46,12 +61,30 @@ export default async function PlatformSourcingPage() {
     .eq('status', 'accepted')
     .order('accepted_at', { ascending: false })
 
-  // Also fetch all sessions for the pipeline overview
+  // All sessions for pipeline overview
   const { data: sessions } = await supabaseAdmin
     .from('sourcing_sessions')
     .select('id, title, status, created_at, user_id, project:projects(project_name, status)')
     .order('created_at', { ascending: false })
     .limit(200)
+
+  // Stale supplier invitations: pending status, sent > 7 days ago
+  const { data: staleSuppliers } = await supabaseAdmin
+    .from('sourcing_session_suppliers')
+    .select('id, supplier_name, email, sent_at, status, session:sourcing_sessions(id, title, user_id)')
+    .eq('status', 'pending')
+    .not('sent_at', 'is', null)
+    .lt('sent_at', sevenDaysAgo)
+    .order('sent_at', { ascending: true })
+    .limit(100)
+
+  // Email delivery log: recent sends
+  const { data: recentSends } = await supabaseAdmin
+    .from('sourcing_session_suppliers')
+    .select('id, supplier_name, email, sent_at, status, session:sourcing_sessions(id, title, user_id)')
+    .not('sent_at', 'is', null)
+    .order('sent_at', { ascending: false })
+    .limit(80)
 
   // Get unique user_ids for studio name lookup
   const userIds = [...new Set([
@@ -61,6 +94,14 @@ export default async function PlatformSourcingPage() {
       return session?.user_id
     }),
     ...(sessions ?? []).map((s: any) => s.user_id),
+    ...(staleSuppliers ?? []).map((s: any) => {
+      const session = Array.isArray(s.session) ? s.session[0] : s.session
+      return session?.user_id
+    }),
+    ...(recentSends ?? []).map((s: any) => {
+      const session = Array.isArray(s.session) ? s.session[0] : s.session
+      return session?.user_id
+    }),
   ].filter(Boolean))]
 
   const studioMap: Record<string, string> = {}
@@ -95,6 +136,35 @@ export default async function PlatformSourcingPage() {
       project_name: project?.project_name ?? null,
       project_status: project?.status ?? null,
       fee_status: feeStatus,
+      studio: studioMap[session?.user_id] ?? 'Studio',
+    }
+  })
+
+  // Normalise stale suppliers
+  const staleRows = (staleSuppliers ?? []).map((s: any) => {
+    const session = Array.isArray(s.session) ? s.session[0] : s.session
+    return {
+      id: s.id,
+      supplier_name: s.supplier_name,
+      email: s.email,
+      sent_at: s.sent_at,
+      session_title: session?.title ?? '—',
+      session_id: session?.id ?? null,
+      studio: studioMap[session?.user_id] ?? 'Studio',
+    }
+  })
+
+  // Normalise email log
+  const emailLog = (recentSends ?? []).map((s: any) => {
+    const session = Array.isArray(s.session) ? s.session[0] : s.session
+    return {
+      id: s.id,
+      supplier_name: s.supplier_name,
+      email: s.email,
+      sent_at: s.sent_at,
+      status: s.status as string,
+      session_title: session?.title ?? '—',
+      session_id: session?.id ?? null,
       studio: studioMap[session?.user_id] ?? 'Studio',
     }
   })
@@ -160,8 +230,49 @@ export default async function PlatformSourcingPage() {
         </div>
       </div>
 
+      {/* Stale sessions alert */}
+      {staleRows.length > 0 && (
+        <div className="bg-[#1A1A18] border border-amber-500/20 rounded-xl overflow-hidden mb-8">
+          <div className="px-5 py-4 border-b border-amber-500/10 flex items-center gap-2">
+            <AlertTriangle size={14} className="text-amber-400" />
+            <h2 className="text-sm font-medium text-white">Stale Invitations</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 ml-1">{staleRows.length}</span>
+            <p className="text-xs text-white/30 ml-2">Sent &gt;7 days ago — no supplier response yet</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5">
+                  {['Studio', 'Session', 'Supplier', 'Email', 'Sent', 'Days waiting'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {staleRows.map(row => (
+                  <tr key={row.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3 text-white/60 whitespace-nowrap">{row.studio}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {row.session_id ? (
+                        <a href={`/sourcing/${row.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
+                      ) : row.session_title}
+                    </td>
+                    <td className="px-4 py-3 text-white whitespace-nowrap">{row.supplier_name}</td>
+                    <td className="px-4 py-3 text-white/50 whitespace-nowrap text-xs">{row.email}</td>
+                    <td className="px-4 py-3 text-white/40 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-xs font-semibold text-amber-400">{row.sent_at ? daysSince(row.sent_at) : '—'}d</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Accepted items table */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
+      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-8">
         <div className="px-5 py-4 border-b border-white/10">
           <h2 className="text-sm font-medium text-white">Accepted Items &amp; Fee Tracker</h2>
           <p className="text-xs text-white/30 mt-0.5">All items accepted by designers from supplier quotes</p>
@@ -214,6 +325,50 @@ export default async function PlatformSourcingPage() {
                     </tr>
                   )
                 })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Email delivery log */}
+      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-white/10 flex items-center gap-2">
+          <Mail size={14} className="text-[#C4A46B]" />
+          <h2 className="text-sm font-medium text-white">Email Delivery Log</h2>
+          <p className="text-xs text-white/30 ml-2">Supplier invitations sent — most recent first</p>
+        </div>
+        {emailLog.length === 0 ? (
+          <p className="px-5 py-10 text-sm text-white/30 text-center">No emails sent yet</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/5">
+                  {['Studio', 'Session', 'Supplier', 'Email', 'Sent', 'Current Status'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {emailLog.map(row => (
+                  <tr key={row.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-2.5 text-white/60 whitespace-nowrap">{row.studio}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap max-w-[160px] truncate">
+                      {row.session_id ? (
+                        <a href={`/sourcing/${row.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
+                      ) : row.session_title}
+                    </td>
+                    <td className="px-4 py-2.5 text-white whitespace-nowrap">{row.supplier_name}</td>
+                    <td className="px-4 py-2.5 text-white/50 whitespace-nowrap text-xs">{row.email}</td>
+                    <td className="px-4 py-2.5 text-white/40 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      <span className="text-xs font-medium capitalize" style={{ color: SUPPLIER_STATUS_COLOR[row.status] ?? '#71717A' }}>
+                        {row.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
