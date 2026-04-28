@@ -13,20 +13,28 @@ export function StorageWidget() {
       .catch(() => {})
   }, [])
 
+  const warn = bytes !== null && bytes >= 100 * 1024 * 1024
+
   return (
-    <div className="bg-white border border-[#D8D3C8] rounded-xl p-4 flex flex-col items-center justify-center w-36 h-28 shadow-sm">
-      <HardDrive size={18} className="text-[#9A7B4F] mb-2" />
+    <div className={`rounded-xl p-4 flex flex-col items-center justify-center w-36 h-28 shadow-sm border ${
+      warn ? 'bg-amber-50 border-amber-300' : 'bg-white border-[#D8D3C8]'
+    }`}>
+      <HardDrive size={18} className={`mb-2 ${warn ? 'text-amber-500' : 'text-[#9A7B4F]'}`} />
       {bytes === null ? (
         <p className="text-xs text-[#8A877F]">Loading…</p>
       ) : (
         <>
-          <p className="text-base font-semibold text-[#2C2C2A] tabular-nums leading-tight">
+          <p className={`text-base font-semibold tabular-nums leading-tight ${warn ? 'text-amber-600' : 'text-[#2C2C2A]'}`}>
             {bytes < 1024 * 1024
               ? `${(bytes / 1024).toFixed(1)} KB`
               : `${(bytes / (1024 * 1024)).toFixed(1)} MB`}
           </p>
-          <p className="text-[10px] text-[#8A877F] mt-0.5 text-center">{fileCount} image{fileCount !== 1 ? 's' : ''}</p>
-          <p className="text-[9px] text-[#C4BFB5] mt-1 text-center leading-tight">Upload storage used</p>
+          <p className={`text-[10px] mt-0.5 text-center ${warn ? 'text-amber-500' : 'text-[#8A877F]'}`}>
+            {fileCount} image{fileCount !== 1 ? 's' : ''}
+          </p>
+          <p className={`text-[9px] mt-1 text-center leading-tight ${warn ? 'text-amber-400 font-medium' : 'text-[#C4BFB5]'}`}>
+            {warn ? 'Storage high — contact us' : 'Upload storage used'}
+          </p>
         </>
       )}
     </div>
