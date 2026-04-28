@@ -37,40 +37,56 @@ export default async function DashboardPage() {
     return acc
   }, {})
 
-  // Summary metrics
-  const activeProjects = ps.filter(p => p.status !== 'Cancelled' && p.status !== 'Completed')
-  const completedProjects = ps.filter(p => p.status === 'Completed')
-  const drafts = ps.filter(p => p.status === 'Draft').length
-  const openQuotes = ps.filter(p => p.status === 'Quote').length
-  const activeInvoices = ps.filter(p => p.status === 'Invoice').length
-  const paidProjects = ps.filter(p => p.status === 'Paid').length
+  // Single pass over projects — derive all metrics without re-scanning the array.
+  type Metrics = {
+    activeProjects: typeof ps
+    completedProjects: typeof ps
+    drafts: number
+    openQuotes: number
+    activeInvoices: number
+    paidProjects: number
+    awaitingDeposit: number
+    invoicesOutstanding: number
+    inProduction: number
+    totalRevenue: number
+    activeRevenuePipeline: number
+  }
 
-  const awaitingDeposit = ps.filter(p => {
+  const metrics = ps.reduce<Metrics>((acc, p) => {
     const s = stagesMap[p.id]
-    return s?.quote_sent && !s?.deposit_received && p.status !== 'Cancelled' && p.status !== 'Completed'
-  }).length
-
-  const invoicesOutstanding = ps.filter(p => {
-    const s = stagesMap[p.id]
-    return s?.final_invoice_sent && !s?.final_invoice_paid && p.status !== 'Cancelled'
-  }).length
-
-  const inProduction = ps.filter(p => {
-    const s = stagesMap[p.id]
-    return s?.deposit_received && !s?.delivered_installed && p.status !== 'Cancelled' && p.status !== 'Completed'
-  }).length
-
-  const totalRevenue = completedProjects.reduce((sum, p) => {
     const items = lineItemsByProject[p.id] ?? []
     const totals = computeTotals(items as any, p.design_fee ?? 0)
-    return sum + totals.grand_total
-  }, 0)
+    const isCancelled = p.status === 'Cancelled'
+    const isCompleted = p.status === 'Completed'
 
-  const activeRevenuePipeline = activeProjects.reduce((sum, p) => {
-    const items = lineItemsByProject[p.id] ?? []
-    const totals = computeTotals(items as any, p.design_fee ?? 0)
-    return sum + totals.grand_total
-  }, 0)
+    if (isCompleted) {
+      acc.completedProjects.push(p)
+      acc.totalRevenue += totals.grand_total
+    } else if (!isCancelled) {
+      acc.activeProjects.push(p)
+      acc.activeRevenuePipeline += totals.grand_total
+      if (p.status === 'Draft')    acc.drafts++
+      if (p.status === 'Quote')    acc.openQuotes++
+      if (p.status === 'Invoice')  acc.activeInvoices++
+      if (p.status === 'Paid')     acc.paidProjects++
+      if (s?.quote_sent && !s?.deposit_received)                         acc.awaitingDeposit++
+      if (s?.deposit_received && !s?.delivered_installed)                acc.inProduction++
+    }
+    if (!isCancelled && s?.final_invoice_sent && !s?.final_invoice_paid) acc.invoicesOutstanding++
+    return acc
+  }, {
+    activeProjects: [], completedProjects: [],
+    drafts: 0, openQuotes: 0, activeInvoices: 0, paidProjects: 0,
+    awaitingDeposit: 0, invoicesOutstanding: 0, inProduction: 0,
+    totalRevenue: 0, activeRevenuePipeline: 0,
+  })
+
+  const {
+    activeProjects, completedProjects,
+    drafts, openQuotes, activeInvoices, paidProjects,
+    awaitingDeposit, invoicesOutstanding, inProduction,
+    totalRevenue, activeRevenuePipeline,
+  } = metrics
 
   const allSummaryCards = [
     { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },

@@ -32,6 +32,16 @@ export default async function SourcingPage() {
       : [{ data: [] }, { data: [] }]
   )
 
+  // Build O(1) lookup maps before iterating sessions — avoids O(n²) .filter inside .map
+  const itemCountMap = new Map<string, number>()
+  const supplierCountMap = new Map<string, number>()
+  for (const i of (itemCounts ?? [])) {
+    itemCountMap.set((i as any).session_id, (itemCountMap.get((i as any).session_id) ?? 0) + 1)
+  }
+  for (const ss of (supplierCounts ?? [])) {
+    supplierCountMap.set((ss as any).session_id, (supplierCountMap.get((ss as any).session_id) ?? 0) + 1)
+  }
+
   const enriched = (sessions ?? []).map(s => {
     const project = Array.isArray(s.project) ? s.project[0] : s.project
     return {
@@ -41,8 +51,8 @@ export default async function SourcingPage() {
       archived: s.archived as boolean,
       created_at: s.created_at as string,
       project_name: (project as any)?.project_name ?? null,
-      item_count: (itemCounts ?? []).filter((i: any) => i.session_id === s.id).length,
-      supplier_count: (supplierCounts ?? []).filter((ss: any) => ss.session_id === s.id).length,
+      item_count: itemCountMap.get(s.id) ?? 0,
+      supplier_count: supplierCountMap.get(s.id) ?? 0,
     }
   })
 
