@@ -591,11 +591,11 @@ export function SupplierRespondClient({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="QuotingHub" className="h-6 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.6)' }} />
               <a
-                href="/supplier-portal/dashboard"
+                href="/supplier-portal"
                 className="text-xs font-medium transition-opacity hover:opacity-60"
                 style={{ color: '#71717A' }}
               >
-                ← Back to portal
+                Supplier Portal →
               </a>
             </div>
             <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Pricing Request</p>
@@ -664,6 +664,18 @@ export function SupplierRespondClient({
               </button>
             </div>
           )}
+          <div className="rounded-xl px-5 py-4 text-center" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: '#18181B' }}>Manage all your requests in one place</p>
+            <p className="text-xs mb-3" style={{ color: '#71717A' }}>Create a free supplier account to track pricing requests, submit prices, and message studios — without needing a link each time.</p>
+            <a
+              href="/supplier-portal/register"
+              className="inline-block text-xs font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-80"
+              style={{ background: '#2C2C2A', color: '#F5F2EC' }}
+            >
+              Create free account →
+            </a>
+            <p className="text-xs mt-2" style={{ color: '#A1A1AA' }}>Already have an account? <a href="/supplier-portal" style={{ color: '#9A7B4F', textDecoration: 'none' }}>Sign in</a></p>
+          </div>
           <p className="text-center text-xs pb-4" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
         </div>
       ) : (
