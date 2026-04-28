@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Clock, Eye, CheckCircle, AlertCircle, ArrowRight, ChevronLeft, Building2 } from 'lucide-react'
+import { Clock, Eye, CheckCircle, AlertCircle, ArrowRight, ChevronLeft, Building2, MessageSquare, Tag } from 'lucide-react'
 
 interface Row {
   id: string
@@ -15,6 +15,8 @@ interface Row {
     project_name: string | null
   } | null
   studio_name: string
+  message_count: number
+  pending_item_count: number
 }
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
@@ -42,7 +44,8 @@ function isClosedStatus(status: string) {
 function StudioCard({ studioName, rows, onClick }: { studioName: string; rows: Row[]; onClick: () => void }) {
   const open = rows.filter(r => !isClosedStatus(r.status))
   const closed = rows.filter(r => isClosedStatus(r.status))
-  const actionCount = rows.filter(r => needsAction(r.status)).length
+  const totalMessages = rows.reduce((sum, r) => sum + r.message_count, 0)
+  const totalPending = rows.reduce((sum, r) => sum + r.pending_item_count, 0)
 
   return (
     <button
@@ -60,18 +63,24 @@ function StudioCard({ studioName, rows, onClick }: { studioName: string; rows: R
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <p className="font-semibold text-sm truncate" style={{ color: '#18181B' }}>{studioName}</p>
-          {actionCount > 0 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-              style={{ background: '#F59E0B', color: '#18181B' }}>
-              {actionCount} pending
+        <p className="font-semibold text-sm truncate mb-1" style={{ color: '#18181B' }}>{studioName}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs" style={{ color: '#71717A' }}>
+            {open.length} open{closed.length > 0 ? ` · ${closed.length} completed` : ''}
+          </span>
+          {totalPending > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: '#FFF7ED', color: '#C2610C', border: '1px solid #FED7AA' }}>
+              <Tag size={9} /> {totalPending} to price
+            </span>
+          )}
+          {totalMessages > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+              <MessageSquare size={9} /> {totalMessages} message{totalMessages !== 1 ? 's' : ''}
             </span>
           )}
         </div>
-        <p className="text-xs" style={{ color: '#71717A' }}>
-          {open.length} open{closed.length > 0 ? ` · ${closed.length} completed` : ''}
-        </p>
       </div>
 
       <ArrowRight size={15} className="shrink-0 transition-transform group-hover:translate-x-0.5" style={{ color: '#A1A1AA' }} />
@@ -98,10 +107,24 @@ function RequestCard({ row }: { row: Row }) {
             {cfg.label}
           </span>
         </div>
-        <p className="text-xs" style={{ color: '#A1A1AA' }}>
-          {row.session?.project_name ? `${row.session.project_name} · ` : ''}
-          {row.sent_at ? `Received ${formatDate(row.sent_at)}` : 'Not yet sent'}
-        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-xs" style={{ color: '#A1A1AA' }}>
+            {row.session?.project_name ? `${row.session.project_name} · ` : ''}
+            {row.sent_at ? `Received ${formatDate(row.sent_at)}` : 'Not yet sent'}
+          </p>
+          {row.pending_item_count > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: '#FFF7ED', color: '#C2610C', border: '1px solid #FED7AA' }}>
+              <Tag size={9} /> {row.pending_item_count} item{row.pending_item_count !== 1 ? 's' : ''} to price
+            </span>
+          )}
+          {row.message_count > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
+              <MessageSquare size={9} /> {row.message_count} message{row.message_count !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       <Link

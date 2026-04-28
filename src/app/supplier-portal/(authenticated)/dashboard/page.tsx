@@ -39,6 +39,37 @@ export default async function SupplierDashboardPage() {
     }
   }
 
+  const ssIds = (data ?? []).map((ss: any) => ss.id)
+
+  const [{ data: designerMessages }, { data: pendingAssignments }] = await Promise.all([
+    ssIds.length > 0
+      ? supabaseAdmin
+          .from('sourcing_thread_messages')
+          .select('session_supplier_id')
+          .in('session_supplier_id', ssIds)
+          .eq('sender_type', 'designer')
+      : Promise.resolve({ data: [] as { session_supplier_id: string }[] }),
+    ssIds.length > 0
+      ? supabaseAdmin
+          .from('sourcing_item_assignments')
+          .select('session_supplier_id')
+          .in('session_supplier_id', ssIds)
+          .eq('status', 'pending')
+      : Promise.resolve({ data: [] as { session_supplier_id: string }[] }),
+  ])
+
+  const msgCountMap: Record<string, number> = {}
+  for (const m of designerMessages ?? []) {
+    const sid = (m as any).session_supplier_id
+    msgCountMap[sid] = (msgCountMap[sid] ?? 0) + 1
+  }
+
+  const pendingCountMap: Record<string, number> = {}
+  for (const a of pendingAssignments ?? []) {
+    const sid = (a as any).session_supplier_id
+    pendingCountMap[sid] = (pendingCountMap[sid] ?? 0) + 1
+  }
+
   const rows = (data ?? []).map((ss: any) => {
     const session = Array.isArray(ss.session) ? ss.session[0] : ss.session
     return {
@@ -53,6 +84,8 @@ export default async function SupplierDashboardPage() {
         project_name: (session.project as any)?.project_name ?? null,
       } : null,
       studio_name: session?.user_id ? (studioMap[session.user_id] ?? 'Studio') : 'Studio',
+      message_count: msgCountMap[ss.id] ?? 0,
+      pending_item_count: pendingCountMap[ss.id] ?? 0,
     }
   })
 
