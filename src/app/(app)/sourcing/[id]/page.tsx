@@ -19,31 +19,41 @@ export default async function SourcingDetailPage({
   const { data: settings } = await supabase.from('settings').select('sourcing_enabled').maybeSingle()
   if (!settings?.sourcing_enabled) redirect('/dashboard')
 
+  // Step 1: fetch session + suppliers (need supplier IDs to query messages)
   const [
     { data: session },
-    { data: items },
     { data: sessionSuppliers },
-    { data: suppliers },
-    { data: projects },
-    { data: supplierMessages },
   ] = await Promise.all([
     supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).maybeSingle(),
-    supabase.from('sourcing_session_items').select('*').eq('session_id', id).order('sort_order', { ascending: true }),
     supabase
       .from('sourcing_session_suppliers')
       .select('*, assignments:sourcing_item_assignments(*, response:sourcing_item_responses(*))')
       .eq('session_id', id)
       .order('created_at', { ascending: true }),
-    supabase.from('suppliers').select('id, supplier_name, email').order('supplier_name'),
-    supabase.from('projects').select('id, project_number, project_name').order('created_at', { ascending: false }).limit(50),
-    supabase
-      .from('sourcing_session_messages')
-      .select('session_supplier_id')
-      .eq('session_id', id)
-      .eq('sender_type', 'supplier'),
   ])
 
   if (!session) notFound()
+
+  const supplierIds = (sessionSuppliers ?? []).map((ss: any) => ss.id)
+
+  // Step 2: fetch remaining data in parallel, messages filtered by supplier IDs
+  const [
+    { data: items },
+    { data: suppliers },
+    { data: projects },
+    { data: supplierMessages },
+  ] = await Promise.all([
+    supabase.from('sourcing_session_items').select('*').eq('session_id', id).order('sort_order', { ascending: true }),
+    supabase.from('suppliers').select('id, supplier_name, email').order('supplier_name'),
+    supabase.from('projects').select('id, project_number, project_name').order('created_at', { ascending: false }).limit(50),
+    supplierIds.length > 0
+      ? supabase
+          .from('sourcing_session_messages')
+          .select('session_supplier_id')
+          .in('session_supplier_id', supplierIds)
+          .eq('sender_type', 'supplier')
+      : Promise.resolve({ data: [] as { session_supplier_id: string }[] }),
+  ])
 
   const sessionProject = Array.isArray(session.project) ? session.project[0] : session.project
 
