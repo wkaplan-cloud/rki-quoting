@@ -31,35 +31,18 @@ export default async function SourcingDetailPage({
 
   if (!session) notFound()
 
-  const supplierIds = (sessionSuppliers ?? []).map((ss: any) => ss.id)
-
-  // Step 2: fetch remaining data in parallel, messages filtered by supplier IDs
+  // Step 2: fetch remaining data in parallel
   const [
     { data: items },
     { data: suppliers },
     { data: projects },
-    { data: supplierMessages },
   ] = await Promise.all([
     supabase.from('sourcing_session_items').select('*').eq('session_id', id).order('sort_order', { ascending: true }),
     supabase.from('suppliers').select('id, supplier_name, email').order('supplier_name'),
     supabase.from('projects').select('id, project_number, project_name').order('created_at', { ascending: false }).limit(50),
-    supplierIds.length > 0
-      ? supabase
-          .from('sourcing_thread_messages')
-          .select('session_supplier_id')
-          .in('session_supplier_id', supplierIds)
-          .eq('sender_type', 'supplier')
-      : Promise.resolve({ data: [] as { session_supplier_id: string }[] }),
   ])
 
   const sessionProject = Array.isArray(session.project) ? session.project[0] : session.project
-
-  // Count supplier-sent messages per session_supplier_id
-  const msgCountMap: Record<string, number> = {}
-  for (const m of supplierMessages ?? []) {
-    const sid = (m as any).session_supplier_id
-    msgCountMap[sid] = (msgCountMap[sid] ?? 0) + 1
-  }
 
   const enrichedSuppliers = (sessionSuppliers ?? []).map((ss: any) => {
     const assignments = (ss.assignments ?? []).map((a: any) => ({
@@ -78,7 +61,7 @@ export default async function SourcingDetailPage({
       token: ss.token,
       status: ss.status,
       sent_at: ss.sent_at,
-      supplier_message_count: msgCountMap[ss.id] ?? 0,
+      supplier_message_count: ss.supplier_message_count ?? 0,
       assignments,
     }
   })
