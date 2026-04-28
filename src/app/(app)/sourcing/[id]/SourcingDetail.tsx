@@ -19,6 +19,7 @@ interface SessionItem {
   colour_finish: string | null
   status: string
   sort_order: number
+  ref_image_urls: string[] | null
 }
 
 interface Response {
@@ -348,12 +349,16 @@ interface PushModalProps {
   supplierName: string
   projects: Props['projects']
   sessionId: string
+  sessionProjectId: string | null
   onClose: () => void
   onPushed: (projectId: string) => void
 }
 
-function PushModal({ item, assignment, response, supplierName, projects, sessionId, onClose, onPushed }: PushModalProps) {
-  const [projectId, setProjectId] = useState(projects[0]?.id ?? '')
+function PushModal({ item, assignment, response, supplierName, projects, sessionId, sessionProjectId, onClose, onPushed }: PushModalProps) {
+  const defaultProjectId = sessionProjectId && projects.some(p => p.id === sessionProjectId)
+    ? sessionProjectId
+    : projects[0]?.id ?? ''
+  const [projectId, setProjectId] = useState(defaultProjectId)
   const [markup, setMarkup] = useState('0')
   const [itemName, setItemName] = useState(item.title)
   const [description, setDescription] = useState(item.specifications ?? '')
@@ -689,8 +694,11 @@ function SupplierCard({
   const isArchived = ss.status === 'declined'
   const allAccepted = ss.assignments.length > 0 && ss.assignments.every(a => a.status === 'accepted')
 
+  const effectiveStatus = ss.sent_at && ss.status === 'pending' ? 'sent' : ss.status
+
   const STATUS_COLORS: Record<string, string> = {
     pending:     'bg-[#F5F2EC] text-[#8A877F]',
+    sent:        'bg-blue-50 text-blue-600',
     viewed:      'bg-sky-50 text-sky-600',
     in_progress: 'bg-amber-50 text-amber-600',
     responded:   'bg-amber-50 text-amber-600',
@@ -770,7 +778,7 @@ function SupplierCard({
     }
   }
 
-  const statusColor = STATUS_COLORS[ss.status] ?? STATUS_COLORS.pending
+  const statusColor = STATUS_COLORS[effectiveStatus] ?? STATUS_COLORS.pending
 
   return (
     <div className="border border-[#EDE9E1] rounded-xl overflow-hidden bg-white">
@@ -783,7 +791,7 @@ function SupplierCard({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-sm text-[#2C2C2A] truncate">{ss.supplier_name}</p>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
-              {ss.status.replace('_', ' ')}
+              {effectiveStatus.replace('_', ' ')}
             </span>
           </div>
           <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
@@ -1101,6 +1109,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           supplierName={pushModal.supplierName}
           projects={projects}
           sessionId={session.id}
+          sessionProjectId={session.project_id}
           onClose={() => setPushModal(null)}
           onPushed={handlePushToProject}
         />
@@ -1152,18 +1161,28 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           ) : (
             <div className="space-y-2">
               {items.map(item => (
-                <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
-                    <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
-                    {item.status === 'accepted' && (
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
-                    )}
+                <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl px-4 py-3 flex items-center gap-3">
+                  {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.ref_image_urls[0]}
+                      alt={item.title}
+                      className="w-12 h-12 object-cover rounded-lg border border-[#EDE9E1] shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
+                      <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
+                      {item.status === 'accepted' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#8A877F] mt-0.5">
+                      {[item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish]
+                        .filter(Boolean).join(' · ')}
+                    </p>
                   </div>
-                  <p className="text-xs text-[#8A877F] mt-0.5">
-                    {[item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish]
-                      .filter(Boolean).join(' · ')}
-                  </p>
                 </div>
               ))}
             </div>
