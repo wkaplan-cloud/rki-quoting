@@ -357,7 +357,7 @@ interface PushModalProps {
 function PushModal({ item, assignment, response, supplierName, projects, sessionId, sessionProjectId, onClose, onPushed }: PushModalProps) {
   const defaultProjectId = sessionProjectId && projects.some(p => p.id === sessionProjectId)
     ? sessionProjectId
-    : projects[0]?.id ?? ''
+    : ''
   const [projectId, setProjectId] = useState(defaultProjectId)
   const [markup, setMarkup] = useState('0')
   const [itemName, setItemName] = useState(item.title)
@@ -505,6 +505,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
             <div>
               <label className="block text-xs font-medium text-[#8A877F] mb-1">Push to project</label>
               <select value={projectId} onChange={e => setProjectId(e.target.value)} className={INPUT}>
+                <option value="">Select a project…</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
               </select>
             </div>
