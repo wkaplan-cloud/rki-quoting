@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   FileText, Receipt, ShoppingCart, Users, Zap, Download,
   ChevronRight, Check, ArrowRight, Mail
@@ -14,8 +15,7 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-20 sm:h-32 flex items-center justify-between">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-16 sm:h-28 w-auto max-w-[160px] sm:max-w-[220px] object-contain" />
+          <Image src="/logo.png" alt="QuotingHub" width={220} height={220} className="h-16 sm:h-28 w-auto max-w-[160px] sm:max-w-[220px] object-contain" />
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/blog" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Blog</Link>
             <Link href="/pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
@@ -70,10 +70,12 @@ export default function LandingPage() {
 
             {/* Mockup side */}
             <div className="flex-1 w-full lg:w-auto">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src="/hero-mockup.png"
                 alt="QuotingHub dashboard"
+                width={1200}
+                height={800}
+                priority
                 className="w-full max-w-xl mx-auto lg:mx-0 block drop-shadow-[0_24px_60px_rgba(26,26,24,0.15)]"
               />
             </div>
@@ -188,7 +190,7 @@ export default function LandingPage() {
 
       {/* Features */}
       <section className="py-24 px-6 bg-white border-y border-[#D8D3C8] relative overflow-hidden">
-        <div className="absolute inset-0 bg-cover bg-center opacity-[0.04] pointer-events-none" style={{ backgroundImage: 'url(/feature-texture.png)' }} />
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E\")", backgroundSize: '300px 300px' }} />
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">How it works for you</p>
@@ -362,8 +364,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-[#D8D3C8] py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-20 w-auto object-contain" />
+          <Image src="/logo.png" alt="QuotingHub" width={80} height={80} className="h-20 w-auto object-contain" />
           <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
           <div className="flex items-center gap-5">
             <Link href="/faq" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">FAQ</Link>
