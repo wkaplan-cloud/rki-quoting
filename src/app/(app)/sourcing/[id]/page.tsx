@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -15,9 +15,6 @@ export default async function SourcingDetailPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
-  const { data: settings } = await supabase.from('settings').select('sourcing_enabled').maybeSingle()
-  if (!settings?.sourcing_enabled) redirect('/dashboard')
 
   // Step 1: fetch session + suppliers (need supplier IDs to query messages)
   const [

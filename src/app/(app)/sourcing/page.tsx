@@ -9,13 +9,6 @@ export default async function SourcingPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('sourcing_enabled')
-    .maybeSingle()
-
-  if (!settings?.sourcing_enabled) redirect('/dashboard')
-
   const { data: sessions } = await supabase
     .from('sourcing_sessions')
     .select('id, title, status, archived, created_at, project_id, project:projects(project_name)')
