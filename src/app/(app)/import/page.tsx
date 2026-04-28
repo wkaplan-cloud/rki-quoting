@@ -14,11 +14,11 @@ export default async function ImportPage() {
     : { data: null }
   if (org?.plan === 'solo') redirect('/dashboard')
 
-  const [{ data: projects }, { data: suppliers }, { data: clients }, { data: items }, { data: settings }] = await Promise.all([
+  const [{ data: projects }, { data: suppliers }, { data: clients }, { data: pieces }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('id, project_name, project_number').order('created_at', { ascending: false }),
     supabase.from('suppliers').select('id, supplier_name, markup_percentage').order('supplier_name'),
     supabase.from('clients').select('id, client_name').order('client_name'),
-    supabase.from('items').select('id, item_name').order('item_name'),
+    supabase.from('pieces').select('id, name').order('name'),
     supabase.from('settings').select('business_name').maybeSingle(),
   ])
 
@@ -35,7 +35,8 @@ export default async function ImportPage() {
           projects={projects ?? []}
           existingSuppliers={suppliers ?? []}
           existingClients={clients ?? []}
-          existingItems={items ?? []}
+          existingPieces={(pieces ?? []).map(p => ({ id: p.id, name: p.name }))}
+
           showLinesImport={businessName.toLowerCase().includes('kaplan')}
         />
       </div>

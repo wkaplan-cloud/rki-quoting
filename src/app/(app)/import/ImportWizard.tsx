@@ -60,10 +60,10 @@ interface Props {
   projects: { id: string; project_name: string; project_number: string }[]
   existingSuppliers: { id: string; supplier_name: string; markup_percentage: number }[]
   existingClients: { id: string; client_name: string }[]
-  existingItems: { id: string; item_name: string }[]
+  existingPieces: { id: string; name: string }[]
 }
 
-type Tab = 'suppliers' | 'clients' | 'items' | 'lines'
+type Tab = 'suppliers' | 'clients' | 'pieces' | 'lines'
 
 // ─── File Upload Button ───────────────────────────────────────────────────────
 function FileUpload({ onFile, label }: { onFile: (text: string, name: string) => void; label: string }) {
@@ -89,14 +89,14 @@ function FileUpload({ onFile, label }: { onFile: (text: string, name: string) =>
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export function ImportWizard({ projects, existingSuppliers, existingClients, existingItems, showLinesImport }: Props) {
+export function ImportWizard({ projects, existingSuppliers, existingClients, existingPieces, showLinesImport }: Props) {
   const [tab, setTab] = useState<Tab>('suppliers')
   const supabase = createClient()
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'suppliers', label: 'Suppliers' },
     { key: 'clients', label: 'Clients' },
-    { key: 'items', label: 'Items' },
+    { key: 'pieces', label: 'Our Pieces' },
     ...(showLinesImport ? [{ key: 'lines' as Tab, label: 'Quote Lines' }] : []),
   ]
 
@@ -115,7 +115,7 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
 
       {tab === 'suppliers' && <SuppliersImport supabase={supabase} existingSuppliers={existingSuppliers} />}
       {tab === 'clients'  && <ClientsImport  supabase={supabase} existingClients={existingClients} />}
-      {tab === 'items'    && <ItemsImport    supabase={supabase} existingItems={existingItems} />}
+      {tab === 'pieces'   && <PiecesImport   supabase={supabase} existingPieces={existingPieces} />}
       {tab === 'lines'    && <LinesImport    supabase={supabase} projects={projects} existingSuppliers={existingSuppliers} existingClients={existingClients} />}
     </div>
   )
@@ -253,20 +253,36 @@ function ClientsImport({ supabase, existingClients }: { supabase: any; existingC
   )
 }
 
-// ─── Items Import ─────────────────────────────────────────────────────────────
-function ItemsImport({ supabase, existingItems }: { supabase: any; existingItems: Props['existingItems'] }) {
+// ─── Our Pieces Import ────────────────────────────────────────────────────────
+function PiecesImport({ supabase, existingPieces }: { supabase: any; existingPieces: Props['existingPieces'] }) {
   const [rows, setRows] = useState<any[]>([])
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
 
   function handleFile(text: string) {
     const csv = parseCSV(text)
-    const hi = findHeaderRow(csv, 'items')
-    if (hi < 0) { toast.error('Could not find "Items" column header'); return }
-    const existingNames = new Set(existingItems.map(i => i.item_name.toLowerCase()))
-    const parsed = csv.slice(hi + 1).filter(r => r[0]).map(r => ({
-      item_name: r[0],
-      exists: existingNames.has(r[0].toLowerCase()),
+    const hi = findHeaderRow(csv, 'name')
+    if (hi < 0) { toast.error('Could not find "Name" column header'); return }
+    const headers = csv[hi]
+    const iName        = colIdx(headers, 'name')
+    const iDesc        = colIdx(headers, 'description')
+    const iWorkType    = colIdx(headers, 'work type', 'work_type')
+    const iDimensions  = colIdx(headers, 'dimensions')
+    const iColour      = colIdx(headers, 'colour/finish', 'colour finish', 'colour_finish')
+    const iYear        = colIdx(headers, 'year')
+    const iSupplier    = colIdx(headers, 'supplier', 'supplier name', 'supplier_name')
+    const iBasePrice   = colIdx(headers, 'base price', 'base_price', 'price')
+    const existingNames = new Set(existingPieces.map(p => p.name.toLowerCase()))
+    const parsed = csv.slice(hi + 1).filter(r => r[iName]).map(r => ({
+      name:          r[iName] ?? '',
+      description:   iDesc        >= 0 ? r[iDesc]       || null : null,
+      work_type:     iWorkType    >= 0 ? r[iWorkType]    || null : null,
+      dimensions:    iDimensions  >= 0 ? r[iDimensions]  || null : null,
+      colour_finish: iColour      >= 0 ? r[iColour]      || null : null,
+      year:          iYear        >= 0 ? (parseInt(r[iYear]) || null) : null,
+      supplier_name: iSupplier    >= 0 ? r[iSupplier]    || null : null,
+      base_price:    iBasePrice   >= 0 ? (parseFloat(r[iBasePrice]) || null) : null,
+      exists: existingNames.has((r[iName] ?? '').toLowerCase()),
     }))
     setRows(parsed)
     setDone(null)
@@ -278,19 +294,19 @@ function ItemsImport({ supabase, existingItems }: { supabase: any; existingItems
     const { data: { user } } = await supabase.auth.getUser()
     const toInsert = rows.filter(r => !r.exists).map(({ exists: _e, ...r }) => ({ ...r, org_id: orgData, user_id: user.id }))
     if (toInsert.length === 0) { toast.success('Nothing new to import'); setImporting(false); return }
-    const { error } = await supabase.from('items').upsert(toInsert, { onConflict: 'org_id,item_name', ignoreDuplicates: true })
+    const { error } = await supabase.from('pieces').insert(toInsert)
     if (error) { toast.error(error.message); setImporting(false); return }
     setDone(toInsert.length)
     setRows([])
-    toast.success(`Imported ${toInsert.length} items`)
+    toast.success(`Imported ${toInsert.length} pieces`)
     setImporting(false)
   }
 
   return (
     <ImportShell
-      title="Import Items"
-      instructions="Export the Items_list tab as CSV then upload below."
-      csvColumns={['Items']}
+      title="Import Our Pieces"
+      instructions="Prepare a CSV with the columns below and upload it."
+      csvColumns={['Name', 'Description', 'Work Type', 'Dimensions', 'Colour/Finish', 'Year', 'Supplier', 'Base Price']}
       onFile={t => handleFile(t)}
       rows={rows}
       done={done}
@@ -298,8 +314,8 @@ function ItemsImport({ supabase, existingItems }: { supabase: any; existingItems
       onImport={doImport}
       newCount={rows.filter(r => !r.exists).length}
       skipCount={rows.filter(r => r.exists).length}
-      headers={['Item Name', 'Status']}
-      renderRow={r => [r.item_name, r.exists ? 'Already exists' : 'New']}
+      headers={['Name', 'Work Type', 'Supplier', 'Base Price', 'Status']}
+      renderRow={r => [r.name, r.work_type ?? '—', r.supplier_name ?? '—', r.base_price != null ? `R ${r.base_price}` : '—', r.exists ? 'Already exists' : 'New']}
     />
   )
 }
