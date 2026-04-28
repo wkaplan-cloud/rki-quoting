@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import { Menu, AlertTriangle } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { SessionGuard } from '@/components/auth/SessionGuard'
@@ -72,8 +73,7 @@ export function AppLayout({
         >
           <Menu size={20} />
         </button>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-10 object-contain" style={{ filter: 'invert(1)' }} />
+        <Image src="/logo.png" alt="QuotingHub" width={40} height={40} className="h-10 w-auto object-contain" style={{ filter: 'invert(1)' }} />
         <div className="flex-1" />
         {businessName && (
           <span className="text-[10px] font-medium text-[#C4A46B] uppercase tracking-widest truncate">

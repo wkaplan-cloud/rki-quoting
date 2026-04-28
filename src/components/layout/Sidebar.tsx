@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
@@ -84,8 +85,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
           </span>
           {/* Full logo: always on mobile, fades in on desktop hover */}
           <div className="px-4 py-5 flex flex-col items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="w-24 h-auto object-contain" style={{ filter: 'invert(1)' }} />
+            <Image src="/logo.png" alt="QuotingHub" width={96} height={96} className="w-24 h-auto object-contain" style={{ filter: 'invert(1)' }} />
             {businessName && (
               <span className="text-[9px] font-medium text-[#C4A46B] uppercase tracking-widest whitespace-nowrap mt-2 text-center">
                 {businessName}
