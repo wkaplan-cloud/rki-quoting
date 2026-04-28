@@ -61,41 +61,17 @@ export default async function Layout({ children }: { children: React.ReactNode }
       ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000))
       : null
 
-  const [{ data: membership }, { data: settings }, { data: member }] = await Promise.all([
+  const [{ data: membership }, { data: settings }, { data: member }, { data: sourcingBadgeData }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
     supabase.from('settings').select('business_name').maybeSingle(),
     supabaseAdmin.from('org_members').select('full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
+    orgId
+      ? supabaseAdmin.rpc('get_sourcing_badge_count', { p_org_id: orgId })
+      : Promise.resolve({ data: 0, error: null }),
   ])
 
   // Sourcing badge: supplier responses waiting for designer to review
-  let sourcingBadge = 0
-  if (orgId) {
-    const { data: activeSessions } = await supabaseAdmin
-      .from('sourcing_sessions')
-      .select('id')
-      .eq('org_id', orgId)
-      .neq('status', 'archived')
-
-    const sessionIds = (activeSessions ?? []).map((s: any) => s.id)
-
-    if (sessionIds.length > 0) {
-      const { data: ssRows } = await supabaseAdmin
-        .from('sourcing_session_suppliers')
-        .select('id')
-        .in('session_id', sessionIds)
-
-      const ssIds = (ssRows ?? []).map((s: any) => s.id)
-
-      if (ssIds.length > 0) {
-        const { count: respondedCount } = await supabaseAdmin
-          .from('sourcing_item_assignments')
-          .select('id', { count: 'exact', head: true })
-          .in('session_supplier_id', ssIds)
-          .eq('status', 'responded')
-        sourcingBadge = respondedCount ?? 0
-      }
-    }
-  }
+  const sourcingBadge = (sourcingBadgeData as number) ?? 0
 
   return (
     <AppLayout
