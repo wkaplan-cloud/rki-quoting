@@ -41,14 +41,14 @@ export default async function SupplierDashboardPage() {
 
   const ssIds = (data ?? []).map((ss: any) => ss.id)
 
-  const [{ data: designerMessages }, { data: pendingAssignments }] = await Promise.all([
+  const [{ data: allMessages }, { data: pendingAssignments }] = await Promise.all([
     ssIds.length > 0
       ? supabaseAdmin
           .from('sourcing_thread_messages')
-          .select('session_supplier_id')
+          .select('session_supplier_id, sender_type, created_at')
           .in('session_supplier_id', ssIds)
-          .eq('sender_type', 'designer')
-      : Promise.resolve({ data: [] as { session_supplier_id: string }[] }),
+          .order('created_at', { ascending: true })
+      : Promise.resolve({ data: [] as { session_supplier_id: string; sender_type: string; created_at: string }[] }),
     ssIds.length > 0
       ? supabaseAdmin
           .from('sourcing_item_assignments')
@@ -58,10 +58,23 @@ export default async function SupplierDashboardPage() {
       : Promise.resolve({ data: [] as { session_supplier_id: string }[] }),
   ])
 
-  const msgCountMap: Record<string, number> = {}
-  for (const m of designerMessages ?? []) {
+  // Group messages by thread, then count designer messages after the supplier's last reply.
+  // This gives "new" messages — ones the supplier hasn't had a chance to respond to yet.
+  const threadMessages: Record<string, { sender_type: string; created_at: string }[]> = {}
+  for (const m of allMessages ?? []) {
     const sid = (m as any).session_supplier_id
-    msgCountMap[sid] = (msgCountMap[sid] ?? 0) + 1
+    if (!threadMessages[sid]) threadMessages[sid] = []
+    threadMessages[sid].push({ sender_type: m.sender_type, created_at: m.created_at })
+  }
+
+  const msgCountMap: Record<string, number> = {}
+  for (const [sid, messages] of Object.entries(threadMessages)) {
+    const supplierMsgs = messages.filter(m => m.sender_type === 'supplier')
+    const lastSupplierAt = supplierMsgs.length > 0 ? supplierMsgs[supplierMsgs.length - 1].created_at : null
+    const newCount = messages.filter(m =>
+      m.sender_type === 'designer' && (!lastSupplierAt || m.created_at > lastSupplierAt)
+    ).length
+    if (newCount > 0) msgCountMap[sid] = newCount
   }
 
   const pendingCountMap: Record<string, number> = {}
