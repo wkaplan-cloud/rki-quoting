@@ -58,23 +58,15 @@ export default async function SupplierDashboardPage() {
       : Promise.resolve({ data: [] as { session_supplier_id: string }[] }),
   ])
 
-  // Group messages by thread, then count designer messages after the supplier's last reply.
-  // This gives "new" messages — ones the supplier hasn't had a chance to respond to yet.
-  const threadMessages: Record<string, { sender_type: string; created_at: string }[]> = {}
+  // Build a map of designer message timestamps per thread.
+  // The client component uses localStorage to track when the supplier last opened each thread,
+  // and computes unread count from timestamps newer than that stored time.
+  const designerTimestampsMap: Record<string, string[]> = {}
   for (const m of allMessages ?? []) {
     const sid = (m as any).session_supplier_id
-    if (!threadMessages[sid]) threadMessages[sid] = []
-    threadMessages[sid].push({ sender_type: m.sender_type, created_at: m.created_at })
-  }
-
-  const msgCountMap: Record<string, number> = {}
-  for (const [sid, messages] of Object.entries(threadMessages)) {
-    const supplierMsgs = messages.filter(m => m.sender_type === 'supplier')
-    const lastSupplierAt = supplierMsgs.length > 0 ? supplierMsgs[supplierMsgs.length - 1].created_at : null
-    const newCount = messages.filter(m =>
-      m.sender_type === 'designer' && (!lastSupplierAt || m.created_at > lastSupplierAt)
-    ).length
-    if (newCount > 0) msgCountMap[sid] = newCount
+    if (m.sender_type !== 'designer') continue
+    if (!designerTimestampsMap[sid]) designerTimestampsMap[sid] = []
+    designerTimestampsMap[sid].push(m.created_at)
   }
 
   const pendingCountMap: Record<string, number> = {}
@@ -97,7 +89,7 @@ export default async function SupplierDashboardPage() {
         project_name: (session.project as any)?.project_name ?? null,
       } : null,
       studio_name: session?.user_id ? (studioMap[session.user_id] ?? 'Studio') : 'Studio',
-      message_count: msgCountMap[ss.id] ?? 0,
+      designer_message_timestamps: designerTimestampsMap[ss.id] ?? [],
       pending_item_count: pendingCountMap[ss.id] ?? 0,
     }
   })

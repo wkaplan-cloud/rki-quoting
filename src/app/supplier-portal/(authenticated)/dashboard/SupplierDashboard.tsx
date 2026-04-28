@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Clock, Eye, CheckCircle, AlertCircle, ArrowRight, ChevronLeft, Building2, MessageSquare, Tag } from 'lucide-react'
 
 interface Row {
@@ -15,8 +15,31 @@ interface Row {
     project_name: string | null
   } | null
   studio_name: string
-  message_count: number
+  designer_message_timestamps: string[]
   pending_item_count: number
+}
+
+const LS_KEY = 'qh_supplier_read'
+
+function loadReadMap(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
+function markRead(rowId: string) {
+  try {
+    const map = loadReadMap()
+    map[rowId] = Date.now()
+    localStorage.setItem(LS_KEY, JSON.stringify(map))
+  } catch {}
+}
+
+function unreadCount(row: Row, readMap: Record<string, number>): number {
+  const lastRead = readMap[row.id] ?? 0
+  return row.designer_message_timestamps.filter(ts => new Date(ts).getTime() > lastRead).length
 }
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
@@ -32,19 +55,20 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function needsAction(status: string) {
-  return ['pending', 'viewed', 'in_progress'].includes(status)
-}
-
 function isClosedStatus(status: string) {
   return ['completed', 'declined'].includes(status)
 }
 
 // ---- Studio Cards (Level 1) ----
-function StudioCard({ studioName, rows, onClick }: { studioName: string; rows: Row[]; onClick: () => void }) {
+function StudioCard({ studioName, rows, readMap, onClick }: {
+  studioName: string
+  rows: Row[]
+  readMap: Record<string, number>
+  onClick: () => void
+}) {
   const open = rows.filter(r => !isClosedStatus(r.status))
   const closed = rows.filter(r => isClosedStatus(r.status))
-  const totalMessages = rows.reduce((sum, r) => sum + r.message_count, 0)
+  const totalMessages = rows.reduce((sum, r) => sum + unreadCount(r, readMap), 0)
   const totalPending = rows.reduce((sum, r) => sum + r.pending_item_count, 0)
 
   return (
@@ -55,13 +79,11 @@ function StudioCard({ studioName, rows, onClick }: { studioName: string; rows: R
       onMouseEnter={e => (e.currentTarget.style.borderColor = '#A1A1AA')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
     >
-      {/* Avatar */}
       <div className="w-11 h-11 rounded-full flex items-center justify-center text-base font-bold shrink-0"
         style={{ background: '#34495E', color: '#FFFFFF' }}>
         {studioName.charAt(0).toUpperCase()}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm truncate mb-1" style={{ color: '#18181B' }}>{studioName}</p>
         <div className="flex items-center gap-2 flex-wrap">
@@ -77,7 +99,7 @@ function StudioCard({ studioName, rows, onClick }: { studioName: string; rows: R
           {totalMessages > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
               style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
-              <MessageSquare size={9} /> {totalMessages} message{totalMessages !== 1 ? 's' : ''}
+              <MessageSquare size={9} /> {totalMessages} new message{totalMessages !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -89,9 +111,10 @@ function StudioCard({ studioName, rows, onClick }: { studioName: string; rows: R
 }
 
 // ---- Request Cards (Level 2) ----
-function RequestCard({ row }: { row: Row }) {
+function RequestCard({ row, readMap, onOpen }: { row: Row; readMap: Record<string, number>; onOpen: (id: string) => void }) {
   const cfg = STATUS_CONFIG[row.status] ?? STATUS_CONFIG.pending
   const closed = isClosedStatus(row.status)
+  const msgCount = unreadCount(row, readMap)
 
   return (
     <div className={`bg-white rounded-xl px-5 py-4 flex items-center gap-4 ${closed ? 'opacity-60' : ''}`}
@@ -118,10 +141,10 @@ function RequestCard({ row }: { row: Row }) {
               <Tag size={9} /> {row.pending_item_count} item{row.pending_item_count !== 1 ? 's' : ''} to price
             </span>
           )}
-          {row.message_count > 0 && (
+          {msgCount > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
               style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}>
-              <MessageSquare size={9} /> {row.message_count} message{row.message_count !== 1 ? 's' : ''}
+              <MessageSquare size={9} /> {msgCount} new message{msgCount !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -129,6 +152,7 @@ function RequestCard({ row }: { row: Row }) {
 
       <Link
         href={`/sourcing/respond/${row.token}`}
+        onClick={() => onOpen(row.id)}
         className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold shrink-0 transition-opacity hover:opacity-70"
         style={{ background: '#34495E', color: '#FFFFFF' }}
       >
@@ -139,7 +163,13 @@ function RequestCard({ row }: { row: Row }) {
 }
 
 // ---- Studio Detail (Level 2 view) ----
-function StudioDetail({ studioName, rows, onBack }: { studioName: string; rows: Row[]; onBack: () => void }) {
+function StudioDetail({ studioName, rows, readMap, onBack, onOpen }: {
+  studioName: string
+  rows: Row[]
+  readMap: Record<string, number>
+  onBack: () => void
+  onOpen: (id: string) => void
+}) {
   const open = rows.filter(r => !isClosedStatus(r.status))
   const closed = rows.filter(r => isClosedStatus(r.status))
 
@@ -167,14 +197,14 @@ function StudioDetail({ studioName, rows, onBack }: { studioName: string; rows: 
 
       {open.length > 0 && (
         <div className="space-y-2">
-          {open.map(r => <RequestCard key={r.id} row={r} />)}
+          {open.map(r => <RequestCard key={r.id} row={r} readMap={readMap} onOpen={onOpen} />)}
         </div>
       )}
 
       {closed.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>Completed</p>
-          {closed.map(r => <RequestCard key={r.id} row={r} />)}
+          {closed.map(r => <RequestCard key={r.id} row={r} readMap={readMap} onOpen={onOpen} />)}
         </div>
       )}
     </div>
@@ -184,8 +214,17 @@ function StudioDetail({ studioName, rows, onBack }: { studioName: string; rows: 
 // ---- Main ----
 export function SupplierDashboard({ rows }: { rows: Row[] }) {
   const [selectedStudio, setSelectedStudio] = useState<string | null>(null)
+  const [readMap, setReadMap] = useState<Record<string, number>>({})
 
-  // Group by studio
+  useEffect(() => {
+    setReadMap(loadReadMap())
+  }, [])
+
+  function handleOpen(rowId: string) {
+    markRead(rowId)
+    setReadMap(prev => ({ ...prev, [rowId]: Date.now() }))
+  }
+
   const studioGroups = rows.reduce<Record<string, Row[]>>((acc, row) => {
     const key = row.studio_name
     if (!acc[key]) acc[key] = []
@@ -195,7 +234,6 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
 
   const studioNames = Object.keys(studioGroups)
 
-  // Empty state
   if (rows.length === 0) {
     return (
       <div className="space-y-6">
@@ -213,7 +251,6 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
     )
   }
 
-  // Single studio — skip level 1, go straight to their requests
   if (studioNames.length === 1) {
     const name = studioNames[0]
     const open = studioGroups[name].filter(r => !isClosedStatus(r.status))
@@ -229,26 +266,27 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
         </div>
         {open.length > 0 && (
           <div className="space-y-2">
-            {open.map(r => <RequestCard key={r.id} row={r} />)}
+            {open.map(r => <RequestCard key={r.id} row={r} readMap={readMap} onOpen={handleOpen} />)}
           </div>
         )}
         {closed.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>Completed</p>
-            {closed.map(r => <RequestCard key={r.id} row={r} />)}
+            {closed.map(r => <RequestCard key={r.id} row={r} readMap={readMap} onOpen={handleOpen} />)}
           </div>
         )}
       </div>
     )
   }
 
-  // Multiple studios — show studio cards, drill in on click
   if (selectedStudio) {
     return (
       <StudioDetail
         studioName={selectedStudio}
         rows={studioGroups[selectedStudio]}
+        readMap={readMap}
         onBack={() => setSelectedStudio(null)}
+        onOpen={handleOpen}
       />
     )
   }
@@ -271,6 +309,7 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
             key={name}
             studioName={name}
             rows={studioGroups[name]}
+            readMap={readMap}
             onClick={() => setSelectedStudio(name)}
           />
         ))}
