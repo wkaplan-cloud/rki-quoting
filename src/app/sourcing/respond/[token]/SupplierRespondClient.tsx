@@ -307,7 +307,7 @@ function PriceForm({
                   type="submit"
                   disabled={saving}
                   className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                  style={{ background: '#1B4F8A', color: '#FFFFFF' }}
+                  style={{ background: '#34495E', color: '#FFFFFF' }}
                 >
                   {saving ? 'Saving…' : assignment.response ? 'Update Price' : 'Submit Price'}
                 </button>
@@ -503,7 +503,7 @@ function MessageThread({
                 type="submit"
                 disabled={sending || !body.trim()}
                 className="px-3 py-2 rounded-lg transition-opacity disabled:opacity-40"
-                style={{ background: '#1B4F8A', color: '#FFFFFF' }}
+                style={{ background: '#34495E', color: '#FFFFFF' }}
               >
                 <Send size={14} />
               </button>
@@ -643,7 +643,7 @@ export function SupplierRespondClient({
               </p>
               <div className="flex-1 mx-6 rounded-full h-1.5 overflow-hidden" style={{ background: '#E4E4E7' }}>
                 <div className="h-1.5 rounded-full transition-all duration-500"
-                  style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }} />
+                  style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#34495E' }} />
               </div>
             </div>
           )}
@@ -685,7 +685,7 @@ export function SupplierRespondClient({
                 </p>
                 <div className="flex-1 mx-6 rounded-full h-1.5 overflow-hidden" style={{ background: '#E4E4E7' }}>
                   <div className="h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#1B4F8A' }} />
+                    style={{ width: `${total > 0 ? (responded / total) * 100 : 0}%`, background: '#34495E' }} />
                 </div>
               </div>
             )}

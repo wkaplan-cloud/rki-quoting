@@ -11,7 +11,7 @@ export default function SupplierPrivacyPage() {
           <div className="flex items-center gap-3">
             <Link href="/supplier-portal/login" className="text-sm text-white/60 hover:text-white transition-colors">Sign in</Link>
             <Link href="/supplier-portal/register"
-              className="px-4 py-2 bg-[#1B4F8A] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
+              className="px-4 py-2 bg-[#34495E] text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
               Get started free
             </Link>
           </div>
@@ -31,7 +31,7 @@ export default function SupplierPrivacyPage() {
               party for personal information processed through this portal.
             </p>
             <p className="text-sm leading-relaxed mt-2">
-              Contact: <a href="mailto:info@quotinghub.co.za" className="text-[#1B4F8A] hover:underline">info@quotinghub.co.za</a>
+              Contact: <a href="mailto:info@quotinghub.co.za" className="text-[#34495E] hover:underline">info@quotinghub.co.za</a>
             </p>
           </section>
 
@@ -133,7 +133,7 @@ export default function SupplierPrivacyPage() {
               ))}
             </ul>
             <p className="text-sm leading-relaxed mt-3">
-              To exercise these rights, contact us at <a href="mailto:info@quotinghub.co.za" className="text-[#1B4F8A] hover:underline">info@quotinghub.co.za</a>.
+              To exercise these rights, contact us at <a href="mailto:info@quotinghub.co.za" className="text-[#34495E] hover:underline">info@quotinghub.co.za</a>.
             </p>
           </section>
 

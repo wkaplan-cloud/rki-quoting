@@ -169,9 +169,9 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
                   onClick={() => toggleCategory(cat)}
                   className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                   style={{
-                    background: active ? '#1B4F8A' : '#F4F4F5',
+                    background: active ? '#34495E' : '#F4F4F5',
                     color: active ? '#FFFFFF' : '#71717A',
-                    border: active ? '1px solid #1B4F8A' : '1px solid #E4E4E7',
+                    border: active ? '1px solid #34495E' : '1px solid #E4E4E7',
                   }}
                 >
                   {active && <span className="mr-1">✓</span>}
@@ -191,7 +191,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
             type="submit"
             disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-            style={{ background: '#1B4F8A', color: '#FFFFFF' }}
+            style={{ background: '#34495E', color: '#FFFFFF' }}
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : null}
             {saving ? 'Saving…' : 'Save Profile'}

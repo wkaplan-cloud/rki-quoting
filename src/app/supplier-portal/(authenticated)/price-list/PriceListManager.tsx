@@ -181,7 +181,7 @@ export function PriceListManager({ initialItems }: Props) {
           <button
             onClick={startNew}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-colors"
-            style={{ background: '#1B4F8A', color: '#FFFFFF' }}
+            style={{ background: '#34495E', color: '#FFFFFF' }}
           >
             <Plus size={13} />
             Add Item
@@ -209,7 +209,7 @@ export function PriceListManager({ initialItems }: Props) {
             <div className="p-12 text-center">
               <p className="text-sm font-semibold mb-1" style={{ color: '#52525B' }}>No items yet</p>
               <p className="text-sm mb-4" style={{ color: '#71717A' }}>Add items manually or import a CSV/Excel file.</p>
-              <button onClick={startNew} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: '#1B4F8A' }}>
+              <button onClick={startNew} className="text-sm font-medium hover:opacity-80 transition-opacity" style={{ color: '#34495E' }}>
                 Add your first item →
               </button>
             </div>
@@ -298,7 +298,7 @@ export function PriceListManager({ initialItems }: Props) {
                   <label
                     className={`flex items-center justify-center gap-2 h-20 rounded-lg cursor-pointer transition-colors text-sm ${uploadingImage ? 'opacity-50 pointer-events-none' : ''}`}
                     style={{ border: '1px dashed #D4D4D8', color: '#71717A' }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#1B4F8A')}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#34495E')}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = '#D4D4D8')}
                   >
                     <Upload size={13} />
@@ -409,7 +409,7 @@ export function PriceListManager({ initialItems }: Props) {
                   onClick={handleSave}
                   disabled={saving}
                   className="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                  style={{ background: '#1B4F8A', color: '#FFFFFF' }}
+                  style={{ background: '#34495E', color: '#FFFFFF' }}
                 >
                   {saving ? 'Saving…' : editingId === 'new' ? 'Add Item' : 'Save Changes'}
                 </button>

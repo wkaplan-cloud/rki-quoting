@@ -89,7 +89,7 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
                 className="flex items-center h-9 rounded mx-1 transition-colors duration-150"
                 style={{
                   background: active ? '#F4F4F5' : 'transparent',
-                  borderLeft: active ? '3px solid #1B4F8A' : '3px solid transparent',
+                  borderLeft: active ? '3px solid #34495E' : '3px solid transparent',
                 }}
                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#F9F9F9' }}
                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
