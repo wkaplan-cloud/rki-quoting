@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SettingsForm } from './SettingsForm'
 import { StudioSettingsForm } from '../admin/StudioSettingsForm'
+import { StorageWidget } from '../admin/StorageWidget'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -28,6 +29,9 @@ export default async function SettingsPage() {
     <div>
       <PageHeader title="Settings" subtitle="Your profile and studio configuration" />
       <div className="p-8 space-y-12">
+        <div className="flex justify-end -mb-8">
+          <StorageWidget />
+        </div>
         <section>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-6">Your Profile</h2>
           <div className="max-w-lg">
