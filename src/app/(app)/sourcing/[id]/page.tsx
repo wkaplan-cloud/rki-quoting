@@ -25,6 +25,7 @@ export default async function SourcingDetailPage({
     { data: sessionSuppliers },
     { data: suppliers },
     { data: projects },
+    { data: supplierMessages },
   ] = await Promise.all([
     supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).maybeSingle(),
     supabase.from('sourcing_session_items').select('*').eq('session_id', id).order('sort_order', { ascending: true }),
@@ -35,11 +36,23 @@ export default async function SourcingDetailPage({
       .order('created_at', { ascending: true }),
     supabase.from('suppliers').select('id, supplier_name, email').order('supplier_name'),
     supabase.from('projects').select('id, project_number, project_name').order('created_at', { ascending: false }).limit(50),
+    supabase
+      .from('sourcing_session_messages')
+      .select('session_supplier_id')
+      .eq('session_id', id)
+      .eq('sender_type', 'supplier'),
   ])
 
   if (!session) notFound()
 
   const sessionProject = Array.isArray(session.project) ? session.project[0] : session.project
+
+  // Count supplier-sent messages per session_supplier_id
+  const msgCountMap: Record<string, number> = {}
+  for (const m of supplierMessages ?? []) {
+    const sid = (m as any).session_supplier_id
+    msgCountMap[sid] = (msgCountMap[sid] ?? 0) + 1
+  }
 
   const enrichedSuppliers = (sessionSuppliers ?? []).map((ss: any) => {
     const assignments = (ss.assignments ?? []).map((a: any) => ({
@@ -58,6 +71,7 @@ export default async function SourcingDetailPage({
       token: ss.token,
       status: ss.status,
       sent_at: ss.sent_at,
+      supplier_message_count: msgCountMap[ss.id] ?? 0,
       assignments,
     }
   })

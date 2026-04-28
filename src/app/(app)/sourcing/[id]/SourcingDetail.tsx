@@ -46,6 +46,7 @@ interface SessionSupplier {
   token: string
   status: string
   sent_at: string | null
+  supplier_message_count: number
   assignments: Assignment[]
 }
 
@@ -687,6 +688,8 @@ function SupplierCard({
   const [sendingMsg, setSendingMsg] = useState(false)
   const [togglingItem, setTogglingItem] = useState<string | null>(null)
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [seenMessages, setSeenMessages] = useState(false)
+  const hasUnread = ss.supplier_message_count > 0 && !seenMessages
 
   const assignedItemIds = new Set(ss.assignments.map(a => a.item_id))
   const assignedItems = items.filter(item => assignedItemIds.has(item.id))
@@ -714,6 +717,7 @@ function SupplierCard({
       const json = await res.json()
       if (json.data) setMessages(json.data)
       setShowMessages(true)
+      setSeenMessages(true)
     } finally {
       setLoadingMsgs(false)
     }
@@ -803,9 +807,14 @@ function SupplierCard({
               type="button"
               onClick={e => { e.stopPropagation(); showMessages ? setShowMessages(false) : loadMessages() }}
               title="Messages"
-              className="p-1.5 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
+              className="relative p-1.5 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
             >
               <MessageSquare size={13} />
+              {hasUnread && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {ss.supplier_message_count > 9 ? '9+' : ss.supplier_message_count}
+                </span>
+              )}
             </button>
           )}
           <button
