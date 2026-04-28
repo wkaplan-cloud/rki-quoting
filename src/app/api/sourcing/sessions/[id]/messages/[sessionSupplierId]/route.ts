@@ -19,6 +19,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .order('created_at', { ascending: true })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Reset unread count now that the designer has read the thread
+    await supabase
+      .from('sourcing_session_suppliers')
+      .update({ supplier_message_count: 0 })
+      .eq('id', sessionSupplierId)
+
     return NextResponse.json({ data })
   } catch (e) {
     return apiError(e)
