@@ -230,7 +230,7 @@ export default function OnboardingPage() {
                   {/* Banking */}
                   <div className="border-t border-[#EDE9E1] pt-5">
                     <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">
-                      Banking details <span className="normal-case text-[#C4A46B] ml-1">optional — shown on invoices</span>
+                      Banking details <span className="normal-case text-[#C4A46B] ml-1">optional — shown on quotes and invoices</span>
                     </p>
                     <div className="space-y-3">
                       <Input

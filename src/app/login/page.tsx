@@ -42,6 +42,9 @@ export default function LoginPage() {
         setHashRedirecting(false)
         return
       }
+      // Mark this as a session-only login so SessionGuard doesn't sign the user out
+      // (email-confirmed users never go through the login form's remember-me logic)
+      sessionStorage.setItem('rki_session_only', '1')
       if (type === 'signup') {
         router.replace('/welcome')
       } else if (type === 'invite') {
