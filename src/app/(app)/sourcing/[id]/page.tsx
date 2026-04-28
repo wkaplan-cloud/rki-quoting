@@ -48,7 +48,7 @@ export default async function SourcingDetailPage({
     supabase.from('projects').select('id, project_number, project_name').order('created_at', { ascending: false }).limit(50),
     supplierIds.length > 0
       ? supabase
-          .from('sourcing_session_messages')
+          .from('sourcing_thread_messages')
           .select('session_supplier_id')
           .in('session_supplier_id', supplierIds)
           .eq('sender_type', 'supplier')
