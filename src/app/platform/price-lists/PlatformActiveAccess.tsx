@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, ShieldOff } from 'lucide-react'
+import { Building2 } from 'lucide-react'
 
 interface AccessRow {
   id: string
@@ -17,20 +17,43 @@ interface PriceList {
   name: string
 }
 
+function Toggle({ enabled, loading, onToggle }: { enabled: boolean; loading: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={loading}
+      title={enabled ? 'Revoke access' : 'Restore access'}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-40 cursor-pointer ${
+        enabled ? 'bg-emerald-600' : 'bg-white/20'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
+          enabled ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  )
+}
+
 export function PlatformActiveAccess({ access, priceLists }: { access: AccessRow[]; priceLists: PriceList[] }) {
   const router = useRouter()
-  const [revoking, setRevoking] = useState<string | null>(null)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [statuses, setStatuses] = useState<Record<string, string>>(
+    Object.fromEntries(access.map(r => [r.id, r.status]))
+  )
+  const [loading, setLoading] = useState<string | null>(null)
 
-  async function revoke(row: AccessRow) {
-    setRevoking(row.id)
+  async function toggle(row: AccessRow) {
+    const current = statuses[row.id] ?? row.status
+    const next = current === 'active' ? 'rejected' : 'active'
+    setLoading(row.id)
+    setStatuses(prev => ({ ...prev, [row.id]: next }))
     await fetch(`/api/price-lists/${row.price_list_id}/approve-access`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orgId: row.org_id, action: 'rejected' }),
+      body: JSON.stringify({ orgId: row.org_id, action: next }),
     })
-    setRevoking(null)
-    setConfirmId(null)
+    setLoading(null)
     router.refresh()
   }
 
@@ -38,48 +61,30 @@ export function PlatformActiveAccess({ access, priceLists }: { access: AccessRow
     <div className="space-y-2">
       {access.map(row => {
         const pl = priceLists.find(p => p.id === row.price_list_id)
+        const isActive = (statuses[row.id] ?? row.status) === 'active'
         return (
           <div key={row.id} className="flex items-center justify-between bg-[#1A1A18] border border-white/10 rounded-lg px-5 py-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-                <Building2 size={14} className="text-emerald-400" />
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-emerald-900/30' : 'bg-white/5'}`}>
+                <Building2 size={14} className={isActive ? 'text-emerald-400' : 'text-white/30'} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{row.orgName}</p>
+                <p className={`text-sm font-medium truncate ${isActive ? 'text-white' : 'text-white/40'}`}>{row.orgName}</p>
                 <p className="text-xs text-white/40 mt-0.5">
-                  Access to <span className="text-white/60">{pl?.name ?? row.price_list_id}</span>
-                  {row.approved_at && (
+                  {isActive ? 'Access to' : 'Revoked —'} <span className="text-white/60">{pl?.name ?? row.price_list_id}</span>
+                  {row.approved_at && isActive && (
                     <> · Approved {new Date(row.approved_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</>
                   )}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {confirmId === row.id ? (
-                <>
-                  <span className="text-xs text-white/40">Revoke access?</span>
-                  <button
-                    onClick={() => setConfirmId(null)}
-                    className="px-3 py-1.5 text-xs text-white/50 border border-white/10 rounded hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => revoke(row)}
-                    disabled={revoking === row.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-900/50 rounded hover:bg-red-950/40 transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    <ShieldOff size={12} /> {revoking === row.id ? 'Revoking…' : 'Revoke'}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setConfirmId(row.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white/30 border border-white/10 rounded hover:text-red-400 hover:border-red-900/50 transition-colors cursor-pointer"
-                >
-                  <ShieldOff size={12} /> Revoke
-                </button>
-              )}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <span className="text-xs text-white/30">{isActive ? 'Allowed' : 'Revoked'}</span>
+              <Toggle
+                enabled={isActive}
+                loading={loading === row.id}
+                onToggle={() => toggle(row)}
+              />
             </div>
           </div>
         )

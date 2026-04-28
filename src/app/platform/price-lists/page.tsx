@@ -14,7 +14,7 @@ export default async function PlatformPriceListsPage() {
     supabaseAdmin
       .from('price_list_access')
       .select('id, org_id, price_list_id, status, requested_at, approved_at')
-      .in('status', ['pending', 'active'])
+      .in('status', ['pending', 'active', 'rejected'])
       .order('requested_at', { ascending: true }),
   ])
 
@@ -30,7 +30,7 @@ export default async function PlatformPriceListsPage() {
   }))
 
   const pendingRequests = withOrgName.filter(r => r.status === 'pending')
-  const activeAccess = withOrgName.filter(r => r.status === 'active')
+  const activeAccess = withOrgName.filter(r => r.status === 'active' || r.status === 'rejected')
 
   // Twinbru sync status — ignore errors, panel degrades gracefully
   const syncLogsRes = await supabaseAdmin
