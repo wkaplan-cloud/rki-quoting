@@ -27,7 +27,7 @@ export default async function SettingsPage() {
   return (
     <div>
       <PageHeader title="Settings" subtitle="Your profile and studio configuration" />
-      <div className="p-8 space-y-12 max-w-5xl">
+      <div className="p-8 space-y-12">
         <section>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-6">Your Profile</h2>
           <div className="max-w-lg">

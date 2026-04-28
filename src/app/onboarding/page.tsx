@@ -76,7 +76,7 @@ export default function OnboardingPage() {
         org_id: orgId,
         ...form,
         vat_rate: 15,
-        deposit_percentage: 70,
+        deposit_percentage: 50,
       })
       if (settingsError) { toast.error(settingsError.message); setSaving(false); return }
     }

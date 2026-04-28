@@ -101,7 +101,7 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
   ]
 
   return (
-    <div className="max-w-5xl">
+    <div>
       {/* Tab bar */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
         {tabs.map(t => (
@@ -177,6 +177,7 @@ function SuppliersImport({ supabase, existingSuppliers }: { supabase: any; exist
     <ImportShell
       title="Import Suppliers"
       instructions="Export the SuppliersData tab as CSV (File → Download → Comma Separated Values) then upload below."
+      csvColumns={['Supplier', 'Category', 'Contact Person', 'Contact Number', 'Rep Name', 'Rep Number', 'Email', 'Delivery Address', 'Percentage']}
       onFile={t => handleFile(t)}
       rows={rows}
       done={done}
@@ -238,6 +239,7 @@ function ClientsImport({ supabase, existingClients }: { supabase: any; existingC
     <ImportShell
       title="Import Clients"
       instructions="Export the ClientsData tab as CSV then upload below."
+      csvColumns={['Client Name', 'Email', 'Contact Number', 'Company', 'VAT Number', 'Address']}
       onFile={t => handleFile(t)}
       rows={rows}
       done={done}
@@ -288,6 +290,7 @@ function ItemsImport({ supabase, existingItems }: { supabase: any; existingItems
     <ImportShell
       title="Import Items"
       instructions="Export the Items_list tab as CSV then upload below."
+      csvColumns={['Items']}
       onFile={t => handleFile(t)}
       rows={rows}
       done={done}
@@ -648,9 +651,10 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
 }
 
 // ─── Shared Import Shell ──────────────────────────────────────────────────────
-function ImportShell({ title, instructions, onFile, rows, done, importing, onImport, newCount, skipCount, headers, renderRow }: {
+function ImportShell({ title, instructions, csvColumns, onFile, rows, done, importing, onImport, newCount, skipCount, headers, renderRow }: {
   title: string
   instructions: string
+  csvColumns?: string[]
   onFile: (text: string) => void
   rows: any[]
   done: number | null
@@ -666,6 +670,14 @@ function ImportShell({ title, instructions, onFile, rows, done, importing, onImp
       <div>
         <h2 className="text-sm font-medium text-[#2C2C2A] mb-1">{title}</h2>
         <p className="text-xs text-[#8A877F]">{instructions}</p>
+        {csvColumns && csvColumns.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            <span className="text-xs text-[#8A877F] mr-1">Expected columns:</span>
+            {csvColumns.map(col => (
+              <code key={col} className="text-[11px] bg-[#F5F2EC] border border-[#D8D3C8] rounded px-1.5 py-0.5 text-[#5A5750] font-mono">{col}</code>
+            ))}
+          </div>
+        )}
       </div>
 
       <FileUpload onFile={(t) => onFile(t)} label="Upload CSV file" />

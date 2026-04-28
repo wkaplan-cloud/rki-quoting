@@ -176,7 +176,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   }, [project.id, project.project_number, project.project_name, project.client, businessName, suppliers])
 
   const resolveTemplate = useCallback((template: string | null, type: 'quote' | 'invoice') => {
-    const defaults = `Dear {{client_name}},\n\nPlease find attached your ${type === 'quote' ? 'quotation' : 'invoice'} for {{project_name}}.\n\nReference: {{project_number}}\n\nKind regards,\n{{studio_name}}`
+    const defaults = `Dear {{client_name}},\n\nPlease find attached your ${type === 'quote' ? 'quotation' : 'invoice'} for {{project_name}}.\n\nKind regards,\n{{studio_name}}`
     return (template ?? defaults)
       .replace(/\{\{client_name\}\}/g, project.client?.client_name ?? 'Client')
       .replace(/\{\{project_name\}\}/g, project.project_name)

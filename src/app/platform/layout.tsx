@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut, ArrowLeftRight, Store, FolderOpen, Activity } from 'lucide-react'
@@ -25,15 +26,20 @@ export default async function PlatformLayout({ children }: { children: React.Rea
     redirect('/mfa/challenge')
   }
 
+  const { count: pendingPriceListCount } = await supabaseAdmin
+    .from('price_list_access')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending')
+
   const navItems = [
-    { href: '/platform', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-    { href: '/platform/studios', label: 'Studios', icon: Building2 },
-    { href: '/platform/sourcing', label: 'Sourcing', icon: ArrowLeftRight },
-    { href: '/platform/suppliers', label: 'Suppliers', icon: Store },
-    { href: '/platform/quotes', label: 'Quotes', icon: FolderOpen },
-    { href: '/platform/messages', label: 'Messages', icon: MessageSquare },
-    { href: '/platform/price-lists', label: 'Price Lists', icon: BookOpen },
-    { href: '/platform/health', label: 'Health', icon: Activity },
+    { href: '/platform', label: 'Dashboard', icon: LayoutDashboard, exact: true, badge: 0 },
+    { href: '/platform/studios', label: 'Studios', icon: Building2, badge: 0 },
+    { href: '/platform/sourcing', label: 'Sourcing', icon: ArrowLeftRight, badge: 0 },
+    { href: '/platform/suppliers', label: 'Suppliers', icon: Store, badge: 0 },
+    { href: '/platform/quotes', label: 'Quotes', icon: FolderOpen, badge: 0 },
+    { href: '/platform/messages', label: 'Messages', icon: MessageSquare, badge: 0 },
+    { href: '/platform/price-lists', label: 'Price Lists', icon: BookOpen, badge: pendingPriceListCount ?? 0 },
+    { href: '/platform/health', label: 'Health', icon: Activity, badge: 0 },
   ]
 
   return (
@@ -47,14 +53,19 @@ export default async function PlatformLayout({ children }: { children: React.Rea
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {navItems.map(({ href, label, icon: Icon, exact }) => (
+          {navItems.map(({ href, label, icon: Icon, badge }) => (
             <Link
               key={href}
               href={href}
               className="flex items-center gap-3 px-3 py-2.5 rounded text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
             >
               <Icon size={15} className="opacity-60" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {badge > 0 && (
+                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#9A7B4F] text-white min-w-[18px] text-center">
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

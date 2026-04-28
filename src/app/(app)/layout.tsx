@@ -69,7 +69,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   // Sourcing badge: supplier responses waiting for designer to review
   let sourcingBadge = 0
-  if (settings?.sourcing_enabled && orgId) {
+  if (orgId) {
     const { data: activeSessions } = await supabaseAdmin
       .from('sourcing_sessions')
       .select('id')
@@ -101,7 +101,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     <AppLayout
       isAdmin={membership?.role === 'admin'}
       businessName={settings?.business_name ?? ''}
-      sourcingEnabled={settings?.sourcing_enabled ?? false}
+      sourcingEnabled={true}
       sourcingBadge={sourcingBadge}
       userEmail={user.email ?? ''}
       userName={member?.full_name ?? ''}

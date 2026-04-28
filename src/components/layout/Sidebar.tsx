@@ -184,12 +184,12 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
         {/* Bottom */}
         <div className="flex-shrink-0 py-2 border-t border-white/10 space-y-0.5">
           {plan === 'solo' && (
-            <Link href="/settings" onClick={onClose} 
+            <Link href="/settings" onClick={onClose}
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
-                <Settings size={14} />
+                <ShieldCheck size={14} />
               </span>
-              <span className={labelCls}>Settings</span>
+              <span className={labelCls}>Admin</span>
             </Link>
           )}
 

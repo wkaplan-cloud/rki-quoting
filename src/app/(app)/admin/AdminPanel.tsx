@@ -237,6 +237,26 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   return (
     <>
     <div>
+      {/* Storage widget — top right, always visible */}
+      <div className="flex justify-end mb-4">
+        <div className="bg-white border border-[#D8D3C8] rounded-xl p-4 flex flex-col items-center justify-center w-36 h-28 shadow-sm">
+          <HardDrive size={18} className="text-[#9A7B4F] mb-2" />
+          {storageBytes === null ? (
+            <p className="text-xs text-[#8A877F]">Loading…</p>
+          ) : (
+            <>
+              <p className="text-base font-semibold text-[#2C2C2A] tabular-nums leading-tight">
+                {storageBytes < 1024 * 1024
+                  ? `${(storageBytes / 1024).toFixed(1)} KB`
+                  : `${(storageBytes / (1024 * 1024)).toFixed(1)} MB`}
+              </p>
+              <p className="text-[10px] text-[#8A877F] mt-0.5 text-center">{storageFileCount} image{storageFileCount !== 1 ? 's' : ''}</p>
+              <p className="text-[9px] text-[#C4BFB5] mt-1 text-center leading-tight">Upload storage used</p>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
         {(isAdmin
@@ -383,27 +403,6 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       {tab === 'studio' && (
         <div className="space-y-6">
           <StudioSettingsForm settings={settings as any} plan={plan} />
-          {/* Storage usage */}
-          <div className="bg-white border border-[#D8D3C8] rounded p-5">
-            <h3 className="text-sm font-medium text-[#2C2C2A] mb-3 flex items-center gap-2">
-              <HardDrive size={15} className="text-[#9A7B4F]" /> Upload Storage Usage
-            </h3>
-            {storageBytes === null ? (
-              <p className="text-xs text-[#8A877F]">Loading…</p>
-            ) : (
-              <div className="flex items-end gap-6">
-                <div>
-                  <p className="text-2xl font-semibold text-[#2C2C2A] tabular-nums">
-                    {storageBytes < 1024 * 1024
-                      ? `${(storageBytes / 1024).toFixed(1)} KB`
-                      : `${(storageBytes / (1024 * 1024)).toFixed(1)} MB`}
-                  </p>
-                  <p className="text-xs text-[#8A877F] mt-0.5">{storageFileCount} image{storageFileCount !== 1 ? 's' : ''} uploaded</p>
-                </div>
-                <p className="text-xs text-[#C4BFB5] pb-0.5">Sourcing request images only. Supplier attachments are not included.</p>
-              </div>
-            )}
-          </div>
         </div>
       )}
 

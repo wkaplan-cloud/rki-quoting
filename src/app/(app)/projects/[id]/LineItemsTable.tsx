@@ -45,13 +45,14 @@ const COL = 'px-2 py-1.5'
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
-function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnly }: {
+function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnly, autoFocus }: {
   value: string
   onChange: (v: string) => void
   onBlur: (v: string) => void
   placeholder?: string
   className?: string
   readOnly?: boolean
+  autoFocus?: boolean
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
@@ -63,6 +64,10 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnl
   }, [])
 
   useEffect(() => { resize() }, [value, resize])
+
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus()
+  }, [autoFocus])
 
   return (
     <textarea
@@ -108,6 +113,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Drops popover: which line item id is open, and form values
   const [dropsOpen, setDropsOpen] = useState<string | null>(null)
   const [dropsForm, setDropsForm] = useState<{ drops: string; height: string }>({ drops: '', height: '' })
+  const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null)
   // Map of twinbru_product_id → current catalogue price (for stale price detection)
   const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
   // Map of twinbru_product_id → fabric width in cm (from price list)
@@ -255,6 +261,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }).select().single()
     if (error) { toast.error('Failed to add row'); return }
     onChange([...lineItems, data])
+    setNewlyAddedId(data.id)
   }, [projectId, lineItems, onChange, supabase])
 
   const addSection = useCallback(async () => {
@@ -272,6 +279,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }).select().single()
     if (error) { toast.error('Failed to add section'); return }
     onChange([...lineItems, data])
+    setNewlyAddedId(data.id)
   }, [projectId, lineItems, onChange, supabase])
 
   const toggleReceived = useCallback(async (id: string, current: boolean) => {
@@ -422,6 +430,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'item_name', e.target.value)}
                           onBlur={e => saveField(item.id, 'item_name', e.target.value)}
                           readOnly={locked}
+                          autoFocus={newlyAddedId === item.id}
+                          onFocus={() => { if (newlyAddedId === item.id) setNewlyAddedId(null) }}
                           className="flex-1 bg-transparent outline-none text-xs font-semibold text-[#5A5750] uppercase tracking-widest placeholder-[#C4BFB5] focus:text-[#2C2C2A]"
                           placeholder="Room / Section name…"
                         />
@@ -488,25 +498,34 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
                         <div className="flex-1 min-w-0">
-                          {suppliers.find(s => s.id === item.supplier_id)?.is_platform ? (
-                            <FabricSearch
-                              value={item.item_name}
-                              onChange={v => updateLocal(item.id, 'item_name', v)}
-                              onBlur={v => saveField(item.id, 'item_name', v)}
-                              onSelect={fabric => handleFabricSelect(item.id, fabric)}
-                              placeholder="Search fabric…"
-                              className={INPUT}
-                            />
-                          ) : (
-                            <AutoTextarea
-                              value={item.item_name}
-                              onChange={v => updateLocal(item.id, 'item_name', v)}
-                              onBlur={v => saveField(item.id, 'item_name', v)}
-                              placeholder="Item name"
-                              className={INPUT}
-                              readOnly={locked}
-                            />
-                          )}
+                          {(() => {
+                            const platformSupplier = suppliers.find(s => s.id === item.supplier_id && s.is_platform)
+                            const hasAccess = platformSupplier?.price_list_id ? activePriceListIds.includes(platformSupplier.price_list_id) : false
+                            if (platformSupplier && !hasAccess) return (
+                              <span className="text-xs text-amber-600 italic">Price list access pending approval</span>
+                            )
+                            if (platformSupplier && hasAccess) return (
+                              <FabricSearch
+                                value={item.item_name}
+                                onChange={v => updateLocal(item.id, 'item_name', v)}
+                                onBlur={v => saveField(item.id, 'item_name', v)}
+                                onSelect={fabric => handleFabricSelect(item.id, fabric)}
+                                placeholder="Search fabric…"
+                                className={INPUT}
+                              />
+                            )
+                            return (
+                              <AutoTextarea
+                                value={item.item_name}
+                                onChange={v => updateLocal(item.id, 'item_name', v)}
+                                onBlur={v => { saveField(item.id, 'item_name', v); if (newlyAddedId === item.id) setNewlyAddedId(null) }}
+                                placeholder="Item name"
+                                className={INPUT}
+                                readOnly={locked}
+                                autoFocus={newlyAddedId === item.id}
+                              />
+                            )
+                          })()}
                         </div>
                         {item.twinbru_product_id && (
                           <input
