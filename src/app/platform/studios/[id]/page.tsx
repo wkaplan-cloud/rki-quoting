@@ -5,7 +5,6 @@ import { ArrowLeft, Users, FolderOpen, ArrowLeftRight } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
 import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
-import { BetaFeaturesPanel } from './BetaFeaturesPanel'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -149,8 +148,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
               <p className="text-xs text-white/40">Projects</p>
             </div>
           </div>
-          {settings?.sourcing_enabled && (
-            <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
+          <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center">
                 <ArrowLeftRight size={16} className="text-[#C4A46B]" />
               </div>
@@ -159,17 +157,8 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
                 <p className="text-xs text-white/40">Sourcing sessions</p>
               </div>
             </div>
-          )}
         </div>
       </div>
-
-      {/* Beta feature toggles */}
-      {adminMember?.user_id && (
-        <BetaFeaturesPanel
-          userId={adminMember.user_id}
-          initialSourcingEnabled={!!(settings?.sourcing_enabled)}
-        />
-      )}
 
       {/* Subscription management */}
       <SubscriptionPanel
@@ -248,8 +237,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {/* Sourcing activity */}
-      {settings?.sourcing_enabled && (
-        <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
+      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <h2 className="text-sm font-medium text-white flex items-center gap-2">
               <ArrowLeftRight size={14} className="text-[#C4A46B]" /> Sourcing activity
@@ -295,7 +283,6 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
             </table>
           )}
         </div>
-      )}
     </div>
   )
 }
