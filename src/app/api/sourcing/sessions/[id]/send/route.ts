@@ -106,11 +106,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
     const [{ data: session }, { data: settings }] = await Promise.all([
       supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).single(),
-      supabase.from('settings').select('business_name, sourcing_enabled, email_from').maybeSingle(),
+      supabase.from('settings').select('business_name, email_from').maybeSingle(),
     ])
 
     if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (!settings?.sourcing_enabled) return NextResponse.json({ error: 'Sourcing not enabled' }, { status: 403 })
     if (!['draft', 'sent'].includes(session.status)) {
       return NextResponse.json({ error: 'Session cannot be sent in its current state' }, { status: 400 })
     }

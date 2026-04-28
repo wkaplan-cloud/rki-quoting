@@ -63,7 +63,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   const [{ data: membership }, { data: settings }, { data: member }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
-    supabase.from('settings').select('business_name, sourcing_enabled').maybeSingle(),
+    supabase.from('settings').select('business_name').maybeSingle(),
     supabaseAdmin.from('org_members').select('full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
   ])
 
