@@ -174,7 +174,9 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
     })
     if (!res.ok) {
       const data = await res.json()
-      if (data.upgrade && plan === 'studio') {
+      if (data.trial) {
+        window.location.href = '/subscribe'
+      } else if (data.upgrade && plan === 'studio') {
         setUpgradeAgencyOpen(true)
       } else {
         toast.error(data.error ?? 'Failed to send invite')
@@ -283,27 +285,39 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                   </Link>
                 </div>
               ) : (
-              <form onSubmit={handleInvite} className="flex gap-3">
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  placeholder="colleague@studio.co.za"
-                  required
-                  className="flex-1 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] bg-white"
-                />
-                <select
-                  value={inviteRole}
-                  onChange={e => setInviteRole(e.target.value)}
-                  className="px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] bg-white"
-                >
-                  <option value="designer">Designer</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <Button type="submit" disabled={inviting}>
-                  {inviting ? 'Sending…' : 'Send Invite'}
-                </Button>
-              </form>
+              <>
+                <form onSubmit={handleInvite} className="flex gap-3">
+                  <input
+                    type="email"
+                    value={inviteEmail}
+                    onChange={e => setInviteEmail(e.target.value)}
+                    placeholder="colleague@studio.co.za"
+                    required
+                    className="flex-1 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] bg-white"
+                  />
+                  <select
+                    value={inviteRole}
+                    onChange={e => setInviteRole(e.target.value)}
+                    className="px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] bg-white"
+                  >
+                    <option value="designer">Designer</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  <Button type="submit" disabled={inviting}>
+                    {inviting ? 'Sending…' : 'Send Invite'}
+                  </Button>
+                </form>
+                {subscriptionStatus === 'trialing' && (() => {
+                  const used = members.filter(m => m.status === 'active' || m.status === 'pending').length
+                  const remaining = Math.max(0, 4 - used)
+                  return (
+                    <p className="text-xs text-[#8A877F] mt-2">
+                      Trial plan — {remaining} invite slot{remaining !== 1 ? 's' : ''} remaining.{' '}
+                      <Link href="/subscribe" className="text-[#9A7B4F] hover:underline">Subscribe to add unlimited members.</Link>
+                    </p>
+                  )
+                })()}
+              </>
               )}
             </div>
           )}

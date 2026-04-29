@@ -27,13 +27,17 @@ export async function POST(req: NextRequest) {
     .eq('id', membership.org_id)
     .single()
 
-  if (org?.subscription_status === 'active') {
-    const { count } = await supabaseAdmin
-      .from('org_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('org_id', membership.org_id)
-      .in('status', ['active', 'pending'])
+  const { count } = await supabaseAdmin
+    .from('org_members')
+    .select('*', { count: 'exact', head: true })
+    .eq('org_id', membership.org_id)
+    .in('status', ['active', 'pending'])
 
+  if (org?.subscription_status === 'trialing') {
+    if ((count ?? 0) >= 4) {
+      return NextResponse.json({ error: 'Trial plan is limited to 4 team members. Subscribe to add more.', upgrade: true, trial: true }, { status: 403 })
+    }
+  } else if (org?.subscription_status === 'active') {
     if (org?.plan === 'solo' && (count ?? 0) >= 1) {
       return NextResponse.json({ error: 'Solo plan is limited to 1 user. Upgrade to Studio to add team members.', upgrade: true }, { status: 403 })
     }
