@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { LayoutDashboard, Tag, LogOut, User, Menu, X } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -11,8 +11,9 @@ interface Props {
 }
 
 const NAV_ITEMS = [
-  { href: '/supplier-portal/dashboard', label: 'Price Requests', icon: LayoutDashboard, showBadge: true },
-  { href: '/supplier-portal/price-list', label: 'My Price List', icon: Tag, showBadge: false },
+  { href: '/supplier-portal/home',      label: 'Home',           icon: Home,  showBadge: false },
+  { href: '/supplier-portal/dashboard', label: 'Price Requests', icon: Inbox, showBadge: true },
+  { href: '/supplier-portal/price-list', label: 'My Price List', icon: Tag,   showBadge: false },
 ]
 
 export function SupplierPortalNav({ companyName, pendingCount }: Props) {

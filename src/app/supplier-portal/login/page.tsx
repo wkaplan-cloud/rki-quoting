@@ -27,7 +27,7 @@ export default function SupplierLoginPage() {
       setLoading(false)
       return
     }
-    router.push('/supplier-portal/dashboard')
+    router.push('/supplier-portal/home')
   }
 
   return (
