@@ -417,7 +417,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                     <div key={year} className="bg-white border border-[#D8D3C8] rounded-xl px-5 py-4">
                       <p className="text-xs text-[#8A877F] mb-1">{year}</p>
                       <p className="text-lg font-semibold text-[#2C2C2A]">{fmtZAR(total)}</p>
-                      <p className="text-xs text-[#8A877F] mt-0.5">{byYear[year]!.length} project{byYear[year]!.length !== 1 ? 's' : ''}</p>
+                      <p className="text-xs text-[#8A877F] mt-0.5">{byYear[year]!.length} project{byYear[year]!.length !== 1 ? 's' : ''} · fully paid</p>
                     </div>
                   )
                 })}
