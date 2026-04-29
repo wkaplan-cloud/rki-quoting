@@ -54,6 +54,7 @@ export interface Project {
   sage_pushed_at: string | null
   quoted_date: string | null
   archived_at: string | null
+  assigned_to: string | null
   // joined
   client?: Client | null
 }

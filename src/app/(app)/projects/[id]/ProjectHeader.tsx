@@ -17,6 +17,9 @@ interface Props {
   onStagesUpdate: (s: ProjectStages) => void
   sageConnected?: boolean
   sageInvoicePaid?: boolean
+  members: { user_id: string; label: string }[]
+  isAdmin: boolean
+  createdByName: string | null
 }
 
 const EMPTY_STAGES: ProjectStages = {
@@ -31,7 +34,7 @@ const EMPTY_STAGES: ProjectStages = {
   delivered_installed: false, delivered_installed_at: null,
 }
 
-export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate, sageConnected, sageInvoicePaid }: Props) {
+export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate, sageConnected, sageInvoicePaid, members, isAdmin, createdByName }: Props) {
   const [editing, setEditing] = useState(false)
   const [editingClient, setEditingClient] = useState(false)
   const [togglingStage, setTogglingStage] = useState<string | null>(null)
@@ -44,6 +47,8 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
   const [clientName, setClientName] = useState(project.client?.client_name ?? '')
   const [pendingClientId, setPendingClientId] = useState(project.client_id ?? '')
   const [pendingClientName, setPendingClientName] = useState(project.client?.client_name ?? '')
+  const [assignedTo, setAssignedTo] = useState<string | null>(project.assigned_to ?? null)
+  const [reassigning, setReassigning] = useState(false)
   const supabase = createClient()
 
   async function handleCreateClient(name: string) {
@@ -74,6 +79,16 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     setPendingClientId(project.client_id ?? '')
     setPendingClientName(project.client?.client_name ?? '')
     setEditingClient(false)
+  }
+
+  async function handleReassign(userId: string) {
+    setReassigning(true)
+    const newValue = userId || null
+    const { error } = await supabase.from('projects').update({ assigned_to: newValue }).eq('id', project.id)
+    if (error) { toast.error(error.message); setReassigning(false); return }
+    setAssignedTo(newValue)
+    onProjectUpdate({ ...project, assigned_to: newValue })
+    setReassigning(false)
   }
 
   async function save() {
@@ -215,6 +230,36 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
               )}
 
               {!editingClient && <><span>·</span><span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span></>}
+
+              {/* Created by — read-only */}
+              {!editingClient && createdByName && (
+                <><span>·</span><span className="text-[#8A877F]">Created by {createdByName}</span></>
+              )}
+
+              {/* Assigned to */}
+              {!editingClient && members.length > 0 && (
+                <>
+                  <span>·</span>
+                  {isAdmin ? (
+                    <span className="flex items-center gap-1">
+                      <span className="text-[#8A877F] text-xs">Assigned to</span>
+                      <select
+                        value={assignedTo ?? project.user_id ?? ''}
+                        onChange={e => handleReassign(e.target.value)}
+                        disabled={reassigning}
+                        className="text-xs text-[#2C2C2A] bg-transparent border-b border-dashed border-[#9A7B4F] outline-none cursor-pointer hover:border-[#2C2C2A] transition-colors disabled:opacity-50"
+                      >
+                        {members.map(m => (
+                          <option key={m.user_id} value={m.user_id}>{m.label}</option>
+                        ))}
+                      </select>
+                    </span>
+                  ) : (
+                    <><span className="text-[#8A877F] text-xs">Assigned to</span><span>{members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label ?? '—'}</span></>
+                  )}
+                </>
+              )}
+
               {!editingClient && (
                 <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
                   <Pencil size={12} />

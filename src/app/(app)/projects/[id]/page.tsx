@@ -8,10 +8,24 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
   const { data: orgId } = await supabase.rpc('get_current_org_id')
   const { data: orgMeta } = orgId
     ? await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
     : { data: null }
+
+  const { data: members } = orgId
+    ? await supabaseAdmin.from('org_members').select('user_id, invited_email, full_name, role').eq('org_id', orgId).eq('status', 'active')
+    : { data: [] }
+
+  const currentMember = (members ?? []).find(m => m.user_id === user?.id)
+  const isAdmin = currentMember?.role === 'admin'
+
+  const memberList = (members ?? [])
+    .filter(m => m.user_id)
+    .map(m => ({ user_id: m.user_id as string, label: m.full_name ?? m.invited_email.split('@')[0] }))
+
+  const memberMap = Object.fromEntries(memberList.map(m => [m.user_id, m.label]))
 
   const [{ data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers }, { data: items }, { data: settings }, { data: stages }, { data: emailLogs }, { data: platformContacts }] =
     await Promise.all([
@@ -74,6 +88,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       sageConnected={!!(settings?.sage_access_token && settings?.sage_company_id)}
       activePriceListIds={[...activePriceListIds]}
       plan={orgMeta?.plan ?? 'trial'}
+      members={memberList}
+      isAdmin={isAdmin}
+      createdByName={memberMap[project.user_id ?? ''] ?? null}
     />
   )
 }

@@ -30,9 +30,12 @@ interface Props {
   sageConnected: boolean
   activePriceListIds: string[]
   plan: string
+  members: { user_id: string; label: string }[]
+  isAdmin: boolean
+  createdByName: string | null
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds, plan }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -339,6 +342,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         onStagesUpdate={setStages}
         sageConnected={sageConnected}
         sageInvoicePaid={isPaid}
+        members={members}
+        isAdmin={isAdmin}
+        createdByName={createdByName}
       />
 
       {/* Action bar — desktop only */}

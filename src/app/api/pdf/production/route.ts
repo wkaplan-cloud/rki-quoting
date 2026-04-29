@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ProductionPDF } from '@/lib/pdf/ProductionPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
@@ -25,11 +26,24 @@ export async function GET(req: NextRequest) {
 
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    const assignedUserId = (project as any).assigned_to ?? project.user_id
+    let assignedToName: string | null = null
+    if (assignedUserId && orgId) {
+      const { data: member } = await supabaseAdmin
+        .from('org_members')
+        .select('full_name, invited_email')
+        .eq('user_id', assignedUserId)
+        .eq('org_id', orgId)
+        .maybeSingle()
+      if (member) assignedToName = member.full_name ?? member.invited_email?.split('@')[0] ?? null
+    }
+
     const logoUrl = await fetchLogoBase64(settings?.logo_url)
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString() }) as any
+      createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString(), assignedTo: assignedToName }) as any
     )
 
     return new NextResponse(new Uint8Array(buffer), {

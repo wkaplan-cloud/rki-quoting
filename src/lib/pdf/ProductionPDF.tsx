@@ -73,9 +73,10 @@ interface Props {
   businessName?: string | null
   vatRate?: number
   printDate?: string | null
+  assignedTo?: string | null
 }
 
-export function ProductionPDF({ project, lineItems, suppliers, businessName, vatRate = 15, printDate }: Props) {
+export function ProductionPDF({ project, lineItems, suppliers, businessName, vatRate = 15, printDate, assignedTo }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.supplier_name]))
   const totals = computeTotals(lineItems, project.design_fee, vatRate)
   const clientName = (() => {
@@ -100,6 +101,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
           <View>
             <Text style={s.projectName}>{project.project_name}</Text>
             <Text style={s.meta}>{project.project_number}{clientName ? `  ·  ${clientName}` : ''}</Text>
+            {assignedTo && <Text style={s.meta}>Assigned to: {assignedTo}</Text>}
             <Text style={s.meta}>{printedOn}</Text>
           </View>
         </View>

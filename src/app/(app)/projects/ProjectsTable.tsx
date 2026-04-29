@@ -35,7 +35,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
   const filtered = (showArchived ? archived : active)
     .filter(p => {
       const matchStatus = showArchived || statusFilter === 'All' || p.status === statusFilter
-      const matchMine = showArchived || !myProjects || p.user_id === currentUserId
+      const matchMine = showArchived || !myProjects || (p.assigned_to ?? p.user_id) === currentUserId
       const q = search.toLowerCase()
       const matchSearch = !q ||
         p.project_name.toLowerCase().includes(q) ||
@@ -150,7 +150,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Client</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Date</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Created By</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Assigned To</th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Total</th>
               </tr>
             </thead>
@@ -167,7 +167,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                   <td className="px-4 py-3 text-[#8A877F]">{new Date(p.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                   <td className="px-4 py-3"><StatusBadge status={p.status as any} /></td>
                   <td className="px-4 py-3 text-[#8A877F] text-xs">
-                    {p.user_id ? (userEmailMap[p.user_id]?.split('@')[0] ?? '—') : '—'}
+                    {userEmailMap[p.assigned_to ?? p.user_id ?? ''] ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-[#2C2C2A] whitespace-nowrap">
                     {formatZAR(computeTotals(p.line_items ?? [], p.design_fee ?? 0, 15).grand_total)}
