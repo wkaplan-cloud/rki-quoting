@@ -48,6 +48,8 @@ export default async function AdminPage() {
             subscriptionStatus={'active'}
             completedProjects={[]}
             completedLineItems={[]}
+            pipelineProjects={[]}
+            pipelineLineItems={[]}
             userProfile={userProfile}
           />
         </div>
@@ -70,10 +72,22 @@ export default async function AdminPage() {
     return stages?.final_invoice_paid === true
   })
 
+  const pipelineProjects = (completedProjects ?? []).filter(p => {
+    const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
+    return stages?.final_invoice_paid !== true
+  })
+
   const projectIds = paidProjects.map(p => p.id)
-  const { data: completedLineItems } = projectIds.length > 0
-    ? await supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', projectIds)
-    : { data: [] }
+  const pipelineIds = pipelineProjects.map(p => p.id)
+
+  const [{ data: completedLineItems }, { data: pipelineLineItems }] = await Promise.all([
+    projectIds.length > 0
+      ? supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', projectIds)
+      : { data: [] },
+    pipelineIds.length > 0
+      ? supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', pipelineIds)
+      : { data: [] },
+  ])
 
   return (
     <div>
@@ -88,6 +102,8 @@ export default async function AdminPage() {
           subscriptionStatus={org?.subscription_status ?? 'trialing'}
           completedProjects={paidProjects}
           completedLineItems={completedLineItems ?? []}
+          pipelineProjects={pipelineProjects}
+          pipelineLineItems={pipelineLineItems ?? []}
           userProfile={userProfile}
         />
       </div>

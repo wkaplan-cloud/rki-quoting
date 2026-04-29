@@ -59,6 +59,8 @@ interface Props {
   subscriptionStatus: string
   completedProjects: CompletedProject[]
   completedLineItems: LineItemRow[]
+  pipelineProjects: CompletedProject[]
+  pipelineLineItems: LineItemRow[]
   userProfile: { fullName: string; email: string; phone: string; jobTitle: string }
 }
 
@@ -122,7 +124,7 @@ function getChanges(log: AuditLog): { field: string; from: string; to: string }[
     }))
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, userProfile }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, pipelineProjects, pipelineLineItems, userProfile }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -131,6 +133,15 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   const [upgradeAgencyOpen, setUpgradeAgencyOpen] = useState(false)
   const [upgradingAgency, setUpgradingAgency] = useState(false)
   const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'audit'>(isAdmin ? 'users' : 'profile')
+
+  // Projected profit across all active (unpaid) projects
+  const pipelineProfit = pipelineProjects.reduce((total, p) => {
+    const items = pipelineLineItems.filter(li => li.project_id === p.id)
+    const computed = computeLineItems(items as any)
+    const lineProfit = computed.reduce((sum, i) => sum + i.profit, 0)
+    const designFeeAmount = computed.reduce((sum, i) => sum + i.total_price, 0) * ((p.design_fee ?? 0) / 100)
+    return total + lineProfit + designFeeAmount
+  }, 0)
 
   // Compute profit per completed project
   const profitByProject = completedProjects.map(p => {
@@ -385,6 +396,15 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
 
       {tab === 'profit' && (
         <div className="space-y-8">
+          {/* Pipeline profit tile */}
+          <div className="bg-white border border-dashed border-[#C4A46B] rounded-xl px-6 py-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-[#9A7B4F] uppercase tracking-wider mb-1">Projected Pipeline Profit</p>
+              <p className="text-2xl font-semibold text-[#2C2C2A]">{fmtZAR(pipelineProfit)}</p>
+              <p className="text-xs text-[#8A877F] mt-1">{pipelineProjects.length} active project{pipelineProjects.length !== 1 ? 's' : ''} · excl. VAT · not yet invoiced paid</p>
+            </div>
+          </div>
+
           {completedProjects.length === 0 ? (
             <p className="text-sm text-[#8A877F] py-10 text-center">No projects with a paid final invoice yet.</p>
           ) : (
