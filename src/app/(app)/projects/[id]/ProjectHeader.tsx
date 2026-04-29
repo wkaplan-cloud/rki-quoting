@@ -240,36 +240,6 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
           </div>
         )}
 
-        {/* Created by / Assigned to — right-aligned, between project info and action buttons */}
-        {!editing && !editingClient && members.length > 0 && (
-          <div className="flex items-end pb-0.5 gap-3 text-xs text-[#8A877F] flex-shrink-0 self-end">
-            {/* Only show Created by when different from assigned */}
-            {createdByName && createdByName !== (members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label) && (
-              <span>Created by <span className="text-[#2C2C2A]">{createdByName}</span></span>
-            )}
-            {createdByName && createdByName !== (members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label) && (
-              <span className="text-[#D8D3C8]">·</span>
-            )}
-            <span className="flex items-center gap-1">
-              Assigned to{' '}
-              {isAdmin ? (
-                <select
-                  value={assignedTo ?? project.user_id ?? ''}
-                  onChange={e => handleReassign(e.target.value)}
-                  disabled={reassigning}
-                  className="text-[#2C2C2A] bg-transparent border-b border-dashed border-[#9A7B4F] outline-none cursor-pointer hover:border-[#2C2C2A] transition-colors disabled:opacity-50"
-                >
-                  {members.map(m => (
-                    <option key={m.user_id} value={m.user_id}>{m.label}</option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-[#2C2C2A]">{members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label ?? '—'}</span>
-              )}
-            </span>
-          </div>
-        )}
-
         <div className="flex items-center gap-2 flex-shrink-0">
           {editing ? (
             <>
@@ -297,6 +267,35 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
           )}
         </div>
       </div>
+
+      {/* Assigned to row — full width so justify-end is truly right-edge */}
+      {!editing && members.length > 0 && (
+        <div className="flex items-center justify-end gap-3 mt-1.5 text-xs text-[#8A877F]">
+          {createdByName && createdByName !== (members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label) && (
+            <>
+              <span>Created by <span className="text-[#2C2C2A]">{createdByName}</span></span>
+              <span className="text-[#D8D3C8]">·</span>
+            </>
+          )}
+          <span className="flex items-center gap-1">
+            Assigned to{' '}
+            {isAdmin ? (
+              <select
+                value={assignedTo ?? project.user_id ?? ''}
+                onChange={e => handleReassign(e.target.value)}
+                disabled={reassigning}
+                className="text-[#2C2C2A] bg-transparent border-b border-dashed border-[#9A7B4F] outline-none cursor-pointer hover:border-[#2C2C2A] transition-colors disabled:opacity-50"
+              >
+                {members.map(m => (
+                  <option key={m.user_id} value={m.user_id}>{m.label}</option>
+                ))}
+              </select>
+            ) : (
+              <span className="text-[#2C2C2A]">{members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label ?? '—'}</span>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* Stage pipeline strip */}
       {project.status !== 'Cancelled' && (
