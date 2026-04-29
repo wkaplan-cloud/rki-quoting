@@ -95,6 +95,27 @@ export function SupplierPortalRequestDetail({ recipientId, data }: Props) {
   const [msgError, setMsgError] = useState<string | null>(null)
   const msgBottomRef = useRef<HTMLDivElement>(null)
 
+  // Arrival notification
+  const [arrivalNotes, setArrivalNotes] = useState('')
+  const [notifying, setNotifying] = useState(false)
+  const [notified, setNotified] = useState(false)
+  const [notifyError, setNotifyError] = useState<string | null>(null)
+
+  async function handleNotifyArrival() {
+    setNotifying(true)
+    setNotifyError(null)
+    try {
+      const res = await fetch('/api/supplier-portal/notify-arrival', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipientId, notes: arrivalNotes.trim() || undefined }),
+      })
+      const json = await res.json() as { error?: string }
+      if (!res.ok) { setNotifyError(json.error ?? 'Failed to send notification'); return }
+      setNotified(true)
+    } catch { setNotifyError('Failed to send notification') } finally { setNotifying(false) }
+  }
+
   useEffect(() => {
     async function fetchMessages() {
       try {
@@ -333,10 +354,48 @@ export function SupplierPortalRequestDetail({ recipientId, data }: Props) {
           <p className="text-sm text-[#8A877F]">{studio_name} has been notified.</p>
         </div>
       ) : isAccepted ? (
-        <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-6 text-center">
-          <CheckCircle size={28} className="text-emerald-500 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-emerald-800 mb-1">Your response was accepted</p>
-          <p className="text-sm text-emerald-700">{studio_name} selected your quote for this item.</p>
+        <div className="space-y-4">
+          <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-6 text-center">
+            <CheckCircle size={28} className="text-emerald-500 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-emerald-800 mb-1">Your response was accepted</p>
+            <p className="text-sm text-emerald-700">{studio_name} selected your quote for this item.</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-[#EDE9E1] overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#EDE9E1]">
+              <p className="text-sm font-semibold text-[#2C2C2A]">Notify Studio — Items Ready</p>
+              <p className="text-xs text-[#8A877F] mt-0.5">Let {studio_name} know the item is ready for collection or delivery.</p>
+            </div>
+            <div className="px-6 py-5">
+              {notified ? (
+                <div className="flex items-center gap-2 text-sm text-emerald-700">
+                  <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                  {studio_name} has been notified that the item is ready.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Note <span className="text-[#8A877F] font-normal">(optional)</span></label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Ready for collection from our warehouse, Mon–Fri 8am–5pm"
+                      value={arrivalNotes}
+                      onChange={e => setArrivalNotes(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] resize-none"
+                    />
+                  </div>
+                  {notifyError && <p className="text-xs text-red-600">{notifyError}</p>}
+                  <button
+                    type="button"
+                    onClick={handleNotifyArrival}
+                    disabled={notifying}
+                    className="w-full bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold py-2.5 rounded-lg hover:bg-[#9A7B4F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {notifying ? 'Sending…' : 'Notify Studio'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
