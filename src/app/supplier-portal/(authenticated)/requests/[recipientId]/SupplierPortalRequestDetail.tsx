@@ -462,7 +462,7 @@ export function SupplierPortalRequestDetail({ recipientId, data }: Props) {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Price valid for</label>
+                <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Price valid until</label>
                 <select value={validityDays} onChange={e => setValidityDays(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]">
                   <option value="">Select validity period</option>

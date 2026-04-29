@@ -263,9 +263,12 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                       const access = localAccess.find(a => a.price_list_id === pl.id)
                       if (!access) {
                         return (
-                          <Button size="sm" onClick={() => handleRequestAccess(pl.id)} disabled={requestingId === pl.id}>
-                            <Lock size={12} /> {requestingId === pl.id ? 'Requesting…' : 'Request Access'}
-                          </Button>
+                          <div className="flex flex-col items-end gap-1">
+                            <Button size="sm" onClick={() => handleRequestAccess(pl.id)} disabled={requestingId === pl.id}>
+                              <Lock size={12} /> {requestingId === pl.id ? 'Requesting…' : 'Request Access'}
+                            </Button>
+                            <span className="text-[10px] text-[#C4BFB5]">You'll receive an email once approved</span>
+                          </div>
                         )
                       }
                       if (access.status === 'pending') {

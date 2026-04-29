@@ -278,7 +278,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
             </>
           )}
           <span className="flex items-center gap-1">
-            Assigned to{' '}
+            <span title="Assigned to determines who this project appears under in the team view and on production documents">Assigned to</span>{' '}
             {isAdmin ? (
               <select
                 value={assignedTo ?? project.user_id ?? ''}
