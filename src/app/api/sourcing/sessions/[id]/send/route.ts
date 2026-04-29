@@ -18,6 +18,7 @@ function buildEmail({
   projectName,
   items,
   respondUrl,
+  isRegistered,
 }: {
   supplierName: string
   studioName: string
@@ -25,6 +26,7 @@ function buildEmail({
   projectName: string | null
   items: Array<{ title: string; item_quantity: number | null; dimensions: string | null; colour_finish: string | null; specifications: string | null; work_type: string | null }>
   respondUrl: string
+  isRegistered: boolean
 }) {
   const itemRows = items.map((item, i) => `
     <tr>
@@ -39,6 +41,19 @@ function buildEmail({
         ${item.specifications ? `<p style="margin:8px 0 0;font-size:12px;color:#6B6860;line-height:1.6;white-space:pre-wrap;">${esc(item.specifications)}</p>` : ''}
       </td>
     </tr>`).join('')
+
+  const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
+  const ctaLabel = isRegistered ? 'Log in to Submit Prices →' : 'View Items &amp; Submit Prices →'
+  const footer = isRegistered
+    ? `<p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
+        Log in to your <a href="${SITE_URL}/supplier-portal" style="color:#9A7B4F;text-decoration:none;">QuotingHub Supplier Portal</a> to view and respond to this request.
+       </p>`
+    : `<p style="margin:20px 0 0;font-size:12px;color:#8A877F;line-height:1.6;">
+        Or copy this link: <a href="${respondUrl}" style="color:#8A877F;">${respondUrl}</a>
+       </p>
+       <p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
+         Not registered yet? <a href="${SITE_URL}/supplier-portal/register" style="color:#9A7B4F;text-decoration:none;">Create a free supplier account</a> to manage all your requests in one place.
+       </p>`
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -70,18 +85,13 @@ function buildEmail({
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
               <tr>
                 <td align="center">
-                  <a href="${respondUrl}" style="display:inline-block;background-color:#2C2C2A;color:#F5F2EC;font-size:14px;font-weight:600;padding:14px 32px;border-radius:6px;text-decoration:none;">
-                    View Items &amp; Submit Prices →
+                  <a href="${ctaUrl}" style="display:inline-block;background-color:#2C2C2A;color:#F5F2EC;font-size:14px;font-weight:600;padding:14px 32px;border-radius:6px;text-decoration:none;">
+                    ${ctaLabel}
                   </a>
                 </td>
               </tr>
             </table>
-            <p style="margin:20px 0 0;font-size:12px;color:#8A877F;line-height:1.6;">
-              Or copy this link: <a href="${respondUrl}" style="color:#8A877F;">${respondUrl}</a>
-            </p>
-            <p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
-              Not registered yet? <a href="${SITE_URL}/supplier-portal/register" style="color:#9A7B4F;text-decoration:none;">Create a free supplier account</a> to manage all your requests in one place.
-            </p>
+            ${footer}
           </td>
         </tr>
         <tr>
@@ -142,14 +152,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
       const items = assignments.map((a: any) => a.item).filter(Boolean)
       const respondUrl = `${SITE_URL}/sourcing/respond/${ss.token}`
+      const isRegistered = !!(ss as any).portal_account_id
+      const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
 
       const { error: emailError } = await resend.emails.send({
         from: `${studioName} <no-reply@quotinghub.co.za>`,
         ...(replyTo ? { replyTo } : {}),
         to: ss.email,
         subject: `Pricing Request: ${session.title} — ${studioName}`,
-        html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, items, respondUrl }),
-        text: `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,
+        html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, items, respondUrl, isRegistered }),
+        text: isRegistered
+          ? `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nLog in to your supplier portal to view and respond:\n${ctaUrl}\n\nSent via QuotingHub`
+          : `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,
       })
 
       if (emailError) throw new Error(emailError.message)
