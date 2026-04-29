@@ -49,7 +49,9 @@ function RegisterForm() {
   const noPortalAccount = searchParams.get('notice') === 'no-portal-account'
   const supabase = createClient()
   const [companyName, setCompanyName] = useState('')
+  const [contactName, setContactName] = useState('')
   const [email, setEmail] = useState('')
+
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -104,7 +106,7 @@ function RegisterForm() {
     const res = await fetch('/api/supplier-portal/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), cf_token: cfToken }),
+      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), contact_name: contactName.trim(), cf_token: cfToken }),
     })
     const data = await res.json() as { error?: string }
     if (!res.ok) { setError(data.error ?? 'Registration failed'); setLoading(false); return }
@@ -113,7 +115,7 @@ function RegisterForm() {
       email: email.trim().toLowerCase(), password,
     })
     if (signInError) { router.push('/supplier-portal/login'); return }
-    router.push('/supplier-portal/dashboard')
+    router.push('/supplier-portal/home')
   }
 
   return (
@@ -173,6 +175,9 @@ function RegisterForm() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <Field label="Company Name">
                 <StyledInput value={companyName} onChange={setCompanyName} placeholder="e.g. ABC Fabrics (Pty) Ltd" required autoFocus />
+              </Field>
+              <Field label="Your Name">
+                <StyledInput value={contactName} onChange={setContactName} placeholder="Full name" autoComplete="name" />
               </Field>
               <Field label="Email">
                 <StyledInput type="email" value={email} onChange={setEmail} required autoComplete="email" />

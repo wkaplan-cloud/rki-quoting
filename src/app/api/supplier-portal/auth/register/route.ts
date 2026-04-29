@@ -4,8 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 
 // POST /api/supplier-portal/auth/register — creates Supabase auth account + portal account row
 export async function POST(req: NextRequest) {
-  const body = await req.json() as { email: string; password: string; company_name: string; cf_token?: string }
-  const { email, password, company_name, cf_token } = body
+  const body = await req.json() as { email: string; password: string; company_name: string; contact_name?: string; cf_token?: string }
+  const { email, password, company_name, contact_name, cf_token } = body
 
   if (!email?.trim() || !password || !company_name?.trim()) {
     return NextResponse.json({ error: 'Email, password, and company name are required' }, { status: 400 })
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       auth_user_id: authData.user.id,
       email: email.toLowerCase().trim(),
       company_name: company_name.trim(),
+      contact_name: contact_name?.trim() || null,
     })
 
   if (insertError) {
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     to: 'hello@quotinghub.co.za',
     subject: `New supplier signup: ${company_name.trim()}`,
-    text: `New supplier registered on QuotingHub.\n\nCompany: ${company_name.trim()}\nEmail: ${email.toLowerCase().trim()}\nTime: ${new Date().toISOString()}`,
+    text: `New supplier registered on QuotingHub.\n\nCompany: ${company_name.trim()}\nContact: ${contact_name?.trim() || '—'}\nEmail: ${email.toLowerCase().trim()}\nTime: ${new Date().toISOString()}`,
   }).catch(() => {})
 
   return NextResponse.json({ success: true })
