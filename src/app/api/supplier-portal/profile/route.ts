@@ -30,6 +30,7 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json() as {
       company_name?: string
+      contact_name?: string
       phone?: string
       address?: string
       categories?: string[]
@@ -41,6 +42,7 @@ export async function PATCH(req: NextRequest) {
       .from('supplier_portal_accounts')
       .update({
         company_name: body.company_name?.trim() || null,
+        contact_name: body.contact_name?.trim() || null,
         phone: body.phone?.trim() || null,
         address: body.address?.trim() || null,
         categories: body.categories ?? null,

@@ -7,6 +7,7 @@ interface Props {
   account: {
     email: string
     company_name: string
+    contact_name: string
     phone: string
     address: string
     categories: string[]
@@ -35,6 +36,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export function SupplierProfileClient({ account, categoryOptions }: Props) {
   const router = useRouter()
   const [companyName, setCompanyName] = useState(account.company_name)
+  const [contactName, setContactName] = useState(account.contact_name)
   const [phone, setPhone] = useState(account.phone)
   const [address, setAddress] = useState(account.address)
   const [categories, setCategories] = useState<string[]>(account.categories)
@@ -57,7 +59,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
       const res = await fetch('/api/supplier-portal/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company_name: companyName, phone, address, categories, description, website }),
+        body: JSON.stringify({ company_name: companyName, contact_name: contactName, phone, address, categories, description, website }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -91,17 +93,31 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
         <div className="p-5 rounded-xl space-y-5" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#71717A' }}>Business Details</p>
 
-          <Field label="Company / Trading Name">
-            <input
-              type="text"
-              value={companyName}
-              onChange={e => setCompanyName(e.target.value)}
-              className={inputCls}
-              style={INPUT_STYLE}
-              onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-              onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Company / Trading Name">
+              <input
+                type="text"
+                value={companyName}
+                onChange={e => setCompanyName(e.target.value)}
+                className={inputCls}
+                style={INPUT_STYLE}
+                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+              />
+            </Field>
+            <Field label="Contact Name">
+              <input
+                type="text"
+                value={contactName}
+                onChange={e => setContactName(e.target.value)}
+                placeholder="Your full name"
+                className={inputCls}
+                style={INPUT_STYLE}
+                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+              />
+            </Field>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Phone">

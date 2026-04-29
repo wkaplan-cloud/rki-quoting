@@ -18,7 +18,7 @@ export default async function SupplierProfilePage() {
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, phone, address, categories, description, website')
+    .select('id, email, company_name, contact_name, phone, address, categories, description, website')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
@@ -29,6 +29,7 @@ export default async function SupplierProfilePage() {
       account={{
         email: account.email,
         company_name: account.company_name ?? '',
+        contact_name: (account as any).contact_name ?? '',
         phone: account.phone ?? '',
         address: account.address ?? '',
         categories: (account.categories as string[]) ?? [],
