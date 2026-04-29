@@ -50,18 +50,52 @@ export async function POST(req: NextRequest) {
   const supplierDisplay = portalAccount.company_name || ss.supplier_name || 'Your supplier'
   const studioName = settings?.business_name || 'Studio'
 
+  const subject = `Item Ready — ${session.title} (${supplierDisplay})`
   await resend.emails.send({
     from: `QuotingHub Notifications <notifications@quotinghub.co.za>`,
     to: studioEmail,
-    subject: `Item Ready — ${session.title} (${supplierDisplay})`,
-    html: `
-      <p>Hi ${studioName},</p>
-      <p><strong>${supplierDisplay}</strong> has notified you that items from the following price request are ready:</p>
-      <p style="font-size:16px;font-weight:bold;">${session.title}</p>
-      ${notes ? `<p><em>Note from supplier: ${notes}</em></p>` : ''}
-      <p>Please arrange collection or delivery at your earliest convenience.</p>
-      <p>— QuotingHub Notifications</p>
-    `,
+    subject,
+    text: `Hi ${studioName},\n\n${supplierDisplay} has notified you that items from the following price request are ready:\n\n${session.title}\n\n${notes ? `Note from supplier: ${notes}\n\n` : ''}Please arrange collection or delivery at your earliest convenience.\n\nLog in at: https://quotinghub.co.za`,
+    html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
+<body style="margin:0;padding:0;background-color:#F5F2EC;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F2EC;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
+        <tr>
+          <td style="background-color:#1A1A18;padding:32px 40px;border-radius:8px 8px 0 0;">
+            <p style="margin:0;font-size:22px;font-weight:600;color:#F5F2EC;letter-spacing:0.01em;">QuotingHub</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4A46B;letter-spacing:0.08em;text-transform:uppercase;">Sourcing Update</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
+            <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;">Hi ${studioName},</p>
+            <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;"><strong>${supplierDisplay}</strong> has notified you that items from the following price request are ready:</p>
+            <p style="margin:0 0 20px;font-size:16px;font-weight:600;color:#1A1A18;">${session.title}</p>
+            ${notes ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#5C5C5A;font-style:italic;">Note from supplier: ${notes}</p>` : ''}
+            <p style="margin:0 0 28px;font-size:15px;line-height:1.7;color:#2C2C2A;">Please arrange collection or delivery at your earliest convenience.</p>
+            <table cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="border-radius:6px;background-color:#9A7B4F;">
+                  <a href="https://quotinghub.co.za" style="display:inline-block;padding:14px 32px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.02em;">Open QuotingHub</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:20px 40px;">
+            <p style="margin:0;font-size:12px;color:#8A877F;">QuotingHub &middot; <a href="https://quotinghub.co.za" style="color:#8A877F;text-decoration:none;">quotinghub.co.za</a></p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Built for interior designers</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
   })
 
   return NextResponse.json({ success: true })

@@ -23,20 +23,41 @@ export async function POST(req: NextRequest) {
 
   try {
     const repliedAt = new Date().toISOString()
+    const subject = 'Re: your QuotingHub message'
     await resend.emails.send({
       from: `QuotingHub <${REPLY_FROM}>`,
       to,
       replyTo: REPLY_FROM,
-      subject: 'Re: your QuotingHub message',
-      html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#F5F2EC;border-radius:8px;">
-          <h2 style="margin:0 0 4px;font-size:18px;color:#1A1A18;">Message from QuotingHub</h2>
-          <hr style="border:none;border-top:1px solid #D8D3C8;margin:16px 0;" />
-          <p style="margin:0;font-size:15px;color:#1A1A18;white-space:pre-wrap;line-height:1.6;">${esc(message)}</p>
-          <hr style="border:none;border-top:1px solid #D8D3C8;margin:24px 0 16px;" />
-          <p style="margin:0;font-size:12px;color:#8A877F;">QuotingHub &middot; <a href="mailto:${REPLY_FROM}" style="color:#8A877F;">${REPLY_FROM}</a></p>
-        </div>
-      `,
+      subject,
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
+<body style="margin:0;padding:0;background-color:#F5F2EC;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F2EC;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;">
+        <tr>
+          <td style="background-color:#1A1A18;padding:32px 40px;border-radius:8px 8px 0 0;">
+            <p style="margin:0;font-size:22px;font-weight:600;color:#F5F2EC;letter-spacing:0.01em;">QuotingHub</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4A46B;letter-spacing:0.08em;text-transform:uppercase;">Message${toName ? ` for ${esc(toName)}` : ''}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
+            <p style="margin:0;font-size:15px;line-height:1.7;color:#2C2C2A;white-space:pre-wrap;">${esc(message)}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:20px 40px;">
+            <p style="margin:0;font-size:12px;color:#8A877F;">QuotingHub &middot; <a href="mailto:${REPLY_FROM}" style="color:#8A877F;text-decoration:none;">${REPLY_FROM}</a></p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Built for interior designers</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
     })
     if (id) await supabaseAdmin.from('contact_submissions').update({ replied_at: repliedAt }).eq('id', id)
     return NextResponse.json({ ok: true, replied_at: repliedAt })
