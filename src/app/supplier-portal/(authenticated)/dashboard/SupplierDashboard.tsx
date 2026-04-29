@@ -251,34 +251,6 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
     )
   }
 
-  if (studioNames.length === 1) {
-    const name = studioNames[0]
-    const open = studioGroups[name].filter(r => !isClosedStatus(r.status))
-    const closed = studioGroups[name].filter(r => isClosedStatus(r.status))
-
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>Price Requests</h1>
-          <p className="text-xs mt-0.5" style={{ color: '#71717A' }}>
-            From {name} · {open.length} open{closed.length > 0 ? ` · ${closed.length} completed` : ''}
-          </p>
-        </div>
-        {open.length > 0 && (
-          <div className="space-y-2">
-            {open.map(r => <RequestCard key={r.id} row={r} readMap={readMap} onOpen={handleOpen} />)}
-          </div>
-        )}
-        {closed.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>Completed</p>
-            {closed.map(r => <RequestCard key={r.id} row={r} readMap={readMap} onOpen={handleOpen} />)}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   if (selectedStudio) {
     return (
       <StudioDetail
@@ -299,7 +271,7 @@ export function SupplierDashboard({ rows }: { rows: Row[] }) {
       <div>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>Price Requests</h1>
         <p className="text-xs mt-0.5" style={{ color: '#71717A' }}>
-          {studioNames.length} studios · {totalOpen} open{totalClosed > 0 ? ` · ${totalClosed} completed` : ''}
+          {studioNames.length} {studioNames.length === 1 ? 'studio' : 'studios'} · {totalOpen} open{totalClosed > 0 ? ` · ${totalClosed} completed` : ''}
         </p>
       </div>
 
