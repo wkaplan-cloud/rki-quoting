@@ -308,7 +308,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
         <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Twinbru Sync</h2>
         <span className="text-xs text-white/30">{catalogueCount.toLocaleString()} fabrics in catalogue</span>
       </div>
-      <p className="text-xs text-white/30 mb-6">All three syncs run automatically at 2am. Use the buttons below to trigger manually.</p>
+      <p className="text-xs text-white/30 mb-6">Load new fabrics (2:00am) · Sync prices (2:20am) · Remove discontinued (2:40am) · Backfill images (3:00am) — all run automatically each night. Use the buttons below to trigger manually.</p>
 
       {/* ── Section 1: Fetch / Update Fabrics ── */}
       <div className="border-b border-white/10 pb-5 mb-5">
@@ -357,7 +357,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
                 <p className="text-sm font-medium text-white">Remove Discontinued</p>
                 {discontinuedState === 'scanning' && <ElapsedTimer running={true} />}
               </div>
-              <p className="text-xs text-white/30 mb-1">Scans all active Twinbru fabrics and removes any from your catalogue that are no longer listed.</p>
+              <p className="text-xs text-white/30 mb-1">Scans all active Twinbru fabrics and removes any from your catalogue that are no longer listed. Also runs automatically at 2:40am.</p>
               {lastDiscontinuedSync ? (
                 <div className="mt-1 mb-2 space-y-0.5">
                   <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(lastDiscontinuedSync.completed_at ?? lastDiscontinuedSync.started_at)}</span></p>
@@ -454,7 +454,7 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
               <p className="text-sm font-medium text-white">Backfill Images</p>
               {triggeringImages && <ElapsedTimer running={triggeringImages} />}
             </div>
-            <p className="text-xs text-white/30 mb-1">Fetches and populates images for any fabrics in the catalogue that are missing an image URL. Safe to run at any time.</p>
+            <p className="text-xs text-white/30 mb-1">Fetches and populates images for any fabrics in the catalogue that are missing an image URL. Also runs automatically at 3:00am.</p>
             {lastImageSync ? (
               <div className="mt-1 space-y-0.5">
                 <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(lastImageSync.completed_at ?? lastImageSync.started_at)}</span></p>
