@@ -310,7 +310,17 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                 {subscriptionStatus === 'trialing' && (() => {
                   const used = members.filter(m => m.status === 'active' || m.status === 'pending').length
                   const remaining = Math.max(0, 4 - used)
-                  return (
+                  return remaining === 0 ? (
+                    <div className="flex items-center justify-between bg-[#9A7B4F]/8 border border-[#9A7B4F]/25 rounded-lg px-4 py-3 mt-2">
+                      <div>
+                        <p className="text-sm font-medium text-[#2C2C2A]">Trial limit reached — 4 members</p>
+                        <p className="text-xs text-[#8A877F] mt-0.5">Subscribe to add more team members.</p>
+                      </div>
+                      <Link href="/subscribe" className="flex items-center gap-1.5 px-3 py-2 bg-[#9A7B4F] text-white text-xs font-medium rounded-lg hover:bg-[#B8956A] transition-colors flex-shrink-0 ml-4">
+                        Subscribe <ArrowRight size={12} />
+                      </Link>
+                    </div>
+                  ) : (
                     <p className="text-xs text-[#8A877F] mt-2">
                       Trial plan — {remaining} invite slot{remaining !== 1 ? 's' : ''} remaining.{' '}
                       <Link href="/subscribe" className="text-[#9A7B4F] hover:underline">Subscribe to add unlimited members.</Link>
