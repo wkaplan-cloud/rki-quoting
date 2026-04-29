@@ -197,73 +197,78 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
         ) : (
           <div className="flex-1">
             <h1 className="font-serif text-xl md:text-2xl text-[#1A1A18] font-medium">{project.project_name}</h1>
-            <div className="flex items-center gap-3 mt-1 text-sm text-[#8A877F] flex-wrap">
-              <span className="font-mono">{project.project_number}</span>
+            <div className="flex items-center justify-between gap-3 mt-1 text-sm text-[#8A877F] flex-wrap">
+              {/* Left: project number, client, date, edit */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="font-mono">{project.project_number}</span>
 
-              {/* Client — inline editable */}
-              {editingClient ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-56">
-                    <Combobox
-                      options={clients.map(c => ({ id: c.id, label: c.client_name + (c.company ? ` — ${c.company}` : '') }))}
-                      value={pendingClientId}
-                      inputValue={pendingClientName}
-                      onChange={(id, label) => { setPendingClientId(id); setPendingClientName(label) }}
-                      onCreate={handleCreateClient}
-                      placeholder="Search or create client…"
-                    />
+                {/* Client — inline editable */}
+                {editingClient ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-56">
+                      <Combobox
+                        options={clients.map(c => ({ id: c.id, label: c.client_name + (c.company ? ` — ${c.company}` : '') }))}
+                        value={pendingClientId}
+                        inputValue={pendingClientName}
+                        onChange={(id, label) => { setPendingClientId(id); setPendingClientName(label) }}
+                        onCreate={handleCreateClient}
+                        placeholder="Search or create client…"
+                      />
+                    </div>
+                    <button onClick={confirmClient} className="p-1.5 rounded bg-[#9A7B4F] text-white hover:bg-[#7d6340] transition-colors cursor-pointer flex-shrink-0">
+                      <Check size={13} />
+                    </button>
+                    <button onClick={cancelClientEdit} className="p-1.5 rounded border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer flex-shrink-0">
+                      <X size={13} />
+                    </button>
                   </div>
-                  <button onClick={confirmClient} className="p-1.5 rounded bg-[#9A7B4F] text-white hover:bg-[#7d6340] transition-colors cursor-pointer flex-shrink-0">
-                    <Check size={13} />
+                ) : (
+                  <>
+                    {project.client
+                      ? <><span>·</span><span className="cursor-pointer hover:text-[#2C2C2A]" onClick={() => { setPendingClientId(project.client_id ?? ''); setPendingClientName(project.client?.client_name ?? ''); setEditingClient(true) }}>{project.client.client_name}</span></>
+                      : <button onClick={() => { setPendingClientId(''); setPendingClientName(''); setEditingClient(true) }} className="text-[#9A7B4F] hover:underline cursor-pointer">+ Add client</button>
+                    }
+                  </>
+                )}
+
+                {!editingClient && <><span>·</span><span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span></>}
+
+                {!editingClient && (
+                  <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                    <Pencil size={12} />
                   </button>
-                  <button onClick={cancelClientEdit} className="p-1.5 rounded border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer flex-shrink-0">
-                    <X size={13} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {project.client
-                    ? <><span>·</span><span className="cursor-pointer hover:text-[#2C2C2A]" onClick={() => { setPendingClientId(project.client_id ?? ''); setPendingClientName(project.client?.client_name ?? ''); setEditingClient(true) }}>{project.client.client_name}</span></>
-                    : <button onClick={() => { setPendingClientId(''); setPendingClientName(''); setEditingClient(true) }} className="text-[#9A7B4F] hover:underline cursor-pointer">+ Add client</button>
-                  }
-                </>
-              )}
+                )}
+              </div>
 
-              {!editingClient && <><span>·</span><span>{new Date(project.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}</span></>}
-
-              {/* Created by — read-only */}
-              {!editingClient && createdByName && (
-                <><span>·</span><span className="text-[#8A877F]">Created by {createdByName}</span></>
-              )}
-
-              {/* Assigned to */}
-              {!editingClient && members.length > 0 && (
-                <>
-                  <span>·</span>
-                  {isAdmin ? (
-                    <span className="flex items-center gap-1">
-                      <span className="text-[#8A877F] text-xs">Assigned to</span>
-                      <select
-                        value={assignedTo ?? project.user_id ?? ''}
-                        onChange={e => handleReassign(e.target.value)}
-                        disabled={reassigning}
-                        className="text-xs text-[#2C2C2A] bg-transparent border-b border-dashed border-[#9A7B4F] outline-none cursor-pointer hover:border-[#2C2C2A] transition-colors disabled:opacity-50"
-                      >
-                        {members.map(m => (
-                          <option key={m.user_id} value={m.user_id}>{m.label}</option>
-                        ))}
-                      </select>
-                    </span>
-                  ) : (
-                    <><span className="text-[#8A877F] text-xs">Assigned to</span><span>{members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label ?? '—'}</span></>
+              {/* Right: Created by + Assigned to */}
+              {!editingClient && (createdByName || members.length > 0) && (
+                <div className="flex items-center gap-3 text-xs flex-shrink-0">
+                  {createdByName && (
+                    <span className="text-[#8A877F]">Created by <span className="text-[#2C2C2A]">{createdByName}</span></span>
                   )}
-                </>
-              )}
-
-              {!editingClient && (
-                <button onClick={() => setEditing(true)} className="p-1 rounded border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A] transition-colors cursor-pointer">
-                  <Pencil size={12} />
-                </button>
+                  {members.length > 0 && (
+                    <>
+                      {createdByName && <span className="text-[#D8D3C8]">·</span>}
+                      <span className="flex items-center gap-1 text-[#8A877F]">
+                        Assigned to{' '}
+                        {isAdmin ? (
+                          <select
+                            value={assignedTo ?? project.user_id ?? ''}
+                            onChange={e => handleReassign(e.target.value)}
+                            disabled={reassigning}
+                            className="text-[#2C2C2A] bg-transparent border-b border-dashed border-[#9A7B4F] outline-none cursor-pointer hover:border-[#2C2C2A] transition-colors disabled:opacity-50"
+                          >
+                            {members.map(m => (
+                              <option key={m.user_id} value={m.user_id}>{m.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="text-[#2C2C2A]">{members.find(m => m.user_id === (assignedTo ?? project.user_id))?.label ?? '—'}</span>
+                        )}
+                      </span>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           </div>
