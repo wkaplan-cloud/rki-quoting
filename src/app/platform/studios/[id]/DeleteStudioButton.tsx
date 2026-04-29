@@ -391,6 +391,47 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
   )
 }
 
+export function QuickDeleteButton({ orgId, studioName }: { orgId: string; studioName: string }) {
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+
+  async function handleDelete() {
+    if (!confirm(`Quick-delete "${studioName}"? This is permanent and skips MFA.`)) return
+    setLoading(true)
+    // Archive first (required by purge route)
+    const archiveRes = await fetch(`/api/platform/studios/${orgId}`, { method: 'DELETE' })
+    if (!archiveRes.ok) {
+      const d = await archiveRes.json()
+      toast.error(d.error ?? 'Archive step failed')
+      setLoading(false)
+      return
+    }
+    // Then purge
+    const purgeRes = await fetch(`/api/platform/studios/${orgId}/purge`, { method: 'DELETE' })
+    if (!purgeRes.ok) {
+      const d = await purgeRes.json()
+      toast.error(d.error ?? 'Purge step failed')
+      setLoading(false)
+      return
+    }
+    toast.success(`"${studioName}" deleted`)
+    router.push('/platform/studios')
+    router.refresh()
+  }
+
+  return (
+    <button
+      onClick={handleDelete}
+      disabled={loading}
+      className="flex items-center gap-1 text-xs text-red-400/70 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-40"
+      title="Quick delete (no MFA) — testing only"
+    >
+      <Trash2 size={11} />
+      {loading ? 'Deleting…' : 'Quick delete'}
+    </button>
+  )
+}
+
 export function RestoreStudioButton({ orgId, studioName }: { orgId: string; studioName: string }) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()

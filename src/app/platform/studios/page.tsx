@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Building2, Users, FolderOpen, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { QuickDeleteButton } from './[id]/DeleteStudioButton'
 
 function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string; trialEndsAt: string | null }) {
   if (status === 'active') {
@@ -158,9 +159,12 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
                 {new Date(studio.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
               </td>
               <td className="px-5 py-3.5">
-                <Link href={`/platform/studios/${studio.id}`} className="flex items-center gap-1 text-xs text-[#C4A46B] hover:underline">
-                  {archived ? 'View' : 'Manage'} <ChevronRight size={12} />
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link href={`/platform/studios/${studio.id}`} className="flex items-center gap-1 text-xs text-[#C4A46B] hover:underline">
+                    {archived ? 'View' : 'Manage'} <ChevronRight size={12} />
+                  </Link>
+                  {!archived && <QuickDeleteButton orgId={studio.id} studioName={studio.businessName} />}
+                </div>
               </td>
             </tr>
           ))}
