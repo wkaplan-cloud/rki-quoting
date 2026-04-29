@@ -88,6 +88,9 @@ export async function DELETE(
     await supabaseAdmin.from('suppliers').delete().in('user_id', userIds)
   }
 
+  // Remove any price list access grants this org received from other orgs
+  await supabaseAdmin.from('price_list_access').delete().eq('org_id', orgId)
+
   // Delete any audit_logs tied directly to the org (org_id FK)
   await supabaseAdmin.from('audit_logs').delete().eq('org_id', orgId)
 
