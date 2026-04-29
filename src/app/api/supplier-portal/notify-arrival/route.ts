@@ -75,14 +75,7 @@ export async function POST(req: NextRequest) {
             <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;"><strong>${supplierDisplay}</strong> has notified you that items from the following price request are ready:</p>
             <p style="margin:0 0 20px;font-size:16px;font-weight:600;color:#1A1A18;">${session.title}</p>
             ${notes ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#5C5C5A;font-style:italic;">Note from supplier: ${notes}</p>` : ''}
-            <p style="margin:0 0 28px;font-size:15px;line-height:1.7;color:#2C2C2A;">Please arrange collection or delivery at your earliest convenience.</p>
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="border-radius:6px;background-color:#9A7B4F;">
-                  <a href="https://quotinghub.co.za" style="display:inline-block;padding:14px 32px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.02em;">Open QuotingHub</a>
-                </td>
-              </tr>
-            </table>
+            <p style="margin:0;font-size:15px;line-height:1.7;color:#2C2C2A;">Please arrange collection or delivery at your earliest convenience.</p>
           </td>
         </tr>
         <tr>
