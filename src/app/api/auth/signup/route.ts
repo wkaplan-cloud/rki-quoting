@@ -134,5 +134,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to send confirmation email. Please try again.' }, { status: 500 })
   }
 
+  // Admin notification — fire and forget, never block signup
+  resend.emails.send({
+    from: 'QuotingHub <noreply@quotinghub.co.za>',
+    to: 'hello@quotinghub.co.za',
+    subject: `New designer signup: ${full_name.trim()}`,
+    text: `New designer registered on QuotingHub.\n\nName: ${full_name.trim()}\nEmail: ${email.toLowerCase().trim()}\nTime: ${new Date().toISOString()}`,
+  }).catch(() => {})
+
   return NextResponse.json({ ok: true })
 }

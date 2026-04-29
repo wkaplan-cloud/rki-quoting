@@ -18,6 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       dimensions?: string
       colour_finish?: string
       line_item_id?: string
+      ref_image_urls?: string[] | null
     }
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         dimensions: body.dimensions?.trim() ?? null,
         colour_finish: body.colour_finish?.trim() ?? null,
         line_item_id: body.line_item_id ?? null,
+        ref_image_urls: body.ref_image_urls ?? null,
         sort_order,
       })
       .select()

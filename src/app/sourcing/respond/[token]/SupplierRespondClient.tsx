@@ -15,6 +15,7 @@ interface Assignment {
     item_quantity: number | null
     dimensions: string | null
     colour_finish: string | null
+    ref_image_urls: string[] | null
   } | null
   response: {
     id: string
@@ -196,11 +197,30 @@ function PriceForm({
 
       {expanded && (
         <div style={{ borderTop: '1px solid #E4E4E7' }}>
-          {item.specifications && (
-            <div className="px-5 py-3" style={{ background: '#FAFAFA', borderBottom: '1px solid #E4E4E7' }}>
-              <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
+          {(item.ref_image_urls && item.ref_image_urls.length > 0) || item.specifications ? (
+            <div style={{ background: '#FAFAFA', borderBottom: '1px solid #E4E4E7' }}>
+              {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                <div className="px-5 pt-3 pb-2 flex gap-2 flex-wrap">
+                  {item.ref_image_urls.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Reference ${i + 1}`}
+                        className="w-20 h-20 object-cover rounded-lg border"
+                        style={{ borderColor: '#E4E4E7' }}
+                      />
+                    </a>
+                  ))}
+                </div>
+              )}
+              {item.specifications && (
+                <div className="px-5 py-3">
+                  <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
+                </div>
+              )}
             </div>
-          )}
+          ) : null}
 
           {/* Can't supply toggle */}
           <div className="px-5 pt-4">

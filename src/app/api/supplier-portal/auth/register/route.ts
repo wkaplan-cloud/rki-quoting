@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 // POST /api/supplier-portal/auth/register — creates Supabase auth account + portal account row
@@ -69,6 +70,15 @@ export async function POST(req: NextRequest) {
     await supabaseAdmin.auth.admin.deleteUser(authData.user.id).catch(() => {})
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
+
+  // Admin notification — fire and forget, never block signup
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  resend.emails.send({
+    from: 'QuotingHub <noreply@quotinghub.co.za>',
+    to: 'hello@quotinghub.co.za',
+    subject: `New supplier signup: ${company_name.trim()}`,
+    text: `New supplier registered on QuotingHub.\n\nCompany: ${company_name.trim()}\nEmail: ${email.toLowerCase().trim()}\nTime: ${new Date().toISOString()}`,
+  }).catch(() => {})
 
   return NextResponse.json({ success: true })
 }
