@@ -323,7 +323,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                   ) : (
                     <p className="text-xs text-[#8A877F] mt-2">
                       Trial plan — {remaining} invite slot{remaining !== 1 ? 's' : ''} remaining.{' '}
-                      <Link href="/subscribe" className="text-[#9A7B4F] hover:underline">Subscribe to add unlimited members.</Link>
+                      <Link href="/subscribe" className="text-[#9A7B4F] hover:underline">Subscribe to add more members.</Link>
                     </p>
                   )
                 })()}
@@ -574,7 +574,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
               </button>
             </div>
             <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-              Studio supports up to 5 team members. Upgrade to Agency for <strong className="text-[#2C2C2A]">unlimited members</strong>, Sage integration, and custom branded PDFs — charged at <strong className="text-[#2C2C2A]">R2,499/month</strong>.
+              Studio supports up to 5 team members. Upgrade to Agency for <strong className="text-[#2C2C2A]">up to 10 members</strong>, Sage integration, and custom branded PDFs — charged at <strong className="text-[#2C2C2A]">R2,499/month</strong>.
             </p>
             <ul className="space-y-2 mb-6">
               {['Unlimited team members', 'Sage Business Cloud Accounting integration', 'Custom branded PDFs — we match your letterhead'].map(f => (

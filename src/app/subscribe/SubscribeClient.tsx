@@ -41,7 +41,7 @@ const plans = [
     description: 'For established firms and high-volume studios.',
     features: [
       'Everything in Studio',
-      'Unlimited team members',
+      'Up to 10 team members',
       'Price Requests — send sourcing requests to suppliers directly',
       'Dedicated account support',
     ],

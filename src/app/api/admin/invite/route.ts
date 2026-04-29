@@ -44,6 +44,9 @@ export async function POST(req: NextRequest) {
     if (org?.plan === 'studio' && (count ?? 0) >= 5) {
       return NextResponse.json({ error: 'Studio plan supports up to 5 team members. Upgrade to Agency for unlimited members.', upgrade: true }, { status: 403 })
     }
+    if (org?.plan === 'agency' && (count ?? 0) >= 10) {
+      return NextResponse.json({ error: 'Agency plan supports up to 10 team members. Contact us if you need more.', upgrade: false }, { status: 403 })
+    }
   }
 
   const { email, role } = await req.json()
