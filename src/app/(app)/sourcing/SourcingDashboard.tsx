@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Archive, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Archive, Trash2, Loader2, Link2, X } from 'lucide-react'
 
 interface Session {
   id: string
@@ -33,30 +33,65 @@ export function SourcingDashboard({ sessions, projects }: { sessions: Session[];
   const [tab, setTab] = useState<'active' | 'archived'>('active')
   const [showNewForm, setShowNewForm] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
+  const [newRef, setNewRef] = useState('')
   const [newProjectId, setNewProjectId] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [archiving, setArchiving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const comboRef = useRef<HTMLDivElement>(null)
 
   const active   = sessions.filter(s => !s.archived)
   const archived = sessions.filter(s => s.archived)
   const displayed = tab === 'active' ? active : archived
 
+  const linkedProject = projects.find(p => p.id === newProjectId) ?? null
+  const filteredProjects = newRef.trim() === ''
+    ? projects
+    : projects.filter(p => p.project_name.toLowerCase().includes(newRef.toLowerCase()))
+
+  function pickProject(p: { id: string; project_name: string }) {
+    setNewRef(p.project_name)
+    setNewProjectId(p.id)
+    setShowSuggestions(false)
+  }
+
+  function handleRefChange(v: string) {
+    setNewRef(v)
+    setNewProjectId('')
+    setShowSuggestions(true)
+  }
+
+  function resetForm() {
+    setNewRef('')
+    setNewProjectId('')
+    setShowSuggestions(false)
+    setShowNewForm(false)
+  }
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!newTitle.trim()) return
+    if (!newRef.trim()) return
     setCreating(true)
     try {
       const res = await fetch('/api/sourcing/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle.trim(), project_id: newProjectId || undefined }),
+        body: JSON.stringify({ title: newRef.trim(), project_id: newProjectId || undefined }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      setNewTitle('')
-      setNewProjectId('')
-      setShowNewForm(false)
+      resetForm()
       startTransition(() => router.push(`/sourcing/${json.data.id}`))
     } catch (err: any) {
       alert(err.message)
@@ -93,36 +128,60 @@ export function SourcingDashboard({ sessions, projects }: { sessions: Session[];
       {/* New session — button that expands into form */}
       {showNewForm ? (
         <form onSubmit={handleCreate} className="border border-[#C4A46B] rounded-xl p-4 space-y-3 bg-[#FEFDF9]">
-          <div className="flex gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#8A877F]">Client / Reference</p>
+
+          {/* Combo input */}
+          <div ref={comboRef} className="relative">
             <input
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              placeholder={`e.g. "Living Room Furniture Q3"`}
-              className="flex-1 px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
+              value={newRef}
+              onChange={e => handleRefChange(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="e.g. Smith Residence, QH-2024-01, Cape Town Apartment…"
+              className="w-full px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
               autoFocus
+              autoComplete="off"
             />
-            {projects.length > 0 && (
-              <select
-                value={newProjectId}
-                onChange={e => setNewProjectId(e.target.value)}
-                className="px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white text-[#8A877F]"
-              >
-                <option value="">No client (optional)</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
-              </select>
+
+            {/* Suggestions dropdown */}
+            {showSuggestions && filteredProjects.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#D4CFC7] rounded-lg shadow-lg overflow-hidden">
+                <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-[#A89F91]">Existing clients</p>
+                {filteredProjects.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onMouseDown={() => pickProject(p)}
+                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] transition-colors"
+                  >
+                    {p.project_name}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
+
+          {/* Linked project tag */}
+          {linkedProject && (
+            <div className="flex items-center gap-1.5 text-xs text-[#6A8A5A] bg-[#F0F5EE] border border-[#C8DCC2] rounded-lg px-2.5 py-1.5 w-fit">
+              <Link2 size={11} />
+              <span>Linked to project: <strong>{linkedProject.project_name}</strong></span>
+              <button type="button" onClick={() => setNewProjectId('')} className="ml-1 hover:text-[#2C2C2A]">
+                <X size={11} />
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              onClick={() => { setShowNewForm(false); setNewTitle(''); setNewProjectId('') }}
+              onClick={resetForm}
               className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={creating || !newTitle.trim()}
+              disabled={creating || !newRef.trim()}
               className="flex items-center gap-2 px-4 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-50 transition-colors"
             >
               {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
