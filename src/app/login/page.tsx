@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, PenLine, ShoppingBag } from 'lucide-react'
+
+const SUPPLIER_PORTAL_URL = process.env.NEXT_PUBLIC_SUPPLIER_PORTAL_URL ?? 'https://suppliers.quotinghub.co.za'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -12,6 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
+  const [role, setRole] = useState<'designer' | null>(null)
   const [hashRedirecting, setHashRedirecting] = useState(() =>
     typeof window !== 'undefined' && window.location.hash.includes('access_token=')
   )
@@ -120,20 +123,19 @@ export default function LoginPage() {
     }
   }
 
+  const cardShadow = { boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }
+
   return (
     <div
       className="min-h-screen flex"
       style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
     >
-      {/* Left panel — transparent overlay on dark half */}
+      {/* Left panel */}
       <div className="hidden lg:flex w-2/5 flex-col justify-between p-12 relative">
-        {/* Logo */}
         <div className="relative z-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="QuotingHub" className="h-28 w-auto object-contain" style={{ filter: 'invert(1)' }} />
         </div>
-
-        {/* Tagline */}
         <div className="relative z-10">
           <p className="font-serif text-white/85 text-4xl leading-snug tracking-tight">
             Every project,<br />
@@ -144,87 +146,123 @@ export default function LoginPage() {
             for your interior design projects.
           </p>
         </div>
-
         <p className="relative z-10 text-white/20 text-xs">© QuotingHub · quotinghub.co.za</p>
       </div>
 
-      {/* Right panel — transparent overlay on light half */}
+      {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={{ boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }}>
-          <div className="mb-8">
-            <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Welcome back</h1>
-            <p className="text-sm text-[#8A877F] mt-1.5">Sign in to your account</p>
-          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder=""
-                required
-                className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
-              />
+        {/* Role selector */}
+        {!role && (
+          <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={cardShadow}>
+            <div className="mb-8 text-center">
+              <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Welcome back</h1>
+              <p className="text-sm text-[#8A877F] mt-1.5">How would you like to sign in?</p>
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder=""
-                  required
-                  className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white pr-10 transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C4BFB5] hover:text-[#8A877F] transition-colors cursor-pointer"
-                >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => setRole('designer')}
+                className="w-full flex items-center gap-4 px-5 py-4 border-2 border-[#D8D3C8] rounded-2xl text-left hover:border-[#9A7B4F] hover:bg-[#F5F2EC] transition-all duration-150 group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#1A1A18] flex items-center justify-center shrink-0">
+                  <PenLine size={18} className="text-[#C4A46B]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#1A1A18]">Designer / Studio</p>
+                  <p className="text-xs text-[#8A877F]">Quotes, invoices & purchase orders</p>
+                </div>
+              </button>
+              <a
+                href={`${SUPPLIER_PORTAL_URL}/login`}
+                className="w-full flex items-center gap-4 px-5 py-4 border-2 border-[#D8D3C8] rounded-2xl text-left hover:border-[#9A7B4F] hover:bg-[#F5F2EC] transition-all duration-150 no-underline block"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#F5F2EC] border border-[#D8D3C8] flex items-center justify-center shrink-0">
+                  <ShoppingBag size={18} className="text-[#9A7B4F]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#1A1A18]">Supplier</p>
+                  <p className="text-xs text-[#8A877F]">Price requests & product catalogue</p>
+                </div>
+              </a>
             </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-[#8A877F] cursor-pointer select-none">
-                <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="rounded border-[#D8D3C8] accent-[#9A7B4F]" />
-                Remember me
-              </label>
-              <Link href="/forgot-password" className="text-sm text-[#9A7B4F] hover:underline">Forgot password?</Link>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer mt-1"
-            >
-              {loading ? 'Signing in…' : 'Sign In'}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-[#8A877F] mt-6">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-[#9A7B4F] hover:underline">Sign up</Link>
-          </p>
-
-          <div className="mt-6 pt-5 border-t border-[#EDE9E1] text-center">
-            <p className="text-xs text-[#B0AB9F]">Are you a supplier?</p>
-            <Link href="/supplier-portal/login" className="text-sm text-[#9A7B4F] hover:underline font-medium">Sign in to your Supplier Portal →</Link>
-            <p className="text-xs text-[#C4BFB5] mt-1">
-              No account yet?{' '}
-              <Link href="/supplier-portal/register" className="text-[#9A7B4F] hover:underline">Register here</Link>
+            <p className="text-center text-sm text-[#8A877F] mt-7">
+              Don&apos;t have an account?{' '}
+              <Link href="/signup" className="text-[#9A7B4F] hover:underline">Sign up</Link>
             </p>
           </div>
-        </div>
+        )}
+
+        {/* Designer login form */}
+        {role === 'designer' && (
+          <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={cardShadow}>
+            <div className="mb-8">
+              <button onClick={() => setRole(null)} className="text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors mb-4 flex items-center gap-1">
+                ← Back
+              </button>
+              <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Designer sign in</h1>
+              <p className="text-sm text-[#8A877F] mt-1.5">Sign in to your studio account</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white pr-10 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C4BFB5] hover:text-[#8A877F] transition-colors cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-[#8A877F] cursor-pointer select-none">
+                  <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="rounded border-[#D8D3C8] accent-[#9A7B4F]" />
+                  Remember me
+                </label>
+                <Link href="/forgot-password" className="text-sm text-[#9A7B4F] hover:underline">Forgot password?</Link>
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer mt-1"
+              >
+                {loading ? 'Signing in…' : 'Sign In'}
+              </button>
+            </form>
+
+            <p className="text-center text-sm text-[#8A877F] mt-6">
+              Don&apos;t have an account?{' '}
+              <Link href="/signup" className="text-[#9A7B4F] hover:underline">Sign up</Link>
+            </p>
+          </div>
+        )}
+
       </div>
     </div>
   )

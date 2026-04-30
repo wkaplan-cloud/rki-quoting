@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { buildNotifEmail } from '@/lib/sourcing-notifications'
+
+const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
 
 // POST /api/sourcing/respond/[token]/price
 // Public: supplier submits or updates a price for one assignment
@@ -11,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     const { data: ss } = await supabaseAdmin
       .from('sourcing_session_suppliers')
-      .select('id, status')
+      .select('id, status, supplier_name')
       .eq('token', token)
       .maybeSingle()
 
@@ -37,7 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // Verify assignment belongs to this session supplier
     const { data: assignment } = await supabaseAdmin
       .from('sourcing_item_assignments')
-      .select('id, status, spec_approval_status, pending_supplier_specs')
+      .select('id, status, spec_approval_status, pending_supplier_specs, item_id')
       .eq('id', assignment_id)
       .eq('session_supplier_id', ss.id)
       .maybeSingle()
@@ -118,7 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (sessionSS) {
       const { data: sessionRow } = await supabaseAdmin
         .from('sourcing_sessions')
-        .select('status')
+        .select('id, status, title, created_by')
         .eq('id', sessionSS.session_id)
         .single()
 
@@ -127,6 +131,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           .from('sourcing_sessions')
           .update({ status: 'in_progress' })
           .eq('id', sessionSS.session_id)
+      }
+
+      // Notify designer that supplier submitted a price
+      if (sessionRow?.created_by && process.env.RESEND_API_KEY) {
+        try {
+          const [{ data: userData }, { data: itemRow }] = await Promise.all([
+            supabaseAdmin.auth.admin.getUserById(sessionRow.created_by),
+            supabaseAdmin.from('sourcing_session_items').select('title').eq('id', (assignment as any).item_id).maybeSingle(),
+          ])
+          const designerEmail = userData?.user?.email
+          if (designerEmail) {
+            const resend = new Resend(process.env.RESEND_API_KEY)
+            const supplierName = (ss as any).supplier_name ?? 'A supplier'
+            const itemTitle = itemRow?.title ?? 'an item'
+            await resend.emails.send({
+              from: 'QuotingHub <no-reply@quotinghub.co.za>',
+              to: designerEmail,
+              subject: `${supplierName} submitted a price — ${sessionRow.title}`,
+              html: buildNotifEmail({
+                heading: 'New price submitted',
+                body: `<strong>${supplierName}</strong> has submitted a price for <strong>${itemTitle}</strong> in your price request &ldquo;${sessionRow.title}&rdquo;. Review and compare with other suppliers.`,
+                ctaLabel: 'Review prices',
+                ctaUrl: `${APP_URL}/sourcing/${sessionRow.id}`,
+              }),
+            })
+          }
+        } catch { /* never break the main response */ }
       }
     }
 

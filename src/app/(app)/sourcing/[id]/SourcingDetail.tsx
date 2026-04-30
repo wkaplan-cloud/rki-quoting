@@ -459,25 +459,51 @@ interface PushModalProps {
   onPushed: (projectId: string) => void
 }
 
+function buildPushDescription(item: SessionItem, response: Response, supplierName: string): string {
+  const parts: string[] = []
+  if (item.dimensions) parts.push(item.dimensions)
+  if (item.colour_finish) parts.push(item.colour_finish)
+  if (item.work_type) parts.push(item.work_type)
+  if (item.item_specs) {
+    Object.entries(item.item_specs).forEach(([k, v]) => {
+      if (v) parts.push(`${k.replace(/_/g, ' ')}: ${v}`)
+    })
+  }
+  if (item.specifications) parts.push(item.specifications)
+  if (response.lead_time_weeks) parts.push(`Lead time: ${response.lead_time_weeks} weeks`)
+  if (response.notes && !response.notes.startsWith("[CAN'T SUPPLY]")) parts.push(`Note: ${response.notes}`)
+  parts.push(`Supplied by: ${supplierName}`)
+  return parts.join(' | ')
+}
+
 function PushModal({ item, assignment, response, supplierName, projects, sessionId, sessionProjectId, onClose, onPushed }: PushModalProps) {
   const defaultProjectId = sessionProjectId && projects.some(p => p.id === sessionProjectId)
     ? sessionProjectId
     : ''
   const [projectId, setProjectId] = useState(defaultProjectId)
   const [markup, setMarkup] = useState('0')
-  const [itemName, setItemName] = useState(item.title)
-  const [description, setDescription] = useState(item.specifications ?? '')
-  const [quantity, setQuantity] = useState(String(item.item_quantity ?? 1))
-  const [dimensions, setDimensions] = useState(item.dimensions ?? '')
-  const [colourFinish, setColourFinish] = useState(item.colour_finish ?? '')
   const [pushing, setPushing] = useState(false)
 
   const costPrice = response.unit_price
+  const quantity = item.item_quantity ?? 1
   const markupNum = Number(markup) || 0
   const sellPrice = costPrice * (1 + markupNum / 100)
-  const lineTotal = (Number(quantity) || 1) * sellPrice
+  const lineTotal = quantity * sellPrice
 
   const hasVariation = response.notes && !response.notes.startsWith("[CAN'T SUPPLY]")
+
+  // Build read-only detail rows for confirmed info
+  const detailRows: { label: string; value: string }[] = []
+  if (item.item_quantity) detailRows.push({ label: 'Quantity', value: String(item.item_quantity) })
+  if (item.dimensions) detailRows.push({ label: 'Dimensions', value: item.dimensions })
+  if (item.colour_finish) detailRows.push({ label: 'Colour / Finish', value: item.colour_finish })
+  if (item.work_type) detailRows.push({ label: 'Category', value: item.work_type })
+  if (item.item_specs) {
+    Object.entries(item.item_specs).forEach(([k, v]) => {
+      if (v) detailRows.push({ label: k.replace(/_/g, ' '), value: v })
+    })
+  }
+  if (item.specifications) detailRows.push({ label: 'Notes', value: item.specifications })
 
   async function handlePush() {
     if (!projectId) return
@@ -490,11 +516,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
           project_id: projectId,
           markup_percentage: markupNum,
           overrides: {
-            item_name: itemName.trim() || item.title,
-            description: description.trim() || null,
-            quantity: Number(quantity) || 1,
-            dimensions: dimensions.trim() || null,
-            colour_finish: colourFinish.trim() || null,
+            description: buildPushDescription(item, response, supplierName),
           },
         }),
       })
@@ -517,8 +539,8 @@ function PushModal({ item, assignment, response, supplierName, projects, session
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#EDE9E1]">
           <div>
-            <h2 className="text-base font-bold text-[#2C2C2A]">Review & Push to Quote</h2>
-            <p className="text-xs text-[#8A877F] mt-0.5">Edit any details before adding to the project</p>
+            <h2 className="text-base font-bold text-[#2C2C2A]">Confirm & Push to Project</h2>
+            <p className="text-xs text-[#8A877F] mt-0.5">Review the confirmed details, then select a project</p>
           </div>
           <button onClick={onClose} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
             <X size={18} />
@@ -526,20 +548,32 @@ function PushModal({ item, assignment, response, supplierName, projects, session
         </div>
 
         <div className="px-6 py-5 space-y-5">
-          {/* Supplier notes / variations — prominent warning */}
+          {/* Supplier notes / variations */}
           {hasVariation && (
             <div className="flex gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
               <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-semibold text-amber-700 mb-0.5">Supplier notes / variations</p>
+                <p className="text-xs font-semibold text-amber-700 mb-0.5">Supplier note</p>
                 <p className="text-sm text-amber-800 leading-relaxed">{response.notes}</p>
-                <p className="text-[11px] text-amber-600 mt-1.5">Review the details below and edit if needed before pushing.</p>
               </div>
             </div>
           )}
 
-          {/* Supplier + cost summary */}
+          {/* Item summary — read only */}
           <div className="bg-[#F5F2EC] rounded-xl p-4 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-3">Item</p>
+            <p className="text-sm font-semibold text-[#2C2C2A] mb-2">{item.title}</p>
+            {detailRows.map(row => (
+              <div key={row.label} className="flex justify-between text-sm">
+                <span className="text-[#8A877F] capitalize">{row.label}</span>
+                <span className="text-[#2C2C2A] text-right max-w-[60%]">{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Supplier + cost summary — read only */}
+          <div className="bg-[#F5F2EC] rounded-xl p-4 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-3">Accepted Price</p>
             <div className="flex justify-between text-sm">
               <span className="text-[#8A877F]">Supplier</span>
               <span className="font-medium text-[#2C2C2A]">{supplierName}</span>
@@ -554,34 +588,6 @@ function PushModal({ item, assignment, response, supplierName, projects, session
                 <span className="text-[#2C2C2A]">{response.lead_time_weeks} weeks</span>
               </div>
             )}
-          </div>
-
-          {/* Editable line item fields */}
-          <div className="space-y-3">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Line Item Details</p>
-            <div>
-              <label className="block text-xs font-medium text-[#8A877F] mb-1">Item name</label>
-              <input value={itemName} onChange={e => setItemName(e.target.value)} className={INPUT} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#8A877F] mb-1">Description / Specification</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-                className={`${INPUT} resize-none`} placeholder="Leave blank to omit" />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-[#8A877F] mb-1">Quantity</label>
-                <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} className={INPUT} />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-[#8A877F] mb-1">Dimensions</label>
-                <input value={dimensions} onChange={e => setDimensions(e.target.value)} className={INPUT} placeholder="e.g. 2400 × 900 × 760" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[#8A877F] mb-1">Colour / Finish</label>
-              <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} className={INPUT} />
-            </div>
           </div>
 
           {/* Markup + sell price */}
@@ -631,7 +637,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
             style={{ background: '#2C2C2A', color: '#F5F2EC' }}
           >
             {pushing ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
-            {pushing ? 'Pushing…' : 'Push to Quote'}
+            {pushing ? 'Pushing…' : 'Push to Project'}
           </button>
         </div>
       </div>
@@ -798,6 +804,7 @@ function SupplierCard({
   const isDraft = sessionStatus === 'draft'
   const isArchived = ss.status === 'declined'
   const allAccepted = ss.assignments.length > 0 && ss.assignments.every(a => a.status === 'accepted')
+  const respondedCount = ss.assignments.filter(a => a.status === 'responded').length
 
   const effectiveStatus = ss.sent_at && ss.status === 'pending' ? 'sent' : ss.status
 
@@ -884,6 +891,21 @@ function SupplierCard({
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
               {effectiveStatus.replace('_', ' ')}
             </span>
+            {respondedCount > 0 && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setExpanded(true) }}
+                title={`${respondedCount} item${respondedCount !== 1 ? 's' : ''} replied`}
+                className="flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: '#FFFBEB', color: '#92600A', border: '1px solid #FDE68A' }}
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#F59E0B' }} />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: '#F59E0B' }} />
+                </span>
+                {respondedCount} {respondedCount === 1 ? 'reply' : 'replies'}
+              </button>
+            )}
           </div>
           <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
         </div>

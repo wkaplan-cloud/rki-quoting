@@ -159,29 +159,35 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Suppliers - Coming Soon */}
-            <div className="rounded-2xl overflow-hidden border border-dashed border-[#D8D3C8] relative">
-              <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: 'url(/who-suppliers.jpg)' }} />
-              <div className="absolute inset-0 bg-[#F5F2EC]/80" />
+            {/* Suppliers - Active */}
+            <div className="rounded-2xl overflow-hidden border border-[#D8D3C8] hover:border-[#C4A46B]/50 hover:shadow-lg transition-all duration-300 relative">
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/who-suppliers.jpg)' }} />
+              <div className="absolute inset-0 bg-[#F5F2EC]/88" />
               <div className="relative p-8">
-              <div className="absolute top-4 right-4 bg-[#C4A46B]/15 text-[#9A7B4F] text-xs font-medium px-3 py-1 rounded-full">
-                Coming soon
+              <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-xs font-medium px-3 py-1 rounded-full border border-emerald-200">
+                Now live
               </div>
-              <div className="w-11 h-11 rounded-xl bg-[#EDE9E1] flex items-center justify-center mb-5">
-                <ShoppingCart size={20} className="text-[#8A877F]" />
+              <div className="w-11 h-11 rounded-xl bg-[#9A7B4F]/10 flex items-center justify-center mb-5">
+                <ShoppingCart size={20} className="text-[#9A7B4F]" />
               </div>
               <h3 className="font-serif text-xl text-[#1A1A18] mb-2">Suppliers</h3>
               <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-                Connect your product catalogue directly to QuotingHub so designers can access your latest pricing in real time.
+                Receive pricing requests from designers, submit prices, and manage your product catalogue — all in one place.
               </p>
-              <ul className="space-y-2">
-                {['Live price list sync', 'Direct purchase orders', 'Order tracking'].map(i => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-[#8A877F]">
-                    <Check size={13} className="text-[#C4BFB5] flex-shrink-0" />
+              <ul className="space-y-2 mb-6">
+                {['Respond to designer pricing requests', 'Upload and manage your price list', 'Track all active requests in one dashboard'].map(i => (
+                  <li key={i} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
+                    <Check size={13} className="text-[#C4A46B] flex-shrink-0" />
                     {i}
                   </li>
                 ))}
               </ul>
+              <Link
+                href="https://suppliers.quotinghub.co.za"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9A7B4F] hover:text-[#C4A46B] transition-colors"
+              >
+                Access Supplier Portal <ChevronRight size={14} />
+              </Link>
               </div>
             </div>
           </div>

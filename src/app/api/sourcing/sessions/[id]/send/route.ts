@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 60
@@ -155,12 +156,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Fetch project name
     const projectName = (session as any).project?.project_name ?? null
 
+    // Resolve portal accounts by email — handles suppliers who registered after the
+    // session_supplier record was created (portal_account_id would still be null on the record)
+    const supplierEmails = toSend.map(ss => ss.email).filter(Boolean)
+    const { data: portalAccountRows } = await supabaseAdmin
+      .from('supplier_portal_accounts')
+      .select('id, email')
+      .in('email', supplierEmails)
+    const portalByEmail = new Map((portalAccountRows ?? []).map((a: any) => [a.email, a.id]))
+
     const settled = await Promise.allSettled(toSend.map(async (ss) => {
       const assignments = (ss.assignments ?? []) as any[]
       if (!assignments.length) return { id: ss.id, success: true, skipped: true }
 
       const items = assignments.map((a: any) => a.item).filter(Boolean)
-      const isRegistered = !!(ss as any).portal_account_id
+
+      // Check portal account: prefer stored field, fall back to email lookup
+      const resolvedPortalAccountId = (ss as any).portal_account_id ?? portalByEmail.get(ss.email) ?? null
+
+      // If the record wasn't linked yet, link it now so the supplier can find it in their portal
+      if (resolvedPortalAccountId && !(ss as any).portal_account_id) {
+        await supabaseAdmin
+          .from('sourcing_session_suppliers')
+          .update({ portal_account_id: resolvedPortalAccountId })
+          .eq('id', ss.id)
+      }
+
+      const isRegistered = !!resolvedPortalAccountId
       const respondUrl = isRegistered
         ? `${SUPPLIER_PORTAL_URL}/requests/${ss.id}`
         : `${SITE_URL}/sourcing/respond/${ss.token}`
