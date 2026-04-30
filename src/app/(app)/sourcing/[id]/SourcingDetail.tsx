@@ -887,7 +887,7 @@ function SupplierCard({
                     )}
 
                     {!hasResponse && !isAccepted && (
-                      <p className="text-xs text-[#C4BFB5] mt-1">Awaiting response</p>
+                      <p className="text-xs text-[#C4BFB5] mt-1">{isDraft ? 'Assigned — not sent yet' : 'Awaiting response'}</p>
                     )}
                   </div>
                 )
@@ -986,11 +986,12 @@ function SupplierCard({
 }
 
 // ---- Progress Rail ----
-function ProgressRail({ itemsDone, suppliersDone }: { itemsDone: boolean; suppliersDone: boolean }) {
+function ProgressRail({ itemsDone, suppliersDone, assignDone }: { itemsDone: boolean; suppliersDone: boolean; assignDone: boolean }) {
   const steps = [
-    { label: 'Add items',        done: itemsDone },
-    { label: 'Add suppliers',    done: suppliersDone },
-    { label: 'Send to suppliers', done: false },
+    { label: 'Add items',            done: itemsDone },
+    { label: 'Add suppliers',        done: suppliersDone },
+    { label: 'Assign items',         done: assignDone },
+    { label: 'Send to suppliers',    done: false },
   ]
   const stepEls: React.ReactNode[] = []
   steps.forEach((step, i) => {
@@ -1184,7 +1185,11 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
 
       {/* Progress rail — draft only */}
       {isDraft && (
-        <ProgressRail itemsDone={items.length > 0} suppliersDone={suppliers.some(ss => ss.assignments.length > 0)} />
+        <ProgressRail
+          itemsDone={items.length > 0}
+          suppliersDone={suppliers.length > 0}
+          assignDone={suppliers.some(ss => ss.assignments.length > 0)}
+        />
       )}
 
       {/* Pricing Comparison Table */}
@@ -1278,12 +1283,16 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
               items={items}
             />
           )}
+
+          {/* Hint: supplier added but no items assigned yet */}
+          {isDraft && suppliers.length > 0 && !suppliers.some(ss => ss.assignments.length > 0) && (
+            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50">
+              <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700">Open the supplier above and assign at least one item before sending.</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {!canSend && !isArchived && items.length > 0 && suppliers.length > 0 && isDraft && (
-        <p className="text-xs text-[#8A877F]">Assign at least one item to a supplier before sending.</p>
-      )}
     </div>
   )
 }
