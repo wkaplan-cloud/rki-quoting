@@ -804,7 +804,7 @@ function SupplierCard({
           <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {/* Per-supplier Send button — shown when session is already sent but this supplier hasn't been */}
+          {/* First-time Send — supplier not yet sent to */}
           {!isDraft && !ss.sent_at && (
             <button
               type="button"
@@ -816,6 +816,20 @@ function SupplierCard({
             >
               {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
               {sending ? 'Sending…' : 'Send'}
+            </button>
+          )}
+          {/* Resend — already sent, notify again (e.g. after adding new items) */}
+          {!isDraft && ss.sent_at && (
+            <button
+              type="button"
+              onClick={async e => { e.stopPropagation(); setSending(true); await onSend(ss.id); setSending(false) }}
+              disabled={sending || ss.assignments.length === 0}
+              title="Resend to this supplier"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border disabled:opacity-40 transition-colors"
+              style={{ background: 'transparent', border: '1px solid #D4CFC7', color: '#8A877F' }}
+            >
+              {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+              {sending ? 'Sending…' : 'Resend'}
             </button>
           )}
           {!isDraft && (
