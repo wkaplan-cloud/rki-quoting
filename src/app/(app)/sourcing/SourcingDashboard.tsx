@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Archive, Trash2, Loader2, Link2, X } from 'lucide-react'
+import { Plus, Archive, Trash2, Loader2 } from 'lucide-react'
 
 interface Session {
   id: string
@@ -27,14 +27,13 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-export function SourcingDashboard({ sessions, projects }: { sessions: Session[]; projects: { id: string; project_name: string }[] }) {
+export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; clients: { id: string; client_name: string }[] }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [tab, setTab] = useState<'active' | 'archived'>('active')
   const [showNewForm, setShowNewForm] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newRef, setNewRef] = useState('')
-  const [newProjectId, setNewProjectId] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [archiving, setArchiving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -44,26 +43,22 @@ export function SourcingDashboard({ sessions, projects }: { sessions: Session[];
   const archived = sessions.filter(s => s.archived)
   const displayed = tab === 'active' ? active : archived
 
-  const linkedProject = projects.find(p => p.id === newProjectId) ?? null
-  const filteredProjects = newRef.trim() === ''
-    ? projects
-    : projects.filter(p => p.project_name.toLowerCase().includes(newRef.toLowerCase()))
+  const filteredClients = newRef.trim() === ''
+    ? clients
+    : clients.filter(c => c.client_name.toLowerCase().includes(newRef.toLowerCase()))
 
-  function pickProject(p: { id: string; project_name: string }) {
-    setNewRef(p.project_name)
-    setNewProjectId(p.id)
+  function pickClient(c: { id: string; client_name: string }) {
+    setNewRef(c.client_name)
     setShowSuggestions(false)
   }
 
   function handleRefChange(v: string) {
     setNewRef(v)
-    setNewProjectId('')
     setShowSuggestions(true)
   }
 
   function resetForm() {
     setNewRef('')
-    setNewProjectId('')
     setShowSuggestions(false)
     setShowNewForm(false)
   }
@@ -87,7 +82,7 @@ export function SourcingDashboard({ sessions, projects }: { sessions: Session[];
       const res = await fetch('/api/sourcing/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newRef.trim(), project_id: newProjectId || undefined }),
+        body: JSON.stringify({ title: newRef.trim() }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -143,33 +138,22 @@ export function SourcingDashboard({ sessions, projects }: { sessions: Session[];
             />
 
             {/* Suggestions dropdown */}
-            {showSuggestions && filteredProjects.length > 0 && (
-              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#D4CFC7] rounded-lg shadow-lg overflow-hidden">
+            {showSuggestions && filteredClients.length > 0 && (
+              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#D4CFC7] rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
                 <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-[#A89F91]">Existing clients</p>
-                {filteredProjects.map(p => (
+                {filteredClients.map(c => (
                   <button
-                    key={p.id}
+                    key={c.id}
                     type="button"
-                    onMouseDown={() => pickProject(p)}
+                    onMouseDown={() => pickClient(c)}
                     className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] transition-colors"
                   >
-                    {p.project_name}
+                    {c.client_name}
                   </button>
                 ))}
               </div>
             )}
           </div>
-
-          {/* Linked project tag */}
-          {linkedProject && (
-            <div className="flex items-center gap-1.5 text-xs text-[#6A8A5A] bg-[#F0F5EE] border border-[#C8DCC2] rounded-lg px-2.5 py-1.5 w-fit">
-              <Link2 size={11} />
-              <span>Linked to project: <strong>{linkedProject.project_name}</strong></span>
-              <button type="button" onClick={() => setNewProjectId('')} className="ml-1 hover:text-[#2C2C2A]">
-                <X size={11} />
-              </button>
-            </div>
-          )}
 
           <div className="flex justify-end gap-2">
             <button

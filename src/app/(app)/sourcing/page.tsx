@@ -14,11 +14,11 @@ export default async function SourcingPage() {
     .select('id, title, status, archived, created_at, project_id, project:projects(project_name)')
     .order('created_at', { ascending: false })
 
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('id, project_name')
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const { data: clients } = await supabase
+    .from('clients')
+    .select('id, client_name')
+    .order('client_name', { ascending: true })
+    .limit(200)
 
   // Fetch item + supplier counts per session
   const ids = (sessions ?? []).map(s => s.id)
@@ -65,7 +65,7 @@ export default async function SourcingPage() {
         subtitle={`${active.length} active price request${active.length !== 1 ? 's' : ''}`}
       />
       <div className="p-6 lg:p-8">
-        <SourcingDashboard sessions={enriched} projects={(projects ?? []) as { id: string; project_name: string }[]} />
+        <SourcingDashboard sessions={enriched} clients={(clients ?? []) as { id: string; client_name: string }[]} />
       </div>
     </div>
   )
