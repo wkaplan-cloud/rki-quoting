@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "performance-optimization": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/performance-optimization/SKILL.md",
+      "computedHash": "087baf94f788bd6a70ba8ec0aa0246f93808251fe2d24e1fd7a3df81896d2367"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
+    }
+  }
+}

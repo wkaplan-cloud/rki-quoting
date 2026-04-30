@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
-  MessageSquare, X, Check, CheckCircle2, RefreshCw, Lock, ImagePlus,
+  X, Check, CheckCircle2, ImagePlus,
   AlertTriangle, ArrowRight, BarChart3,
 } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
@@ -30,6 +30,7 @@ interface Response {
   unit_price: number
   lead_time_weeks: number | null
   notes: string | null
+  supplier_specs: Record<string, string> | null
 }
 
 interface Assignment {
@@ -779,16 +780,9 @@ function SupplierCard({
 }) {
   const [expanded, setExpanded] = useState(false)
   const [showAddItems, setShowAddItems] = useState(false)
-  const [showMessages, setShowMessages] = useState(false)
-  const [messages, setMessages] = useState<{ id: string; sender_type: string; body: string; created_at: string }[]>([])
-  const [loadingMsgs, setLoadingMsgs] = useState(false)
-  const [msgBody, setMsgBody] = useState('')
-  const [sendingMsg, setSendingMsg] = useState(false)
   const [togglingItem, setTogglingItem] = useState<string | null>(null)
   const [accepting, setAccepting] = useState<string | null>(null)
-  const [seenMessages, setSeenMessages] = useState(false)
   const [sending, setSending] = useState(false)
-  const hasUnread = ss.supplier_message_count > 0 && !seenMessages
 
   const assignedItemIds = new Set(ss.assignments.map(a => a.item_id))
   const assignedItems = items.filter(item => assignedItemIds.has(item.id))
@@ -807,38 +801,6 @@ function SupplierCard({
     responded:   'bg-amber-50 text-amber-600',
     completed:   'bg-emerald-50 text-emerald-600',
     declined:    'bg-red-50 text-red-400',
-  }
-
-  async function loadMessages() {
-    setLoadingMsgs(true)
-    try {
-      const res = await fetch(`/api/sourcing/sessions/${sessionId}/messages/${ss.id}`)
-      const json = await res.json()
-      if (json.data) setMessages(json.data)
-      setShowMessages(true)
-      setSeenMessages(true)
-    } finally {
-      setLoadingMsgs(false)
-    }
-  }
-
-  async function sendMessage(e: React.FormEvent) {
-    e.preventDefault()
-    if (!msgBody.trim()) return
-    setSendingMsg(true)
-    try {
-      const res = await fetch(`/api/sourcing/sessions/${sessionId}/messages/${ss.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: msgBody.trim() }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setMessages(prev => [...prev, json.data])
-      setMsgBody('')
-    } finally {
-      setSendingMsg(false)
-    }
   }
 
   async function toggleAssign(itemId: string) {
@@ -915,21 +877,6 @@ function SupplierCard({
               {sending ? 'Sending…' : 'Resend'}
             </button>
           )}
-          {!isDraft && (
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); showMessages ? setShowMessages(false) : loadMessages() }}
-              title="Messages"
-              className="relative p-1.5 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
-            >
-              <MessageSquare size={13} />
-              {hasUnread && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
-                  {ss.supplier_message_count > 9 ? '9+' : ss.supplier_message_count}
-                </span>
-              )}
-            </button>
-          )}
           <button
             type="button"
             onClick={e => { e.stopPropagation(); onRemove(ss.id) }}
@@ -953,13 +900,25 @@ function SupplierCard({
                 const isAccepted = assignment?.status === 'accepted'
                 const hasResponse = !!assignment?.response
 
+                const hasSpecChanges = (() => {
+                  const supp = assignment?.response?.supplier_specs
+                  if (!supp) return false
+                  const orig: Record<string, string> = item.item_specs ?? {}
+                  return Object.keys({ ...orig, ...supp }).some(k => (supp[k] ?? '') !== (orig[k] ?? ''))
+                })()
+
                 return (
                   <div key={item.id} className="py-2 border-b border-[#F5F2EC] last:border-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {isAccepted && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
                       <p className="text-sm font-medium text-[#2C2C2A]">{item.title}</p>
                       {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
                       {isAccepted && <span className="text-xs text-emerald-600 font-medium">Accepted</span>}
+                      {hasSpecChanges && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
+                          Spec changes
+                        </span>
+                      )}
                     </div>
 
                     {hasResponse && assignment?.response && (
@@ -1043,61 +1002,6 @@ function SupplierCard({
         </div>
       )}
 
-      {/* Messages — only visible after sending */}
-      {!isDraft && showMessages && (
-        <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-[#8A877F] uppercase tracking-wide">Thread</p>
-            <button
-              type="button"
-              onClick={loadMessages}
-              disabled={loadingMsgs}
-              title="Refresh messages"
-              className="p-1 text-[#8A877F] hover:text-[#2C2C2A] transition-colors disabled:opacity-40"
-            >
-              <RefreshCw size={11} className={loadingMsgs ? 'animate-spin' : ''} />
-            </button>
-          </div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {messages.length === 0 && <p className="text-xs text-[#C4BFB5]">No messages yet.</p>}
-            {messages.map(m => (
-              <div key={m.id} className={`flex ${m.sender_type === 'designer' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className="max-w-[80%] rounded-2xl px-3 py-2"
-                  style={m.sender_type === 'designer'
-                    ? { background: '#7C3AED', color: '#FFFFFF', borderBottomRightRadius: 4 }
-                    : { background: '#0D9488', color: '#FFFFFF', borderBottomLeftRadius: 4 }
-                  }
-                >
-                  <p className="text-xs leading-relaxed">{m.body}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    {m.sender_type === 'designer' ? 'You' : ss.supplier_name}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {allAccepted ? (
-            <div className="flex items-center gap-2 py-2 text-xs text-[#8A877F]">
-              <Lock size={11} />
-              <span>Pricing accepted — thread closed</span>
-            </div>
-          ) : (
-            <form onSubmit={sendMessage} className="flex gap-2 pt-1">
-              <input
-                value={msgBody}
-                onChange={e => setMsgBody(e.target.value)}
-                placeholder="Message…"
-                className="flex-1 px-3 py-1.5 text-xs border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
-              />
-              <button type="submit" disabled={sendingMsg || !msgBody.trim()} className="px-3 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] rounded-lg text-xs disabled:opacity-40">
-                {sendingMsg ? '…' : 'Send'}
-              </button>
-            </form>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -1145,6 +1049,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   const [, startTransition] = useTransition()
   const [items, setItems] = useState<SessionItem[]>(initialItems)
   const [suppliers, setSuppliers] = useState<SessionSupplier[]>(initialSuppliers)
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [accepting, setAccepting] = useState<string | null>(null)
@@ -1357,34 +1262,106 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
             </div>
           ) : (
             <div className="space-y-2">
-              {items.map(item => (
-                <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl px-4 py-3 flex items-center gap-3">
-                  {item.ref_image_urls && item.ref_image_urls.length > 0 && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.ref_image_urls[0]} alt={item.title} className="w-12 h-12 object-cover rounded-lg border border-[#EDE9E1] shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
-                      <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
-                      {item.category && item.category !== 'general' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#F5F2EC] text-[#8A877F] border border-[#EDE9E1] shrink-0 capitalize">
-                          {CATEGORIES.find(c => c.key === item.category)?.label ?? item.category}
-                        </span>
+              {items.map(item => {
+                const isExpanded = expandedItemId === item.id
+                const catKey = (item.category ?? 'general') as CategoryKey
+                const fieldDefs = CATEGORY_FIELDS[catKey] ?? []
+                const catLabel = CATEGORIES.find(c => c.key === catKey)?.label
+                return (
+                  <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAF8] transition-colors"
+                    >
+                      {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.ref_image_urls[0]} alt={item.title} className="w-10 h-10 object-cover rounded-lg border border-[#EDE9E1] shrink-0" />
                       )}
-                      {item.status === 'accepted' && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-[#8A877F] mt-0.5">
-                      {item.category === 'general'
-                        ? [item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish].filter(Boolean).join(' · ')
-                        : [item.item_quantity ? `Qty ${item.item_quantity}` : null, item.item_specs ? `${Object.keys(item.item_specs).length} specs` : null].filter(Boolean).join(' · ')
-                      }
-                    </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
+                          <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
+                          {item.category && item.category !== 'general' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#F5F2EC] text-[#8A877F] border border-[#EDE9E1] shrink-0 capitalize">
+                              {catLabel ?? item.category}
+                            </span>
+                          )}
+                          {item.status === 'accepted' && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#8A877F] mt-0.5">
+                          {item.category === 'general'
+                            ? [item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish].filter(Boolean).join(' · ')
+                            : [item.item_quantity ? `Qty ${item.item_quantity}` : null, item.item_specs ? `${Object.keys(item.item_specs).length} specs` : null].filter(Boolean).join(' · ')
+                          }
+                        </p>
+                      </div>
+                      {isExpanded ? <ChevronUp size={13} className="text-[#8A877F] shrink-0" /> : <ChevronDown size={13} className="text-[#8A877F] shrink-0" />}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-3" style={{ background: '#FAFAF8' }}>
+                        {/* Reference images */}
+                        {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                          <div className="flex gap-2 flex-wrap">
+                            {item.ref_image_urls.map((url, i) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-[#EDE9E1]" />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Structured specs */}
+                        {item.item_specs && Object.keys(item.item_specs).length > 0 && (
+                          <div>
+                            {catLabel && catKey !== 'general' && (
+                              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#A89F91' }}>{catLabel}</p>
+                            )}
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                              {Object.entries(item.item_specs).map(([key, val]) => {
+                                const def = fieldDefs.find(f => f.key === key)
+                                const label = def?.label ?? key.replace(/_/g, ' ')
+                                const display = def?.unit ? `${val} ${def.unit}` : val
+                                return (
+                                  <div key={key} className="flex gap-1 items-baseline">
+                                    <span className="text-xs text-[#8A877F] shrink-0">{label}:</span>
+                                    <span className="text-xs text-[#2C2C2A] font-medium">{display}</span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Legacy specs */}
+                        {(item.dimensions || item.colour_finish) && (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                            {item.dimensions && (
+                              <div className="flex gap-1 items-baseline">
+                                <span className="text-xs text-[#8A877F] shrink-0">Dimensions:</span>
+                                <span className="text-xs text-[#2C2C2A] font-medium">{item.dimensions}</span>
+                              </div>
+                            )}
+                            {item.colour_finish && (
+                              <div className="flex gap-1 items-baseline">
+                                <span className="text-xs text-[#8A877F] shrink-0">Colour:</span>
+                                <span className="text-xs text-[#2C2C2A] font-medium">{item.colour_finish}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Notes */}
+                        {item.specifications && (
+                          <p className="text-xs text-[#8A877F] leading-relaxed">{item.specifications}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
           {!isArchived && <AddItemForm sessionId={session.id} onAdded={handleItemAdded} />}

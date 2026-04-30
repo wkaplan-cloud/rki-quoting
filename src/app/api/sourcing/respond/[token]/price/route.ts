@@ -26,9 +26,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       valid_until?: string | null
       notes?: string | null
       attachment_url?: string | null
+      supplier_specs?: Record<string, string> | null
     }
 
-    const { assignment_id, unit_price, fabric_quantity, fabric_unit, lead_time_weeks, valid_until, notes, attachment_url } = body
+    const { assignment_id, unit_price, fabric_quantity, fabric_unit, lead_time_weeks, valid_until, notes, attachment_url, supplier_specs } = body
 
     if (!assignment_id) return NextResponse.json({ error: 'assignment_id is required' }, { status: 400 })
     if (unit_price == null || unit_price < 0) return NextResponse.json({ error: 'unit_price is required' }, { status: 400 })
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           valid_until: valid_until ?? null,
           notes: notes ?? null,
           attachment_url: attachment_url ?? null,
+          supplier_specs: supplier_specs ?? null,
           submitted_at: now,
           updated_at: now,
         },

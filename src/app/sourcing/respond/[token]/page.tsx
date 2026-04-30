@@ -68,7 +68,7 @@ export default async function SupplierRespondPage({
     // Unauthenticated — no nav
   }
 
-  const [{ data: assignments }, { data: settings }, { data: messages }] = await Promise.all([
+  const [{ data: assignments }, { data: settings }] = await Promise.all([
     supabaseAdmin
       .from('sourcing_item_assignments')
       .select('id, status, responded_at, item:sourcing_session_items(*), response:sourcing_item_responses(*)')
@@ -79,11 +79,6 @@ export default async function SupplierRespondPage({
       .select('business_name')
       .eq('user_id', (session as any).user_id)
       .maybeSingle(),
-    supabaseAdmin
-      .from('sourcing_thread_messages')
-      .select('id, sender_type, body, created_at')
-      .eq('session_supplier_id', ss.id)
-      .order('created_at', { ascending: true }),
   ])
 
   const mappedAssignments = (assignments ?? []).map((a: any) => ({
@@ -103,7 +98,6 @@ export default async function SupplierRespondPage({
       projectName={(session?.project as any)?.project_name ?? null}
       studioName={settings?.business_name ?? 'Your Studio'}
       assignments={mappedAssignments}
-      initialMessages={(messages ?? []) as { id: string; sender_type: 'designer' | 'supplier'; body: string; created_at: string }[]}
       showBackLink={!portalAccount}
     />
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw, Upload, FileText, X, AlertTriangle, Ban, Download, Printer } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Upload, FileText, X, AlertTriangle, Ban, Download, Printer } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
 function ImageLightbox({ urls, startIndex, onClose }: { urls: string[]; startIndex: number; onClose: () => void }) {
@@ -160,14 +160,8 @@ interface Assignment {
     lead_time_weeks: number | null
     valid_until: string | null
     notes: string | null
+    supplier_specs: Record<string, string> | null
   } | null
-}
-
-interface Message {
-  id: string
-  sender_type: 'designer' | 'supplier'
-  body: string
-  created_at: string
 }
 
 interface Props {
@@ -178,7 +172,6 @@ interface Props {
   projectName: string | null
   studioName: string
   assignments: Assignment[]
-  initialMessages: Message[]
   showBackLink?: boolean
 }
 
@@ -207,6 +200,15 @@ function PriceForm({
   const [notes, setNotes] = useState(assignment.response?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [specEdits, setSpecEdits] = useState<Record<string, string>>(() => {
+    const it = assignment.item
+    if (!it) return {}
+    if (assignment.response?.supplier_specs) return assignment.response.supplier_specs
+    const init: Record<string, string> = { ...(it.item_specs ?? {}) }
+    if (it.dimensions) init.dimensions = it.dimensions
+    if (it.colour_finish) init.colour_finish = it.colour_finish
+    return init
+  })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -225,6 +227,7 @@ function PriceForm({
           unit_price: Number(unitPrice),
           lead_time_weeks: leadTime ? Number(leadTime) : null,
           notes: notes.trim() || null,
+          supplier_specs: Object.keys(specEdits).length > 0 ? specEdits : null,
         }),
       })
       const json = await res.json()
@@ -260,6 +263,19 @@ function PriceForm({
 
   const item = assignment.item
   if (!item) return null
+
+  const catKey = (item.category ?? 'general') as CategoryKey
+  const fieldDefs = CATEGORY_FIELDS[catKey] ?? []
+  const catLabel = CATEGORIES.find(c => c.key === catKey)?.label
+
+  const origSpecs: Record<string, string> = {
+    ...(item.item_specs ?? {}),
+    ...(item.dimensions ? { dimensions: item.dimensions } : {}),
+    ...(item.colour_finish ? { colour_finish: item.colour_finish } : {}),
+  }
+  const specsChanged = Object.keys({ ...origSpecs, ...specEdits }).some(
+    k => (specEdits[k] ?? '') !== (origSpecs[k] ?? '')
+  )
 
   const lightbox = lightboxIndex !== null && item.ref_image_urls && item.ref_image_urls.length > 0
     ? <ImageLightbox urls={item.ref_image_urls} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
@@ -361,74 +377,101 @@ function PriceForm({
 
       {expanded && (
         <div style={{ borderTop: '1px solid #E4E4E7' }}>
-          {(() => {
-            const hasImages = item.ref_image_urls && item.ref_image_urls.length > 0
-            const hasSpecs = item.item_specs && Object.keys(item.item_specs).length > 0
-            const hasLegacy = item.specifications || item.dimensions || item.colour_finish
-            const catKey = (item.category ?? 'general') as CategoryKey
-            const fieldDefs = CATEGORY_FIELDS[catKey] ?? []
-            const catLabel = CATEGORIES.find(c => c.key === catKey)?.label
+          {(item.ref_image_urls?.length || fieldDefs.length > 0 || item.dimensions != null || item.colour_finish != null || item.specifications) ? (
+            <div style={{ background: '#FAFAFA', borderBottom: '1px solid #E4E4E7' }}>
+              {/* Reference images */}
+              {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                <div className="px-5 pt-3 pb-2 flex gap-2 flex-wrap">
+                  {item.ref_image_urls.map((url, i) => (
+                    <button key={i} type="button" onClick={() => setLightboxIndex(i)} className="group relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Reference ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border transition-opacity group-hover:opacity-80" style={{ borderColor: '#E4E4E7' }} />
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            if (!hasImages && !hasSpecs && !hasLegacy) return null
-            return (
-              <div style={{ background: '#FAFAFA', borderBottom: '1px solid #E4E4E7' }}>
-                {/* Reference images */}
-                {hasImages && (
-                  <div className="px-5 pt-3 pb-2 flex gap-2 flex-wrap">
-                    {item.ref_image_urls!.map((url, i) => (
-                      <button key={i} type="button" onClick={() => setLightboxIndex(i)} className="group relative">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={`Reference ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border transition-opacity group-hover:opacity-80" style={{ borderColor: '#E4E4E7' }} />
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Structured specs */}
-                {hasSpecs && (
-                  <div className="px-5 pt-3 pb-2">
-                    {catLabel && catKey !== 'general' && (
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#A1A1AA' }}>{catLabel} specs</p>
+              {/* Editable specs */}
+              {(fieldDefs.length > 0 || item.dimensions != null || item.colour_finish != null) && (
+                <div className="px-5 pt-3 pb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>
+                      {catLabel && catKey !== 'general' ? `${catLabel} specs` : 'Item details'}
+                    </p>
+                    {specsChanged && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
+                        Edited
+                      </span>
                     )}
-                    <table className="w-full text-xs" cellPadding={0} cellSpacing={0}>
-                      <tbody>
-                        {Object.entries(item.item_specs!).map(([key, val]) => {
-                          const def = fieldDefs.find(f => f.key === key)
-                          const label = def?.label ?? key.replace(/_/g, ' ')
-                          const display = def?.unit ? `${val} ${def.unit}` : val
-                          return (
-                            <tr key={key}>
-                              <td className="py-0.5 pr-4 font-medium" style={{ color: '#71717A', width: '45%' }}>{label}</td>
-                              <td className="py-0.5" style={{ color: '#18181B' }}>{display}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
                   </div>
-                )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {fieldDefs.map(field => {
+                      const val = specEdits[field.key] ?? ''
+                      const inputStyle = { background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }
+                      if (field.type === 'select') return (
+                        <div key={field.key}>
+                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>{field.label}</label>
+                          <select value={val} onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
+                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none" style={inputStyle}>
+                            <option value="">—</option>
+                            {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        </div>
+                      )
+                      if (field.type === 'textarea') return (
+                        <div key={field.key} className="col-span-2">
+                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>{field.label}</label>
+                          <textarea value={val} onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
+                            rows={2} placeholder={field.placeholder}
+                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none resize-none" style={inputStyle} />
+                        </div>
+                      )
+                      return (
+                        <div key={field.key}>
+                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>
+                            {field.label}{field.unit && <span style={{ color: '#A1A1AA' }}> ({field.unit})</span>}
+                          </label>
+                          <input type={field.type === 'number' ? 'number' : 'text'} value={val}
+                            onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
+                            placeholder={field.placeholder ?? ''}
+                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none" style={inputStyle} />
+                        </div>
+                      )
+                    })}
+                    {item.dimensions != null && (
+                      <div>
+                        <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>Dimensions</label>
+                        <input value={specEdits.dimensions ?? ''} onChange={e => setSpecEdits(p => ({ ...p, dimensions: e.target.value }))}
+                          placeholder={item.dimensions ?? ''}
+                          className="w-full px-2 py-1.5 text-xs rounded-lg outline-none"
+                          style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
+                      </div>
+                    )}
+                    {item.colour_finish != null && (
+                      <div>
+                        <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>Colour / Finish</label>
+                        <input value={specEdits.colour_finish ?? ''} onChange={e => setSpecEdits(p => ({ ...p, colour_finish: e.target.value }))}
+                          placeholder={item.colour_finish ?? ''}
+                          className="w-full px-2 py-1.5 text-xs rounded-lg outline-none"
+                          style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
+                      </div>
+                    )}
+                  </div>
+                  {specsChanged && (
+                    <p className="text-[10px] mt-2" style={{ color: '#A1A1AA' }}>Your edits will be visible to the designer when you submit a price.</p>
+                  )}
+                </div>
+              )}
 
-                {/* Legacy / general specs */}
-                {(item.dimensions || item.colour_finish) && (
-                  <div className="px-5 pt-2 pb-1">
-                    <table className="w-full text-xs" cellPadding={0} cellSpacing={0}>
-                      <tbody>
-                        {item.dimensions && <tr><td className="py-0.5 pr-4 font-medium" style={{ color: '#71717A', width: '45%' }}>Dimensions</td><td style={{ color: '#18181B' }}>{item.dimensions}</td></tr>}
-                        {item.colour_finish && <tr><td className="py-0.5 pr-4 font-medium" style={{ color: '#71717A', width: '45%' }}>Colour / Finish</td><td style={{ color: '#18181B' }}>{item.colour_finish}</td></tr>}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Notes / specifications text */}
-                {item.specifications && (
-                  <div className="px-5 py-3">
-                    <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
-                  </div>
-                )}
-              </div>
-            )
-          })()}
+              {/* Notes / specifications text (read-only from designer) */}
+              {item.specifications && (
+                <div className="px-5 pb-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>Notes from studio</p>
+                  <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {/* Can't supply toggle */}
           <div className="px-5 pt-4">
@@ -618,132 +661,6 @@ function QuoteUpload({ token, locked }: { token: string; locked?: boolean }) {
   )
 }
 
-function MessageThread({
-  token,
-  messages: initialMessages,
-  studioName,
-  locked,
-}: {
-  token: string
-  messages: Message[]
-  studioName: string
-  locked?: boolean
-}) {
-  const [messages, setMessages] = useState(initialMessages)
-  const [body, setBody] = useState('')
-  const [sending, setSending] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  async function handleRefresh() {
-    setRefreshing(true)
-    try {
-      const res = await fetch(`/api/sourcing/respond/${token}/messages`)
-      const json = await res.json()
-      if (json.data) setMessages(json.data)
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault()
-    if (!body.trim()) return
-    setSending(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/sourcing/respond/${token}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: body.trim() }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setMessages(prev => [...prev, json.data])
-      setBody('')
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setSending(false)
-    }
-  }
-
-  return (
-    <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
-      <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #E4E4E7' }}>
-        <p className="text-sm font-semibold" style={{ color: '#18181B' }}>Messages with {studioName}</p>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-          title="Refresh messages"
-          className="p-1 transition-opacity disabled:opacity-40"
-          style={{ color: '#A1A1AA' }}
-        >
-          <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
-        </button>
-      </div>
-      <div className="px-5 py-4 space-y-3 max-h-64 overflow-y-auto">
-        {messages.length === 0 && (
-          <p className="text-xs text-center py-4" style={{ color: '#A1A1AA' }}>No messages yet</p>
-        )}
-        {messages.map(m => (
-          <div key={m.id} className={`flex ${m.sender_type === 'supplier' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className="max-w-[75%] rounded-2xl px-4 py-2.5"
-              style={m.sender_type === 'supplier'
-                ? { background: '#7C3AED', color: '#FFFFFF', borderBottomRightRadius: 4 }
-                : { background: '#0D9488', color: '#FFFFFF', borderBottomLeftRadius: 4 }
-              }
-            >
-              <p className="text-sm leading-relaxed">{m.body}</p>
-              <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                {m.sender_type === 'supplier' ? 'You' : studioName} · {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-      <div className="px-5 py-3" style={{ borderTop: '1px solid #E4E4E7' }}>
-        {locked ? (
-          <div className="flex items-center gap-2 py-1" style={{ color: '#71717A' }}>
-            <Lock size={13} />
-            <p className="text-xs">Pricing accepted — thread closed</p>
-          </div>
-        ) : (
-          <>
-            <form onSubmit={handleSend} className="flex gap-2">
-              <input
-                value={body}
-                onChange={e => setBody(e.target.value)}
-                placeholder="Type a message…"
-                className="flex-1 px-3 py-2 text-sm rounded-lg outline-none"
-                style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
-                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-              />
-              <button
-                type="submit"
-                disabled={sending || !body.trim()}
-                className="px-3 py-2 rounded-lg transition-opacity disabled:opacity-40"
-                style={{ background: '#34495E', color: '#FFFFFF' }}
-              >
-                <Send size={14} />
-              </button>
-            </form>
-            {error && <p className="text-xs mt-1" style={{ color: '#EF4444' }}>{error}</p>}
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
 
 export function SupplierRespondClient({
   token,
@@ -753,7 +670,6 @@ export function SupplierRespondClient({
   projectName,
   studioName,
   assignments,
-  initialMessages,
   showBackLink = false,
 }: Props) {
   const [items, setItems] = useState(assignments)
@@ -882,7 +798,6 @@ export function SupplierRespondClient({
             ))}
           </div>
           <QuoteUpload token={token} locked={allAccepted} />
-          <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
           {!allAccepted && (
             <div className="pt-2 border-t border-[#E4E4E7]">
               <button type="button" onClick={handleDeclineAll} disabled={declining}
@@ -939,7 +854,6 @@ export function SupplierRespondClient({
             </div>
             <div className="space-y-4">
               <QuoteUpload token={token} locked={allAccepted} />
-              <MessageThread token={token} messages={initialMessages} studioName={studioName} locked={allAccepted} />
               {!allAccepted && (
                 <div className="pt-2 border-t border-[#E4E4E7]">
                   <button type="button" onClick={handleDeclineAll} disabled={declining}
