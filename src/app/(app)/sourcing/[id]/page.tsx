@@ -51,6 +51,7 @@ export default async function SourcingDetailPage({
       status: a.status,
       responded_at: a.responded_at,
       accepted_at: a.accepted_at,
+      created_at: a.created_at,
       response: Array.isArray(a.response) ? (a.response[0] ?? null) : a.response,
     }))
     return {

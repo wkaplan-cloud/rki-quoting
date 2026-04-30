@@ -35,6 +35,7 @@ interface Assignment {
   status: string
   responded_at: string | null
   accepted_at: string | null
+  created_at: string | null
   response: Response | null
 }
 
@@ -260,6 +261,7 @@ function AddSupplierForm({
           status: 'pending',
           responded_at: null,
           accepted_at: null,
+          created_at: r.data.created_at ?? new Date().toISOString(),
           response: null,
         }))
 
@@ -916,9 +918,13 @@ function SupplierCard({
                       </div>
                     )}
 
-                    {!hasResponse && !isAccepted && (
-                      <p className="text-xs text-[#C4BFB5] mt-1">{isDraft ? 'Assigned — not sent yet' : 'Awaiting response'}</p>
-                    )}
+                    {!hasResponse && !isAccepted && (() => {
+                      if (isDraft) return <p className="text-xs text-[#C4BFB5] mt-1">Assigned — not sent yet</p>
+                      const isNewlyAssigned = ss.sent_at && assignment?.created_at && assignment.created_at > ss.sent_at
+                      return isNewlyAssigned
+                        ? <p className="text-xs text-amber-500 mt-1 font-medium">New — resend to notify supplier</p>
+                        : <p className="text-xs text-[#C4BFB5] mt-1">Awaiting response</p>
+                    })()}
                   </div>
                 )
               })}
@@ -1103,6 +1109,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           status: 'pending',
           responded_at: null,
           accepted_at: null,
+          created_at: new Date().toISOString(),
           response: null,
         }
         return { ...s, assignments: [...s.assignments, newAssignment] }

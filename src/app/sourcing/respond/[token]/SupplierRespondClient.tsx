@@ -1,7 +1,139 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw, Upload, FileText, X, AlertTriangle, Ban } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw, Upload, FileText, X, AlertTriangle, Ban, Download, Printer } from 'lucide-react'
+
+function ImageLightbox({ urls, startIndex, onClose }: { urls: string[]; startIndex: number; onClose: () => void }) {
+  const [current, setCurrent] = useState(startIndex)
+
+  const handleKey = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') onClose()
+    if (e.key === 'ArrowRight') setCurrent(i => (i + 1) % urls.length)
+    if (e.key === 'ArrowLeft') setCurrent(i => (i - 1 + urls.length) % urls.length)
+  }, [onClose, urls.length])
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      document.body.style.overflow = ''
+    }
+  }, [handleKey])
+
+  function handleDownload() {
+    const a = document.createElement('a')
+    a.href = urls[current]
+    a.download = `reference-${current + 1}.jpg`
+    a.target = '_blank'
+    a.click()
+  }
+
+  function handlePrint() {
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(`<!DOCTYPE html><html><head><title>Reference Image</title><style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#000}img{max-width:100%;max-height:100vh;object-fit:contain}</style></head><body><img src="${urls[current]}" onload="window.print();window.close()"/></body></html>`)
+    win.document.close()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.92)' }}
+      onClick={onClose}
+    >
+      {/* Top toolbar */}
+      <div
+        className="absolute top-0 left-0 right-0 flex items-center justify-between px-5 py-4"
+        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.7)' }}>
+          {urls.length > 1 ? `${current + 1} / ${urls.length}` : 'Reference image'}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrint}
+            title="Print"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}
+          >
+            <Printer size={14} />
+            Print
+          </button>
+          <button
+            onClick={handleDownload}
+            title="Save image"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(255,255,255,0.12)', color: '#fff' }}
+          >
+            <Download size={14} />
+            Save
+          </button>
+          <button
+            onClick={onClose}
+            title="Close"
+            className="flex items-center justify-center w-9 h-9 rounded-full transition-colors"
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+          >
+            <X size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+
+      {/* Prev/Next arrows */}
+      {urls.length > 1 && (
+        <>
+          <button
+            onClick={e => { e.stopPropagation(); setCurrent(i => (i - 1 + urls.length) % urls.length) }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full transition-colors"
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+          >
+            ‹
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); setCurrent(i => (i + 1) % urls.length) }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-10 h-10 rounded-full transition-colors"
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+          >
+            ›
+          </button>
+        </>
+      )}
+
+      {/* Image */}
+      <div onClick={e => e.stopPropagation()} className="flex items-center justify-center px-16 py-20 max-w-5xl w-full">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={urls[current]}
+          alt={`Reference ${current + 1}`}
+          className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+          style={{ userSelect: 'none' }}
+        />
+      </div>
+
+      {/* Dot indicators */}
+      {urls.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5" onClick={e => e.stopPropagation()}>
+          {urls.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className="w-1.5 h-1.5 rounded-full transition-all"
+              style={{ background: i === current ? '#fff' : 'rgba(255,255,255,0.35)' }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface Assignment {
   id: string
@@ -121,31 +253,36 @@ function PriceForm({
     }
   }
 
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
   const item = assignment.item
   if (!item) return null
 
+  const lightbox = lightboxIndex !== null && item.ref_image_urls && item.ref_image_urls.length > 0
+    ? <ImageLightbox urls={item.ref_image_urls} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+    : null
+
   // Locked red tile — supplier can't supply this item
   if (assignment.status === 'supplier_declined') {
-    const reason = assignment.response?.notes?.replace("[CAN'T SUPPLY] ", '')
-    return (
+    return <>{lightbox}
       <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
         <Ban size={16} className="text-red-400 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm" style={{ color: '#18181B' }}>{item.title}</p>
-          {reason ? (
-            <p className="text-xs text-red-600 mt-0.5">{reason}</p>
+          {assignment.response?.notes?.replace("[CAN'T SUPPLY] ", '') ? (
+            <p className="text-xs text-red-600 mt-0.5">{assignment.response.notes.replace("[CAN'T SUPPLY] ", '')}</p>
           ) : (
             <p className="text-xs text-red-400 mt-0.5">Marked as can&apos;t supply</p>
           )}
         </div>
         <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-full shrink-0">Can&apos;t supply</span>
       </div>
-    )
+    </>
   }
 
   // Locked green tile — designer accepted this price
   if (assignment.status === 'accepted') {
-    return (
+    return <>{lightbox}
       <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#F0FDF4', border: '1px solid #A7F3D0' }}>
         <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
         <div className="flex-1 min-w-0">
@@ -157,10 +294,12 @@ function PriceForm({
         </div>
         <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full shrink-0">Accepted</span>
       </div>
-    )
+    </>
   }
 
   return (
+    <>
+    {lightbox}
     <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
       <button
         type="button"
@@ -183,6 +322,28 @@ function PriceForm({
             {item.dimensions && <span className="text-xs" style={{ color: '#71717A' }}>{item.dimensions}</span>}
             {item.colour_finish && <span className="text-xs" style={{ color: '#71717A' }}>{item.colour_finish}</span>}
           </div>
+          {item.ref_image_urls && item.ref_image_urls.length > 0 && !expanded && (
+            <div className="flex gap-1.5 mt-2">
+              {item.ref_image_urls.slice(0, 3).map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i} src={url} alt=""
+                  className="w-10 h-10 rounded-md object-cover cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ border: '1px solid #E4E4E7' }}
+                  onClick={e => { e.stopPropagation(); setLightboxIndex(i) }}
+                />
+              ))}
+              {item.ref_image_urls.length > 3 && (
+                <button
+                  onClick={e => { e.stopPropagation(); setLightboxIndex(3) }}
+                  className="w-10 h-10 rounded-md flex items-center justify-center text-xs font-medium transition-colors hover:bg-[#E4E4E7]"
+                  style={{ background: '#F4F4F5', color: '#71717A', border: '1px solid #E4E4E7' }}
+                >
+                  +{item.ref_image_urls.length - 3}
+                </button>
+              )}
+            </div>
+          )}
           {assignment.response && !expanded && !cantSupply && (
             <p className="text-xs text-emerald-600 mt-1 font-medium">
               R{assignment.response.unit_price.toLocaleString()} submitted
@@ -202,15 +363,15 @@ function PriceForm({
               {item.ref_image_urls && item.ref_image_urls.length > 0 && (
                 <div className="px-5 pt-3 pb-2 flex gap-2 flex-wrap">
                   {item.ref_image_urls.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                    <button key={i} type="button" onClick={() => setLightboxIndex(i)} className="group relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={url}
                         alt={`Reference ${i + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg border"
+                        className="w-20 h-20 object-cover rounded-lg border transition-opacity group-hover:opacity-80"
                         style={{ borderColor: '#E4E4E7' }}
                       />
-                    </a>
+                    </button>
                   ))}
                 </div>
               )}
@@ -337,6 +498,7 @@ function PriceForm({
         </div>
       )}
     </div>
+    </>
   )
 }
 
