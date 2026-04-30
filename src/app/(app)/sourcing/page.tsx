@@ -9,16 +9,17 @@ export default async function SourcingPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: sessions } = await supabase
-    .from('sourcing_sessions')
-    .select('id, title, status, archived, created_at, project_id, project:projects(project_name)')
-    .order('created_at', { ascending: false })
-
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, client_name')
-    .order('client_name', { ascending: true })
-    .limit(200)
+  const [{ data: sessions }, { data: clients }] = await Promise.all([
+    supabase
+      .from('sourcing_sessions')
+      .select('id, title, status, archived, created_at, project_id, project:projects(project_name)')
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('clients')
+      .select('id, client_name')
+      .order('client_name', { ascending: true })
+      .limit(200),
+  ])
 
   // Fetch item + supplier counts per session
   const ids = (sessions ?? []).map(s => s.id)
