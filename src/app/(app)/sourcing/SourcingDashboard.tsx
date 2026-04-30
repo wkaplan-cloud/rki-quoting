@@ -139,7 +139,7 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
 
             {/* Suggestions dropdown */}
             {showSuggestions && filteredClients.length > 0 && (
-              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#D4CFC7] rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#D4CFC7] rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-[#A89F91]">Existing clients</p>
                 {filteredClients.map(c => (
                   <button
