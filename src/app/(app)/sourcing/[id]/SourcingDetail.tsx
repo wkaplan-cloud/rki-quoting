@@ -985,6 +985,42 @@ function SupplierCard({
   )
 }
 
+// ---- Progress Rail ----
+function ProgressRail({ itemsDone, suppliersDone }: { itemsDone: boolean; suppliersDone: boolean }) {
+  const steps = [
+    { label: 'Add items',        done: itemsDone },
+    { label: 'Add suppliers',    done: suppliersDone },
+    { label: 'Send to suppliers', done: false },
+  ]
+  const stepEls: React.ReactNode[] = []
+  steps.forEach((step, i) => {
+    const prevDone = i === 0 || steps[i - 1].done
+    const isCurrent = !step.done && prevDone
+    stepEls.push(
+      <div key={`step-${i}`} className="flex items-center gap-2 shrink-0">
+        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors ${
+          step.done ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-[#2C2C2A] text-[#F5F2EC]' : 'bg-[#EDE9E1] text-[#A89F91]'
+        }`}>
+          {step.done ? <Check size={10} /> : i + 1}
+        </div>
+        <span className={`text-xs transition-colors ${
+          step.done ? 'text-[#A89F91] line-through' : isCurrent ? 'text-[#2C2C2A] font-semibold' : 'text-[#C4BFB5]'
+        }`}>{step.label}</span>
+      </div>
+    )
+    if (i < steps.length - 1) {
+      stepEls.push(
+        <div key={`conn-${i}`} className="flex-1 h-px mx-2" style={{ background: steps[i].done ? '#A7F3D0' : '#EDE9E1' }} />
+      )
+    }
+  })
+  return (
+    <div className="flex items-center bg-white border border-[#EDE9E1] rounded-xl px-5 py-3">
+      {stepEls}
+    </div>
+  )
+}
+
 // ---- Main Component ----
 export function SourcingDetail({ session, initialItems, initialSuppliers, allSuppliers, projects }: Props) {
   const router = useRouter()
@@ -1145,6 +1181,11 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           )}
         </div>
       </div>
+
+      {/* Progress rail — draft only */}
+      {isDraft && (
+        <ProgressRail itemsDone={items.length > 0} suppliersDone={suppliers.some(ss => ss.assignments.length > 0)} />
+      )}
 
       {/* Pricing Comparison Table */}
       <ComparisonTable
