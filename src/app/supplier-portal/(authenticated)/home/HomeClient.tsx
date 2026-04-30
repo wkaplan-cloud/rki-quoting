@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { ArrowRight, Clock } from 'lucide-react'
+import { ArrowRight, Clock, TrendingUp, Package, Building2, CheckCircle2 } from 'lucide-react'
 
 interface AttentionRow {
   id: string
@@ -31,13 +31,13 @@ interface Props {
   recentRequests: RecentRow[]
 }
 
-const STATUS_LABEL: Record<string, { label: string; bg: string; color: string }> = {
-  pending:     { label: 'Awaiting response', bg: '#F4F4F5', color: '#71717A' },
-  viewed:      { label: 'Viewed',            bg: '#F4F4F5', color: '#52525B' },
-  in_progress: { label: 'In progress',       bg: '#FFF7ED', color: '#C2610C' },
-  responded:   { label: 'Responded',         bg: '#EFF6FF', color: '#2563EB' },
-  completed:   { label: 'Completed',         bg: '#ECFDF5', color: '#059669' },
-  declined:    { label: 'Declined',          bg: '#F4F4F5', color: '#A1A1AA' },
+const STATUS_LABEL: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  pending:     { label: 'Awaiting response', bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' },
+  viewed:      { label: 'Viewed',            bg: '#F1F5F9', color: '#475569', border: '#CBD5E1' },
+  in_progress: { label: 'In progress',       bg: '#FEF9EC', color: '#92600A', border: '#F6D07A' },
+  responded:   { label: 'Responded',         bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' },
+  completed:   { label: 'Completed',         bg: '#E6F4EA', color: '#2F7A4F', border: '#A7D7B5' },
+  declined:    { label: 'Declined',          bg: '#F8FAFC', color: '#94A3B8', border: '#E2E8F0' },
 }
 
 function formatDate(iso: string) {
@@ -51,34 +51,43 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  return (
-    <div className="space-y-8 max-w-3xl">
+  const statCards = [
+    { label: 'Active Requests',  value: stats.activeRequests,    icon: TrendingUp,   alert: false },
+    { label: 'Items to Price',   value: stats.itemsToPrice,      icon: Package,      alert: stats.itemsToPrice > 0 },
+    { label: 'Studios',          value: stats.studiosConnected,  icon: Building2,    alert: false },
+    { label: 'Accepted Quotes',  value: stats.acceptedQuotes,    icon: CheckCircle2, alert: false },
+  ]
 
-      {/* Greeting */}
+  return (
+    <div className="space-y-8">
+
+      {/* Page header */}
       <div>
-        <p className="text-xs mb-1" style={{ color: '#A1A1AA' }}>{dateStr}</p>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#18181B' }}>
-          {greeting}, {companyName}
+        <p className="text-xs font-medium mb-1" style={{ color: '#94A3B8' }}>{dateStr}</p>
+        <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#111827' }}>
+          {greeting}, <span style={{ color: '#1E2A38' }}>{companyName}</span>
         </h1>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Active Requests', value: stats.activeRequests },
-          { label: 'Items to Price',  value: stats.itemsToPrice,   highlight: stats.itemsToPrice > 0 },
-          { label: 'Studios',         value: stats.studiosConnected },
-          { label: 'Accepted Quotes', value: stats.acceptedQuotes },
-        ].map(s => (
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statCards.map(({ label, value, icon: Icon, alert }) => (
           <div
-            key={s.label}
-            className="bg-white rounded-xl px-5 py-4"
-            style={{ border: `1px solid ${s.highlight ? '#FED7AA' : '#E4E4E7'}` }}
+            key={label}
+            className="rounded-xl px-5 py-4"
+            style={{
+              background: '#FFFFFF',
+              border: `1px solid ${alert ? '#F6D07A' : '#E5E7EB'}`,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            }}
           >
-            <p className="text-2xl font-bold mb-1" style={{ color: s.highlight ? '#C2610C' : '#18181B' }}>
-              {s.value}
-            </p>
-            <p className="text-xs" style={{ color: '#71717A' }}>{s.label}</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-2xl font-bold" style={{ color: alert ? '#92600A' : '#111827' }}>{value}</p>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: alert ? '#FEF9EC' : '#F1F5F9' }}>
+                <Icon size={15} style={{ color: alert ? '#D9A441' : '#3A7CA5' }} />
+              </div>
+            </div>
+            <p className="text-xs font-medium" style={{ color: '#6B7280' }}>{label}</p>
           </div>
         ))}
       </div>
@@ -86,32 +95,43 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
       {/* Needs attention */}
       {needsAttention.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>
-            Needs Your Attention
-          </p>
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#D9A441' }} />
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#6B7280' }}>
+              Needs Attention
+            </p>
+          </div>
           <div className="space-y-2">
             {needsAttention.map(r => (
               <div
                 key={r.id}
                 className="rounded-xl px-5 py-4 flex items-center gap-4"
-                style={{ background: '#FFFBF7', border: '1px solid #FED7AA' }}
+                style={{
+                  background: '#FFFDF5',
+                  border: '1px solid #F6D07A',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                }}
               >
+                <div
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ background: '#D9A441' }}
+                />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs mb-0.5" style={{ color: '#A1A1AA' }}>{r.studioName}</p>
-                  <p className="font-semibold text-sm truncate" style={{ color: '#18181B' }}>{r.sessionTitle}</p>
+                  <p className="text-[11px] font-medium mb-0.5" style={{ color: '#94A3B8' }}>{r.studioName}</p>
+                  <p className="font-semibold text-sm truncate" style={{ color: '#111827' }}>{r.sessionTitle}</p>
                 </div>
                 <span
-                  className="text-[10px] font-bold px-2 py-1 rounded-full shrink-0"
-                  style={{ background: '#FFF7ED', color: '#C2610C', border: '1px solid #FED7AA' }}
+                  className="text-[10px] font-bold px-2.5 py-1 rounded-md shrink-0"
+                  style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}
                 >
                   {r.pendingCount} to price
                 </span>
                 <Link
                   href={`/sourcing/respond/${r.token}`}
-                  className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-70"
-                  style={{ background: '#34495E', color: '#FFFFFF' }}
+                  className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: '#3A7CA5', color: '#FFFFFF' }}
                 >
-                  Price <ArrowRight size={11} />
+                  Price items <ArrowRight size={11} />
                 </Link>
               </div>
             ))}
@@ -123,13 +143,16 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
       {recentRequests.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>
-              Recent Requests
-            </p>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#3A7CA5' }} />
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#6B7280' }}>
+                Recent Requests
+              </p>
+            </div>
             <Link
               href="/supplier-portal/dashboard"
-              className="text-xs font-medium transition-opacity hover:opacity-60"
-              style={{ color: '#9A7B4F' }}
+              className="text-xs font-semibold transition-opacity hover:opacity-70"
+              style={{ color: '#3A7CA5' }}
             >
               View all →
             </Link>
@@ -141,26 +164,31 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
                 <Link
                   key={r.id}
                   href={`/sourcing/respond/${r.token}`}
-                  className="bg-white rounded-xl px-5 py-3.5 flex items-center gap-4 transition-colors block"
-                  style={{ border: '1px solid #E4E4E7' }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#A1A1AA')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+                  className="rounded-xl px-5 py-3.5 flex items-center gap-4 transition-all block"
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(58,124,165,0.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs mb-0.5" style={{ color: '#A1A1AA' }}>{r.studioName}</p>
-                    <p className="font-medium text-sm truncate" style={{ color: '#18181B' }}>{r.sessionTitle}</p>
+                    <p className="text-[11px] font-medium mb-0.5" style={{ color: '#94A3B8' }}>{r.studioName}</p>
+                    <p className="font-semibold text-sm truncate" style={{ color: '#111827' }}>{r.sessionTitle}</p>
                     {r.sentAt && (
-                      <p className="text-[10px] mt-0.5" style={{ color: '#A1A1AA' }}>
+                      <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>
                         Received {formatDate(r.sentAt)}
                       </p>
                     )}
                   </div>
                   <span
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                    style={{ background: cfg.bg, color: cfg.color }}
+                    className="text-[10px] font-semibold px-2.5 py-1 rounded-md shrink-0"
+                    style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
                   >
                     {cfg.label}
                   </span>
+                  <ArrowRight size={14} style={{ color: '#CBD5E1' }} />
                 </Link>
               )
             })}
@@ -170,16 +198,13 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
 
       {/* Empty state */}
       {recentRequests.length === 0 && needsAttention.length === 0 && (
-        <div className="bg-white rounded-2xl p-14 text-center" style={{ border: '1px solid #E4E4E7' }}>
-          <div
-            className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center"
-            style={{ background: '#F4F4F5' }}
-          >
-            <Clock size={20} style={{ color: '#A1A1AA' }} />
+        <div className="rounded-xl p-14 text-center" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div className="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center" style={{ background: '#F1F5F9' }}>
+            <Clock size={20} style={{ color: '#94A3B8' }} />
           </div>
-          <p className="text-sm font-semibold mb-1" style={{ color: '#18181B' }}>All caught up</p>
-          <p className="text-sm" style={{ color: '#71717A' }}>
-            No price requests yet. They&apos;ll appear here once design studios send them.
+          <p className="text-sm font-semibold mb-1" style={{ color: '#111827' }}>All caught up</p>
+          <p className="text-sm" style={{ color: '#6B7280' }}>
+            No price requests yet. They&apos;ll appear here once design studios send them your way.
           </p>
         </div>
       )}

@@ -41,13 +41,13 @@ export default async function SupplierPortalLayout({
   const displayName = account.company_name ?? account.email
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#F4F4F5' }}>
+    <div className="flex min-h-screen" style={{ background: '#F5F7F9' }}>
       <SupplierPortalNav
         companyName={displayName}
         pendingCount={pendingCount}
       />
       <main className="md:ml-12 flex-1 pt-14 md:pt-0">
-        <div className="px-6 py-8">
+        <div className="px-6 py-8 max-w-4xl">
           {children}
         </div>
       </main>

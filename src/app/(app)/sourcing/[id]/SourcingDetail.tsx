@@ -901,29 +901,15 @@ function SupplierCard({
           <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {/* First-time Send — supplier not yet sent to */}
-          {!isDraft && !ss.sent_at && (
+          {/* Resend — only shown when new items were assigned after the last send */}
+          {!isDraft && ss.sent_at && ss.assignments.some(a => a.created_at && a.created_at > ss.sent_at!) && (
             <button
               type="button"
               onClick={async e => { e.stopPropagation(); setSending(true); await onSend(ss.id); setSending(false) }}
-              disabled={sending || ss.assignments.length === 0}
-              title="Send to this supplier"
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg disabled:opacity-40 transition-colors"
-              style={{ background: '#2C2C2A', color: '#F5F2EC' }}
-            >
-              {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
-              {sending ? 'Sending…' : 'Send'}
-            </button>
-          )}
-          {/* Resend — already sent, notify again (e.g. after adding new items) */}
-          {!isDraft && ss.sent_at && (
-            <button
-              type="button"
-              onClick={async e => { e.stopPropagation(); setSending(true); await onSend(ss.id); setSending(false) }}
-              disabled={sending || ss.assignments.length === 0}
-              title="Resend to this supplier"
+              disabled={sending}
+              title="Resend — new items added since last send"
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border disabled:opacity-40 transition-colors"
-              style={{ background: 'transparent', border: '1px solid #D4CFC7', color: '#8A877F' }}
+              style={{ background: 'transparent', border: '1px solid #C4A46B', color: '#9A7B4F' }}
             >
               {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
               {sending ? 'Sending…' : 'Resend'}
