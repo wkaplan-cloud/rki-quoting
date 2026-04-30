@@ -48,7 +48,7 @@ export default function SignupPage() {
         widgetId.current = null
       }
     }
-  }, [siteKey])
+  }, [siteKey, role])
 
   useEffect(() => {
     if (error && siteKey && (window as any).turnstile && widgetId.current != null) {
