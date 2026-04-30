@@ -6,6 +6,7 @@ import { apiError } from '@/lib/api-error'
 export const maxDuration = 60
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
+const SUPPLIER_PORTAL_URL = process.env.NEXT_PUBLIC_SUPPLIER_PORTAL_URL ?? 'https://suppliers.quotinghub.co.za'
 
 function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -49,13 +50,13 @@ function buildEmail({
         Or copy this link: <a href="${respondUrl}" style="color:#8A877F;">${respondUrl}</a>
        </p>
        <p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
-        Manage all your requests in <a href="${SITE_URL}/supplier-portal" style="color:#9A7B4F;text-decoration:none;">QuotingHub Supplier Portal</a>.
+        Manage all your requests in <a href="${SUPPLIER_PORTAL_URL}" style="color:#9A7B4F;text-decoration:none;">QuotingHub Supplier Portal</a>.
        </p>`
     : `<p style="margin:20px 0 0;font-size:12px;color:#8A877F;line-height:1.6;">
         Or copy this link: <a href="${respondUrl}" style="color:#8A877F;">${respondUrl}</a>
        </p>
        <p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
-         Not registered yet? <a href="${SITE_URL}/supplier-portal/register" style="color:#9A7B4F;text-decoration:none;">Create a free supplier account</a> to manage all your requests in one place.
+         Not registered yet? <a href="${SUPPLIER_PORTAL_URL}/register" style="color:#9A7B4F;text-decoration:none;">Create a free supplier account</a> to manage all your requests in one place.
        </p>`
 
   return `<!DOCTYPE html>
@@ -161,7 +162,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const items = assignments.map((a: any) => a.item).filter(Boolean)
       const isRegistered = !!(ss as any).portal_account_id
       const respondUrl = isRegistered
-        ? `${SITE_URL}/supplier-portal/requests/${ss.id}`
+        ? `${SUPPLIER_PORTAL_URL}/requests/${ss.id}`
         : `${SITE_URL}/sourcing/respond/${ss.token}`
 
       const { error: emailError } = await resend.emails.send({
