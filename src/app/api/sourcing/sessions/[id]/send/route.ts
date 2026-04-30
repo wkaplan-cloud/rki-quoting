@@ -42,11 +42,14 @@ function buildEmail({
       </td>
     </tr>`).join('')
 
-  const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
-  const ctaLabel = isRegistered ? 'Log in to Submit Prices →' : 'View Items &amp; Submit Prices →'
+  const ctaUrl = respondUrl
+  const ctaLabel = 'View Items &amp; Submit Prices →'
   const footer = isRegistered
-    ? `<p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
-        Log in to your <a href="${SITE_URL}/supplier-portal" style="color:#9A7B4F;text-decoration:none;">QuotingHub Supplier Portal</a> to view and respond to this request.
+    ? `<p style="margin:20px 0 0;font-size:12px;color:#8A877F;line-height:1.6;">
+        Or copy this link: <a href="${respondUrl}" style="color:#8A877F;">${respondUrl}</a>
+       </p>
+       <p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
+        Manage all your requests in <a href="${SITE_URL}/supplier-portal" style="color:#9A7B4F;text-decoration:none;">QuotingHub Supplier Portal</a>.
        </p>`
     : `<p style="margin:20px 0 0;font-size:12px;color:#8A877F;line-height:1.6;">
         Or copy this link: <a href="${respondUrl}" style="color:#8A877F;">${respondUrl}</a>
@@ -158,7 +161,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const items = assignments.map((a: any) => a.item).filter(Boolean)
       const respondUrl = `${SITE_URL}/sourcing/respond/${ss.token}`
       const isRegistered = !!(ss as any).portal_account_id
-      const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
 
       const { error: emailError } = await resend.emails.send({
         from: `${studioName} <no-reply@quotinghub.co.za>`,
@@ -166,9 +168,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         to: ss.email,
         subject: `Pricing Request: ${session.title} — ${studioName}`,
         html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, items, respondUrl, isRegistered }),
-        text: isRegistered
-          ? `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nLog in to your supplier portal to view and respond:\n${ctaUrl}\n\nSent via QuotingHub`
-          : `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,
+        text: `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,
       })
 
       if (emailError) throw new Error(emailError.message)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { CheckCircle2, ChevronDown, ChevronUp, Upload, FileText, X, AlertTriangle, Ban, Download, Printer } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
@@ -140,6 +140,8 @@ interface Assignment {
   id: string
   status: string
   responded_at: string | null
+  pending_supplier_specs: Record<string, string> | null
+  spec_approval_status: string | null
   item: {
     id: string
     title: string
@@ -186,11 +188,13 @@ function PriceForm({
   token,
   onSaved,
   onDeclined,
+  onSpecApprovalRequested,
 }: {
   assignment: Assignment
   token: string
   onSaved: (assignmentId: string, response: Assignment['response']) => void
   onDeclined: (assignmentId: string) => void
+  onSpecApprovalRequested: (assignmentId: string, specs: Record<string, string>) => void
 }) {
   const [expanded, setExpanded] = useState(!assignment.response)
   const [cantSupply, setCantSupply] = useState(assignment.status === 'supplier_declined')
@@ -199,6 +203,7 @@ function PriceForm({
   const [leadTime, setLeadTime] = useState(assignment.response?.lead_time_weeks?.toString() ?? '')
   const [notes, setNotes] = useState(assignment.response?.notes ?? '')
   const [saving, setSaving] = useState(false)
+  const [sendingApproval, setSendingApproval] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [specEdits, setSpecEdits] = useState<Record<string, string>>(() => {
     const it = assignment.item
@@ -261,6 +266,26 @@ function PriceForm({
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
+  async function handleSendForApproval() {
+    setSendingApproval(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/sourcing/respond/${token}/spec-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignment_id: assignment.id, specs: specEdits }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      onSpecApprovalRequested(assignment.id, specEdits)
+      setExpanded(false)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSendingApproval(false)
+    }
+  }
+
   const item = assignment.item
   if (!item) return null
 
@@ -276,10 +301,41 @@ function PriceForm({
   const specsChanged = Object.keys({ ...origSpecs, ...specEdits }).some(
     k => (specEdits[k] ?? '') !== (origSpecs[k] ?? '')
   )
+  const specApproved = assignment.spec_approval_status === 'approved'
+  const specRejected = assignment.spec_approval_status === 'rejected'
 
   const lightbox = lightboxIndex !== null && item.ref_image_urls && item.ref_image_urls.length > 0
     ? <ImageLightbox urls={item.ref_image_urls} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
     : null
+
+  // Amber locked tile — spec changes awaiting designer approval
+  if (assignment.spec_approval_status === 'pending') {
+    const pending = assignment.pending_supplier_specs ?? {}
+    return <>{lightbox}
+      <div className="rounded-xl overflow-hidden" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+        <div className="px-5 py-4 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm mb-0.5" style={{ color: '#18181B' }}>{item.title}</p>
+            <p className="text-xs" style={{ color: '#92600A' }}>Spec changes sent — awaiting designer approval before you can price</p>
+            {Object.keys(pending).length > 0 && (
+              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
+                {Object.entries(pending).map(([k, v]) => (
+                  <div key={k}>
+                    <p className="text-[10px] uppercase tracking-wide" style={{ color: '#A1A1AA' }}>{k.replace(/_/g, ' ')}</p>
+                    <p className="text-xs font-medium" style={{ color: '#52525B' }}>{v || '—'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <span className="text-[10px] font-semibold px-2 py-0.5 rounded shrink-0 mt-0.5" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
+            Pending
+          </span>
+        </div>
+      </div>
+    </>
+  }
 
   // Locked red tile — supplier can't supply this item
   if (assignment.status === 'supplier_declined') {
@@ -391,74 +447,103 @@ function PriceForm({
                 </div>
               )}
 
-              {/* Editable specs */}
-              {(fieldDefs.length > 0 || item.dimensions != null || item.colour_finish != null) && (
+              {/* Specs section — editable normally, read-only when approved */}
+              {(fieldDefs.length > 0 || catKey === 'general' || item.dimensions != null || item.colour_finish != null) && (
                 <div className="px-5 pt-3 pb-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A1A1AA' }}>
                       {catLabel && catKey !== 'general' ? `${catLabel} specs` : 'Item details'}
                     </p>
-                    {specsChanged && (
+                    {specApproved && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                        Approved
+                      </span>
+                    )}
+                    {!specApproved && specsChanged && (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
                         Edited
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {fieldDefs.map(field => {
-                      const val = specEdits[field.key] ?? ''
-                      const inputStyle = { background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }
-                      if (field.type === 'select') return (
-                        <div key={field.key}>
-                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>{field.label}</label>
-                          <select value={val} onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
-                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none" style={inputStyle}>
-                            <option value="">—</option>
-                            {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
-                          </select>
+                  {specApproved ? (
+                    // Read-only approved specs
+                    <div className="grid grid-cols-2 gap-2">
+                      {(() => {
+                        const approved = assignment.pending_supplier_specs ?? {}
+                        const allKeys = [...fieldDefs.map(f => f.key), ...(item.dimensions != null ? ['dimensions'] : []), ...(item.colour_finish != null ? ['colour_finish'] : [])]
+                        return allKeys.map(key => {
+                          const fieldDef = fieldDefs.find(f => f.key === key)
+                          const label = fieldDef ? `${fieldDef.label}${fieldDef.unit ? ` (${fieldDef.unit})` : ''}` : key.replace(/_/g, ' ')
+                          const isTextarea = fieldDef?.type === 'textarea'
+                          return (
+                            <div key={key} className={isTextarea ? 'col-span-2' : ''}>
+                              <p className="text-[10px] mb-0.5" style={{ color: '#71717A' }}>{label}</p>
+                              <p className="text-xs font-medium px-2 py-1.5 rounded-lg" style={{ background: '#F0FDF4', color: '#18181B', border: '1px solid #A7F3D0' }}>
+                                {approved[key] || '—'}
+                              </p>
+                            </div>
+                          )
+                        })
+                      })()}
+                    </div>
+                  ) : (
+                    // Editable inputs
+                    <div className="grid grid-cols-2 gap-2">
+                      {fieldDefs.map(field => {
+                        const val = specEdits[field.key] ?? ''
+                        const inputStyle = { background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }
+                        if (field.type === 'select') return (
+                          <div key={field.key}>
+                            <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>{field.label}</label>
+                            <select value={val} onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
+                              className="w-full px-2 py-1.5 text-xs rounded-lg outline-none" style={inputStyle}>
+                              <option value="">—</option>
+                              {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          </div>
+                        )
+                        if (field.type === 'textarea') return (
+                          <div key={field.key} className="col-span-2">
+                            <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>{field.label}</label>
+                            <textarea value={val} onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
+                              rows={2} placeholder={field.placeholder}
+                              className="w-full px-2 py-1.5 text-xs rounded-lg outline-none resize-none" style={inputStyle} />
+                          </div>
+                        )
+                        return (
+                          <div key={field.key}>
+                            <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>
+                              {field.label}{field.unit && <span style={{ color: '#A1A1AA' }}> ({field.unit})</span>}
+                            </label>
+                            <input type={field.type === 'number' ? 'number' : 'text'} value={val}
+                              onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
+                              placeholder={field.placeholder ?? ''}
+                              className="w-full px-2 py-1.5 text-xs rounded-lg outline-none" style={inputStyle} />
+                          </div>
+                        )
+                      })}
+                      {(item.dimensions != null || catKey === 'general') && (
+                        <div>
+                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>Dimensions</label>
+                          <input value={specEdits.dimensions ?? ''} onChange={e => setSpecEdits(p => ({ ...p, dimensions: e.target.value }))}
+                            placeholder={item.dimensions ?? 'e.g. 1200 × 800 mm'}
+                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none"
+                            style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
                         </div>
-                      )
-                      if (field.type === 'textarea') return (
-                        <div key={field.key} className="col-span-2">
-                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>{field.label}</label>
-                          <textarea value={val} onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
-                            rows={2} placeholder={field.placeholder}
-                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none resize-none" style={inputStyle} />
+                      )}
+                      {(item.colour_finish != null || catKey === 'general') && (
+                        <div>
+                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>Colour / Finish</label>
+                          <input value={specEdits.colour_finish ?? ''} onChange={e => setSpecEdits(p => ({ ...p, colour_finish: e.target.value }))}
+                            placeholder={item.colour_finish ?? 'e.g. Matt white'}
+                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none"
+                            style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
                         </div>
-                      )
-                      return (
-                        <div key={field.key}>
-                          <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>
-                            {field.label}{field.unit && <span style={{ color: '#A1A1AA' }}> ({field.unit})</span>}
-                          </label>
-                          <input type={field.type === 'number' ? 'number' : 'text'} value={val}
-                            onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
-                            placeholder={field.placeholder ?? ''}
-                            className="w-full px-2 py-1.5 text-xs rounded-lg outline-none" style={inputStyle} />
-                        </div>
-                      )
-                    })}
-                    {item.dimensions != null && (
-                      <div>
-                        <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>Dimensions</label>
-                        <input value={specEdits.dimensions ?? ''} onChange={e => setSpecEdits(p => ({ ...p, dimensions: e.target.value }))}
-                          placeholder={item.dimensions ?? ''}
-                          className="w-full px-2 py-1.5 text-xs rounded-lg outline-none"
-                          style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
-                      </div>
-                    )}
-                    {item.colour_finish != null && (
-                      <div>
-                        <label className="block text-[10px] mb-0.5" style={{ color: '#71717A' }}>Colour / Finish</label>
-                        <input value={specEdits.colour_finish ?? ''} onChange={e => setSpecEdits(p => ({ ...p, colour_finish: e.target.value }))}
-                          placeholder={item.colour_finish ?? ''}
-                          className="w-full px-2 py-1.5 text-xs rounded-lg outline-none"
-                          style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
-                      </div>
-                    )}
-                  </div>
-                  {specsChanged && (
-                    <p className="text-[10px] mt-2" style={{ color: '#A1A1AA' }}>Your edits will be visible to the designer when you submit a price.</p>
+                      )}
+                    </div>
+                  )}
+                  {!specApproved && specsChanged && (
+                    <p className="text-[10px] mt-2" style={{ color: '#A1A1AA' }}>Spec changes require designer approval — use the button below to send.</p>
                   )}
                 </div>
               )}
@@ -519,24 +604,74 @@ function PriceForm({
                 </button>
               </div>
             </div>
+          ) : specsChanged && !specApproved ? (
+            /* Specs edited but not yet approved — show send-for-approval CTA */
+            <div className="px-5 py-4 space-y-3">
+              {specRejected && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
+                  <AlertTriangle size={13} className="text-red-400 shrink-0" />
+                  <p className="text-xs text-red-600">Previous spec request was rejected — revise and re-send.</p>
+                </div>
+              )}
+              {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+              <button type="button" onClick={handleSendForApproval} disabled={sendingApproval}
+                className="w-full px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+                style={{ background: '#78350F', color: '#FFFFFF' }}>
+                {sendingApproval ? 'Sending…' : 'Send specs for approval'}
+              </button>
+            </div>
           ) : (
-            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
-                    Unit Price (excl. VAT) <span style={{ color: '#EF4444' }}>*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+            /* Normal price form — no spec changes, or specs already approved */
+            <>
+              {specApproved && (
+                <div className="px-5 pt-4">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
+                    <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                    <p className="text-xs font-medium text-emerald-700">Spec changes approved — enter your price below</p>
+                  </div>
+                </div>
+              )}
+              {specRejected && !specsChanged && (
+                <div className="px-5 pt-4">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
+                    <AlertTriangle size={13} className="text-red-400 shrink-0" />
+                    <p className="text-xs text-red-600">Spec changes rejected — you can price with the original specs or edit and re-send.</p>
+                  </div>
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
+                      Unit Price (excl. VAT) <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={unitPrice}
+                        onChange={e => setUnitPrice(e.target.value)}
+                        placeholder="0.00"
+                        required
+                        className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                        style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                        onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                        onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Lead Time (weeks)</label>
                     <input
                       type="number"
                       min="0"
-                      step="0.01"
-                      value={unitPrice}
-                      onChange={e => setUnitPrice(e.target.value)}
-                      placeholder="0.00"
-                      required
-                      className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                      step="1"
+                      value={leadTime}
+                      onChange={e => setLeadTime(e.target.value)}
+                      placeholder="e.g. 6"
+                      className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
                       style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                       onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                       onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
@@ -544,46 +679,31 @@ function PriceForm({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Lead Time (weeks)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={leadTime}
-                    onChange={e => setLeadTime(e.target.value)}
-                    placeholder="e.g. 6"
-                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Notes</label>
+                  <textarea
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Any conditions, exclusions, or comments…"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
                     style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                     onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                     onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Notes</label>
-                <textarea
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  rows={2}
-                  placeholder="Any conditions, exclusions, or comments…"
-                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none resize-none"
-                  style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-                />
-              </div>
-              {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                  style={{ background: '#34495E', color: '#FFFFFF' }}
-                >
-                  {saving ? 'Saving…' : assignment.response ? 'Update Price' : 'Submit Price'}
-                </button>
-              </div>
-            </form>
+                {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+                    style={{ background: '#34495E', color: '#FFFFFF' }}
+                  >
+                    {saving ? 'Saving…' : assignment.response ? 'Update Price' : 'Submit Price'}
+                  </button>
+                </div>
+              </form>
+            </>
           )}
         </div>
       )}
@@ -687,6 +807,15 @@ export function SupplierRespondClient({
   function handleDeclined(assignmentId: string) {
     setItems(prev =>
       prev.map(a => a.id === assignmentId ? { ...a, status: 'supplier_declined' } : a)
+    )
+  }
+
+  function handleSpecApprovalRequested(assignmentId: string, specs: Record<string, string>) {
+    setItems(prev =>
+      prev.map(a => a.id === assignmentId
+        ? { ...a, spec_approval_status: 'pending', pending_supplier_specs: specs }
+        : a
+      )
     )
   }
 
@@ -794,7 +923,7 @@ export function SupplierRespondClient({
           )}
           <div className="space-y-3">
             {items.map(assignment => (
-              <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} />
+              <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} onSpecApprovalRequested={handleSpecApprovalRequested} />
             ))}
           </div>
           <QuoteUpload token={token} locked={allAccepted} />
@@ -849,7 +978,7 @@ export function SupplierRespondClient({
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 items-start">
             <div className="space-y-3">
               {items.map(assignment => (
-                <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} />
+                <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} onSpecApprovalRequested={handleSpecApprovalRequested} />
               ))}
             </div>
             <div className="space-y-4">

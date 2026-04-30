@@ -24,7 +24,7 @@ export default async function SourcingDetailPage({
     supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).maybeSingle(),
     supabase
       .from('sourcing_session_suppliers')
-      .select('*, assignments:sourcing_item_assignments(*, response:sourcing_item_responses(*))')
+      .select('*, assignments:sourcing_item_assignments(*, pending_supplier_specs, spec_approval_status, spec_approved_at, response:sourcing_item_responses(*))')
       .eq('session_id', id)
       .order('created_at', { ascending: true }),
   ])
@@ -52,6 +52,9 @@ export default async function SourcingDetailPage({
       responded_at: a.responded_at,
       accepted_at: a.accepted_at,
       created_at: a.created_at,
+      pending_supplier_specs: a.pending_supplier_specs ?? null,
+      spec_approval_status: a.spec_approval_status ?? null,
+      spec_approved_at: a.spec_approved_at ?? null,
       response: Array.isArray(a.response) ? (a.response[0] ?? null) : a.response,
     }))
     return {

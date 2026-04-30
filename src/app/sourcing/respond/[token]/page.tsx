@@ -71,7 +71,7 @@ export default async function SupplierRespondPage({
   const [{ data: assignments }, { data: settings }] = await Promise.all([
     supabaseAdmin
       .from('sourcing_item_assignments')
-      .select('id, status, responded_at, item:sourcing_session_items(*), response:sourcing_item_responses(*)')
+      .select('id, status, responded_at, pending_supplier_specs, spec_approval_status, spec_approved_at, item:sourcing_session_items(*), response:sourcing_item_responses(*)')
       .eq('session_supplier_id', ss.id)
       .order('created_at', { ascending: true }),
     supabaseAdmin
@@ -85,6 +85,9 @@ export default async function SupplierRespondPage({
     id: a.id,
     status: a.status,
     responded_at: a.responded_at,
+    pending_supplier_specs: a.pending_supplier_specs ?? null,
+    spec_approval_status: a.spec_approval_status ?? null,
+    spec_approved_at: a.spec_approved_at ?? null,
     item: Array.isArray(a.item) ? a.item[0] : a.item,
     response: Array.isArray(a.response) ? (a.response[0] ?? null) : a.response,
   }))

@@ -15,8 +15,26 @@ export default function LoginPage() {
   const [hashRedirecting, setHashRedirecting] = useState(() =>
     typeof window !== 'undefined' && window.location.hash.includes('access_token=')
   )
+  const [checkingSession, setCheckingSession] = useState(true)
   const router = useRouter()
   const supabase = createClient()
+
+  // If already logged in, redirect away from the login page
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
+      setCheckingSession(false)
+      return
+    }
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { setCheckingSession(false); return }
+      const { data: portalAccount } = await supabase
+        .from('supplier_portal_accounts')
+        .select('id')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle()
+      router.replace(portalAccount ? '/supplier-portal/dashboard' : '/dashboard')
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Supabase implicit flow: email confirmation links redirect to /login with tokens
   // in the URL hash (#access_token=...&type=signup).
@@ -55,7 +73,7 @@ export default function LoginPage() {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (hashRedirecting) {
+  if (hashRedirecting || checkingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center"
         style={{ backgroundImage: 'url(/login-bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>

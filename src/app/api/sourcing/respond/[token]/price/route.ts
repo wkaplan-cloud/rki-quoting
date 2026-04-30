@@ -37,14 +37,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // Verify assignment belongs to this session supplier
     const { data: assignment } = await supabaseAdmin
       .from('sourcing_item_assignments')
-      .select('id, status')
+      .select('id, status, spec_approval_status, pending_supplier_specs')
       .eq('id', assignment_id)
       .eq('session_supplier_id', ss.id)
       .maybeSingle()
 
     if (!assignment) return NextResponse.json({ error: 'Assignment not found' }, { status: 404 })
 
+    // Block pricing while spec changes are awaiting designer approval
+    if (assignment.spec_approval_status === 'pending') {
+      return NextResponse.json({ error: 'Awaiting designer spec approval before pricing' }, { status: 400 })
+    }
+
     const now = new Date().toISOString()
+
+    // If specs were approved, use the approved pending_supplier_specs (client supplier_specs takes precedence if also sent)
+    const resolvedSupplierSpecs = supplier_specs ?? (
+      assignment.spec_approval_status === 'approved' ? assignment.pending_supplier_specs : null
+    )
 
     // Upsert response (unique on assignment_id)
     const { data: response, error } = await supabaseAdmin
@@ -59,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           valid_until: valid_until ?? null,
           notes: notes ?? null,
           attachment_url: attachment_url ?? null,
-          supplier_specs: supplier_specs ?? null,
+          supplier_specs: resolvedSupplierSpecs,
           submitted_at: now,
           updated_at: now,
         },

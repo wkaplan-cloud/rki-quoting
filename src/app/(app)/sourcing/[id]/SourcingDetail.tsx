@@ -40,6 +40,9 @@ interface Assignment {
   responded_at: string | null
   accepted_at: string | null
   created_at: string | null
+  pending_supplier_specs: Record<string, string> | null
+  spec_approval_status: string | null
+  spec_approved_at: string | null
   response: Response | null
 }
 
@@ -358,6 +361,9 @@ function AddSupplierForm({
           responded_at: null,
           accepted_at: null,
           created_at: r.data.created_at ?? new Date().toISOString(),
+          pending_supplier_specs: null,
+          spec_approval_status: null,
+          spec_approved_at: null,
           response: null,
         }))
 
@@ -764,7 +770,7 @@ function ComparisonTable({
 // ---- Supplier Card ----
 function SupplierCard({
   ss, items, sessionId, sessionStatus,
-  onAssignToggle, onAccept, onOpenPush, onRemove, onSend, pushedItems, projects,
+  onAssignToggle, onAccept, onOpenPush, onRemove, onSend, onSpecAction, pushedItems, projects,
 }: {
   ss: SessionSupplier
   items: SessionItem[]
@@ -775,6 +781,7 @@ function SupplierCard({
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   onRemove: (ssId: string) => void
   onSend: (ssId: string) => Promise<void>
+  onSpecAction: (ssId: string, assignmentId: string, status: 'approved' | 'rejected') => void
   pushedItems: Record<string, string>
   projects: Props['projects']
 }) {
@@ -782,6 +789,7 @@ function SupplierCard({
   const [showAddItems, setShowAddItems] = useState(false)
   const [togglingItem, setTogglingItem] = useState<string | null>(null)
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [approvingSpec, setApprovingSpec] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
 
   const assignedItemIds = new Set(ss.assignments.map(a => a.item_id))
@@ -824,6 +832,23 @@ function SupplierCard({
       alert(err.message)
     } finally {
       setTogglingItem(null)
+    }
+  }
+
+  async function handleApproveSpec(assignmentId: string, action: 'approve' | 'reject') {
+    setApprovingSpec(assignmentId)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/assignments/${assignmentId}/approve-specs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      onSpecAction(ss.id, assignmentId, action === 'approve' ? 'approved' : 'rejected')
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setApprovingSpec(null)
     }
   }
 
@@ -899,6 +924,7 @@ function SupplierCard({
                 const assignment = ss.assignments.find(a => a.item_id === item.id)
                 const isAccepted = assignment?.status === 'accepted'
                 const hasResponse = !!assignment?.response
+                const specStatus = assignment?.spec_approval_status ?? null
 
                 const hasSpecChanges = (() => {
                   const supp = assignment?.response?.supplier_specs
@@ -907,6 +933,15 @@ function SupplierCard({
                   return Object.keys({ ...orig, ...supp }).some(k => (supp[k] ?? '') !== (orig[k] ?? ''))
                 })()
 
+                // Diff data for pending spec approval
+                const origSpecs: Record<string, string> = {
+                  ...(item.item_specs ?? {}),
+                  ...(item.dimensions ? { dimensions: item.dimensions } : {}),
+                  ...(item.colour_finish ? { colour_finish: item.colour_finish } : {}),
+                }
+                const pendingSpecs = assignment?.pending_supplier_specs ?? {}
+                const diffKeys = [...new Set([...Object.keys(origSpecs), ...Object.keys(pendingSpecs)])]
+
                 return (
                   <div key={item.id} className="py-2 border-b border-[#F5F2EC] last:border-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -914,12 +949,79 @@ function SupplierCard({
                       <p className="text-sm font-medium text-[#2C2C2A]">{item.title}</p>
                       {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
                       {isAccepted && <span className="text-xs text-emerald-600 font-medium">Accepted</span>}
-                      {hasSpecChanges && (
+                      {specStatus === 'pending' && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
+                          Spec approval pending
+                        </span>
+                      )}
+                      {specStatus === 'approved' && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>
+                          Specs approved
+                        </span>
+                      )}
+                      {specStatus === 'rejected' && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FFF1F2', color: '#9F1239', border: '1px solid #FECDD3' }}>
+                          Specs rejected
+                        </span>
+                      )}
+                      {!specStatus && hasSpecChanges && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
                           Spec changes
                         </span>
                       )}
                     </div>
+
+                    {/* Spec diff panel — shown when supplier has sent specs for approval */}
+                    {specStatus === 'pending' && assignment && diffKeys.length > 0 && (
+                      <div className="mt-1.5 rounded-lg overflow-hidden" style={{ border: '1px solid #FDE68A' }}>
+                        <div className="px-3 py-1.5 flex items-center gap-1.5" style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A' }}>
+                          <AlertTriangle size={11} className="text-amber-500 shrink-0" />
+                          <p className="text-[11px] font-semibold text-amber-800">Spec change request from {ss.supplier_name}</p>
+                        </div>
+                        <table className="w-full" style={{ background: '#FEFCE8' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid #FDE68A' }}>
+                              <th className="px-3 py-1 text-left text-[10px] uppercase tracking-wide font-semibold text-amber-600 w-1/3">Field</th>
+                              <th className="px-3 py-1 text-left text-[10px] uppercase tracking-wide font-semibold text-amber-600 w-1/3">Original</th>
+                              <th className="px-3 py-1 text-left text-[10px] uppercase tracking-wide font-semibold text-amber-600 w-1/3">Proposed</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {diffKeys.map(key => {
+                              const orig = origSpecs[key] ?? ''
+                              const proposed = pendingSpecs[key] ?? ''
+                              const changed = orig !== proposed
+                              return (
+                                <tr key={key} style={{ borderBottom: '1px solid #FEF08A', opacity: changed ? 1 : 0.45 }}>
+                                  <td className="px-3 py-1 text-[11px] font-medium text-[#52525B]">{key.replace(/_/g, ' ')}</td>
+                                  <td className="px-3 py-1 text-[11px] text-[#71717A]">{orig || '—'}</td>
+                                  <td className={`px-3 py-1 text-[11px] font-semibold ${changed ? 'text-amber-800' : 'text-[#71717A]'}`}>
+                                    {proposed || '—'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                        <div className="flex gap-2 justify-end px-3 py-2" style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}>
+                          <button type="button"
+                            onClick={() => handleApproveSpec(assignment.id, 'reject')}
+                            disabled={!!approvingSpec}
+                            className="px-3 py-1 text-xs rounded-lg border transition-colors disabled:opacity-50 hover:bg-[#F5F2EC]"
+                            style={{ border: '1px solid #D4CFC7', color: '#71717A' }}>
+                            {approvingSpec === assignment.id ? '…' : 'Reject'}
+                          </button>
+                          <button type="button"
+                            onClick={() => handleApproveSpec(assignment.id, 'approve')}
+                            disabled={!!approvingSpec}
+                            className="px-3 py-1 text-xs font-semibold rounded-lg transition-opacity disabled:opacity-50"
+                            style={{ background: '#C4A46B', color: '#FFFFFF' }}>
+                            {approvingSpec === assignment.id ? 'Approving…' : 'Approve changes'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
 
                     {hasResponse && assignment?.response && (
                       <div className="flex items-center gap-3 flex-wrap mt-1">
@@ -1096,6 +1198,9 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           responded_at: null,
           accepted_at: null,
           created_at: new Date().toISOString(),
+          pending_supplier_specs: null,
+          spec_approval_status: null,
+          spec_approved_at: null,
           response: null,
         }
         return { ...s, assignments: [...s.assignments, newAssignment] }
@@ -1115,6 +1220,24 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     })))
     setItems(prev => prev.map(item => item.id === itemId ? { ...item, status: 'accepted' } : item))
     startTransition(() => router.refresh())
+  }
+
+  function handleSpecAction(ssId: string, assignmentId: string, status: 'approved' | 'rejected') {
+    setSuppliers(prev => prev.map(s => {
+      if (s.id !== ssId) return s
+      return {
+        ...s,
+        assignments: s.assignments.map(a => {
+          if (a.id !== assignmentId) return a
+          return {
+            ...a,
+            spec_approval_status: status,
+            ...(status === 'rejected' ? { pending_supplier_specs: null } : {}),
+            ...(status === 'approved' ? { spec_approved_at: new Date().toISOString() } : {}),
+          }
+        }),
+      }
+    }))
   }
 
   function handlePushToProject(projectId: string) {
@@ -1390,6 +1513,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                   }
                   onRemove={handleRemoveSupplier}
                   onSend={handleSendToSupplier}
+                  onSpecAction={handleSpecAction}
                   pushedItems={pushedItems}
                   projects={projects}
                 />
