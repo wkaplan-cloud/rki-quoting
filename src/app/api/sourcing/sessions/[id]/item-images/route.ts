@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
 // POST /api/sourcing/sessions/[id]/item-images — upload ref images for a sourcing item
@@ -18,11 +19,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     for (const file of files.slice(0, 5)) {
       const path = `item-refs/${sessionId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
       const bytes = await file.arrayBuffer()
-      const { error } = await supabase.storage
+      const { error } = await supabaseAdmin.storage
         .from('sourcing-images')
         .upload(path, bytes, { contentType: file.type, upsert: false })
       if (!error) {
-        const { data } = supabase.storage.from('sourcing-images').getPublicUrl(path)
+        const { data } = supabaseAdmin.storage.from('sourcing-images').getPublicUrl(path)
         urls.push(data.publicUrl)
       }
     }
