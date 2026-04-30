@@ -666,7 +666,7 @@ function ComparisonTable({
 // ---- Supplier Card ----
 function SupplierCard({
   ss, items, sessionId, sessionStatus,
-  onAssignToggle, onAccept, onOpenPush, onRemove, pushedItems, projects,
+  onAssignToggle, onAccept, onOpenPush, onRemove, onSend, pushedItems, projects,
 }: {
   ss: SessionSupplier
   items: SessionItem[]
@@ -676,6 +676,7 @@ function SupplierCard({
   onAccept: (itemId: string, assignmentId: string) => void
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   onRemove: (ssId: string) => void
+  onSend: (ssId: string) => Promise<void>
   pushedItems: Record<string, string>
   projects: Props['projects']
 }) {
@@ -689,6 +690,7 @@ function SupplierCard({
   const [togglingItem, setTogglingItem] = useState<string | null>(null)
   const [accepting, setAccepting] = useState<string | null>(null)
   const [seenMessages, setSeenMessages] = useState(false)
+  const [sending, setSending] = useState(false)
   const hasUnread = ss.supplier_message_count > 0 && !seenMessages
 
   const assignedItemIds = new Set(ss.assignments.map(a => a.item_id))
@@ -802,6 +804,20 @@ function SupplierCard({
           <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {/* Per-supplier Send button — shown when session is already sent but this supplier hasn't been */}
+          {!isDraft && !ss.sent_at && (
+            <button
+              type="button"
+              onClick={async e => { e.stopPropagation(); setSending(true); await onSend(ss.id); setSending(false) }}
+              disabled={sending || ss.assignments.length === 0}
+              title="Send to this supplier"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg disabled:opacity-40 transition-colors"
+              style={{ background: '#2C2C2A', color: '#F5F2EC' }}
+            >
+              {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+              {sending ? 'Sending…' : 'Send'}
+            </button>
+          )}
           {!isDraft && (
             <button
               type="button"
@@ -1121,7 +1137,11 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   async function handleSend() {
     setSending(true)
     try {
-      const res = await fetch(`/api/sourcing/sessions/${session.id}/send`, { method: 'POST' })
+      const res = await fetch(`/api/sourcing/sessions/${session.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       startTransition(() => router.refresh())
@@ -1129,6 +1149,21 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
       alert(err.message)
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleSendToSupplier(ssId: string) {
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${session.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_supplier_id: ssId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      startTransition(() => router.refresh())
+    } catch (err: any) {
+      alert(err.message)
     }
   }
 
@@ -1268,6 +1303,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                     setPushModal({ item, assignment, response, supplierName })
                   }
                   onRemove={handleRemoveSupplier}
+                  onSend={handleSendToSupplier}
                   pushedItems={pushedItems}
                   projects={projects}
                 />

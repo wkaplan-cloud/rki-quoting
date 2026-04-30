@@ -107,12 +107,15 @@ function buildEmail({
 }
 
 // POST /api/sourcing/sessions/[id]/send
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// Body: { session_supplier_id?: string } — if provided, send only to that supplier
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const body = await req.json().catch(() => ({})) as { session_supplier_id?: string }
 
     const [{ data: session }, { data: settings }] = await Promise.all([
       supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).single(),
@@ -134,8 +137,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Add at least one supplier before sending' }, { status: 400 })
     }
 
-    // Only send to suppliers who have not yet been sent (or re-send all if resending)
-    const toSend = sessionSuppliers.filter(s => !s.sent_at)
+    // If a specific supplier is requested, send only to them — otherwise send to all unsent
+    const toSend = body.session_supplier_id
+      ? sessionSuppliers.filter(s => s.id === body.session_supplier_id)
+      : sessionSuppliers.filter(s => !s.sent_at)
     if (!toSend.length) return NextResponse.json({ error: 'All suppliers have already been sent this request' }, { status: 400 })
 
     const studioName = settings?.business_name ?? 'Your Studio'
