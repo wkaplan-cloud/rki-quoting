@@ -6,6 +6,7 @@ import {
   Plus, X, Pencil, Trash2, ImagePlus, Tag, ArrowRight,
   Loader2, ChevronLeft, ChevronRight, LayoutGrid, PackageOpen,
 } from 'lucide-react'
+import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
 interface Piece {
   id: string
@@ -20,6 +21,8 @@ interface Piece {
   base_price: number | null
   image_urls: string[]
   created_at: string
+  category: string
+  item_specs: Record<string, string> | null
 }
 
 interface Props {
@@ -69,6 +72,8 @@ function PieceModal({
   const isEdit = !!piece
   const [name, setName] = useState(piece?.name ?? '')
   const [description, setDescription] = useState(piece?.description ?? '')
+  const [category, setCategory] = useState<CategoryKey>((piece?.category as CategoryKey) ?? 'general')
+  const [specValues, setSpecValues] = useState<Record<string, string>>(piece?.item_specs ?? {})
   const [workType, setWorkType] = useState(piece?.work_type ?? '')
   const [dimensions, setDimensions] = useState(piece?.dimensions ?? '')
   const [colourFinish, setColourFinish] = useState(piece?.colour_finish ?? '')
@@ -81,6 +86,15 @@ function PieceModal({
   const [saving, setSaving] = useState(false)
   const [uploadingImages, setUploadingImages] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  function handleCategoryChange(key: CategoryKey) {
+    setCategory(key)
+    setSpecValues({})
+  }
+
+  function setSpec(key: string, val: string) {
+    setSpecValues(prev => ({ ...prev, [key]: val }))
+  }
 
   function handleSupplierSelect(e: React.ChangeEvent<HTMLSelectElement>) {
     const s = suppliers.find(s => s.id === e.target.value)
@@ -114,12 +128,16 @@ function PieceModal({
     setSaving(true)
     setError(null)
     try {
+      const isGeneral = category === 'general'
+      const cleanSpecs = Object.fromEntries(Object.entries(specValues).filter(([, v]) => v.trim()))
       const payload = {
         name: name.trim(),
         description: description.trim() || null,
-        work_type: workType.trim() || null,
-        dimensions: dimensions.trim() || null,
-        colour_finish: colourFinish.trim() || null,
+        category,
+        work_type: isGeneral ? (workType.trim() || null) : null,
+        dimensions: isGeneral ? (dimensions.trim() || null) : null,
+        colour_finish: isGeneral ? (colourFinish.trim() || null) : null,
+        item_specs: !isGeneral && Object.keys(cleanSpecs).length > 0 ? cleanSpecs : null,
         year: year ? Number(year) : null,
         supplier_id: supplierId || null,
         supplier_name: supplierId ? supplierName : (supplierName.trim() || null),
@@ -187,27 +205,97 @@ function PieceModal({
 
           {/* Description */}
           <div>
-            <label className={LABEL}>Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className={`${INPUT} resize-none`} placeholder="Materials, details, notes…" />
+            <label className={LABEL}>Description / Notes</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className={`${INPUT} resize-none`} placeholder="Materials, details, notes…" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={LABEL}>Category</label>
-              <input value={workType} onChange={e => setWorkType(e.target.value)} className={INPUT} placeholder="e.g. Seating" />
+          {/* Category picker */}
+          <div>
+            <label className={LABEL}>Category</label>
+            <div className="flex flex-wrap gap-1.5">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => handleCategoryChange(cat.key as CategoryKey)}
+                  className="px-3 py-1 text-xs font-medium rounded-full border transition-colors"
+                  style={category === cat.key
+                    ? { background: '#2C2C2A', color: '#F5F2EC', borderColor: '#2C2C2A' }
+                    : { background: 'white', color: '#8A877F', borderColor: '#D4CFC7' }
+                  }
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className={LABEL}>Year</label>
-              <input type="number" min="1900" max="2099" value={year} onChange={e => setYear(e.target.value)} className={INPUT} placeholder="e.g. 2023" />
+          </div>
+
+          {/* General: legacy free-text fields */}
+          {category === 'general' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className={LABEL}>Work type</label>
+                <input value={workType} onChange={e => setWorkType(e.target.value)} className={INPUT} placeholder="e.g. Seating, Joinery" />
+              </div>
+              <div>
+                <label className={LABEL}>Dimensions</label>
+                <input value={dimensions} onChange={e => setDimensions(e.target.value)} className={INPUT} placeholder="W × D × H" />
+              </div>
+              <div>
+                <label className={LABEL}>Colour / Finish</label>
+                <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} className={INPUT} placeholder="e.g. Brushed brass" />
+              </div>
             </div>
-            <div>
-              <label className={LABEL}>Dimensions</label>
-              <input value={dimensions} onChange={e => setDimensions(e.target.value)} className={INPUT} placeholder="W × D × H" />
+          )}
+
+          {/* Specific category: structured fields */}
+          {CATEGORY_FIELDS[category].length > 0 && (
+            <div className="space-y-2">
+              <label className={LABEL}>Specifications <span className="normal-case font-normal text-[#C4BFB5] tracking-normal">— fill in what you know</span></label>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORY_FIELDS[category].map(field => {
+                  const val = specValues[field.key] ?? ''
+                  if (field.type === 'select') return (
+                    <div key={field.key}>
+                      <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
+                      <select value={val} onChange={e => setSpec(field.key, e.target.value)} className={INPUT}>
+                        <option value="">—</option>
+                        {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  )
+                  if (field.type === 'textarea') return (
+                    <div key={field.key} className="col-span-2">
+                      <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
+                      <textarea value={val} onChange={e => setSpec(field.key, e.target.value)} rows={2}
+                        placeholder={field.placeholder} className={`${INPUT} resize-none`} />
+                    </div>
+                  )
+                  return (
+                    <div key={field.key}>
+                      <label className="block text-[10px] text-[#8A877F] mb-0.5">
+                        {field.label}{field.unit && <span className="text-[#C4BFB5] ml-1">({field.unit})</span>}
+                      </label>
+                      <input
+                        type={field.type === 'number' ? 'number' : 'text'}
+                        min={field.type === 'number' ? '0' : undefined}
+                        step={field.type === 'number' ? 'any' : undefined}
+                        value={val}
+                        onChange={e => setSpec(field.key, e.target.value)}
+                        placeholder={field.placeholder ?? (field.unit ? 'e.g. 600' : '')}
+                        className={INPUT}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <div>
-              <label className={LABEL}>Colour / Finish</label>
-              <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} className={INPUT} placeholder="e.g. Brushed brass" />
-            </div>
+          )}
+
+          {/* Year (always) */}
+          <div>
+            <label className={LABEL}>Year</label>
+            <input type="number" min="1900" max="2099" value={year} onChange={e => setYear(e.target.value)} className={INPUT} placeholder="e.g. 2023" />
           </div>
 
           {/* Supplier */}
@@ -477,7 +565,17 @@ function PieceCard({
               <span className="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 bg-[#F5F2EC] text-[#8A877F]">{piece.year}</span>
             )}
           </div>
-          {piece.work_type && <p className="text-xs text-[#8A877F] mt-0.5">{piece.work_type}</p>}
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {piece.category && piece.category !== 'general' && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#F5F2EC] text-[#8A877F] border border-[#EDE9E1] capitalize">
+                {CATEGORIES.find(c => c.key === piece.category)?.label ?? piece.category}
+              </span>
+            )}
+            {piece.work_type && <p className="text-xs text-[#8A877F]">{piece.work_type}</p>}
+            {piece.item_specs && Object.keys(piece.item_specs).length > 0 && (
+              <span className="text-[10px] text-[#C4BFB5]">{Object.keys(piece.item_specs).length} specs</span>
+            )}
+          </div>
         </div>
 
         {piece.description && (

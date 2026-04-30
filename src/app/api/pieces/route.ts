@@ -38,9 +38,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as {
       name: string
       description?: string
+      category?: string
       work_type?: string
       dimensions?: string
       colour_finish?: string
+      item_specs?: Record<string, string> | null
       year?: number
       supplier_id?: string
       supplier_name?: string
@@ -56,9 +58,11 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         name: body.name.trim(),
         description: body.description?.trim() ?? null,
+        category: body.category ?? 'general',
         work_type: body.work_type?.trim() ?? null,
         dimensions: body.dimensions?.trim() ?? null,
         colour_finish: body.colour_finish?.trim() ?? null,
+        item_specs: body.item_specs ?? null,
         year: body.year ?? null,
         supplier_id: body.supplier_id ?? null,
         supplier_name: body.supplier_name?.trim() ?? null,

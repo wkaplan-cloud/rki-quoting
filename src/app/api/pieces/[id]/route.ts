@@ -13,9 +13,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json() as {
       name?: string
       description?: string
+      category?: string
       work_type?: string
       dimensions?: string
       colour_finish?: string
+      item_specs?: Record<string, string> | null
       year?: number | null
       supplier_id?: string | null
       supplier_name?: string | null
@@ -31,9 +33,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .update({
         ...(body.name !== undefined && { name: body.name.trim() }),
         ...(body.description !== undefined && { description: body.description?.trim() ?? null }),
+        ...(body.category !== undefined && { category: body.category }),
         ...(body.work_type !== undefined && { work_type: body.work_type?.trim() ?? null }),
         ...(body.dimensions !== undefined && { dimensions: body.dimensions?.trim() ?? null }),
         ...(body.colour_finish !== undefined && { colour_finish: body.colour_finish?.trim() ?? null }),
+        ...(body.item_specs !== undefined && { item_specs: body.item_specs }),
         ...(body.year !== undefined && { year: body.year }),
         ...(body.supplier_id !== undefined && { supplier_id: body.supplier_id }),
         ...(body.supplier_name !== undefined && { supplier_name: body.supplier_name?.trim() ?? null }),
