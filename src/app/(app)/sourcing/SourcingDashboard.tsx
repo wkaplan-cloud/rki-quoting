@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Archive, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Archive, ArchiveRestore, Trash2, Loader2 } from 'lucide-react'
 
 interface Session {
   id: string
@@ -36,6 +36,7 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
   const [newRef, setNewRef] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [archiving, setArchiving] = useState<string | null>(null)
+  const [unarchiving, setUnarchiving] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const comboRef = useRef<HTMLDivElement>(null)
 
@@ -103,6 +104,17 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
       startTransition(() => router.refresh())
     } finally {
       setArchiving(null)
+    }
+  }
+
+  async function handleUnarchive(e: React.MouseEvent, id: string) {
+    e.stopPropagation()
+    setUnarchiving(id)
+    try {
+      await fetch(`/api/sourcing/sessions/${id}/archive`, { method: 'DELETE' })
+      startTransition(() => router.refresh())
+    } finally {
+      setUnarchiving(null)
     }
   }
 
@@ -240,14 +252,24 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
                       {archiving === s.id ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
                     </button>
                   ) : (
-                    <button
-                      onClick={e => handleDelete(e, s.id)}
-                      disabled={deleting === s.id}
-                      title="Delete permanently"
-                      className="p-2 text-[#8A877F] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      {deleting === s.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={e => handleUnarchive(e, s.id)}
+                        disabled={unarchiving === s.id}
+                        title="Unarchive"
+                        className="p-2 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
+                      >
+                        {unarchiving === s.id ? <Loader2 size={14} className="animate-spin" /> : <ArchiveRestore size={14} />}
+                      </button>
+                      <button
+                        onClick={e => handleDelete(e, s.id)}
+                        disabled={deleting === s.id}
+                        title="Delete permanently"
+                        className="p-2 text-[#8A877F] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        {deleting === s.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
