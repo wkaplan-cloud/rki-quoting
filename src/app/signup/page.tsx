@@ -108,21 +108,13 @@ export default function SignupPage() {
         </div>
         <div className="relative z-10">
           <p className="font-serif text-white/85 text-4xl leading-snug tracking-tight">
-            Quotes, invoices<br />
-            <em className="text-[#C4A46B]">& purchase orders.</em>
+            Every project,<br />
+            <em className="text-[#C4A46B]">perfectly quoted.</em>
           </p>
           <p className="text-white/40 text-sm mt-5 font-light leading-relaxed">
-            Built for interior designers who are done<br />
-            with legacy quoting tools.
+            Manage quotes, invoices, and purchase orders<br />
+            for your interior design projects.
           </p>
-          <ul className="mt-6 space-y-2">
-            {['Reactive quoting with real-time totals', 'Auto-generated PDFs', 'Purchase orders per supplier'].map(f => (
-              <li key={f} className="flex items-center gap-2 text-sm text-white/50">
-                <span className="w-1 h-1 rounded-full bg-[#C4A46B] flex-shrink-0" />
-                {f}
-              </li>
-            ))}
-          </ul>
         </div>
         <p className="relative z-10 text-white/20 text-xs">© QuotingHub · quotinghub.co.za</p>
       </div>
@@ -135,8 +127,10 @@ export default function SignupPage() {
           {!role && !done && (
             <>
               <div className="mb-8 text-center">
-                <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Get started</h1>
-                <p className="text-sm text-[#8A877F] mt-1.5">How will you use QuotingHub?</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="QuotingHub" className="lg:hidden h-14 w-auto object-contain mx-auto mb-6" />
+                <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Create your account</h1>
+                <p className="text-sm text-[#8A877F] mt-1.5">Sign up as a designer or supplier</p>
               </div>
               <div className="space-y-3">
                 <button

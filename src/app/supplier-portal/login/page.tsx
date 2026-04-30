@@ -120,7 +120,7 @@ export default function SupplierLoginPage() {
             </p>
             <p className="text-xs" style={{ color: '#A1A1AA' }}>
               Are you a designer?{' '}
-              <Link href="/login" className="hover:underline" style={{ color: '#71717A' }}>Sign in here →</Link>
+              <a href="https://quotinghub.co.za/login" className="hover:underline" style={{ color: '#71717A' }}>Sign in here →</a>
             </p>
           </div>
         </div>
