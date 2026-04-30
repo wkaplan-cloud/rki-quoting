@@ -940,7 +940,7 @@ function SupplierCard({
                   ...(item.colour_finish ? { colour_finish: item.colour_finish } : {}),
                 }
                 const pendingSpecs = assignment?.pending_supplier_specs ?? {}
-                const diffKeys = [...new Set([...Object.keys(origSpecs), ...Object.keys(pendingSpecs)])]
+                const diffKeys = [...new Set([...Object.keys(origSpecs), ...Object.keys(pendingSpecs)])].filter(k => (origSpecs[k] ?? '') !== (pendingSpecs[k] ?? ''))
 
                 return (
                   <div key={item.id} className="py-2 border-b border-[#F5F2EC] last:border-0">
@@ -990,14 +990,11 @@ function SupplierCard({
                             {diffKeys.map(key => {
                               const orig = origSpecs[key] ?? ''
                               const proposed = pendingSpecs[key] ?? ''
-                              const changed = orig !== proposed
                               return (
-                                <tr key={key} style={{ borderBottom: '1px solid #FEF08A', opacity: changed ? 1 : 0.45 }}>
+                                <tr key={key} style={{ borderBottom: '1px solid #FEF08A' }}>
                                   <td className="px-3 py-1 text-[11px] font-medium text-[#52525B]">{key.replace(/_/g, ' ')}</td>
                                   <td className="px-3 py-1 text-[11px] text-[#71717A]">{orig || '—'}</td>
-                                  <td className={`px-3 py-1 text-[11px] font-semibold ${changed ? 'text-amber-800' : 'text-[#71717A]'}`}>
-                                    {proposed || '—'}
-                                  </td>
+                                  <td className="px-3 py-1 text-[11px] font-semibold text-amber-800">{proposed || '—'}</td>
                                 </tr>
                               )
                             })}
