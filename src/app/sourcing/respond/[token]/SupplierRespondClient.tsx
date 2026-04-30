@@ -311,6 +311,12 @@ function PriceForm({
   // Amber locked tile — spec changes awaiting designer approval
   if (assignment.spec_approval_status === 'pending') {
     const pending = assignment.pending_supplier_specs ?? {}
+    const origSpecs: Record<string, string> = {
+      ...(item.item_specs ?? {}),
+      ...(item.dimensions ? { dimensions: item.dimensions } : {}),
+      ...(item.colour_finish ? { colour_finish: item.colour_finish } : {}),
+    }
+    const changedEntries = Object.entries(pending).filter(([k, v]) => (v ?? '') !== (origSpecs[k] ?? ''))
     return <>{lightbox}
       <div className="rounded-xl overflow-hidden" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
         <div className="px-5 py-4 flex items-start gap-3">
@@ -318,9 +324,9 @@ function PriceForm({
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm mb-0.5" style={{ color: '#18181B' }}>{item.title}</p>
             <p className="text-xs" style={{ color: '#92600A' }}>Spec changes sent — awaiting designer approval before you can price</p>
-            {Object.keys(pending).length > 0 && (
+            {changedEntries.length > 0 && (
               <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
-                {Object.entries(pending).map(([k, v]) => (
+                {changedEntries.map(([k, v]) => (
                   <div key={k}>
                     <p className="text-[10px] uppercase tracking-wide" style={{ color: '#A1A1AA' }}>{k.replace(/_/g, ' ')}</p>
                     <p className="text-xs font-medium" style={{ color: '#52525B' }}>{v || '—'}</p>
