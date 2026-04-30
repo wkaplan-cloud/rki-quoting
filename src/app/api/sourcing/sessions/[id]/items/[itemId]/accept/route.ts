@@ -18,6 +18,7 @@ function buildAcceptanceEmail({
   leadTimeWeeks,
   sessionTitle,
   respondUrl,
+  isRegistered,
 }: {
   supplierName: string
   studioName: string
@@ -26,7 +27,14 @@ function buildAcceptanceEmail({
   leadTimeWeeks: number | null
   sessionTitle: string
   respondUrl: string
+  isRegistered: boolean
 }) {
+  const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
+  const ctaLabel = isRegistered ? 'Log in to Supplier Portal →' : 'View Request →'
+  const footer = isRegistered
+    ? `<p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">Log in to your <a href="${SITE_URL}/supplier-portal" style="color:#9A7B4F;text-decoration:none;">Supplier Portal</a> to view all your requests.</p>`
+    : `<p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">Not registered yet? <a href="${SITE_URL}/supplier-portal/register" style="color:#9A7B4F;text-decoration:none;">Create a free supplier account</a> to manage all your requests in one place.</p>`
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -62,15 +70,13 @@ function buildAcceptanceEmail({
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;">
               <tr>
                 <td align="center">
-                  <a href="${respondUrl}" style="display:inline-block;background-color:#2C2C2A;color:#F5F2EC;font-size:14px;font-weight:600;padding:14px 32px;border-radius:6px;text-decoration:none;">
-                    View Request →
+                  <a href="${ctaUrl}" style="display:inline-block;background-color:#2C2C2A;color:#F5F2EC;font-size:14px;font-weight:600;padding:14px 32px;border-radius:6px;text-decoration:none;">
+                    ${ctaLabel}
                   </a>
                 </td>
               </tr>
             </table>
-            <p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">
-              Not registered yet? <a href="${SITE_URL}/supplier-portal/register" style="color:#9A7B4F;text-decoration:none;">Create a free supplier account</a> to manage all your requests in one place.
-            </p>
+            ${footer}
           </td>
         </tr>
         <tr>
@@ -130,7 +136,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               id,
               item:sourcing_session_items(title),
               response:sourcing_item_responses(unit_price, lead_time_weeks),
-              session_supplier:sourcing_session_suppliers(supplier_name, email, token)
+              session_supplier:sourcing_session_suppliers(supplier_name, email, token, portal_account_id)
             `)
             .eq('id', assignment_id)
             .single(),
@@ -154,6 +160,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const studioName = settings?.business_name ?? 'Your Studio'
         const replyTo = user.email ?? settings?.email_from ?? null
         const respondUrl = `${SITE_URL}/sourcing/respond/${ss.token}`
+        const isRegistered = !!(ss as any).portal_account_id
+        const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
 
         const resend = new Resend(process.env.RESEND_API_KEY)
         await resend.emails.send({
@@ -169,8 +177,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             leadTimeWeeks: response.lead_time_weeks ?? null,
             sessionTitle: session?.title ?? '',
             respondUrl,
+            isRegistered,
           }),
-          text: `Dear ${ss.supplier_name},\n\n${studioName} has accepted your price of R${response.unit_price.toLocaleString()} for "${item.title}".\n${response.lead_time_weeks ? `Lead time: ${response.lead_time_weeks} week(s)\n` : ''}\nView the request:\n${respondUrl}\n\nSent via QuotingHub`,
+          text: `Dear ${ss.supplier_name},\n\n${studioName} has accepted your price of R${response.unit_price.toLocaleString()} for "${item.title}".\n${response.lead_time_weeks ? `Lead time: ${response.lead_time_weeks} week(s)\n` : ''}\n${isRegistered ? `Log in to your Supplier Portal: ${ctaUrl}` : `View the request: ${respondUrl}`}\n\nSent via QuotingHub`,
         })
       } catch {
         // Non-critical — accept succeeded, email failed silently
