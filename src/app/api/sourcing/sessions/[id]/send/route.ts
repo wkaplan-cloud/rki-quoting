@@ -159,8 +159,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (!assignments.length) return { id: ss.id, success: true, skipped: true }
 
       const items = assignments.map((a: any) => a.item).filter(Boolean)
-      const respondUrl = `${SITE_URL}/sourcing/respond/${ss.token}`
       const isRegistered = !!(ss as any).portal_account_id
+      const respondUrl = isRegistered
+        ? `${SITE_URL}/supplier-portal/requests/${ss.id}`
+        : `${SITE_URL}/sourcing/respond/${ss.token}`
 
       const { error: emailError } = await resend.emails.send({
         from: `${studioName} <no-reply@quotinghub.co.za>`,
