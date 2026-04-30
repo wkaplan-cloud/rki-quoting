@@ -7,6 +7,7 @@ import {
   MessageSquare, X, Check, CheckCircle2, RefreshCw, Lock, ImagePlus,
   AlertTriangle, ArrowRight, BarChart3,
 } from 'lucide-react'
+import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
 // ---- Types ----
 interface SessionItem {
@@ -20,6 +21,8 @@ interface SessionItem {
   status: string
   sort_order: number
   ref_image_urls: string[] | null
+  category: string
+  item_specs: Record<string, string> | null
 }
 
 interface Response {
@@ -74,13 +77,26 @@ const INPUT = 'w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus
 function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item: SessionItem) => void }) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
-  const [workType, setWorkType] = useState('')
   const [qty, setQty] = useState('')
-  const [dimensions, setDimensions] = useState('')
-  const [colourFinish, setColourFinish] = useState('')
   const [specs, setSpecs] = useState('')
   const [refImages, setRefImages] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
+  const [category, setCategory] = useState<CategoryKey>('general')
+  const [specValues, setSpecValues] = useState<Record<string, string>>({})
+
+  // General-only fields
+  const [workType, setWorkType] = useState('')
+  const [dimensions, setDimensions] = useState('')
+  const [colourFinish, setColourFinish] = useState('')
+
+  function handleCategoryChange(key: CategoryKey) {
+    setCategory(key)
+    setSpecValues({})
+  }
+
+  function setSpec(key: string, val: string) {
+    setSpecValues(prev => ({ ...prev, [key]: val }))
+  }
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -88,44 +104,49 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
     e.target.value = ''
   }
 
+  function reset() {
+    setTitle(''); setQty(''); setSpecs(''); setRefImages([])
+    setCategory('general'); setSpecValues({})
+    setWorkType(''); setDimensions(''); setColourFinish('')
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
     setSaving(true)
     try {
-      // Upload ref images first if any
       let refImageUrls: string[] = []
       if (refImages.length > 0) {
         const formData = new FormData()
         refImages.forEach(f => formData.append('files', f))
         formData.append('session_id', sessionId)
-        const uploadRes = await fetch(`/api/sourcing/sessions/${sessionId}/item-images`, {
-          method: 'POST',
-          body: formData,
-        })
-        if (uploadRes.ok) {
-          const uploadJson = await uploadRes.json()
-          refImageUrls = uploadJson.urls ?? []
-        }
+        const uploadRes = await fetch(`/api/sourcing/sessions/${sessionId}/item-images`, { method: 'POST', body: formData })
+        if (uploadRes.ok) refImageUrls = (await uploadRes.json()).urls ?? []
       }
+
+      const cleanSpecs = Object.fromEntries(Object.entries(specValues).filter(([, v]) => v.trim()))
+      const isGeneral = category === 'general'
 
       const res = await fetch(`/api/sourcing/sessions/${sessionId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
-          work_type: workType.trim() || null,
           item_quantity: qty ? Number(qty) : null,
-          dimensions: dimensions.trim() || null,
-          colour_finish: colourFinish.trim() || null,
           specifications: specs.trim() || null,
           ref_image_urls: refImageUrls.length > 0 ? refImageUrls : null,
+          category,
+          // General category keeps legacy fields; specific categories use item_specs
+          work_type: isGeneral ? (workType.trim() || null) : null,
+          dimensions: isGeneral ? (dimensions.trim() || null) : null,
+          colour_finish: isGeneral ? (colourFinish.trim() || null) : null,
+          item_specs: !isGeneral && Object.keys(cleanSpecs).length > 0 ? cleanSpecs : null,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       onAdded(json.data)
-      setTitle(''); setWorkType(''); setQty(''); setDimensions(''); setColourFinish(''); setSpecs(''); setRefImages([])
+      reset()
       setOpen(false)
     } catch (err: any) {
       alert(err.message)
@@ -136,59 +157,133 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors py-1"
-      >
+      <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors py-1">
         <Plus size={14} /> Add Item
       </button>
     )
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="border border-[#C4A46B] rounded-xl p-4 space-y-3 bg-[#FEFDF9]">
-      <div className="space-y-2">
-        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Item name *" required className={INPUT} />
-        <div className="grid grid-cols-2 gap-2">
-          <input value={workType} onChange={e => setWorkType(e.target.value)} placeholder="Category" className={INPUT} />
-          <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Quantity" className={INPUT} />
-          <input value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="Dimensions" className={INPUT} />
-          <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} placeholder="Colour / Finish" className={INPUT} />
-        </div>
-        <textarea value={specs} onChange={e => setSpecs(e.target.value)} rows={2} placeholder="Specifications" className={`${INPUT} resize-none`} />
+  const fields = CATEGORY_FIELDS[category]
 
-        {/* Ref images */}
-        <div>
-          <label className="flex items-center gap-2 cursor-pointer text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors w-fit">
-            <ImagePlus size={13} />
-            Add reference images (up to 5)
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-          </label>
-          {refImages.length > 0 && (
-            <div className="flex gap-2 mt-2 flex-wrap">
-              {refImages.map((f, i) => (
-                <div key={i} className="relative group">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={URL.createObjectURL(f)}
-                    alt={f.name}
-                    className="w-14 h-14 object-cover rounded-lg border border-[#D4CFC7]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setRefImages(prev => prev.filter((_, j) => j !== i))}
-                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+  return (
+    <form onSubmit={handleSubmit} className="border border-[#C4A46B] rounded-xl p-4 space-y-4 bg-[#FEFDF9]">
+      {/* Item name + qty */}
+      <div className="grid grid-cols-3 gap-2">
+        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Item name *" required className={`${INPUT} col-span-2`} />
+        <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Qty" className={INPUT} />
+      </div>
+
+      {/* Category picker */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Category</p>
+        <div className="flex flex-wrap gap-1.5">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.key}
+              type="button"
+              onClick={() => handleCategoryChange(cat.key as CategoryKey)}
+              className="px-3 py-1 text-xs font-medium rounded-full border transition-colors"
+              style={category === cat.key
+                ? { background: '#2C2C2A', color: '#F5F2EC', borderColor: '#2C2C2A' }
+                : { background: 'white', color: '#8A877F', borderColor: '#D4CFC7' }
+              }
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* General: legacy free-text fields */}
+      {category === 'general' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <input value={workType} onChange={e => setWorkType(e.target.value)} placeholder="Work type / Category" className={INPUT} />
+            <input value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="Dimensions" className={INPUT} />
+          </div>
+          <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} placeholder="Colour / Finish" className={INPUT} />
+        </div>
+      )}
+
+      {/* Specific category: structured fields */}
+      {fields.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">Specifications <span className="normal-case font-normal text-[#C4BFB5]">— fill in what you know</span></p>
+          <div className="grid grid-cols-2 gap-2">
+            {fields.map(field => {
+              const val = specValues[field.key] ?? ''
+              const commonClass = `${INPUT} text-sm`
+              if (field.type === 'select') {
+                return (
+                  <div key={field.key}>
+                    <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
+                    <select value={val} onChange={e => setSpec(field.key, e.target.value)} className={commonClass}>
+                      <option value="">—</option>
+                      {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                )
+              }
+              if (field.type === 'textarea') {
+                return (
+                  <div key={field.key} className="col-span-2">
+                    <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
+                    <textarea value={val} onChange={e => setSpec(field.key, e.target.value)} rows={2} placeholder={field.placeholder} className={`${commonClass} resize-none`} />
+                  </div>
+                )
+              }
+              return (
+                <div key={field.key}>
+                  <label className="block text-[10px] text-[#8A877F] mb-0.5">
+                    {field.label}{field.unit && <span className="text-[#C4BFB5] ml-1">({field.unit})</span>}
+                  </label>
+                  <input
+                    type={field.type === 'number' ? 'number' : 'text'}
+                    min={field.type === 'number' ? '0' : undefined}
+                    step={field.type === 'number' ? 'any' : undefined}
+                    value={val}
+                    onChange={e => setSpec(field.key, e.target.value)}
+                    placeholder={field.placeholder ?? (field.unit ? `e.g. 600` : '')}
+                    className={commonClass}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Notes (always) */}
+      <div>
+        <textarea value={specs} onChange={e => setSpecs(e.target.value)} rows={2} placeholder={category === 'general' ? 'Specifications / notes' : 'Additional notes (optional)'} className={`${INPUT} resize-none`} />
+      </div>
+
+      {/* Ref images */}
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors w-fit">
+          <ImagePlus size={13} />
+          Add reference images (up to 5)
+          <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+        </label>
+        {refImages.length > 0 && (
+          <div className="flex gap-2 mt-2 flex-wrap">
+            {refImages.map((f, i) => (
+              <div key={i} className="relative group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={URL.createObjectURL(f)} alt={f.name} className="w-14 h-14 object-cover rounded-lg border border-[#D4CFC7]" />
+                <button
+                  type="button"
+                  onClick={() => setRefImages(prev => prev.filter((_, j) => j !== i))}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => { setOpen(false); setRefImages([]) }} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
+        <button type="button" onClick={() => { reset(); setOpen(false) }} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
         <button type="submit" disabled={saving || !title.trim()} className="px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg disabled:opacity-50">
           {saving ? 'Adding…' : 'Add Item'}
         </button>
@@ -1280,23 +1375,26 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                 <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl px-4 py-3 flex items-center gap-3">
                   {item.ref_image_urls && item.ref_image_urls.length > 0 && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.ref_image_urls[0]}
-                      alt={item.title}
-                      className="w-12 h-12 object-cover rounded-lg border border-[#EDE9E1] shrink-0"
-                    />
+                    <img src={item.ref_image_urls[0]} alt={item.title} className="w-12 h-12 object-cover rounded-lg border border-[#EDE9E1] shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
                       <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
+                      {item.category && item.category !== 'general' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#F5F2EC] text-[#8A877F] border border-[#EDE9E1] shrink-0 capitalize">
+                          {CATEGORIES.find(c => c.key === item.category)?.label ?? item.category}
+                        </span>
+                      )}
                       {item.status === 'accepted' && (
                         <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
                       )}
                     </div>
                     <p className="text-xs text-[#8A877F] mt-0.5">
-                      {[item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish]
-                        .filter(Boolean).join(' · ')}
+                      {item.category === 'general'
+                        ? [item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish].filter(Boolean).join(' · ')
+                        : [item.item_quantity ? `Qty ${item.item_quantity}` : null, item.item_specs ? `${Object.keys(item.item_specs).length} specs` : null].filter(Boolean).join(' · ')
+                      }
                     </p>
                   </div>
                 </div>

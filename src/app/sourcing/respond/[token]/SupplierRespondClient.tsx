@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, CheckCircle2, ChevronDown, ChevronUp, Lock, RefreshCw, Upload, FileText, X, AlertTriangle, Ban, Download, Printer } from 'lucide-react'
+import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
 function ImageLightbox({ urls, startIndex, onClose }: { urls: string[]; startIndex: number; onClose: () => void }) {
   const [current, setCurrent] = useState(startIndex)
@@ -148,6 +149,8 @@ interface Assignment {
     dimensions: string | null
     colour_finish: string | null
     ref_image_urls: string[] | null
+    category: string | null
+    item_specs: Record<string, string> | null
   } | null
   response: {
     id: string
@@ -358,30 +361,74 @@ function PriceForm({
 
       {expanded && (
         <div style={{ borderTop: '1px solid #E4E4E7' }}>
-          {(item.ref_image_urls && item.ref_image_urls.length > 0) || item.specifications ? (
-            <div style={{ background: '#FAFAFA', borderBottom: '1px solid #E4E4E7' }}>
-              {item.ref_image_urls && item.ref_image_urls.length > 0 && (
-                <div className="px-5 pt-3 pb-2 flex gap-2 flex-wrap">
-                  {item.ref_image_urls.map((url, i) => (
-                    <button key={i} type="button" onClick={() => setLightboxIndex(i)} className="group relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt={`Reference ${i + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg border transition-opacity group-hover:opacity-80"
-                        style={{ borderColor: '#E4E4E7' }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-              {item.specifications && (
-                <div className="px-5 py-3">
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
-                </div>
-              )}
-            </div>
-          ) : null}
+          {(() => {
+            const hasImages = item.ref_image_urls && item.ref_image_urls.length > 0
+            const hasSpecs = item.item_specs && Object.keys(item.item_specs).length > 0
+            const hasLegacy = item.specifications || item.dimensions || item.colour_finish
+            const catKey = (item.category ?? 'general') as CategoryKey
+            const fieldDefs = CATEGORY_FIELDS[catKey] ?? []
+            const catLabel = CATEGORIES.find(c => c.key === catKey)?.label
+
+            if (!hasImages && !hasSpecs && !hasLegacy) return null
+            return (
+              <div style={{ background: '#FAFAFA', borderBottom: '1px solid #E4E4E7' }}>
+                {/* Reference images */}
+                {hasImages && (
+                  <div className="px-5 pt-3 pb-2 flex gap-2 flex-wrap">
+                    {item.ref_image_urls!.map((url, i) => (
+                      <button key={i} type="button" onClick={() => setLightboxIndex(i)} className="group relative">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Reference ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border transition-opacity group-hover:opacity-80" style={{ borderColor: '#E4E4E7' }} />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Structured specs */}
+                {hasSpecs && (
+                  <div className="px-5 pt-3 pb-2">
+                    {catLabel && catKey !== 'general' && (
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: '#A1A1AA' }}>{catLabel} specs</p>
+                    )}
+                    <table className="w-full text-xs" cellPadding={0} cellSpacing={0}>
+                      <tbody>
+                        {Object.entries(item.item_specs!).map(([key, val]) => {
+                          const def = fieldDefs.find(f => f.key === key)
+                          const label = def?.label ?? key.replace(/_/g, ' ')
+                          const display = def?.unit ? `${val} ${def.unit}` : val
+                          return (
+                            <tr key={key}>
+                              <td className="py-0.5 pr-4 font-medium" style={{ color: '#71717A', width: '45%' }}>{label}</td>
+                              <td className="py-0.5" style={{ color: '#18181B' }}>{display}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Legacy / general specs */}
+                {(item.dimensions || item.colour_finish) && (
+                  <div className="px-5 pt-2 pb-1">
+                    <table className="w-full text-xs" cellPadding={0} cellSpacing={0}>
+                      <tbody>
+                        {item.dimensions && <tr><td className="py-0.5 pr-4 font-medium" style={{ color: '#71717A', width: '45%' }}>Dimensions</td><td style={{ color: '#18181B' }}>{item.dimensions}</td></tr>}
+                        {item.colour_finish && <tr><td className="py-0.5 pr-4 font-medium" style={{ color: '#71717A', width: '45%' }}>Colour / Finish</td><td style={{ color: '#18181B' }}>{item.colour_finish}</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Notes / specifications text */}
+                {item.specifications && (
+                  <div className="px-5 py-3">
+                    <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Can't supply toggle */}
           <div className="px-5 pt-4">

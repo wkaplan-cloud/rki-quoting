@@ -19,6 +19,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       colour_finish?: string
       line_item_id?: string
       ref_image_urls?: string[] | null
+      category?: string
+      item_specs?: Record<string, string> | null
     }
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
@@ -45,6 +47,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         colour_finish: body.colour_finish?.trim() ?? null,
         line_item_id: body.line_item_id ?? null,
         ref_image_urls: body.ref_image_urls ?? null,
+        category: body.category ?? 'general',
+        item_specs: body.item_specs ?? null,
         sort_order,
       })
       .select()

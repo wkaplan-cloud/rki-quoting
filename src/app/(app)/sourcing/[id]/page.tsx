@@ -37,7 +37,7 @@ export default async function SourcingDetailPage({
     { data: suppliers },
     { data: projects },
   ] = await Promise.all([
-    supabase.from('sourcing_session_items').select('*').eq('session_id', id).order('sort_order', { ascending: true }),
+    supabase.from('sourcing_session_items').select('*, category, item_specs').eq('session_id', id).order('sort_order', { ascending: true }),
     supabase.from('suppliers').select('id, supplier_name, email').order('supplier_name'),
     supabase.from('projects').select('id, project_number, project_name').order('created_at', { ascending: false }).limit(50),
   ])
