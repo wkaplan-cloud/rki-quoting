@@ -1175,6 +1175,10 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
+      const now = new Date().toISOString()
+      setSuppliers(prev => prev.map(s =>
+        s.id === ssId ? { ...s, sent_at: now, status: 'sent' } : s
+      ))
       startTransition(() => router.refresh())
     } catch (err: any) {
       alert(err.message)
