@@ -80,7 +80,7 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
           {/* Expanded */}
           <div className="px-5 py-5 flex flex-col items-center text-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="w-28 h-auto object-contain mb-3" style={{ filter: 'brightness(0) invert(1)', opacity: 0.55 }} />
+            <img src="/logo.png" alt="QuotingHub" className="w-40 h-auto object-contain mb-3" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
             <p className="text-xs font-semibold max-w-full" style={{ color: S.textLight }}>{companyName}</p>
             <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: S.textMuted }}>Supplier Portal</p>
           </div>

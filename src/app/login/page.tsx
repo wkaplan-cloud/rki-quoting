@@ -172,8 +172,8 @@ export default function LoginPage() {
                   <p className="text-xs text-[#8A877F]">Quotes, invoices & purchase orders</p>
                 </div>
               </button>
-              <a
-                href={`${SUPPLIER_PORTAL_URL}/login`}
+              <Link
+                href="/supplier-portal/login"
                 className="w-full flex items-center gap-4 px-5 py-4 border-2 border-[#D8D3C8] rounded-2xl text-left hover:border-[#9A7B4F] hover:bg-[#F5F2EC] transition-all duration-150 no-underline block"
               >
                 <div className="w-10 h-10 rounded-xl bg-[#F5F2EC] border border-[#D8D3C8] flex items-center justify-center shrink-0">
@@ -183,7 +183,7 @@ export default function LoginPage() {
                   <p className="text-sm font-semibold text-[#1A1A18]">Supplier</p>
                   <p className="text-xs text-[#8A877F]">Price requests & product catalogue</p>
                 </div>
-              </a>
+              </Link>
             </div>
             <p className="text-center text-sm text-[#8A877F] mt-7">
               Don&apos;t have an account?{' '}
