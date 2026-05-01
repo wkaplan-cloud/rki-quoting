@@ -425,7 +425,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
             <div>
               <p className="text-xs font-semibold text-[#9A7B4F] uppercase tracking-wider mb-1">Projected Pipeline Profit</p>
               <p className="text-2xl font-semibold text-[#2C2C2A]">{fmtZAR(pipelineProfit)}</p>
-              <p className="text-xs text-[#8A877F] mt-1">{pipelineProjects.length} active project{pipelineProjects.length !== 1 ? 's' : ''} · excl. VAT · not yet invoiced paid</p>
+              <p className="text-xs text-[#8A877F] mt-1">{pipelineProjects.length} active project{pipelineProjects.length !== 1 ? 's' : ''} · excl. VAT · not yet invoiced</p>
             </div>
           </div>
 
