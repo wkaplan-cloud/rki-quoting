@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Check, Loader2 } from 'lucide-react'
 
 interface Props {
@@ -45,9 +46,26 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleteRequesting, setDeleteRequesting] = useState(false)
+  const [deleteRequested, setDeleteRequested] = useState(false)
+  const supabase = createClient()
 
   function toggleCategory(cat: string) {
     setCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])
+  }
+
+  async function handleDeleteRequest() {
+    setDeleteRequesting(true)
+    try {
+      const res = await fetch('/api/supplier-portal/delete-request', { method: 'POST' })
+      if (!res.ok) throw new Error()
+      setDeleteRequested(true)
+    } catch {
+      setError('Failed to send deletion request. Please email hello@quotinghub.co.za directly.')
+    } finally {
+      setDeleteRequesting(false)
+    }
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -76,7 +94,7 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
   const inputCls = 'w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors'
 
   return (
-    <div className="max-w-2xl space-y-7">
+    <div className="space-y-7">
       <div>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>Profile</h1>
         <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>Your supplier account details</p>
@@ -219,6 +237,52 @@ export function SupplierProfileClient({ account, categoryOptions }: Props) {
           )}
         </div>
       </form>
+
+      {/* Delete account */}
+      <div className="pt-6 border-t border-[#E4E4E7]">
+        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: '#71717A' }}>Danger Zone</p>
+        {deleteRequested ? (
+          <p className="text-sm px-4 py-3 rounded-lg" style={{ background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+            Deletion request sent. We'll remove your account within 1–2 business days.
+          </p>
+        ) : !deleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setDeleteConfirm(true)}
+            className="px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+            style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+          >
+            Delete Account
+          </button>
+        ) : (
+          <div className="p-4 rounded-lg space-y-3" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+            <p className="text-sm font-medium" style={{ color: '#DC2626' }}>Are you sure you want to delete your account?</p>
+            <p className="text-xs" style={{ color: '#7F1D1D' }}>
+              This will send a deletion request to QuotingHub. Your account will be removed within 1–2 business days. This cannot be undone.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDeleteRequest}
+                disabled={deleteRequesting}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg disabled:opacity-50 cursor-pointer"
+                style={{ background: '#DC2626', color: '#FFFFFF' }}
+              >
+                {deleteRequesting && <Loader2 size={13} className="animate-spin" />}
+                {deleteRequesting ? 'Sending…' : 'Yes, delete my account'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg cursor-pointer"
+                style={{ background: '#FFFFFF', color: '#71717A', border: '1px solid #E4E4E7' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
