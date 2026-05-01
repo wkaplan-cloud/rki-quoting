@@ -3,15 +3,18 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatZAR, computeTotals } from '@/lib/quoting'
-import { STAGE_CONFIG } from '@/lib/types'
-import { KanbanBoard } from '../KanbanBoard'
+import { DashboardPipeline } from './DashboardPipeline'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  const [{ data: { user } }, { data: orgId }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.rpc('get_current_org_id'),
+  ])
+  const currentUserId = user?.id ?? ''
   const [{ data: projects }, { data: allLineItems }, { data: settings }, { data: org }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
     supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').neq('row_type', 'section').limit(5000),
@@ -137,23 +140,12 @@ export default async function DashboardPage() {
 
         {/* Pipeline list — Studio+ only */}
         {!isSolo && (
-          <div>
-            <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Project Pipeline</h2>
-            <KanbanBoard
-              projects={ps
-                .filter(p => p.status !== 'Cancelled')
-                .sort((a, b) => {
-                  const aComp = a.status === 'Completed' || a.status === 'Paid'
-                  const bComp = b.status === 'Completed' || b.status === 'Paid'
-                  if (aComp !== bComp) return aComp ? 1 : -1
-                  return new Date(b.date).getTime() - new Date(a.date).getTime()
-                })
-              }
-              stagesMap={stagesMap}
-              stageConfig={STAGE_CONFIG}
-              sageConnected={sageConnected}
-            />
-          </div>
+          <DashboardPipeline
+            projects={ps.filter(p => p.status !== 'Cancelled') as any}
+            stagesMap={stagesMap}
+            sageConnected={sageConnected}
+            currentUserId={currentUserId}
+          />
         )}
       </div>
     </div>
