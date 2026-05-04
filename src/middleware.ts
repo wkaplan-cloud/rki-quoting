@@ -30,6 +30,10 @@ export async function middleware(request: NextRequest) {
     // Already on a supplier-portal path — let it through
     if (pathname.startsWith('/supplier-portal') || pathname.startsWith('/sourcing/respond') || pathname.startsWith('/api/')) {
       // fall through to auth check below
+    } else if (pathname.startsWith('/requests/')) {
+      // Email links use /requests/[id] shorthand — redirect to the full supplier-portal path
+      // so the auth check below can correctly redirect unauthenticated suppliers to login
+      return NextResponse.redirect(new URL(`/supplier-portal${pathname}`, request.url))
     } else if (pathname === '/') {
       return NextResponse.redirect(new URL('/supplier-portal', request.url))
     } else {
