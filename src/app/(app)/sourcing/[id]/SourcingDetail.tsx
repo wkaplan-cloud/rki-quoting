@@ -257,9 +257,16 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
         </div>
       )}
 
-      {/* Notes (always) */}
+      {/* Comments — always visible for all categories */}
       <div>
-        <textarea value={specs} onChange={e => setSpecs(e.target.value)} rows={2} placeholder={category === 'general' ? 'Specifications / notes' : 'Additional notes (optional)'} className={`${INPUT} resize-none`} />
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Comments</p>
+        <textarea
+          value={specs}
+          onChange={e => setSpecs(e.target.value)}
+          rows={3}
+          placeholder="Additional notes, special requirements, or comments for the supplier…"
+          className={`${INPUT} resize-none`}
+        />
       </div>
 
       {/* Ref images */}
