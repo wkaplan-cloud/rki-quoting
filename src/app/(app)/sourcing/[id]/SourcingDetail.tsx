@@ -828,7 +828,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
 
 // ---- Comparison Matrix ----
 function ComparisonTable({
-  items, suppliers, onAccept, accepting, onOpenPush, pushedItems, projects,
+  items, suppliers, onAccept, accepting, onOpenPush, pushedItems, projects, onApproveSpec,
 }: {
   items: SessionItem[]
   suppliers: SessionSupplier[]
@@ -837,7 +837,10 @@ function ComparisonTable({
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   pushedItems: Record<string, string>
   projects: Props['projects']
+  onApproveSpec: (ssId: string, assignmentId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) => Promise<void>
 }) {
+  const [expandedSpecCell, setExpandedSpecCell] = useState<string | null>(null)
+  const [approvingSpecMatrix, setApprovingSpecMatrix] = useState<string | null>(null)
   const assignedItems = items.filter(item =>
     suppliers.some(ss => ss.assignments.some(a => a.item_id === item.id))
   )
@@ -944,10 +947,46 @@ function ComparisonTable({
                       )
                     }
                     if (specPending) {
+                      const isExpanded = expandedSpecCell === assignment.id
                       return (
                         <td key={ss.id} className="px-5 py-3.5 bg-amber-50">
-                          <p className="text-xs font-medium text-amber-600">Awaiting spec approval</p>
-                          <p className="text-[10px] text-amber-400 mt-0.5">Switch to Request tab to review</p>
+                          {assignment.response && (
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
+                              {assignment.response.lead_time_weeks && (
+                                <span className="text-[10px] text-[#8A877F]">{assignment.response.lead_time_weeks}w lead</span>
+                              )}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => setExpandedSpecCell(isExpanded ? null : assignment.id)}
+                            className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 hover:text-amber-900 transition-colors"
+                          >
+                            <AlertTriangle size={10} />
+                            Specs changed — review {isExpanded ? '▲' : '▼'}
+                          </button>
+                          {isExpanded && (
+                            <div className="mt-2" style={{ minWidth: 280 }}>
+                              <SpecApprovalPanel
+                                item={item}
+                                assignment={assignment}
+                                supplierName={ss.supplier_name}
+                                isApproving={approvingSpecMatrix === assignment.id}
+                                onApprove={async (finalSpecs) => {
+                                  setApprovingSpecMatrix(assignment.id)
+                                  await onApproveSpec(ss.id, assignment.id, 'approve', finalSpecs)
+                                  setApprovingSpecMatrix(null)
+                                  setExpandedSpecCell(null)
+                                }}
+                                onReject={async () => {
+                                  setApprovingSpecMatrix(assignment.id)
+                                  await onApproveSpec(ss.id, assignment.id, 'reject')
+                                  setApprovingSpecMatrix(null)
+                                  setExpandedSpecCell(null)
+                                }}
+                              />
+                            </div>
+                          )}
                         </td>
                       )
                     }
@@ -979,13 +1018,13 @@ function ComparisonTable({
                               pushedItems[item.id] ? (
                                 <a href={`/projects/${pushedItems[item.id]}`}
                                   className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium underline underline-offset-2 transition-colors">
-                                  {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
+                                  On Quote — {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
                                 </a>
                               ) : (
                                 <button
                                   onClick={() => onOpenPush(item, assignment, response, ss.supplier_name)}
                                   className="text-[10px] text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors">
-                                  Push to project →
+                                  Add to Project Quote →
                                 </button>
                               )
                             ) : (
@@ -995,7 +1034,7 @@ function ComparisonTable({
                                   disabled={accepting === assignment.id}
                                   className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                                 >
-                                  {accepting === assignment.id ? '…' : 'Accept'}
+                                  {accepting === assignment.id ? '…' : 'Select'}
                                 </button>
                               )
                             )}
@@ -1228,7 +1267,7 @@ function SupplierCard({
                       {isAccepted && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
                       <p className="text-sm font-medium text-[#2C2C2A]">{item.title}</p>
                       {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
-                      {isAccepted && <span className="text-xs text-emerald-600 font-medium">Accepted</span>}
+                      {isAccepted && <span className="text-xs text-emerald-600 font-medium">Selected</span>}
                       {specStatus === 'pending' && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
                           Spec approval pending
@@ -1277,7 +1316,7 @@ function SupplierCard({
                             className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
                           >
                             {accepting === assignment.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                            Accept
+                            Select
                           </button>
                         )}
                         {isAccepted && assignment?.response && (
@@ -1286,7 +1325,7 @@ function SupplierCard({
                               href={`/projects/${pushedItems[item.id]}`}
                               className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors underline underline-offset-2"
                             >
-                              {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
+                              On Quote — {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
                             </a>
                           ) : (
                             <button
@@ -1294,7 +1333,7 @@ function SupplierCard({
                               onClick={() => onOpenPush(item, assignment, assignment.response!, ss.supplier_name)}
                               className="text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors"
                             >
-                              Push to project →
+                              Add to Project Quote →
                             </button>
                           )
                         )}
@@ -1502,6 +1541,19 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     startTransition(() => router.refresh())
   }
 
+  async function handleApproveSpecFromMatrix(ssId: string, assignmentId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) {
+    const ss = suppliers.find(s => s.id === ssId)
+    const sessionSupplierId = ss?.id
+    if (!sessionSupplierId) return
+    const res = await fetch(`/api/sourcing/sessions/${session.id}/assignments/${assignmentId}/approve-specs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...(finalSpecs ? { final_specs: finalSpecs } : {}) }),
+    })
+    if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+    handleSpecAction(ssId, assignmentId, action === 'approve' ? 'approved' : 'rejected')
+  }
+
   async function handleAcceptFromTable(itemId: string, assignmentId: string) {
     setAccepting(assignmentId)
     try {
@@ -1643,7 +1695,10 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Left: Items */}
                   <div className="space-y-3">
-                    <h2 className="text-sm font-semibold text-[#2C2C2A]">Items ({items.length})</h2>
+                    <div>
+                      {isDraft && <p className="text-[10px] font-bold uppercase tracking-widest text-[#C4A46B] mb-0.5">Step 1</p>}
+                      <h2 className="text-sm font-semibold text-[#2C2C2A]">Items ({items.length})</h2>
+                    </div>
                     {items.length === 0 ? (
                       <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
                         <p className="text-xs text-[#8A877F]">Add items to request prices for.</p>
@@ -1751,7 +1806,10 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                   {/* Right: Suppliers */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
+                      <div>
+                        {isDraft && <p className="text-[10px] font-bold uppercase tracking-widest text-[#C4A46B] mb-0.5">Step 2</p>}
+                        <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
+                      </div>
                       {!isArchived && !addingSupplier && (
                         <button
                           type="button"
@@ -1824,6 +1882,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                   }
                   pushedItems={pushedItems}
                   projects={projects}
+                  onApproveSpec={handleApproveSpecFromMatrix}
                 />
               ) : (
                 <div className="border border-dashed border-[#D4CFC7] rounded-xl p-12 text-center">
