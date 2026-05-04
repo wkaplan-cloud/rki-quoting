@@ -296,21 +296,22 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
   )
 }
 
-// ---- Add Supplier Form (with inline item assignment) ----
+// ---- Add Supplier Form (full-width, always open when rendered) ----
 function AddSupplierForm({
   sessionId,
   allSuppliers,
   existingEmails,
   onAdded,
+  onClose,
   items,
 }: {
   sessionId: string
   allSuppliers: { id: string; supplier_name: string; email: string | null }[]
   existingEmails: string[]
   onAdded: (ss: SessionSupplier) => void
+  onClose: () => void
   items: SessionItem[]
 }) {
-  const [open, setOpen] = useState(false)
   const [supplierName, setSupplierName] = useState('')
   const [email, setEmail] = useState('')
   const [supplierId, setSupplierId] = useState<string | null>(null)
@@ -341,7 +342,6 @@ function AddSupplierForm({
       if (!res.ok) throw new Error(json.error)
       const newSS = json.data
 
-      // Assign selected items in parallel
       const assignResults = await Promise.all(
         selectedItemIds.map(itemId =>
           fetch(`/api/sourcing/sessions/${sessionId}/suppliers/${newSS.id}/assignments`, {
@@ -368,7 +368,7 @@ function AddSupplierForm({
         }))
 
       onAdded({ ...newSS, assignments })
-      setSupplierName(''); setEmail(''); setSupplierId(null); setSelectedItemIds([]); setOpen(false)
+      onClose()
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -380,69 +380,80 @@ function AddSupplierForm({
     s => s.supplier_name.toLowerCase().includes(supplierName.toLowerCase()) && !existingEmails.includes(s.email ?? '')
   )
 
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors py-1">
-        <Plus size={14} /> Add Supplier
-      </button>
-    )
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="border border-[#C4A46B] rounded-xl p-4 space-y-3 bg-[#FEFDF9]">
-      <div className="relative">
-        <input
-          autoFocus
-          value={supplierName}
-          onChange={e => { setSupplierName(e.target.value); setSupplierId(null) }}
-          placeholder="Supplier name *"
-          required
-          className={INPUT}
-        />
-        {supplierName.length > 1 && filtered.length > 0 && !supplierId && (
-          <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-[#EDE9E1] rounded-lg shadow-lg overflow-hidden max-h-40 overflow-y-auto">
-            {filtered.slice(0, 6).map(s => (
-              <button key={s.id} type="button" onClick={() => handleSelectSupplier(s)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] transition-colors">
-                <span className="font-medium text-[#2C2C2A]">{s.supplier_name}</span>
-                {s.email && <span className="text-[#8A877F] ml-2">{s.email}</span>}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address *" required className={INPUT} />
-
-      {items.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-[#8A877F] uppercase tracking-wide mb-2">Assign items</p>
-          <div className="space-y-1.5">
-            {items.map(item => {
-              const checked = selectedItemIds.includes(item.id)
-              return (
-                <label key={item.id} className="flex items-center gap-2.5 cursor-pointer group">
-                  <div
-                    onClick={() => toggleItem(item.id)}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-[#2C2C2A] border-[#2C2C2A]' : 'border-[#D4CFC7] group-hover:border-[#C4A46B]'}`}
-                  >
-                    {checked && <Check size={10} className="text-white" />}
-                  </div>
-                  <span className="text-sm text-[#2C2C2A]">{item.title}</span>
-                  {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
-                </label>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={() => { setOpen(false); setSelectedItemIds([]) }} className="px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
-        <button type="submit" disabled={saving || !supplierName.trim() || !email.trim()} className="px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg disabled:opacity-50">
-          {saving ? 'Adding…' : 'Add Supplier'}
+    <div className="bg-white border border-[#C4A46B] rounded-2xl overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#EDE9E1]">
+        <p className="text-sm font-semibold text-[#2C2C2A]">Add Supplier</p>
+        <button type="button" onClick={onClose} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
+          <X size={15} />
         </button>
       </div>
-    </form>
+
+      <form onSubmit={handleSubmit} className="p-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Left: supplier identity */}
+          <div className="space-y-3">
+            <div className="relative">
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Supplier Name *</label>
+              <input
+                autoFocus
+                value={supplierName}
+                onChange={e => { setSupplierName(e.target.value); setSupplierId(null) }}
+                placeholder="Start typing to search…"
+                required
+                className={INPUT}
+              />
+              {supplierName.length > 1 && filtered.length > 0 && !supplierId && (
+                <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-[#EDE9E1] rounded-lg shadow-lg overflow-hidden max-h-40 overflow-y-auto">
+                  {filtered.slice(0, 6).map(s => (
+                    <button key={s.id} type="button" onClick={() => handleSelectSupplier(s)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] transition-colors">
+                      <span className="font-medium text-[#2C2C2A]">{s.supplier_name}</span>
+                      {s.email && <span className="text-[#8A877F] ml-2">{s.email}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Email Address *</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="supplier@example.com" required className={INPUT} />
+            </div>
+          </div>
+
+          {/* Right: item assignment */}
+          {items.length > 0 && (
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Assign Items</label>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                {items.map(item => {
+                  const checked = selectedItemIds.includes(item.id)
+                  return (
+                    <label key={item.id} className="flex items-center gap-2.5 cursor-pointer group">
+                      <div
+                        onClick={() => toggleItem(item.id)}
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${checked ? 'bg-[#2C2C2A] border-[#2C2C2A]' : 'border-[#D4CFC7] group-hover:border-[#C4A46B]'}`}
+                      >
+                        {checked && <Check size={10} className="text-white" />}
+                      </div>
+                      <span className="text-sm text-[#2C2C2A]">{item.title}</span>
+                      {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-[#EDE9E1]">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] border border-[#D4CFC7] rounded-lg hover:border-[#8A877F] transition-colors">Cancel</button>
+          <button type="submit" disabled={saving || !supplierName.trim() || !email.trim()} className="px-5 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg disabled:opacity-50 transition-opacity">
+            {saving ? 'Adding…' : 'Add Supplier'}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -459,20 +470,47 @@ interface PushModalProps {
   onPushed: (projectId: string) => void
 }
 
-function buildPushDescription(item: SessionItem, response: Response, supplierName: string): string {
+// Build a human-readable dimensions string from item_specs for structured categories
+function buildDimensionsFromSpecs(item: SessionItem): string | null {
+  const s = item.item_specs
+  if (!s) return item.dimensions ?? null
+
+  // Furniture: overall_width × overall_height × overall_depth
+  const w = s.overall_width, h = s.overall_height, d = s.overall_depth
+  if (w || h || d) {
+    return [w && `W: ${w}mm`, h && `H: ${h}mm`, d && `D: ${d}mm`].filter(Boolean).join(' × ')
+  }
+  // Stone/glass, lighting, flooring: generic width/height or diameter
+  if (s.width || s.height || s.length) {
+    return [s.width && `W: ${s.width}mm`, s.height && `H: ${s.height}mm`, s.length && `L: ${s.length}mm`, s.thickness && `T: ${s.thickness}mm`].filter(Boolean).join(' × ')
+  }
+  if (s.diameter) return `Ø ${s.diameter}mm${s.height ? ` × H: ${s.height}mm` : ''}`
+
+  return item.dimensions ?? null
+}
+
+// Extract colour/finish from item_specs
+function buildColourFromSpecs(item: SessionItem): string | null {
+  if (item.colour_finish) return item.colour_finish
+  const s = item.item_specs
+  if (!s) return null
+  return s.colour_stain ?? s.finish ?? null
+}
+
+// Build description text — excludes dimensions, colour, and supplier (those go to dedicated fields)
+function buildPushDescription(item: SessionItem, response: Response): string {
   const parts: string[] = []
-  if (item.dimensions) parts.push(item.dimensions)
-  if (item.colour_finish) parts.push(item.colour_finish)
   if (item.work_type) parts.push(item.work_type)
   if (item.item_specs) {
+    // Exclude fields already captured in dimensions/colour
+    const skipKeys = new Set(['overall_width', 'overall_height', 'overall_depth', 'width', 'height', 'length', 'thickness', 'diameter', 'colour_stain', 'finish'])
     Object.entries(item.item_specs).forEach(([k, v]) => {
-      if (v) parts.push(`${k.replace(/_/g, ' ')}: ${v}`)
+      if (v && !skipKeys.has(k)) parts.push(`${k.replace(/_/g, ' ')}: ${v}`)
     })
   }
   if (item.specifications) parts.push(item.specifications)
   if (response.lead_time_weeks) parts.push(`Lead time: ${response.lead_time_weeks} weeks`)
   if (response.notes && !response.notes.startsWith("[CAN'T SUPPLY]")) parts.push(`Note: ${response.notes}`)
-  parts.push(`Supplied by: ${supplierName}`)
   return parts.join(' | ')
 }
 
@@ -516,7 +554,9 @@ function PushModal({ item, assignment, response, supplierName, projects, session
           project_id: projectId,
           markup_percentage: markupNum,
           overrides: {
-            description: buildPushDescription(item, response, supplierName),
+            description: buildPushDescription(item, response) || null,
+            dimensions: buildDimensionsFromSpecs(item) ?? undefined,
+            colour_finish: buildColourFromSpecs(item) ?? undefined,
           },
         }),
       })
@@ -617,7 +657,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
               <label className="block text-xs font-medium text-[#8A877F] mb-1">Push to project</label>
               <select value={projectId} onChange={e => setProjectId(e.target.value)} className={INPUT}>
                 <option value="">Select a project…</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.project_name}</option>)}
+                {projects.map(p => <option key={p.id} value={p.id}>{p.project_number ? `[${p.project_number}] ${p.project_name}` : p.project_name}</option>)}
               </select>
             </div>
           ) : (
@@ -805,6 +845,7 @@ function SupplierCard({
   const isArchived = ss.status === 'declined'
   const allAccepted = ss.assignments.length > 0 && ss.assignments.every(a => a.status === 'accepted')
   const respondedCount = ss.assignments.filter(a => a.status === 'responded').length
+  const specApprovalPendingCount = ss.assignments.filter(a => a.spec_approval_status === 'pending').length
 
   const effectiveStatus = ss.sent_at && ss.status === 'pending' ? 'sent' : ss.status
 
@@ -904,6 +945,17 @@ function SupplierCard({
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: '#F59E0B' }} />
                 </span>
                 {respondedCount} {respondedCount === 1 ? 'reply' : 'replies'}
+              </button>
+            )}
+            {specApprovalPendingCount > 0 && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setExpanded(true) }}
+                title={`${specApprovalPendingCount} spec change${specApprovalPendingCount !== 1 ? 's' : ''} awaiting approval`}
+                className="flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}
+              >
+                ⚠ {specApprovalPendingCount} spec approval{specApprovalPendingCount !== 1 ? 's' : ''} pending
               </button>
             )}
           </div>
@@ -1177,8 +1229,15 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   const [pushModal, setPushModal] = useState<{
     item: SessionItem; assignment: Assignment; response: Response; supplierName: string
   } | null>(null)
+  const [addingSupplier, setAddingSupplier] = useState(false)
   // keyed by item.id → project_id that was pushed to
-  const [pushedItems, setPushedItems] = useState<Record<string, string>>({})
+  const [pushedItems, setPushedItems] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const item of initialItems) {
+      if ((item as any).pushed_to_project_id) map[item.id] = (item as any).pushed_to_project_id
+    }
+    return map
+  })
 
   const isDraft = session.status === 'draft'
   const isArchived = session.archived
@@ -1511,7 +1570,18 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
 
         {/* Right: Suppliers */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
+            {!isArchived && !addingSupplier && (
+              <button
+                type="button"
+                onClick={() => setAddingSupplier(true)}
+                className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
+              >
+                <Plus size={14} /> Add Supplier
+              </button>
+            )}
+          </div>
           {suppliers.length === 0 ? (
             <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
               <p className="text-xs text-[#8A877F]">Add suppliers to assign items to.</p>
@@ -1539,15 +1609,6 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
               ))}
             </div>
           )}
-          {!isArchived && (
-            <AddSupplierForm
-              sessionId={session.id}
-              allSuppliers={allSuppliers}
-              existingEmails={suppliers.map(s => s.email)}
-              onAdded={handleSupplierAdded}
-              items={items}
-            />
-          )}
 
           {/* Hint: supplier added but no items assigned yet */}
           {isDraft && suppliers.length > 0 && !suppliers.some(ss => ss.assignments.length > 0) && (
@@ -1558,6 +1619,18 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           )}
         </div>
       </div>
+
+      {/* Full-width Add Supplier form — rendered below the grid when open */}
+      {!isArchived && addingSupplier && (
+        <AddSupplierForm
+          sessionId={session.id}
+          allSuppliers={allSuppliers}
+          existingEmails={suppliers.map(s => s.email)}
+          onAdded={ss => { handleSupplierAdded(ss); setAddingSupplier(false) }}
+          onClose={() => setAddingSupplier(false)}
+          items={items}
+        />
+      )}
     </div>
   )
 }

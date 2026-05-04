@@ -1,12 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-export default function SupplierLoginPage() {
+function SupplierLoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,7 +28,9 @@ export default function SupplierLoginPage() {
       setLoading(false)
       return
     }
-    router.push('/supplier-portal/home')
+    const redirectTo = searchParams.get('redirect')
+    const dest = redirectTo?.startsWith('/supplier-portal/') ? redirectTo : '/supplier-portal/home'
+    router.push(dest)
   }
 
   return (
@@ -126,5 +129,13 @@ export default function SupplierLoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SupplierLoginPage() {
+  return (
+    <Suspense>
+      <SupplierLoginForm />
+    </Suspense>
   )
 }

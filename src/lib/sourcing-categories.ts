@@ -10,12 +10,15 @@ export interface FieldDef {
 }
 
 export const CATEGORIES = [
-  { key: 'general',    label: 'General' },
-  { key: 'furniture',  label: 'Furniture' },
-  { key: 'woodwork',   label: 'Woodwork' },
-  { key: 'stone_glass', label: 'Stone & Glass' },
-  { key: 'lighting',   label: 'Lighting' },
-  { key: 'flooring',   label: 'Flooring' },
+  { key: 'general',       label: 'General' },
+  { key: 'furniture',     label: 'Furniture' },
+  { key: 'woodwork',      label: 'Woodwork' },
+  { key: 'stone_glass',   label: 'Stone & Glass' },
+  { key: 'lighting',      label: 'Lighting' },
+  { key: 'flooring',      label: 'Flooring' },
+  { key: 'wall_finishes', label: 'Wall Finishes' },
+  { key: 'cushions',      label: 'Cushions' },
+  { key: 'accessories',   label: 'Accessories' },
 ] as const
 
 export type CategoryKey = typeof CATEGORIES[number]['key']
@@ -83,5 +86,32 @@ export const CATEGORY_FIELDS: Record<CategoryKey, FieldDef[]> = {
     { key: 'area',            label: 'Area',                    type: 'number', unit: 'm²' },
     { key: 'underlay',        label: 'Underlay Required',       type: 'select', options: ['Yes', 'No'] },
     { key: 'installation',    label: 'Installation Method',     type: 'text',   placeholder: 'e.g. Glue down, Floating, Nail down' },
+  ],
+  wall_finishes: [
+    { key: 'material',        label: 'Material',                type: 'select', options: ['Paint', 'Wallpaper', 'Panelling', 'Tile', 'Stone', 'Plaster', 'Fabric', 'Other'] },
+    { key: 'colour_pattern',  label: 'Colour / Pattern',        type: 'text',   placeholder: 'e.g. Off-white, Chevron, RAL 9010' },
+    { key: 'finish',          label: 'Finish',                  type: 'text',   placeholder: 'e.g. Matt, Silk, Gloss, Textured' },
+    { key: 'width',           label: 'Panel / Tile Width',      type: 'number', unit: 'mm' },
+    { key: 'height',          label: 'Panel / Tile Height',     type: 'number', unit: 'mm' },
+    { key: 'area',            label: 'Total Area',              type: 'number', unit: 'm²' },
+    { key: 'notes',           label: 'Additional Notes',        type: 'textarea', placeholder: 'Grout colour, adhesive spec, number of coats…' },
+  ],
+  cushions: [
+    { key: 'width',           label: 'Width',                   type: 'number', unit: 'mm' },
+    { key: 'height',          label: 'Height',                  type: 'number', unit: 'mm' },
+    { key: 'depth',           label: 'Depth / Thickness',       type: 'number', unit: 'mm' },
+    { key: 'fill',            label: 'Fill',                    type: 'select', options: ['Feather', 'Duck down', 'Foam', 'Fibre', 'Mixed', 'Other'] },
+    { key: 'cover_fabric',    label: 'Cover Fabric',            type: 'text',   placeholder: 'e.g. Velvet, Linen, Bouclé' },
+    { key: 'colour',          label: 'Colour',                  type: 'text',   placeholder: 'e.g. Dusty rose, Charcoal' },
+    { key: 'piping',          label: 'Piping / Trim',           type: 'select', options: ['None', 'Self-piped', 'Contrast piped', 'Flange', 'Other'] },
+  ],
+  accessories: [
+    { key: 'type',            label: 'Type',                    type: 'text',   placeholder: 'e.g. Vase, Tray, Bowl, Mirror, Sculpture' },
+    { key: 'material',        label: 'Material',                type: 'text',   placeholder: 'e.g. Marble, Ceramic, Brass, Glass' },
+    { key: 'width',           label: 'Width',                   type: 'number', unit: 'mm' },
+    { key: 'height',          label: 'Height',                  type: 'number', unit: 'mm' },
+    { key: 'depth',           label: 'Depth',                   type: 'number', unit: 'mm' },
+    { key: 'colour_finish',   label: 'Colour / Finish',         type: 'text',   placeholder: 'e.g. Antique brass, Matt black, Natural' },
+    { key: 'notes',           label: 'Additional Notes',        type: 'textarea', placeholder: 'Brand, source, styling notes…' },
   ],
 }

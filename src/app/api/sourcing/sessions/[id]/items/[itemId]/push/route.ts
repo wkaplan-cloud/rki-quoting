@@ -90,6 +90,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Record which project this item was pushed to so the UI persists after reload
+    await supabase
+      .from('sourcing_session_items')
+      .update({ pushed_to_project_id: project_id })
+      .eq('id', itemId)
+
     // Update session status if all items are accepted
     const { data: openItems } = await supabase
       .from('sourcing_session_items')

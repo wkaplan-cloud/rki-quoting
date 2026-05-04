@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
+const SUPPLIER_PORTAL_URL = process.env.NEXT_PUBLIC_SUPPLIER_PORTAL_URL ?? 'https://suppliers.quotinghub.co.za'
 
 function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -17,7 +18,7 @@ function buildAcceptanceEmail({
   unitPrice,
   leadTimeWeeks,
   sessionTitle,
-  respondUrl,
+  ctaUrl,
   isRegistered,
 }: {
   supplierName: string
@@ -26,13 +27,12 @@ function buildAcceptanceEmail({
   unitPrice: number
   leadTimeWeeks: number | null
   sessionTitle: string
-  respondUrl: string
+  ctaUrl: string
   isRegistered: boolean
 }) {
-  const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
-  const ctaLabel = isRegistered ? 'Log in to Supplier Portal →' : 'View Request →'
+  const ctaLabel = isRegistered ? 'View Request in Portal →' : 'View Request →'
   const footer = isRegistered
-    ? `<p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">Log in to your <a href="${SITE_URL}/supplier-portal" style="color:#9A7B4F;text-decoration:none;">Supplier Portal</a> to view all your requests.</p>`
+    ? `<p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">Log in to your <a href="${SUPPLIER_PORTAL_URL}" style="color:#9A7B4F;text-decoration:none;">Supplier Portal</a> to view all your requests.</p>`
     : `<p style="margin:20px 0 0;font-size:12px;color:#C4BFB5;line-height:1.6;border-top:1px solid #EDE9E1;padding-top:16px;">Not registered yet? <a href="${SITE_URL}/supplier-portal/register" style="color:#9A7B4F;text-decoration:none;">Create a free supplier account</a> to manage all your requests in one place.</p>`
 
   return `<!DOCTYPE html>
@@ -134,6 +134,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             .from('sourcing_item_assignments')
             .select(`
               id,
+              session_supplier_id,
               item:sourcing_session_items(title),
               response:sourcing_item_responses(unit_price, lead_time_weeks),
               session_supplier:sourcing_session_suppliers(supplier_name, email, token, portal_account_id)
@@ -161,7 +162,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const replyTo = user.email ?? settings?.email_from ?? null
         const respondUrl = `${SITE_URL}/sourcing/respond/${ss.token}`
         const isRegistered = !!(ss as any).portal_account_id
-        const ctaUrl = isRegistered ? `${SITE_URL}/supplier-portal` : respondUrl
+        const ctaUrl = isRegistered
+          ? `${SUPPLIER_PORTAL_URL}/requests/${(assignmentData as any).session_supplier_id}`
+          : respondUrl
 
         const resend = new Resend(process.env.RESEND_API_KEY)
         await resend.emails.send({
@@ -176,7 +179,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             unitPrice: response.unit_price,
             leadTimeWeeks: response.lead_time_weeks ?? null,
             sessionTitle: session?.title ?? '',
-            respondUrl,
+            ctaUrl,
             isRegistered,
           }),
           text: `Dear ${ss.supplier_name},\n\n${studioName} has accepted your price of R${response.unit_price.toLocaleString()} for "${item.title}".\n${response.lead_time_weeks ? `Lead time: ${response.lead_time_weeks} week(s)\n` : ''}\n${isRegistered ? `Log in to your Supplier Portal: ${ctaUrl}` : `View the request: ${respondUrl}`}\n\nSent via QuotingHub`,

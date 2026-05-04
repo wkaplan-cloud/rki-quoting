@@ -18,6 +18,7 @@ function buildEmail({
   studioName,
   sessionTitle,
   projectName,
+  projectNumber,
   items,
   respondUrl,
   isRegistered,
@@ -26,6 +27,7 @@ function buildEmail({
   studioName: string
   sessionTitle: string
   projectName: string | null
+  projectNumber: string | null
   items: Array<{ title: string; item_quantity: number | null; dimensions: string | null; colour_finish: string | null; specifications: string | null; work_type: string | null }>
   respondUrl: string
   isRegistered: boolean
@@ -77,11 +79,11 @@ function buildEmail({
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
             <p style="margin:0 0 6px;font-size:15px;line-height:1.7;color:#2C2C2A;">Dear ${esc(supplierName)},</p>
             <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#2C2C2A;">
-              ${esc(studioName)} is requesting prices for ${items.length} item${items.length !== 1 ? 's' : ''}${projectName ? ` for <strong>${esc(projectName)}</strong>` : ''}. This is a preliminary pricing request — not a purchase order.
+              ${esc(studioName)} is requesting prices for ${items.length} item${items.length !== 1 ? 's' : ''}${projectName ? ` for <strong>${esc(projectName)}</strong>${projectNumber ? ` <span style="color:#8A877F;font-weight:normal;">(Ref: ${esc(projectNumber)})</span>` : ''}` : ''}. This is a preliminary pricing request — not a purchase order.
             </p>
 
             <div style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-left:3px solid #C4A46B;border-radius:4px;padding:4px 20px 4px;">
-              <p style="margin:12px 0 4px;font-size:11px;color:#8A877F;text-transform:uppercase;letter-spacing:0.08em;">${esc(sessionTitle)} · ${items.length} item${items.length !== 1 ? 's' : ''}</p>
+              <p style="margin:12px 0 4px;font-size:11px;color:#8A877F;text-transform:uppercase;letter-spacing:0.08em;">${projectNumber ? `Ref: ${esc(projectNumber)} · ` : ''}${esc(sessionTitle)} · ${items.length} item${items.length !== 1 ? 's' : ''}</p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 ${itemRows}
               </table>
@@ -123,7 +125,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const body = await req.json().catch(() => ({})) as { session_supplier_id?: string }
 
     const [{ data: session }, { data: settings }] = await Promise.all([
-      supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).single(),
+      supabase.from('sourcing_sessions').select('*, project:projects(project_name, project_number)').eq('id', id).single(),
       supabase.from('settings').select('business_name, email_from').maybeSingle(),
     ])
 
@@ -153,8 +155,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const resend = new Resend(process.env.RESEND_API_KEY)
     const now = new Date().toISOString()
 
-    // Fetch project name
     const projectName = (session as any).project?.project_name ?? null
+    const projectNumber = (session as any).project?.project_number ?? null
 
     // Resolve portal accounts by email — handles suppliers who registered after the
     // session_supplier record was created (portal_account_id would still be null on the record)
@@ -192,7 +194,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ...(replyTo ? { replyTo } : {}),
         to: ss.email,
         subject: `Pricing Request: ${session.title} — ${studioName}`,
-        html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, items, respondUrl, isRegistered }),
+        html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, projectNumber, items, respondUrl, isRegistered }),
         text: `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,
       })
 

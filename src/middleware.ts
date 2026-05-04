@@ -85,6 +85,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/supplier-portal/auth')
 
   if (!user && !isPublic) {
+    // Supplier portal routes go to supplier login, not designer login
+    if (pathname.startsWith('/supplier-portal/')) {
+      const loginUrl = new URL('/supplier-portal/login', request.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -100,7 +106,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && pathname === '/supplier-portal/login') {
-    return NextResponse.redirect(new URL('/supplier-portal/dashboard', request.url))
+    const redirectTo = request.nextUrl.searchParams.get('redirect')
+    const dest = redirectTo?.startsWith('/supplier-portal/') ? redirectTo : '/supplier-portal/dashboard'
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
   return supabaseResponse
