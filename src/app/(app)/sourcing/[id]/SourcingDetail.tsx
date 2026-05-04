@@ -322,7 +322,7 @@ function AddSupplierForm({
   const [supplierName, setSupplierName] = useState('')
   const [email, setEmail] = useState('')
   const [supplierId, setSupplierId] = useState<string | null>(null)
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(items.map(i => i.id))
   const [saving, setSaving] = useState(false)
 
   function toggleItem(id: string) {
@@ -826,7 +826,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
   )
 }
 
-// ---- Comparison Table ----
+// ---- Comparison Matrix ----
 function ComparisonTable({
   items, suppliers, onAccept, accepting, onOpenPush, pushedItems, projects,
 }: {
@@ -838,116 +838,190 @@ function ComparisonTable({
   pushedItems: Record<string, string>
   projects: Props['projects']
 }) {
-  const hasAnyResponse = suppliers.some(ss => ss.assignments.some(a => a.response !== null || a.status === 'supplier_declined'))
-  if (!hasAnyResponse) return null
-
   const assignedItems = items.filter(item =>
     suppliers.some(ss => ss.assignments.some(a => a.item_id === item.id))
   )
   if (assignedItems.length === 0) return null
 
+  // Cheapest price per item (among suppliers who responded)
+  const minPricePerItem: Record<string, number> = {}
+  for (const item of assignedItems) {
+    let min = Infinity
+    for (const ss of suppliers) {
+      const a = ss.assignments.find(a => a.item_id === item.id)
+      if (a?.response && a.status !== 'supplier_declined') {
+        min = Math.min(min, a.response.unit_price)
+      }
+    }
+    if (min < Infinity) minPricePerItem[item.id] = min
+  }
+
+  // Total cost per supplier (sum of responded prices × qty)
+  const supplierTotals: Record<string, number> = {}
+  for (const ss of suppliers) {
+    let total = 0
+    for (const a of ss.assignments) {
+      if (a.response && a.status !== 'supplier_declined') {
+        const qty = items.find(i => i.id === a.item_id)?.item_quantity ?? 1
+        total += a.response.unit_price * qty
+      }
+    }
+    supplierTotals[ss.id] = total
+  }
+
+  const STATUS_COLORS: Record<string, string> = {
+    pending:     'bg-[#F5F2EC] text-[#8A877F]',
+    sent:        'bg-blue-50 text-blue-600',
+    viewed:      'bg-sky-50 text-sky-600',
+    in_progress: 'bg-amber-50 text-amber-600',
+    completed:   'bg-emerald-50 text-emerald-600',
+    declined:    'bg-red-50 text-red-400',
+  }
+
   return (
     <div className="bg-white border border-[#EDE9E1] rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-[#EDE9E1]">
-        <BarChart3 size={14} className="text-[#8A877F]" />
-        <p className="text-sm font-semibold text-[#2C2C2A]">Pricing Comparison</p>
-      </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-[#F5F2EC]" style={{ background: '#FAFAF8' }}>
-              <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-[#A1A1AA] min-w-[140px]">Item</th>
-              {suppliers.map(ss => (
-                <th key={ss.id} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-[#A1A1AA] min-w-[140px]">
-                  {ss.supplier_name}
-                </th>
-              ))}
+            <tr className="border-b border-[#EDE9E1]" style={{ background: '#FAFAF8' }}>
+              <th className="px-5 py-4 text-left text-xs font-semibold text-[#8A877F] min-w-[180px] sticky left-0 bg-[#FAFAF8] z-10">Item</th>
+              {suppliers.map(ss => {
+                const effectiveStatus = ss.sent_at && ss.status === 'pending' ? 'sent' : ss.status
+                const statusCls = STATUS_COLORS[effectiveStatus] ?? STATUS_COLORS.pending
+                return (
+                  <th key={ss.id} className="px-5 py-4 text-left min-w-[170px]">
+                    <p className="text-xs font-semibold text-[#2C2C2A] truncate">{ss.supplier_name}</p>
+                    <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${statusCls}`}>
+                      {effectiveStatus.replace('_', ' ')}
+                    </span>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
-            {assignedItems.map(item => (
-              <tr key={item.id} className="border-b border-[#F5F2EC] last:border-0">
-                <td className="px-4 py-3">
-                  <p className="font-medium text-[#2C2C2A] text-sm">{item.title}</p>
-                  {item.item_quantity && <p className="text-xs text-[#C4BFB5]">×{item.item_quantity}</p>}
-                </td>
-                {suppliers.map(ss => {
-                  const assignment = ss.assignments.find(a => a.item_id === item.id)
-                  const isAccepted = assignment?.status === 'accepted'
-                  const isSupplierDeclined = assignment?.status === 'supplier_declined'
-                  const hasResponse = !!assignment?.response && !isSupplierDeclined
+            {assignedItems.map((item, rowIdx) => {
+              const respondedCount = suppliers.filter(ss => {
+                const a = ss.assignments.find(a => a.item_id === item.id)
+                return a?.response && a.status !== 'supplier_declined'
+              }).length
+              const hasMultiple = respondedCount > 1
 
-                  if (!assignment) {
-                    return <td key={ss.id} className="px-4 py-3 text-xs text-[#C4BFB5]">Not assigned</td>
-                  }
-                  if (isSupplierDeclined) {
-                    return (
-                      <td key={ss.id} className="px-4 py-3">
-                        <span className="text-xs font-medium text-red-500">Can&apos;t supply</span>
-                        {assignment.response?.notes && (
-                          <p className="text-[10px] text-[#A1A1AA] mt-0.5 max-w-[140px] truncate">
-                            {assignment.response.notes.replace("[CAN'T SUPPLY] ", '')}
-                          </p>
+              return (
+                <tr key={item.id} className={`border-b border-[#F5F2EC] last:border-0 ${rowIdx % 2 === 1 ? 'bg-[#FAFAF8]' : ''}`}>
+                  <td className={`px-5 py-3.5 sticky left-0 z-10 ${rowIdx % 2 === 1 ? 'bg-[#FAFAF8]' : 'bg-white'}`}>
+                    <div className="flex items-center gap-2">
+                      {item.status === 'accepted' && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
+                      <div>
+                        <p className="font-medium text-[#2C2C2A] text-sm">{item.title}</p>
+                        {item.item_quantity && item.item_quantity > 1 && (
+                          <p className="text-[10px] text-[#C4BFB5]">×{item.item_quantity}</p>
                         )}
-                      </td>
-                    )
-                  }
-                  if (!hasResponse) {
-                    return <td key={ss.id} className="px-4 py-3 text-xs text-[#C4BFB5]">Awaiting</td>
-                  }
+                      </div>
+                    </div>
+                  </td>
+                  {suppliers.map(ss => {
+                    const assignment = ss.assignments.find(a => a.item_id === item.id)
+                    const isAccepted = assignment?.status === 'accepted'
+                    const isDeclined = assignment?.status === 'supplier_declined'
+                    const specPending = assignment?.spec_approval_status === 'pending'
+                    const hasResponse = !!assignment?.response && !isDeclined
+                    const isCheapest = hasResponse && hasMultiple && assignment?.response?.unit_price === minPricePerItem[item.id]
 
-                  const response = assignment.response!
-                  return (
-                    <td key={ss.id} className="px-4 py-3" style={{ background: isAccepted ? '#F0FDF4' : undefined }}>
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-[#2C2C2A]">R{response.unit_price.toLocaleString()}</p>
+                    if (!assignment) {
+                      return <td key={ss.id} className="px-5 py-3.5 text-xs text-[#D4CFC7]">—</td>
+                    }
+                    if (isDeclined) {
+                      return (
+                        <td key={ss.id} className="px-5 py-3.5 bg-red-50">
+                          <p className="text-xs font-medium text-red-500">Can&apos;t supply</p>
+                          {assignment.response?.notes && (
+                            <p className="text-[10px] text-red-300 mt-0.5 truncate max-w-[130px]" title={assignment.response.notes.replace("[CAN'T SUPPLY] ", '')}>
+                              {assignment.response.notes.replace("[CAN'T SUPPLY] ", '')}
+                            </p>
+                          )}
+                        </td>
+                      )
+                    }
+                    if (specPending) {
+                      return (
+                        <td key={ss.id} className="px-5 py-3.5 bg-amber-50">
+                          <p className="text-xs font-medium text-amber-600">Awaiting spec approval</p>
+                          <p className="text-[10px] text-amber-400 mt-0.5">Switch to Request tab to review</p>
+                        </td>
+                      )
+                    }
+                    if (!hasResponse) {
+                      return <td key={ss.id} className="px-5 py-3.5 text-xs text-[#D4CFC7]">—</td>
+                    }
+
+                    const response = assignment.response!
+                    return (
+                      <td key={ss.id} className="px-5 py-3.5" style={{ background: isAccepted ? '#F0FDF4' : isCheapest ? '#F6FFED' : undefined }}>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-[#2C2C2A]">R{response.unit_price.toLocaleString()}</span>
+                            {isCheapest && !isAccepted && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Lowest</span>
+                            )}
+                            {isAccepted && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
+                          </div>
                           {response.lead_time_weeks && (
-                            <p className="text-[10px] text-[#8A877F]">{response.lead_time_weeks}w lead</p>
+                            <p className="text-[10px] text-[#8A877F] mt-0.5">{response.lead_time_weeks}w lead</p>
                           )}
                           {response.notes && !response.notes.startsWith("[CAN'T SUPPLY]") && (
-                            <p className="text-[10px] text-amber-600 mt-0.5 max-w-[120px] truncate" title={response.notes}>
+                            <p className="text-[10px] text-amber-600 mt-0.5 truncate max-w-[130px]" title={response.notes}>
                               ⚠ {response.notes}
                             </p>
                           )}
-                        </div>
-                        {isAccepted ? (
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                            {pushedItems[item.id] ? (
-                              <a
-                                href={`/projects/${pushedItems[item.id]}`}
-                                className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium whitespace-nowrap transition-colors underline underline-offset-2"
-                              >
-                                {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
-                              </a>
+                          <div className="mt-2">
+                            {isAccepted ? (
+                              pushedItems[item.id] ? (
+                                <a href={`/projects/${pushedItems[item.id]}`}
+                                  className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium underline underline-offset-2 transition-colors">
+                                  {projects.find(p => p.id === pushedItems[item.id])?.project_name ?? 'View project'} ↗
+                                </a>
+                              ) : (
+                                <button
+                                  onClick={() => onOpenPush(item, assignment, response, ss.supplier_name)}
+                                  className="text-[10px] text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors">
+                                  Push to project →
+                                </button>
+                              )
                             ) : (
-                              <button
-                                onClick={() => onOpenPush(item, assignment, response, ss.supplier_name)}
-                                className="text-[10px] text-[#C4A46B] hover:text-[#9A7B4F] font-medium whitespace-nowrap transition-colors"
-                              >
-                                Push →
-                              </button>
+                              item.status !== 'accepted' && (
+                                <button
+                                  onClick={() => onAccept(item.id, assignment.id)}
+                                  disabled={accepting === assignment.id}
+                                  className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                >
+                                  {accepting === assignment.id ? '…' : 'Accept'}
+                                </button>
+                              )
                             )}
                           </div>
-                        ) : (
-                          item.status !== 'accepted' && (
-                            <button
-                              onClick={() => onAccept(item.id, assignment.id)}
-                              disabled={accepting === assignment.id}
-                              className="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-                            >
-                              {accepting === assignment.id ? '…' : 'Accept'}
-                            </button>
-                          )
-                        )}
-                      </div>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
+                        </div>
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-[#EDE9E1]" style={{ background: '#FAFAF8' }}>
+              <td className="px-5 py-3 text-xs font-semibold text-[#8A877F] sticky left-0 bg-[#FAFAF8] z-10">Total (responded)</td>
+              {suppliers.map(ss => (
+                <td key={ss.id} className="px-5 py-3">
+                  {supplierTotals[ss.id] > 0 ? (
+                    <span className="text-sm font-bold text-[#2C2C2A]">R{supplierTotals[ss.id].toLocaleString()}</span>
+                  ) : (
+                    <span className="text-xs text-[#D4CFC7]">—</span>
+                  )}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -1335,6 +1409,13 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     return map
   })
 
+  // Tab: auto-open Compare if there are already responses
+  const [tab, setTab] = useState<'request' | 'compare'>(() =>
+    initialSuppliers.some(ss => ss.assignments.some(a => a.response !== null || a.status === 'supplier_declined'))
+      ? 'compare'
+      : 'request'
+  )
+
   const isDraft = session.status === 'draft'
   const isArchived = session.archived
 
@@ -1526,207 +1607,235 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
         </div>
       </div>
 
-      {/* Progress rail — draft only */}
-      {isDraft && (
-        <ProgressRail
-          itemsDone={items.length > 0}
-          suppliersDone={suppliers.length > 0}
-          assignDone={suppliers.some(ss => ss.assignments.length > 0)}
-        />
-      )}
-
-      {/* Pricing Comparison Table */}
-      <ComparisonTable
-        items={items}
-        suppliers={suppliers}
-        onAccept={handleAcceptFromTable}
-        accepting={accepting}
-        onOpenPush={(item, assignment, response, supplierName) =>
-          setPushModal({ item, assignment, response, supplierName })
-        }
-        pushedItems={pushedItems}
-        projects={projects}
-      />
-
-      {/* 2-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Items */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-[#2C2C2A]">Items ({items.length})</h2>
-          {items.length === 0 ? (
-            <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
-              <p className="text-xs text-[#8A877F]">Add items to request prices for.</p>
+      {/* Tab switcher */}
+      {(() => {
+        const hasAnyResponse = suppliers.some(ss => ss.assignments.some(a => a.response !== null || a.status === 'supplier_declined'))
+        return (
+          <>
+            <div className="flex border-b border-[#EDE9E1]">
+              <button
+                onClick={() => setTab('request')}
+                className={`px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${tab === 'request' ? 'border-[#2C2C2A] text-[#2C2C2A]' : 'border-transparent text-[#8A877F] hover:text-[#2C2C2A]'}`}
+              >
+                Request
+                {items.length > 0 && <span className="ml-1.5 text-xs text-[#C4BFB5]">{items.length}</span>}
+              </button>
+              <button
+                onClick={() => setTab('compare')}
+                className={`px-5 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-2 ${tab === 'compare' ? 'border-[#2C2C2A] text-[#2C2C2A]' : 'border-transparent text-[#8A877F] hover:text-[#2C2C2A]'}`}
+              >
+                Compare
+                {hasAnyResponse && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 inline-block" />}
+              </button>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {items.map(item => {
-                const isExpanded = expandedItemId === item.id
-                const catKey = (item.category ?? 'general') as CategoryKey
-                const fieldDefs = CATEGORY_FIELDS[catKey] ?? []
-                const catLabel = CATEGORIES.find(c => c.key === catKey)?.label
-                return (
-                  <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAF8] transition-colors"
-                    >
-                      {item.ref_image_urls && item.ref_image_urls.length > 0 && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.ref_image_urls[0]} alt={item.title} className="w-10 h-10 object-cover rounded-lg border border-[#EDE9E1] shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
-                          <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
-                          {item.category && item.category !== 'general' && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#F5F2EC] text-[#8A877F] border border-[#EDE9E1] shrink-0 capitalize">
-                              {catLabel ?? item.category}
-                            </span>
-                          )}
-                          {item.status === 'accepted' && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#8A877F] mt-0.5">
-                          {item.category === 'general'
-                            ? [item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish].filter(Boolean).join(' · ')
-                            : [item.item_quantity ? `Qty ${item.item_quantity}` : null, item.item_specs ? `${Object.keys(item.item_specs).length} specs` : null].filter(Boolean).join(' · ')
-                          }
-                        </p>
+
+            {/* REQUEST TAB */}
+            {tab === 'request' && (
+              <>
+                {isDraft && (
+                  <ProgressRail
+                    itemsDone={items.length > 0}
+                    suppliersDone={suppliers.length > 0}
+                    assignDone={suppliers.some(ss => ss.assignments.length > 0)}
+                  />
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left: Items */}
+                  <div className="space-y-3">
+                    <h2 className="text-sm font-semibold text-[#2C2C2A]">Items ({items.length})</h2>
+                    {items.length === 0 ? (
+                      <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
+                        <p className="text-xs text-[#8A877F]">Add items to request prices for.</p>
                       </div>
-                      {isExpanded ? <ChevronUp size={13} className="text-[#8A877F] shrink-0" /> : <ChevronDown size={13} className="text-[#8A877F] shrink-0" />}
-                    </button>
-
-                    {isExpanded && (
-                      <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-3" style={{ background: '#FAFAF8' }}>
-                        {/* Reference images */}
-                        {item.ref_image_urls && item.ref_image_urls.length > 0 && (
-                          <div className="flex gap-2 flex-wrap">
-                            {item.ref_image_urls.map((url, i) => (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-[#EDE9E1]" />
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Structured specs */}
-                        {item.item_specs && Object.keys(item.item_specs).length > 0 && (
-                          <div>
-                            {catLabel && catKey !== 'general' && (
-                              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#A89F91' }}>{catLabel}</p>
-                            )}
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                              {Object.entries(item.item_specs).map(([key, val]) => {
-                                const def = fieldDefs.find(f => f.key === key)
-                                const label = def?.label ?? key.replace(/_/g, ' ')
-                                const display = def?.unit ? `${val} ${def.unit}` : val
-                                return (
-                                  <div key={key} className="flex gap-1 items-baseline">
-                                    <span className="text-xs text-[#8A877F] shrink-0">{label}:</span>
-                                    <span className="text-xs text-[#2C2C2A] font-medium">{display}</span>
+                    ) : (
+                      <div className="space-y-2">
+                        {items.map(item => {
+                          const isExpanded = expandedItemId === item.id
+                          const catKey = (item.category ?? 'general') as CategoryKey
+                          const fieldDefs = CATEGORY_FIELDS[catKey] ?? []
+                          const catLabel = CATEGORIES.find(c => c.key === catKey)?.label
+                          return (
+                            <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAF8] transition-colors"
+                              >
+                                {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={item.ref_image_urls[0]} alt={item.title} className="w-10 h-10 object-cover rounded-lg border border-[#EDE9E1] shrink-0" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {item.status === 'accepted' && <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />}
+                                    <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.title}</p>
+                                    {item.category && item.category !== 'general' && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#F5F2EC] text-[#8A877F] border border-[#EDE9E1] shrink-0 capitalize">
+                                        {catLabel ?? item.category}
+                                      </span>
+                                    )}
+                                    {item.status === 'accepted' && (
+                                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0">accepted</span>
+                                    )}
                                   </div>
-                                )
-                              })}
+                                  <p className="text-xs text-[#8A877F] mt-0.5">
+                                    {item.category === 'general'
+                                      ? [item.work_type, item.item_quantity ? `Qty ${item.item_quantity}` : null, item.dimensions, item.colour_finish].filter(Boolean).join(' · ')
+                                      : [item.item_quantity ? `Qty ${item.item_quantity}` : null, item.item_specs ? `${Object.keys(item.item_specs).length} specs` : null].filter(Boolean).join(' · ')
+                                    }
+                                  </p>
+                                </div>
+                                {isExpanded ? <ChevronUp size={13} className="text-[#8A877F] shrink-0" /> : <ChevronDown size={13} className="text-[#8A877F] shrink-0" />}
+                              </button>
+
+                              {isExpanded && (
+                                <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-3" style={{ background: '#FAFAF8' }}>
+                                  {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                                    <div className="flex gap-2 flex-wrap">
+                                      {item.ref_image_urls.map((url, i) => (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-[#EDE9E1]" />
+                                      ))}
+                                    </div>
+                                  )}
+                                  {item.item_specs && Object.keys(item.item_specs).length > 0 && (
+                                    <div>
+                                      {catLabel && catKey !== 'general' && (
+                                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#A89F91' }}>{catLabel}</p>
+                                      )}
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                        {Object.entries(item.item_specs).map(([key, val]) => {
+                                          const def = fieldDefs.find(f => f.key === key)
+                                          const label = def?.label ?? key.replace(/_/g, ' ')
+                                          const display = def?.unit ? `${val} ${def.unit}` : val
+                                          return (
+                                            <div key={key} className="flex gap-1 items-baseline">
+                                              <span className="text-xs text-[#8A877F] shrink-0">{label}:</span>
+                                              <span className="text-xs text-[#2C2C2A] font-medium">{display}</span>
+                                            </div>
+                                          )
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {(item.dimensions || item.colour_finish) && (
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                      {item.dimensions && (
+                                        <div className="flex gap-1 items-baseline">
+                                          <span className="text-xs text-[#8A877F] shrink-0">Dimensions:</span>
+                                          <span className="text-xs text-[#2C2C2A] font-medium">{item.dimensions}</span>
+                                        </div>
+                                      )}
+                                      {item.colour_finish && (
+                                        <div className="flex gap-1 items-baseline">
+                                          <span className="text-xs text-[#8A877F] shrink-0">Colour:</span>
+                                          <span className="text-xs text-[#2C2C2A] font-medium">{item.colour_finish}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {item.specifications && (
+                                    <p className="text-xs text-[#8A877F] leading-relaxed">{item.specifications}</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
+                          )
+                        })}
+                      </div>
+                    )}
+                    {!isArchived && <AddItemForm sessionId={session.id} onAdded={handleItemAdded} />}
+                  </div>
 
-                        {/* Legacy specs */}
-                        {(item.dimensions || item.colour_finish) && (
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                            {item.dimensions && (
-                              <div className="flex gap-1 items-baseline">
-                                <span className="text-xs text-[#8A877F] shrink-0">Dimensions:</span>
-                                <span className="text-xs text-[#2C2C2A] font-medium">{item.dimensions}</span>
-                              </div>
-                            )}
-                            {item.colour_finish && (
-                              <div className="flex gap-1 items-baseline">
-                                <span className="text-xs text-[#8A877F] shrink-0">Colour:</span>
-                                <span className="text-xs text-[#2C2C2A] font-medium">{item.colour_finish}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Notes */}
-                        {item.specifications && (
-                          <p className="text-xs text-[#8A877F] leading-relaxed">{item.specifications}</p>
-                        )}
+                  {/* Right: Suppliers */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
+                      {!isArchived && !addingSupplier && (
+                        <button
+                          type="button"
+                          onClick={() => setAddingSupplier(true)}
+                          className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
+                        >
+                          <Plus size={14} /> Add Supplier
+                        </button>
+                      )}
+                    </div>
+                    {suppliers.length === 0 ? (
+                      <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
+                        <p className="text-xs text-[#8A877F]">Add suppliers to assign items to.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {suppliers.map(ss => (
+                          <SupplierCard
+                            key={ss.id}
+                            ss={ss}
+                            items={items}
+                            sessionId={session.id}
+                            sessionStatus={session.status}
+                            onAssignToggle={handleAssignToggle}
+                            onAccept={handleAccept}
+                            onOpenPush={(item, assignment, response, supplierName) =>
+                              setPushModal({ item, assignment, response, supplierName })
+                            }
+                            onRemove={handleRemoveSupplier}
+                            onSend={handleSendToSupplier}
+                            onSpecAction={handleSpecAction}
+                            pushedItems={pushedItems}
+                            projects={projects}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {isDraft && suppliers.length > 0 && !suppliers.some(ss => ss.assignments.length > 0) && (
+                      <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50">
+                        <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-sm text-amber-700">Open the supplier above and assign at least one item before sending.</p>
                       </div>
                     )}
                   </div>
-                )
-              })}
-            </div>
-          )}
-          {!isArchived && <AddItemForm sessionId={session.id} onAdded={handleItemAdded} />}
-        </div>
+                </div>
 
-        {/* Right: Suppliers */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
-            {!isArchived && !addingSupplier && (
-              <button
-                type="button"
-                onClick={() => setAddingSupplier(true)}
-                className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
-              >
-                <Plus size={14} /> Add Supplier
-              </button>
+                {!isArchived && addingSupplier && (
+                  <AddSupplierForm
+                    sessionId={session.id}
+                    allSuppliers={allSuppliers}
+                    existingEmails={suppliers.map(s => s.email)}
+                    onAdded={ss => { handleSupplierAdded(ss); setAddingSupplier(false) }}
+                    onClose={() => setAddingSupplier(false)}
+                    items={items}
+                  />
+                )}
+              </>
             )}
-          </div>
-          {suppliers.length === 0 ? (
-            <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
-              <p className="text-xs text-[#8A877F]">Add suppliers to assign items to.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {suppliers.map(ss => (
-                <SupplierCard
-                  key={ss.id}
-                  ss={ss}
+
+            {/* COMPARE TAB */}
+            {tab === 'compare' && (
+              hasAnyResponse ? (
+                <ComparisonTable
                   items={items}
-                  sessionId={session.id}
-                  sessionStatus={session.status}
-                  onAssignToggle={handleAssignToggle}
-                  onAccept={handleAccept}
+                  suppliers={suppliers}
+                  onAccept={handleAcceptFromTable}
+                  accepting={accepting}
                   onOpenPush={(item, assignment, response, supplierName) =>
                     setPushModal({ item, assignment, response, supplierName })
                   }
-                  onRemove={handleRemoveSupplier}
-                  onSend={handleSendToSupplier}
-                  onSpecAction={handleSpecAction}
                   pushedItems={pushedItems}
                   projects={projects}
                 />
-              ))}
-            </div>
-          )}
-
-          {/* Hint: supplier added but no items assigned yet */}
-          {isDraft && suppliers.length > 0 && !suppliers.some(ss => ss.assignments.length > 0) && (
-            <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50">
-              <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-700">Open the supplier above and assign at least one item before sending.</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Full-width Add Supplier form — rendered below the grid when open */}
-      {!isArchived && addingSupplier && (
-        <AddSupplierForm
-          sessionId={session.id}
-          allSuppliers={allSuppliers}
-          existingEmails={suppliers.map(s => s.email)}
-          onAdded={ss => { handleSupplierAdded(ss); setAddingSupplier(false) }}
-          onClose={() => setAddingSupplier(false)}
-          items={items}
-        />
-      )}
+              ) : (
+                <div className="border border-dashed border-[#D4CFC7] rounded-xl p-12 text-center">
+                  <BarChart3 size={24} className="text-[#D4CFC7] mx-auto mb-3" />
+                  <p className="text-sm font-medium text-[#8A877F]">Waiting for supplier responses</p>
+                  <p className="text-xs text-[#C4BFB5] mt-1">Once suppliers submit prices, they&apos;ll appear here side by side.</p>
+                </div>
+              )
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }
