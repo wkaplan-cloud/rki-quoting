@@ -44,6 +44,9 @@ export const CATEGORY_FIELDS: Record<CategoryKey, FieldDef[]> = {
     { key: 'scatter_cushion', label: 'Scatter Cushion Details', type: 'textarea', placeholder: 'Size, fill, quantity...' },
   ],
   woodwork: [
+    { key: 'overall_width',  label: 'Overall Width',            type: 'number', unit: 'mm' },
+    { key: 'overall_height', label: 'Overall Height',           type: 'number', unit: 'mm' },
+    { key: 'overall_depth',  label: 'Overall Depth',            type: 'number', unit: 'mm' },
     { key: 'wood_type',       label: 'Wood Type',               type: 'text',   placeholder: 'e.g. MDF, Birch Ply, Solid Oak' },
     { key: 'grain',           label: 'Grain',                   type: 'select', options: ['Straight', 'Knots', 'Any'] },
     { key: 'handle_type',     label: 'Handle / Opening',        type: 'select', options: ['Handle', 'Grip', 'Push to open', 'None'] },

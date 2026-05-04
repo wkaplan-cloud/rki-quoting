@@ -46,22 +46,36 @@ export async function POST(
       return NextResponse.json({ error: 'No pending spec approval request' }, { status: 400 })
     }
 
-    const body = await req.json() as { action: 'approve' | 'reject' }
-    const { action } = body
+    const body = await req.json() as { action: 'approve' | 'reject'; final_specs?: Record<string, string> }
+    const { action, final_specs } = body
     if (!['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'action must be approve or reject' }, { status: 400 })
     }
 
     if (action === 'approve') {
-      const { error } = await supabaseAdmin
+      // Fetch item_id so we can write the finalised specs back to the item
+      const { data: aRow } = await supabaseAdmin
         .from('sourcing_item_assignments')
-        .update({
-          spec_approval_status: 'approved',
-          spec_approved_at: new Date().toISOString(),
-        })
+        .select('item_id')
         .eq('id', assignmentId)
+        .single()
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      const updates: Record<string, unknown> = {
+        spec_approval_status: 'approved',
+        spec_approved_at: new Date().toISOString(),
+      }
+      if (final_specs) updates.pending_supplier_specs = final_specs
+
+      const { error: updateErr } = await supabaseAdmin
+        .from('sourcing_item_assignments')
+        .update(updates)
+        .eq('id', assignmentId)
+      if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+
+      // Write designer-finalised specs back to the item so push picks them up
+      if (final_specs && aRow?.item_id) {
+        await supabaseAdmin.from('sourcing_session_items').update({ item_specs: final_specs }).eq('id', aRow.item_id)
+      }
     } else {
       const { error } = await supabaseAdmin
         .from('sourcing_item_assignments')

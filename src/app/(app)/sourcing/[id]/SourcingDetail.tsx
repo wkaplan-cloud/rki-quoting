@@ -457,6 +457,140 @@ function AddSupplierForm({
   )
 }
 
+// ---- Spec Approval Panel ----
+// Full editable form of all category fields, pre-filled with supplier's proposed values.
+// Changed fields are highlighted. Designer can edit any value before approving.
+function SpecApprovalPanel({
+  item,
+  assignment,
+  supplierName,
+  onApprove,
+  onReject,
+  isApproving,
+}: {
+  item: SessionItem
+  assignment: Assignment
+  supplierName: string
+  onApprove: (finalSpecs: Record<string, string>) => void
+  onReject: () => void
+  isApproving: boolean
+}) {
+  const catKey = (item.category ?? 'general') as CategoryKey
+  const fields = CATEGORY_FIELDS[catKey] ?? []
+  const origSpecs: Record<string, string> = item.item_specs ?? {}
+  const pendingSpecs: Record<string, string> = assignment.pending_supplier_specs ?? {}
+
+  // Start with supplier's proposed values merged over originals
+  const [specs, setSpecs] = useState<Record<string, string>>(() => ({ ...origSpecs, ...pendingSpecs }))
+
+  const definedKeys = new Set(fields.map(f => f.key))
+  const extraKeys = Object.keys(pendingSpecs).filter(k => !definedKeys.has(k) && (pendingSpecs[k] ?? '') !== (origSpecs[k] ?? ''))
+
+  function isChanged(key: string) {
+    return (pendingSpecs[key] ?? '') !== (origSpecs[key] ?? '') && (pendingSpecs[key] ?? '') !== ''
+  }
+
+  const inputCls = (key: string) =>
+    `w-full px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:border-[#C4A46B] ${
+      isChanged(key) ? 'border-amber-300 bg-amber-50' : 'border-[#D4CFC7] bg-white'
+    }`
+
+  function set(key: string, val: string) {
+    setSpecs(prev => ({ ...prev, [key]: val }))
+  }
+
+  return (
+    <div className="mt-2 rounded-xl overflow-hidden" style={{ border: '1px solid #FDE68A' }}>
+      <div className="px-3 py-2 flex items-center gap-2" style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A' }}>
+        <AlertTriangle size={12} className="text-amber-500 shrink-0" />
+        <p className="text-[11px] font-semibold text-amber-800">
+          Spec changes from {supplierName} — edit any field, then approve
+        </p>
+      </div>
+
+      <div className="p-3 bg-white">
+        {fields.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2">
+            {fields.map(field => {
+              const val = specs[field.key] ?? ''
+              const changed = isChanged(field.key)
+              if (field.type === 'select') {
+                return (
+                  <div key={field.key}>
+                    <label className="block text-[10px] text-[#8A877F] mb-0.5">
+                      {field.label}{changed && <span className="ml-1 text-amber-500 font-bold">↑ changed</span>}
+                    </label>
+                    <select value={val} onChange={e => set(field.key, e.target.value)} className={inputCls(field.key)}>
+                      <option value="">—</option>
+                      {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                )
+              }
+              if (field.type === 'textarea') {
+                return (
+                  <div key={field.key} className="col-span-2">
+                    <label className="block text-[10px] text-[#8A877F] mb-0.5">
+                      {field.label}{changed && <span className="ml-1 text-amber-500 font-bold">↑ changed</span>}
+                    </label>
+                    <textarea value={val} onChange={e => set(field.key, e.target.value)} rows={2}
+                      className={`${inputCls(field.key)} resize-none`} />
+                  </div>
+                )
+              }
+              return (
+                <div key={field.key}>
+                  <label className="block text-[10px] text-[#8A877F] mb-0.5">
+                    {field.label}{field.unit && <span className="text-[#C4BFB5] ml-1">({field.unit})</span>}
+                    {changed && <span className="ml-1 text-amber-500 font-bold">↑ changed</span>}
+                  </label>
+                  <input
+                    type={field.type === 'number' ? 'number' : 'text'}
+                    value={val}
+                    onChange={e => set(field.key, e.target.value)}
+                    placeholder={field.placeholder}
+                    className={inputCls(field.key)}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          // General category — no structured fields; show free-text entries from supplier
+          <p className="text-xs text-[#8A877F] italic">No structured fields for this category.</p>
+        )}
+
+        {/* Extra keys the supplier added that aren't in the field definition */}
+        {extraKeys.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {extraKeys.map(key => (
+              <div key={key}>
+                <label className="block text-[10px] text-amber-600 font-semibold mb-0.5">
+                  {key.replace(/_/g, ' ')} <span className="font-bold">↑ added by supplier</span>
+                </label>
+                <input type="text" value={specs[key] ?? ''} onChange={e => set(key, e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs border border-amber-300 bg-amber-50 rounded-lg focus:outline-none focus:border-[#C4A46B]" />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 justify-end px-3 py-2" style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}>
+        <button type="button" onClick={onReject} disabled={isApproving}
+          className="px-3 py-1 text-xs rounded-lg border border-[#D4CFC7] text-[#71717A] hover:bg-[#F5F2EC] transition-colors disabled:opacity-50">
+          Reject
+        </button>
+        <button type="button" onClick={() => onApprove(specs)} disabled={isApproving}
+          className="px-3 py-1 text-xs font-semibold rounded-lg text-white disabled:opacity-50 transition-opacity"
+          style={{ background: '#C4A46B' }}>
+          {isApproving ? 'Approving…' : 'Approve these specs'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ---- Push Preview Modal ----
 interface PushModalProps {
   item: SessionItem
@@ -883,13 +1017,13 @@ function SupplierCard({
     }
   }
 
-  async function handleApproveSpec(assignmentId: string, action: 'approve' | 'reject') {
+  async function handleApproveSpec(assignmentId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) {
     setApprovingSpec(assignmentId)
     try {
       const res = await fetch(`/api/sourcing/sessions/${sessionId}/assignments/${assignmentId}/approve-specs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...(finalSpecs ? { final_specs: finalSpecs } : {}) }),
       })
       if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
       onSpecAction(ss.id, assignmentId, action === 'approve' ? 'approved' : 'rejected')
@@ -1007,15 +1141,6 @@ function SupplierCard({
                   return Object.keys({ ...orig, ...supp }).some(k => (supp[k] ?? '') !== (orig[k] ?? ''))
                 })()
 
-                // Diff data for pending spec approval
-                const origSpecs: Record<string, string> = {
-                  ...(item.item_specs ?? {}),
-                  ...(item.dimensions ? { dimensions: item.dimensions } : {}),
-                  ...(item.colour_finish ? { colour_finish: item.colour_finish } : {}),
-                }
-                const pendingSpecs = assignment?.pending_supplier_specs ?? {}
-                const diffKeys = [...new Set([...Object.keys(origSpecs), ...Object.keys(pendingSpecs)])].filter(k => (origSpecs[k] ?? '') !== (pendingSpecs[k] ?? ''))
-
                 return (
                   <div key={item.id} className="py-2 border-b border-[#F5F2EC] last:border-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1045,52 +1170,16 @@ function SupplierCard({
                       )}
                     </div>
 
-                    {/* Spec diff panel — shown when supplier has sent specs for approval */}
-                    {specStatus === 'pending' && assignment && diffKeys.length > 0 && (
-                      <div className="mt-1.5 rounded-lg overflow-hidden" style={{ border: '1px solid #FDE68A' }}>
-                        <div className="px-3 py-1.5 flex items-center gap-1.5" style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A' }}>
-                          <AlertTriangle size={11} className="text-amber-500 shrink-0" />
-                          <p className="text-[11px] font-semibold text-amber-800">Spec change request from {ss.supplier_name}</p>
-                        </div>
-                        <table className="w-full" style={{ background: '#FEFCE8' }}>
-                          <thead>
-                            <tr style={{ borderBottom: '1px solid #FDE68A' }}>
-                              <th className="px-3 py-1 text-left text-[10px] uppercase tracking-wide font-semibold text-amber-600 w-1/3">Field</th>
-                              <th className="px-3 py-1 text-left text-[10px] uppercase tracking-wide font-semibold text-amber-600 w-1/3">Original</th>
-                              <th className="px-3 py-1 text-left text-[10px] uppercase tracking-wide font-semibold text-amber-600 w-1/3">Proposed</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {diffKeys.map(key => {
-                              const orig = origSpecs[key] ?? ''
-                              const proposed = pendingSpecs[key] ?? ''
-                              return (
-                                <tr key={key} style={{ borderBottom: '1px solid #FEF08A' }}>
-                                  <td className="px-3 py-1 text-[11px] font-medium text-[#52525B]">{key.replace(/_/g, ' ')}</td>
-                                  <td className="px-3 py-1 text-[11px] text-[#71717A]">{orig || '—'}</td>
-                                  <td className="px-3 py-1 text-[11px] font-semibold text-amber-800">{proposed || '—'}</td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                        <div className="flex gap-2 justify-end px-3 py-2" style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}>
-                          <button type="button"
-                            onClick={() => handleApproveSpec(assignment.id, 'reject')}
-                            disabled={!!approvingSpec}
-                            className="px-3 py-1 text-xs rounded-lg border transition-colors disabled:opacity-50 hover:bg-[#F5F2EC]"
-                            style={{ border: '1px solid #D4CFC7', color: '#71717A' }}>
-                            {approvingSpec === assignment.id ? '…' : 'Reject'}
-                          </button>
-                          <button type="button"
-                            onClick={() => handleApproveSpec(assignment.id, 'approve')}
-                            disabled={!!approvingSpec}
-                            className="px-3 py-1 text-xs font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                            style={{ background: '#C4A46B', color: '#FFFFFF' }}>
-                            {approvingSpec === assignment.id ? 'Approving…' : 'Approve changes'}
-                          </button>
-                        </div>
-                      </div>
+                    {/* Editable spec approval panel — all fields, supplier changes highlighted */}
+                    {specStatus === 'pending' && assignment && (
+                      <SpecApprovalPanel
+                        item={item}
+                        assignment={assignment}
+                        supplierName={ss.supplier_name}
+                        isApproving={approvingSpec === assignment.id}
+                        onApprove={finalSpecs => handleApproveSpec(assignment.id, 'approve', finalSpecs)}
+                        onReject={() => handleApproveSpec(assignment.id, 'reject')}
+                      />
                     )}
 
 
