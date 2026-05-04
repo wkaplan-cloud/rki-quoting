@@ -5,7 +5,7 @@ export default function NewSupplierPage() {
   return (
     <div>
       <PageHeader title="New Supplier" />
-      <div className="p-8 max-w-2xl"><SupplierForm supplier={null} platformContact={null} /></div>
+      <div className="p-6 lg:p-8"><SupplierForm supplier={null} platformContact={null} /></div>
     </div>
   )
 }
