@@ -803,7 +803,7 @@ function ComparisonTable({
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   pushedItems: Record<string, string>
   projects: Props['projects']
-  onApproveSpec: (ssId: string, assignmentId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) => Promise<void>
+  onApproveSpec: (ssId: string, assignmentId: string, itemId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) => Promise<void>
 }) {
   const [expandedSpecCell, setExpandedSpecCell] = useState<string | null>(null)
   const [approvingSpecMatrix, setApprovingSpecMatrix] = useState<string | null>(null)
@@ -940,13 +940,13 @@ function ComparisonTable({
                                 isApproving={approvingSpecMatrix === assignment.id}
                                 onApprove={async (finalSpecs) => {
                                   setApprovingSpecMatrix(assignment.id)
-                                  await onApproveSpec(ss.id, assignment.id, 'approve', finalSpecs)
+                                  await onApproveSpec(ss.id, assignment.id, item.id, 'approve', finalSpecs)
                                   setApprovingSpecMatrix(null)
                                   setExpandedSpecCell(null)
                                 }}
                                 onReject={async () => {
                                   setApprovingSpecMatrix(assignment.id)
-                                  await onApproveSpec(ss.id, assignment.id, 'reject')
+                                  await onApproveSpec(ss.id, assignment.id, item.id, 'reject')
                                   setApprovingSpecMatrix(null)
                                   setExpandedSpecCell(null)
                                 }}
@@ -1103,7 +1103,7 @@ function SupplierCard({
     }
   }
 
-  async function handleApproveSpec(assignmentId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) {
+  async function handleApproveSpec(assignmentId: string, itemId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) {
     setApprovingSpec(assignmentId)
     try {
       const res = await fetch(`/api/sourcing/sessions/${sessionId}/assignments/${assignmentId}/approve-specs`, {
@@ -1113,6 +1113,9 @@ function SupplierCard({
       })
       if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
       onSpecAction(ss.id, assignmentId, action === 'approve' ? 'approved' : 'rejected')
+      if (action === 'approve') {
+        onAccept(itemId, assignmentId)
+      }
     } catch (err: any) {
       alert(err.message)
     } finally {
@@ -1263,8 +1266,8 @@ function SupplierCard({
                         assignment={assignment}
                         supplierName={ss.supplier_name}
                         isApproving={approvingSpec === assignment.id}
-                        onApprove={finalSpecs => handleApproveSpec(assignment.id, 'approve', finalSpecs)}
-                        onReject={() => handleApproveSpec(assignment.id, 'reject')}
+                        onApprove={finalSpecs => handleApproveSpec(assignment.id, item.id, 'approve', finalSpecs)}
+                        onReject={() => handleApproveSpec(assignment.id, item.id, 'reject')}
                       />
                     )}
 
@@ -1507,7 +1510,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     startTransition(() => router.refresh())
   }
 
-  async function handleApproveSpecFromMatrix(ssId: string, assignmentId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) {
+  async function handleApproveSpecFromMatrix(ssId: string, assignmentId: string, itemId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) {
     const ss = suppliers.find(s => s.id === ssId)
     const sessionSupplierId = ss?.id
     if (!sessionSupplierId) return
@@ -1518,6 +1521,9 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     })
     if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
     handleSpecAction(ssId, assignmentId, action === 'approve' ? 'approved' : 'rejected')
+    if (action === 'approve') {
+      handleAccept(itemId, assignmentId)
+    }
   }
 
   async function handleAcceptFromTable(itemId: string, assignmentId: string) {

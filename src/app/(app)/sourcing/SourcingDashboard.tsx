@@ -222,6 +222,15 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
                     <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
                       {badge.label}
                     </span>
+                    {s.status === 'in_progress' && (
+                      <span className="flex items-center gap-1 shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: '#FFFBEB', color: '#92600A', border: '1px solid #FDE68A' }}>
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#F59E0B' }} />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5" style={{ background: '#F59E0B' }} />
+                        </span>
+                        New responses
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-[#8A877F]">
                     {s.project_name ? `${s.project_name} · ` : ''}

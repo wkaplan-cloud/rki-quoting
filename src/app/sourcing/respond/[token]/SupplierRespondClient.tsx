@@ -287,23 +287,61 @@ function PriceForm({
     ? <ImageLightbox urls={item.ref_image_urls} startIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
     : null
 
-  // Amber locked tile — spec changes awaiting designer approval
+  // Shared read-only expand body: images + specs + notes (used by all locked states)
+  function ReadOnlyBody({ borderColor, bgColor }: { borderColor: string; bgColor: string }) {
+    if (!item) return null
+    const hasContent = (item.ref_image_urls?.length ?? 0) > 0 || fieldDefs.length > 0 || item.dimensions != null || item.colour_finish != null || !!item.specifications
+    if (!hasContent) return null
+    return (
+      <div style={{ borderTop: `1px solid ${borderColor}` }}>
+        {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+          <div className="px-5 pt-3 pb-2 flex gap-2 flex-wrap" style={{ background: bgColor }}>
+            {item.ref_image_urls.map((url, i) => (
+              <button key={i} type="button" onClick={() => setLightboxIndex(i)} className="group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Reference ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border transition-opacity group-hover:opacity-80" style={{ borderColor }} />
+              </button>
+            ))}
+          </div>
+        )}
+        {(fieldDefs.length > 0 || item.dimensions != null || item.colour_finish != null) && (
+          <div className="px-5 pt-3 pb-3 grid grid-cols-2 gap-2" style={{ background: bgColor }}>
+            {[
+              ...fieldDefs.map(f => ({ key: f.key, label: `${f.label}${f.unit ? ` (${f.unit})` : ''}` })),
+              ...(item.dimensions != null ? [{ key: 'dimensions', label: 'Dimensions' }] : []),
+              ...(item.colour_finish != null ? [{ key: 'colour_finish', label: 'Colour / Finish' }] : []),
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <p className="text-[10px] mb-0.5" style={{ color: '#71717A' }}>{label}</p>
+                <p className="text-xs font-medium px-2 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.6)', color: '#18181B', border: `1px solid ${borderColor}` }}>
+                  {origSpecs[key] || '—'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        {item.specifications && (
+          <div className="px-5 pb-3" style={{ background: bgColor }}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>Notes from studio</p>
+            <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Amber expandable tile — spec changes awaiting designer approval
   if (assignment.spec_approval_status === 'pending') {
     const pending = assignment.pending_supplier_specs ?? {}
-    const origSpecs: Record<string, string> = {
-      ...(item.item_specs ?? {}),
-      ...(item.dimensions ? { dimensions: item.dimensions } : {}),
-      ...(item.colour_finish ? { colour_finish: item.colour_finish } : {}),
-    }
     const changedEntries = Object.entries(pending).filter(([k, v]) => (v ?? '') !== (origSpecs[k] ?? ''))
     return <>{lightbox}
       <div className="rounded-xl overflow-hidden" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-        <div className="px-5 py-4 flex items-start gap-3">
+        <button type="button" onClick={() => setExpanded(e => !e)} className="w-full flex items-start gap-3 px-5 py-4 text-left">
           <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm mb-0.5" style={{ color: '#18181B' }}>{item.title}</p>
             <p className="text-xs" style={{ color: '#92600A' }}>Price submitted with spec changes — awaiting designer review</p>
-            {changedEntries.length > 0 && (
+            {!expanded && changedEntries.length > 0 && (
               <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
                 {changedEntries.map(([k, v]) => (
                   <div key={k}>
@@ -317,42 +355,92 @@ function PriceForm({
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded shrink-0 mt-0.5" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
             Pending
           </span>
-        </div>
+          <div className="shrink-0 mt-0.5" style={{ color: '#D97706' }}>{expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</div>
+        </button>
+        {expanded && <ReadOnlyBody borderColor="#FDE68A" bgColor="#FFFDE7" />}
       </div>
     </>
   }
 
-  // Locked red tile — supplier can't supply this item
+  // Red expandable tile — supplier can't supply this item
   if (assignment.status === 'supplier_declined') {
     return <>{lightbox}
-      <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
-        <Ban size={16} className="text-red-400 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm" style={{ color: '#18181B' }}>{item.title}</p>
-          {assignment.response?.notes?.replace("[CAN'T SUPPLY] ", '') ? (
-            <p className="text-xs text-red-600 mt-0.5">{assignment.response.notes.replace("[CAN'T SUPPLY] ", '')}</p>
-          ) : (
-            <p className="text-xs text-red-400 mt-0.5">Marked as can&apos;t supply</p>
-          )}
-        </div>
-        <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-full shrink-0">Can&apos;t supply</span>
+      <div className="rounded-xl overflow-hidden" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
+        <button type="button" onClick={() => setExpanded(e => !e)} className="w-full flex items-center gap-3 px-5 py-4 text-left">
+          <Ban size={16} className="text-red-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm" style={{ color: '#18181B' }}>{item.title}</p>
+            {assignment.response?.notes?.replace("[CAN'T SUPPLY] ", '') ? (
+              <p className="text-xs text-red-600 mt-0.5">{assignment.response.notes.replace("[CAN'T SUPPLY] ", '')}</p>
+            ) : (
+              <p className="text-xs text-red-400 mt-0.5">Marked as can&apos;t supply</p>
+            )}
+          </div>
+          <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-full shrink-0">Can&apos;t supply</span>
+          <div className="shrink-0" style={{ color: '#FCA5A5' }}>{expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</div>
+        </button>
+        {expanded && <ReadOnlyBody borderColor="#FECDD3" bgColor="#FFF1F2" />}
       </div>
     </>
   }
 
-  // Locked green tile — designer selected this price
+  // Accepted: looks identical to a regular submitted item — supplier sees no "selected" indicator
   if (assignment.status === 'accepted') {
     return <>{lightbox}
-      <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#F0FDF4', border: '1px solid #A7F3D0' }}>
-        <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm" style={{ color: '#18181B' }}>{item.title}</p>
-          <p className="text-sm text-emerald-700 font-medium mt-0.5">
-            R{assignment.response?.unit_price.toLocaleString()} selected for the quote
-            {assignment.response?.lead_time_weeks ? ` · ${assignment.response.lead_time_weeks}w lead` : ''}
-          </p>
-        </div>
-        <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full shrink-0">Selected</span>
+      <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+        <button
+          type="button"
+          onClick={() => setExpanded(e => !e)}
+          className="w-full flex items-start justify-between gap-4 px-5 py-4 text-left transition-colors"
+          style={{ background: expanded ? '#FAFAFA' : 'transparent' }}
+          onMouseEnter={e => { if (!expanded) e.currentTarget.style.background = '#FAFAFA' }}
+          onMouseLeave={e => { if (!expanded) e.currentTarget.style.background = 'transparent' }}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+              <p className="font-semibold text-sm truncate" style={{ color: '#18181B' }}>{item.title}</p>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+              {item.work_type && <span className="text-xs" style={{ color: '#71717A' }}>{item.work_type}</span>}
+              {item.item_quantity && <span className="text-xs" style={{ color: '#71717A' }}>Qty: {item.item_quantity}</span>}
+              {item.dimensions && <span className="text-xs" style={{ color: '#71717A' }}>{item.dimensions}</span>}
+              {item.colour_finish && <span className="text-xs" style={{ color: '#71717A' }}>{item.colour_finish}</span>}
+            </div>
+            {item.specifications && !expanded && (
+              <p className="text-xs mt-1 italic line-clamp-2" style={{ color: '#A1A1AA' }}>{item.specifications}</p>
+            )}
+            {item.ref_image_urls && item.ref_image_urls.length > 0 && !expanded && (
+              <div className="flex gap-1.5 mt-2">
+                {item.ref_image_urls.slice(0, 3).map((url, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={url} alt=""
+                    className="w-10 h-10 rounded-md object-cover cursor-pointer transition-opacity hover:opacity-80"
+                    style={{ border: '1px solid #E4E4E7' }}
+                    onClick={e => { e.stopPropagation(); setLightboxIndex(i) }}
+                  />
+                ))}
+                {item.ref_image_urls.length > 3 && (
+                  <button onClick={e => { e.stopPropagation(); setLightboxIndex(3) }}
+                    className="w-10 h-10 rounded-md flex items-center justify-center text-xs font-medium transition-colors hover:bg-[#E4E4E7]"
+                    style={{ background: '#F4F4F5', color: '#71717A', border: '1px solid #E4E4E7' }}>
+                    +{item.ref_image_urls.length - 3}
+                  </button>
+                )}
+              </div>
+            )}
+            {assignment.response && !expanded && (
+              <p className="text-xs text-emerald-600 mt-1 font-medium">
+                R{assignment.response.unit_price.toLocaleString()} submitted
+                {assignment.response.lead_time_weeks ? ` · ${assignment.response.lead_time_weeks}w lead` : ''}
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 mt-0.5" style={{ color: '#A1A1AA' }}>
+            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
+        </button>
+        {expanded && <ReadOnlyBody borderColor="#E4E4E7" bgColor="#FAFAFA" />}
       </div>
     </>
   }
@@ -776,8 +864,6 @@ export function SupplierRespondClient({
   const [declining, setDeclining] = useState(false)
   const [fullyDeclined, setFullyDeclined] = useState(false)
 
-  const allAccepted = items.length > 0 && items.every(a => a.status === 'accepted')
-
   function handleSaved(assignmentId: string, response: Assignment['response']) {
     setItems(prev =>
       prev.map(a => a.id === assignmentId ? { ...a, status: 'responded', response } : a)
@@ -877,17 +963,8 @@ export function SupplierRespondClient({
             <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
               <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
               <div>
-                {allAccepted ? (
-                  <>
-                    <p className="text-sm font-semibold text-emerald-800">Pricing accepted</p>
-                    <p className="text-xs text-emerald-600">The studio has accepted your quotes. No further action needed.</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
-                    <p className="text-xs text-emerald-600">Awaiting review from the studio.</p>
-                  </>
-                )}
+                <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
+                <p className="text-xs text-emerald-600">Awaiting review from the studio.</p>
               </div>
             </div>
           ) : (
@@ -906,17 +983,15 @@ export function SupplierRespondClient({
               <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} onSpecApprovalRequested={handleSpecApprovalRequested} />
             ))}
           </div>
-          <QuoteUpload token={token} locked={allAccepted} />
-          {!allAccepted && (
-            <div className="pt-2 border-t border-[#E4E4E7]">
-              <button type="button" onClick={handleDeclineAll} disabled={declining}
-                className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
-                style={{ color: '#EF4444' }}>
-                <AlertTriangle size={13} />
-                {declining ? 'Declining…' : 'Decline entire request'}
-              </button>
-            </div>
-          )}
+          <QuoteUpload token={token} />
+          <div className="pt-2 border-t border-[#E4E4E7]">
+            <button type="button" onClick={handleDeclineAll} disabled={declining}
+              className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
+              style={{ color: '#EF4444' }}>
+              <AlertTriangle size={13} />
+              {declining ? 'Declining…' : 'Decline entire request'}
+            </button>
+          </div>
           <div className="rounded-xl px-5 py-4 text-center" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
             <p className="text-xs font-semibold mb-1" style={{ color: '#18181B' }}>Manage all your requests in one place</p>
             <p className="text-xs mb-3" style={{ color: '#71717A' }}>Create a free supplier account to track pricing requests, submit prices, and message studios — without needing a link each time.</p>
@@ -962,17 +1037,15 @@ export function SupplierRespondClient({
               ))}
             </div>
             <div className="space-y-4">
-              <QuoteUpload token={token} locked={allAccepted} />
-              {!allAccepted && (
-                <div className="pt-2 border-t border-[#E4E4E7]">
-                  <button type="button" onClick={handleDeclineAll} disabled={declining}
-                    className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
-                    style={{ color: '#EF4444' }}>
-                    <AlertTriangle size={13} />
-                    {declining ? 'Declining…' : 'Decline entire request'}
-                  </button>
-                </div>
-              )}
+              <QuoteUpload token={token} />
+              <div className="pt-2 border-t border-[#E4E4E7]">
+                <button type="button" onClick={handleDeclineAll} disabled={declining}
+                  className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
+                  style={{ color: '#EF4444' }}>
+                  <AlertTriangle size={13} />
+                  {declining ? 'Declining…' : 'Decline entire request'}
+                </button>
+              </div>
               <p className="text-center text-xs pb-2" style={{ color: '#A1A1AA' }}>Sent via QuotingHub</p>
             </div>
           </div>

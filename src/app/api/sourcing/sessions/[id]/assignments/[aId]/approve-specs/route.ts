@@ -53,6 +53,8 @@ export async function POST(
     }
 
     if (action === 'approve') {
+      const now = new Date().toISOString()
+
       // Fetch item_id so we can write the finalised specs back to the item
       const { data: aRow } = await supabaseAdmin
         .from('sourcing_item_assignments')
@@ -62,7 +64,10 @@ export async function POST(
 
       const updates: Record<string, unknown> = {
         spec_approval_status: 'approved',
-        spec_approved_at: new Date().toISOString(),
+        spec_approved_at: now,
+        // Auto-select: spec approval = price acceptance in the new one-step flow
+        status: 'accepted',
+        accepted_at: now,
       }
       if (final_specs) updates.pending_supplier_specs = final_specs
 
@@ -72,9 +77,18 @@ export async function POST(
         .eq('id', assignmentId)
       if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
 
-      // Write designer-finalised specs back to the item so push picks them up
-      if (final_specs && aRow?.item_id) {
-        await supabaseAdmin.from('sourcing_session_items').update({ item_specs: final_specs }).eq('id', aRow.item_id)
+      if (aRow?.item_id) {
+        await Promise.all([
+          // Mark item as accepted
+          supabaseAdmin.from('sourcing_session_items')
+            .update({ status: 'accepted', ...(final_specs ? { item_specs: final_specs } : {}) })
+            .eq('id', aRow.item_id),
+          // Mark all other assignments for this item as declined
+          supabaseAdmin.from('sourcing_item_assignments')
+            .update({ status: 'declined' })
+            .eq('item_id', aRow.item_id)
+            .neq('id', assignmentId),
+        ])
       }
     } else {
       // Delete the supplier's response so they must re-quote from scratch
@@ -96,10 +110,9 @@ export async function POST(
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Notify supplier of the decision
-    if (process.env.RESEND_API_KEY) {
+    // On reject, notify the supplier they need to re-quote with original specs
+    if (action === 'reject' && process.env.RESEND_API_KEY) {
       try {
-        // Fetch what we need: supplier email/name/token, item title, session title
         const { data: aRow } = await supabaseAdmin
           .from('sourcing_item_assignments')
           .select('item_id, session_supplier_id')
@@ -108,35 +121,29 @@ export async function POST(
 
         if (aRow) {
           const [{ data: ssRow }, { data: itemRow }, { data: sessionRow }] = await Promise.all([
-            supabaseAdmin.from('sourcing_session_suppliers').select('email, supplier_name, token, portal_account_id').eq('id', aRow.session_supplier_id).single(),
-            supabaseAdmin.from('sourcing_session_items').select('title').eq('id', aRow.item_id).maybeSingle(),
-            supabaseAdmin.from('sourcing_sessions').select('id, title').eq('id', sessionId).single(),
-          ])
+              supabaseAdmin.from('sourcing_session_suppliers').select('email, supplier_name, token, portal_account_id').eq('id', aRow.session_supplier_id).single(),
+              supabaseAdmin.from('sourcing_session_items').select('title').eq('id', aRow.item_id).maybeSingle(),
+              supabaseAdmin.from('sourcing_sessions').select('id, title').eq('id', sessionId).single(),
+            ])
 
-          if (ssRow?.email && sessionRow) {
-            const resend = new Resend(process.env.RESEND_API_KEY)
-            const itemTitle = itemRow?.title ?? 'an item'
-            const isApproved = action === 'approve'
-            const respondUrl = ssRow.portal_account_id
-              ? `${SUPPLIER_PORTAL_URL}/requests/${aRow.session_supplier_id}`
-              : `${APP_URL}/sourcing/respond/${ssRow.token}`
+            if (ssRow?.email && sessionRow) {
+              const respondUrl = ssRow.portal_account_id
+                ? `${SUPPLIER_PORTAL_URL}/requests/${aRow.session_supplier_id}`
+                : `${APP_URL}/sourcing/respond/${ssRow.token}`
 
-            await resend.emails.send({
-              from: 'QuotingHub <no-reply@quotinghub.co.za>',
-              to: ssRow.email,
-              subject: isApproved
-                ? `Spec change approved — ${sessionRow.title}`
-                : `Spec change not approved — ${sessionRow.title}`,
-              html: buildNotifEmail({
-                heading: isApproved ? 'Specification change approved' : 'Specification change not approved',
-                body: isApproved
-                  ? `Your specification change for <strong>${itemTitle}</strong> in &ldquo;${sessionRow.title}&rdquo; has been approved. You can now submit your price.`
-                  : `Your specification change for <strong>${itemTitle}</strong> in &ldquo;${sessionRow.title}&rdquo; was not approved. Please review the original specifications and submit your price as specified.`,
-                ctaLabel: isApproved ? 'Submit your price' : 'View request',
-                ctaUrl: respondUrl,
-              }),
-            })
-          }
+              const resend = new Resend(process.env.RESEND_API_KEY)
+              await resend.emails.send({
+                from: 'QuotingHub <no-reply@quotinghub.co.za>',
+                to: ssRow.email,
+                subject: `Spec change not accepted — ${sessionRow.title}`,
+                html: buildNotifEmail({
+                  heading: 'Specification change not accepted',
+                  body: `Your specification change for <strong>${itemRow?.title ?? 'an item'}</strong> in &ldquo;${sessionRow.title}&rdquo; was not accepted. Your response has been removed &mdash; please re-submit your price with the original specifications.`,
+                  ctaLabel: 'Re-submit your price',
+                  ctaUrl: respondUrl,
+                }),
+              })
+            }
         }
       } catch { /* never break the main response */ }
     }
