@@ -203,7 +203,6 @@ function PriceForm({
   const [leadTime, setLeadTime] = useState(assignment.response?.lead_time_weeks?.toString() ?? '')
   const [notes, setNotes] = useState(assignment.response?.notes ?? '')
   const [saving, setSaving] = useState(false)
-  const [sendingApproval, setSendingApproval] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [specEdits, setSpecEdits] = useState<Record<string, string>>(() => {
     const it = assignment.item
@@ -266,26 +265,6 @@ function PriceForm({
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
-  async function handleSendForApproval() {
-    setSendingApproval(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/sourcing/respond/${token}/spec-request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignment_id: assignment.id, specs: specEdits }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      onSpecApprovalRequested(assignment.id, specEdits)
-      setExpanded(false)
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setSendingApproval(false)
-    }
-  }
-
   const item = assignment.item
   if (!item) return null
 
@@ -323,7 +302,7 @@ function PriceForm({
           <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm mb-0.5" style={{ color: '#18181B' }}>{item.title}</p>
-            <p className="text-xs" style={{ color: '#92600A' }}>Spec changes sent — awaiting designer approval before you can price</p>
+            <p className="text-xs" style={{ color: '#92600A' }}>Price submitted with spec changes — awaiting designer review</p>
             {changedEntries.length > 0 && (
               <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
                 {changedEntries.map(([k, v]) => (
@@ -361,7 +340,7 @@ function PriceForm({
     </>
   }
 
-  // Locked green tile — designer accepted this price
+  // Locked green tile — designer selected this price
   if (assignment.status === 'accepted') {
     return <>{lightbox}
       <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: '#F0FDF4', border: '1px solid #A7F3D0' }}>
@@ -369,11 +348,11 @@ function PriceForm({
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm" style={{ color: '#18181B' }}>{item.title}</p>
           <p className="text-sm text-emerald-700 font-medium mt-0.5">
-            R{assignment.response?.unit_price.toLocaleString()} accepted
+            R{assignment.response?.unit_price.toLocaleString()} selected for the quote
             {assignment.response?.lead_time_weeks ? ` · ${assignment.response.lead_time_weeks}w lead` : ''}
           </p>
         </div>
-        <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full shrink-0">Accepted</span>
+        <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full shrink-0">Selected</span>
       </div>
     </>
   }
@@ -403,6 +382,9 @@ function PriceForm({
             {item.dimensions && <span className="text-xs" style={{ color: '#71717A' }}>{item.dimensions}</span>}
             {item.colour_finish && <span className="text-xs" style={{ color: '#71717A' }}>{item.colour_finish}</span>}
           </div>
+          {item.specifications && !expanded && (
+            <p className="text-xs mt-1 italic line-clamp-2" style={{ color: '#A1A1AA' }}>{item.specifications}</p>
+          )}
           {item.ref_image_urls && item.ref_image_urls.length > 0 && !expanded && (
             <div className="flex gap-1.5 mt-2">
               {item.ref_image_urls.slice(0, 3).map((url, i) => (
@@ -610,38 +592,30 @@ function PriceForm({
                 </button>
               </div>
             </div>
-          ) : specsChanged && !specApproved ? (
-            /* Specs edited but not yet approved — show send-for-approval CTA */
-            <div className="px-5 py-4 space-y-3">
+          ) : (
+            /* Unified price form — spec changes and price submitted together */
+            <>
               {specRejected && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
-                  <AlertTriangle size={13} className="text-red-400 shrink-0" />
-                  <p className="text-xs text-red-600">Previous spec request was rejected — revise and re-send.</p>
+                <div className="px-5 pt-4">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
+                    <AlertTriangle size={13} className="text-red-400 shrink-0" />
+                    <p className="text-xs text-red-600">Your spec changes were declined — please re-quote with the original specs, or edit and resubmit.</p>
+                  </div>
                 </div>
               )}
-              {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
-              <button type="button" onClick={handleSendForApproval} disabled={sendingApproval}
-                className="w-full px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-                style={{ background: '#78350F', color: '#FFFFFF' }}>
-                {sendingApproval ? 'Sending…' : 'Send specs for approval'}
-              </button>
-            </div>
-          ) : (
-            /* Normal price form — no spec changes, or specs already approved */
-            <>
+              {specsChanged && !specApproved && !specRejected && (
+                <div className="px-5 pt-4">
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                    <AlertTriangle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700">Your spec edits will be sent with your price. The designer will review the changes before your price is compared.</p>
+                  </div>
+                </div>
+              )}
               {specApproved && (
                 <div className="px-5 pt-4">
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#ECFDF5', border: '1px solid #A7F3D0' }}>
                     <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
-                    <p className="text-xs font-medium text-emerald-700">Spec changes approved — enter your price below</p>
-                  </div>
-                </div>
-              )}
-              {specRejected && !specsChanged && (
-                <div className="px-5 pt-4">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#FFF1F2', border: '1px solid #FECDD3' }}>
-                    <AlertTriangle size={13} className="text-red-400 shrink-0" />
-                    <p className="text-xs text-red-600">Spec changes rejected — you can price with the original specs or edit and re-send.</p>
+                    <p className="text-xs font-medium text-emerald-700">Spec changes approved — your price is in the comparison</p>
                   </div>
                 </div>
               )}
@@ -705,7 +679,7 @@ function PriceForm({
                     className="px-5 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
                     style={{ background: '#34495E', color: '#FFFFFF' }}
                   >
-                    {saving ? 'Saving…' : assignment.response ? 'Update Price' : 'Submit Price'}
+                    {saving ? 'Saving…' : specsChanged && !specApproved ? 'Submit with spec changes' : assignment.response ? 'Update Price' : 'Submit Price'}
                   </button>
                 </div>
               </form>

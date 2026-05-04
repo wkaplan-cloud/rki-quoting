@@ -77,11 +77,19 @@ export async function POST(
         await supabaseAdmin.from('sourcing_session_items').update({ item_specs: final_specs }).eq('id', aRow.item_id)
       }
     } else {
+      // Delete the supplier's response so they must re-quote from scratch
+      await supabaseAdmin
+        .from('sourcing_item_responses')
+        .delete()
+        .eq('assignment_id', assignmentId)
+
       const { error } = await supabaseAdmin
         .from('sourcing_item_assignments')
         .update({
           spec_approval_status: 'rejected',
           pending_supplier_specs: null,
+          status: 'pending',
+          responded_at: null,
         })
         .eq('id', assignmentId)
 

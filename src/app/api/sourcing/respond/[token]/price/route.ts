@@ -48,17 +48,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     if (!assignment) return NextResponse.json({ error: 'Assignment not found' }, { status: 404 })
 
-    // Block pricing while spec changes are awaiting designer approval
-    if (assignment.spec_approval_status === 'pending') {
-      return NextResponse.json({ error: 'Awaiting designer spec approval before pricing' }, { status: 400 })
-    }
-
     const now = new Date().toISOString()
 
-    // If specs were approved, use the approved pending_supplier_specs (client supplier_specs takes precedence if also sent)
-    const resolvedSupplierSpecs = supplier_specs ?? (
-      assignment.spec_approval_status === 'approved' ? assignment.pending_supplier_specs : null
-    )
+    // Detect whether the supplier changed any specs vs. the original item
+    let specApprovalUpdates: Record<string, unknown> = { spec_approval_status: null, pending_supplier_specs: null }
+    if (supplier_specs && Object.keys(supplier_specs).length > 0) {
+      const { data: itemRow } = await supabaseAdmin
+        .from('sourcing_session_items')
+        .select('item_specs, dimensions, colour_finish')
+        .eq('id', assignment.item_id)
+        .maybeSingle()
+      if (itemRow) {
+        const origSpecs: Record<string, string> = {
+          ...(itemRow.item_specs ?? {}),
+          ...(itemRow.dimensions ? { dimensions: itemRow.dimensions } : {}),
+          ...(itemRow.colour_finish ? { colour_finish: itemRow.colour_finish } : {}),
+        }
+        const hasChange = Object.keys({ ...origSpecs, ...supplier_specs }).some(
+          k => (supplier_specs[k] ?? '') !== (origSpecs[k] ?? '')
+        )
+        if (hasChange) {
+          specApprovalUpdates = { spec_approval_status: 'pending', pending_supplier_specs: supplier_specs }
+        }
+      }
+    }
 
     // Upsert response (unique on assignment_id)
     const { data: response, error } = await supabaseAdmin
@@ -73,7 +86,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           valid_until: valid_until ?? null,
           notes: notes ?? null,
           attachment_url: attachment_url ?? null,
-          supplier_specs: resolvedSupplierSpecs,
+          supplier_specs: supplier_specs ?? null,
           submitted_at: now,
           updated_at: now,
         },
@@ -84,10 +97,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Update assignment status to responded
+    // Update assignment status + spec approval state
     await supabaseAdmin
       .from('sourcing_item_assignments')
-      .update({ status: 'responded', responded_at: now })
+      .update({ status: 'responded', responded_at: now, ...specApprovalUpdates })
       .eq('id', assignment_id)
 
     // Update session supplier status to in_progress if still pending/viewed

@@ -484,114 +484,80 @@ function SpecApprovalPanel({
 }) {
   const catKey = (item.category ?? 'general') as CategoryKey
   const fields = CATEGORY_FIELDS[catKey] ?? []
-  const origSpecs: Record<string, string> = item.item_specs ?? {}
-  const pendingSpecs: Record<string, string> = assignment.pending_supplier_specs ?? {}
-
-  // Start with supplier's proposed values merged over originals
-  const [specs, setSpecs] = useState<Record<string, string>>(() => ({ ...origSpecs, ...pendingSpecs }))
-
-  const definedKeys = new Set(fields.map(f => f.key))
-  const extraKeys = Object.keys(pendingSpecs).filter(k => !definedKeys.has(k) && (pendingSpecs[k] ?? '') !== (origSpecs[k] ?? ''))
-
-  function isChanged(key: string) {
-    return (pendingSpecs[key] ?? '') !== (origSpecs[key] ?? '') && (pendingSpecs[key] ?? '') !== ''
+  const origSpecs: Record<string, string> = {
+    ...(item.item_specs ?? {}),
+    ...(item.dimensions ? { dimensions: item.dimensions } : {}),
+    ...(item.colour_finish ? { colour_finish: item.colour_finish } : {}),
   }
+  const pendingSpecs: Record<string, string> = assignment.pending_supplier_specs ?? {}
+  const response = assignment.response
 
-  const inputCls = (key: string) =>
-    `w-full px-2.5 py-1.5 text-xs border rounded-lg focus:outline-none focus:border-[#C4A46B] ${
-      isChanged(key) ? 'border-amber-300 bg-amber-50' : 'border-[#D4CFC7] bg-white'
-    }`
+  const allKeys = [...new Set([...Object.keys(origSpecs), ...Object.keys(pendingSpecs)])]
+  const changedKeys = allKeys.filter(k => (pendingSpecs[k] ?? '') !== (origSpecs[k] ?? '') && (pendingSpecs[k] ?? '') !== '')
 
-  function set(key: string, val: string) {
-    setSpecs(prev => ({ ...prev, [key]: val }))
+  function getLabel(key: string) {
+    const def = fields.find(f => f.key === key)
+    if (def) return def.label + (def.unit ? ` (${def.unit})` : '')
+    return key.replace(/_/g, ' ')
   }
 
   return (
     <div className="mt-2 rounded-xl overflow-hidden" style={{ border: '1px solid #FDE68A' }}>
+      {/* Header */}
       <div className="px-3 py-2 flex items-center gap-2" style={{ background: '#FFFBEB', borderBottom: '1px solid #FDE68A' }}>
         <AlertTriangle size={12} className="text-amber-500 shrink-0" />
         <p className="text-[11px] font-semibold text-amber-800">
-          Spec changes from {supplierName} — edit any field, then approve
+          {supplierName} changed {changedKeys.length} spec{changedKeys.length !== 1 ? 's' : ''} — accept or decline below
         </p>
       </div>
 
-      <div className="p-3 bg-white">
-        {fields.length > 0 ? (
-          <div className="grid grid-cols-2 gap-2">
-            {fields.map(field => {
-              const val = specs[field.key] ?? ''
-              const changed = isChanged(field.key)
-              if (field.type === 'select') {
-                return (
-                  <div key={field.key}>
-                    <label className="block text-[10px] text-[#8A877F] mb-0.5">
-                      {field.label}{changed && <span className="ml-1 text-amber-500 font-bold">↑ changed</span>}
-                    </label>
-                    <select value={val} onChange={e => set(field.key, e.target.value)} className={inputCls(field.key)}>
-                      <option value="">—</option>
-                      {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                )
-              }
-              if (field.type === 'textarea') {
-                return (
-                  <div key={field.key} className="col-span-2">
-                    <label className="block text-[10px] text-[#8A877F] mb-0.5">
-                      {field.label}{changed && <span className="ml-1 text-amber-500 font-bold">↑ changed</span>}
-                    </label>
-                    <textarea value={val} onChange={e => set(field.key, e.target.value)} rows={2}
-                      className={`${inputCls(field.key)} resize-none`} />
-                  </div>
-                )
-              }
-              return (
-                <div key={field.key}>
-                  <label className="block text-[10px] text-[#8A877F] mb-0.5">
-                    {field.label}{field.unit && <span className="text-[#C4BFB5] ml-1">({field.unit})</span>}
-                    {changed && <span className="ml-1 text-amber-500 font-bold">↑ changed</span>}
-                  </label>
-                  <input
-                    type={field.type === 'number' ? 'number' : 'text'}
-                    value={val}
-                    onChange={e => set(field.key, e.target.value)}
-                    placeholder={field.placeholder}
-                    className={inputCls(field.key)}
-                  />
-                </div>
-              )
-            })}
+      {/* Price summary */}
+      {response && (
+        <div className="px-3 py-2.5 bg-white flex items-center gap-5" style={{ borderBottom: '1px solid #FEF9EC' }}>
+          <div>
+            <p className="text-[10px] text-[#8A877F] mb-0.5">Their price</p>
+            <p className="text-sm font-bold text-[#2C2C2A]">R{response.unit_price.toLocaleString()}</p>
           </div>
-        ) : (
-          // General category — no structured fields; show free-text entries from supplier
-          <p className="text-xs text-[#8A877F] italic">No structured fields for this category.</p>
-        )}
+          {response.lead_time_weeks && (
+            <div>
+              <p className="text-[10px] text-[#8A877F] mb-0.5">Lead time</p>
+              <p className="text-sm font-medium text-[#2C2C2A]">{response.lead_time_weeks}w</p>
+            </div>
+          )}
+          {response.notes && (
+            <p className="text-xs text-[#8A877F] italic flex-1">{response.notes}</p>
+          )}
+        </div>
+      )}
 
-        {/* Extra keys the supplier added that aren't in the field definition */}
-        {extraKeys.length > 0 && (
-          <div className="mt-2 space-y-2">
-            {extraKeys.map(key => (
-              <div key={key}>
-                <label className="block text-[10px] text-amber-600 font-semibold mb-0.5">
-                  {key.replace(/_/g, ' ')} <span className="font-bold">↑ added by supplier</span>
-                </label>
-                <input type="text" value={specs[key] ?? ''} onChange={e => set(key, e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs border border-amber-300 bg-amber-50 rounded-lg focus:outline-none focus:border-[#C4A46B]" />
-              </div>
-            ))}
+      {/* Read-only spec comparison */}
+      {changedKeys.length > 0 && (
+        <div className="p-3 bg-white">
+          <div className="grid grid-cols-3 gap-x-3 mb-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#C4BFB5]">Spec</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#C4BFB5]">Original</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-500">Supplier&apos;s change</p>
           </div>
-        )}
-      </div>
+          {changedKeys.map(key => (
+            <div key={key} className="grid grid-cols-3 gap-x-3 py-1.5 border-t border-[#F5F2EC]">
+              <p className="text-xs text-[#8A877F]">{getLabel(key)}</p>
+              <p className="text-xs text-[#8A877F] line-through">{origSpecs[key] || '—'}</p>
+              <p className="text-xs font-medium text-amber-700">{pendingSpecs[key] || '—'}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
+      {/* Actions */}
       <div className="flex gap-2 justify-end px-3 py-2" style={{ background: '#FFFBEB', borderTop: '1px solid #FDE68A' }}>
         <button type="button" onClick={onReject} disabled={isApproving}
           className="px-3 py-1 text-xs rounded-lg border border-[#D4CFC7] text-[#71717A] hover:bg-[#F5F2EC] transition-colors disabled:opacity-50">
-          Reject
+          Decline
         </button>
-        <button type="button" onClick={() => onApprove(specs)} disabled={isApproving}
+        <button type="button" onClick={() => onApprove(pendingSpecs)} disabled={isApproving}
           className="px-3 py-1 text-xs font-semibold rounded-lg text-white disabled:opacity-50 transition-opacity"
-          style={{ background: '#C4A46B' }}>
-          {isApproving ? 'Approving…' : 'Approve these specs'}
+          style={{ background: '#22C55E' }}>
+          {isApproving ? 'Accepting…' : 'Accept'}
         </button>
       </div>
     </div>
@@ -1303,7 +1269,7 @@ function SupplierCard({
                     )}
 
 
-                    {hasResponse && assignment?.response && (
+                    {hasResponse && assignment?.response && specStatus !== 'pending' && (
                       <div className="flex items-center gap-3 flex-wrap mt-1">
                         <span className="text-sm font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
                         {assignment.response.lead_time_weeks && <span className="text-xs text-[#8A877F]">{assignment.response.lead_time_weeks}w lead</span>}
