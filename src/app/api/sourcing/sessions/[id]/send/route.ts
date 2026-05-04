@@ -124,21 +124,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const body = await req.json().catch(() => ({})) as { session_supplier_id?: string }
 
-    const [{ data: session }, { data: settings }] = await Promise.all([
+    const [{ data: session }, { data: settings }, { data: sessionSuppliers }] = await Promise.all([
       supabase.from('sourcing_sessions').select('*, project:projects(project_name, project_number)').eq('id', id).single(),
       supabase.from('settings').select('business_name, email_from').maybeSingle(),
+      supabase
+        .from('sourcing_session_suppliers')
+        .select('*, assignments:sourcing_item_assignments(*, item:sourcing_session_items(*))')
+        .eq('session_id', id),
     ])
 
     if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (!['draft', 'sent', 'in_progress'].includes(session.status)) {
       return NextResponse.json({ error: 'Session cannot be sent in its current state' }, { status: 400 })
     }
-
-    // Fetch all suppliers + their assigned items
-    const { data: sessionSuppliers } = await supabase
-      .from('sourcing_session_suppliers')
-      .select('*, assignments:sourcing_item_assignments(*, item:sourcing_session_items(*))')
-      .eq('session_id', id)
 
     if (!sessionSuppliers?.length) {
       return NextResponse.json({ error: 'Add at least one supplier before sending' }, { status: 400 })
