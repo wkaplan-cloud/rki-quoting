@@ -911,7 +911,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       {!locked && (
         <>
           <p className="mt-2 text-xs text-[#9A7B4F]/80 leading-relaxed">
-            To search fabrics and pull in live pricing, select a platform supplier (shown in gold) on the line item first — the item name field will become a live fabric search.
+            To search for fabrics and pull in live pricing, select a fabric house in the Supplier column of the line item first — the Item field will then become a live fabric search.
           </p>
           <div className="mt-1 flex items-center gap-4">
             <button
