@@ -32,40 +32,47 @@ export default async function PlatformPriceListsPage() {
   const pendingRequests = withOrgName.filter(r => r.status === 'pending')
   const activeAccess = withOrgName.filter(r => r.status === 'active' || r.status === 'rejected')
 
-  // Twinbru sync status — ignore errors, panel degrades gracefully
-  const syncLogsRes = await supabaseAdmin
-    .from('twinbru_sync_log')
-    .select('id, sync_type, started_at, completed_at, status, items_checked, items_changed, items_added, error_message, triggered_by')
-    .in('sync_type', ['prices', 'load', 'backfill', 'discontinued'])
-    .order('started_at', { ascending: false })
-    .limit(20)
-
-  const catalogueCountRes = await supabaseAdmin
-    .from('price_list_items')
-    .select('id', { count: 'exact', head: true })
-    .not('product_id', 'is', null)
+  // Query each sync type separately to avoid shared row-limit masking recent runs
+  const SYNC_FIELDS = 'id, sync_type, started_at, completed_at, status, items_checked, items_changed, items_added, error_message, triggered_by'
+  const [priceLogsRes, loadLogsRes, backfillLogsRes, discontinuedLogsRes, catalogueCountRes] = await Promise.all([
+    supabaseAdmin.from('twinbru_sync_log').select(SYNC_FIELDS).eq('sync_type', 'prices').order('started_at', { ascending: false }).limit(5),
+    supabaseAdmin.from('twinbru_sync_log').select(SYNC_FIELDS).eq('sync_type', 'load').order('started_at', { ascending: false }).limit(10),
+    supabaseAdmin.from('twinbru_sync_log').select(SYNC_FIELDS).eq('sync_type', 'backfill').order('started_at', { ascending: false }).limit(5),
+    supabaseAdmin.from('twinbru_sync_log').select(SYNC_FIELDS).eq('sync_type', 'discontinued').order('started_at', { ascending: false }).limit(5),
+    supabaseAdmin.from('price_list_items').select('id', { count: 'exact', head: true }).not('product_id', 'is', null),
+  ])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const syncLogs: any[] = syncLogsRes.data ?? []
-  // Prefer the most recent completed (ok or error) sync — skip stuck/running rows with no completed_at
-  const lastPriceSync =
-    syncLogs.find(l => l.sync_type === 'prices' && l.status === 'ok') ??
-    syncLogs.find(l => l.sync_type === 'prices' && l.completed_at) ??
-    syncLogs.find(l => l.sync_type === 'prices') ??
-    null
-  const lastLoadSync =
-    syncLogs.find(l => l.sync_type === 'load' && l.status === 'ok' && !l.error_message?.startsWith('RESUME:')) ??
-    syncLogs.find(l => l.sync_type === 'load' && l.completed_at) ??
-    syncLogs.find(l => l.sync_type === 'load') ??
-    null
-  const lastDiscontinuedSync =
-    syncLogs.find(l => l.sync_type === 'discontinued' && l.status === 'ok') ??
-    syncLogs.find(l => l.sync_type === 'discontinued') ??
-    null
-  const lastImageSync =
-    syncLogs.find(l => l.sync_type === 'backfill' && l.status === 'ok') ??
-    syncLogs.find(l => l.sync_type === 'backfill') ??
-    null
+  function pick(rows: any[], ...finders: ((l: any) => boolean)[]): any {
+    for (const fn of finders) {
+      const found = rows.find(fn)
+      if (found) return found
+    }
+    return null
+  }
+
+  const lastPriceSync = pick(
+    priceLogsRes.data ?? [],
+    l => l.status === 'ok',
+    l => !!l.completed_at,
+    () => true,
+  )
+  const lastLoadSync = pick(
+    loadLogsRes.data ?? [],
+    l => l.status === 'ok' && !l.error_message?.startsWith('RESUME:'),
+    l => !!l.completed_at,
+    () => true,
+  )
+  const lastDiscontinuedSync = pick(
+    discontinuedLogsRes.data ?? [],
+    l => l.status === 'ok',
+    () => true,
+  )
+  const lastImageSync = pick(
+    backfillLogsRes.data ?? [],
+    l => l.status === 'ok',
+    () => true,
+  )
   const catalogueCount = catalogueCountRes.count ?? 0
 
   return (

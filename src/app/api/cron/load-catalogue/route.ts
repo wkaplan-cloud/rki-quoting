@@ -123,8 +123,11 @@ export async function GET(req: NextRequest) {
         const parts = resumeLog.error_message.slice(7).split(':')
         const year = parseInt(parts[0], 10)
         const page = parseInt(parts[1], 10)
-        if (!isNaN(year)) startYear = year
-        if (!isNaN(page)) startPage = page
+        // Reject stale/corrupt tokens: year must be a plausible calendar year and page ≤ 1000
+        if (!isNaN(year) && year >= 1990 && !isNaN(page) && page >= 1 && page <= 1000) {
+          startYear = year
+          startPage = page
+        }
       }
     }
 
@@ -200,6 +203,7 @@ export async function GET(req: NextRequest) {
 
         if (!items.length || items.length < PAGE_SIZE) break
         if (totalPageCount && page >= totalPageCount) break
+        if (page >= 1000) break  // TwinBru API hard limit: page must be ≤ 1000
 
         page++
         await new Promise(r => setTimeout(r, 80))
