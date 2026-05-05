@@ -1015,7 +1015,7 @@ export function SupplierRespondClient({
                 <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-emerald-800">All prices submitted</p>
-                  <p className="text-xs text-emerald-600">You can still update individual prices or send a message.</p>
+                  <p className="text-xs text-emerald-600">The studio will review your prices and be in touch.</p>
                 </div>
               </div>
             ) : (
