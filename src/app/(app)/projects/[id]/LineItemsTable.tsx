@@ -121,6 +121,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Map of line item id → stock info
   const [stockMap, setStockMap] = useState<Record<string, { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null } | null>>({})
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  // New supplier mini-form modal
+  const [newSupplierModal, setNewSupplierModal] = useState<{ name: string; email: string; markup: string } | null>(null)
+  const newSupplierResolverRef = useRef<((result: { id: string }) => void) | null>(null)
   const lineItemsRef = useRef(lineItems)
   useEffect(() => { lineItemsRef.current = lineItems }, [lineItems])
 
@@ -230,20 +233,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }
   }, [lineItems, suppliers, onChange, supabase])
 
-  const createSupplier = useCallback(async (name: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: orgId } = await supabase.rpc('get_current_org_id')
-    const { data, error } = await supabase.from('suppliers').insert({
-      user_id: user!.id,
-      org_id: orgId,
-      supplier_name: name,
-      markup_percentage: 0,
-    }).select().single()
-    if (error) { toast.error('Failed to create supplier'); return { id: '' } }
-    toast.success(`Supplier "${name}" created`)
-    onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, delivery_contact_name: null, delivery_contact_number: null, is_platform: false, price_list_id: null, email: data.email ?? null })
-    return { id: data.id }
-  }, [supabase, onSupplierCreated])
+  const createSupplier = useCallback((name: string): Promise<{ id: string }> => {
+    return new Promise(resolve => {
+      newSupplierResolverRef.current = resolve
+      setNewSupplierModal({ name, email: '', markup: '0' })
+    })
+  }, [])
 
   const addRow = useCallback(async () => {
     const sort_order = lineItems.length
@@ -936,6 +931,89 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                 <span className="text-xs text-[#8A877F] leading-relaxed">{tip}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* New supplier mini-form modal */}
+      {newSupplierModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => {
+          setNewSupplierModal(null)
+          newSupplierResolverRef.current?.({ id: '' })
+          newSupplierResolverRef.current = null
+        }}>
+          <div className="bg-white rounded-lg shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">Add supplier</h3>
+            <p className="text-xs text-[#8A877F] mb-4">Add their email so you can send them a price request directly from the project.</p>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="text-xs text-[#8A877F] block mb-1">Supplier name</label>
+                <input
+                  type="text"
+                  value={newSupplierModal.name}
+                  onChange={e => setNewSupplierModal(prev => prev ? { ...prev, name: e.target.value } : null)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[#8A877F] block mb-1">Email <span className="text-[#C4BFB5]">(for price requests)</span></label>
+                <input
+                  autoFocus
+                  type="email"
+                  placeholder="supplier@example.com"
+                  value={newSupplierModal.email}
+                  onChange={e => setNewSupplierModal(prev => prev ? { ...prev, email: e.target.value } : null)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[#8A877F] block mb-1">Default markup %</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={newSupplierModal.markup}
+                  onChange={e => setNewSupplierModal(prev => prev ? { ...prev, markup: e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.') } : null)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-[#D8D3C8] rounded-lg focus:outline-none focus:border-[#9A7B4F]"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setNewSupplierModal(null)
+                  newSupplierResolverRef.current?.({ id: '' })
+                  newSupplierResolverRef.current = null
+                }}
+                className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!newSupplierModal.name.trim()}
+                onClick={async () => {
+                  const { name, email, markup } = newSupplierModal
+                  const { data: { user } } = await supabase.auth.getUser()
+                  const { data: orgId } = await supabase.rpc('get_current_org_id')
+                  const { data, error } = await supabase.from('suppliers').insert({
+                    user_id: user!.id,
+                    org_id: orgId,
+                    supplier_name: name.trim(),
+                    email: email.trim() || null,
+                    markup_percentage: parseFloat(markup) || 0,
+                  }).select().single()
+                  if (error) { toast.error('Failed to create supplier'); return }
+                  toast.success(`Supplier "${name.trim()}" created`)
+                  onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, delivery_contact_name: null, delivery_contact_number: null, is_platform: false, price_list_id: null, email: data.email ?? null })
+                  setNewSupplierModal(null)
+                  newSupplierResolverRef.current?.({ id: data.id })
+                  newSupplierResolverRef.current = null
+                }}
+                className="px-4 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+              >
+                Add Supplier
+              </button>
+            </div>
           </div>
         </div>
       )}
