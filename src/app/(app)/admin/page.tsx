@@ -51,14 +51,13 @@ export default async function AdminPage() {
             pipelineProjects={[]}
             pipelineLineItems={[]}
             userProfile={userProfile}
-            supplierAccounts={[]}
-          />
+            />
         </div>
       </div>
     )
   }
 
-  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }, { data: completedProjects }, { data: supplierAccounts }] = await Promise.all([
+  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }, { data: completedProjects }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
     supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(500),
     supabase.from('settings').select('*').maybeSingle(),
@@ -66,7 +65,6 @@ export default async function AdminPage() {
     supabase.from('projects')
       .select('id, project_name, project_number, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
       .order('date', { ascending: false }),
-    supabaseAdmin.from('supplier_portal_accounts').select('id, company_name, email, contact_name, created_at').order('created_at', { ascending: false }),
   ])
 
   const paidProjects = (completedProjects ?? []).filter(p => {
@@ -107,7 +105,6 @@ export default async function AdminPage() {
           pipelineProjects={pipelineProjects}
           pipelineLineItems={pipelineLineItems ?? []}
           userProfile={userProfile}
-          supplierAccounts={supplierAccounts ?? []}
         />
       </div>
     </div>

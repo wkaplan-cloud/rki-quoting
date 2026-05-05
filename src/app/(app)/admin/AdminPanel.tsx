@@ -50,14 +50,6 @@ interface LineItemRow {
   row_type: string | null
 }
 
-interface SupplierAccount {
-  id: string
-  company_name: string | null
-  email: string
-  contact_name: string | null
-  created_at: string
-}
-
 interface Props {
   members: Member[]
   auditLogs: AuditLog[]
@@ -70,7 +62,6 @@ interface Props {
   pipelineProjects: CompletedProject[]
   pipelineLineItems: LineItemRow[]
   userProfile: { fullName: string; email: string; phone: string; jobTitle: string }
-  supplierAccounts: SupplierAccount[]
 }
 
 const ACTION_COLOR: Record<string, string> = {
@@ -133,18 +124,15 @@ function getChanges(log: AuditLog): { field: string; from: string; to: string }[
     }))
 }
 
-export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, pipelineProjects, pipelineLineItems, userProfile, supplierAccounts: initialSuppliers }: Props) {
+export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, plan, subscriptionStatus, completedProjects, completedLineItems, pipelineProjects, pipelineLineItems, userProfile }: Props) {
   const isSoloActive = plan === 'solo' && subscriptionStatus === 'active'
   const [members, setMembers] = useState(initial)
-  const [suppliers, setSuppliers] = useState(initialSuppliers)
-  const [deletingSupplier, setDeletingSupplier] = useState<string | null>(null)
-  const [confirmDeleteSupplier, setConfirmDeleteSupplier] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('designer')
   const [inviting, setInviting] = useState(false)
   const [upgradeAgencyOpen, setUpgradeAgencyOpen] = useState(false)
   const [upgradingAgency, setUpgradingAgency] = useState(false)
-  const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'audit' | 'suppliers'>(isAdmin ? 'users' : 'profile')
+  const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'audit'>(isAdmin ? 'users' : 'profile')
 
   // Projected profit across all active (unpaid) projects
   const pipelineProfit = pipelineProjects.reduce((total, p) => {
@@ -235,21 +223,6 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-  async function handleDeleteSupplier(accountId: string) {
-    setDeletingSupplier(accountId)
-    const res = await fetch(`/api/admin/suppliers/${accountId}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const { error } = await res.json()
-      toast.error(error ?? 'Failed to delete supplier')
-      setDeletingSupplier(null)
-      return
-    }
-    setSuppliers(s => s.filter(a => a.id !== accountId))
-    setConfirmDeleteSupplier(null)
-    setDeletingSupplier(null)
-    toast.success('Supplier account deleted')
-  }
-
   async function handleUpgradeAgency() {
     setUpgradingAgency(true)
     try {
@@ -277,7 +250,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
         {(isAdmin
-          ? (['users', 'studio', 'profit', 'audit', 'suppliers', 'profile'] as const)
+          ? (['users', 'studio', 'profit', 'audit', 'profile'] as const)
           : (['profile'] as const)
         ).map(t => (
           <button
@@ -285,7 +258,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${tab === t ? 'border-b-2 border-[#9A7B4F] text-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
           >
-            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : t === 'profit' ? 'Profit' : t === 'audit' ? 'Audit Log' : t === 'suppliers' ? 'Suppliers' : 'My Profile'}
+            {t === 'users' ? 'Team Members' : t === 'studio' ? 'Studio Settings' : t === 'profit' ? 'Profit' : t === 'audit' ? 'Audit Log' : 'My Profile'}
           </button>
         ))}
       </div>
@@ -575,63 +548,6 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
             </tbody>
           </table>
         </div>
-        </div>
-      )}
-
-      {tab === 'suppliers' && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-xs text-[#8A877F]">{suppliers.length} registered supplier{suppliers.length !== 1 ? 's' : ''}</p>
-          </div>
-          {suppliers.length === 0 ? (
-            <p className="text-sm text-[#8A877F] py-8 text-center">No supplier accounts registered yet.</p>
-          ) : (
-            <div className="bg-white border border-[#D8D3C8] rounded overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Company</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Contact</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Email</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Registered</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {suppliers.map((s, i) => (
-                    <tr key={s.id} className={`border-b border-[#EDE9E1] ${i === suppliers.length - 1 ? 'border-0' : ''}`}>
-                      <td className="px-4 py-3 font-medium text-[#2C2C2A]">{s.company_name ?? '—'}</td>
-                      <td className="px-4 py-3 text-[#8A877F]">{s.contact_name ?? '—'}</td>
-                      <td className="px-4 py-3 text-[#8A877F]">{s.email}</td>
-                      <td className="px-4 py-3 text-[#8A877F] text-xs">{new Date(s.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                      <td className="px-4 py-3 text-right">
-                        {confirmDeleteSupplier === s.id ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <span className="text-xs text-[#8A877F]">Sure?</span>
-                            <button
-                              onClick={() => handleDeleteSupplier(s.id)}
-                              disabled={deletingSupplier === s.id}
-                              className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 cursor-pointer"
-                            >
-                              {deletingSupplier === s.id ? 'Deleting…' : 'Yes, delete'}
-                            </button>
-                            <button onClick={() => setConfirmDeleteSupplier(null)} className="text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">Cancel</button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setConfirmDeleteSupplier(s.id)}
-                            className="text-xs text-red-500 hover:text-red-700 transition-colors cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       )}
 
