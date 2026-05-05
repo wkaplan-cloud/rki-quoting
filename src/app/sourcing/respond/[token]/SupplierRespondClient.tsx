@@ -832,7 +832,7 @@ function QuoteUpload({ token, locked }: { token: string; locked?: boolean }) {
           <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm opacity-40 cursor-not-allowed select-none"
             style={{ background: '#F4F4F5', color: '#71717A', border: '1px dashed #D4D4D8' }}>
             <Upload size={14} />
-            Upload locked — pricing accepted
+            Upload locked — all prices submitted
           </div>
         ) : (
           <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer transition-opacity ${uploading ? 'opacity-50 pointer-events-none' : 'hover:opacity-80'}`}
@@ -983,7 +983,7 @@ export function SupplierRespondClient({
               <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} onSpecApprovalRequested={handleSpecApprovalRequested} />
             ))}
           </div>
-          <QuoteUpload token={token} />
+          <QuoteUpload token={token} locked={allDone} />
           <div className="pt-2 border-t border-[#E4E4E7]">
             <button type="button" onClick={handleDeclineAll} disabled={declining}
               className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
@@ -1037,7 +1037,7 @@ export function SupplierRespondClient({
               ))}
             </div>
             <div className="space-y-4">
-              <QuoteUpload token={token} />
+              <QuoteUpload token={token} locked={allDone} />
               <div className="pt-2 border-t border-[#E4E4E7]">
                 <button type="button" onClick={handleDeclineAll} disabled={declining}
                   className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
