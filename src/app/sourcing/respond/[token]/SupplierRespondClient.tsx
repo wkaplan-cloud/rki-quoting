@@ -929,7 +929,7 @@ export function SupplierRespondClient({
           <div className="px-6 py-5">
             <div className="flex items-center justify-between mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="QuotingHub" className="h-9 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+              <img src="/logo.png" alt="QuotingHub" className="h-14 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
               <a
                 href="/supplier-portal"
                 className="text-xs font-medium transition-opacity hover:opacity-60"
