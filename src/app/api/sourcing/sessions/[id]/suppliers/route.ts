@@ -31,11 +31,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (existing) return NextResponse.json({ error: 'Supplier already added to this session' }, { status: 409 })
 
+    // If no supplier_id provided, save to main suppliers table so they appear in future sessions
+    let resolvedSupplierId = body.supplier_id ?? null
+    if (!resolvedSupplierId) {
+      const { data: orgId } = await supabase.rpc('get_current_org_id')
+      const { data: existingSupplier } = await supabase
+        .from('suppliers')
+        .select('id')
+        .eq('org_id', orgId)
+        .ilike('email', body.email.trim())
+        .maybeSingle()
+
+      if (existingSupplier) {
+        resolvedSupplierId = existingSupplier.id
+      } else {
+        const { data: newSupplier } = await supabase
+          .from('suppliers')
+          .insert({
+            user_id: user.id,
+            org_id: orgId,
+            supplier_name: body.supplier_name.trim(),
+            email: body.email.toLowerCase().trim(),
+            markup_percentage: 0,
+          })
+          .select('id')
+          .single()
+        if (newSupplier) resolvedSupplierId = newSupplier.id
+      }
+    }
+
     const { data, error } = await supabase
       .from('sourcing_session_suppliers')
       .insert({
         session_id,
-        supplier_id: body.supplier_id ?? null,
+        supplier_id: resolvedSupplierId,
         portal_account_id: body.portal_account_id ?? null,
         supplier_name: body.supplier_name.trim(),
         email: body.email.toLowerCase().trim(),

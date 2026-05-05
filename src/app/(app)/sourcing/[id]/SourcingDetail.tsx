@@ -1777,20 +1777,9 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
 
                   {/* Right: Suppliers */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        {isDraft && <p className="text-[10px] font-bold uppercase tracking-widest text-[#C4A46B] mb-0.5">Step 2</p>}
-                        <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
-                      </div>
-                      {!isArchived && !addingSupplier && (
-                        <button
-                          type="button"
-                          onClick={() => setAddingSupplier(true)}
-                          className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors"
-                        >
-                          <Plus size={14} /> Add Supplier
-                        </button>
-                      )}
+                    <div>
+                      {isDraft && <p className="text-[10px] font-bold uppercase tracking-widest text-[#C4A46B] mb-0.5">Step 2</p>}
+                      <h2 className="text-sm font-semibold text-[#2C2C2A]">Suppliers ({suppliers.length})</h2>
                     </div>
                     {suppliers.length === 0 ? (
                       <div className="border border-dashed border-[#D4CFC7] rounded-xl p-6 text-center">
@@ -1825,19 +1814,28 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                         <p className="text-sm text-amber-700">Open the supplier above and assign at least one item before sending.</p>
                       </div>
                     )}
+                    {!isArchived && (
+                      addingSupplier ? (
+                        <AddSupplierForm
+                          sessionId={session.id}
+                          allSuppliers={allSuppliers}
+                          existingEmails={suppliers.map(s => s.email)}
+                          onAdded={ss => { handleSupplierAdded(ss); setAddingSupplier(false) }}
+                          onClose={() => setAddingSupplier(false)}
+                          items={items}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setAddingSupplier(true)}
+                          className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+                        >
+                          <Plus size={14} /> Add Supplier
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
-
-                {!isArchived && addingSupplier && (
-                  <AddSupplierForm
-                    sessionId={session.id}
-                    allSuppliers={allSuppliers}
-                    existingEmails={suppliers.map(s => s.email)}
-                    onAdded={ss => { handleSupplierAdded(ss); setAddingSupplier(false) }}
-                    onClose={() => setAddingSupplier(false)}
-                    items={items}
-                  />
-                )}
               </>
             )}
 
