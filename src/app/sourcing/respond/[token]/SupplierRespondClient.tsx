@@ -929,19 +929,19 @@ export function SupplierRespondClient({
           <div className="px-6 py-5">
             <div className="flex items-center justify-between mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="QuotingHub" className="h-6 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.6)' }} />
+              <img src="/logo.png" alt="QuotingHub" className="h-9 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
               <a
                 href="/supplier-portal"
                 className="text-xs font-medium transition-opacity hover:opacity-60"
-                style={{ color: '#71717A' }}
+                style={{ color: 'rgba(255,255,255,0.7)' }}
               >
                 Supplier Portal →
               </a>
             </div>
-            <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Pricing Request</p>
-            <p className="text-lg font-semibold" style={{ color: '#FAFAFA' }}>{sessionTitle}</p>
-            {projectName && <p className="text-sm mt-0.5" style={{ color: '#A1A1AA' }}>{projectName}</p>}
-            <p className="text-xs mt-2" style={{ color: '#52525B' }}>From {studioName} · To {supplierName}</p>
+            <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Pricing Request</p>
+            <p className="text-lg font-semibold" style={{ color: '#FFFFFF' }}>{sessionTitle}</p>
+            {projectName && <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>{projectName}</p>}
+            <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>From {studioName} · To {supplierName}</p>
           </div>
         </div>
       )}
