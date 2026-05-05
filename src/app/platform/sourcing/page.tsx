@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { ArrowLeftRight, CheckCircle2, Clock, DollarSign, AlertCircle, Mail, AlertTriangle, TrendingUp } from 'lucide-react'
+import { CheckCircle2, Clock, DollarSign, AlertCircle, Mail, AlertTriangle, TrendingUp, ArrowLeftRight, BarChart3 } from 'lucide-react'
 import { SourcingFeeTracker } from './SourcingFeeTracker'
 import type { CollectibleItem } from './SourcingFeeTracker'
 
@@ -51,6 +51,8 @@ function getFeeStatus(projectStatus: string | null): 'unlinked' | 'pending' | 'd
 
 export default async function PlatformSourcingPage() {
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+  const now = new Date()
+  const monthLabel = now.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })
 
   const { data: assignments } = await supabaseAdmin
     .from('sourcing_item_assignments')
@@ -170,11 +172,12 @@ export default async function PlatformSourcingPage() {
     }
   })
 
-  // Stats
-  const totalFee = items.reduce((s, i) => s + i.fee, 0)
-  const feeDue = items.filter(i => i.fee_status === 'due').reduce((s, i) => s + i.fee, 0)
-  const feeOutstanding = items.filter(i => i.fee_status === 'collectible' && !i.fee_collected_at).reduce((s, i) => s + i.fee, 0)
-  const feeCollected = items.filter(i => i.fee_collected_at).reduce((s, i) => s + i.fee, 0)
+  // Fee stats
+  const totalFeeValue   = items.reduce((s, i) => s + i.fee, 0)
+  const feeDue          = items.filter(i => i.fee_status === 'due').reduce((s, i) => s + i.fee, 0)
+  const feeOutstanding  = items.filter(i => i.fee_status === 'collectible' && !i.fee_collected_at).reduce((s, i) => s + i.fee, 0)
+  const feeCollected    = items.filter(i => i.fee_collected_at).reduce((s, i) => s + i.fee, 0)
+  const suppliersOwing  = new Set(items.filter(i => i.fee_status === 'collectible' && !i.fee_collected_at).map(i => i.supplier_email || i.supplier_name)).size
 
   // Session pipeline stats
   const sessionsByStatus = (sessions ?? []).reduce<Record<string, number>>((acc, s) => {
@@ -182,7 +185,7 @@ export default async function PlatformSourcingPage() {
     return acc
   }, {})
 
-  // Items where fee is collectible (project paid/completed) — passed to interactive component
+  // Items where fee is collectible — passed to interactive fee tracker
   const collectibleItems: CollectibleItem[] = items
     .filter(i => i.fee_status === 'collectible')
     .map(i => ({
@@ -195,142 +198,209 @@ export default async function PlatformSourcingPage() {
 
   return (
     <div className="p-8 max-w-[1400px]">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <ArrowLeftRight size={18} className="text-[#C4A46B]" />
-          <h1 className="font-serif text-3xl text-white">Sourcing Pipeline</h1>
+
+      {/* ── Page header ─────────────────────────────── */}
+      <div className="flex items-end justify-between mb-8">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-1">QuotingHub</p>
+          <h1 className="font-serif text-3xl text-white">Platform Admin</h1>
+          <p className="text-sm text-white/35 mt-1">Sourcing activity · 1% fee tracking · {monthLabel}</p>
         </div>
-        <p className="text-sm text-white/40">Price requests · accepted items · 1% platform fee tracker</p>
+        <div className="flex items-center gap-2 text-xs text-white/20">
+          <ArrowLeftRight size={13} />
+          <span>{(sessions ?? []).length} sessions · {items.length} accepted items</span>
+        </div>
       </div>
 
-      {/* KPI tiles */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      {/* ── KPI tiles ───────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
         {[
-          { label: 'Accepted items',   value: items.length.toString(), icon: CheckCircle2,  color: 'text-emerald-400' },
-          { label: 'Total fee value',  value: fmt(totalFee),           icon: DollarSign,    color: 'text-[#C4A46B]'  },
-          { label: 'Fee due',          value: fmt(feeDue),             icon: AlertCircle,   color: 'text-amber-400'  },
-          { label: 'Outstanding',      value: fmt(feeOutstanding),     icon: TrendingUp,    color: 'text-amber-400'  },
-          { label: 'Collected',        value: fmt(feeCollected),       icon: CheckCircle2,  color: 'text-emerald-400'},
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-[#1A1A18] border border-white/8 rounded-xl p-5">
+          {
+            label: 'Outstanding',
+            value: fmt(feeOutstanding),
+            sub: `${suppliersOwing} supplier${suppliersOwing !== 1 ? 's' : ''} owing`,
+            icon: TrendingUp,
+            valueColor: feeOutstanding > 0 ? 'text-amber-400' : 'text-white',
+            border: feeOutstanding > 0 ? 'border-amber-500/20' : 'border-white/8',
+          },
+          {
+            label: 'Fee due',
+            value: fmt(feeDue),
+            sub: 'invoice raised, not yet paid',
+            icon: AlertCircle,
+            valueColor: feeDue > 0 ? 'text-amber-300' : 'text-white',
+            border: 'border-white/8',
+          },
+          {
+            label: 'Collected',
+            value: fmt(feeCollected),
+            sub: 'received to date',
+            icon: CheckCircle2,
+            valueColor: 'text-emerald-400',
+            border: 'border-white/8',
+          },
+          {
+            label: 'Total fee value',
+            value: fmt(totalFeeValue),
+            sub: 'across all accepted items',
+            icon: DollarSign,
+            valueColor: 'text-[#C4A46B]',
+            border: 'border-white/8',
+          },
+          {
+            label: 'Accepted items',
+            value: items.length.toString(),
+            sub: 'supplier quotes selected',
+            icon: BarChart3,
+            valueColor: 'text-white',
+            border: 'border-white/8',
+          },
+        ].map(({ label, value, sub, icon: Icon, valueColor, border }) => (
+          <div key={label} className={`bg-[#1A1A18] border ${border} rounded-xl p-5`}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-white/35 uppercase tracking-wider">{label}</span>
-              <Icon size={14} className={color} />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">{label}</span>
+              <Icon size={13} className="text-white/20" />
             </div>
-            <p className="text-xl font-semibold text-white tabular-nums">{value}</p>
+            <p className={`text-xl font-semibold tabular-nums ${valueColor}`}>{value}</p>
+            <p className="text-[10px] text-white/25 mt-1 leading-tight">{sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Fee collection — primary action section */}
-      <SourcingFeeTracker items={collectibleItems} />
+      {/* ── 1% Fee collection — hero section ─────────── */}
+      <div className="mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 mb-3">Fee Collection</p>
+      </div>
+      <div className="mb-8">
+        <SourcingFeeTracker items={collectibleItems} />
+        {collectibleItems.length === 0 && (
+          <div className="bg-[#1A1A18] border border-white/8 rounded-xl px-6 py-10 text-center">
+            <CheckCircle2 size={20} className="text-emerald-400/40 mx-auto mb-2" />
+            <p className="text-sm text-white/30">No fees ready to collect yet</p>
+            <p className="text-xs text-white/15 mt-1">Fees become collectible when the linked project is marked Paid or Completed</p>
+          </div>
+        )}
+      </div>
 
-      {/* Session pipeline */}
-      <div className="bg-[#1A1A18] border border-white/8 rounded-xl p-5 mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <Clock size={14} className="text-[#C4A46B]" />
-          <h2 className="text-sm font-medium text-white">Session Pipeline</h2>
-          <span className="text-xs text-white/30 ml-1">· {(sessions ?? []).length} total</span>
+      {/* ── Session pipeline + Stale invitations side-by-side ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+
+        {/* Session pipeline */}
+        <div className="bg-[#1A1A18] border border-white/8 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-5">
+            <Clock size={13} className="text-white/30" />
+            <h2 className="text-sm font-semibold text-white">Session Pipeline</h2>
+            <span className="text-xs text-white/20 ml-1">· {(sessions ?? []).length} total</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { key: 'draft',       label: 'Draft',       color: '#52525B' },
+              { key: 'sent',        label: 'Sent',        color: '#60A5FA' },
+              { key: 'in_progress', label: 'In Progress', color: '#F59E0B' },
+              { key: 'completed',   label: 'Completed',   color: '#34D399' },
+              { key: 'archived',    label: 'Archived',    color: '#3F3F46' },
+            ].map(({ key, label, color }) => (
+              <div key={key} className="bg-white/[0.03] rounded-lg px-3 py-3 text-center">
+                <p className="text-2xl font-bold text-white tabular-nums">{sessionsByStatus[key] ?? 0}</p>
+                <p className="text-[10px] font-semibold mt-1 uppercase tracking-wider" style={{ color }}>{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-8 flex-wrap">
-          {[
-            { key: 'draft',       label: 'Draft',       color: '#71717A' },
-            { key: 'sent',        label: 'Sent',        color: '#60A5FA' },
-            { key: 'in_progress', label: 'In Progress', color: '#F59E0B' },
-            { key: 'completed',   label: 'Completed',   color: '#34D399' },
-            { key: 'archived',    label: 'Archived',    color: '#52525B' },
-          ].map(({ key, label, color }) => (
-            <div key={key} className="text-center min-w-[52px]">
-              <p className="text-2xl font-semibold text-white tabular-nums">{sessionsByStatus[key] ?? 0}</p>
-              <p className="text-xs mt-0.5 font-medium" style={{ color }}>{label}</p>
+
+        {/* Stale invitations */}
+        <div className={`bg-[#1A1A18] rounded-xl overflow-hidden border ${staleRows.length > 0 ? 'border-amber-500/20' : 'border-white/8'}`}>
+          <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+            <AlertTriangle size={13} className={staleRows.length > 0 ? 'text-amber-400' : 'text-white/20'} />
+            <h2 className="text-sm font-semibold text-white">Stale Invitations</h2>
+            {staleRows.length > 0 ? (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 ml-1">{staleRows.length}</span>
+            ) : (
+              <span className="text-xs text-white/20 ml-1">None</span>
+            )}
+            <span className="text-[10px] text-white/20 ml-1 hidden sm:inline">Sent &gt;7 days · no response</span>
+          </div>
+          {staleRows.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <CheckCircle2 size={16} className="text-emerald-400/30 mx-auto mb-1.5" />
+              <p className="text-xs text-white/20">All invitations responded to</p>
             </div>
-          ))}
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    {['Studio', 'Session', 'Supplier', 'Sent', 'Waiting'].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-white/20 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {staleRows.map(row => (
+                    <tr key={row.id} className="hover:bg-white/[0.03] transition-colors">
+                      <td className="px-4 py-2.5 text-white/40 whitespace-nowrap text-xs">{row.studio}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-xs">
+                        {row.session_id ? (
+                          <a href={`/sourcing/${row.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
+                        ) : <span className="text-white/40">{row.session_title}</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-white/70 whitespace-nowrap text-xs">{row.supplier_name}</td>
+                      <td className="px-4 py-2.5 text-white/30 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <span className="text-xs font-bold text-amber-400">{row.sent_at ? daysSince(row.sent_at) : '—'}d</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Stale invitations */}
-      {staleRows.length > 0 && (
-        <div className="bg-[#1A1A18] border border-amber-500/15 rounded-xl overflow-hidden mb-8">
-          <div className="px-5 py-4 border-b border-amber-500/10 flex items-center gap-2">
-            <AlertTriangle size={14} className="text-amber-400" />
-            <h2 className="text-sm font-medium text-white">Stale Invitations</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 ml-1">{staleRows.length}</span>
-            <p className="text-xs text-white/25 ml-2">Sent &gt;7 days ago — no response yet</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5">
-                  {['Studio', 'Session', 'Supplier', 'Email', 'Sent', 'Waiting'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-white/25 uppercase tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {staleRows.map(row => (
-                  <tr key={row.id} className="hover:bg-white/[0.03] transition-colors">
-                    <td className="px-4 py-3 text-white/50 whitespace-nowrap">{row.studio}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {row.session_id ? (
-                        <a href={`/sourcing/${row.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
-                      ) : row.session_title}
-                    </td>
-                    <td className="px-4 py-3 text-white whitespace-nowrap">{row.supplier_name}</td>
-                    <td className="px-4 py-3 text-white/40 whitespace-nowrap text-xs">{row.email}</td>
-                    <td className="px-4 py-3 text-white/35 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-xs font-semibold text-amber-400">{row.sent_at ? daysSince(row.sent_at) : '—'}d</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Accepted items table */}
+      {/* ── Accepted items table ──────────────────────── */}
+      <div className="mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 mb-3">Accepted Items</p>
+      </div>
       <div className="bg-[#1A1A18] border border-white/8 rounded-xl overflow-hidden mb-8">
-        <div className="px-5 py-4 border-b border-white/8 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-medium text-white">Accepted Items</h2>
-            <p className="text-xs text-white/25 mt-0.5">All items accepted from supplier quotes · {items.length} total</p>
+            <h2 className="text-sm font-semibold text-white">All Accepted Items</h2>
+            <p className="text-xs text-white/25 mt-0.5">Items accepted from supplier quotes · {items.length} total</p>
           </div>
         </div>
-
         {items.length === 0 ? (
-          <p className="px-5 py-10 text-sm text-white/25 text-center">No accepted items yet</p>
+          <p className="px-6 py-10 text-sm text-white/25 text-center">No accepted items yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/8">
                   {['Studio', 'Session', 'Item', 'Supplier', 'Price', '1% Fee', 'Project', 'Status', 'Fee Status', 'Accepted'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-white/25 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.05]">
+              <tbody className="divide-y divide-white/[0.04]">
                 {items.map(item => {
                   const psBadge = item.project_status ? (PROJECT_STATUS_BADGE[item.project_status] ?? PROJECT_STATUS_BADGE.Draft) : null
                   const displayStatus = item.fee_collected_at ? 'collected' : item.fee_status
                   const fsBadge = FEE_STATUS[displayStatus]
                   return (
                     <tr key={item.id} className="hover:bg-white/[0.025] transition-colors">
-                      <td className="px-4 py-3 text-white/60 whitespace-nowrap">{item.studio}</td>
-                      <td className="px-4 py-3 text-white/60 whitespace-nowrap max-w-[160px] truncate">
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap text-xs">{item.studio}</td>
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap max-w-[140px] truncate text-xs">
                         {item.session_id ? (
                           <a href={`/sourcing/${item.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">
                             {item.session_title}
                           </a>
                         ) : item.session_title}
                       </td>
-                      <td className="px-4 py-3 text-white whitespace-nowrap max-w-[160px] truncate font-medium">{item.item_title}</td>
-                      <td className="px-4 py-3 text-white/60 whitespace-nowrap">{item.supplier_name}</td>
-                      <td className="px-4 py-3 text-white whitespace-nowrap font-mono">{fmt(item.unit_price)}</td>
-                      <td className="px-4 py-3 text-[#C4A46B] whitespace-nowrap font-mono font-semibold">{fmt(item.fee)}</td>
-                      <td className="px-4 py-3 text-white/60 whitespace-nowrap">{item.project_name ?? <span className="text-white/20">—</span>}</td>
+                      <td className="px-4 py-3 text-white whitespace-nowrap max-w-[150px] truncate font-medium text-xs">{item.item_title}</td>
+                      <td className="px-4 py-3 text-white/60 whitespace-nowrap text-xs">{item.supplier_name}</td>
+                      <td className="px-4 py-3 text-white whitespace-nowrap font-mono text-xs">{fmt(item.unit_price)}</td>
+                      <td className="px-4 py-3 text-[#C4A46B] whitespace-nowrap font-mono font-semibold text-xs">{fmt(item.fee)}</td>
+                      <td className="px-4 py-3 text-white/50 whitespace-nowrap text-xs">{item.project_name ?? <span className="text-white/20">—</span>}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {psBadge ? (
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: psBadge.bg, color: psBadge.color }}>
@@ -339,9 +409,9 @@ export default async function PlatformSourcingPage() {
                         ) : <span className="text-white/20 text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-xs font-medium" style={{ color: fsBadge.color }}>{fsBadge.label}</span>
+                        <span className="text-[10px] font-semibold" style={{ color: fsBadge.color }}>{fsBadge.label}</span>
                       </td>
-                      <td className="px-4 py-3 text-white/35 whitespace-nowrap text-xs">
+                      <td className="px-4 py-3 text-white/30 whitespace-nowrap text-xs">
                         {item.accepted_at ? fmtDate(item.accepted_at) : '—'}
                       </td>
                     </tr>
@@ -353,39 +423,42 @@ export default async function PlatformSourcingPage() {
         )}
       </div>
 
-      {/* Email delivery log */}
+      {/* ── Email delivery log ────────────────────────── */}
+      <div className="mb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 mb-3">Email Log</p>
+      </div>
       <div className="bg-[#1A1A18] border border-white/8 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/8 flex items-center gap-2">
-          <Mail size={14} className="text-[#C4A46B]" />
-          <h2 className="text-sm font-medium text-white">Email Delivery Log</h2>
-          <p className="text-xs text-white/25 ml-2">Supplier invitations — most recent first</p>
+        <div className="px-6 py-4 border-b border-white/8 flex items-center gap-2">
+          <Mail size={13} className="text-white/30" />
+          <h2 className="text-sm font-semibold text-white">Supplier Invitations</h2>
+          <p className="text-xs text-white/20 ml-2">Most recent first</p>
         </div>
         {emailLog.length === 0 ? (
-          <p className="px-5 py-10 text-sm text-white/25 text-center">No emails sent yet</p>
+          <p className="px-6 py-10 text-sm text-white/25 text-center">No emails sent yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/5">
                   {['Studio', 'Session', 'Supplier', 'Email', 'Sent', 'Status'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-white/25 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-white/20 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-white/[0.04]">
                 {emailLog.map(row => (
                   <tr key={row.id} className="hover:bg-white/[0.025] transition-colors">
-                    <td className="px-4 py-2.5 text-white/50 whitespace-nowrap">{row.studio}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap max-w-[160px] truncate">
+                    <td className="px-4 py-2.5 text-white/40 whitespace-nowrap text-xs">{row.studio}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap max-w-[140px] truncate text-xs">
                       {row.session_id ? (
                         <a href={`/sourcing/${row.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
-                      ) : row.session_title}
+                      ) : <span className="text-white/40">{row.session_title}</span>}
                     </td>
-                    <td className="px-4 py-2.5 text-white whitespace-nowrap">{row.supplier_name}</td>
-                    <td className="px-4 py-2.5 text-white/40 whitespace-nowrap text-xs">{row.email}</td>
-                    <td className="px-4 py-2.5 text-white/35 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
+                    <td className="px-4 py-2.5 text-white/70 whitespace-nowrap text-xs">{row.supplier_name}</td>
+                    <td className="px-4 py-2.5 text-white/35 whitespace-nowrap text-xs">{row.email}</td>
+                    <td className="px-4 py-2.5 text-white/25 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className="text-xs font-medium capitalize" style={{ color: SUPPLIER_STATUS_COLOR[row.status] ?? '#71717A' }}>
+                      <span className="text-[10px] font-semibold capitalize" style={{ color: SUPPLIER_STATUS_COLOR[row.status] ?? '#71717A' }}>
                         {row.status.replace('_', ' ')}
                       </span>
                     </td>
@@ -396,6 +469,7 @@ export default async function PlatformSourcingPage() {
           </div>
         )}
       </div>
+
     </div>
   )
 }
