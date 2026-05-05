@@ -121,9 +121,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Map of line item id → stock info
   const [stockMap, setStockMap] = useState<Record<string, { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null } | null>>({})
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  // New supplier mini-form modal
-  const [newSupplierModal, setNewSupplierModal] = useState<{ name: string; email: string; markup: string } | null>(null)
-  const newSupplierResolverRef = useRef<((result: { id: string }) => void) | null>(null)
+  // New supplier mini-form modal (lineItemId = which row triggered it)
+  const [newSupplierModal, setNewSupplierModal] = useState<{ name: string; email: string; markup: string; lineItemId: string } | null>(null)
   const lineItemsRef = useRef(lineItems)
   useEffect(() => { lineItemsRef.current = lineItems }, [lineItems])
 
@@ -233,11 +232,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }
   }, [lineItems, suppliers, onChange, supabase])
 
-  const createSupplier = useCallback((name: string): Promise<{ id: string }> => {
-    return new Promise(resolve => {
-      newSupplierResolverRef.current = resolve
-      setNewSupplierModal({ name, email: '', markup: '0' })
-    })
+  const createSupplierForItem = useCallback((lineItemId: string, name: string) => {
+    setNewSupplierModal({ name, email: '', markup: '0', lineItemId })
   }, [])
 
   const addRow = useCallback(async () => {
@@ -722,7 +718,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           value={item.supplier_id ?? ''}
                           inputValue={item.supplier_name ?? ''}
                           onChange={(id, label) => handleSupplierChange(item.id, id, label)}
-                          onCreate={createSupplier}
+                          onCreate={name => createSupplierForItem(item.id, name)}
                           placeholder="Supplier…"
                           className="min-w-[120px]"
                         />
@@ -937,11 +933,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
       {/* New supplier mini-form modal */}
       {newSupplierModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => {
-          setNewSupplierModal(null)
-          newSupplierResolverRef.current?.({ id: '' })
-          newSupplierResolverRef.current = null
-        }}>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40" onClick={() => setNewSupplierModal(null)}>
           <div className="bg-white rounded-lg shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">Add supplier</h3>
             <p className="text-xs text-[#8A877F] mb-4">Add their email so you can send them a price request directly from the project.</p>
@@ -980,11 +972,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
             </div>
             <div className="flex gap-2 justify-end">
               <button
-                onClick={() => {
-                  setNewSupplierModal(null)
-                  newSupplierResolverRef.current?.({ id: '' })
-                  newSupplierResolverRef.current = null
-                }}
+                onClick={() => setNewSupplierModal(null)}
                 className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
               >
                 Cancel
@@ -992,7 +980,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               <button
                 disabled={!newSupplierModal.name.trim()}
                 onClick={async () => {
-                  const { name, email, markup } = newSupplierModal
+                  const { name, email, markup, lineItemId } = newSupplierModal
                   const { data: { user } } = await supabase.auth.getUser()
                   const { data: orgId } = await supabase.rpc('get_current_org_id')
                   const { data, error } = await supabase.from('suppliers').insert({
@@ -1004,10 +992,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   }).select().single()
                   if (error) { toast.error('Failed to create supplier'); return }
                   toast.success(`Supplier "${name.trim()}" created`)
-                  onSupplierCreated({ id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, delivery_contact_name: null, delivery_contact_number: null, is_platform: false, price_list_id: null, email: data.email ?? null })
+                  const newSupplier = { id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, delivery_contact_name: null, delivery_contact_number: null, is_platform: false, price_list_id: null, email: data.email ?? null }
+                  onSupplierCreated(newSupplier)
                   setNewSupplierModal(null)
-                  newSupplierResolverRef.current?.({ id: data.id })
-                  newSupplierResolverRef.current = null
+                  // Select the new supplier on the line item that triggered this
+                  handleSupplierChange(lineItemId, data.id, data.supplier_name)
                 }}
                 className="px-4 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
               >

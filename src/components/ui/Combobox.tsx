@@ -13,7 +13,7 @@ interface Props {
   value: string        // selected id
   inputValue: string   // displayed text
   onChange: (id: string, label: string) => void
-  onCreate?: (label: string) => Promise<{ id: string }>
+  onCreate?: (label: string) => void
   placeholder?: string
   label?: string
   className?: string
@@ -22,7 +22,6 @@ interface Props {
 export function Combobox({ options, value, inputValue, onChange, onCreate, placeholder, label, className }: Props) {
   const [query, setQuery] = useState(inputValue)
   const [open, setOpen] = useState(false)
-  const [creating, setCreating] = useState(false)
   const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; width: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,13 +53,10 @@ export function Combobox({ options, value, inputValue, onChange, onCreate, place
   const exactMatch = options.some(o => o.label.toLowerCase() === query.toLowerCase().trim())
   const showCreate = onCreate && query.trim().length > 0 && !exactMatch
 
-  async function handleCreate() {
+  function handleCreate() {
     if (!onCreate) return
-    setCreating(true)
-    const { id } = await onCreate(query.trim())
-    onChange(id, query.trim())
+    onCreate(query.trim())
     setOpen(false)
-    setCreating(false)
   }
 
   function handleSelect(opt: Option) {
@@ -109,12 +105,11 @@ export function Combobox({ options, value, inputValue, onChange, onCreate, place
           {filtered.length > 0 && <div className="border-t border-[#EDE9E1]" />}
           <button
             type="button"
-            onMouseDown={handleCreate}
-            disabled={creating}
+            onMouseDown={e => { e.preventDefault(); handleCreate() }}
             className="w-full text-left px-3 py-2 text-sm text-[#9A7B4F] hover:bg-[#F5F2EC] transition-colors flex items-center gap-1.5"
           >
             <span className="text-base leading-none">+</span>
-            {creating ? 'Creating…' : `Add "${query.trim()}"`}
+            {`Add "${query.trim()}"`}
           </button>
         </>
       )}
