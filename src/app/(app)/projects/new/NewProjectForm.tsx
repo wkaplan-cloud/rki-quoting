@@ -57,9 +57,10 @@ export function NewProjectForm({ clients }: Props) {
       org_id: orgId,
       client_name: name,
     }).select().single()
-    if (error) { toast.error('Failed to create client'); return { id: '' } }
+    if (error) { toast.error('Failed to create client'); return }
     toast.success(`Client "${name}" created`)
-    return { id: data.id }
+    setClientId(data.id)
+    setClientName(name)
   }
 
   async function handleSubmit(e: React.FormEvent) {

@@ -55,9 +55,12 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     const { data: { user } } = await supabase.auth.getUser()
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     const { data, error } = await supabase.from('clients').insert({ user_id: user!.id, org_id: orgId, client_name: name }).select().single()
-    if (error) { toast.error('Failed to create client'); return { id: '' } }
+    if (error) { toast.error('Failed to create client'); return }
     toast.success(`Client "${name}" created`)
-    return { id: data.id }
+    setForm(f => ({ ...f, client_id: data.id }))
+    setClientName(name)
+    setPendingClientId(data.id)
+    setPendingClientName(name)
   }
 
   async function confirmClient() {
