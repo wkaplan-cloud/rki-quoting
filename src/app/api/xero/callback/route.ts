@@ -79,15 +79,20 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.redirect(new URL('/login', req.url))
 
-    const { data: orgId } = await supabase.rpc('get_current_org_id')
-    if (orgId) {
-      await supabaseAdmin.from('settings').update({
+    const { data: settingsRow } = await supabase.from('settings').select('id').maybeSingle()
+    if (settingsRow?.id) {
+      const { error: saveError } = await supabaseAdmin.from('settings').update({
         xero_access_token: tokens.access_token,
         xero_refresh_token: tokens.refresh_token ?? null,
         xero_token_expires_at: expiresAt,
         xero_tenant_id: tenantId,
         xero_tenant_name: tenantName,
-      }).eq('org_id', orgId)
+      }).eq('id', settingsRow.id)
+      if (saveError) {
+        console.error('[xero/callback] failed to save tokens:', saveError)
+        settingsUrl.searchParams.set('xero_error', 'unknown')
+        return NextResponse.redirect(settingsUrl)
+      }
     }
 
     settingsUrl.searchParams.set('xero_connected', '1')
