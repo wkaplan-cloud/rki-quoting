@@ -21,7 +21,7 @@ export function computeTotals(
   items: LineItem[],
   design_fee_pct: number,
   vat_rate: number = 15,
-  deposit_pct: number = 70
+  deposit_pct: number = 50
 ): ProjectTotals {
   const computed = computeLineItems(items)
   const subtotal = computed.reduce((sum, i) => sum + i.total_price, 0)

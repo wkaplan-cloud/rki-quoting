@@ -49,7 +49,7 @@ function colIdx(headers: string[], ...names: string[]): number {
 
 function parsePct(val: string): number {
   const raw = parseFloat(val.replace('%', '').trim())
-  return Math.round((raw || 40) * 100) / 100
+  return isNaN(raw) ? 0 : Math.round(raw * 100) / 100
 }
 
 const toTitleCase = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
@@ -152,7 +152,7 @@ function SuppliersImport({ supabase, existingSuppliers }: { supabase: any; exist
       rep_number: iRepNum >= 0 ? r[iRepNum] : '',
       email: iEmail >= 0 ? r[iEmail] : '',
       delivery_address: iDelivery >= 0 ? r[iDelivery] : '',
-      markup_percentage: iPct >= 0 ? parsePct(r[iPct]) : 40,
+      markup_percentage: iPct >= 0 ? parsePct(r[iPct]) : 0,
       exists: existingNames.has(r[iName].toLowerCase()),
     }))
     setRows(parsed)
@@ -417,7 +417,8 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
       }
 
       // Back-calculate markup from sale price if available, for exact totals
-      let markup = iMarkup >= 0 ? parsePct(r[iMarkup]) : 40
+      const supplierMarkup = matchedSupplier?.markup_percentage ?? 0
+      let markup = iMarkup >= 0 ? (parsePct(r[iMarkup]) || supplierMarkup) : supplierMarkup
       if (iSale >= 0 && cost > 0) {
         const saleRaw = r[iSale]
         const sale = parseFloat(saleRaw.replace(/[R,\s]/g, '')) || 0
