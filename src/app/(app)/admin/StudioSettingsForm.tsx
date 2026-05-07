@@ -217,6 +217,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
         invalid_state: 'Security check failed — please try connecting again',
         token_exchange_failed: 'Xero rejected the authorisation — please try again',
         no_code: 'No authorisation code returned from Xero',
+        no_tenant: 'No Xero organisation found on this account — make sure you have a Xero company set up',
         unknown: 'Something went wrong connecting to Xero',
       }
       toast.error(messages[xeroErr] ?? `Xero error: ${xeroErr}`)

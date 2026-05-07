@@ -58,22 +58,22 @@ export async function GET(req: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
 
     // Fetch connected Xero organisations and auto-pick the first
-    let tenantId: string | null = null
-    let tenantName: string | null = null
-    try {
-      const tenantsRes = await fetch('https://api.xero.com/connections', {
-        headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: 'application/json' },
-      })
-      if (tenantsRes.ok) {
-        const tenants = await tenantsRes.json()
-        if (tenants.length > 0) {
-          tenantId = tenants[0].tenantId
-          tenantName = tenants[0].tenantName
-        }
-      }
-    } catch (e) {
-      console.warn('[xero/callback] Could not fetch tenants:', e)
+    const tenantsRes = await fetch('https://api.xero.com/connections', {
+      headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: 'application/json' },
+    })
+    if (!tenantsRes.ok) {
+      console.error('[xero/callback] connections fetch failed:', tenantsRes.status, await tenantsRes.text())
+      settingsUrl.searchParams.set('xero_error', 'no_tenant')
+      return NextResponse.redirect(settingsUrl)
     }
+    const tenants = await tenantsRes.json()
+    if (!tenants.length) {
+      console.error('[xero/callback] no Xero organisations found on this account')
+      settingsUrl.searchParams.set('xero_error', 'no_tenant')
+      return NextResponse.redirect(settingsUrl)
+    }
+    const tenantId: string = tenants[0].tenantId
+    const tenantName: string = tenants[0].tenantName ?? ''
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
