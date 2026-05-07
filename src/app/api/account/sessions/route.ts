@@ -9,22 +9,17 @@ export async function GET() {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Decode the JWT to extract the current session ID (lives in the session_id claim)
+  // Decode JWT to extract the current session ID from the session_id claim
   let currentSessionId: string | null = null
   if (session?.access_token) {
     try {
       const payload = JSON.parse(Buffer.from(session.access_token.split('.')[1], 'base64url').toString())
       currentSessionId = payload.session_id ?? null
-    } catch { /* ignore decode errors */ }
+    } catch { /* ignore */ }
   }
 
-  // Query auth.sessions directly via the admin client (service role bypasses RLS on auth schema)
-  const { data: sessions, error } = await supabaseAdmin
-    .schema('auth')
-    .from('sessions')
-    .select('id, created_at, updated_at, not_after')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false })
+  // auth schema isn't exposed via PostgREST — call the SECURITY DEFINER function instead
+  const { data: sessions, error } = await supabaseAdmin.rpc('get_user_sessions_admin', { p_user_id: user.id })
 
   if (error) {
     console.error('[account/sessions]', error)
@@ -32,7 +27,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    sessions: (sessions ?? []).map(s => ({
+    sessions: (sessions ?? []).map((s: { id: string; created_at: string; updated_at: string; not_after: string | null }) => ({
       id: s.id,
       created_at: s.created_at,
       last_active_at: s.updated_at,
