@@ -414,7 +414,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
 
       {tab === 'studio' && (
         <div className="space-y-6">
-          <StudioSettingsForm settings={settings as any} plan={plan} />
+          <StudioSettingsForm settings={settings as any} plan={plan} isAdmin={isAdmin} />
         </div>
       )}
 

@@ -43,7 +43,7 @@ interface Settings {
   accounts_email?: string | null
 }
 
-export function StudioSettingsForm({ settings, plan }: { settings: Settings | null; plan?: string }) {
+export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Settings | null; plan?: string; isAdmin?: boolean }) {
   const supabase = createClient()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
@@ -67,6 +67,41 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
   const [basicEmail, setBasicEmail] = useState('')
   const [basicPassword, setBasicPassword] = useState('')
   const [connectingBasic, setConnectingBasic] = useState(false)
+
+  type SessionInfo = { id: string; created_at: string; last_active_at: string; expires_at: string | null; is_current: boolean }
+  const [sessions, setSessions] = useState<SessionInfo[]>([])
+  const [sessionsLoaded, setSessionsLoaded] = useState(false)
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [signingOutOthers, setSigningOutOthers] = useState(false)
+
+  async function loadSessions() {
+    setSessionsLoading(true)
+    try {
+      const res = await fetch('/api/account/sessions')
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to load sessions'); return }
+      setSessions(data.sessions ?? [])
+      setSessionsLoaded(true)
+    } catch {
+      toast.error('Failed to load sessions')
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  async function signOutOthers() {
+    if (!confirm('Sign out all other sessions? Any other devices will be logged out immediately.')) return
+    setSigningOutOthers(true)
+    try {
+      await supabase.auth.signOut({ scope: 'others' })
+      setSessions(s => s.filter(x => x.is_current))
+      toast.success('All other sessions signed out')
+    } catch {
+      toast.error('Failed to sign out other sessions')
+    } finally {
+      setSigningOutOthers(false)
+    }
+  }
 
   async function fetchCompanyId() {
     setFetchingCompanyId(true)
@@ -619,6 +654,66 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
                 </a>
               </div>
             </div>
+          )}
+        </section>
+      )}
+
+      {/* Active Sessions — admin only */}
+      {isAdmin && (
+        <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Active Sessions</h2>
+              <p className="text-xs text-[#8A877F] mt-0.5">Devices currently signed in to your account.</p>
+            </div>
+            {!sessionsLoaded && (
+              <button
+                type="button"
+                onClick={loadSessions}
+                disabled={sessionsLoading}
+                className="text-xs text-[#9A7B4F] hover:underline disabled:opacity-50 cursor-pointer"
+              >
+                {sessionsLoading ? 'Loading…' : 'Show sessions →'}
+              </button>
+            )}
+          </div>
+
+          {sessionsLoaded && (
+            <>
+              <div className="space-y-2">
+                {sessions.map(s => (
+                  <div key={s.id} className="flex items-center justify-between px-4 py-3 bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-[#2C2C2A]">
+                          {s.is_current ? 'This device' : 'Other session'}
+                        </span>
+                        {s.is_current && (
+                          <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">current</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#8A877F] mt-0.5">
+                        Started {new Date(s.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {' · '}Last active {new Date(s.last_active_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {sessions.filter(s => !s.is_current).length > 0 && (
+                <button
+                  type="button"
+                  onClick={signOutOthers}
+                  disabled={signingOutOthers}
+                  className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50 cursor-pointer"
+                >
+                  {signingOutOthers ? 'Signing out…' : `Sign out ${sessions.filter(s => !s.is_current).length} other session${sessions.filter(s => !s.is_current).length > 1 ? 's' : ''}`}
+                </button>
+              )}
+              {sessions.filter(s => !s.is_current).length === 0 && (
+                <p className="text-xs text-[#8A877F]">No other active sessions.</p>
+              )}
+            </>
           )}
         </section>
       )}
