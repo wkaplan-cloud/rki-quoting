@@ -236,6 +236,30 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     setNewSupplierModal({ name, email: '', markup: '0', lineItemId })
   }, [])
 
+  const insertRowBefore = useCallback(async (index: number) => {
+    const { data, error } = await supabase.from('line_items').insert({
+      project_id: projectId,
+      item_name: '',
+      description: '',
+      quantity: 1,
+      cost_price: 0,
+      markup_percentage: 0,
+      delivery_address: officeAddress.address ? `${officeAddress.name}\n${officeAddress.address}` : '',
+      sort_order: 0,
+      row_type: 'item',
+      indent_level: 0,
+    }).select().single()
+    if (error) { toast.error('Failed to insert row'); return }
+    const spliced = [...lineItems]
+    spliced.splice(index, 0, data)
+    const renumbered = spliced.map((item, i) => ({ ...item, sort_order: i }))
+    onChange(renumbered)
+    setNewlyAddedId(data.id)
+    await Promise.all(renumbered.map(item =>
+      supabase.from('line_items').update({ sort_order: item.sort_order }).eq('id', item.id)
+    ))
+  }, [projectId, lineItems, onChange, supabase, officeAddress])
+
   const addRow = useCallback(async () => {
     const sort_order = lineItems.length
     const { data, error } = await supabase.from('line_items').insert({
@@ -409,8 +433,19 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     onDragOver={!locked ? e => e.preventDefault() : undefined}
                     className="border-b border-[#E0DDD6] bg-[#F5F2EC] group"
                   >
-                    <td className={`px-1.5 py-2 text-[#C4BFB5] sticky left-0 z-10 bg-[#F5F2EC] ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
-                      {!locked && <GripVertical size={14} />}
+                    <td className={`px-1.5 py-2 text-[#C4BFB5] sticky left-0 z-10 bg-[#F5F2EC] ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
+                      {!locked && (
+                        <div className="relative flex items-center justify-center w-[14px] h-[14px]">
+                          <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
+                          <button
+                            onClick={e => { e.stopPropagation(); insertRowBefore(index) }}
+                            title="Insert row above"
+                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] cursor-pointer"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="sticky left-6 z-10 bg-[#F5F2EC]" />
                     <td colSpan={12} className="px-2 py-2">
@@ -458,8 +493,19 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   className={`border-b border-[#F2EFE9] last:border-0 group transition-colors ${item.received ? 'bg-blue-50 hover:bg-blue-50' : 'hover:bg-[#FDFCF9]'}`}
                 >
                   {/* Drag handle */}
-                  <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F] cursor-grab active:cursor-grabbing' : ''}`}>
-                    {!locked && <GripVertical size={14} />}
+                  <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
+                    {!locked && (
+                      <div className="relative flex items-center justify-center w-[14px] h-[14px]">
+                        <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
+                        <button
+                          onClick={e => { e.stopPropagation(); insertRowBefore(index) }}
+                          title="Insert row above"
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] cursor-pointer"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                    )}
                   </td>
 
                   {/* Received checkbox */}
@@ -535,11 +581,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                               title={isLinked ? 'Unlink from parent item' : 'Link to item above'}
                               className={`p-0.5 rounded transition-colors cursor-pointer
                                 ${isLinked
-                                  ? 'text-[#9A7B4F] opacity-100'
-                                  : 'text-[#D8D3C8] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
+                                  ? 'text-[#9A7B4F]'
+                                  : 'text-[#A8A39B] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
                                 }`}
                             >
-                              {isLinked ? <Unlink2 size={12} /> : <Link2 size={12} />}
+                              {isLinked ? <Unlink2 size={14} strokeWidth={2.5} /> : <Link2 size={14} strokeWidth={2.5} />}
                             </button>
                             {isLinked && (() => {
                               const parent = lineItems.find(i => i.id === item.parent_item_id)
