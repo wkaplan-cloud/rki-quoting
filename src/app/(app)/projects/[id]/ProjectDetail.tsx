@@ -60,6 +60,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sageSyncing, setSageSyncing] = useState(false)
   const [sageInvoiceId, setSageInvoiceId] = useState(initial.sage_invoice_id ?? null)
   const [sageInvoiceStatus, setSageInvoiceStatus] = useState(initial.sage_invoice_status ?? null)
+  // Xero state
+  const [pushingXero, setPushingXero] = useState(false)
   // Email modal state
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [emailModalType, setEmailModalType] = useState<'quote' | 'invoice'>('quote')
@@ -328,6 +330,31 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     }
   }, [project.id, router])
 
+  const handlePushToXero = useCallback(async () => {
+    setPushingXero(true)
+    try {
+      const res = await fetch('/api/xero/push-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to push to Xero'); return }
+      toast.success(
+        <span>
+          Pushed to Xero —{' '}
+          <a href={data.xero_url} target="_blank" rel="noopener noreferrer" className="underline">
+            View invoice ↗
+          </a>
+        </span>
+      )
+    } catch {
+      toast.error('Failed to push to Xero')
+    } finally {
+      setPushingXero(false)
+    }
+  }, [project.id])
+
   const filteredSageCustomers = sageCustomers.filter(c =>
     c.name.toLowerCase().includes(sageCustomerSearch.toLowerCase())
   )
@@ -480,6 +507,15 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             </div>
 
             <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
+
+            {/* Xero */}
+            {xeroConnected && (
+              <button onClick={handlePushToXero} disabled={pushingXero}
+                title="Create an invoice in Xero from this project"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
+                <Upload size={13} /> {pushingXero ? 'Pushing…' : 'Push to Xero'}
+              </button>
+            )}
 
             {/* Sage */}
             {sageConnected && (
