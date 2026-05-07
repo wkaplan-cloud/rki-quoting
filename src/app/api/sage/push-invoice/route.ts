@@ -95,14 +95,14 @@ export async function POST(req: NextRequest) {
           // Fallback to configured percentage if Sage call fails
           const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
           const dfAmt = project.design_fee > 0 ? (subtotal * project.design_fee) / 100 : 0
-          const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 70
+          const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 50
           depositExclVat = parseFloat(((subtotal + dfAmt) * (depositPct / 100)).toFixed(2))
         }
       } else {
         // No existing invoice yet — use configured deposit percentage
         const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
         const dfAmt = project.design_fee > 0 ? (subtotal * project.design_fee) / 100 : 0
-        const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 70
+        const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 50
         depositExclVat = parseFloat(((subtotal + dfAmt) * (depositPct / 100)).toFixed(2))
       }
 

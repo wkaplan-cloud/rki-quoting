@@ -41,7 +41,7 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
-export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depositPct = 70, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime }: Props) {
+export function QuotePDF({ project, client, lineItems, type, vatRate = 15, depositPct = 50, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime }: Props) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
 

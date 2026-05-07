@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         lineItems: lineItems ?? [],
         type,
         vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15,
-        depositPct: (project as any).deposit_percentage ?? settings?.deposit_percentage ?? 70,
+        depositPct: (project as any).deposit_percentage ?? settings?.deposit_percentage ?? 50,
         logoUrl,
         businessName: settings?.business_name,
         businessAddress: settings?.business_address,
