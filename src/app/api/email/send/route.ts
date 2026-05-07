@@ -157,7 +157,19 @@ export async function POST(req: NextRequest) {
       sent_by: user.id,
     })
 
-    return NextResponse.json({ success: true })
+    // Auto-tick quote_sent when the quote is emailed
+    if (type === 'quote') {
+      const now = new Date().toISOString()
+      await supabase.from('project_stages').upsert(
+        { project_id: projectId, quote_sent: true, quote_sent_at: now },
+        { onConflict: 'project_id' }
+      )
+      if ((project as any).status === 'Draft') {
+        await supabase.from('projects').update({ status: 'Quote' }).eq('id', projectId)
+      }
+    }
+
+    return NextResponse.json({ success: true, quote_sent: type === 'quote' })
   } catch (e: unknown) {
     console.error('[email/send]', e)
     return NextResponse.json({ error: 'Failed to send email. Please try again.' }, { status: 500 })

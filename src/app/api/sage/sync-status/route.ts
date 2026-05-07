@@ -29,11 +29,13 @@ export async function POST(req: NextRequest) {
     // Detect partial payment → auto-tick deposit_received
     const invTotal: number = invoice.Total ?? invoice.total ?? 0
     const invOutstanding: number = invoice.TotalOutstanding ?? invoice.Outstanding ?? invTotal
+    let depositReceivedAuto = false
     if (invTotal > 0 && invOutstanding > 0 && invOutstanding < invTotal && !stages?.deposit_received) {
       await supabase.from('project_stages').upsert(
         { project_id: projectId, deposit_received: true, deposit_received_at: new Date().toISOString() },
         { onConflict: 'project_id' }
       )
+      depositReceivedAuto = true
     }
 
     // If fully paid → mark paid in full in project_stages and update project status
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
       await supabase.from('projects').update({ status: newStatus }).eq('id', projectId)
     }
 
-    return NextResponse.json({ status })
+    return NextResponse.json({ status, deposit_received_auto: depositReceivedAuto })
   } catch (e: unknown) {
     console.error('[sage/sync-status]', e)
     return NextResponse.json({ error: 'Failed to sync invoice status from Sage. Please try again.' }, { status: 500 })

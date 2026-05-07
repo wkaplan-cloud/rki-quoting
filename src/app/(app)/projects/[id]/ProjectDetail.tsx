@@ -9,6 +9,7 @@ import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import toast from 'react-hot-toast'
 import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail } from 'lucide-react'
+import confetti from 'canvas-confetti'
 
 interface SageCustomer { id: string; name: string; reference?: string }
 interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
@@ -260,6 +261,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         sent_at: new Date().toISOString(),
         supplier_name: null,
       }, ...prev])
+      if (emailModalType === 'quote') {
+        const now = new Date().toISOString()
+        setStages(prev => prev ? { ...prev, quote_sent: true, quote_sent_at: prev.quote_sent_at ?? now } : prev)
+        setProject(prev => prev.status === 'Draft' ? { ...prev, status: 'Quote' } : prev)
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#9A7B4F', '#C4A46B', '#EDE9E1', '#ffffff'] })
+      }
       setEmailModalOpen(false)
     } finally {
       setEmailSending(false)
@@ -318,7 +325,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setSageInvoiceStatus(data.status)
-      if (data.status === 'PAID') {
+      if (data.deposit_received_auto) {
+        const now = new Date().toISOString()
+        setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#9A7B4F', '#C4A46B', '#EDE9E1', '#ffffff'] })
+        toast.success('Deposit detected in Sage — stage updated')
+      } else if (data.status === 'PAID') {
         toast.success('Invoice marked as paid — stages updated')
         router.refresh()
       } else {
@@ -552,7 +564,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   </button>
                 )}
               </div>
-            ) : sageConnected ? (
+            ) : (sageConnected && stages?.quote_sent) ? (
               <button onClick={openSageModal}
                 title="Create an invoice in Sage Business Cloud Accounting from this project"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
