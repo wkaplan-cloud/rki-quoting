@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
     )
     const taxTypeId: number = defaultTaxType?.ID ?? 146922 // fallback to known Standard Rate
 
+    const trunc = (s: string) => s.length > 100 ? s.slice(0, 97) + '…' : s
+
     // Build invoice lines — items only, skip section rows
     const lines = (lineItems ?? [])
       .filter(item => item.row_type === 'item')
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
         return {
           SelectionId: selectionId,
           LineType: 0,
-          Description: item.description ? `${item.item_name} — ${item.description}` : item.item_name,
+          Description: trunc(item.description ? `${item.item_name} — ${item.description}` : item.item_name),
           Quantity: item.quantity,
           UnitPriceExclusive: c?.sale_price ?? 0,
           TaxTypeId: taxTypeId,
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
       DueDate: dueDate,
       Inclusive: false,
       Reference: project.project_number,
-      Description: project.project_name,
+      Description: trunc(project.project_name),
       Lines: lines,
     }
 
