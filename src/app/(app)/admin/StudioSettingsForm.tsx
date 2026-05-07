@@ -313,7 +313,23 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="Phone" value={form.phone} onChange={e => set('phone', e.target.value)} />
-            <Input label="Reply-to Email" type="email" value={form.email_from} onChange={e => set('email_from', e.target.value)} />
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-[#8A877F]">Reply-to Email</label>
+                <button
+                  type="button"
+                  onClick={() => set('email_from', form.email_from ? '' : ' ')}
+                  className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none ${form.email_from?.trim() ? 'bg-[#9A7B4F]' : 'bg-[#D8D3C8]'}`}
+                >
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform duration-200 mt-0.5 ${form.email_from?.trim() ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+              {form.email_from?.trim() ? (
+                <Input type="email" value={form.email_from} onChange={e => set('email_from', e.target.value)} placeholder="override@studio.co.za" />
+              ) : (
+                <p className="text-xs text-[#8A877F] py-2">Clients reply to the sender&apos;s own email</p>
+              )}
+            </div>
           </div>
           <Input label="Accounts Email (BCC on all POs)" type="email" value={form.accounts_email} onChange={e => set('accounts_email', e.target.value)} />
         </section>

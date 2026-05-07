@@ -70,6 +70,8 @@ export async function POST(req: NextRequest) {
     const subject = `${label} - ${project.project_name} - ${project.project_number}`
     const studioName = settings?.business_name ?? 'Your Studio'
     const userEmail = user.email ?? ''
+    // Use the override reply-to if set in settings, otherwise fall back to the sender's own email
+    const replyToEmail = settings?.email_from?.trim() || userEmail
 
     const plainText = customBody
       ? customBody
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     const { error: resendError } = await resend.emails.send({
       from: `${studioName} <no-reply@quotinghub.co.za>`,
-      ...(userEmail ? { replyTo: userEmail } : {}),
+      ...(replyToEmail ? { replyTo: replyToEmail } : {}),
       to: clientEmail,
       subject,
       text: plainText,
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
         <!-- Footer -->
         <tr>
           <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:20px 40px;">
-            <p style="margin:0;font-size:12px;color:#8A877F;">${studioName}${userEmail ? ` &middot; <a href="mailto:${userEmail}" style="color:#8A877F;text-decoration:none;">${userEmail}</a>` : ''}</p>
+            <p style="margin:0;font-size:12px;color:#8A877F;">${studioName}${replyToEmail ? ` &middot; <a href="mailto:${replyToEmail}" style="color:#8A877F;text-decoration:none;">${replyToEmail}</a>` : ''}</p>
             <p style="margin:6px 0 0;font-size:11px;color:#C4BFB5;">Sent via QuotingHub</p>
           </td>
         </tr>
