@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
   }
 
-  const { error } = await supabaseAdmin.auth.admin.updateUserById(user.id, { password })
+  const { error } = await supabase.auth.updateUser({ password })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Save full name to org_members record
