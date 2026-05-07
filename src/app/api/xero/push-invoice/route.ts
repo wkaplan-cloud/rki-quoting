@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       .map(item => {
         const c = computed.find(ci => ci.id === item.id)
         return {
-          Description: item.description ? `${item.item_name} — ${item.description}` : item.item_name,
+          Description: (!item.description || item.item_name === 'Fabric') ? item.item_name : `${item.item_name} — ${item.description}`,
           Quantity: item.quantity,
           UnitAmount: c?.sale_price ?? 0,
           AccountCode: '200',

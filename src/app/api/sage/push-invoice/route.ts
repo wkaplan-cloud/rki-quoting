@@ -16,10 +16,11 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
+    const [{ data: project }, { data: lineItems }, { data: settings }, { data: stages }] = await Promise.all([
       supabase.from('projects').select('*').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-      supabase.from('settings').select('sage_item_id').maybeSingle(),
+      supabase.from('settings').select('sage_item_id, deposit_percentage').maybeSingle(),
+      supabase.from('project_stages').select('*').eq('project_id', projectId).maybeSingle(),
     ])
 
     // RLS already scopes to the user's org — if the project exists it's accessible
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
         return {
           SelectionId: selectionId,
           LineType: 0,
-          Description: trunc(item.description ? `${item.item_name} — ${item.description}` : item.item_name),
+          Description: trunc((!item.description || item.item_name === 'Fabric') ? item.item_name : `${item.item_name} — ${item.description}`),
           Quantity: item.quantity,
           UnitPriceExclusive: c?.sale_price ?? 0,
           TaxTypeId: taxTypeId,
@@ -77,6 +78,44 @@ export async function POST(req: NextRequest) {
         UnitPriceExclusive: parseFloat(designFeeAmount.toFixed(2)),
         TaxTypeId: taxTypeId,
       })
+    }
+
+    // Add deposit line if deposit has been received — uses actual paid amount from Sage when available
+    if (stages?.deposit_received) {
+      let depositExclVat: number
+
+      if (project.sage_invoice_id) {
+        try {
+          const existingInv = await sageGet(`/TaxInvoice/Get/${project.sage_invoice_id}`)
+          const invTotal: number = existingInv.Total ?? existingInv.total ?? 0
+          const invOutstanding: number = existingInv.TotalOutstanding ?? existingInv.Outstanding ?? invTotal
+          const actualPaidInclVat = Math.max(0, invTotal - invOutstanding)
+          depositExclVat = parseFloat((actualPaidInclVat / 1.15).toFixed(2))
+        } catch {
+          // Fallback to configured percentage if Sage call fails
+          const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
+          const dfAmt = project.design_fee > 0 ? (subtotal * project.design_fee) / 100 : 0
+          const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 70
+          depositExclVat = parseFloat(((subtotal + dfAmt) * (depositPct / 100)).toFixed(2))
+        }
+      } else {
+        // No existing invoice yet — use configured deposit percentage
+        const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
+        const dfAmt = project.design_fee > 0 ? (subtotal * project.design_fee) / 100 : 0
+        const depositPct = project.deposit_percentage ?? settings?.deposit_percentage ?? 70
+        depositExclVat = parseFloat(((subtotal + dfAmt) * (depositPct / 100)).toFixed(2))
+      }
+
+      if (depositExclVat > 0) {
+        lines.push({
+          SelectionId: selectionId,
+          LineType: 0,
+          Description: 'Deposit Received',
+          Quantity: 1,
+          UnitPriceExclusive: -depositExclVat,
+          TaxTypeId: taxTypeId,
+        })
+      }
     }
 
     // Sage SBCA uses OData .NET date format: /Date(ms)/
@@ -113,11 +152,23 @@ export async function POST(req: NextRequest) {
     const sageId = invoice.ID ?? invoice.id
     const sageStatus = invoice.Status ?? invoice.status ?? 'DRAFT'
 
-    await supabase.from('projects').update({
-      sage_invoice_id: String(sageId),
-      sage_invoice_status: String(sageStatus),
-      sage_pushed_at: new Date().toISOString(),
-    }).eq('id', projectId)
+    const pushedAt = new Date().toISOString()
+    const { statusFromStages } = await import('@/lib/types')
+    const mergedStages = { ...(stages ?? { project_id: projectId }), final_invoice_sent: true }
+    const newProjectStatus = statusFromStages(mergedStages as Parameters<typeof statusFromStages>[0])
+    await Promise.all([
+      supabase.from('projects').update({
+        sage_invoice_id: String(sageId),
+        sage_invoice_status: String(sageStatus),
+        sage_pushed_at: pushedAt,
+        status: newProjectStatus,
+      }).eq('id', projectId),
+      // Auto-advance project to "Invoice" status when invoice is pushed to Sage
+      supabase.from('project_stages').upsert(
+        { project_id: projectId, final_invoice_sent: true, final_invoice_sent_at: pushedAt },
+        { onConflict: 'project_id' }
+      ),
+    ])
 
     return NextResponse.json({ success: true, sage_invoice_id: sageId, status: sageStatus })
   } catch (e: unknown) {

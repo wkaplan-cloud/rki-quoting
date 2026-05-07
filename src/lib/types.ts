@@ -119,7 +119,6 @@ export const STAGE_CONFIG = [
   { key: 'quote_sent',         label: 'Quote Sent',         dateKey: 'quote_sent_at' },
   { key: 'deposit_received',   label: 'Deposit Received',   dateKey: 'deposit_received_at' },
   { key: 'fabrics_received',   label: 'Fabrics Received',   dateKey: 'fabrics_received_at' },
-  { key: 'final_invoice_sent', label: 'Balance Due Sent',   dateKey: 'final_invoice_sent_at' },
   { key: 'final_invoice_paid', label: 'Paid in Full',       dateKey: 'final_invoice_paid_at' },
   { key: 'delivered_installed',label: 'Delivered & Installed', dateKey: 'delivered_installed_at' },
 ] as const

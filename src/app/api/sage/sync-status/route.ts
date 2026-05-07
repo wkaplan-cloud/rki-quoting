@@ -11,11 +11,10 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: project } = await supabase
-      .from('projects')
-      .select('sage_invoice_id')
-      .eq('id', projectId)
-      .single()
+    const [{ data: project }, { data: stages }] = await Promise.all([
+      supabase.from('projects').select('sage_invoice_id').eq('id', projectId).single(),
+      supabase.from('project_stages').select('*').eq('project_id', projectId).maybeSingle(),
+    ])
 
     if (!project?.sage_invoice_id) {
       return NextResponse.json({ error: 'No Sage invoice linked to this project' }, { status: 400 })
@@ -27,14 +26,18 @@ export async function POST(req: NextRequest) {
 
     await supabase.from('projects').update({ sage_invoice_status: status }).eq('id', projectId)
 
+    // Detect partial payment → auto-tick deposit_received
+    const invTotal: number = invoice.Total ?? invoice.total ?? 0
+    const invOutstanding: number = invoice.TotalOutstanding ?? invoice.Outstanding ?? invTotal
+    if (invTotal > 0 && invOutstanding > 0 && invOutstanding < invTotal && !stages?.deposit_received) {
+      await supabase.from('project_stages').upsert(
+        { project_id: projectId, deposit_received: true, deposit_received_at: new Date().toISOString() },
+        { onConflict: 'project_id' }
+      )
+    }
+
     // If fully paid → mark paid in full in project_stages and update project status
     if (status === 'Paid' || status === 'PAID') {
-      const { data: stages } = await supabase
-        .from('project_stages')
-        .select('*')
-        .eq('project_id', projectId)
-        .maybeSingle()
-
       if (stages && !stages.final_invoice_paid) {
         await supabase.from('project_stages').update({
           final_invoice_paid: true,
