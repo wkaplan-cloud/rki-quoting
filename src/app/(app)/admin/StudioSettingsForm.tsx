@@ -58,6 +58,9 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
   const [xeroTenantName, setXeroTenantName] = useState(settings?.xero_tenant_name ?? '')
   const [disconnectingXero, setDisconnectingXero] = useState(false)
   const [fetchingCompanyId, setFetchingCompanyId] = useState(false)
+  const [sageItems, setSageItems] = useState<{ id: number; label: string; code: string }[]>([])
+  const [fetchingItems, setFetchingItems] = useState(false)
+  const [showItemDropdown, setShowItemDropdown] = useState(false)
   const [showBasicForm, setShowBasicForm] = useState(false)
   const [basicEmail, setBasicEmail] = useState('')
   const [basicPassword, setBasicPassword] = useState('')
@@ -76,6 +79,21 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
       toast.error('Failed to fetch company ID')
     } finally {
       setFetchingCompanyId(false)
+    }
+  }
+
+  async function fetchSageItems() {
+    setFetchingItems(true)
+    try {
+      const res = await fetch('/api/sage/items')
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to fetch Sage items'); return }
+      setSageItems(data.items ?? [])
+      setShowItemDropdown(true)
+    } catch {
+      toast.error('Failed to fetch Sage items')
+    } finally {
+      setFetchingItems(false)
     }
   }
 
@@ -409,13 +427,57 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
               {disconnecting ? 'Disconnecting…' : 'Disconnect'}
             </button>
           </div>
-          <div className="mt-3 max-w-xs">
-            <Input
-              label="Sage Item ID (used on invoice lines)"
-              value={form.sage_item_id}
-              onChange={e => set('sage_item_id', e.target.value)}
-            />
-            <p className="text-xs text-[#8A877F] mt-1">The internal ID of the Sage item to link all invoice lines to. Saved with the main Save button below.</p>
+          <div className="mt-3 max-w-xs space-y-2">
+            <label className="text-xs font-medium text-[#8A877F] block">Sage Item (used on invoice lines)</label>
+            {form.sage_item_id ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 px-3 py-2 bg-[#F5F2EC] border border-[#D8D3C8] rounded text-sm text-[#2C2C2A] font-mono">
+                  {sageItems.find(i => String(i.id) === form.sage_item_id)
+                    ? `${sageItems.find(i => String(i.id) === form.sage_item_id)!.label} (ID: ${form.sage_item_id})`
+                    : `ID: ${form.sage_item_id}`}
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchSageItems}
+                  disabled={fetchingItems}
+                  className="text-xs text-[#9A7B4F] hover:underline disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                >
+                  {fetchingItems ? 'Loading…' : 'Change'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={fetchSageItems}
+                disabled={fetchingItems}
+                className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#D8D3C8] rounded text-sm text-[#8A877F] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {fetchingItems ? 'Fetching items…' : 'Select item from Sage →'}
+              </button>
+            )}
+            {showItemDropdown && sageItems.length > 0 && (
+              <div className="border border-[#D8D3C8] rounded bg-white shadow-sm max-h-48 overflow-y-auto">
+                {sageItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      set('sage_item_id', String(item.id))
+                      setShowItemDropdown(false)
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] text-[#2C2C2A] border-b border-[#EDE9E1] last:border-0 cursor-pointer"
+                  >
+                    <span className="font-medium">{item.label}</span>
+                    {item.code && <span className="ml-2 text-xs text-[#8A877F]">{item.code}</span>}
+                    <span className="ml-2 text-xs text-[#8A877F] font-mono">ID: {item.id}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {showItemDropdown && sageItems.length === 0 && !fetchingItems && (
+              <p className="text-xs text-[#8A877F]">No items found in Sage.</p>
+            )}
+            <p className="text-xs text-[#8A877F]">Links all invoice lines to this Sage item. Saved with the main Save button below.</p>
           </div>
           </>
         ) : (
