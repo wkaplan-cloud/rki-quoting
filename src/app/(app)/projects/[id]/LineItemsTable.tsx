@@ -251,7 +251,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     }).select().single()
     if (error) { toast.error('Failed to insert row'); return }
     const spliced = [...lineItems]
-    spliced.splice(index, 0, data)
+    spliced.splice(index + 1, 0, data)
     const renumbered = spliced.map((item, i) => ({ ...item, sort_order: i }))
     onChange(renumbered)
     setNewlyAddedId(data.id)
@@ -439,7 +439,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
                           <button
                             onClick={e => { e.stopPropagation(); insertRowBefore(index) }}
-                            title="Insert row above"
+                            title="Insert row below"
                             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] cursor-pointer"
                           >
                             <Plus size={12} />
@@ -499,7 +499,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
                         <button
                           onClick={e => { e.stopPropagation(); insertRowBefore(index) }}
-                          title="Insert row above"
+                          title="Insert row below"
                           className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[#9A7B4F] hover:text-[#7A5B2F] cursor-pointer"
                         >
                           <Plus size={12} />
