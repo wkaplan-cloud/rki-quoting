@@ -61,6 +61,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sageSyncing, setSageSyncing] = useState(false)
   const [sageInvoiceId, setSageInvoiceId] = useState(initial.sage_invoice_id ?? null)
   const [sageInvoiceStatus, setSageInvoiceStatus] = useState(initial.sage_invoice_status ?? null)
+  const [depositAmountReceived, setDepositAmountReceived] = useState<number | null>(initial.deposit_amount_received ?? null)
   // Xero state
   const [pushingXero, setPushingXero] = useState(false)
   const [xeroInvoiceId, setXeroInvoiceId] = useState((initial as unknown as Record<string, unknown>).xero_invoice_id as string | null ?? null)
@@ -325,6 +326,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setSageInvoiceStatus(data.status)
+      if (data.deposit_amount_received != null) {
+        setDepositAmountReceived(data.deposit_amount_received)
+      }
       if (data.deposit_received_auto) {
         const now = new Date().toISOString()
         setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
@@ -646,6 +650,18 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             <span>{depositPct}% Deposit</span>
             <span className="font-medium">{formatZAR(totals.deposit)}</span>
           </div>
+          {stages?.deposit_received && depositAmountReceived != null && (
+            <>
+              <div className="flex justify-between text-sm text-green-700">
+                <span>Received</span>
+                <span className="font-medium">{formatZAR(depositAmountReceived)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-[#8A877F]">
+                <span>Balance Due</span>
+                <span className="font-medium">{formatZAR(totals.grand_total - depositAmountReceived)}</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -737,12 +753,23 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               </span>
               <span className="font-medium">{formatZAR(totals.deposit)}</span>
             </div>
-            {stages?.deposit_received && (
+            {stages?.deposit_received && depositAmountReceived != null ? (
+              <>
+                <div className="flex justify-between text-sm text-green-700">
+                  <span>Received</span>
+                  <span className="font-medium">{formatZAR(depositAmountReceived)}</span>
+                </div>
+                <div className="flex justify-between text-sm text-[#8A877F]">
+                  <span>Balance Due</span>
+                  <span className="font-medium">{formatZAR(totals.grand_total - depositAmountReceived)}</span>
+                </div>
+              </>
+            ) : stages?.deposit_received ? (
               <div className="flex justify-between text-sm text-[#8A877F]">
                 <span>{100 - depositPct}% Balance</span>
                 <span className="font-medium">{formatZAR(totals.balance_due)}</span>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

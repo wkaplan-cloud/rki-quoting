@@ -52,6 +52,7 @@ export interface Project {
   sage_invoice_id: string | null
   sage_invoice_status: string | null
   sage_pushed_at: string | null
+  deposit_amount_received: number | null
   quoted_date: string | null
   archived_at: string | null
   assigned_to: string | null
