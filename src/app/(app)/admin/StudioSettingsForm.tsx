@@ -61,6 +61,8 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
   const [sageItems, setSageItems] = useState<{ id: number; label: string; code: string }[]>([])
   const [fetchingItems, setFetchingItems] = useState(false)
   const [showItemDropdown, setShowItemDropdown] = useState(false)
+  const [selectedItemLabel, setSelectedItemLabel] = useState<string | null>(null)
+  const [savedItemId, setSavedItemId] = useState(settings?.sage_item_id ? String(settings.sage_item_id) : '')
   const [showBasicForm, setShowBasicForm] = useState(false)
   const [basicEmail, setBasicEmail] = useState('')
   const [basicPassword, setBasicPassword] = useState('')
@@ -94,6 +96,21 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
       toast.error('Failed to fetch Sage items')
     } finally {
       setFetchingItems(false)
+    }
+  }
+
+  async function selectItem(item: { id: number; label: string; code: string }) {
+    setShowItemDropdown(false)
+    setSavedItemId(String(item.id))
+    setSelectedItemLabel(item.label)
+    // Also keep form in sync for the main save
+    set('sage_item_id', String(item.id))
+    // Auto-save immediately
+    const { error } = await supabase.from('settings').update({ sage_item_id: item.id }).eq('id', settings!.id)
+    if (error) {
+      toast.error('Failed to save item: ' + error.message)
+    } else {
+      toast.success(`Sage item set to "${item.label}"`)
     }
   }
 
@@ -240,9 +257,12 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
     setSaving(false)
   }
 
+  const displayItemId = savedItemId
+  const displayItemLabel = selectedItemLabel
+
   return (
     <div className="space-y-8">
-    <form onSubmit={save} className="space-y-8">
+    <form id="settings-form" onSubmit={save} className="space-y-8">
 
       {/* Row 1: Business Details + Branding & Contact */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -379,13 +399,11 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
         </section>
       </div>
 
-      <div className="border-t border-[#EDE9E1] pt-6">
-        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Studio Settings'}</Button>
-      </div>
     </form>
 
       {/* Sage Integration — Agency plan only, outside the main form to avoid state resets */}
-      {plan === 'agency' && <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
+      {/* Only show Sage if Xero is not connected */}
+      {plan === 'agency' && !xeroConnected && <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Sage Business Cloud Accounting</h2>
           {sageConnected && (
@@ -429,12 +447,10 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
           </div>
           <div className="mt-3 max-w-xs space-y-2">
             <label className="text-xs font-medium text-[#8A877F] block">Sage Item (used on invoice lines)</label>
-            {form.sage_item_id ? (
+            {displayItemId ? (
               <div className="flex items-center gap-2">
-                <div className="flex-1 px-3 py-2 bg-[#F5F2EC] border border-[#D8D3C8] rounded text-sm text-[#2C2C2A] font-mono">
-                  {sageItems.find(i => String(i.id) === form.sage_item_id)
-                    ? `${sageItems.find(i => String(i.id) === form.sage_item_id)!.label} (ID: ${form.sage_item_id})`
-                    : `ID: ${form.sage_item_id}`}
+                <div className="flex-1 px-3 py-2 bg-[#F5F2EC] border border-[#D8D3C8] rounded text-sm text-[#2C2C2A]">
+                  {displayItemLabel ? `${displayItemLabel} (ID: ${displayItemId})` : `ID: ${displayItemId}`}
                 </div>
                 <button
                   type="button"
@@ -461,10 +477,7 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => {
-                      set('sage_item_id', String(item.id))
-                      setShowItemDropdown(false)
-                    }}
+                    onClick={() => selectItem(item)}
                     className="w-full text-left px-3 py-2 text-sm hover:bg-[#F5F2EC] text-[#2C2C2A] border-b border-[#EDE9E1] last:border-0 cursor-pointer"
                   >
                     <span className="font-medium">{item.label}</span>
@@ -477,7 +490,6 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
             {showItemDropdown && sageItems.length === 0 && !fetchingItems && (
               <p className="text-xs text-[#8A877F]">No items found in Sage.</p>
             )}
-            <p className="text-xs text-[#8A877F]">Links all invoice lines to this Sage item. Saved with the main Save button below.</p>
           </div>
           </>
         ) : (
@@ -556,8 +568,8 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
         )}
       </section>}
 
-      {/* Xero Integration — Agency plan only */}
-      {plan === 'agency' && (
+      {/* Xero Integration — Agency plan only, only show if Sage is not connected */}
+      {plan === 'agency' && !sageConnected && (
         <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Xero Accounting</h2>
@@ -610,6 +622,11 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
           )}
         </section>
       )}
+
+      {/* Save button — always at the very bottom */}
+      <div className="border-t border-[#EDE9E1] pt-6">
+        <Button type="submit" form="settings-form" disabled={saving}>{saving ? 'Saving…' : 'Save Studio Settings'}</Button>
+      </div>
     </div>
   )
 }
