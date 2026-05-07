@@ -40,6 +40,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
       supabase.from('platform_supplier_contacts').select('supplier_id, markup_percentage, email'),
     ])
 
+  console.log('[project page] xero settings:', { xero_access_token: !!settings?.xero_access_token, xero_tenant_id: settings?.xero_tenant_id, settings_null: settings === null })
+
   if (!project) notFound()
 
   // Self-heal: recompute status from stages and fix if stale
