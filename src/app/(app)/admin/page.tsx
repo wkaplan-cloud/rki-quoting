@@ -12,16 +12,11 @@ export default async function AdminPage() {
 
   const { data: orgId } = await supabase.rpc('get_current_org_id')
 
-  const { data: membership } = await supabaseAdmin
-    .from('org_members')
-    .select('role, org_id, full_name')
-    .eq('user_id', user.id)
-    .eq('org_id', orgId)
-    .eq('status', 'active')
-    .maybeSingle()
+  const [{ data: membership }, { data: orgMeta }] = await Promise.all([
+    supabaseAdmin.from('org_members').select('role, org_id, full_name').eq('user_id', user.id).eq('org_id', orgId).eq('status', 'active').maybeSingle(),
+    supabaseAdmin.from('organizations').select('plan, subscription_status').eq('id', orgId).single(),
+  ])
 
-  // Fetch org plan — solo users redirect to dashboard
-  const { data: orgMeta } = await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
   if (orgMeta?.plan === 'solo') redirect('/dashboard')
 
   const isAdmin = membership?.role === 'admin'
@@ -57,38 +52,30 @@ export default async function AdminPage() {
     )
   }
 
-  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: org }, { data: completedProjects }] = await Promise.all([
+  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: allProjects }, { data: allLineItems }] = await Promise.all([
     supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
-    supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(500),
+    supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(200),
     supabase.from('settings').select('*').maybeSingle(),
-    supabaseAdmin.from('organizations').select('plan, subscription_status').eq('id', orgId).single(),
     supabase.from('projects')
       .select('id, project_name, project_number, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
       .is('archived_at', null)
       .order('date', { ascending: false }),
+    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
   ])
 
-  const paidProjects = (completedProjects ?? []).filter(p => {
+  const paidProjects = (allProjects ?? []).filter(p => {
     const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
     return stages?.final_invoice_paid === true
   })
 
-  const pipelineProjects = (completedProjects ?? []).filter(p => {
+  const pipelineProjects = (allProjects ?? []).filter(p => {
     const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
     return stages?.final_invoice_paid !== true
   })
 
-  const projectIds = paidProjects.map(p => p.id)
-  const pipelineIds = pipelineProjects.map(p => p.id)
-
-  const [{ data: completedLineItems }, { data: pipelineLineItems }] = await Promise.all([
-    projectIds.length > 0
-      ? supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', projectIds)
-      : { data: [] },
-    pipelineIds.length > 0
-      ? supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', pipelineIds)
-      : { data: [] },
-  ])
+  const paidIds = new Set(paidProjects.map(p => p.id))
+  const completedLineItems = (allLineItems ?? []).filter(li => paidIds.has(li.project_id))
+  const pipelineLineItems = (allLineItems ?? []).filter(li => !paidIds.has(li.project_id))
 
   return (
     <div>
@@ -99,8 +86,8 @@ export default async function AdminPage() {
           auditLogs={auditLogs ?? []}
           isAdmin={true}
           settings={settings}
-          plan={org?.plan ?? 'trial'}
-          subscriptionStatus={org?.subscription_status ?? 'trialing'}
+          plan={orgMeta?.plan ?? 'trial'}
+          subscriptionStatus={orgMeta?.subscription_status ?? 'trialing'}
           completedProjects={paidProjects}
           completedLineItems={completedLineItems ?? []}
           pipelineProjects={pipelineProjects}
