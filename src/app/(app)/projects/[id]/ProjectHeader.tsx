@@ -17,6 +17,7 @@ interface Props {
   onStagesUpdate: (s: ProjectStages) => void
   sageConnected?: boolean
   sageInvoicePaid?: boolean
+  xeroConnected?: boolean
   members: { user_id: string; label: string }[]
   isAdmin: boolean
   createdByName: string | null
@@ -34,7 +35,7 @@ const EMPTY_STAGES: ProjectStages = {
   delivered_installed: false, delivered_installed_at: null,
 }
 
-export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate, sageConnected, sageInvoicePaid, members, isAdmin, createdByName }: Props) {
+export function ProjectHeader({ project, clients, stages, onProjectUpdate, onStagesUpdate, sageConnected, sageInvoicePaid, xeroConnected, members, isAdmin, createdByName }: Props) {
   const [editing, setEditing] = useState(false)
   const [editingClient, setEditingClient] = useState(false)
   const [togglingStage, setTogglingStage] = useState<string | null>(null)
@@ -49,6 +50,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
   const [pendingClientName, setPendingClientName] = useState(project.client?.client_name ?? '')
   const [assignedTo, setAssignedTo] = useState<string | null>(project.assigned_to ?? null)
   const [reassigning, setReassigning] = useState(false)
+  const [pushingXero, setPushingXero] = useState(false)
   const supabase = createClient()
 
   async function handleCreateClient(name: string) {
@@ -126,6 +128,31 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     const { error } = await supabase.from('projects').update({ archived_at: new Date().toISOString() }).eq('id', project.id)
     if (error) { toast.error(error.message); return }
     window.location.href = '/projects'
+  }
+
+  async function handlePushToXero() {
+    setPushingXero(true)
+    try {
+      const res = await fetch('/api/xero/push-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to push to Xero'); return }
+      toast.success(
+        <span>
+          Pushed to Xero —{' '}
+          <a href={data.xero_url} target="_blank" rel="noopener noreferrer" className="underline">
+            View invoice ↗
+          </a>
+        </span>
+      )
+    } catch {
+      toast.error('Failed to push to Xero')
+    } finally {
+      setPushingXero(false)
+    }
   }
 
   async function toggleStage(key: StageKey, currentVal: boolean) {
@@ -258,6 +285,15 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
                   className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:text-red-500 hover:border-red-300 transition-colors cursor-pointer"
                 >
                   <Ban size={11} /> Cancel
+                </button>
+              )}
+              {xeroConnected && (
+                <button
+                  onClick={handlePushToXero}
+                  disabled={pushingXero}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:text-[#2C2C2A] hover:border-[#2C2C2A] transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {pushingXero ? 'Pushing…' : 'Push to Xero ↗'}
                 </button>
               )}
               <button

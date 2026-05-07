@@ -28,6 +28,7 @@ interface Props {
   emailTemplateQuote: string | null
   emailTemplateInvoice: string | null
   sageConnected: boolean
+  xeroConnected: boolean
   activePriceListIds: string[]
   plan: string
   members: { user_id: string; label: string }[]
@@ -35,7 +36,7 @@ interface Props {
   createdByName: string | null
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -342,6 +343,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         onStagesUpdate={setStages}
         sageConnected={sageConnected}
         sageInvoicePaid={isPaid}
+        xeroConnected={xeroConnected}
         members={members}
         isAdmin={isAdmin}
         createdByName={createdByName}

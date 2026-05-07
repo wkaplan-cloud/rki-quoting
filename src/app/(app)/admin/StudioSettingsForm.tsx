@@ -17,6 +17,9 @@ interface Settings {
   sage_company_id?: string | null
   sage_username?: string | null
   sage_item_id?: number | null
+  xero_access_token?: string | null
+  xero_tenant_id?: string | null
+  xero_tenant_name?: string | null
   sourcing_enabled?: boolean | null
   business_name?: string | null
   business_address?: string | null
@@ -51,6 +54,9 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
 
   const [sageConnected, setSageConnected] = useState(!!(settings?.sage_access_token || settings?.sage_username))
   const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
+  const [xeroConnected, setXeroConnected] = useState(!!(settings?.xero_access_token && settings?.xero_tenant_id))
+  const [xeroTenantName, setXeroTenantName] = useState(settings?.xero_tenant_name ?? '')
+  const [disconnectingXero, setDisconnectingXero] = useState(false)
   const [fetchingCompanyId, setFetchingCompanyId] = useState(false)
   const [showBasicForm, setShowBasicForm] = useState(false)
   const [basicEmail, setBasicEmail] = useState('')
@@ -96,6 +102,20 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
     }
   }
 
+  async function disconnectXero() {
+    if (!confirm('Disconnect Xero? You will need to reconnect to push invoices.')) return
+    setDisconnectingXero(true)
+    const res = await fetch('/api/xero/disconnect', { method: 'POST' })
+    if (res.ok) {
+      setXeroConnected(false)
+      setXeroTenantName('')
+      toast.success('Xero disconnected')
+    } else {
+      toast.error('Failed to disconnect Xero')
+    }
+    setDisconnectingXero(false)
+  }
+
   // Show toast from OAuth callback redirect params, then clear them from the URL
   useEffect(() => {
     if (searchParams.get('sage_connected') === '1') {
@@ -112,6 +132,24 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
         unknown: 'Something went wrong connecting to Sage',
       }
       toast.error(messages[err] ?? `Sage error: ${err}`)
+      router.replace('/admin')
+    }
+    if (searchParams.get('xero_connected') === '1') {
+      const tenant = searchParams.get('xero_tenant') ?? ''
+      toast.success(tenant ? `Xero connected — ${tenant}` : 'Xero connected successfully')
+      setXeroConnected(true)
+      if (tenant) setXeroTenantName(tenant)
+      router.replace('/admin')
+    }
+    const xeroErr = searchParams.get('xero_error')
+    if (xeroErr) {
+      const messages: Record<string, string> = {
+        invalid_state: 'Security check failed — please try connecting again',
+        token_exchange_failed: 'Xero rejected the authorisation — please try again',
+        no_code: 'No authorisation code returned from Xero',
+        unknown: 'Something went wrong connecting to Xero',
+      }
+      toast.error(messages[xeroErr] ?? `Xero error: ${xeroErr}`)
       router.replace('/admin')
     }
   }, [searchParams, router])
@@ -455,6 +493,61 @@ export function StudioSettingsForm({ settings, plan }: { settings: Settings | nu
           </div>
         )}
       </section>}
+
+      {/* Xero Integration — Agency plan only */}
+      {plan === 'agency' && (
+        <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Xero Accounting</h2>
+            {xeroConnected && (
+              <div className="flex items-center gap-2">
+                <CheckCircle size={13} className="text-green-600" />
+                <span className="text-xs text-green-700 font-medium">Connected</span>
+              </div>
+            )}
+          </div>
+
+          {xeroConnected ? (
+            <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
+              <div>
+                <p className="text-sm font-medium text-[#2C2C2A]">
+                  {xeroTenantName ? `Connected to ${xeroTenantName}` : 'Your Xero account is connected'}
+                </p>
+                <p className="text-xs text-[#8A877F] mt-0.5">
+                  Invoices can be pushed to Xero from any project as a draft.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={disconnectXero}
+                disabled={disconnectingXero}
+                className="ml-6 flex-shrink-0 text-xs text-red-400 hover:text-red-600 underline disabled:opacity-50 cursor-pointer"
+              >
+                {disconnectingXero ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-[#8A877F]">
+                Connect your Xero account to push invoices directly from any project — no double-entry.
+              </p>
+              <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4 flex flex-col gap-3 w-fit">
+                <div>
+                  <p className="text-sm font-medium text-[#2C2C2A]">Connect via Xero</p>
+                  <p className="text-xs text-[#8A877F] mt-0.5">Redirects to Xero to authorise QuotingHub.</p>
+                </div>
+                <a
+                  href="/api/xero/connect"
+                  className="self-start flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors"
+                >
+                  <Zap size={12} />
+                  Connect Xero
+                </a>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   )
 }
