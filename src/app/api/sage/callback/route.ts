@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 
 const SA_API_BASE = process.env.SAGE_API_URL ?? 'https://resellers.accounting.sageone.co.za/api/2.0.0'
@@ -91,16 +92,18 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.redirect(new URL('/login', req.url))
 
-    await supabase.from('settings').update({
-      sage_access_token: tokens.access_token,
-      sage_refresh_token: tokens.refresh_token ?? null,
-      sage_token_expires_at: expiresAt,
-      ...(companyId ? { sage_company_id: companyId } : {}),
-      // Clear old Basic Auth credentials
-      sage_api_key: null,
-      sage_username: null,
-      sage_password: null,
-    }).eq('user_id', user.id)
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (orgId) {
+      await supabaseAdmin.from('settings').update({
+        sage_access_token: tokens.access_token,
+        sage_refresh_token: tokens.refresh_token ?? null,
+        sage_token_expires_at: expiresAt,
+        ...(companyId ? { sage_company_id: companyId } : {}),
+        sage_api_key: null,
+        sage_username: null,
+        sage_password: null,
+      }).eq('org_id', orgId)
+    }
 
     settingsUrl.searchParams.set('sage_connected', '1')
     return NextResponse.redirect(settingsUrl)

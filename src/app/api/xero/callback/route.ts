@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 
 export async function GET(req: NextRequest) {
@@ -78,13 +79,16 @@ export async function GET(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.redirect(new URL('/login', req.url))
 
-    await supabase.from('settings').update({
-      xero_access_token: tokens.access_token,
-      xero_refresh_token: tokens.refresh_token ?? null,
-      xero_token_expires_at: expiresAt,
-      xero_tenant_id: tenantId,
-      xero_tenant_name: tenantName,
-    }).eq('user_id', user.id)
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (orgId) {
+      await supabaseAdmin.from('settings').update({
+        xero_access_token: tokens.access_token,
+        xero_refresh_token: tokens.refresh_token ?? null,
+        xero_token_expires_at: expiresAt,
+        xero_tenant_id: tenantId,
+        xero_tenant_name: tenantName,
+      }).eq('org_id', orgId)
+    }
 
     settingsUrl.searchParams.set('xero_connected', '1')
     if (tenantName) settingsUrl.searchParams.set('xero_tenant', tenantName)
