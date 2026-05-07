@@ -15,18 +15,12 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
+    const [{ data: project }, { data: lineItems }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(client_name)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-      supabase.from('settings').select('vat_rate').maybeSingle(),
     ])
 
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const vatRate = (project as any).vat_rate ?? settings?.vat_rate ?? 15
-    // Xero ZA tax types: OUTPUT2 = standard rate, NONE = no tax
-    const taxType = vatRate > 0 ? 'OUTPUT2' : 'NONE'
 
     // Find or create Xero contact for the client
     let contactId: string | null = null
@@ -58,7 +52,6 @@ export async function POST(req: NextRequest) {
           Quantity: item.quantity,
           UnitAmount: c?.sale_price ?? 0,
           AccountCode: '200',
-          TaxType: taxType,
         }
       })
 
@@ -69,7 +62,6 @@ export async function POST(req: NextRequest) {
         Quantity: 1,
         UnitAmount: parseFloat(((subtotal * project.design_fee) / 100).toFixed(2)),
         AccountCode: '200',
-        TaxType: taxType,
       })
     }
 
@@ -84,7 +76,6 @@ export async function POST(req: NextRequest) {
       DueDate: dueDate,
       LineItems: xeroLines,
       Status: 'DRAFT',
-      CurrencyCode: 'ZAR',
     }
 
     if (contactId) invoicePayload.Contact = { ContactID: contactId }
