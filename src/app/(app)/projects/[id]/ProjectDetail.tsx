@@ -689,17 +689,20 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               </span>
               <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.design_fee)}</span>
             </div>
-            {/* VAT — editable % */}
+            {/* VAT — admin-only editable % */}
             <div className="flex justify-between text-sm text-[#8A877F] items-center">
               <span className="flex items-center gap-0.5">
                 VAT (
-                <input
-                  type="number" min="0" max="100" step="0.5"
-                  value={vatRate}
-                  onChange={e => handleVatRateChange(parseFloat(e.target.value) || 0)}
-                  disabled={isPaid}
-                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                />
+                {isAdmin && !isPaid ? (
+                  <input
+                    type="number" min="0" max="100" step="0.5"
+                    value={vatRate}
+                    onChange={e => handleVatRateChange(parseFloat(e.target.value) || 0)}
+                    className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent"
+                  />
+                ) : (
+                  <span className="text-sm text-[#2C2C2A]">{vatRate}</span>
+                )}
                 %)
               </span>
               <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.vat_amount)}</span>
