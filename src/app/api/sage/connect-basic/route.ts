@@ -53,24 +53,22 @@ export async function POST(req: NextRequest) {
     const companyId = String(companies[0].ID)
     const companyName = companies[0].Name
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No org found' }, { status: 400 })
+
     // Store encrypted credentials — clear any OAuth tokens
-    const { error, count } = await supabaseAdmin.from('settings').update({
+    const { error } = await supabaseAdmin.from('settings').update({
       sage_username: email,
       sage_password: encrypt(password),
       sage_company_id: companyId,
       sage_access_token: null,
       sage_refresh_token: null,
       sage_token_expires_at: null,
-    }, { count: 'exact' }).eq('user_id', user.id)
+    }).eq('org_id', orgId)
 
     if (error) {
       console.error('[sage/connect-basic] DB update failed:', error)
       return NextResponse.json({ error: `Failed to save credentials: ${error.message}` }, { status: 500 })
-    }
-
-    if (count === 0) {
-      console.error('[sage/connect-basic] No settings row found for user_id:', user.id)
-      return NextResponse.json({ error: 'No settings row found — contact support' }, { status: 500 })
     }
 
     return NextResponse.json({ company_id: companyId, company_name: companyName })
