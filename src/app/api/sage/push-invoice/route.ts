@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     const docDate = toSageDate(project.date)
     const dueDate = `/Date(${new Date(project.date).getTime() + 30 * 24 * 60 * 60 * 1000})/`
 
-    const invoicePayload: Record<string, unknown> = {
+    const basePayload: Record<string, unknown> = {
       CustomerID: Number(sageContactId),
       Date: docDate,
       DueDate: dueDate,
@@ -92,12 +92,19 @@ export async function POST(req: NextRequest) {
       Lines: lines,
     }
 
-    // If invoice already exists in Sage, pass the ID to update rather than create
-    if (project.sage_invoice_id) {
-      invoicePayload.ID = Number(project.sage_invoice_id)
-    }
+    let invoice: Record<string, unknown>
 
-    const invoice = await sagePost('/TaxInvoice/Save', invoicePayload)
+    if (project.sage_invoice_id) {
+      // Try to update the existing invoice — if Sage rejects the ID (e.g. stale sandbox ID),
+      // fall back to creating a fresh invoice
+      try {
+        invoice = await sagePost('/TaxInvoice/Save', { ...basePayload, ID: Number(project.sage_invoice_id) })
+      } catch {
+        invoice = await sagePost('/TaxInvoice/Save', basePayload)
+      }
+    } else {
+      invoice = await sagePost('/TaxInvoice/Save', basePayload)
+    }
 
     // SA API returns the saved invoice — grab ID
     const sageId = invoice.ID ?? invoice.id
