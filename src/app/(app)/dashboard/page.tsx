@@ -72,7 +72,7 @@ export default async function DashboardPage() {
       if (p.status === 'Quote')    acc.openQuotes++
       if (p.status === 'Invoice')  acc.activeInvoices++
       if (p.status === 'Paid')     acc.paidProjects++
-      if (s?.quote_sent && !s?.deposit_received)                         acc.awaitingDeposit++
+      if (s?.quote_sent && !s?.deposit_received && p.status !== 'Paid')  acc.awaitingDeposit++
       if (s?.deposit_received && !s?.delivered_installed)                acc.inProduction++
     }
     if (!isCancelled && s?.final_invoice_sent && !s?.final_invoice_paid) acc.invoicesOutstanding++
