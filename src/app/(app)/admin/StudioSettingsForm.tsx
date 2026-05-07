@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { Upload, X, CheckCircle, Zap, KeyRound } from 'lucide-react'
+import { Upload, X, CheckCircle, KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { compressImage } from '@/lib/compressImage'
@@ -547,73 +547,50 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
           <div className="space-y-3">
             <p className="text-xs text-[#8A877F]">
               Connect your Sage account to push invoices directly — no double-entry, no copy-paste.
-              Choose the method that matches your Sage plan.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Option 1: OAuth (reseller/Sage ID) */}
-              <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4 flex flex-col gap-3">
-                <div>
-                  <p className="text-sm font-medium text-[#2C2C2A]">Connect via Sage ID</p>
-                  <p className="text-xs text-[#8A877F] mt-0.5">For reseller plan users — redirects to Sage login.</p>
-                </div>
-                <a
-                  href="/api/sage/connect"
-                  className="self-start flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors"
+            <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4 flex flex-col gap-3 max-w-sm">
+              {!showBasicForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowBasicForm(true)}
+                  className="self-start flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors cursor-pointer"
                 >
-                  <Zap size={12} />
-                  Connect via Sage ID
-                </a>
-              </div>
-
-              {/* Option 2: Basic Auth (live accounting.sageone.co.za) */}
-              <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4 flex flex-col gap-3">
-                <div>
-                  <p className="text-sm font-medium text-[#2C2C2A]">Connect with email &amp; password</p>
-                  <p className="text-xs text-[#8A877F] mt-0.5">For standard Sage accounts — uses your Sage login.</p>
-                </div>
-                {!showBasicForm ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowBasicForm(true)}
-                    className="self-start flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors cursor-pointer"
-                  >
-                    <KeyRound size={12} />
-                    Enter credentials
-                  </button>
-                ) : (
-                  <div className="space-y-2">
-                    <Input
-                      label="Sage email"
-                      type="email"
-                      value={basicEmail}
-                      onChange={e => setBasicEmail(e.target.value)}
-                    />
-                    <Input
-                      label="Sage password"
-                      type="password"
-                      value={basicPassword}
-                      onChange={e => setBasicPassword(e.target.value)}
-                    />
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={connectBasic}
-                        disabled={connectingBasic || !basicEmail || !basicPassword}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer"
-                      >
-                        {connectingBasic ? 'Connecting…' : 'Connect'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setShowBasicForm(false); setBasicEmail(''); setBasicPassword('') }}
-                        className="text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                  <KeyRound size={12} />
+                  Connect Sage
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    label="Sage email"
+                    type="email"
+                    value={basicEmail}
+                    onChange={e => setBasicEmail(e.target.value)}
+                  />
+                  <Input
+                    label="Sage password"
+                    type="password"
+                    value={basicPassword}
+                    onChange={e => setBasicPassword(e.target.value)}
+                  />
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={connectBasic}
+                      disabled={connectingBasic || !basicEmail || !basicPassword}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {connectingBasic ? 'Connecting…' : 'Connect'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowBasicForm(false); setBasicEmail(''); setBasicPassword('') }}
+                      className="text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer"
+                    >
+                      Cancel
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}
