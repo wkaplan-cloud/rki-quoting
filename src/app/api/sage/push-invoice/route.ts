@@ -80,9 +80,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Sage SBCA uses OData .NET date format: /Date(ms)/
-    const toSageDate = (dateStr: string) => `/Date(${new Date(dateStr).getTime()})/`
-    const docDate = toSageDate(project.date)
-    const dueDate = `/Date(${new Date(project.date).getTime() + 30 * 24 * 60 * 60 * 1000})/`
+    const toSageDate = (d: Date) => `/Date(${d.getTime()})/`
+    const now = new Date()
+    const docDate = toSageDate(now)
+    const dueDate = toSageDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000))
 
     const basePayload: Record<string, unknown> = {
       CustomerID: Number(sageContactId),

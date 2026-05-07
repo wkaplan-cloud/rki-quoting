@@ -73,9 +73,8 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const invoiceDate = project.date ?? new Date().toISOString().split('T')[0]
-    const dueDate = new Date(new Date(invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString().split('T')[0]
+    const invoiceDate = new Date().toISOString().split('T')[0]
+    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     const invoicePayload: Record<string, unknown> = {
       Type: 'ACCREC',
