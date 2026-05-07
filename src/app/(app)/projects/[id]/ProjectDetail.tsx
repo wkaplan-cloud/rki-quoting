@@ -62,6 +62,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sageInvoiceStatus, setSageInvoiceStatus] = useState(initial.sage_invoice_status ?? null)
   // Xero state
   const [pushingXero, setPushingXero] = useState(false)
+  const [xeroInvoiceId, setXeroInvoiceId] = useState((initial as unknown as Record<string, unknown>).xero_invoice_id as string | null ?? null)
   // Email modal state
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [emailModalType, setEmailModalType] = useState<'quote' | 'invoice'>('quote')
@@ -340,6 +341,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Failed to push to Xero'); return }
+      setXeroInvoiceId(data.xero_invoice_id)
       toast.success(
         <span>
           Pushed to Xero —{' '}
@@ -510,11 +512,22 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
             {/* Xero */}
             {xeroConnected && (
-              <button onClick={handlePushToXero} disabled={pushingXero}
-                title="Create an invoice in Xero from this project"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
-                <Upload size={13} /> {pushingXero ? 'Pushing…' : 'Push to Xero'}
-              </button>
+              xeroInvoiceId ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700">Xero: Pushed</span>
+                  <a href={`https://go.xero.com/AccountsReceivable/View.aspx?invoiceID=${xeroInvoiceId}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors">
+                    View ↗
+                  </a>
+                </div>
+              ) : (
+                <button onClick={handlePushToXero} disabled={pushingXero}
+                  title="Create an invoice in Xero from this project"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
+                  <Upload size={13} /> {pushingXero ? 'Pushing…' : 'Push to Xero'}
+                </button>
+              )
             )}
 
             {/* Sage */}
