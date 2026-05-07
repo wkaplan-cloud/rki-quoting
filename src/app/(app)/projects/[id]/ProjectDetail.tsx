@@ -531,36 +531,34 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             )}
 
             {/* Sage */}
-            {sageConnected && (
-              sageInvoiceId ? (
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                    Sage: {sageInvoiceStatus ?? 'Pushed'}
-                  </span>
-                  {!isPaid && (
-                    <button onClick={openSageModal}
-                      title="Push updated line items and amounts to the existing Sage invoice"
-                      className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
-                      <Upload size={11} /> Update
-                    </button>
-                  )}
-                  {!isPaid && (
-                    <button onClick={handleSyncSageStatus} disabled={sageSyncing}
-                      title="Check Sage for the latest payment status on this invoice"
-                      className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
-                      <RefreshCw size={11} className={sageSyncing ? 'animate-spin' : ''} />
-                      {sageSyncing ? 'Syncing…' : 'Sync'}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <button onClick={openSageModal}
-                  title="Create an invoice in Sage Business Cloud Accounting from this project"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
-                  <Upload size={13} /> Push to Sage
-                </button>
-              )
-            )}
+            {sageInvoiceId ? (
+              <div className="flex items-center gap-1.5">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  Sage: {sageInvoiceStatus ?? 'Pushed'}
+                </span>
+                {sageConnected && !isPaid && (
+                  <button onClick={openSageModal}
+                    title="Push updated line items and amounts to the existing Sage invoice"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
+                    <Upload size={11} /> Update
+                  </button>
+                )}
+                {sageConnected && !isPaid && (
+                  <button onClick={handleSyncSageStatus} disabled={sageSyncing}
+                    title="Check Sage for the latest payment status on this invoice"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
+                    <RefreshCw size={11} className={sageSyncing ? 'animate-spin' : ''} />
+                    {sageSyncing ? 'Syncing…' : 'Sync'}
+                  </button>
+                )}
+              </div>
+            ) : sageConnected ? (
+              <button onClick={openSageModal}
+                title="Create an invoice in Sage Business Cloud Accounting from this project"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
+                <Upload size={13} /> Push to Sage
+              </button>
+            ) : null}
 
             <div className="flex-1" />
             <button onClick={handleDuplicate}
