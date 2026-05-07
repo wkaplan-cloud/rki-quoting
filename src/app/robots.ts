@@ -9,6 +9,9 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: ['/api/', '/projects/', '/clients/', '/suppliers/', '/items/', '/settings/', '/admin/', '/import/', '/price-lists/', '/onboarding/', '/set-password/'],
       },
+      // Explicitly allow Facebook crawlers (facebookexternalhit caches robots.txt aggressively)
+      { userAgent: 'facebookexternalhit', allow: '/' },
+      { userAgent: 'Facebot',             allow: '/' },
       // Explicitly allow all known AI crawlers on public pages
       { userAgent: 'GPTBot',          allow: '/' },
       { userAgent: 'ChatGPT-User',    allow: '/' },
