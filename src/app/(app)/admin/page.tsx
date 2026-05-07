@@ -64,6 +64,7 @@ export default async function AdminPage() {
     supabaseAdmin.from('organizations').select('plan, subscription_status').eq('id', orgId).single(),
     supabase.from('projects')
       .select('id, project_name, project_number, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
+      .is('archived_at', null)
       .order('date', { ascending: false }),
   ])
 
