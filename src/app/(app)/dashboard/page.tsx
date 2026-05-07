@@ -16,23 +16,23 @@ export default async function DashboardPage() {
   ])
   const currentUserId = user?.id ?? ''
   const [{ data: projects }, { data: allLineItems }, { data: settings }, { data: org }] = await Promise.all([
-    supabase.from('projects').select('*, client:clients(client_name)').order('created_at', { ascending: false }),
+    // Include stages in the projects query — eliminates a separate sequential round trip
+    supabase.from('projects').select('*, client:clients(client_name), stages:project_stages(*)').order('created_at', { ascending: false }),
     supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').neq('row_type', 'section').limit(5000),
-    supabase.from('settings').select('sage_access_token, sage_company_id').maybeSingle(),
+    supabase.from('settings').select('sage_company_id').maybeSingle(),
     orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null }),
   ])
   const plan = org?.plan ?? 'trial'
   const isSolo = plan === 'solo'
-  const sageConnected = !isSolo && !!(settings?.sage_access_token && settings?.sage_company_id)
-
-  const projectIds = (projects ?? []).map(p => p.id)
-
-  const { data: stages } = await (projectIds.length > 0
-    ? supabaseAdmin.from('project_stages').select('*').in('project_id', projectIds)
-    : Promise.resolve({ data: [], error: null }))
+  const sageConnected = !isSolo && !!(settings?.sage_company_id)
 
   const ps = projects ?? []
-  const stagesMap = Object.fromEntries((stages ?? []).map(s => [s.project_id, s]))
+  const stagesMap = Object.fromEntries(
+    ps.map(p => {
+      const s = Array.isArray(p.stages) ? p.stages[0] : p.stages
+      return [p.id, s ?? null]
+    })
+  )
 
   const lineItemsByProject = (allLineItems ?? []).reduce<Record<string, typeof allLineItems>>((acc, li) => {
     if (!acc[li!.project_id]) acc[li!.project_id] = []

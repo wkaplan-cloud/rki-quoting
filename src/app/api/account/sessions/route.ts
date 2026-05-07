@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+import { supabaseAdmin } from '@/lib/supabase/admin'
 
 export async function GET() {
   const supabase = await createClient()
@@ -11,7 +9,7 @@ export async function GET() {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // The current session ID lives in the JWT's session_id claim
+  // Decode the JWT to extract the current session ID (lives in the session_id claim)
   let currentSessionId: string | null = null
   if (session?.access_token) {
     try {
@@ -20,17 +18,21 @@ export async function GET() {
     } catch { /* ignore decode errors */ }
   }
 
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}/sessions`, {
-    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
-  })
+  // Query auth.sessions directly via the admin client (service role bypasses RLS on auth schema)
+  const { data: sessions, error } = await supabaseAdmin
+    .schema('auth')
+    .from('sessions')
+    .select('id, created_at, updated_at, not_after')
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false })
 
-  if (!res.ok) return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 })
-
-  const data = await res.json()
-  const sessions = (data.sessions ?? []) as Array<{ id: string; created_at: string; updated_at: string; not_after?: string }>
+  if (error) {
+    console.error('[account/sessions]', error)
+    return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 })
+  }
 
   return NextResponse.json({
-    sessions: sessions.map(s => ({
+    sessions: (sessions ?? []).map(s => ({
       id: s.id,
       created_at: s.created_at,
       last_active_at: s.updated_at,
