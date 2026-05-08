@@ -91,7 +91,7 @@ export default async function DashboardPage() {
     { label: 'Stale Quotes',           value: staleQuotes.toString(),           sub: `Past ${validityDays}-day validity — no deposit yet`, alert: staleQuotes > 0 },
     { label: 'In Production',          value: inProduction.toString(),          sub: 'Deposit received, not yet delivered',                alert: false },
     { label: 'Ready to Invoice',       value: readyToInvoice.toString(),        sub: 'Fabrics in — balance invoice not yet sent',          alert: readyToInvoice > 0 },
-    { label: 'Balance Due Outstanding',value: invoicesOutstanding.toString(),   sub: 'Final invoice sent — balance not yet paid',          alert: invoicesOutstanding > 0 },
+    { label: 'Balance Due',            value: invoicesOutstanding.toString(),   sub: 'Final invoice sent — balance not yet paid',          alert: invoicesOutstanding > 0 },
   ]
   // Solo: show the 3 most actionable tiles
   const summaryCards = isSolo
