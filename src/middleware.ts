@@ -100,6 +100,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && pathname === '/login') {
+    // Allow signed-in non-admin users to reach /login when redirected from /platform
+    // so they can sign out and sign in as the platform admin
+    if (request.nextUrl.searchParams.get('from') === 'platform') {
+      return supabaseResponse
+    }
     // Check if this is a supplier portal account — send them to their portal, not the main app
     const { data: supplierAccount } = await supabase
       .from('supplier_portal_accounts')

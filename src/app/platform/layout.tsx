@@ -12,7 +12,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user || user.email?.toLowerCase() !== PLATFORM_ADMIN?.toLowerCase()) {
-    redirect('/login')
+    redirect('/login?from=platform')
   }
 
   // Require MFA (aal2) for platform admin access

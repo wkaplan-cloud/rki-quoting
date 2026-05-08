@@ -19,6 +19,8 @@ export default function LoginPage() {
     typeof window !== 'undefined' && window.location.hash.includes('access_token=')
   )
   const [checkingSession, setCheckingSession] = useState(true)
+  const [platformSignoutEmail, setPlatformSignoutEmail] = useState<string | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -30,6 +32,13 @@ export default function LoginPage() {
     }
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { setCheckingSession(false); return }
+      // Coming from /platform as a non-admin: show a notice instead of auto-signing out
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('from') === 'platform') {
+        setPlatformSignoutEmail(session.user.email ?? null)
+        setCheckingSession(false)
+        return
+      }
       const { data: portalAccount } = await supabase
         .from('supplier_portal_accounts')
         .select('id')
@@ -75,6 +84,13 @@ export default function LoginPage() {
       }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handlePlatformSignout() {
+    setSigningOut(true)
+    await supabase.auth.signOut()
+    setPlatformSignoutEmail(null)
+    setRole('designer')
+  }
 
   if (hashRedirecting || checkingSession) {
     return (
@@ -148,8 +164,31 @@ export default function LoginPage() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
 
+        {/* Platform admin: sign-out notice */}
+        {platformSignoutEmail && (
+          <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={cardShadow}>
+            <div className="mb-6 text-center">
+              <h1 className="font-serif text-2xl text-[#1A1A18] tracking-tight mb-2">Sign in as platform admin</h1>
+              <p className="text-sm text-[#8A877F]">
+                You&apos;re currently signed in as<br />
+                <span className="font-medium text-[#2C2C2A]">{platformSignoutEmail}</span>
+              </p>
+            </div>
+            <p className="text-sm text-[#8A877F] text-center mb-6">
+              To access the platform admin, sign out first and then sign in with your admin credentials.
+            </p>
+            <button
+              onClick={handlePlatformSignout}
+              disabled={signingOut}
+              className="w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {signingOut ? 'Signing out…' : 'Sign Out & Continue'}
+            </button>
+          </div>
+        )}
+
         {/* Role selector */}
-        {!role && (
+        {!platformSignoutEmail && !role && (
           <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={cardShadow}>
             <div className="mb-8 text-center">
               <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Welcome back</h1>
@@ -189,7 +228,7 @@ export default function LoginPage() {
         )}
 
         {/* Designer login form */}
-        {role === 'designer' && (
+        {!platformSignoutEmail && role === 'designer' && (
           <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={cardShadow}>
             <div className="mb-8">
               <button onClick={() => setRole(null)} className="text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors mb-4 flex items-center gap-1">
