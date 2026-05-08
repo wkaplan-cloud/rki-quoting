@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [checkingSession, setCheckingSession] = useState(true)
   const [platformSignoutEmail, setPlatformSignoutEmail] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
+  const [platformMode, setPlatformMode] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -89,6 +90,7 @@ export default function LoginPage() {
     setSigningOut(true)
     await supabase.auth.signOut()
     setPlatformSignoutEmail(null)
+    setPlatformMode(true)
     setRole('designer')
   }
 
@@ -131,7 +133,7 @@ export default function LoginPage() {
           return
         }
       }
-      router.push('/dashboard')
+      router.push(platformMode ? '/platform' : '/dashboard')
     }
   }
 
@@ -234,8 +236,8 @@ export default function LoginPage() {
               <button onClick={() => setRole(null)} className="text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors mb-4 flex items-center gap-1">
                 ← Back
               </button>
-              <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Designer sign in</h1>
-              <p className="text-sm text-[#8A877F] mt-1.5">Sign in to your studio account</p>
+              <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">{platformMode ? 'Platform admin sign in' : 'Designer sign in'}</h1>
+              <p className="text-sm text-[#8A877F] mt-1.5">{platformMode ? 'Sign in with your admin credentials' : 'Sign in to your studio account'}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
