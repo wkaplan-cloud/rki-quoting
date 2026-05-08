@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { formatZAR, computeTotals } from '@/lib/quoting'
 import { DashboardPipeline } from './DashboardPipeline'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
@@ -15,11 +14,9 @@ export default async function DashboardPage() {
     supabase.rpc('get_current_org_id'),
   ])
   const currentUserId = user?.id ?? ''
-  const [{ data: projects }, { data: allLineItems }, { data: settings }, { data: org }] = await Promise.all([
-    // Include stages in the projects query — eliminates a separate sequential round trip
+  const [{ data: projects }, { data: settings }, { data: org }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name), stages:project_stages(*)').is('archived_at', null).order('created_at', { ascending: false }),
-    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').neq('row_type', 'section').limit(5000),
-    supabase.from('settings').select('sage_company_id').maybeSingle(),
+    supabase.from('settings').select('sage_company_id, quote_validity_days').maybeSingle(),
     orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null }),
   ])
   const plan = org?.plan ?? 'trial'
@@ -34,71 +31,69 @@ export default async function DashboardPage() {
     })
   )
 
-  const lineItemsByProject = (allLineItems ?? []).reduce<Record<string, typeof allLineItems>>((acc, li) => {
-    if (!acc[li!.project_id]) acc[li!.project_id] = []
-    acc[li!.project_id]!.push(li)
-    return acc
-  }, {})
+  const today = new Date()
+  const validityDays: number = (settings as any)?.quote_validity_days ?? 30
 
   // Single pass over projects — derive all metrics without re-scanning the array.
   type Metrics = {
     activeProjects: typeof ps
-    completedProjects: typeof ps
     drafts: number
     openQuotes: number
     activeInvoices: number
     paidProjects: number
     awaitingDeposit: number
-    invoicesOutstanding: number
+    staleQuotes: number
     inProduction: number
-    totalRevenue: number
-    activeRevenuePipeline: number
+    readyToInvoice: number
+    invoicesOutstanding: number
   }
 
   const metrics = ps.reduce<Metrics>((acc, p) => {
     const s = stagesMap[p.id]
-    const items = lineItemsByProject[p.id] ?? []
-    const totals = computeTotals(items as any, p.design_fee ?? 0)
     const isCancelled = p.status === 'Cancelled'
     const isCompleted = p.status === 'Completed'
 
-    if (isCompleted) {
-      acc.completedProjects.push(p)
-      acc.totalRevenue += totals.grand_total
-    } else if (!isCancelled) {
+    if (!isCancelled && !isCompleted) {
       acc.activeProjects.push(p)
-      acc.activeRevenuePipeline += totals.grand_total
-      if (p.status === 'Draft')    acc.drafts++
-      if (p.status === 'Quote')    acc.openQuotes++
-      if (p.status === 'Invoice')  acc.activeInvoices++
-      if (p.status === 'Paid')     acc.paidProjects++
-      if (s?.quote_sent && !s?.deposit_received && p.status !== 'Paid')  acc.awaitingDeposit++
-      if (s?.deposit_received && !s?.delivered_installed)                acc.inProduction++
+      if (p.status === 'Draft')   acc.drafts++
+      if (p.status === 'Quote')   acc.openQuotes++
+      if (p.status === 'Invoice') acc.activeInvoices++
+      if (p.status === 'Paid')    acc.paidProjects++
+      if (s?.quote_sent && !s?.deposit_received && p.status !== 'Paid') {
+        acc.awaitingDeposit++
+        // Stale: quote has passed its validity window with no deposit
+        if (p.quoted_date) {
+          const expiry = new Date(p.quoted_date)
+          expiry.setDate(expiry.getDate() + validityDays)
+          if (expiry < today) acc.staleQuotes++
+        }
+      }
+      if (s?.deposit_received && !s?.delivered_installed)                          acc.inProduction++
+      if (s?.deposit_received && s?.fabrics_received && !s?.final_invoice_sent)    acc.readyToInvoice++
     }
     if (!isCancelled && s?.final_invoice_sent && !s?.final_invoice_paid) acc.invoicesOutstanding++
     return acc
   }, {
-    activeProjects: [], completedProjects: [],
+    activeProjects: [],
     drafts: 0, openQuotes: 0, activeInvoices: 0, paidProjects: 0,
-    awaitingDeposit: 0, invoicesOutstanding: 0, inProduction: 0,
-    totalRevenue: 0, activeRevenuePipeline: 0,
+    awaitingDeposit: 0, staleQuotes: 0, inProduction: 0, readyToInvoice: 0, invoicesOutstanding: 0,
   })
 
   const {
-    activeProjects, completedProjects,
+    activeProjects,
     drafts, openQuotes, activeInvoices, paidProjects,
-    awaitingDeposit, invoicesOutstanding, inProduction,
-    totalRevenue, activeRevenuePipeline,
+    awaitingDeposit, staleQuotes, inProduction, readyToInvoice, invoicesOutstanding,
   } = metrics
 
   const allSummaryCards = [
-    { label: 'Active Projects', value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },
-    { label: 'Pipeline Value', value: formatZAR(activeRevenuePipeline), sub: 'active projects', alert: false },
-    { label: 'Awaiting Deposit', value: awaitingDeposit.toString(), sub: 'Quote sent — deposit not yet received', alert: awaitingDeposit > 0 },
-    { label: 'In Production', value: inProduction.toString(), sub: 'Deposit received, not yet delivered', alert: false },
-    { label: 'Balance Due Outstanding', value: invoicesOutstanding.toString(), sub: 'Final invoice sent — balance not yet paid', alert: invoicesOutstanding > 0 },
-    { label: 'Total Revenue', value: formatZAR(totalRevenue), sub: `${completedProjects.length} completed projects`, alert: false },
+    { label: 'Active Projects',        value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },
+    { label: 'Awaiting Deposit',       value: awaitingDeposit.toString(),       sub: 'Quote sent — deposit not yet received',              alert: awaitingDeposit > 0 },
+    { label: 'Stale Quotes',           value: staleQuotes.toString(),           sub: `Past ${validityDays}-day validity — no deposit yet`, alert: staleQuotes > 0 },
+    { label: 'In Production',          value: inProduction.toString(),          sub: 'Deposit received, not yet delivered',                alert: false },
+    { label: 'Ready to Invoice',       value: readyToInvoice.toString(),        sub: 'Fabrics in — balance invoice not yet sent',          alert: readyToInvoice > 0 },
+    { label: 'Balance Due Outstanding',value: invoicesOutstanding.toString(),   sub: 'Final invoice sent — balance not yet paid',          alert: invoicesOutstanding > 0 },
   ]
+  // Solo: show the 3 most actionable tiles
   const summaryCards = isSolo
     ? [allSummaryCards[0], allSummaryCards[1], allSummaryCards[5]]
     : allSummaryCards
