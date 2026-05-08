@@ -32,9 +32,17 @@ export default function LoginPage() {
       return
     }
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { setCheckingSession(false); return }
-      // Coming from /platform as a non-admin: show a notice instead of auto-signing out
       const params = new URLSearchParams(window.location.search)
+      if (!session) {
+        // No session — if coming from /platform, drop straight to the admin login form
+        if (params.get('from') === 'platform') {
+          setPlatformMode(true)
+          setRole('designer')
+        }
+        setCheckingSession(false)
+        return
+      }
+      // Signed in but coming from /platform as a non-admin: show sign-out notice
       if (params.get('from') === 'platform') {
         setPlatformSignoutEmail(session.user.email ?? null)
         setCheckingSession(false)
@@ -120,6 +128,10 @@ export default function LoginPage() {
         localStorage.removeItem('rki_remember_until')
         sessionStorage.setItem('rki_session_only', '1')
       }
+      if (platformMode) {
+        router.push('/platform')
+        return
+      }
       if (user) {
         const { data: orgMember } = await supabase.from('org_members').select('id').eq('user_id', user.id).maybeSingle()
         if (!orgMember) {
@@ -133,7 +145,7 @@ export default function LoginPage() {
           return
         }
       }
-      router.push(platformMode ? '/platform' : '/dashboard')
+      router.push('/dashboard')
     }
   }
 
