@@ -193,8 +193,8 @@ export function PriceListManager({ initialItems }: Props) {
         <div
           className="px-4 py-3 rounded-lg text-sm"
           style={importMsg.startsWith('Error')
-            ? { background: '#1A1020', color: '#F87171', border: '1px solid #3B1F1F' }
-            : { background: '#0D2218', color: '#34D399', border: '1px solid #164430' }
+            ? { background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }
+            : { background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }
           }
         >
           {importMsg}
@@ -401,7 +401,7 @@ export function PriceListManager({ initialItems }: Props) {
               </div>
 
               {error && (
-                <p className="text-xs px-2 py-1.5 rounded" style={{ background: '#1A1020', color: '#F87171' }}>{error}</p>
+                <p className="text-xs px-2 py-1.5 rounded" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{error}</p>
               )}
 
               <div className="flex gap-2">

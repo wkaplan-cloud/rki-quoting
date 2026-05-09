@@ -133,6 +133,13 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   const [upgradeAgencyOpen, setUpgradeAgencyOpen] = useState(false)
   const [upgradingAgency, setUpgradingAgency] = useState(false)
   const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'audit'>(isAdmin ? 'users' : 'profile')
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string
+    body: string
+    confirmLabel: string
+    danger?: boolean
+    onConfirm: () => Promise<void>
+  } | null>(null)
 
   // Projected profit across all active (unpaid) projects
   const pipelineProfit = pipelineProjects.reduce((total, p) => {
@@ -198,20 +205,34 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
     setInviting(false)
   }
 
-  async function handleDeactivate(id: string) {
-    if (!confirm('Deactivate this user? They will lose access immediately.')) return
-    const res = await fetch('/api/admin/members', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'inactive' }) })
-    if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
-    setMembers(m => m.map(mem => mem.id === id ? { ...mem, status: 'inactive' } : mem))
-    toast.success('User deactivated')
+  function handleDeactivate(id: string) {
+    setConfirmModal({
+      title: 'Deactivate user?',
+      body: 'They will lose access immediately and cannot log in until reactivated.',
+      confirmLabel: 'Deactivate',
+      danger: true,
+      onConfirm: async () => {
+        const res = await fetch('/api/admin/members', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'inactive' }) })
+        if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
+        setMembers(m => m.map(mem => mem.id === id ? { ...mem, status: 'inactive' } : mem))
+        toast.success('User deactivated')
+      },
+    })
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Cancel this invite? The invite link will no longer work.')) return
-    const res = await fetch('/api/admin/members', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
-    if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
-    setMembers(m => m.filter(mem => mem.id !== id))
-    toast.success('Invite cancelled')
+  function handleDelete(id: string, email: string) {
+    setConfirmModal({
+      title: 'Cancel invite?',
+      body: `The invite sent to ${email} will no longer work.`,
+      confirmLabel: 'Cancel invite',
+      danger: true,
+      onConfirm: async () => {
+        const res = await fetch('/api/admin/members', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+        if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
+        setMembers(m => m.filter(mem => mem.id !== id))
+        toast.success('Invite cancelled')
+      },
+    })
   }
 
   async function handleReactivate(id: string) {
@@ -242,11 +263,6 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   return (
     <>
     <div>
-      {/* Storage widget — top right */}
-      <div className="flex justify-end mb-4">
-        <StorageWidget />
-      </div>
-
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#D8D3C8] mb-6">
         {(isAdmin
@@ -393,7 +409,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                           </button>
                         )}
                         {m.status === 'pending' && (
-                          <button onClick={() => handleDelete(m.id)} className="text-xs text-[#8A877F] hover:text-red-500 transition-colors flex items-center gap-1 ml-auto cursor-pointer">
+                          <button onClick={() => handleDelete(m.id, m.invited_email)} className="text-xs text-[#8A877F] hover:text-red-500 transition-colors flex items-center gap-1 ml-auto cursor-pointer">
                             <Trash2 size={12} /> Cancel
                           </button>
                         )}
@@ -415,6 +431,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       {tab === 'studio' && (
         <div className="space-y-6">
           <StudioSettingsForm settings={settings as any} plan={plan} isAdmin={isAdmin} />
+          <StorageWidget />
         </div>
       )}
 
@@ -562,6 +579,32 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
         </div>
       )}
     </div>
+
+      {/* Generic confirm modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50" onClick={() => setConfirmModal(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-[360px] p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-[#1A1A18]">{confirmModal.title}</h2>
+              <button onClick={() => setConfirmModal(null)} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm text-[#8A877F] leading-relaxed mb-5">{confirmModal.body}</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                Cancel
+              </button>
+              <button
+                onClick={async () => { const fn = confirmModal.onConfirm; setConfirmModal(null); await fn() }}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${confirmModal.danger ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-[#9A7B4F] text-white hover:bg-[#B8956A]'}`}
+              >
+                {confirmModal.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upgrade to Agency modal — triggered when studio hits 5-member cap */}
       {upgradeAgencyOpen && (
