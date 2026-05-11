@@ -22,7 +22,7 @@ export default async function SupplierHomePage() {
   // Fetch all session-supplier rows for this account
   const { data: ssRows } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('id, status, sent_at, token, session:sourcing_sessions(id, title, status, user_id, project:projects(project_name))')
+    .select('id, status, sent_at, token, session:sourcing_sessions(id, title, status, org_id, project:projects(project_name))')
     .or(`portal_account_id.eq.${account.id},email.eq.${account.email}`)
     .order('created_at', { ascending: false })
 
@@ -30,17 +30,17 @@ export default async function SupplierHomePage() {
   const ssIds = allRows.map((r: any) => r.id)
 
   // Fetch studio names + assignment stats in parallel
-  const userIds = [...new Set(
+  const orgIds = [...new Set(
     allRows.map((r: any) => {
       const s = Array.isArray(r.session) ? r.session[0] : r.session
-      return s?.user_id as string | undefined
+      return s?.org_id as string | undefined
     }).filter(Boolean)
   )]
 
   const [{ data: settingsRows }, { data: assignments }] = await Promise.all([
-    userIds.length > 0
-      ? supabaseAdmin.from('settings').select('user_id, business_name').in('user_id', userIds)
-      : Promise.resolve({ data: [] as { user_id: string; business_name: string | null }[] }),
+    orgIds.length > 0
+      ? supabaseAdmin.from('settings').select('org_id, business_name').in('org_id', orgIds)
+      : Promise.resolve({ data: [] as { org_id: string; business_name: string | null }[] }),
     ssIds.length > 0
       ? supabaseAdmin
           .from('sourcing_item_assignments')
@@ -51,7 +51,7 @@ export default async function SupplierHomePage() {
 
   const studioMap: Record<string, string> = {}
   for (const s of settingsRows ?? []) {
-    if (s.user_id) studioMap[s.user_id] = s.business_name ?? 'Studio'
+    if (s.org_id) studioMap[s.org_id] = s.business_name ?? 'Studio'
   }
 
   // Per-session-supplier pending count
@@ -68,7 +68,7 @@ export default async function SupplierHomePage() {
   // Enrich rows
   const enriched = allRows.map((r: any) => {
     const session = Array.isArray(r.session) ? r.session[0] : r.session
-    const studioName = session?.user_id ? (studioMap[session.user_id] ?? 'Studio') : 'Studio'
+    const studioName = session?.org_id ? (studioMap[session.org_id] ?? 'Studio') : 'Studio'
     return {
       id: r.id as string,
       token: r.token as string,
