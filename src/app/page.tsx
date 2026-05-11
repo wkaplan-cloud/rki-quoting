@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { ContactForm } from './ContactForm'
 import { AuthRecoveryRedirect } from './_components/AuthRecoveryRedirect'
+import { NavMobile } from './_components/NavMobile'
 
 export default function LandingPage() {
   return (
@@ -21,9 +22,10 @@ export default function LandingPage() {
             <Link href="/pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
             <Link href="/faq" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">FAQ</Link>
             <Link href="/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
-            <Link href="/signup" className="px-3 py-2 sm:px-4 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
+            <Link href="/signup" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Start for free
             </Link>
+            <NavMobile />
           </div>
         </div>
       </nav>
