@@ -167,7 +167,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const settled = await Promise.allSettled(toSend.map(async (ss) => {
       const assignments = (ss.assignments ?? []) as any[]
-      if (!assignments.length) return { id: ss.id, success: true, skipped: true }
+      if (!assignments.length) return { id: ss.id, success: false, skipped: true, reason: `${ss.supplier_name} has no items assigned` }
 
       const items = assignments.map((a: any) => a.item).filter(Boolean)
 
@@ -196,18 +196,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         text: `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,
       })
 
-      if (emailError) throw new Error(emailError.message)
+      if (emailError) throw new Error(`Failed to email ${ss.supplier_name}: ${emailError.message}`)
 
       await supabase.from('sourcing_session_suppliers').update({ sent_at: now }).eq('id', ss.id)
       return { id: ss.id, success: true }
     }))
 
-    const anyOk = settled.some(s => s.status === 'fulfilled' && !(s.value as any).skipped)
-    if (anyOk) {
-      await supabase.from('sourcing_sessions').update({ status: 'sent', ...(session.status === 'draft' ? {} : {}) }).eq('id', id)
+    const successes = settled.filter(s => s.status === 'fulfilled' && (s.value as any).success)
+    const failures = settled.filter(s => s.status === 'rejected' || (s.status === 'fulfilled' && !(s.value as any).success))
+
+    if (successes.length > 0) {
+      await supabase.from('sourcing_sessions').update({ status: 'sent' }).eq('id', id)
     }
 
-    return NextResponse.json({ success: true })
+    if (successes.length === 0) {
+      const reasons = settled
+        .map(s => s.status === 'rejected' ? (s as any).reason?.message : (s.value as any).reason)
+        .filter(Boolean)
+      return NextResponse.json({
+        error: reasons.length > 0 ? reasons.join('; ') : 'No emails were sent. Make sure each supplier has at least one item assigned.',
+      }, { status: 400 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      sent: successes.length,
+      skipped: failures.length,
+    })
   } catch (e) {
     return apiError(e)
   }

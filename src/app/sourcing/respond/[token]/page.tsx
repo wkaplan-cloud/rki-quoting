@@ -13,7 +13,7 @@ export default async function SupplierRespondPage({
 
   const { data: ss } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('id, supplier_name, status, viewed_at, session_id, session:sourcing_sessions(id, title, status, user_id, project:projects(project_name))')
+    .select('id, supplier_name, status, viewed_at, session_id, session:sourcing_sessions(id, title, status, user_id, org_id, project:projects(project_name))')
     .eq('token', token)
     .maybeSingle()
 
@@ -77,7 +77,7 @@ export default async function SupplierRespondPage({
     supabaseAdmin
       .from('settings')
       .select('business_name')
-      .eq('user_id', (session as any).user_id)
+      .eq('org_id', (session as any).org_id)
       .maybeSingle(),
   ])
 
