@@ -2,6 +2,8 @@ import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
 import { styles } from './styles'
 import { formatZAR } from '../quoting'
 import type { Project, LineItem, Supplier } from '../types'
+import { resolveTheme } from './themes'
+import type { PdfTheme } from './themes'
 
 interface Props {
   project: Project
@@ -17,6 +19,7 @@ interface Props {
   companyReg?: string | null
   printDate?: string | null
   platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null }[]
+  themeKey?: string | null
 }
 
 function cap(s: string | null | undefined): string {
@@ -59,7 +62,7 @@ function DeliverToCell({ deliveryAddress, allSuppliers, businessName, businessAd
   )
 }
 
-function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: {
+function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts, theme }: {
   project: Project
   items: LineItem[]
   allItems: LineItem[]
@@ -73,6 +76,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
   companyReg?: string | null
   printDate?: string | null
   platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null; rep_email?: string | null }[]
+  theme: PdfTheme
 }) {
   const itemRows = items.filter(i => i.row_type !== 'section')
   const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
@@ -117,7 +121,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
       {/* Supplier details */}
       {supplier && (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SUPPLIER</Text>
+          <Text style={[styles.sectionLabel, { color: theme.accent, borderBottomColor: theme.border }]}>SUPPLIER</Text>
           <View style={{ flexDirection: 'column' }}>
             <Text style={[styles.infoVal, { fontFamily: 'Helvetica-Bold', marginBottom: 2 }]}>{supplier.supplier_name}</Text>
             {repName && <Text style={[styles.infoVal, { marginBottom: 2 }]}>Attn: {repName}</Text>}
@@ -129,15 +133,15 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
 
       {/* Project ref */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>PROJECT REFERENCE</Text>
+        <Text style={[styles.sectionLabel, { color: theme.accent, borderBottomColor: theme.border }]}>PROJECT REFERENCE</Text>
         <Text style={styles.infoVal}>{project.project_name} ({project.project_number})</Text>
       </View>
 
       {/* Items */}
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>ITEMS TO ORDER</Text>
+        <Text style={[styles.sectionLabel, { color: theme.accent, borderBottomColor: theme.border }]}>ITEMS TO ORDER</Text>
         <View style={styles.table}>
-          <View style={styles.tableHeader}>
+          <View style={[styles.tableHeader, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
             <Text style={[styles.th, { width: 20 }]}>#</Text>
             <Text style={[styles.th, { flex: 2 }]}>ITEM</Text>
             <Text style={[styles.th, { flex: 3 }]}>DESCRIPTION</Text>
@@ -150,8 +154,8 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
           {items.map((item, i) => {
             if (item.row_type === 'section') {
               return (
-                <View key={item.id} style={styles.tableSectionRow}>
-                  <Text style={styles.tableSectionLabel}>{(item.item_name || 'Section').toUpperCase()}</Text>
+                <View key={item.id} style={[styles.tableSectionRow, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+                  <Text style={[styles.tableSectionLabel, { color: theme.muted }]}>{(item.item_name || 'Section').toUpperCase()}</Text>
                 </View>
               )
             }
@@ -190,9 +194,9 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
                 {linkedChildren.map(child => {
                   const childSup = allSuppliers.find(s => s.id === child.supplier_id)
                   return (
-                    <View key={child.id} style={{ flexDirection: 'row', paddingLeft: 28, paddingRight: 8, paddingVertical: 4, backgroundColor: '#F8F6F2', borderTopWidth: 0.5, borderTopColor: '#EDE9E1', alignItems: 'center', gap: 6 }}>
+                    <View key={child.id} style={{ flexDirection: 'row', paddingLeft: 28, paddingRight: 8, paddingVertical: 4, backgroundColor: theme.surface, borderTopWidth: 0.5, borderTopColor: theme.border, alignItems: 'center', gap: 6 }}>
                       {/* Visual link indicator */}
-                      <View style={{ width: 2, height: 26, backgroundColor: '#C4A46B', borderRadius: 1, flexShrink: 0 }} />
+                      <View style={{ width: 2, height: 26, backgroundColor: theme.accent, borderRadius: 1, flexShrink: 0 }} />
                       {child.fabric_image_url ? (
                         <Image src={child.fabric_image_url} style={{ width: 26, height: 26, borderRadius: 3, flexShrink: 0 }} />
                       ) : null}
@@ -206,7 +210,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
                           </Text>
                         </View>
                         {childSup ? (
-                          <Text style={{ fontSize: 6, color: '#C4A46B', marginTop: 2 }}>via {childSup.supplier_name}</Text>
+                          <Text style={{ fontSize: 6, color: theme.accent, marginTop: 2 }}>via {childSup.supplier_name}</Text>
                         ) : null}
                       </View>
                     </View>
@@ -220,7 +224,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
 
       {/* PO Total */}
       <View style={styles.totalsContainer}>
-        <View style={styles.totalsBox}>
+        <View style={[styles.totalsBox, { borderColor: theme.border }]}>
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>Subtotal</Text>
             <Text style={styles.totalsVal}>{formatZAR(subtotal)}</Text>
@@ -229,26 +233,27 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
             <Text style={styles.totalsLabel}>VAT ({vatRate}%)</Text>
             <Text style={styles.totalsVal}>{formatZAR(vatAmount)}</Text>
           </View>
-          <View style={styles.totalsDivider} />
+          <View style={[styles.totalsDivider, { borderTopColor: theme.border }]} />
           <View style={styles.totalsBig}>
-            <Text style={styles.totalsBigLabel}>TOTAL COST</Text>
-            <Text style={styles.totalsBigVal}>{formatZAR(grandTotal)}</Text>
+            <Text style={[styles.totalsBigLabel, { color: theme.primary }]}>TOTAL COST</Text>
+            <Text style={[styles.totalsBigVal, { color: theme.primary }]}>{formatZAR(grandTotal)}</Text>
           </View>
         </View>
       </View>
 
       {/* Footer */}
-      <View style={styles.footer} fixed>
+      <View style={[styles.footer, { borderTopColor: theme.border }]} fixed>
         <Text style={[styles.footerText, { textAlign: 'left' }]}>Please reference PO number #{poNumber} on all correspondence and delivery notes.</Text>
       </View>
     </Page>
   )
 }
 
-export function POPDF({ project, lineItems, allLineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts }: Props) {
+export function POPDF({ project, lineItems, allLineItems, suppliers, supplierId, vatRate = 15, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts, themeKey }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]))
   const fullItems = allLineItems ?? lineItems
-  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts, allItems: fullItems, allSuppliers: suppliers }
+  const theme = resolveTheme(themeKey)
+  const pageProps = { vatRate, logoUrl, businessName, businessAddress, vatNumber, companyReg, printDate, platformContacts, allItems: fullItems, allSuppliers: suppliers, theme }
 
   // Single supplier mode — lineItems already filtered by API
   if (supplierId) {
