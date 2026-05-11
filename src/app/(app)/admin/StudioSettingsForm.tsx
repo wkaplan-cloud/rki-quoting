@@ -41,6 +41,8 @@ interface Settings {
   email_template_quote?: string | null
   email_template_invoice?: string | null
   accounts_email?: string | null
+  pdf_template?: string | null
+  pdf_color_theme?: string | null
 }
 
 export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Settings | null; plan?: string; isAdmin?: boolean }) {
@@ -247,6 +249,8 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
     quote_validity_days:    String(settings?.quote_validity_days ?? 30),
     payment_terms:          settings?.payment_terms ?? '',
     lead_time:              settings?.lead_time ?? '',
+    pdf_template:           settings?.pdf_template ?? 'classic',
+    pdf_color_theme:        settings?.pdf_color_theme ?? 'warm',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -374,6 +378,60 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                   </button>
                   <p className="text-xs text-[#8A877F] mt-1.5">PNG, JPG, or SVG — recommended min. 400px wide</p>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Document Style */}
+          <section className="space-y-4 border-t border-[#EDE9E1] pt-6">
+            <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Document Style</h2>
+
+            {/* Template picker */}
+            <div>
+              <label className="text-xs font-medium text-[#8A877F] block mb-2">Template</label>
+              <div className="flex gap-3">
+                {([
+                  { key: 'classic', label: 'Classic', desc: 'Clean, bordered layout' },
+                  { key: 'bold',    label: 'Bold',    desc: 'Dark header, strong type' },
+                  { key: 'minimal', label: 'Minimal', desc: 'Open, typographic' },
+                ] as const).map(t => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => set('pdf_template', t.key)}
+                    className={`flex-1 text-left px-4 py-3 rounded-lg border transition-colors cursor-pointer ${form.pdf_template === t.key ? 'border-[#9A7B4F] bg-[#FAF8F5]' : 'border-[#D8D3C8] bg-white hover:border-[#9A7B4F]'}`}
+                  >
+                    <span className={`text-sm font-medium block ${form.pdf_template === t.key ? 'text-[#9A7B4F]' : 'text-[#2C2C2A]'}`}>{t.label}</span>
+                    <span className="text-xs text-[#8A877F] mt-0.5 block">{t.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Colour theme picker */}
+            <div>
+              <label className="text-xs font-medium text-[#8A877F] block mb-2">Colour Theme</label>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { key: 'warm',     label: 'Warm',     primary: '#1A1A18', accent: '#9A7B4F' },
+                  { key: 'navy',     label: 'Navy',     primary: '#1B3A5C', accent: '#2E6DA4' },
+                  { key: 'slate',    label: 'Slate',    primary: '#2D3748', accent: '#718096' },
+                  { key: 'forest',   label: 'Forest',   primary: '#1E3A2F', accent: '#2D6A4F' },
+                  { key: 'charcoal', label: 'Charcoal', primary: '#1C1C1C', accent: '#555555' },
+                ] as const).map(th => (
+                  <button
+                    key={th.key}
+                    type="button"
+                    onClick={() => set('pdf_color_theme', th.key)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-xs transition-colors cursor-pointer ${form.pdf_color_theme === th.key ? 'border-[#9A7B4F] bg-[#FAF8F5] text-[#9A7B4F] font-medium' : 'border-[#D8D3C8] bg-white text-[#2C2C2A] hover:border-[#9A7B4F]'}`}
+                  >
+                    <span className="flex gap-1">
+                      <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: th.primary }} />
+                      <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: th.accent }} />
+                    </span>
+                    {th.label}
+                  </button>
+                ))}
               </div>
             </div>
           </section>
