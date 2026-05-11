@@ -6,10 +6,11 @@ import { apiError } from '@/lib/api-error'
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const [{ data: { user } }, { data: orgId }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.rpc('get_current_org_id'),
+    ])
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data: orgId } = await supabase.rpc('get_current_org_id')
     if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
 
     const body = await req.json() as { title: string; project_id?: string }

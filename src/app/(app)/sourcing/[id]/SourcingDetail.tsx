@@ -78,7 +78,7 @@ interface Props {
 const INPUT = 'w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white'
 
 // ---- Add Item Form ----
-function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item: SessionItem) => void }) {
+function AddItemForm({ sessionId, onAdded, sortOrder }: { sessionId: string; onAdded: (item: SessionItem) => void; sortOrder: number }) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [qty, setQty] = useState('')
@@ -140,6 +140,7 @@ function AddItemForm({ sessionId, onAdded }: { sessionId: string; onAdded: (item
           specifications: specs.trim() || null,
           ref_image_urls: refImageUrls.length > 0 ? refImageUrls : null,
           category,
+          sort_order: sortOrder,
           // General category keeps legacy fields; specific categories use item_specs
           work_type: isGeneral ? (workType.trim() || null) : null,
           dimensions: isGeneral ? (dimensions.trim() || null) : null,
@@ -1772,7 +1773,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                         })}
                       </div>
                     )}
-                    {!isArchived && <AddItemForm sessionId={session.id} onAdded={handleItemAdded} />}
+                    {!isArchived && <AddItemForm sessionId={session.id} onAdded={handleItemAdded} sortOrder={items.length} />}
                   </div>
 
                   {/* Right: Suppliers */}

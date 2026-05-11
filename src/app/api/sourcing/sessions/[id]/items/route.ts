@@ -21,19 +21,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ref_image_urls?: string[] | null
       category?: string
       item_specs?: Record<string, string> | null
+      sort_order?: number
     }
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
-    // Get current max sort_order
-    const { data: existing } = await supabase
-      .from('sourcing_session_items')
-      .select('sort_order')
-      .eq('session_id', session_id)
-      .order('sort_order', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const sort_order = (existing?.sort_order ?? -1) + 1
+    // Use client-provided sort_order when available to avoid an extra DB round trip
+    let sort_order = body.sort_order ?? null
+    if (sort_order === null) {
+      const { data: existing } = await supabase
+        .from('sourcing_session_items')
+        .select('sort_order')
+        .eq('session_id', session_id)
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      sort_order = (existing?.sort_order ?? -1) + 1
+    }
 
     const { data, error } = await supabase
       .from('sourcing_session_items')
