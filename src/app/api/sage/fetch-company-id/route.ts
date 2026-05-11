@@ -14,7 +14,6 @@ export async function POST() {
     const { data: settings } = await supabase
       .from('settings')
       .select('sage_access_token, sage_username, sage_password')
-      .eq('user_id', user.id)
       .maybeSingle()
 
     let authHeader: string
@@ -61,7 +60,7 @@ export async function POST() {
 
     const companyId = String(companies[0].ID)
 
-    await supabase.from('settings').update({ sage_company_id: companyId }).eq('user_id', user.id)
+    await supabase.from('settings').update({ sage_company_id: companyId })
 
     return NextResponse.json({ company_id: companyId, company_name: companies[0].Name })
   } catch (e) {
