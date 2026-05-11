@@ -4,10 +4,231 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
-import { Upload, X, CheckCircle, KeyRound, Zap } from 'lucide-react'
+import { Upload, X, CheckCircle, KeyRound, Zap, Maximize2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { compressImage } from '@/lib/compressImage'
+import { THEMES } from '@/lib/pdf/themes'
+import type { ThemeKey, PdfTheme } from '@/lib/pdf/themes'
+
+// ─── Template preview helpers ─────────────────────────────────────────────────
+
+const PREVIEW_ROWS = [
+  ['Dining Table', '1', 'R 24,500'],
+  ['Lounge Chairs', '2', 'R 8,400'],
+  ['Side Cabinet', '1', 'R 12,800'],
+]
+
+function ClassicDoc({ t }: { t: PdfTheme }) {
+  return (
+    <div style={{ padding: 48, height: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Helvetica, Arial, sans-serif', color: t.text, backgroundColor: 'white' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <div style={{ width: 90, height: 16, backgroundColor: t.surface, border: `1px solid ${t.border}`, borderRadius: 2, marginBottom: 6 }} />
+          <div style={{ fontSize: 7, color: t.muted, lineHeight: 1.4 }}>123 Studio Lane, Cape Town</div>
+          <div style={{ fontSize: 7, color: t.muted }}>VAT: 4123456789</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: t.primary, letterSpacing: 1 }}>QUOTATION</div>
+          <div style={{ fontSize: 8, color: t.muted, marginTop: 4 }}>#QT-2024-042</div>
+          <div style={{ fontSize: 8, color: t.muted, marginTop: 3 }}>11 May 2026</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', borderBottom: `0.5px solid ${t.border}`, paddingBottom: 8, marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 7, color: t.accent, borderBottom: `0.5px solid ${t.border}`, paddingBottom: 3, marginBottom: 5 }}>CLIENT</div>
+          <div style={{ fontSize: 9, fontWeight: 700 }}>Sarah &amp; James Nkosi</div>
+          <div style={{ fontSize: 8, color: t.muted }}>Sandton, Johannesburg</div>
+        </div>
+        <div style={{ flex: 1, paddingLeft: 24 }}>
+          <div style={{ fontSize: 7, color: t.accent, borderBottom: `0.5px solid ${t.border}`, paddingBottom: 3, marginBottom: 5 }}>PROJECT</div>
+          <div style={{ fontSize: 9, fontWeight: 700 }}>Nkosi Residence</div>
+        </div>
+      </div>
+      <div>
+        <div style={{ display: 'flex', backgroundColor: t.surface, padding: '6px 4px', borderBottom: `1px solid ${t.border}` }}>
+          <div style={{ flex: 1, fontSize: 8, color: t.muted, fontWeight: 700 }}>ITEM</div>
+          <div style={{ width: 44, fontSize: 8, color: t.muted, fontWeight: 700, textAlign: 'right', paddingRight: 8 }}>QTY</div>
+          <div style={{ width: 80, fontSize: 8, color: t.muted, fontWeight: 700, textAlign: 'right' }}>TOTAL</div>
+        </div>
+        {PREVIEW_ROWS.map((r, i) => (
+          <div key={i} style={{ display: 'flex', padding: '5px 4px', borderBottom: `0.5px solid ${t.border}`, backgroundColor: i % 2 === 1 ? t.surface : 'white' }}>
+            <div style={{ flex: 1, fontSize: 9 }}>{r[0]}</div>
+            <div style={{ width: 44, fontSize: 9, textAlign: 'right', paddingRight: 8 }}>{r[1]}</div>
+            <div style={{ width: 80, fontSize: 9, textAlign: 'right', fontWeight: 700 }}>{r[2]}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+        <div style={{ width: 200, border: `1px solid ${t.border}`, borderRadius: 4, padding: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span style={{ fontSize: 8, color: t.muted }}>Subtotal</span><span style={{ fontSize: 8 }}>R 45,700</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span style={{ fontSize: 8, color: t.muted }}>Design Fee (15%)</span><span style={{ fontSize: 8 }}>R 6,855</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}><span style={{ fontSize: 8, color: t.muted }}>VAT (15%)</span><span style={{ fontSize: 8 }}>R 7,883</span></div>
+          <div style={{ borderTop: `0.5px solid ${t.border}`, margin: '6px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: t.primary }}>TOTAL</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: t.primary }}>R 60,438</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+            <span style={{ fontSize: 8, color: t.accent }}>50% Deposit</span>
+            <span style={{ fontSize: 8, color: t.accent, fontWeight: 700 }}>R 30,219</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 'auto', borderTop: `0.5px solid ${t.border}`, paddingTop: 8, textAlign: 'center' }}>
+        <div style={{ fontSize: 8, color: t.muted }}>Thank you for your business.</div>
+      </div>
+    </div>
+  )
+}
+
+function BoldDoc({ t }: { t: PdfTheme }) {
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Helvetica, Arial, sans-serif', color: t.text, backgroundColor: 'white' }}>
+      <div style={{ backgroundColor: t.headerBg, padding: '28px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ width: 100, height: 20, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2 }} />
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 26, fontWeight: 700, color: t.headerText, letterSpacing: 2 }}>QUOTATION</div>
+          <div style={{ fontSize: 11, color: t.accent === t.headerBg ? t.headerText : t.accent, marginTop: 4 }}>#QT-2024-042</div>
+        </div>
+      </div>
+      <div style={{ padding: '24px 48px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 14, borderBottom: `1px solid ${t.border}` }}>
+          <div style={{ fontSize: 7.5, color: t.muted, lineHeight: 1.6 }}>123 Studio Lane, Cape Town<br />VAT: 4123456789</div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 7.5, color: t.muted }}>Date Issued</div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: t.text, marginTop: 2 }}>11 May 2026</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+          <div style={{ flex: 1, backgroundColor: t.surface, borderRadius: 4, padding: 14 }}>
+            <div style={{ fontSize: 7, fontWeight: 700, color: t.accent, letterSpacing: 1, marginBottom: 6 }}>BILLED TO</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: t.primary }}>Sarah &amp; James Nkosi</div>
+            <div style={{ fontSize: 8, color: t.muted, marginTop: 2 }}>Sandton, Johannesburg</div>
+          </div>
+          <div style={{ flex: 1, backgroundColor: t.surface, borderRadius: 4, padding: 14 }}>
+            <div style={{ fontSize: 7, fontWeight: 700, color: t.accent, letterSpacing: 1, marginBottom: 6 }}>PROJECT</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: t.primary }}>Nkosi Residence</div>
+          </div>
+        </div>
+        <div>
+          <div style={{ display: 'flex', backgroundColor: t.primary, padding: '8px 6px', borderRadius: 3 }}>
+            <div style={{ flex: 1, fontSize: 8, color: t.headerText, fontWeight: 700 }}>ITEM</div>
+            <div style={{ width: 44, fontSize: 8, color: t.headerText, fontWeight: 700, textAlign: 'right', paddingRight: 8 }}>QTY</div>
+            <div style={{ width: 80, fontSize: 8, color: t.headerText, fontWeight: 700, textAlign: 'right' }}>TOTAL</div>
+          </div>
+          {PREVIEW_ROWS.map((r, i) => (
+            <div key={i} style={{ display: 'flex', padding: '6px 6px', borderBottom: `0.5px solid ${t.border}`, backgroundColor: i % 2 === 1 ? t.surface : 'white' }}>
+              <div style={{ flex: 1, fontSize: 9 }}>{r[0]}</div>
+              <div style={{ width: 44, fontSize: 9, textAlign: 'right', paddingRight: 8 }}>{r[1]}</div>
+              <div style={{ width: 80, fontSize: 9, textAlign: 'right', fontWeight: 700, color: t.primary }}>{r[2]}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div style={{ width: 220 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span style={{ fontSize: 8, color: t.muted }}>Subtotal</span><span style={{ fontSize: 8 }}>R 45,700</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span style={{ fontSize: 8, color: t.muted }}>VAT (15%)</span><span style={{ fontSize: 8 }}>R 7,883</span></div>
+            <div style={{ backgroundColor: t.primary, borderRadius: 3, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.headerText }}>TOTAL</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.headerText }}>R 60,438</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+              <span style={{ fontSize: 8, color: t.accent }}>50% Deposit</span>
+              <span style={{ fontSize: 8, color: t.accent, fontWeight: 700 }}>R 30,219</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style={{ backgroundColor: t.surface, padding: '10px 48px', borderTop: `1px solid ${t.border}`, textAlign: 'center' }}>
+        <div style={{ fontSize: 8, color: t.muted }}>Thank you for your business.</div>
+      </div>
+    </div>
+  )
+}
+
+function MinimalDoc({ t }: { t: PdfTheme }) {
+  return (
+    <div style={{ padding: 56, height: '100%', display: 'flex', flexDirection: 'column', fontFamily: 'Helvetica, Arial, sans-serif', color: t.text, backgroundColor: 'white' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
+        <div style={{ width: 100, height: 18, backgroundColor: t.surface, borderRadius: 2, border: `1px solid ${t.border}` }} />
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: t.accent, letterSpacing: 2 }}>QUOTATION</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: t.primary, marginTop: 2 }}>#QT-042</div>
+        </div>
+      </div>
+      <div style={{ borderTop: `1.5px solid ${t.primary}`, marginBottom: 24 }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 32 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 7, color: t.muted, letterSpacing: 1.5, marginBottom: 8 }}>BILLED TO</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: t.primary }}>Sarah &amp; James Nkosi</div>
+          <div style={{ fontSize: 8, color: t.muted, marginTop: 2 }}>Sandton, Johannesburg</div>
+        </div>
+        <div style={{ width: 160, textAlign: 'right' }}>
+          <div style={{ fontSize: 7, color: t.muted, letterSpacing: 1.5, marginBottom: 8 }}>DETAILS</div>
+          <div style={{ fontSize: 8, color: t.text }}>11 May 2026</div>
+          <div style={{ fontSize: 8, color: t.text, marginTop: 2 }}>Nkosi Residence</div>
+        </div>
+      </div>
+      <div>
+        <div style={{ display: 'flex', borderBottom: `1px solid ${t.primary}`, paddingBottom: 7 }}>
+          <div style={{ flex: 1, fontSize: 7.5, color: t.muted, letterSpacing: 1 }}>ITEM</div>
+          <div style={{ width: 44, fontSize: 7.5, color: t.muted, letterSpacing: 1, textAlign: 'right', paddingRight: 8 }}>QTY</div>
+          <div style={{ width: 80, fontSize: 7.5, color: t.muted, letterSpacing: 1, textAlign: 'right' }}>TOTAL</div>
+        </div>
+        {PREVIEW_ROWS.map((r, i) => (
+          <div key={i} style={{ display: 'flex', padding: '8px 0', borderBottom: `0.5px solid ${t.border}` }}>
+            <div style={{ flex: 1, fontSize: 9 }}>{r[0]}</div>
+            <div style={{ width: 44, fontSize: 9, textAlign: 'right', paddingRight: 8, color: t.muted }}>{r[1]}</div>
+            <div style={{ width: 80, fontSize: 9, textAlign: 'right', fontWeight: 700 }}>{r[2]}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+        <div style={{ width: 200 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ fontSize: 8, color: t.muted }}>Subtotal</span><span style={{ fontSize: 8 }}>R 45,700</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}><span style={{ fontSize: 8, color: t.muted }}>VAT (15%)</span><span style={{ fontSize: 8 }}>R 7,883</span></div>
+          <div style={{ borderTop: `1px solid ${t.primary}`, margin: '8px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: t.primary, letterSpacing: 0.5 }}>TOTAL</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: t.primary }}>R 60,438</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+            <span style={{ fontSize: 8, color: t.accent }}>50% Deposit</span>
+            <span style={{ fontSize: 8, color: t.accent }}>R 30,219</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 'auto', borderTop: `0.5px solid ${t.border}`, paddingTop: 10, textAlign: 'center' }}>
+        <div style={{ fontSize: 8, color: t.muted, letterSpacing: 0.5 }}>Thank you for your business.</div>
+      </div>
+    </div>
+  )
+}
+
+// Renders the correct doc preview inside a scaled container
+const DOC_W = 595
+const DOC_H = 842
+const CARD_W = 158
+const CARD_H = Math.round(CARD_W * DOC_H / DOC_W)  // ~223
+const MODAL_W = 496
+const MODAL_H = Math.round(MODAL_W * DOC_H / DOC_W) // ~702
+
+function TemplateFrame({ template, theme, size }: { template: string; theme: PdfTheme; size: 'card' | 'modal' }) {
+  const outerW = size === 'card' ? CARD_W : MODAL_W
+  const outerH = size === 'card' ? CARD_H : MODAL_H
+  const scale  = outerW / DOC_W
+  const Doc = template === 'bold' ? BoldDoc : template === 'minimal' ? MinimalDoc : ClassicDoc
+  return (
+    <div style={{ width: outerW, height: outerH, overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+      <div style={{ width: DOC_W, height: DOC_H, transform: `scale(${scale})`, transformOrigin: 'top left', position: 'absolute', top: 0, left: 0 }}>
+        <Doc t={theme} />
+      </div>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 interface Settings {
   id?: string
@@ -57,6 +278,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
   const supabase = createClient()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>('general')
+  const [previewModal, setPreviewModal] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -248,6 +470,9 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  // Derive the live theme object from whatever colour theme is currently selected
+  const currentTheme = THEMES[(form.pdf_color_theme as ThemeKey)] ?? THEMES.warm
+
   async function uploadLogo(file: File) {
     setUploading(true)
     let compressed: File
@@ -281,6 +506,20 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
   const displayItemId = savedItemId
   const displayItemLabel = selectedItemLabel
 
+  const TEMPLATE_OPTIONS = [
+    { key: 'classic', label: 'Classic', desc: 'Clean, bordered layout' },
+    { key: 'bold',    label: 'Bold',    desc: 'Dark header, strong type' },
+    { key: 'minimal', label: 'Minimal', desc: 'Open, typographic' },
+  ] as const
+
+  const THEME_OPTIONS = [
+    { key: 'warm',     label: 'Warm',     primary: '#1A1A18', accent: '#9A7B4F' },
+    { key: 'navy',     label: 'Navy',     primary: '#1B3A5C', accent: '#2E6DA4' },
+    { key: 'slate',    label: 'Slate',    primary: '#2D3748', accent: '#718096' },
+    { key: 'forest',   label: 'Forest',   primary: '#1E3A2F', accent: '#2D6A4F' },
+    { key: 'charcoal', label: 'Charcoal', primary: '#1C1C1C', accent: '#555555' },
+  ] as const
+
   return (
     <div className="space-y-0">
 
@@ -305,10 +544,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
       {/* ── GENERAL TAB ── */}
       {activeTab === 'general' && (
         <form id="settings-form" onSubmit={save} className="space-y-8">
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-            {/* Business Details */}
             <section className="space-y-4">
               <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Business Details</h2>
               <Input label="Studio / Business Name" value={form.business_name} onChange={e => set('business_name', e.target.value)} />
@@ -339,8 +575,6 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
               </div>
               <Input label="Accounts Email (BCC on all POs)" type="email" value={form.accounts_email} onChange={e => set('accounts_email', e.target.value)} />
             </section>
-
-            {/* Banking Details */}
             <section className="space-y-4">
               <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Banking Details</h2>
               <Input label="Bank Name" value={form.bank_name} onChange={e => set('bank_name', e.target.value)} />
@@ -351,9 +585,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
             </section>
           </div>
 
-          {/* Quote Defaults + Email Templates */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 border-t border-[#EDE9E1] pt-8">
-
             <section className="space-y-4">
               <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Quote Defaults</h2>
               <div className="grid grid-cols-3 gap-4">
@@ -366,7 +598,6 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
               <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
               <Textarea label="Terms & Conditions (shown on quote PDF)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={7} />
             </section>
-
             <section className="space-y-4">
               <div>
                 <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Email Templates</h2>
@@ -377,7 +608,6 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
             </section>
           </div>
 
-          {/* Active Sessions — admin only */}
           {isAdmin && (
             <section className="space-y-4 border-t border-[#EDE9E1] pt-8">
               <div className="flex items-center justify-between">
@@ -470,40 +700,14 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
           </section>
 
           {/* Document Style */}
-          <section className="space-y-5 border-t border-[#EDE9E1] pt-8">
+          <section className="space-y-6 border-t border-[#EDE9E1] pt-8">
             <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Document Style</h2>
 
-            <div>
-              <label className="text-xs font-medium text-[#8A877F] block mb-3">Template</label>
-              <div className="flex gap-3">
-                {([
-                  { key: 'classic', label: 'Classic', desc: 'Clean, bordered layout' },
-                  { key: 'bold',    label: 'Bold',    desc: 'Dark header, strong type' },
-                  { key: 'minimal', label: 'Minimal', desc: 'Open, typographic' },
-                ] as const).map(t => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => set('pdf_template', t.key)}
-                    className={`flex-1 text-left px-4 py-3 rounded-lg border transition-colors cursor-pointer ${form.pdf_template === t.key ? 'border-[#9A7B4F] bg-[#FAF8F5]' : 'border-[#D8D3C8] bg-white hover:border-[#9A7B4F]'}`}
-                  >
-                    <span className={`text-sm font-medium block ${form.pdf_template === t.key ? 'text-[#9A7B4F]' : 'text-[#2C2C2A]'}`}>{t.label}</span>
-                    <span className="text-xs text-[#8A877F] mt-0.5 block">{t.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
+            {/* Colour theme picker — above templates so preview updates before you click */}
             <div>
               <label className="text-xs font-medium text-[#8A877F] block mb-3">Colour Theme</label>
               <div className="flex gap-2 flex-wrap">
-                {([
-                  { key: 'warm',     label: 'Warm',     primary: '#1A1A18', accent: '#9A7B4F' },
-                  { key: 'navy',     label: 'Navy',     primary: '#1B3A5C', accent: '#2E6DA4' },
-                  { key: 'slate',    label: 'Slate',    primary: '#2D3748', accent: '#718096' },
-                  { key: 'forest',   label: 'Forest',   primary: '#1E3A2F', accent: '#2D6A4F' },
-                  { key: 'charcoal', label: 'Charcoal', primary: '#1C1C1C', accent: '#555555' },
-                ] as const).map(th => (
+                {THEME_OPTIONS.map(th => (
                   <button
                     key={th.key}
                     type="button"
@@ -517,6 +721,45 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                     {th.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Template picker — visual preview cards */}
+            <div>
+              <label className="text-xs font-medium text-[#8A877F] block mb-4">Template</label>
+              <div className="flex gap-5">
+                {TEMPLATE_OPTIONS.map(t => {
+                  const isSelected = form.pdf_template === t.key
+                  return (
+                    <div key={t.key} className="flex flex-col gap-2.5">
+                      {/* Card: outer div is relative anchor; selection button + enlarge button are siblings */}
+                      <div className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => set('pdf_template', t.key)}
+                          className={`block rounded-lg overflow-hidden cursor-pointer transition-all ${isSelected ? 'ring-2 ring-[#9A7B4F] ring-offset-2 shadow-md' : 'ring-1 ring-[#D8D3C8] hover:ring-[#9A7B4F] hover:shadow-sm'}`}
+                          aria-label={`Select ${t.label} template`}
+                        >
+                          <TemplateFrame template={t.key} theme={currentTheme} size="card" />
+                        </button>
+                        {/* Enlarge button — sibling, positioned absolute so it floats over the card */}
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModal(t.key)}
+                          className="absolute bottom-2 right-2 flex items-center gap-1 bg-white/95 border border-[#D8D3C8] text-[#8A877F] hover:text-[#2C2C2A] hover:border-[#9A7B4F] rounded px-2 py-1 text-[10px] font-medium transition-all cursor-pointer opacity-0 group-hover:opacity-100 shadow-sm z-10"
+                          aria-label={`Enlarge ${t.label} preview`}
+                        >
+                          <Maximize2 size={10} />
+                          Enlarge
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between px-0.5">
+                        <span className={`text-xs font-medium ${isSelected ? 'text-[#9A7B4F]' : 'text-[#8A877F]'}`}>{t.label}</span>
+                        <span className="text-[10px] text-[#C4BFB5]">{t.desc}</span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </section>
@@ -565,7 +808,6 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
       {/* ── ACCOUNTING TAB ── */}
       {activeTab === 'accounting' && (
         <div className="space-y-8 max-w-2xl">
-
           {plan !== 'agency' ? (
             <div className="px-6 py-8 bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg text-center">
               <p className="text-sm font-medium text-[#2C2C2A]">Accounting integrations are available on the Agency plan.</p>
@@ -573,7 +815,6 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
             </div>
           ) : (
             <>
-              {/* Sage — only show if Xero is not connected */}
               {!xeroConnected && (
                 <section className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -588,7 +829,6 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                       </div>
                     )}
                   </div>
-
                   {sageConnected ? (
                     <>
                       <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
@@ -655,9 +895,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                               <button type="button" onClick={connectBasic} disabled={connectingBasic || !basicEmail || !basicPassword} className="flex items-center gap-2 px-4 py-2 bg-[#1A1A18] text-white text-xs rounded hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer">
                                 {connectingBasic ? 'Connecting…' : 'Connect'}
                               </button>
-                              <button type="button" onClick={() => { setShowBasicForm(false); setBasicEmail(''); setBasicPassword('') }} className="text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">
-                                Cancel
-                              </button>
+                              <button type="button" onClick={() => { setShowBasicForm(false); setBasicEmail(''); setBasicPassword('') }} className="text-xs text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">Cancel</button>
                             </div>
                           </div>
                         )}
@@ -667,9 +905,8 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                 </section>
               )}
 
-              {/* Xero — only show if Sage is not connected */}
               {!sageConnected && (
-                <section className={`space-y-4 ${!xeroConnected && !sageConnected ? 'border-t border-[#EDE9E1] pt-8' : ''}`}>
+                <section className={`space-y-4 ${!xeroConnected ? 'border-t border-[#EDE9E1] pt-8' : ''}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Xero Accounting</h2>
@@ -682,7 +919,6 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                       </div>
                     )}
                   </div>
-
                   {xeroConnected ? (
                     <div className="flex items-center justify-between bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg px-5 py-4">
                       <div>
@@ -712,6 +948,53 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Template preview modal ── */}
+      {previewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setPreviewModal(null)}
+        >
+          <div
+            className="relative bg-white rounded-xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#EDE9E1]">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-[#2C2C2A] capitalize">{previewModal} Template</span>
+                <span className="text-xs text-[#C4BFB5]">·</span>
+                <span className="text-xs text-[#8A877F] capitalize">{form.pdf_color_theme} theme</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewModal(null)}
+                className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer ml-6"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {/* Preview */}
+            <div className="p-4">
+              <div className="rounded-lg overflow-hidden border border-[#D8D3C8] shadow-inner">
+                <TemplateFrame template={previewModal} theme={currentTheme} size="modal" />
+              </div>
+            </div>
+            {/* Footer — select button */}
+            {form.pdf_template !== previewModal && (
+              <div className="px-5 pb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => { set('pdf_template', previewModal); setPreviewModal(null) }}
+                  className="px-4 py-2 bg-[#9A7B4F] text-white text-sm rounded-lg hover:bg-[#7d6340] transition-colors cursor-pointer font-medium"
+                >
+                  Use {previewModal.charAt(0).toUpperCase() + previewModal.slice(1)} template
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
