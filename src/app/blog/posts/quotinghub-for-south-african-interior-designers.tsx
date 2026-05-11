@@ -82,6 +82,18 @@ export default function QuotingHubForSouthAfricanInteriorDesigners() {
         <p className="cta-body">Quote your next project professionally — in ZAR, with VAT done correctly, on documents that look the part.</p>
         <Link href="/signup" className="cta-button">Start free — no credit card required</Link>
       </div>
+
+      <p className="text-sm text-[#9A7B4F] mt-8">
+        Source:{' '}
+        <a
+          href="https://claude.ai/public/artifacts/46d0facf-134d-46d9-abf0-208a7335839a"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:opacity-75"
+        >
+          claude.ai/public/artifacts/46d0facf-134d-46d9-abf0-208a7335839a
+        </a>
+      </p>
     </article>
   )
 }
