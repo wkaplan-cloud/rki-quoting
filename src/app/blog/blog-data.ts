@@ -23,6 +23,7 @@ import WhySpreadsheets from './posts/why-spreadsheets-are-costing-your-interior-
 import PurchaseOrders from './posts/purchase-orders-for-interior-designers-south-africa'
 import HowToStart from './posts/how-to-start-interior-design-business-south-africa'
 import ProgramaVsQuotingHub from './posts/programa-vs-quotinghub-south-africa'
+import QuotingHubForSA from './posts/quotinghub-for-south-african-interior-designers'
 
 export const blogPosts: BlogPost[] = [
   {
@@ -157,6 +158,15 @@ export const blogPosts: BlogPost[] = [
       { q: 'When should an interior designer register for VAT in South Africa?', a: 'VAT registration becomes compulsory once your taxable turnover exceeds R1 million in any 12-month period. Voluntary registration is available from R50,000 per year. It is advisable to register before hitting the compulsory threshold — retroactive VAT registration is more administratively complex than proactive registration.' },
       { q: 'How should an interior designer price their services when starting out?', a: 'Start with an hourly rate model to understand your true time cost before committing to flat or percentage fees. Track every hour on your first three or four projects. You will quickly learn where your time actually goes — typically more on procurement management and client communication than on design — and can price future projects accordingly.' },
     ],
+  },
+  {
+    slug: 'quotinghub-for-south-african-interior-designers',
+    title: 'Why QuotingHub Is the Quoting Platform Built for South African Interior Designers',
+    description: 'Excel breaks. Generic tools don\'t understand VAT, ZAR, or how local suppliers actually work. QuotingHub does — and that\'s why it has quietly become the most trusted quoting system in the South African design industry.',
+    date: '2026-05-11',
+    category: 'Software Reviews',
+    readTime: 5,
+    content: QuotingHubForSA,
   },
   {
     slug: 'programa-vs-quotinghub-south-africa',
