@@ -13,6 +13,8 @@ interface Session {
   project_name: string | null
   item_count: number
   supplier_count: number
+  request_number: number | null
+  creator_name: string | null
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -218,6 +220,11 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
+                    {s.request_number != null && (
+                      <span className="shrink-0 text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded text-[#9A7B4F] bg-[#F5F2EC] border border-[#D4CFC7]">
+                        PR-{String(s.request_number).padStart(3, '0')}
+                      </span>
+                    )}
                     <p className="font-semibold text-sm text-[#2C2C2A] truncate">{s.title}</p>
                     <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${badge.color}`}>
                       {badge.label}
@@ -235,6 +242,7 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
                   <p className="text-xs text-[#8A877F]">
                     {s.project_name ? `${s.project_name} · ` : ''}
                     {s.item_count} item{s.item_count !== 1 ? 's' : ''} · {s.supplier_count} supplier{s.supplier_count !== 1 ? 's' : ''} · {formatDate(s.created_at)}
+                    {s.creator_name ? ` · ${s.creator_name}` : ''}
                   </p>
                 </div>
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">

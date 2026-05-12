@@ -22,7 +22,7 @@ export default async function SupplierHomePage() {
   // Fetch all session-supplier rows for this account
   const { data: ssRows } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('id, status, sent_at, token, session:sourcing_sessions(id, title, status, org_id, project:projects(project_name))')
+    .select('id, status, sent_at, token, session:sourcing_sessions(id, title, status, org_id, request_number, project:projects(project_name))')
     .or(`portal_account_id.eq.${account.id},email.eq.${account.email}`)
     .order('created_at', { ascending: false })
 
@@ -69,12 +69,14 @@ export default async function SupplierHomePage() {
   const enriched = allRows.map((r: any) => {
     const session = Array.isArray(r.session) ? r.session[0] : r.session
     const studioName = session?.org_id ? (studioMap[session.org_id] ?? 'Studio') : 'Studio'
+    const reqNum = session?.request_number ?? null
     return {
       id: r.id as string,
       token: r.token as string,
       status: r.status as string,
       sentAt: r.sent_at as string | null,
       sessionTitle: session?.title ?? '—',
+      requestRef: reqNum ? `PR-${String(reqNum).padStart(3, '0')}` : null,
       studioName,
       pendingCount: pendingCountMap[r.id] ?? 0,
       isClosed: closedStatuses.has(r.status as string),
@@ -95,6 +97,7 @@ export default async function SupplierHomePage() {
       token: r.token,
       studioName: r.studioName,
       sessionTitle: r.sessionTitle,
+      requestRef: r.requestRef,
       pendingCount: r.pendingCount,
     }))
 
@@ -107,6 +110,7 @@ export default async function SupplierHomePage() {
       token: r.token,
       studioName: r.studioName,
       sessionTitle: r.sessionTitle,
+      requestRef: r.requestRef,
       status: r.status,
       sentAt: r.sentAt,
     }))

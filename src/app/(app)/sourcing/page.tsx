@@ -12,7 +12,7 @@ export default async function SourcingPage() {
   const [{ data: sessions }, { data: clients }] = await Promise.all([
     supabase
       .from('sourcing_sessions')
-      .select('id, title, status, archived, created_at, project_id, project:projects(project_name), sourcing_session_items(count), sourcing_session_suppliers(count)')
+      .select('id, title, status, archived, created_at, project_id, request_number, user_id, project:projects(project_name), sourcing_session_items(count), sourcing_session_suppliers(count)')
       .order('created_at', { ascending: false }),
     supabase
       .from('clients')
@@ -20,6 +20,19 @@ export default async function SourcingPage() {
       .order('client_name', { ascending: true })
       .limit(200),
   ])
+
+  // Resolve creator names from org_members
+  const userIds = [...new Set((sessions ?? []).map(s => s.user_id).filter(Boolean))]
+  let memberNames: Record<string, string> = {}
+  if (userIds.length > 0) {
+    const { data: members } = await supabase
+      .from('org_members')
+      .select('user_id, full_name')
+      .in('user_id', userIds)
+    for (const m of members ?? []) {
+      if (m.user_id) memberNames[m.user_id] = m.full_name ?? ''
+    }
+  }
 
   const enriched = (sessions ?? []).map(s => {
     const project = Array.isArray(s.project) ? s.project[0] : s.project
@@ -32,6 +45,8 @@ export default async function SourcingPage() {
       project_name: (project as any)?.project_name ?? null,
       item_count: (s as any).sourcing_session_items?.[0]?.count ?? 0,
       supplier_count: (s as any).sourcing_session_suppliers?.[0]?.count ?? 0,
+      request_number: (s as any).request_number ?? null,
+      creator_name: s.user_id ? (memberNames[s.user_id] ?? null) : null,
     }
   })
 

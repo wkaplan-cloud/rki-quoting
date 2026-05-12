@@ -172,6 +172,7 @@ interface Props {
   supplierName: string
   sessionTitle: string
   projectName: string | null
+  requestRef: string | null
   studioName: string
   assignments: Assignment[]
   showBackLink?: boolean
@@ -856,6 +857,7 @@ export function SupplierRespondClient({
   supplierName,
   sessionTitle,
   projectName,
+  requestRef,
   studioName,
   assignments,
   showBackLink = false,
@@ -938,7 +940,7 @@ export function SupplierRespondClient({
                 Supplier Portal →
               </a>
             </div>
-            <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Pricing Request</p>
+            <p className="text-xs uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{requestRef ? `${requestRef} · Pricing Request` : 'Pricing Request'}</p>
             <p className="text-lg font-semibold" style={{ color: '#FFFFFF' }}>{sessionTitle}</p>
             {projectName && <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>{projectName}</p>}
             <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>From {studioName} · To {supplierName}</p>
@@ -949,7 +951,7 @@ export function SupplierRespondClient({
       {/* Session info — shown in portal context instead of dark header */}
       {!showBackLink && (
         <div className="px-6 pt-6">
-          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>Pricing Request</p>
+          <p className="text-xs uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>{requestRef ? `${requestRef} · Pricing Request` : 'Pricing Request'}</p>
           <h1 className="text-lg font-semibold" style={{ color: '#18181B' }}>{sessionTitle}</h1>
           {projectName && <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>{projectName}</p>}
           <p className="text-xs mt-1" style={{ color: '#A1A1AA' }}>From {studioName} · To {supplierName}</p>

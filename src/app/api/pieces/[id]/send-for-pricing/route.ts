@@ -23,6 +23,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (!piece) return NextResponse.json({ error: 'Piece not found' }, { status: 404 })
 
+    // Assign next sequential request number for this org
+    const { data: maxRow } = await supabase
+      .from('sourcing_sessions')
+      .select('request_number')
+      .eq('org_id', orgId)
+      .order('request_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const nextNumber = ((maxRow as any)?.request_number ?? 0) + 1
+
     // Create a draft sourcing session
     const { data: session, error: sessionError } = await supabase
       .from('sourcing_sessions')
@@ -30,6 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         org_id: orgId,
         user_id: user.id,
         title: `Price update: ${piece.name}`,
+        request_number: nextNumber,
       })
       .select()
       .single()

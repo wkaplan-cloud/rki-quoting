@@ -16,6 +16,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as { title: string; project_id?: string }
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
+    const { data: maxRow } = await supabase
+      .from('sourcing_sessions')
+      .select('request_number')
+      .eq('org_id', orgId)
+      .order('request_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const nextNumber = ((maxRow as any)?.request_number ?? 0) + 1
+
     const { data, error } = await supabase
       .from('sourcing_sessions')
       .insert({
@@ -23,6 +32,7 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         project_id: body.project_id ?? null,
         title: body.title.trim(),
+        request_number: nextNumber,
       })
       .select()
       .single()

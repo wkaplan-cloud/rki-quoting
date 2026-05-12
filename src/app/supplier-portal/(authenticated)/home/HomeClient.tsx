@@ -7,6 +7,7 @@ interface AttentionRow {
   token: string
   studioName: string
   sessionTitle: string
+  requestRef: string | null
   pendingCount: number
 }
 
@@ -15,6 +16,7 @@ interface RecentRow {
   token: string
   studioName: string
   sessionTitle: string
+  requestRef: string | null
   status: string
   sentAt: string | null
 }
@@ -117,7 +119,9 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
                   style={{ background: '#D9A441' }}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium mb-0.5" style={{ color: '#94A3B8' }}>{r.studioName}</p>
+                  <p className="text-[11px] font-medium mb-0.5" style={{ color: '#94A3B8' }}>
+                    {r.requestRef ? <span className="font-mono mr-1">{r.requestRef} ·</span> : null}{r.studioName}
+                  </p>
                   <p className="font-semibold text-sm truncate" style={{ color: '#111827' }}>{r.sessionTitle}</p>
                 </div>
                 <span
@@ -174,7 +178,9 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
                   onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)' }}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium mb-0.5" style={{ color: '#94A3B8' }}>{r.studioName}</p>
+                    <p className="text-[11px] font-medium mb-0.5" style={{ color: '#94A3B8' }}>
+                      {r.requestRef ? <span className="font-mono mr-1">{r.requestRef} ·</span> : null}{r.studioName}
+                    </p>
                     <p className="font-semibold text-sm truncate" style={{ color: '#111827' }}>{r.sessionTitle}</p>
                     {r.sentAt && (
                       <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>

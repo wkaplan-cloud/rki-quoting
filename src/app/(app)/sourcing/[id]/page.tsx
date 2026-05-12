@@ -24,7 +24,7 @@ export default async function SourcingDetailPage({
     { data: suppliers },
     { data: projects },
   ] = await Promise.all([
-    supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).maybeSingle(),
+    supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).maybeSingle() as any,
     supabase
       .from('sourcing_session_suppliers')
       .select('*, assignments:sourcing_item_assignments(*, pending_supplier_specs, spec_approval_status, spec_approved_at, response:sourcing_item_responses(*))')
@@ -65,11 +65,14 @@ export default async function SourcingDetailPage({
     }
   })
 
+  const requestNumber = (session as any).request_number ?? null
+  const requestRef = requestNumber ? `PR-${String(requestNumber).padStart(3, '0')}` : null
+
   return (
     <div>
       <PageHeader
         title={session.title}
-        subtitle={(sessionProject as any)?.project_name ?? 'Price Request'}
+        subtitle={[requestRef, (sessionProject as any)?.project_name].filter(Boolean).join(' · ') || 'Price Request'}
         actions={
           <Link href="/sourcing" className="inline-flex items-center gap-1 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
             <ChevronLeft size={15} /> All Price Requests

@@ -19,6 +19,7 @@ function buildEmail({
   sessionTitle,
   projectName,
   projectNumber,
+  requestRef,
   items,
   respondUrl,
   isRegistered,
@@ -28,6 +29,7 @@ function buildEmail({
   sessionTitle: string
   projectName: string | null
   projectNumber: string | null
+  requestRef: string | null
   items: Array<{ title: string; item_quantity: number | null; dimensions: string | null; colour_finish: string | null; specifications: string | null; work_type: string | null }>
   respondUrl: string
   isRegistered: boolean
@@ -83,7 +85,7 @@ function buildEmail({
             </p>
 
             <div style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-left:3px solid #C4A46B;border-radius:4px;padding:4px 20px 4px;">
-              <p style="margin:12px 0 4px;font-size:11px;color:#8A877F;text-transform:uppercase;letter-spacing:0.08em;">${projectNumber ? `Ref: ${esc(projectNumber)} · ` : ''}${esc(sessionTitle)} · ${items.length} item${items.length !== 1 ? 's' : ''}</p>
+              <p style="margin:12px 0 4px;font-size:11px;color:#8A877F;text-transform:uppercase;letter-spacing:0.08em;">${requestRef ? `${esc(requestRef)} · ` : ''}${projectNumber ? `Ref: ${esc(projectNumber)} · ` : ''}${esc(sessionTitle)} · ${items.length} item${items.length !== 1 ? 's' : ''}</p>
               <table width="100%" cellpadding="0" cellspacing="0">
                 ${itemRows}
               </table>
@@ -155,6 +157,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const projectName = (session as any).project?.project_name ?? null
     const projectNumber = (session as any).project?.project_number ?? null
+    const requestNumber = (session as any).request_number ?? null
+    const requestRef = requestNumber ? `PR-${String(requestNumber).padStart(3, '0')}` : null
 
     // Resolve portal accounts by email — handles suppliers who registered after the
     // session_supplier record was created (portal_account_id would still be null on the record)
@@ -194,8 +198,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ...(replyTo ? { replyTo } : {}),
         to: ss.email,
         ...(ccEmails.length > 0 ? { cc: ccEmails } : {}),
-        subject: `Pricing Request: ${session.title} — ${studioName}`,
-        html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, projectNumber, items, respondUrl, isRegistered }),
+        subject: `${requestRef ? `${requestRef} · ` : ''}Pricing Request: ${session.title} — ${studioName}`,
+        html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, projectNumber, requestRef, items, respondUrl, isRegistered }),
         text: `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,
       })
 
