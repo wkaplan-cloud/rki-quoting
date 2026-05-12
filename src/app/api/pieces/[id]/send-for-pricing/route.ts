@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Add the piece as the first item
     const isGeneral = !piece.category || piece.category === 'general'
-    const { error: itemError } = await supabase
+    await supabase
       .from('sourcing_session_items')
       .insert({
         session_id: session.id,
@@ -50,25 +50,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         dimensions: isGeneral ? (piece.dimensions ?? null) : null,
         colour_finish: isGeneral ? (piece.colour_finish ?? null) : null,
         item_specs: !isGeneral ? (piece.item_specs ?? null) : null,
+        ref_image_urls: piece.image_urls?.length ? piece.image_urls : null,
         sort_order: 0,
         piece_id: piece.id,
       })
-
-    if (itemError) {
-      // piece_id or new columns may not exist yet — retry with minimal fields
-      await supabase
-        .from('sourcing_session_items')
-        .insert({
-          session_id: session.id,
-          title: piece.name,
-          work_type: piece.work_type ?? null,
-          specifications: piece.description ?? null,
-          item_quantity: 1,
-          dimensions: piece.dimensions ?? null,
-          colour_finish: piece.colour_finish ?? null,
-          sort_order: 0,
-        })
-    }
 
     return NextResponse.json({ session_id: session.id })
   } catch (e) {
