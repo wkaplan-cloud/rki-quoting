@@ -8,10 +8,24 @@ type Params = { params: Promise<{ id: string; sessionSupplierId: string }> }
 // GET /api/sourcing/sessions/[id]/messages/[sessionSupplierId]
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
-    const { sessionSupplierId } = await params
+    const { id: sessionId, sessionSupplierId } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Security: verify session belongs to this org BEFORE the supabaseAdmin unread reset.
+    // Without this check, any authenticated user could zero-out any org's supplier badge
+    // because supabaseAdmin bypasses RLS and the RLS-scoped messages query returns [] silently.
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
+    const { data: session } = await supabase
+      .from('sourcing_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+    if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const { data, error } = await supabase
       .from('sourcing_thread_messages')
@@ -36,10 +50,21 @@ export async function GET(_req: NextRequest, { params }: Params) {
 // POST /api/sourcing/sessions/[id]/messages/[sessionSupplierId]
 export async function POST(req: NextRequest, { params }: Params) {
   try {
-    const { sessionSupplierId } = await params
+    const { id: sessionId, sessionSupplierId } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
+    const { data: session } = await supabase
+      .from('sourcing_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+    if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const { body: msgBody } = await req.json() as { body: string }
     if (!msgBody?.trim()) return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 })
