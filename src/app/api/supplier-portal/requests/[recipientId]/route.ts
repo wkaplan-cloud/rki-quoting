@@ -25,11 +25,11 @@ export async function GET(
 
     const { data: ss } = await supabaseAdmin
       .from('sourcing_session_suppliers')
-      .select('id, token, email')
+      .select('id, token, email, sent_at')
       .eq('id', recipientId)
       .maybeSingle()
 
-    if (!ss || (ss.email as string).toLowerCase() !== account.email.toLowerCase()) {
+    if (!ss || (ss.email as string).toLowerCase() !== account.email.toLowerCase() || !ss.sent_at) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

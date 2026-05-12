@@ -22,6 +22,7 @@ export async function GET() {
       .from('sourcing_session_suppliers')
       .select('id, supplier_name, email, status, sent_at, token, session:sourcing_sessions(id, title, status, org_id, project:projects(project_name))')
       .or(`portal_account_id.eq.${account.id},email.eq.${account.email}`)
+      .not('sent_at', 'is', null)
       .order('created_at', { ascending: false })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
