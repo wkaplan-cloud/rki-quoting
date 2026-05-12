@@ -66,8 +66,13 @@ export async function POST(req: NextRequest) {
   // (e.g. from a previously cancelled invite), delete them so generateLink doesn't fail.
   // Safety: never delete the currently authenticated admin, and never delete if the
   // org_members lookup itself errors (treat errors as "user exists, don't touch").
-  const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-  const existingAuthUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+  // SDK listUsers lacks email filtering — call GoTrue admin endpoint directly with ?filter=
+  const authFilterRes = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users?filter=${encodeURIComponent(email)}`,
+    { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}` } }
+  )
+  const { users: filteredAuthUsers } = await authFilterRes.json() as { users?: Array<{ id: string; email?: string }> }
+  const existingAuthUser = filteredAuthUsers?.find(u => u.email?.toLowerCase() === email.toLowerCase()) ?? null
   if (existingAuthUser) {
     // Never delete yourself
     if (existingAuthUser.id === user.id) {
