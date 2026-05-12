@@ -10,7 +10,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    await supabase.from('sourcing_sessions').update({ archived: true }).eq('id', id)
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
+    const { data: updated } = await supabase
+      .from('sourcing_sessions')
+      .update({ archived: true })
+      .eq('id', id)
+      .eq('org_id', orgId)
+      .select('id')
+      .maybeSingle()
+
+    if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (e) {
     return apiError(e)
@@ -25,7 +36,18 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    await supabase.from('sourcing_sessions').update({ archived: false }).eq('id', id)
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
+    const { data: updated } = await supabase
+      .from('sourcing_sessions')
+      .update({ archived: false })
+      .eq('id', id)
+      .eq('org_id', orgId)
+      .select('id')
+      .maybeSingle()
+
+    if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (e) {
     return apiError(e)

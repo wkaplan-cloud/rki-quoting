@@ -12,8 +12,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
     const body = await req.json() as { title?: string; project_id?: string | null }
 
+    // Explicit org_id filter provides defense-in-depth alongside RLS
     const { data, error } = await supabase
       .from('sourcing_sessions')
       .update({
@@ -21,6 +25,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(body.project_id !== undefined && { project_id: body.project_id }),
       })
       .eq('id', id)
+      .eq('org_id', orgId)
       .select()
       .single()
 
@@ -39,16 +44,21 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
+    // Explicit org_id filter provides defense-in-depth alongside RLS
     const { data: session } = await supabase
       .from('sourcing_sessions')
       .select('archived')
       .eq('id', id)
-      .single()
+      .eq('org_id', orgId)
+      .maybeSingle()
 
     if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (!session.archived) return NextResponse.json({ error: 'Only archived sessions can be deleted' }, { status: 400 })
 
-    await supabase.from('sourcing_sessions').delete().eq('id', id)
+    await supabase.from('sourcing_sessions').delete().eq('id', id).eq('org_id', orgId)
     return NextResponse.json({ success: true })
   } catch (e) {
     return apiError(e)
