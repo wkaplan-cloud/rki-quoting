@@ -4,13 +4,13 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid,
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock,
 } from 'lucide-react'
 
 const mainLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/projects',  label: 'Projects',  icon: FolderOpen },
-  { href: '/pieces',    label: 'Our Pieces', icon: LayoutGrid },
+  { href: '/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/projects',  label: 'Projects',   icon: FolderOpen },
+  { href: '/pieces',    label: 'Our Pieces', icon: LayoutGrid, soloLocked: true },
 ]
 
 const secondaryLinks = [
@@ -96,25 +96,42 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
 
         {/* Main nav */}
         <nav className="flex-1 pt-4 pb-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          {mainLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              
-              className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
-                ${isActive(href)
-                  ? 'bg-[#9A7B4F]/20 text-white'
-                  : 'text-white/70 hover:text-white hover:bg-white/5'}`}
-            >
-              <span className="flex items-center justify-center w-10 flex-shrink-0">
-                <Icon size={16} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
-              </span>
-              <span className={`text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3`}>
-                {label}
-              </span>
-            </Link>
-          ))}
+          {mainLinks.map(({ href, label, icon: Icon, soloLocked }: { href: string; label: string; icon: any; soloLocked?: boolean }) => {
+            if (soloLocked && plan === 'solo') {
+              return (
+                <button
+                  key={href}
+                  onClick={() => setUpgradeModalOpen(true)}
+                  className="flex items-center h-9 rounded mx-1 transition-colors duration-150 text-white/40 hover:text-white/60 hover:bg-white/5 w-[calc(100%-8px)]"
+                >
+                  <span className="flex items-center justify-center w-10 flex-shrink-0">
+                    <Icon size={16} className="opacity-30" />
+                  </span>
+                  <span className="text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3 flex items-center gap-1.5">
+                    {label} <Lock size={10} className="opacity-40" />
+                  </span>
+                </button>
+              )
+            }
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
+                  ${isActive(href)
+                    ? 'bg-[#9A7B4F]/20 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+              >
+                <span className="flex items-center justify-center w-10 flex-shrink-0">
+                  <Icon size={16} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
+                </span>
+                <span className={`text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3`}>
+                  {label}
+                </span>
+              </Link>
+            )
+          })}
 
           <div className="border-t border-white/10 my-2 mx-2" />
 
@@ -136,11 +153,20 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
             </Link>
           ))}
 
-          {plan !== 'solo' && (
+          {plan === 'solo' ? (
+            <button
+              onClick={() => setUpgradeModalOpen(true)}
+              className="flex items-center h-8 rounded mx-1 transition-colors duration-150 text-white/30 hover:text-white/50 hover:bg-white/5 w-[calc(100%-8px)]"
+            >
+              <span className="flex items-center justify-center w-10 flex-shrink-0">
+                <Calculator size={14} className="opacity-30" />
+              </span>
+              <span className={`${labelCls} flex items-center gap-1.5`}>Markup Calculator <Lock size={9} className="opacity-40" /></span>
+            </button>
+          ) : (
             <Link
               href="/markup-calculator"
               onClick={onClose}
-              
               className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
                 ${isActive('/markup-calculator')
                   ? 'text-white/80'
@@ -193,8 +219,18 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
             </Link>
           )}
 
-          {plan !== 'solo' && (
-            <Link href="/import" onClick={onClose} 
+          {plan === 'solo' ? (
+            <button
+              onClick={() => setUpgradeModalOpen(true)}
+              className="flex items-center h-8 rounded mx-1 text-white/30 hover:text-white/50 hover:bg-white/5 transition-colors w-[calc(100%-8px)]"
+            >
+              <span className="flex items-center justify-center w-10 flex-shrink-0">
+                <Upload size={14} className="opacity-30" />
+              </span>
+              <span className={`${labelCls} flex items-center gap-1.5`}>Import <Lock size={9} className="opacity-40" /></span>
+            </button>
+          ) : (
+            <Link href="/import" onClick={onClose}
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
                 <Upload size={14} />
@@ -299,7 +335,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
               Studio unlocks your full workflow — team collaboration, advanced pipeline analytics, and internal production tools. Your card will be charged <strong className="text-[#2C2C2A]">R1,499/month</strong> starting today.
             </p>
             <ul className="space-y-2 mb-6">
-              {['Up to 5 team members with role permissions', 'Full pipeline dashboard + Kanban board', 'Production Sheet PDF for internal use', 'Markup Calculator & bulk import tools', 'Profit analytics per project & per year'].map(f => (
+              {['Our Pieces — save your design library with specs, images and pricing', 'Up to 5 team members with role permissions', 'Full pipeline dashboard + Kanban board', 'Production Sheet PDF for internal use', 'Markup Calculator & bulk import tools', 'Profit analytics per project & per year'].map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
                   {f}

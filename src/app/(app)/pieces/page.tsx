@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { PiecesClient } from './PiecesClient'
 
@@ -7,6 +8,16 @@ export default async function PiecesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  if (orgId) {
+    const { data: org } = await supabaseAdmin
+      .from('organizations')
+      .select('plan')
+      .eq('id', orgId)
+      .single()
+    if (org?.plan === 'solo') redirect('/projects')
+  }
 
   const [
     { data: pieces },
