@@ -14,6 +14,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Security: verify session belongs to this org before storage upload.
+    // supabaseAdmin bypasses RLS, so without this check any authenticated user
+    // could write files into any org's session storage path.
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
+    const { data: session } = await supabase
+      .from('sourcing_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+    if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     const formData = await req.formData()
     const files = formData.getAll('files') as File[]
     if (!files.length) return NextResponse.json({ urls: [] })
