@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
         supplier_id: body.supplier_id ?? null,
         supplier_name: body.supplier_name?.trim() ?? null,
         base_price: body.base_price ?? null,
+        last_priced_at: body.base_price != null ? new Date().toISOString() : null,
         image_urls: [],
       })
       .select()

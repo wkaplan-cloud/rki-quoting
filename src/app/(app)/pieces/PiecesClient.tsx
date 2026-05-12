@@ -23,6 +23,7 @@ interface Piece {
   created_at: string
   category: string
   item_specs: Record<string, string> | null
+  last_priced_at: string | null
 }
 
 interface Props {
@@ -497,6 +498,13 @@ function AddToQuoteModal({
   )
 }
 
+function pricedAgoLabel(iso: string): { label: string; stale: boolean } {
+  const months = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24 * 30.5))
+  if (months < 1) return { label: 'priced this month', stale: false }
+  if (months === 1) return { label: 'priced 1 mo ago', stale: false }
+  return { label: `priced ${months} mo ago`, stale: months >= 12 }
+}
+
 // ---- Piece Card ----
 function PieceCard({
   piece,
@@ -592,9 +600,25 @@ function PieceCard({
           <p className="text-xs text-[#8A877F] truncate">
             {piece.supplier_name ?? <span className="text-[#C4BFB5]">No supplier</span>}
           </p>
-          {piece.base_price != null && (
-            <p className="text-xs font-semibold text-[#2C2C2A] shrink-0 ml-2">R{piece.base_price.toLocaleString()}</p>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            {piece.last_priced_at && piece.base_price != null && (() => {
+              const { label, stale } = pricedAgoLabel(piece.last_priced_at)
+              return (
+                <span
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                  style={stale
+                    ? { background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }
+                    : { background: '#F5F2EC', color: '#C4BFB5' }}
+                  title={new Date(piece.last_priced_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                >
+                  {stale ? '⚠ ' : ''}{label}
+                </span>
+              )
+            })()}
+            {piece.base_price != null && (
+              <p className="text-xs font-semibold text-[#2C2C2A]">R{piece.base_price.toLocaleString()}</p>
+            )}
+          </div>
         </div>
 
         {/* CTA buttons */}

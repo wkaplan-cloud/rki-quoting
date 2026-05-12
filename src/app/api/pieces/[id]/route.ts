@@ -42,6 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...(body.supplier_id !== undefined && { supplier_id: body.supplier_id }),
         ...(body.supplier_name !== undefined && { supplier_name: body.supplier_name?.trim() ?? null }),
         ...(body.base_price !== undefined && { base_price: body.base_price }),
+        ...(body.base_price !== undefined && body.base_price != null && { last_priced_at: new Date().toISOString() }),
         ...(body.image_urls !== undefined && { image_urls: body.image_urls }),
         updated_at: new Date().toISOString(),
       })

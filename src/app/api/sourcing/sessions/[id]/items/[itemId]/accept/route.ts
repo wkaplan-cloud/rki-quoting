@@ -65,6 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         base_price: acceptedPrice,
         supplier_id: acceptedSupplierId,
         supplier_name: acceptedSupplierName,
+        last_priced_at: now,
         updated_at: now,
       }
 
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             base_price: acceptedPrice,
             supplier_id: acceptedSupplierId,
             supplier_name: acceptedSupplierName,
+            last_priced_at: now,
           }).select('id').single()
 
           if (newPiece) {
