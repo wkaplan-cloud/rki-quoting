@@ -9,6 +9,9 @@ import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 60
 
+const escHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
 export async function POST(req: NextRequest) {
   try {
   const resend = new Resend(process.env.RESEND_API_KEY)
@@ -108,7 +111,7 @@ export async function POST(req: NextRequest) {
               ? customBody.split('\n').map(line =>
                   line.trim() === ''
                     ? '<div style="height:12px;"></div>'
-                    : `<p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">${line}</p>`
+                    : `<p style="margin:0 0 4px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">${escHtml(line)}</p>`
                 ).join('')
               : `<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Dear ${project.client?.client_name ?? 'Client'},</p>
                  <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#2C2C2A;">Please find attached your ${label.toLowerCase()} for <strong>${project.project_name}</strong>.</p>`
