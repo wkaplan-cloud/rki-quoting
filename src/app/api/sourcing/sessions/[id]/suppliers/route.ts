@@ -15,6 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       portal_account_id?: string  // registered platform supplier
       supplier_name: string
       email: string
+      cc_emails?: string[] | null
     }
 
     if (!body.supplier_name?.trim() || !body.email?.trim()) {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         portal_account_id: body.portal_account_id ?? null,
         supplier_name: body.supplier_name.trim(),
         email: body.email.toLowerCase().trim(),
+        cc_emails: body.cc_emails?.length ? body.cc_emails : null,
       })
       .select()
       .single()

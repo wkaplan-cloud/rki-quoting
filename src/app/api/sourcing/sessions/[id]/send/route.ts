@@ -187,10 +187,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ? `${SUPPLIER_PORTAL_URL}/requests/${ss.id}`
         : `${SITE_URL}/sourcing/respond/${ss.token}`
 
+      const ccEmails: string[] = (ss as any).cc_emails ?? []
+
       const { error: emailError } = await resend.emails.send({
         from: `${studioName} <no-reply@quotinghub.co.za>`,
         ...(replyTo ? { replyTo } : {}),
         to: ss.email,
+        ...(ccEmails.length > 0 ? { cc: ccEmails } : {}),
         subject: `Pricing Request: ${session.title} — ${studioName}`,
         html: buildEmail({ supplierName: ss.supplier_name, studioName, sessionTitle: session.title, projectName, projectNumber, items, respondUrl, isRegistered }),
         text: `Dear ${ss.supplier_name},\n\n${studioName} is requesting prices for ${items.length} item(s)${projectName ? ` for ${projectName}` : ''}.\n\nItems:\n${items.map((item: any) => `- ${item.title}${item.item_quantity ? ` (Qty: ${item.item_quantity})` : ''}`).join('\n')}\n\nView and submit prices:\n${respondUrl}\n\nSent via QuotingHub`,

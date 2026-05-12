@@ -322,6 +322,7 @@ function AddSupplierForm({
 }) {
   const [supplierName, setSupplierName] = useState('')
   const [email, setEmail] = useState('')
+  const [cc, setCc] = useState('')
   const [supplierId, setSupplierId] = useState<string | null>(null)
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>(items.map(i => i.id))
   const [saving, setSaving] = useState(false)
@@ -340,11 +341,12 @@ function AddSupplierForm({
     e.preventDefault()
     if (!supplierName.trim() || !email.trim()) return
     setSaving(true)
+    const ccEmails = cc.split(',').map(e => e.trim().toLowerCase()).filter(e => e.length > 0)
     try {
       const res = await fetch(`/api/sourcing/sessions/${sessionId}/suppliers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplier_name: supplierName.trim(), email: email.trim(), supplier_id: supplierId }),
+        body: JSON.stringify({ supplier_name: supplierName.trim(), email: email.trim(), supplier_id: supplierId, cc_emails: ccEmails.length > 0 ? ccEmails : null }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -426,6 +428,10 @@ function AddSupplierForm({
             <div>
               <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Email Address *</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="supplier@example.com" required className={INPUT} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">CC <span className="normal-case font-normal tracking-normal">(optional — separate with commas)</span></label>
+              <input value={cc} onChange={e => setCc(e.target.value)} placeholder="colleague@example.com, manager@example.com" className={INPUT} />
             </div>
           </div>
 
