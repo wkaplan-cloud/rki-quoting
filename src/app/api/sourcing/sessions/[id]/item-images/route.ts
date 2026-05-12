@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
+const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'])
+const MAX_BYTES = 10 * 1024 * 1024
+
 // POST /api/sourcing/sessions/[id]/item-images — upload ref images for a sourcing item
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,6 +17,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const formData = await req.formData()
     const files = formData.getAll('files') as File[]
     if (!files.length) return NextResponse.json({ urls: [] })
+
+    for (const file of files) {
+      if (!ALLOWED_IMAGE_MIME.has(file.type)) return NextResponse.json({ error: `${file.name} is not an allowed image type` }, { status: 400 })
+      if (file.size > MAX_BYTES) return NextResponse.json({ error: `${file.name} exceeds the 10 MB limit` }, { status: 400 })
+    }
 
     const urls: string[] = []
     for (const file of files.slice(0, 5)) {

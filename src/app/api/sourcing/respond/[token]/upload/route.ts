@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
+const ALLOWED_MIME = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+  'image/jpeg', 'image/png', 'image/webp',
+])
+const MAX_BYTES = 20 * 1024 * 1024
+
 // POST /api/sourcing/respond/[token]/upload
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -18,6 +29,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+
+    if (!ALLOWED_MIME.has(file.type)) return NextResponse.json({ error: 'File type not allowed. Upload a PDF, Word doc, Excel sheet, CSV, or image.' }, { status: 400 })
+    if (file.size > MAX_BYTES) return NextResponse.json({ error: 'File exceeds the 20 MB limit' }, { status: 400 })
 
     const ext = file.name.split('.').pop() ?? 'bin'
     const path = `supplier-quotes/${ss.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`

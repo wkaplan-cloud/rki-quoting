@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
+const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'])
+const MAX_BYTES = 10 * 1024 * 1024
+
 // POST /api/pieces/[id]/images — upload images, append to piece.image_urls
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,6 +17,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const formData = await req.formData()
     const files = formData.getAll('files') as File[]
     if (!files.length) return NextResponse.json({ error: 'No files provided' }, { status: 400 })
+
+    for (const file of files) {
+      if (!ALLOWED_IMAGE_MIME.has(file.type)) return NextResponse.json({ error: `${file.name} is not an allowed image type` }, { status: 400 })
+      if (file.size > MAX_BYTES) return NextResponse.json({ error: `${file.name} exceeds the 10 MB limit` }, { status: 400 })
+    }
 
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
