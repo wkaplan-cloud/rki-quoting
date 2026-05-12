@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const [{ data: project }, { data: lineItems }, { data: settings }, { data: stages }] = await Promise.all([
       supabase.from('projects').select('*').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-      supabase.from('settings').select('sage_item_id, deposit_percentage').maybeSingle(),
+      supabase.from('settings').select('sage_item_id, deposit_percentage, vat_rate').maybeSingle(),
       supabase.from('project_stages').select('*').eq('project_id', projectId).maybeSingle(),
     ])
 
@@ -90,7 +90,8 @@ export async function POST(req: NextRequest) {
           const invTotal: number = existingInv.Total ?? existingInv.total ?? 0
           const invOutstanding: number = existingInv.TotalOutstanding ?? existingInv.Outstanding ?? invTotal
           const actualPaidInclVat = Math.max(0, invTotal - invOutstanding)
-          depositExclVat = parseFloat((actualPaidInclVat / 1.15).toFixed(2))
+          const vatRate = (project as any).vat_rate ?? settings?.vat_rate ?? 15
+          depositExclVat = parseFloat((actualPaidInclVat / (1 + vatRate / 100)).toFixed(2))
         } catch {
           // Fallback to configured percentage if Sage call fails
           const subtotal = computed.reduce((sum, c) => sum + c.total_price, 0)
