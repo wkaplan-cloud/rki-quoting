@@ -305,6 +305,126 @@ function AddItemForm({ sessionId, onAdded, sortOrder }: { sessionId: string; onA
 }
 
 // ---- Add Supplier Form (full-width, always open when rendered) ----
+function ItemEditPanel({
+  item,
+  sessionId,
+  onSaved,
+  onCancel,
+}: {
+  item: SessionItem
+  sessionId: string
+  onSaved: (updated: SessionItem) => void
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState(item.title)
+  const [qty, setQty] = useState(item.item_quantity?.toString() ?? '')
+  const [specs, setSpecs] = useState(item.specifications ?? '')
+  const [category, setCategory] = useState<CategoryKey>((item.category as CategoryKey) ?? 'general')
+  const [specValues, setSpecValues] = useState<Record<string, string>>(item.item_specs ?? {})
+  const [workType, setWorkType] = useState(item.work_type ?? '')
+  const [dimensions, setDimensions] = useState(item.dimensions ?? '')
+  const [colourFinish, setColourFinish] = useState(item.colour_finish ?? '')
+  const [saving, setSaving] = useState(false)
+
+  const isGeneral = category === 'general'
+  const fields = CATEGORY_FIELDS[category] ?? []
+
+  function setSpec(key: string, val: string) {
+    setSpecValues(prev => ({ ...prev, [key]: val }))
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim()) return
+    setSaving(true)
+    try {
+      const cleanSpecs = Object.fromEntries(Object.entries(specValues).filter(([, v]) => v.trim()))
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          item_quantity: qty ? Number(qty) : null,
+          specifications: specs.trim() || null,
+          category,
+          work_type: isGeneral ? (workType.trim() || null) : null,
+          dimensions: isGeneral ? (dimensions.trim() || null) : null,
+          colour_finish: isGeneral ? (colourFinish.trim() || null) : null,
+          item_specs: !isGeneral && Object.keys(cleanSpecs).length > 0 ? cleanSpecs : null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      onSaved({ ...item, ...json.data })
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSave} className="border-t border-[#EDE9E1] px-4 py-4 space-y-3" style={{ background: '#FAFAF8' }}>
+      <div className="grid grid-cols-3 gap-2">
+        <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Item name *" required className={`${INPUT} col-span-2`} />
+        <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Qty" className={INPUT} />
+      </div>
+
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-1">Category</label>
+        <div className="flex flex-wrap gap-1.5">
+          {CATEGORIES.map(c => (
+            <button
+              key={c.key} type="button"
+              onClick={() => { setCategory(c.key); setSpecValues({}) }}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${category === c.key ? 'bg-[#2C2C2A] text-white border-[#2C2C2A]' : 'border-[#D4CFC7] text-[#8A877F] hover:border-[#C4A46B]'}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isGeneral ? (
+        <div className="grid grid-cols-1 gap-2">
+          <input value={workType} onChange={e => setWorkType(e.target.value)} placeholder="Work type / category" className={INPUT} />
+          <div className="grid grid-cols-2 gap-2">
+            <input value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="Dimensions" className={INPUT} />
+            <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} placeholder="Colour / Finish" className={INPUT} />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {fields.map(f => (
+            <div key={f.key} className={f.type === 'textarea' ? 'col-span-2' : ''}>
+              <label className="block text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-0.5">{f.label}{f.unit ? ` (${f.unit})` : ''}</label>
+              {f.type === 'select' ? (
+                <select value={specValues[f.key] ?? ''} onChange={e => setSpec(f.key, e.target.value)} className={INPUT}>
+                  <option value="">—</option>
+                  {f.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : f.type === 'textarea' ? (
+                <textarea value={specValues[f.key] ?? ''} onChange={e => setSpec(f.key, e.target.value)} placeholder={f.placeholder} rows={2} className={INPUT} />
+              ) : (
+                <input type={f.type === 'number' ? 'number' : 'text'} value={specValues[f.key] ?? ''} onChange={e => setSpec(f.key, e.target.value)} placeholder={f.placeholder} className={INPUT} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <textarea value={specs} onChange={e => setSpecs(e.target.value)} placeholder="Specifications / notes for supplier" rows={2} className={INPUT} />
+
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" onClick={onCancel} className="px-4 py-1.5 text-xs text-[#8A877F] hover:text-[#2C2C2A] border border-[#D4CFC7] rounded-lg hover:border-[#8A877F] transition-colors">Cancel</button>
+        <button type="submit" disabled={saving || !title.trim()} className="px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-xs font-semibold rounded-lg disabled:opacity-50 transition-opacity">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function AddSupplierForm({
   sessionId,
   allSuppliers,
@@ -1447,6 +1567,11 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     setItems(prev => [...prev, item])
   }
 
+  function handleItemUpdated(updated: SessionItem) {
+    setItems(prev => prev.map(i => i.id === updated.id ? updated : i))
+    setExpandedItemId(null)
+  }
+
   function handleSupplierAdded(ss: SessionSupplier) {
     setSuppliers(prev => [...prev, ss])
   }
@@ -1724,55 +1849,59 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                               </button>
 
                               {isExpanded && (
-                                <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-3" style={{ background: '#FAFAF8' }}>
-                                  {item.ref_image_urls && item.ref_image_urls.length > 0 && (
-                                    <div className="flex gap-2 flex-wrap">
-                                      {item.ref_image_urls.map((url, i) => (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-[#EDE9E1]" />
-                                      ))}
-                                    </div>
-                                  )}
-                                  {item.item_specs && Object.keys(item.item_specs).length > 0 && (
-                                    <div>
-                                      {catLabel && catKey !== 'general' && (
-                                        <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#A89F91' }}>{catLabel}</p>
+                                isDraft
+                                  ? <ItemEditPanel item={item} sessionId={session.id} onSaved={handleItemUpdated} onCancel={() => setExpandedItemId(null)} />
+                                  : (
+                                    <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-3" style={{ background: '#FAFAF8' }}>
+                                      {item.ref_image_urls && item.ref_image_urls.length > 0 && (
+                                        <div className="flex gap-2 flex-wrap">
+                                          {item.ref_image_urls.map((url, i) => (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-[#EDE9E1]" />
+                                          ))}
+                                        </div>
                                       )}
-                                      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                                        {Object.entries(item.item_specs).map(([key, val]) => {
-                                          const def = fieldDefs.find(f => f.key === key)
-                                          const label = def?.label ?? key.replace(/_/g, ' ')
-                                          const display = def?.unit ? `${val} ${def.unit}` : val
-                                          return (
-                                            <div key={key} className="flex gap-1 items-baseline">
-                                              <span className="text-xs text-[#8A877F] shrink-0">{label}:</span>
-                                              <span className="text-xs text-[#2C2C2A] font-medium">{display}</span>
+                                      {item.item_specs && Object.keys(item.item_specs).length > 0 && (
+                                        <div>
+                                          {catLabel && catKey !== 'general' && (
+                                            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#A89F91' }}>{catLabel}</p>
+                                          )}
+                                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                            {Object.entries(item.item_specs).map(([key, val]) => {
+                                              const def = fieldDefs.find(f => f.key === key)
+                                              const label = def?.label ?? key.replace(/_/g, ' ')
+                                              const display = def?.unit ? `${val} ${def.unit}` : val
+                                              return (
+                                                <div key={key} className="flex gap-1 items-baseline">
+                                                  <span className="text-xs text-[#8A877F] shrink-0">{label}:</span>
+                                                  <span className="text-xs text-[#2C2C2A] font-medium">{display}</span>
+                                                </div>
+                                              )
+                                            })}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {(item.dimensions || item.colour_finish) && (
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                                          {item.dimensions && (
+                                            <div className="flex gap-1 items-baseline">
+                                              <span className="text-xs text-[#8A877F] shrink-0">Dimensions:</span>
+                                              <span className="text-xs text-[#2C2C2A] font-medium">{item.dimensions}</span>
                                             </div>
-                                          )
-                                        })}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {(item.dimensions || item.colour_finish) && (
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                                      {item.dimensions && (
-                                        <div className="flex gap-1 items-baseline">
-                                          <span className="text-xs text-[#8A877F] shrink-0">Dimensions:</span>
-                                          <span className="text-xs text-[#2C2C2A] font-medium">{item.dimensions}</span>
+                                          )}
+                                          {item.colour_finish && (
+                                            <div className="flex gap-1 items-baseline">
+                                              <span className="text-xs text-[#8A877F] shrink-0">Colour:</span>
+                                              <span className="text-xs text-[#2C2C2A] font-medium">{item.colour_finish}</span>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
-                                      {item.colour_finish && (
-                                        <div className="flex gap-1 items-baseline">
-                                          <span className="text-xs text-[#8A877F] shrink-0">Colour:</span>
-                                          <span className="text-xs text-[#2C2C2A] font-medium">{item.colour_finish}</span>
-                                        </div>
+                                      {item.specifications && (
+                                        <p className="text-xs text-[#8A877F] leading-relaxed">{item.specifications}</p>
                                       )}
                                     </div>
-                                  )}
-                                  {item.specifications && (
-                                    <p className="text-xs text-[#8A877F] leading-relaxed">{item.specifications}</p>
-                                  )}
-                                </div>
+                                  )
                               )}
                             </div>
                           )

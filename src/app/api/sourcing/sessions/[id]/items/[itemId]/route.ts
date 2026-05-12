@@ -19,6 +19,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       item_quantity?: number | null
       dimensions?: string | null
       colour_finish?: string | null
+      category?: string
+      item_specs?: Record<string, string> | null
     }
 
     const { data, error } = await supabase
@@ -30,6 +32,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(body.item_quantity !== undefined && { item_quantity: body.item_quantity }),
         ...(body.dimensions !== undefined && { dimensions: body.dimensions?.trim() ?? null }),
         ...(body.colour_finish !== undefined && { colour_finish: body.colour_finish?.trim() ?? null }),
+        ...(body.category !== undefined && { category: body.category }),
+        ...(body.item_specs !== undefined && { item_specs: body.item_specs }),
       })
       .eq('id', itemId)
       .select()
