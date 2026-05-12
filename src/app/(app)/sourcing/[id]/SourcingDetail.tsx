@@ -1754,11 +1754,14 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
             </button>
           )}
           {!isArchived && (
-            <button onClick={handleSend} disabled={sending || !canSend}
-              className="flex items-center gap-2 px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-40 transition-colors">
-              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {isDraft ? 'Send to Suppliers' : 'Resend'}
-            </button>
+            <div className="flex flex-col items-end gap-0.5">
+              {isDraft && <p className="text-[10px] font-bold uppercase tracking-widest text-[#C4A46B]">Step 3</p>}
+              <button onClick={handleSend} disabled={sending || !canSend}
+                className="flex items-center gap-2 px-4 py-1.5 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-40 transition-colors">
+                {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {isDraft ? 'Send to Suppliers' : 'Resend'}
+              </button>
+            </div>
           )}
         </div>
       </div>
