@@ -6,10 +6,21 @@ import { apiError } from '@/lib/api-error'
 // Body: { assignment_id } — accept a specific supplier's response for this item
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; itemId: string }> }) {
   try {
-    const { itemId } = await params
+    const { id: sessionId, itemId } = await params
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
+    const { data: session } = await supabase
+      .from('sourcing_sessions')
+      .select('id')
+      .eq('id', sessionId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+    if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const { assignment_id } = await req.json() as { assignment_id: string }
     if (!assignment_id) return NextResponse.json({ error: 'assignment_id is required' }, { status: 400 })

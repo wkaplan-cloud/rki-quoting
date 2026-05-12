@@ -124,10 +124,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
+
     const body = await req.json().catch(() => ({})) as { session_supplier_id?: string }
 
     const [{ data: session }, { data: settings }, { data: sessionSuppliers }] = await Promise.all([
-      supabase.from('sourcing_sessions').select('*, project:projects(project_name, project_number)').eq('id', id).single(),
+      supabase.from('sourcing_sessions').select('*, project:projects(project_name, project_number)').eq('id', id).eq('org_id', orgId).single(),
       supabase.from('settings').select('business_name, email_from').maybeSingle(),
       supabase
         .from('sourcing_session_suppliers')
