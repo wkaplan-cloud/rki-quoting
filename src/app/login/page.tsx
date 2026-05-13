@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [hashRedirecting, setHashRedirecting] = useState(() =>
     typeof window !== 'undefined' && window.location.hash.includes('access_token=')
   )
-  const [checkingSession, setCheckingSession] = useState(true)
+  const [checkingSession, setCheckingSession] = useState(false)
   const [platformSignoutEmail, setPlatformSignoutEmail] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [platformMode, setPlatformMode] = useState(false)
@@ -53,6 +53,7 @@ export default function LoginPage() {
         .select('id')
         .eq('auth_user_id', session.user.id)
         .maybeSingle()
+      setCheckingSession(false)
       router.replace(portalAccount ? '/supplier-portal/dashboard' : '/dashboard')
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
