@@ -444,7 +444,7 @@ function AddSupplierForm({
   const [email, setEmail] = useState('')
   const [cc, setCc] = useState('')
   const [supplierId, setSupplierId] = useState<string | null>(null)
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>(items.map(i => i.id))
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
   function toggleItem(id: string) {
