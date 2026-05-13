@@ -1,7 +1,12 @@
 import Link from 'next/link'
 import { PublicLayout } from '@/components/layout/PublicLayout'
 
-export const metadata = { title: 'Privacy Policy – QuotingHub' }
+export const metadata = {
+  title: 'Privacy Policy – QuotingHub',
+  description: 'Read the QuotingHub Privacy Policy to understand how we collect, use, and protect your personal information.',
+  alternates: { canonical: 'https://quotinghub.co.za/privacy' },
+  robots: { index: false },
+}
 
 export default function PrivacyPage() {
   const updated = '10 April 2026'
