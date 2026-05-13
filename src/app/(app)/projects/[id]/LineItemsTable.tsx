@@ -403,7 +403,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
             <tr className="border-b border-[#E8E4DC] bg-[#F7F4EF] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2 sticky left-0 z-10 bg-[#F7F4EF]" />
               <th className="w-7 px-2 py-2 sticky left-6 z-10 bg-[#F7F4EF]" title="Received" />
-              <th className="text-left px-2 py-2 min-w-[140px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
+              <th className="text-left px-2 py-2 w-[200px] min-w-[200px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px] border-r border-[#EDEBE6]">Description</th>
               <th className="text-right px-2 py-2 min-w-[105px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
@@ -528,7 +528,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Item name — with link toggle + dimensions/colour */}
-                  <td className={COL + ` sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
+                  <td className={COL + ` w-[200px] min-w-[200px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
                     <div className={isLinked ? 'pl-4' : ''}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
