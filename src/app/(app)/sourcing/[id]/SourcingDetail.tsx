@@ -743,7 +743,6 @@ function buildPushDescription(item: SessionItem, response: Response): string {
     })
   }
   if (item.specifications) parts.push(item.specifications)
-  if (response.lead_time_weeks) parts.push(`Lead time: ${response.lead_time_weeks} weeks`)
   if (response.notes && !response.notes.startsWith("[CAN'T SUPPLY]")) parts.push(`Note: ${response.notes}`)
   return parts.join(' | ')
 }
