@@ -1358,7 +1358,8 @@ function SupplierCard({
 
                 return (
                   <div key={item.id} className="py-2 border-b border-[#F5F2EC] last:border-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <div className="flex items-start gap-2 mb-1">
+                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                       {isAccepted && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
                       <p className="text-sm font-medium text-[#2C2C2A]">{item.title}</p>
                       {item.item_quantity && <span className="text-xs text-[#C4BFB5]">×{item.item_quantity}</span>}
@@ -1382,6 +1383,18 @@ function SupplierCard({
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FEF9EC', color: '#92600A', border: '1px solid #F6D07A' }}>
                           Spec changes
                         </span>
+                      )}
+                      </div>
+                      {!isAccepted && (
+                        <button
+                          type="button"
+                          onClick={() => !togglingItem && toggleAssign(item.id)}
+                          disabled={!!togglingItem}
+                          title="Remove item from this supplier"
+                          className="p-1 text-[#C4BFB5] hover:text-red-400 hover:bg-red-50 rounded transition-colors shrink-0 ml-auto"
+                        >
+                          {togglingItem === item.id ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+                        </button>
                       )}
                     </div>
 
