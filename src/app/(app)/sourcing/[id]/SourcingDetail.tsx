@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
   X, Check, CheckCircle2, ImagePlus,
-  AlertTriangle, ArrowRight, BarChart3,
+  AlertTriangle, ArrowRight, BarChart3, Download,
 } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
@@ -30,6 +30,7 @@ interface Response {
   unit_price: number
   lead_time_weeks: number | null
   notes: string | null
+  attachment_url: string | null
   supplier_specs: Record<string, string> | null
 }
 
@@ -1416,6 +1417,17 @@ function SupplierCard({
                         <span className="text-sm font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
                         {assignment.response.lead_time_weeks && <span className="text-xs text-[#8A877F]">{assignment.response.lead_time_weeks}w lead</span>}
                         {assignment.response.notes && <span className="text-xs text-[#8A877F] italic truncate max-w-[180px]">{assignment.response.notes}</span>}
+                        {assignment.response.attachment_url && (
+                          <a
+                            href={assignment.response.attachment_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors"
+                          >
+                            <Download size={11} />
+                            Quote
+                          </a>
+                        )}
                         {!isAccepted && item.status !== 'accepted' && (
                           <button
                             type="button"
