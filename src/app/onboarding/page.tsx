@@ -81,7 +81,7 @@ export default function OnboardingPage() {
       if (settingsError) { toast.error(settingsError.message); setSaving(false); return }
     }
 
-    router.push('/dashboard')
+    window.location.assign('/dashboard')
   }
 
   const steps = [
