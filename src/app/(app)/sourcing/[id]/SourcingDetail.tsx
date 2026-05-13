@@ -1880,59 +1880,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                               </button>
 
                               {isExpanded && (
-                                isDraft
-                                  ? <ItemEditPanel item={item} sessionId={session.id} onSaved={handleItemUpdated} onCancel={() => setExpandedItemId(null)} />
-                                  : (
-                                    <div className="border-t border-[#EDE9E1] px-4 py-3 space-y-3" style={{ background: '#FAFAF8' }}>
-                                      {item.ref_image_urls && item.ref_image_urls.length > 0 && (
-                                        <div className="flex gap-2 flex-wrap">
-                                          {item.ref_image_urls.map((url, i) => (
-                                            // eslint-disable-next-line @next/next/no-img-element
-                                            <img key={i} src={url} alt="" className="w-16 h-16 object-cover rounded-lg border border-[#EDE9E1]" />
-                                          ))}
-                                        </div>
-                                      )}
-                                      {item.item_specs && Object.keys(item.item_specs).length > 0 && (
-                                        <div>
-                                          {catLabel && catKey !== 'general' && (
-                                            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#A89F91' }}>{catLabel}</p>
-                                          )}
-                                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                                            {Object.entries(item.item_specs).map(([key, val]) => {
-                                              const def = fieldDefs.find(f => f.key === key)
-                                              const label = def?.label ?? key.replace(/_/g, ' ')
-                                              const display = def?.unit ? `${val} ${def.unit}` : val
-                                              return (
-                                                <div key={key} className="flex gap-1 items-baseline">
-                                                  <span className="text-xs text-[#8A877F] shrink-0">{label}:</span>
-                                                  <span className="text-xs text-[#2C2C2A] font-medium">{display}</span>
-                                                </div>
-                                              )
-                                            })}
-                                          </div>
-                                        </div>
-                                      )}
-                                      {(item.dimensions || item.colour_finish) && (
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
-                                          {item.dimensions && (
-                                            <div className="flex gap-1 items-baseline">
-                                              <span className="text-xs text-[#8A877F] shrink-0">Dimensions:</span>
-                                              <span className="text-xs text-[#2C2C2A] font-medium">{item.dimensions}</span>
-                                            </div>
-                                          )}
-                                          {item.colour_finish && (
-                                            <div className="flex gap-1 items-baseline">
-                                              <span className="text-xs text-[#8A877F] shrink-0">Colour:</span>
-                                              <span className="text-xs text-[#2C2C2A] font-medium">{item.colour_finish}</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      {item.specifications && (
-                                        <p className="text-xs text-[#8A877F] leading-relaxed">{item.specifications}</p>
-                                      )}
-                                    </div>
-                                  )
+                                <ItemEditPanel item={item} sessionId={session.id} onSaved={handleItemUpdated} onCancel={() => setExpandedItemId(null)} />
                               )}
                             </div>
                           )
