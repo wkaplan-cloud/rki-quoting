@@ -1311,18 +1311,18 @@ function SupplierCard({
           <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {/* Resend — only shown when new items were assigned after the last send */}
-          {!isDraft && ss.sent_at && ss.assignments.some(a => a.created_at && a.created_at > ss.sent_at!) && (
+          {/* Send / Resend — shown for unsent suppliers or when new items were added after the last send */}
+          {!isDraft && (!ss.sent_at || ss.assignments.some(a => a.created_at && a.created_at > ss.sent_at!)) && (
             <button
               type="button"
               onClick={async e => { e.stopPropagation(); setSending(true); await onSend(ss.id); setSending(false) }}
               disabled={sending}
-              title="Resend — new items added since last send"
+              title={ss.sent_at ? 'Resend — new items added since last send' : 'Send to this supplier'}
               className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border disabled:opacity-40 transition-colors"
               style={{ background: 'transparent', border: '1px solid #C4A46B', color: '#9A7B4F' }}
             >
               {sending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
-              {sending ? 'Sending…' : 'Resend'}
+              {sending ? 'Sending…' : ss.sent_at ? 'Resend' : 'Send'}
             </button>
           )}
           <button
@@ -1451,9 +1451,25 @@ function SupplierCard({
                     {!hasResponse && !isAccepted && (() => {
                       if (isDraft) return <p className="text-xs text-[#C4BFB5] mt-1">Assigned — not sent yet</p>
                       const isNewlyAssigned = ss.sent_at && assignment?.created_at && assignment.created_at > ss.sent_at
-                      return isNewlyAssigned
-                        ? <p className="text-xs text-amber-500 mt-1 font-medium">New — resend to notify supplier</p>
-                        : <p className="text-xs text-[#C4BFB5] mt-1">Awaiting response</p>
+                      const isUnsent = !ss.sent_at
+                      if (isNewlyAssigned || isUnsent) {
+                        return (
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-amber-500 font-medium">{isUnsent ? 'Not sent yet' : 'New'}</p>
+                            <button
+                              type="button"
+                              onClick={async () => { setSending(true); try { await onSend(ss.id) } finally { setSending(false) } }}
+                              disabled={sending}
+                              className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded border disabled:opacity-40 transition-colors"
+                              style={{ background: 'transparent', border: '1px solid #C4A46B', color: '#9A7B4F' }}
+                            >
+                              {sending ? <Loader2 size={9} className="animate-spin" /> : <Send size={9} />}
+                              {sending ? 'Sending…' : 'Send'}
+                            </button>
+                          </div>
+                        )
+                      }
+                      return <p className="text-xs text-[#C4BFB5] mt-1">Awaiting response</p>
                     })()}
                   </div>
                 )
