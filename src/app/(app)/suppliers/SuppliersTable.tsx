@@ -7,6 +7,16 @@ import { Truck, Trash2, Globe } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 
+const OWN_EMAIL = 'info@rkaplaninteriors.co.za'
+function stripOwnEmail(s: string | null | undefined): string {
+  if (!s) return ''
+  return s
+    .replace(new RegExp(`\\s*,\\s*${OWN_EMAIL}`, 'gi'), '')
+    .replace(new RegExp(`${OWN_EMAIL}\\s*,\\s*`, 'gi'), '')
+    .replace(new RegExp(`^${OWN_EMAIL}$`, 'gi'), '')
+    .trim()
+}
+
 export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }) {
   const [search, setSearch] = useState('')
   const [suppliers, setSuppliers] = useState(initial)
@@ -78,8 +88,8 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
                   </td>
                   <td className="px-4 py-3 text-[#8A877F] max-w-[140px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.category ?? '—'}</Link></td>
                   <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.contact_person ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email_cc ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{stripOwnEmail(s.email) || '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{stripOwnEmail(s.email_cc) || '—'}</Link></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <Link href={`/suppliers/${s.id}`} className="block">
