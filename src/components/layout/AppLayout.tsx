@@ -35,6 +35,7 @@ export function AppLayout({
   graceDaysLeft: number | null
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [desktopExpanded, setDesktopExpanded] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   // Show red grace-period banner when trial has expired but account still accessible
@@ -54,6 +55,8 @@ export function AppLayout({
         plan={plan}
         subscriptionStatus={subscriptionStatus}
         trialDaysLeft={trialDaysLeft}
+        desktopExpanded={desktopExpanded}
+        onDesktopToggle={() => setDesktopExpanded(e => !e)}
       />
       {feedbackOpen && (
         <FeedbackModal

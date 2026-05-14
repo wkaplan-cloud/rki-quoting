@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock,
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, ChevronLeft, Menu,
 } from 'lucide-react'
 
 const mainLinks = [
@@ -30,9 +30,11 @@ interface Props {
   plan: string
   subscriptionStatus: string
   trialDaysLeft: number | null
+  desktopExpanded: boolean
+  onDesktopToggle: () => void
 }
 
-export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge = 0, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft }: Props) {
+export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge = 0, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft, desktopExpanded, onDesktopToggle }: Props) {
   const path = usePathname()
   const isActive = (href: string) =>
     href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
@@ -56,8 +58,8 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
     }
   }
 
-  // Shared label style: always visible on mobile, fade in on desktop hover
-  const labelCls = 'text-xs whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3'
+  // Shared label style: always visible on mobile, visible on desktop only when expanded
+  const labelCls = `text-xs whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`
 
   return (
     <>
@@ -66,8 +68,8 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
       )}
 
       <aside
-        className={`group bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden
-          w-44 md:w-12 md:hover:w-44 md:transition-[width] md:duration-200
+        className={`bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
+          w-44 ${desktopExpanded ? 'md:w-44' : 'md:w-12'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
         {/* Mobile close */}
@@ -79,12 +81,24 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
 
         {/* Logo */}
         <div className="flex-shrink-0 relative border-b border-white/10">
-          {/* Q mark: desktop collapsed only — fades out on expand */}
-          <span className="hidden md:flex md:group-hover:opacity-0 absolute inset-0 items-center justify-center text-[#C4A46B] font-bold text-base select-none transition-opacity duration-150 pointer-events-none">
-            Q
-          </span>
-          {/* Full logo: always on mobile, fades in on desktop hover */}
-          <div className="px-4 py-5 flex flex-col items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
+          {/* Desktop: expand button — visible only when collapsed */}
+          <button
+            onClick={onDesktopToggle}
+            className={`hidden md:flex absolute inset-0 items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors z-10 ${desktopExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+            aria-label="Expand navigation"
+          >
+            <Menu size={15} />
+          </button>
+          {/* Desktop: collapse button — visible only when expanded */}
+          <button
+            onClick={onDesktopToggle}
+            className={`hidden md:flex absolute top-3 right-3 w-6 h-6 items-center justify-center rounded text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors z-10 ${desktopExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            aria-label="Collapse navigation"
+          >
+            <ChevronLeft size={12} />
+          </button>
+          {/* Full logo: always on mobile, visible on desktop when expanded */}
+          <div className={`px-4 py-5 flex flex-col items-center transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:pointer-events-none'}`}>
             <Image src="/logo.png" alt="QuotingHub" width={96} height={96} className="w-24 h-auto object-contain" style={{ filter: 'invert(1)' }} />
             {businessName && (
               <span className="text-[9px] font-medium text-[#C4A46B] uppercase tracking-widest whitespace-nowrap mt-2 text-center">
@@ -107,7 +121,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                   <span className="flex items-center justify-center w-10 flex-shrink-0">
                     <Icon size={16} className="opacity-30" />
                   </span>
-                  <span className="text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3 flex items-center gap-1.5">
+                  <span className={`text-sm whitespace-nowrap transition-opacity duration-150 pr-3 flex items-center gap-1.5 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
                     {label} <Lock size={10} className="opacity-40" />
                   </span>
                 </button>
@@ -126,7 +140,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                 <span className="flex items-center justify-center w-10 flex-shrink-0">
                   <Icon size={16} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
                 </span>
-                <span className={`text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3`}>
+                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
                   {label}
                 </span>
               </Link>
@@ -194,11 +208,11 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                 <span className="flex items-center justify-center w-10 flex-shrink-0">
                   <Tag size={15} className={isActive('/sourcing') ? 'text-[#C4A46B]' : 'opacity-60'} />
                 </span>
-                <span className={`text-sm whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150`}>
+                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
                   Price Request
                 </span>
                 {sourcingBadge > 0 && (
-                  <span className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center bg-orange-500 text-white">
+                  <span className={`transition-opacity duration-150 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center bg-orange-500 text-white ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
                     {sourcingBadge > 99 ? '99+' : sourcingBadge}
                   </span>
                 )}
