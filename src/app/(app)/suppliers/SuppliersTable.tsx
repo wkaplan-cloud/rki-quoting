@@ -53,12 +53,12 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
         <div className="bg-white border border-[#D8D3C8] rounded overflow-hidden">
           <table className="w-full text-sm table-fixed">
             <colgroup>
-              <col className="w-[15%]" />
+              <col className="w-[20%]" />
               <col className="w-[20%]" />
               <col className="w-[15%]" />
               <col className="w-[20%]" />
               <col className="w-[13%]" />
-              <col className="w-[17%]" />
+              <col className="w-[12%]" />
             </colgroup>
             <thead>
               <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
