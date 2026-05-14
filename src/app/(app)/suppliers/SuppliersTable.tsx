@@ -51,7 +51,15 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
         </div>
       ) : (
         <div className="bg-white border border-[#D8D3C8] rounded overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col className="w-[15%]" />
+              <col className="w-[20%]" />
+              <col className="w-[15%]" />
+              <col className="w-[20%]" />
+              <col className="w-[13%]" />
+              <col className="w-[17%]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
                 {['Supplier', 'Category', 'Contact Person', 'Email', 'CC Email', 'Default Markup'].map(h => (
@@ -63,24 +71,24 @@ export function SuppliersTable({ suppliers: initial }: { suppliers: Supplier[] }
               {filtered.map((s, i) => (
                 <tr key={s.id} className={`group relative border-b border-[#EDE9E1] hover:bg-[#F5F2EC] ${i === filtered.length - 1 ? 'border-0' : ''}`}>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Link href={`/suppliers/${s.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F]">{s.supplier_name}</Link>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Link href={`/suppliers/${s.id}`} className="block font-medium text-[#2C2C2A] hover:text-[#9A7B4F] truncate">{s.supplier_name}</Link>
                       {s.is_platform && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#9A7B4F]/10 text-[#9A7B4F]">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#9A7B4F]/10 text-[#9A7B4F] shrink-0">
                           <Globe size={9} /> Platform
                         </span>
                       )}
                       {s.price_list_id && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 shrink-0">
                           Price list linked
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-[#8A877F] max-w-[140px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.category ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block">{s.contact_person ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email ?? '—'}</Link></td>
-                  <td className="px-4 py-3 text-[#8A877F] max-w-[200px]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email_cc ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.category ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.contact_person ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email ?? '—'}</Link></td>
+                  <td className="px-4 py-3 text-[#8A877F]"><Link href={`/suppliers/${s.id}`} className="block truncate">{s.email_cc ?? '—'}</Link></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <Link href={`/suppliers/${s.id}`} className="block">
