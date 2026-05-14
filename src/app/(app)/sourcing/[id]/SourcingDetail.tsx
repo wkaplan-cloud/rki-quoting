@@ -452,19 +452,9 @@ function AddSupplierForm({
     setSelectedItemIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
   }
 
-  const OWN_EMAIL = 'info@rkaplaninteriors.co.za'
-  function stripOwnEmail(s: string | null | undefined): string {
-    if (!s) return ''
-    return s
-      .replace(new RegExp(`\\s*,\\s*${OWN_EMAIL}`, 'gi'), '')
-      .replace(new RegExp(`${OWN_EMAIL}\\s*,\\s*`, 'gi'), '')
-      .replace(new RegExp(`^${OWN_EMAIL}$`, 'gi'), '')
-      .trim()
-  }
-
   function handleSelectSupplier(s: { id: string; supplier_name: string; email: string | null }) {
     setSupplierName(s.supplier_name)
-    setEmail(stripOwnEmail(s.email))
+    setEmail(s.email ?? '')
     setSupplierId(s.id)
   }
 

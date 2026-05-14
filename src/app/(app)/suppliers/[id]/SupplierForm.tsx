@@ -12,15 +12,6 @@ import { WORK_CATEGORIES } from '@/lib/categories'
 
 const toTitleCase = (s: string) => s.trim().replace(/\b\w/g, c => c.toUpperCase())
 
-const OWN_EMAIL = 'info@rkaplaninteriors.co.za'
-function stripOwnEmail(s: string | null | undefined): string {
-  if (!s) return ''
-  return s
-    .replace(new RegExp(`\\s*,\\s*${OWN_EMAIL}`, 'gi'), '')
-    .replace(new RegExp(`${OWN_EMAIL}\\s*,\\s*`, 'gi'), '')
-    .replace(new RegExp(`^${OWN_EMAIL}$`, 'gi'), '')
-    .trim()
-}
 
 function SpecialityPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const toggle = (s: string) => onChange(value.includes(s) ? value.filter(x => x !== s) : [...value, s])
@@ -63,8 +54,8 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
 
   // Platform supplier — only the org contact fields are editable
   const [contact, setContact] = useState({
-    email: stripOwnEmail(platformContact?.email),
-    email_cc: stripOwnEmail(platformContact?.email_cc),
+    email: platformContact?.email ?? '',
+    email_cc: platformContact?.email_cc ?? '',
     rep_name: platformContact?.rep_name ?? '',
     rep_number: platformContact?.rep_number ?? '',
     markup_percentage: String(platformContact?.markup_percentage ?? supplier?.markup_percentage ?? 0),
@@ -79,7 +70,7 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     if (!user || !orgId) { toast.error('Session error'); setSaving(false); return }
 
-    const payload = { org_id: orgId, supplier_id: supplier.id, ...contact, email: stripOwnEmail(contact.email), email_cc: stripOwnEmail(contact.email_cc), markup_percentage: parseFloat(contact.markup_percentage) || null }
+    const payload = { org_id: orgId, supplier_id: supplier.id, ...contact, markup_percentage: parseFloat(contact.markup_percentage) || null }
     const { error } = platformContact
       ? await supabase.from('platform_supplier_contacts').update(payload).eq('id', platformContact.id)
       : await supabase.from('platform_supplier_contacts').insert(payload)
@@ -96,8 +87,8 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
     category: supplier?.category ?? '',
     contact_person: supplier?.contact_person ?? '',
     rep_name: supplier?.rep_name ?? '',
-    email: stripOwnEmail(supplier?.email),
-    email_cc: stripOwnEmail(supplier?.email_cc),
+    email: supplier?.email ?? '',
+    email_cc: supplier?.email_cc ?? '',
     delivery_address: supplier?.delivery_address ?? '',
     delivery_contact_name: supplier?.delivery_contact_name ?? '',
     delivery_contact_number: supplier?.delivery_contact_number ?? '',
@@ -118,8 +109,6 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
     const payload = {
       ...form,
       supplier_name: toTitleCase(form.supplier_name),
-      email: stripOwnEmail(form.email),
-      email_cc: stripOwnEmail(form.email_cc),
       markup_percentage: parseFloat(form.markup_percentage) || 0,
       category: JSON.stringify(specialities),
     }
