@@ -92,7 +92,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
           {/* Desktop: collapse button — visible only when expanded */}
           <button
             onClick={onDesktopToggle}
-            className={`hidden md:flex absolute top-3 right-3 w-6 h-6 items-center justify-center rounded text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors z-10 ${desktopExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`hidden md:flex absolute top-3 right-3 w-6 h-6 items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors z-10 ${desktopExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             aria-label="Collapse navigation"
           >
             <ChevronLeft size={12} />
