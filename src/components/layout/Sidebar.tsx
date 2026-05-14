@@ -59,7 +59,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
   }
 
   // Shared label style: always visible on mobile, visible on desktop only when expanded
-  const labelCls = `text-xs whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`
+  const labelCls = `text-xs whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`
 
   return (
     <>
@@ -68,8 +68,8 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
       )}
 
       <aside
-        className={`bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
-          w-44 ${desktopExpanded ? 'md:w-44' : 'md:w-12'}
+        className={`group bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
+          w-44 ${desktopExpanded ? 'md:w-44' : 'md:w-12 md:hover:w-44'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
         {/* Mobile close */}
@@ -84,7 +84,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
           {/* Desktop: expand button — visible only when collapsed */}
           <button
             onClick={onDesktopToggle}
-            className={`hidden md:flex absolute inset-0 items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors z-10 ${desktopExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+            className={`hidden md:flex absolute inset-0 items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors z-10 ${desktopExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100 md:group-hover:opacity-0'}`}
             aria-label="Expand navigation"
           >
             <Menu size={15} />
@@ -92,13 +92,13 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
           {/* Desktop: collapse button — visible only when expanded */}
           <button
             onClick={onDesktopToggle}
-            className={`hidden md:flex absolute top-3 right-3 w-6 h-6 items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors z-10 ${desktopExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            className={`hidden md:flex absolute top-3 right-3 w-6 h-6 items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors z-10 ${desktopExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none md:group-hover:opacity-100'}`}
             aria-label="Collapse navigation"
           >
             <ChevronLeft size={12} />
           </button>
           {/* Full logo: always on mobile, visible on desktop when expanded */}
-          <div className={`px-4 py-5 flex flex-col items-center transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:pointer-events-none'}`}>
+          <div className={`px-4 py-5 flex flex-col items-center transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100 md:pointer-events-none'}`}>
             <Image src="/logo.png" alt="QuotingHub" width={96} height={96} className="w-24 h-auto object-contain" style={{ filter: 'invert(1)' }} />
             {businessName && (
               <span className="text-[9px] font-medium text-[#C4A46B] uppercase tracking-widest whitespace-nowrap mt-2 text-center">
@@ -121,7 +121,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                   <span className="flex items-center justify-center w-10 flex-shrink-0">
                     <Icon size={16} className="opacity-30" />
                   </span>
-                  <span className={`text-sm whitespace-nowrap transition-opacity duration-150 pr-3 flex items-center gap-1.5 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
+                  <span className={`text-sm whitespace-nowrap transition-opacity duration-150 pr-3 flex items-center gap-1.5 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
                     {label} <Lock size={10} className="opacity-40" />
                   </span>
                 </button>
@@ -140,7 +140,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                 <span className="flex items-center justify-center w-10 flex-shrink-0">
                   <Icon size={16} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
                 </span>
-                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
+                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
                   {label}
                 </span>
               </Link>
@@ -208,11 +208,11 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                 <span className="flex items-center justify-center w-10 flex-shrink-0">
                   <Tag size={15} className={isActive('/sourcing') ? 'text-[#C4A46B]' : 'opacity-60'} />
                 </span>
-                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
+                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
                   Price Request
                 </span>
                 {sourcingBadge > 0 && (
-                  <span className={`transition-opacity duration-150 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center bg-orange-500 text-white ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0'}`}>
+                  <span className={`transition-opacity duration-150 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center bg-orange-500 text-white ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
                     {sourcingBadge > 99 ? '99+' : sourcingBadge}
                   </span>
                 )}
