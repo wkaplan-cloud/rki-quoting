@@ -35,6 +35,7 @@ export default async function PiecesPage() {
     supabase
       .from('projects')
       .select('id, project_name')
+      .is('archived_at', null)
       .order('created_at', { ascending: false })
       .limit(100),
   ])
