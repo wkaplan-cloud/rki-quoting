@@ -32,7 +32,7 @@ export default async function SourcingDetailPage({
       .order('created_at', { ascending: true }),
     supabase.from('sourcing_session_items').select('*, category, item_specs, pushed_to_project_id').eq('session_id', id).order('sort_order', { ascending: true }),
     supabase.from('suppliers').select('id, supplier_name, email').order('supplier_name').limit(500),
-    supabase.from('projects').select('id, project_number, project_name').order('created_at', { ascending: false }).limit(50),
+    supabase.from('projects').select('id, project_number, project_name').is('archived_at', null).order('created_at', { ascending: false }).limit(50),
   ])
 
   if (!session) notFound()

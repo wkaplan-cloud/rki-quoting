@@ -15,7 +15,7 @@ export default async function ImportPage() {
   if (org?.plan === 'solo') redirect('/dashboard')
 
   const [{ data: projects }, { data: suppliers }, { data: clients }, { data: pieces }, { data: settings }] = await Promise.all([
-    supabase.from('projects').select('id, project_name, project_number').order('created_at', { ascending: false }),
+    supabase.from('projects').select('id, project_name, project_number').is('archived_at', null).order('created_at', { ascending: false }),
     supabase.from('suppliers').select('id, supplier_name, markup_percentage').order('supplier_name'),
     supabase.from('clients').select('id, client_name').order('client_name'),
     supabase.from('pieces').select('id, name').order('name'),
