@@ -12,16 +12,21 @@ export async function GET() {
 
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
-      .select('id, email')
+      .select('id, email, linked_portal_account_id')
       .eq('auth_user_id', user.id)
       .maybeSingle()
 
     if (!account) return NextResponse.json({ error: 'Portal account not found' }, { status: 404 })
 
+    const orParts = [`portal_account_id.eq.${account.id}`, `email.eq.${account.email}`]
+    if ((account as any).linked_portal_account_id) {
+      orParts.push(`portal_account_id.eq.${(account as any).linked_portal_account_id}`)
+    }
+
     const { data, error } = await supabaseAdmin
       .from('sourcing_session_suppliers')
       .select('id, supplier_name, email, status, sent_at, token, session:sourcing_sessions(id, title, status, org_id, request_number, project:projects(project_name))')
-      .or(`portal_account_id.eq.${account.id},email.eq.${account.email}`)
+      .or(orParts.join(','))
       .not('sent_at', 'is', null)
       .order('created_at', { ascending: false })
 

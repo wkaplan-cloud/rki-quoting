@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Store, Globe, Phone, MapPin, BarChart3 } from 'lucide-react'
+import { PortalAccountLinker } from './PortalAccountLinker'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -9,7 +10,7 @@ function fmtDate(iso: string) {
 export default async function PlatformSuppliersPage() {
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, phone, website, address, categories, description, created_at')
+    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id')
     .order('created_at', { ascending: false })
 
   const rows = accounts ?? []
@@ -181,6 +182,15 @@ export default async function PlatformSuppliersPage() {
           </div>
         </div>
       )}
+
+      {/* Portal account linking */}
+      <PortalAccountLinker accounts={rows.map(r => ({
+        id: r.id,
+        email: r.email,
+        company_name: r.company_name ?? null,
+        contact_name: (r as any).contact_name ?? null,
+        linked_portal_account_id: (r as any).linked_portal_account_id ?? null,
+      }))} />
 
       {/* Supplier accounts table */}
       <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
