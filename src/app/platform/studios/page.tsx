@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Building2, Users, FolderOpen, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { QuickDeleteButton } from './[id]/DeleteStudioButton'
+import { AssignRepCell } from './AssignRepCell'
 
 function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string; trialEndsAt: string | null }) {
   if (status === 'active') {
@@ -34,7 +35,7 @@ function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string
 export default async function StudiosPage() {
   const { data: orgs } = await supabaseAdmin
     .from('organizations')
-    .select('id, name, created_at, plan, trial_ends_at, subscription_status, status, archived_at')
+    .select('id, name, created_at, plan, trial_ends_at, subscription_status, status, archived_at, assigned_rep')
     .order('created_at', { ascending: false })
 
   const enriched = await Promise.all(
@@ -121,6 +122,7 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
           <tr className="border-b border-white/10">
             <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Studio / Business</th>
             <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Admin</th>
+            <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Rep</th>
             <th className="text-center px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">
               <div className="flex items-center justify-center gap-1"><Users size={11} /> Members</div>
             </th>
@@ -135,7 +137,7 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
         <tbody className="divide-y divide-white/5">
           {studios.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-5 py-10 text-center text-white/30 text-sm">No studios yet</td>
+              <td colSpan={8} className="px-5 py-10 text-center text-white/30 text-sm">No studios yet</td>
             </tr>
           )}
           {studios.map(studio => (
@@ -147,6 +149,9 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
                 )}
               </td>
               <td className="px-5 py-3.5 text-white/60">{studio.adminName}</td>
+              <td className="px-5 py-3.5">
+                <AssignRepCell orgId={studio.id} initial={studio.assigned_rep ?? null} />
+              </td>
               <td className="px-5 py-3.5 text-center text-white/60">{studio.memberCount}</td>
               <td className="px-5 py-3.5 text-center text-white/60">{studio.projectCount}</td>
               <td className="px-5 py-3.5">

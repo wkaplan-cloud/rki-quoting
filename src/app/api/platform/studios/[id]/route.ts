@@ -30,6 +30,40 @@ export async function DELETE(
   return NextResponse.json({ ok: true })
 }
 
+// PATCH /api/platform/studios/[id] — updates fields like assigned_rep
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: orgId } = await params
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.email?.toLowerCase() !== process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase()) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  if (!orgId) return NextResponse.json({ error: 'Missing org id' }, { status: 400 })
+
+  const body = await req.json()
+  const allowed = ['assigned_rep']
+  const updates: Record<string, unknown> = {}
+  for (const key of allowed) {
+    if (key in body) updates[key] = body[key]
+  }
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+  }
+
+  const { error } = await supabaseAdmin
+    .from('organizations')
+    .update(updates)
+    .eq('id', orgId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
 // POST /api/platform/studios/[id] — restores an archived organisation
 export async function POST(
   req: NextRequest,
