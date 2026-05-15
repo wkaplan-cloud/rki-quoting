@@ -78,6 +78,13 @@ interface Props {
 
 const INPUT = 'w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white'
 
+function fmtDateTime(iso: string) {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+  const time = d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${date} · ${time}`
+}
+
 // ---- Add Item Form ----
 function AddItemForm({ sessionId, onAdded, sortOrder }: { sessionId: string; onAdded: (item: SessionItem) => void; sortOrder: number }) {
   const [open, setOpen] = useState(false)
@@ -1309,7 +1316,10 @@ function SupplierCard({
               </button>
             )}
           </div>
-          <p className="text-xs text-[#8A877F] mt-0.5">{ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-[#8A877F] mt-0.5">
+            {ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}
+            {ss.sent_at ? ` · Sent ${fmtDateTime(ss.sent_at)}` : ''}
+          </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {/* Send / Resend — shown for unsent suppliers or when new items were added after the last send */}
@@ -1416,6 +1426,7 @@ function SupplierCard({
                       <div className="flex items-center gap-3 flex-wrap mt-1">
                         <span className="text-sm font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
                         {assignment.response.lead_time_weeks && <span className="text-xs text-[#8A877F]">{assignment.response.lead_time_weeks}w lead</span>}
+                        {assignment.responded_at && <span className="text-[10px] text-[#C4BFB5]">Replied {fmtDateTime(assignment.responded_at)}</span>}
                         {assignment.response.notes && <span className="text-xs text-[#8A877F] italic truncate max-w-[180px]">{assignment.response.notes}</span>}
                         {assignment.response.attachment_url && (
                           <a
