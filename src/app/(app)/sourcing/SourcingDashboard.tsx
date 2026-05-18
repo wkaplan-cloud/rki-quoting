@@ -46,6 +46,9 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
   // Sync local state when server re-renders after router.refresh()
   useEffect(() => { setLocalSessions(sessions) }, [sessions])
 
+  // Force a fresh server fetch on every mount so the new-responses pill is always accurate
+  useEffect(() => { router.refresh() }, [])
+
   const active   = localSessions.filter(s => !s.archived)
   const archived = localSessions.filter(s => s.archived)
   const displayed = tab === 'active' ? active : archived
