@@ -12,6 +12,7 @@ import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer
 import confetti from 'canvas-confetti'
 
 interface SageCustomer { id: string; name: string; reference?: string }
+interface SageInvoice { id: string; reference: string; customerName: string; total: number; status: string; date: string }
 interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
 
 interface Props {
@@ -53,10 +54,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [addEmailModal, setAddEmailModal] = useState<{ supplierId: string; supplierName: string; email: string } | null>(null)
   // Sage state
   const [sageModalOpen, setSageModalOpen] = useState(false)
+  const [sageModalTab, setSageModalTab] = useState<'push' | 'link'>('push')
   const [sageCustomers, setSageCustomers] = useState<SageCustomer[]>([])
   const [sageCustomersLoading, setSageCustomersLoading] = useState(false)
   const [sageCustomerSearch, setSageCustomerSearch] = useState('')
   const [sageSelectedCustomer, setSageSelectedCustomer] = useState<SageCustomer | null>(null)
+  const [sageInvoices, setSageInvoices] = useState<SageInvoice[]>([])
+  const [sageInvoicesLoading, setSageInvoicesLoading] = useState(false)
+  const [sageInvoiceSearch, setSageInvoiceSearch] = useState('')
+  const [sageSelectedInvoice, setSageSelectedInvoice] = useState<SageInvoice | null>(null)
+  const [sageLinking, setSageLinking] = useState(false)
   const [sagePushing, setSagePushing] = useState(false)
   const [sageSyncing, setSageSyncing] = useState(false)
   const [sageInvoiceId, setSageInvoiceId] = useState(initial.sage_invoice_id ?? null)
@@ -276,9 +283,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
   const openSageModal = useCallback(async () => {
     setSageModalOpen(true)
+    setSageModalTab('push')
     setSageSelectedCustomer(null)
     setSageCustomerSearch('')
     setSageCustomers([])
+    setSageSelectedInvoice(null)
+    setSageInvoiceSearch('')
+    setSageInvoices([])
     setSageCustomersLoading(true)
     try {
       const res = await fetch('/api/sage/customers')
@@ -292,6 +303,47 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       setSageCustomersLoading(false)
     }
   }, [])
+
+  const loadSageInvoices = useCallback(async () => {
+    setSageInvoicesLoading(true)
+    try {
+      const res = await fetch('/api/sage/invoices')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setSageInvoices(Array.isArray(data) ? data : [])
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load Sage invoices')
+    } finally {
+      setSageInvoicesLoading(false)
+    }
+  }, [])
+
+  const handleLinkSageInvoice = useCallback(async () => {
+    if (!sageSelectedInvoice) return
+    setSageLinking(true)
+    try {
+      const res = await fetch('/api/sage/link-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, sageInvoiceId: sageSelectedInvoice.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setSageInvoiceId(sageSelectedInvoice.id)
+      setSageInvoiceStatus(data.status)
+      setSageModalOpen(false)
+      if (data.deposit_received_auto) {
+        setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? new Date().toISOString() } : prev)
+        toast.success('Invoice linked — deposit payment detected and stage updated')
+      } else {
+        toast.success('Invoice linked — status synced from Sage')
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to link invoice')
+    } finally {
+      setSageLinking(false)
+    }
+  }, [project.id, sageSelectedInvoice])
 
   const handlePushToSage = useCallback(async () => {
     if (!sageSelectedCustomer) return
@@ -372,6 +424,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       setPushingXero(false)
     }
   }, [project.id])
+
+  const filteredSageInvoices = sageInvoices.filter(inv =>
+    inv.reference.toLowerCase().includes(sageInvoiceSearch.toLowerCase()) ||
+    inv.customerName.toLowerCase().includes(sageInvoiceSearch.toLowerCase())
+  )
 
   const filteredSageCustomers = sageCustomers.filter(c =>
     c.name.toLowerCase().includes(sageCustomerSearch.toLowerCase())
@@ -554,9 +611,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 </span>
                 {sageConnected && !isPaid && (
                   <button onClick={openSageModal}
-                    title="Push updated line items and amounts to the existing Sage invoice"
+                    title="Overwrites the Sage invoice with QuotingHub's current line items and amounts — any changes the accountant made directly in Sage will be lost"
                     className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
-                    <Upload size={11} /> Update
+                    <Upload size={11} /> Update Lines
                   </button>
                 )}
                 {sageConnected && !isPaid && (
@@ -928,51 +985,115 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       {/* Sage customer selection modal */}
       {sageModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSageModalOpen(false)}>
-          <div className="bg-white rounded-lg shadow-xl w-[420px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-lg shadow-xl w-[440px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-[#EDE9E1]">
-              <h2 className="text-sm font-semibold text-[#1A1A18]">Push Invoice to Sage</h2>
-              <p className="text-xs text-[#8A877F] mt-0.5">Select the Sage customer to attach this invoice to</p>
+              <h2 className="text-sm font-semibold text-[#1A1A18]">Sage Invoice</h2>
             </div>
-            <div className="px-5 py-3 border-b border-[#EDE9E1]">
-              <input
-                type="text"
-                placeholder="Search customers…"
-                value={sageCustomerSearch}
-                onChange={e => setSageCustomerSearch(e.target.value)}
-                className="w-full text-sm border border-[#D8D3C8] rounded px-3 py-1.5 outline-none focus:border-[#9A7B4F]"
-                autoFocus
-              />
-            </div>
-            <div className="overflow-y-auto flex-1">
-              {sageCustomersLoading ? (
-                <p className="text-xs text-[#8A877F] text-center py-6">Loading customers…</p>
-              ) : sageCustomers.length === 0 ? (
-                <p className="text-xs text-[#8A877F] text-center py-6">No customers found in Sage — add one in your Sage account first</p>
-              ) : filteredSageCustomers.length === 0 ? (
-                <p className="text-xs text-[#8A877F] text-center py-6">No customers match</p>
-              ) : (
-                filteredSageCustomers.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSageSelectedCustomer(c)}
-                    className={`w-full text-left px-5 py-2.5 text-sm border-b border-[#F5F2EC] hover:bg-[#F5F2EC] transition-colors ${sageSelectedCustomer?.id === c.id ? 'bg-[#F5F2EC] text-[#9A7B4F] font-medium' : 'text-[#2C2C2A]'}`}
-                  >
-                    {c.name}
-                    {c.reference && <span className="text-xs text-[#8A877F] ml-2">{c.reference}</span>}
-                  </button>
-                ))
-              )}
-            </div>
-            <div className="px-5 py-3 border-t border-[#EDE9E1] flex items-center justify-between">
-              <button onClick={() => setSageModalOpen(false)} className="text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
-              <Button
-                size="sm"
-                onClick={handlePushToSage}
-                disabled={!sageSelectedCustomer || sagePushing}
-              >
-                {sagePushing ? 'Pushing…' : `Push Invoice`}
-              </Button>
-            </div>
+
+            {/* Tabs — only show Link option when no invoice is linked yet */}
+            {!sageInvoiceId && (
+              <div className="flex border-b border-[#EDE9E1]">
+                <button
+                  onClick={() => setSageModalTab('push')}
+                  className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'push' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+                >
+                  Push New Invoice
+                </button>
+                <button
+                  onClick={() => { setSageModalTab('link'); if (sageInvoices.length === 0 && !sageInvoicesLoading) loadSageInvoices() }}
+                  className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'link' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+                >
+                  Link Existing Invoice
+                </button>
+              </div>
+            )}
+
+            {sageModalTab === 'push' ? (
+              <>
+                <div className="px-5 py-3 border-b border-[#EDE9E1]">
+                  <p className="text-xs text-[#8A877F] mb-2">Select the Sage customer to attach this invoice to</p>
+                  <input
+                    type="text"
+                    placeholder="Search customers…"
+                    value={sageCustomerSearch}
+                    onChange={e => setSageCustomerSearch(e.target.value)}
+                    className="w-full text-sm border border-[#D8D3C8] rounded px-3 py-1.5 outline-none focus:border-[#9A7B4F]"
+                    autoFocus
+                  />
+                </div>
+                <div className="overflow-y-auto flex-1">
+                  {sageCustomersLoading ? (
+                    <p className="text-xs text-[#8A877F] text-center py-6">Loading customers…</p>
+                  ) : sageCustomers.length === 0 ? (
+                    <p className="text-xs text-[#8A877F] text-center py-6">No customers found in Sage</p>
+                  ) : filteredSageCustomers.length === 0 ? (
+                    <p className="text-xs text-[#8A877F] text-center py-6">No customers match</p>
+                  ) : (
+                    filteredSageCustomers.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSageSelectedCustomer(c)}
+                        className={`w-full text-left px-5 py-2.5 text-sm border-b border-[#F5F2EC] hover:bg-[#F5F2EC] transition-colors ${sageSelectedCustomer?.id === c.id ? 'bg-[#F5F2EC] text-[#9A7B4F] font-medium' : 'text-[#2C2C2A]'}`}
+                      >
+                        {c.name}
+                        {c.reference && <span className="text-xs text-[#8A877F] ml-2">{c.reference}</span>}
+                      </button>
+                    ))
+                  )}
+                </div>
+                <div className="px-5 py-3 border-t border-[#EDE9E1] flex items-center justify-between">
+                  <button onClick={() => setSageModalOpen(false)} className="text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
+                  <Button size="sm" onClick={handlePushToSage} disabled={!sageSelectedCustomer || sagePushing}>
+                    {sagePushing ? 'Pushing…' : 'Push Invoice'}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-5 py-3 border-b border-[#EDE9E1]">
+                  <p className="text-xs text-[#8A877F] mb-2">Link an invoice the accounts team already created in Sage — it won&apos;t be modified</p>
+                  <input
+                    type="text"
+                    placeholder="Search by reference or customer…"
+                    value={sageInvoiceSearch}
+                    onChange={e => setSageInvoiceSearch(e.target.value)}
+                    className="w-full text-sm border border-[#D8D3C8] rounded px-3 py-1.5 outline-none focus:border-[#9A7B4F]"
+                    autoFocus
+                  />
+                </div>
+                <div className="overflow-y-auto flex-1">
+                  {sageInvoicesLoading ? (
+                    <p className="text-xs text-[#8A877F] text-center py-6">Loading invoices…</p>
+                  ) : sageInvoices.length === 0 ? (
+                    <p className="text-xs text-[#8A877F] text-center py-6">No open invoices found in Sage</p>
+                  ) : filteredSageInvoices.length === 0 ? (
+                    <p className="text-xs text-[#8A877F] text-center py-6">No invoices match</p>
+                  ) : (
+                    filteredSageInvoices.map(inv => (
+                      <button
+                        key={inv.id}
+                        onClick={() => setSageSelectedInvoice(inv)}
+                        className={`w-full text-left px-5 py-2.5 border-b border-[#F5F2EC] hover:bg-[#F5F2EC] transition-colors ${sageSelectedInvoice?.id === inv.id ? 'bg-[#F5F2EC]' : ''}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-medium ${sageSelectedInvoice?.id === inv.id ? 'text-[#9A7B4F]' : 'text-[#2C2C2A]'}`}>
+                            {inv.reference || `Invoice #${inv.id}`}
+                          </span>
+                          <span className="text-xs text-[#8A877F]">R {Number(inv.total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <p className="text-xs text-[#8A877F] mt-0.5">{inv.customerName}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+                <div className="px-5 py-3 border-t border-[#EDE9E1] flex items-center justify-between">
+                  <button onClick={() => setSageModalOpen(false)} className="text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
+                  <Button size="sm" onClick={handleLinkSageInvoice} disabled={!sageSelectedInvoice || sageLinking}>
+                    {sageLinking ? 'Linking…' : 'Link Invoice'}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
