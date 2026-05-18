@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { xeroGet, xeroPost } from '@/lib/xero'
 import { computeLineItems } from '@/lib/quoting'
 import { apiError } from '@/lib/api-error'
+import { sendAccountingNotification } from '@/lib/accounting-notification'
 
 export const maxDuration = 30
 
@@ -15,9 +16,10 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const [{ data: project }, { data: lineItems }] = await Promise.all([
+    const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(client_name)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
+      supabase.from('settings').select('vat_rate, accounts_email, business_name').maybeSingle(),
     ])
 
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -92,6 +94,21 @@ export async function POST(req: NextRequest) {
       xero_invoice_id: xeroInvoiceId,
       xero_pushed_at: new Date().toISOString(),
     }).eq('id', projectId)
+
+    await sendAccountingNotification({
+      platform: 'xero',
+      userId: user.id,
+      project: { id: projectId, project_name: project.project_name, project_number: project.project_number, design_fee: project.design_fee },
+      clientName: clientName ?? null,
+      lineItems: lineItems ?? [],
+      vatRate: settings?.vat_rate ?? 15,
+      depositDeductionExclVat: 0,
+      invoiceId: xeroInvoiceId ?? '',
+      isUpdate: !!existingXeroId,
+      pushedByEmail: user.email ?? '',
+      studioName: settings?.business_name ?? 'Your Studio',
+      accountsEmail: settings?.accounts_email ?? null,
+    })
 
     return NextResponse.json({
       success: true,

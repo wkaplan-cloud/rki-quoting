@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sageGet, sagePost } from '@/lib/sage'
 import { computeLineItems } from '@/lib/quoting'
+import { sendAccountingNotification } from '@/lib/accounting-notification'
 
 export const maxDuration = 30
 
@@ -17,9 +18,9 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const [{ data: project }, { data: lineItems }, { data: settings }, { data: stages }] = await Promise.all([
-      supabase.from('projects').select('*').eq('id', projectId).single(),
+      supabase.from('projects').select('*, client:clients(client_name)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
-      supabase.from('settings').select('sage_item_id, deposit_percentage, vat_rate').maybeSingle(),
+      supabase.from('settings').select('sage_item_id, deposit_percentage, vat_rate, accounts_email, business_name').maybeSingle(),
       supabase.from('project_stages').select('*').eq('project_id', projectId).maybeSingle(),
     ])
 
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Add deposit line if deposit has been received — uses actual paid amount from Sage when available
+    let depositDeductionExclVat = 0
     if (stages?.deposit_received) {
       let depositExclVat: number
 
@@ -108,6 +110,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (depositExclVat > 0) {
+        depositDeductionExclVat = depositExclVat
         lines.push({
           SelectionId: selectionId,
           LineType: 0,
@@ -170,6 +173,23 @@ export async function POST(req: NextRequest) {
         { onConflict: 'project_id' }
       ),
     ])
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clientName = (project.client as any)?.client_name ?? null
+    await sendAccountingNotification({
+      platform: 'sage',
+      userId: user.id,
+      project: { id: projectId, project_name: project.project_name, project_number: project.project_number, design_fee: project.design_fee },
+      clientName,
+      lineItems: lineItems ?? [],
+      vatRate: settings?.vat_rate ?? 15,
+      depositDeductionExclVat,
+      invoiceId: String(sageId),
+      isUpdate: !!project.sage_invoice_id,
+      pushedByEmail: user.email ?? '',
+      studioName: settings?.business_name ?? 'Your Studio',
+      accountsEmail: settings?.accounts_email ?? null,
+    })
 
     return NextResponse.json({ success: true, sage_invoice_id: sageId, status: sageStatus })
   } catch (e: unknown) {
