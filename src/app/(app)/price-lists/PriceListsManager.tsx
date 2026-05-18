@@ -263,11 +263,13 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                       const access = localAccess.find(a => a.price_list_id === pl.id)
                       if (!access) {
                         return (
-                          <div className="flex flex-col items-end gap-1">
+                          <div className="flex flex-col items-end gap-1 max-w-[220px]">
                             <Button size="sm" onClick={() => handleRequestAccess(pl.id)} disabled={requestingId === pl.id}>
                               <Lock size={12} /> {requestingId === pl.id ? 'Requesting…' : 'Request Access'}
                             </Button>
-                            <span className="text-[10px] text-[#C4BFB5]">You'll receive an email once approved</span>
+                            <span className="text-[10px] text-[#8A877F] text-right leading-relaxed">
+                              To access the Home Fabrics trade prices, click here and we&apos;ll review your request.
+                            </span>
                           </div>
                         )
                       }
