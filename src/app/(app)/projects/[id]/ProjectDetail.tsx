@@ -990,23 +990,21 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               <h2 className="text-sm font-semibold text-[#1A1A18]">Sage Invoice</h2>
             </div>
 
-            {/* Tabs — only show Link option when no invoice is linked yet */}
-            {!sageInvoiceId && (
-              <div className="flex border-b border-[#EDE9E1]">
-                <button
-                  onClick={() => setSageModalTab('push')}
-                  className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'push' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
-                >
-                  Push New Invoice
-                </button>
-                <button
-                  onClick={() => { setSageModalTab('link'); if (sageInvoices.length === 0 && !sageInvoicesLoading) loadSageInvoices() }}
-                  className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'link' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
-                >
-                  Link Existing Invoice
-                </button>
-              </div>
-            )}
+            {/* Tabs — always shown so user can re-link if they picked the wrong invoice */}
+            <div className="flex border-b border-[#EDE9E1]">
+              <button
+                onClick={() => setSageModalTab('push')}
+                className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'push' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+              >
+                Push New Invoice
+              </button>
+              <button
+                onClick={() => { setSageModalTab('link'); if (sageInvoices.length === 0 && !sageInvoicesLoading) loadSageInvoices() }}
+                className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'link' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+              >
+                {sageInvoiceId ? 'Re-link Invoice' : 'Link Existing Invoice'}
+              </button>
+            </div>
 
             {sageModalTab === 'push' ? (
               <>
@@ -1075,11 +1073,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                         onClick={() => setSageSelectedInvoice(inv)}
                         className={`w-full text-left px-5 py-2.5 border-b border-[#F5F2EC] hover:bg-[#F5F2EC] transition-colors ${sageSelectedInvoice?.id === inv.id ? 'bg-[#F5F2EC]' : ''}`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                           <span className={`text-sm font-medium ${sageSelectedInvoice?.id === inv.id ? 'text-[#9A7B4F]' : 'text-[#2C2C2A]'}`}>
                             {inv.reference || `Invoice #${inv.id}`}
                           </span>
-                          <span className="text-xs text-[#8A877F]">R {Number(inv.total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</span>
+                          <span className={`text-sm font-semibold flex-shrink-0 ${sageSelectedInvoice?.id === inv.id ? 'text-[#9A7B4F]' : 'text-[#2C2C2A]'}`}>
+                            R {Number(inv.total).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                          </span>
                         </div>
                         <p className="text-xs text-[#8A877F] mt-0.5">{inv.customerName}</p>
                       </button>
