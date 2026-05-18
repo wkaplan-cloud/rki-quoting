@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut, ArrowLeftRight, Store, FolderOpen, Activity } from 'lucide-react'
+import { LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut, ArrowLeftRight, Store, FolderOpen, Activity, BadgeDollarSign } from 'lucide-react'
 
 const PLATFORM_ADMIN = process.env.PLATFORM_ADMIN_EMAIL
 
@@ -40,6 +40,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
     { href: '/platform/messages', label: 'Messages', icon: MessageSquare, badge: 0 },
     { href: '/platform/price-lists', label: 'Price Lists', icon: BookOpen, badge: pendingPriceListCount ?? 0 },
     { href: '/platform/health', label: 'Health', icon: Activity, badge: 0 },
+    { href: '/platform/commissions', label: 'Commissions', icon: BadgeDollarSign, badge: 0 },
   ]
 
   return (

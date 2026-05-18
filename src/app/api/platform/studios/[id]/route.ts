@@ -46,7 +46,7 @@ export async function PATCH(
   if (!orgId) return NextResponse.json({ error: 'Missing org id' }, { status: 400 })
 
   const body = await req.json()
-  const allowed = ['assigned_rep']
+  const allowed = ['assigned_rep', 'rep_upfront_paid', 'rep_monthly_last_paid_at']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]

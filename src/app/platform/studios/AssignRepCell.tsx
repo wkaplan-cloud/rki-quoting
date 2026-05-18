@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 
-const REPS = ['Unassigned', 'Lerato', 'Thando', 'Monalisa']
+const REPS = ['Unassigned', 'Lerato', 'Monalisa']
 
 export function AssignRepCell({ orgId, initial }: { orgId: string; initial: string | null }) {
   const [value, setValue] = useState(initial ?? 'Unassigned')
