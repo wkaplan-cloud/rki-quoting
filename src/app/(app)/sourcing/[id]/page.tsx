@@ -37,6 +37,11 @@ export default async function SourcingDetailPage({
 
   if (!session) notFound()
 
+  // Mark this session as viewed — clears the "new responses" pill on the dashboard
+  await supabase
+    .from('session_views')
+    .upsert({ session_id: id, user_id: user.id, viewed_at: new Date().toISOString() }, { onConflict: 'session_id,user_id' })
+
   const sessionProject = Array.isArray(session.project) ? session.project[0] : session.project
 
   const enrichedSuppliers = (sessionSuppliers ?? []).map((ss: any) => {

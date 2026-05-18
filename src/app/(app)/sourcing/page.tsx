@@ -9,7 +9,7 @@ export default async function SourcingPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: sessions }, { data: clients }] = await Promise.all([
+  const [{ data: sessions }, { data: clients }, { data: newResponseRows }] = await Promise.all([
     supabase
       .from('sourcing_sessions')
       .select('id, title, status, archived, created_at, project_id, request_number, user_id, project:projects(project_name), sourcing_session_items(count), sourcing_session_suppliers(count)')
@@ -19,7 +19,13 @@ export default async function SourcingPage() {
       .select('id, client_name')
       .order('client_name', { ascending: true })
       .limit(200),
+    supabase.rpc('get_session_new_response_counts', { p_user_id: user.id }),
   ])
+
+  const newResponseMap: Record<string, number> = {}
+  for (const row of newResponseRows ?? []) {
+    newResponseMap[row.session_id] = Number(row.new_response_count)
+  }
 
   // Resolve creator names from org_members
   const userIds = [...new Set((sessions ?? []).map(s => s.user_id).filter(Boolean))]
@@ -47,6 +53,7 @@ export default async function SourcingPage() {
       supplier_count: (s as any).sourcing_session_suppliers?.[0]?.count ?? 0,
       request_number: (s as any).request_number ?? null,
       creator_name: s.user_id ? (memberNames[s.user_id] ?? null) : null,
+      new_response_count: newResponseMap[s.id] ?? 0,
     }
   })
 
