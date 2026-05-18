@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -41,6 +42,7 @@ export default async function SourcingDetailPage({
   await supabase
     .from('session_views')
     .upsert({ session_id: id, user_id: user.id, viewed_at: new Date().toISOString() }, { onConflict: 'session_id,user_id' })
+  revalidatePath('/sourcing')
 
   const sessionProject = Array.isArray(session.project) ? session.project[0] : session.project
 
