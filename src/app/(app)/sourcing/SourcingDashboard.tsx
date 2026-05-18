@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Archive, ArchiveRestore, Loader2 } from 'lucide-react'
+import { Plus, Archive, ArchiveRestore, Loader2, Trash2 } from 'lucide-react'
 
 interface Session {
   id: string
@@ -38,12 +38,16 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
   const [creating, setCreating] = useState(false)
   const [newRef, setNewRef] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [archiving, setArchiving] = useState<string | null>(null)
-  const [unarchiving, setUnarchiving] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [localSessions, setLocalSessions] = useState(sessions)
   const comboRef = useRef<HTMLDivElement>(null)
 
-  const active   = sessions.filter(s => !s.archived)
-  const archived = sessions.filter(s => s.archived)
+  // Sync local state when server re-renders after router.refresh()
+  useEffect(() => { setLocalSessions(sessions) }, [sessions])
+
+  const active   = localSessions.filter(s => !s.archived)
+  const archived = localSessions.filter(s => s.archived)
   const displayed = tab === 'active' ? active : archived
 
   const filteredClients = newRef.trim() === ''
@@ -100,24 +104,39 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
 
   async function handleArchive(e: React.MouseEvent, id: string) {
     e.stopPropagation()
-    setArchiving(id)
-    try {
-      await fetch(`/api/sourcing/sessions/${id}/archive`, { method: 'POST' })
+    setLocalSessions(prev => prev.map(s => s.id === id ? { ...s, archived: true } : s))
+    const res = await fetch(`/api/sourcing/sessions/${id}/archive`, { method: 'POST' })
+    if (!res.ok) {
+      setLocalSessions(prev => prev.map(s => s.id === id ? { ...s, archived: false } : s))
+    } else {
       startTransition(() => router.refresh())
-    } finally {
-      setArchiving(null)
     }
   }
 
   async function handleUnarchive(e: React.MouseEvent, id: string) {
     e.stopPropagation()
-    setUnarchiving(id)
-    try {
-      await fetch(`/api/sourcing/sessions/${id}/archive`, { method: 'DELETE' })
+    setLocalSessions(prev => prev.map(s => s.id === id ? { ...s, archived: false } : s))
+    const res = await fetch(`/api/sourcing/sessions/${id}/archive`, { method: 'DELETE' })
+    if (!res.ok) {
+      setLocalSessions(prev => prev.map(s => s.id === id ? { ...s, archived: true } : s))
+    } else {
       startTransition(() => router.refresh())
-    } finally {
-      setUnarchiving(null)
     }
+  }
+
+  async function handleDelete(e: React.MouseEvent, id: string) {
+    e.stopPropagation()
+    setDeleting(id)
+    setConfirmDelete(null)
+    setLocalSessions(prev => prev.filter(s => s.id !== id))
+    const res = await fetch(`/api/sourcing/sessions/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const prev = sessions.find(s => s.id === id)
+      if (prev) setLocalSessions(curr => [...curr, prev].sort((a, b) => b.created_at.localeCompare(a.created_at)))
+    } else {
+      startTransition(() => router.refresh())
+    }
+    setDeleting(null)
   }
 
   return (
@@ -246,25 +265,51 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
                     {s.creator_name ? ` · ${s.creator_name}` : ''}
                   </p>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 flex items-center gap-1">
                   {tab === 'active' ? (
                     <button
                       onClick={e => handleArchive(e, s.id)}
-                      disabled={archiving === s.id}
                       title="Archive"
                       className="p-2 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
                     >
-                      {archiving === s.id ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
+                      <Archive size={14} />
                     </button>
                   ) : (
-                    <button
-                      onClick={e => handleUnarchive(e, s.id)}
-                      disabled={unarchiving === s.id}
-                      title="Unarchive"
-                      className="p-2 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
-                    >
-                      {unarchiving === s.id ? <Loader2 size={14} className="animate-spin" /> : <ArchiveRestore size={14} />}
-                    </button>
+                    <>
+                      <button
+                        onClick={e => handleUnarchive(e, s.id)}
+                        title="Unarchive"
+                        className="p-2 text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#F5F2EC] rounded-lg transition-colors"
+                      >
+                        <ArchiveRestore size={14} />
+                      </button>
+                      {confirmDelete === s.id ? (
+                        <span className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                          <span className="text-xs text-[#C0392B] font-medium">Delete?</span>
+                          <button
+                            onClick={e => handleDelete(e, s.id)}
+                            disabled={deleting === s.id}
+                            className="px-2 py-0.5 text-xs font-semibold bg-[#C0392B] text-white rounded hover:bg-[#A93226] transition-colors disabled:opacity-50"
+                          >
+                            {deleting === s.id ? <Loader2 size={10} className="animate-spin" /> : 'Yes'}
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setConfirmDelete(null) }}
+                            className="px-2 py-0.5 text-xs font-semibold bg-[#F5F2EC] text-[#8A877F] rounded hover:bg-[#EDE9E1] transition-colors"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={e => { e.stopPropagation(); setConfirmDelete(s.id) }}
+                          title="Delete permanently"
+                          className="p-2 text-[#8A877F] hover:text-[#C0392B] hover:bg-[#FEF2F2] rounded-lg transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
