@@ -96,7 +96,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
         <View style={s.header}>
           <View>
             <Text style={s.studioName}>{businessName || 'R Kaplan Interiors'}</Text>
-            <Text style={s.docTitle}>PRODUCTION SHEET</Text>
+            <Text style={s.docTitle}>JOB COST SHEET</Text>
           </View>
           <View>
             <Text style={s.projectName}>{project.project_name}</Text>

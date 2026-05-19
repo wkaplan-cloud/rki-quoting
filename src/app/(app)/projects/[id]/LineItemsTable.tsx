@@ -86,8 +86,8 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnl
 
 const LINE_ITEM_TIPS = [
   { col: 'Item', tip: 'The name of the product or service. Type to search your saved items or enter a new name. Select a supplier with a price list first to enable fabric/product lookup.' },
-  { col: 'Dimensions', tip: 'Width × height or other measurements (e.g. 2400 × 800). Shown on the Production Sheet. Not visible to the client.' },
-  { col: 'Colour', tip: 'Colour, finish, or colourway of the item. Shown on the Production Sheet. Not visible to the client.' },
+  { col: 'Dimensions', tip: 'Width × height or other measurements (e.g. 2400 × 800). Shown on the Job Cost Sheet. Not visible to the client.' },
+  { col: 'Colour', tip: 'Colour, finish, or colourway of the item. Shown on the Job Cost Sheet. Not visible to the client.' },
   { col: 'Description', tip: 'Optional detail shown on the Purchase Order PDF — fabric code, SKU, etc. Not shown on quotes or invoices.' },
   { col: 'Qty / Unit', tip: 'Quantity and unit of measure (e.g. 2 m², 4 each). Unit is shown alongside quantity on all documents.' },
   { col: 'Supplier', tip: 'Select the supplier for this item. Their default markup % will be applied automatically.' },

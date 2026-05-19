@@ -81,7 +81,7 @@ const plans = [
       'Everything in Solo',
       'Up to 5 team members with role permissions',
       'Full pipeline dashboard + Kanban board',
-      'Production Sheet PDF for internal use',
+      'Job Cost Sheet PDF for internal use',
       'Markup Calculator',
       'Bulk import tools',
       'Profit analytics per project & per year',

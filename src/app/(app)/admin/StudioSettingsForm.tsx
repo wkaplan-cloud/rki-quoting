@@ -576,7 +576,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                 </div>
               </div>
               <Input label="Accounts Email (BCC on all POs)" type="email" value={form.accounts_email} onChange={e => set('accounts_email', e.target.value)} />
-              <Input label="Production Sheet Email (default recipient)" type="email" value={form.production_sheet_email} onChange={e => set('production_sheet_email', e.target.value)} placeholder="e.g. production@studio.co.za" />
+              <Input label="Job Cost Sheet Email (default recipient)" type="email" value={form.production_sheet_email} onChange={e => set('production_sheet_email', e.target.value)} placeholder="e.g. production@studio.co.za" />
             </section>
             <section className="space-y-4">
               <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Banking Details</h2>

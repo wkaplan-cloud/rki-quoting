@@ -349,7 +349,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
               Studio unlocks your full workflow — team collaboration, advanced pipeline analytics, and internal production tools. Your card will be charged <strong className="text-[#2C2C2A]">R1,499/month</strong> starting today.
             </p>
             <ul className="space-y-2 mb-6">
-              {['Our Pieces — save your design library with specs, images and pricing', 'Up to 5 team members with role permissions', 'Full pipeline dashboard + Kanban board', 'Production Sheet PDF for internal use', 'Markup Calculator & bulk import tools', 'Profit analytics per project & per year'].map(f => (
+              {['Our Pieces — save your design library with specs, images and pricing', 'Up to 5 team members with role permissions', 'Full pipeline dashboard + Kanban board', 'Job Cost Sheet PDF for internal use', 'Markup Calculator & bulk import tools', 'Profit analytics per project & per year'].map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#9A7B4F] flex-shrink-0" />
                   {f}

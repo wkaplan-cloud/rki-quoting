@@ -313,7 +313,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error ?? 'Failed to send production sheet')
+        toast.error(data.error ?? 'Failed to send job cost sheet')
         return
       }
       toast.success(`Production sheet sent to ${prodSheetEmailInput.trim()}`)
@@ -548,16 +548,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                     <>
                       <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
                         className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                        <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Production Sheet
+                        <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Job Cost Sheet
                       </button>
                       <button onClick={() => { handleOpenProdSheetModal(); setPoMenuOpen(false) }}
                         className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                        <Mail size={13} className="text-[#9A7B4F] flex-shrink-0" /> Email Production Sheet
+                        <Mail size={13} className="text-[#9A7B4F] flex-shrink-0" /> Email Job Cost Sheet
                       </button>
                     </>
                   ) : (
                     <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
-                      <Printer size={13} className="flex-shrink-0" /> Production Sheet
+                      <Printer size={13} className="flex-shrink-0" /> Job Cost Sheet
                       <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio+</span>
                     </div>
                   )}
@@ -994,8 +994,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       {prodSheetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setProdSheetModalOpen(false)}>
           <div className="bg-white rounded-lg shadow-xl w-[440px] p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">Email Production Sheet</h3>
-            <p className="text-sm text-[#8A877F] mb-4">The production sheet PDF will be attached and sent to the address below. This email is saved as your studio default.</p>
+            <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">Email Job Cost Sheet</h3>
+            <p className="text-sm text-[#8A877F] mb-4">The job cost sheet PDF will be attached and sent to the address below. This email is saved as your studio default.</p>
             <div>
               <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Send To</label>
               <input
@@ -1008,7 +1008,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors"
               />
               {prodSheetEmailInput.trim() !== (initialProductionSheetEmail ?? '') && prodSheetEmailInput.trim() && (
-                <p className="text-xs text-[#9A7B4F] mt-1.5">This email will be saved as your studio default for production sheets.</p>
+                <p className="text-xs text-[#9A7B4F] mt-1.5">This email will be saved as your studio default for job cost sheets.</p>
               )}
             </div>
             <div className="flex justify-end gap-2 mt-4">

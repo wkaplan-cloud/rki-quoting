@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       }) as any
     )
 
-    const subject = `Production Sheet – ${project.project_name} (${project.project_number})`
+    const subject = `Job Cost Sheet – ${project.project_name} (${project.project_number})`
     const studioName = businessName ?? 'Your Studio'
 
     const { error: resendError } = await resend.emails.send({
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       ...(replyToEmail ? { replyTo: replyToEmail } : {}),
       to: toEmail.trim(),
       subject,
-      text: `Production sheet for ${project.project_name} (${project.project_number}) is attached.\n\nSent via QuotingHub`,
+      text: `Job cost sheet for ${project.project_name} (${project.project_number}) is attached.\n\nSent via QuotingHub`,
       html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><title>${subject}</title></head>
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         <tr>
           <td style="background-color:#4A4A47;padding:32px 40px;border-radius:8px 8px 0 0;">
             <p style="margin:0;font-size:22px;font-weight:600;color:#F5F2EC;">${studioName}</p>
-            <p style="margin:6px 0 0;font-size:11px;color:#C4A46B;letter-spacing:0.08em;text-transform:uppercase;">Production Sheet</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#C4A46B;letter-spacing:0.08em;text-transform:uppercase;">Job Cost Sheet</p>
           </td>
         </tr>
         <tr>
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 </body>
 </html>`,
       attachments: [{
-        filename: `ProductionSheet-${project.project_number}.pdf`,
+        filename: `JobCostSheet-${project.project_number}.pdf`,
         content: Buffer.from(buffer),
       }],
     })
