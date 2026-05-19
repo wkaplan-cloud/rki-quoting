@@ -563,11 +563,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                     <>
                       <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
                         <Printer size={13} className="flex-shrink-0" /> Job Cost Sheet
-                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio+</span>
+                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio</span>
                       </div>
                       <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
                         <Printer size={13} className="flex-shrink-0" /> Installation Sheet
-                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio+</span>
+                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio</span>
                       </div>
                     </>
                   )}
