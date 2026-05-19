@@ -116,7 +116,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
           <Text style={[s.th, { width: W.deliver, paddingRight: 3 }]}>Del. To</Text>
           <Text style={[s.th, { width: W.lead, textAlign: 'right', paddingRight: 4 }]}>Lead</Text>
           <Text style={[s.th, { width: W.cost, textAlign: 'right', paddingRight: 4 }]}>Cost</Text>
-          <Text style={[s.th, { width: W.mkup, textAlign: 'right', paddingRight: 4 }]}>Mkup%</Text>
+          <Text style={[s.th, { width: W.mkup, textAlign: 'right', paddingRight: 4 }]}>Markup</Text>
           <Text style={[s.th, { width: W.sale, textAlign: 'right', paddingRight: 4 }]}>Sale</Text>
           <Text style={[s.th, { width: W.profit, textAlign: 'right', paddingRight: 4 }]}>Profit</Text>
           <Text style={[s.th, { width: W.totCost, textAlign: 'right', paddingRight: 4 }]}>Tot. Cost</Text>
