@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       .from('sourcing_sessions')
       .select('request_number')
       .eq('org_id', orgId)
+      .not('request_number', 'is', null)
       .order('request_number', { ascending: false })
       .limit(1)
       .maybeSingle()
