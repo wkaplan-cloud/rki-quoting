@@ -165,7 +165,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     router.push(`/projects/${newProject.id}`)
   }, [project, lineItems, supabase, router])
 
-  const handleGeneratePDF = useCallback(async (type: 'quote' | 'invoice' | 'po' | 'production', supplierIdParam?: string) => {
+  const handleGeneratePDF = useCallback(async (type: 'quote' | 'invoice' | 'po' | 'production', supplierIdParam?: string, print = false) => {
     if ((type === 'quote' || type === 'invoice') && !project.client?.client_name) {
       toast.error('Please add a client to this project before generating a document.')
       return
@@ -181,6 +181,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     }
     const blob = await res.blob()
     const objectUrl = URL.createObjectURL(blob)
+    if (print) {
+      window.open(objectUrl, '_blank')
+      return
+    }
     const a = document.createElement('a')
     a.href = objectUrl
     const slug = (s: string) => s.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
@@ -678,6 +682,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             ) : null}
 
             <div className="flex-1" />
+            <button onClick={() => handleGeneratePDF('quote', undefined, true)}
+              title="Print quote"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+              <Printer size={13} />
+            </button>
             <button onClick={handleDuplicate}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
               <Copy size={13} /> Duplicate
