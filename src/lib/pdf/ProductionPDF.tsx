@@ -113,7 +113,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
           <Text style={[s.th, { width: W.desc, paddingRight: 3 }]}>Description</Text>
           <Text style={[s.th, { width: W.qty, textAlign: 'right', paddingRight: 4 }]}>Qty</Text>
           <Text style={[s.th, { width: W.supplier, paddingRight: 3 }]}>Supplier</Text>
-          <Text style={[s.th, { width: W.deliver, paddingRight: 3 }]}>Ship To</Text>
+          <Text style={[s.th, { width: W.deliver, paddingRight: 3 }]}>Del. To</Text>
           <Text style={[s.th, { width: W.lead, textAlign: 'right', paddingRight: 4 }]}>Lead</Text>
           <Text style={[s.th, { width: W.cost, textAlign: 'right', paddingRight: 4 }]}>Cost</Text>
           <Text style={[s.th, { width: W.mkup, textAlign: 'right', paddingRight: 4 }]}>Mkup%</Text>
