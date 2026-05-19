@@ -92,9 +92,8 @@ export function InstallationSheetPDF({ project, lineItems, suppliers, businessNa
           }
           itemNum++
           const isLinked = !!item.parent_item_id
-          const isAlt = itemNum % 2 === 0
           return (
-            <View key={item.id} style={[s.row, isAlt ? s.rowAlt : {}]}>
+            <View key={item.id} style={s.row}>
               <Text style={[s.td, s.tdMuted, { width: W.num, textAlign: 'right', paddingRight: 4, fontSize: 6.5 }]}>{itemNum}.</Text>
               <View style={{ width: W.item, paddingRight: 3, paddingLeft: isLinked ? 6 : 0 }}>
                 <Text style={s.td}>{cap(item.item_name)}</Text>
