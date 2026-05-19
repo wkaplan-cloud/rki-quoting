@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Archive, ArchiveRestore, Loader2, Trash2 } from 'lucide-react'
+import { Combobox } from '@/components/ui/Combobox'
+import { createClient } from '@/lib/supabase/client'
 
 interface Session {
   id: string
@@ -33,18 +35,20 @@ function formatDate(iso: string) {
 export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; clients: { id: string; client_name: string }[] }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
+  const supabase = createClient()
   const [tab, setTab] = useState<'active' | 'archived'>('active')
   const [showNewForm, setShowNewForm] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [newRef, setNewRef] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedClientId, setSelectedClientId] = useState('')
+  const [clientName, setClientName] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [localSessions, setLocalSessions] = useState(sessions)
-  const comboRef = useRef<HTMLDivElement>(null)
+  const [localClients, setLocalClients] = useState(clients)
 
   // Sync local state when server re-renders after router.refresh()
   useEffect(() => { setLocalSessions(sessions) }, [sessions])
+  useEffect(() => { setLocalClients(clients) }, [clients])
 
   // Force a fresh server fetch on every mount so the new-responses pill is always accurate
   useEffect(() => { router.refresh() }, [])
@@ -53,46 +57,39 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
   const archived = localSessions.filter(s => s.archived)
   const displayed = tab === 'active' ? active : archived
 
-  const filteredClients = newRef.trim() === ''
-    ? clients
-    : clients.filter(c => c.client_name.toLowerCase().includes(newRef.toLowerCase()))
-
-  function pickClient(c: { id: string; client_name: string }) {
-    setNewRef(c.client_name)
-    setShowSuggestions(false)
-  }
-
-  function handleRefChange(v: string) {
-    setNewRef(v)
-    setShowSuggestions(true)
-  }
-
   function resetForm() {
-    setNewRef('')
-    setShowSuggestions(false)
+    setSelectedClientId('')
+    setClientName('')
     setShowNewForm(false)
   }
 
-  // Close suggestions on outside click
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (comboRef.current && !comboRef.current.contains(e.target as Node)) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  async function handleCreateClient(name: string) {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    const { data, error } = await supabase.from('clients').insert({
+      user_id: user!.id,
+      org_id: orgId,
+      client_name: name,
+    }).select().single()
+    if (error) { alert('Failed to create client'); return }
+    const newClient = { id: data.id, client_name: name }
+    setLocalClients(prev => [...prev, newClient].sort((a, b) => a.client_name.localeCompare(b.client_name)))
+    setSelectedClientId(data.id)
+    setClientName(name)
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
-    if (!newRef.trim()) return
+    if (!clientName.trim()) return
     setCreating(true)
     try {
       const res = await fetch('/api/sourcing/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newRef.trim() }),
+        body: JSON.stringify({
+          title: clientName.trim(),
+          client_id: selectedClientId || null,
+        }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -147,37 +144,15 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
       {/* New session — button that expands into form */}
       {showNewForm ? (
         <form onSubmit={handleCreate} className="border border-[#C4A46B] rounded-xl p-4 space-y-3 bg-[#FEFDF9]">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#8A877F]">Client / Reference</p>
-
-          {/* Combo input */}
-          <div ref={comboRef} className="relative">
-            <input
-              value={newRef}
-              onChange={e => handleRefChange(e.target.value)}
-              onFocus={() => setShowSuggestions(true)}
-              placeholder="e.g. Smith Residence, QH-2024-01, Cape Town Apartment…"
-              className="w-full px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white"
-              autoFocus
-              autoComplete="off"
-            />
-
-            {/* Suggestions dropdown */}
-            {showSuggestions && filteredClients.length > 0 && (
-              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-[#D4CFC7] rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-[#A89F91]">Existing clients</p>
-                {filteredClients.map(c => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onMouseDown={() => pickClient(c)}
-                    className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] transition-colors"
-                  >
-                    {c.client_name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <Combobox
+            label="Client"
+            options={localClients.map(c => ({ id: c.id, label: c.client_name }))}
+            value={selectedClientId}
+            inputValue={clientName}
+            onChange={(id, label) => { setSelectedClientId(id); setClientName(label) }}
+            onCreate={handleCreateClient}
+            placeholder="Search or add new client…"
+          />
 
           <div className="flex justify-end gap-2">
             <button
@@ -189,7 +164,7 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
             </button>
             <button
               type="submit"
-              disabled={creating || !newRef.trim()}
+              disabled={creating || !clientName.trim()}
               className="flex items-center gap-2 px-4 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-lg hover:bg-[#3D3D3B] disabled:opacity-50 transition-colors"
             >
               {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}

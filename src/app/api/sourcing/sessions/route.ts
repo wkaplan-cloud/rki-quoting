@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
 
-    const body = await req.json() as { title: string; project_id?: string }
+    const body = await req.json() as { title: string; project_id?: string; client_id?: string | null }
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
     const { data: maxRow } = await supabase
@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
         org_id: orgId,
         user_id: user.id,
         project_id: body.project_id ?? null,
+        client_id: body.client_id ?? null,
         title: body.title.trim(),
         request_number: nextNumber,
       })
