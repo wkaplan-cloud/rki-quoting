@@ -57,6 +57,11 @@ export function SourcingDashboard({ sessions, clients }: { sessions: Session[]; 
   const archived = localSessions.filter(s => s.archived)
   const displayed = tab === 'active' ? active : archived
 
+  // Switch back to active tab if archived list becomes empty while viewing it
+  useEffect(() => {
+    if (tab === 'archived' && archived.length === 0) setTab('active')
+  }, [archived.length, tab])
+
   function resetForm() {
     setSelectedClientId('')
     setClientName('')
