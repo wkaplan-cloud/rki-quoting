@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       createElement(ProductionPDF, {
         project,
         lineItems: lineItems ?? [],
-        suppliers: suppliers ?? [],
+        suppliers: (suppliers ?? []) as any,
         businessName,
         vatRate,
         printDate,
