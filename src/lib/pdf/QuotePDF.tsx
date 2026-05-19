@@ -39,7 +39,7 @@ const TEMPLATES: Record<TemplateKey, React.ComponentType<TemplateProps>> = {
 }
 
 export function QuotePDF({ templateKey, themeKey, ...rest }: Props) {
-  const Template = TEMPLATES[(templateKey as TemplateKey) ?? 'classic'] ?? ClassicTemplate
+  const Template = TEMPLATES[(templateKey as TemplateKey) ?? 'minimal'] ?? MinimalTemplate
   const theme = resolveTheme(themeKey)
   return <Template {...rest} theme={theme} />
 }
