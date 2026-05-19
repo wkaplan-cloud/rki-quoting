@@ -467,7 +467,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
     quote_validity_days:    String(settings?.quote_validity_days ?? 30),
     payment_terms:          settings?.payment_terms ?? '',
     lead_time:              settings?.lead_time ?? '',
-    pdf_template:           settings?.pdf_template ?? 'classic',
+    pdf_template:           settings?.pdf_template ?? 'minimal',
     pdf_color_theme:        settings?.pdf_color_theme ?? 'warm',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))

@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         client: project.client ?? null,
         lineItems: lineItems ?? [],
         type,
-        templateKey: (settings as any)?.pdf_template ?? 'classic',
+        templateKey: (settings as any)?.pdf_template ?? 'minimal',
         themeKey: (settings as any)?.pdf_color_theme ?? 'warm',
         vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15,
         depositPct: (project as any).deposit_percentage ?? settings?.deposit_percentage ?? 50,
