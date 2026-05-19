@@ -57,7 +57,7 @@ export default async function AdminPage() {
     supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(200),
     supabase.from('settings').select('*').maybeSingle(),
     supabase.from('projects')
-      .select('id, project_name, project_number, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
+      .select('id, project_name, project_number, status, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
       .is('archived_at', null)
       .order('date', { ascending: false }),
     supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
@@ -70,7 +70,7 @@ export default async function AdminPage() {
 
   const pipelineProjects = (allProjects ?? []).filter(p => {
     const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
-    return stages?.final_invoice_paid !== true
+    return stages?.final_invoice_paid !== true && (p as any).status !== 'Draft'
   })
 
   const paidIds = new Set(paidProjects.map(p => p.id))
