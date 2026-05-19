@@ -29,6 +29,7 @@ interface Props {
   initialEmailLogs: EmailLog[]
   emailTemplateQuote: string | null
   emailTemplateInvoice: string | null
+  productionSheetEmail: string | null
   sageConnected: boolean
   xeroConnected: boolean
   activePriceListIds: string[]
@@ -38,7 +39,7 @@ interface Props {
   createdByName: string | null
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -80,6 +81,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [emailBody, setEmailBody] = useState('')
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>(initialEmailLogs)
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
+  // Production sheet email modal state
+  const [prodSheetModalOpen, setProdSheetModalOpen] = useState(false)
+  const [prodSheetEmailInput, setProdSheetEmailInput] = useState('')
+  const [prodSheetSending, setProdSheetSending] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -280,6 +285,39 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       setEmailSending(false)
     }
   }, [emailInput, emailModalType, project.client, project.client_id, project.id, supabase])
+
+  const handleOpenProdSheetModal = useCallback(() => {
+    setProdSheetEmailInput(initialProductionSheetEmail ?? '')
+    setProdSheetModalOpen(true)
+  }, [initialProductionSheetEmail])
+
+  const handleSendProdSheet = useCallback(async () => {
+    if (!prodSheetEmailInput.trim()) { toast.error('Please enter an email address'); return }
+    setProdSheetSending(true)
+    try {
+      // Save updated email to studio settings if it changed
+      if (prodSheetEmailInput.trim() !== (initialProductionSheetEmail ?? '')) {
+        const { data: settingsRow } = await supabase.from('settings').select('id').maybeSingle()
+        if (settingsRow?.id) {
+          await supabase.from('settings').update({ production_sheet_email: prodSheetEmailInput.trim() }).eq('id', settingsRow.id)
+        }
+      }
+      const res = await fetch('/api/email/production-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, toEmail: prodSheetEmailInput.trim() }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data.error ?? 'Failed to send production sheet')
+        return
+      }
+      toast.success(`Production sheet sent to ${prodSheetEmailInput.trim()}`)
+      setProdSheetModalOpen(false)
+    } finally {
+      setProdSheetSending(false)
+    }
+  }, [prodSheetEmailInput, initialProductionSheetEmail, project.id, supabase])
 
   const openSageModal = useCallback(async () => {
     setSageModalOpen(true)
@@ -580,6 +618,21 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 </div>
               )}
             </div>
+
+            {/* ── Email Production Sheet ── */}
+            {plan !== 'solo' ? (
+              <button
+                onClick={handleOpenProdSheetModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors font-medium cursor-pointer"
+              >
+                <Printer size={13} /> Email Production Sheet
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D8D3C8] bg-white text-sm text-[#2C2C2A] opacity-40 cursor-default select-none">
+                <Printer size={13} /> Email Production Sheet
+                <span className="text-[10px] text-[#9A7B4F] font-medium ml-1">Studio+</span>
+              </div>
+            )}
 
             <div className="w-px h-5 bg-[#D8D3C8] mx-1" />
 
@@ -931,6 +984,43 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 className="px-5 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer font-medium"
               >
                 {emailSending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Production sheet email modal */}
+      {prodSheetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setProdSheetModalOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-[440px] p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">Email Production Sheet</h3>
+            <p className="text-sm text-[#8A877F] mb-4">The production sheet PDF will be attached and sent to the address below. This email is saved as your studio default.</p>
+            <div>
+              <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Send To</label>
+              <input
+                type="email"
+                autoFocus
+                placeholder="production@studio.co.za"
+                value={prodSheetEmailInput}
+                onChange={e => setProdSheetEmailInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSendProdSheet() }}
+                className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors"
+              />
+              {prodSheetEmailInput.trim() !== (initialProductionSheetEmail ?? '') && prodSheetEmailInput.trim() && (
+                <p className="text-xs text-[#9A7B4F] mt-1.5">This email will be saved as your studio default for production sheets.</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={() => setProdSheetModalOpen(false)} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">
+                Cancel
+              </button>
+              <button
+                onClick={handleSendProdSheet}
+                disabled={prodSheetSending || !prodSheetEmailInput.trim()}
+                className="px-5 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer font-medium"
+              >
+                {prodSheetSending ? 'Sending…' : 'Send'}
               </button>
             </div>
           </div>

@@ -262,6 +262,7 @@ interface Settings {
   email_template_quote?: string | null
   email_template_invoice?: string | null
   accounts_email?: string | null
+  production_sheet_email?: string | null
   pdf_template?: string | null
   pdf_color_theme?: string | null
 }
@@ -461,6 +462,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
     email_template_quote:   settings?.email_template_quote ?? `Dear {{client_name}},\n\nPlease find attached your quotation for {{project_name}}.\n\nPlease don't hesitate to contact us should you have any questions or require any amendments.\n\nKind regards,\n{{studio_name}}`,
     email_template_invoice: settings?.email_template_invoice ?? `Dear {{client_name}},\n\nPlease find attached your invoice for {{project_name}}.\n\nKindly arrange payment at your earliest convenience.\n\nKind regards,\n{{studio_name}}`,
     accounts_email:         settings?.accounts_email ?? '',
+    production_sheet_email: settings?.production_sheet_email ?? '',
     sage_item_id:           String(settings?.sage_item_id ?? ''),
     quote_validity_days:    String(settings?.quote_validity_days ?? 30),
     payment_terms:          settings?.payment_terms ?? '',
@@ -574,6 +576,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                 </div>
               </div>
               <Input label="Accounts Email (BCC on all POs)" type="email" value={form.accounts_email} onChange={e => set('accounts_email', e.target.value)} />
+              <Input label="Production Sheet Email (default recipient)" type="email" value={form.production_sheet_email} onChange={e => set('production_sheet_email', e.target.value)} placeholder="e.g. production@studio.co.za" />
             </section>
             <section className="space-y-4">
               <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider">Banking Details</h2>
