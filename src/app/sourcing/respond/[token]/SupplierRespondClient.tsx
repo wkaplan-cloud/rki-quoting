@@ -734,7 +734,7 @@ function PriceForm({
                       Unit Price (excl. VAT) <span style={{ color: '#EF4444' }}>*</span>
                     </label>
                     <p className="text-[10px] mb-1.5" style={{ color: '#A1A1AA' }}>
-                      {vatExempt ? 'VAT exempt — no VAT will be added.' : 'VAT will be added when invoiced.'}
+                      Price before VAT — VAT will be added by the studio when invoicing.
                     </p>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
@@ -752,6 +752,18 @@ function PriceForm({
                         onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
                       />
                     </div>
+                    {/* VAT exempt — small checkbox, only for the rare exception */}
+                    <label className="flex items-center gap-1.5 mt-2 cursor-pointer w-fit">
+                      <input
+                        type="checkbox"
+                        checked={vatExempt}
+                        onChange={e => setVatExempt(e.target.checked)}
+                        className="w-3 h-3 rounded accent-blue-500"
+                      />
+                      <span className="text-[10px]" style={{ color: vatExempt ? '#3B82F6' : '#A1A1AA' }}>
+                        This item is zero-rated / VAT exempt
+                      </span>
+                    </label>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Lead Time (weeks)</label>
@@ -768,24 +780,6 @@ function PriceForm({
                       onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
                     />
                   </div>
-                </div>
-
-                {/* VAT exempt toggle */}
-                <div className="flex items-center justify-between px-3 py-2.5 rounded-lg" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7' }}>
-                  <div>
-                    <p className="text-xs font-semibold" style={{ color: '#18181B' }}>VAT exempt</p>
-                    <p className="text-[10px]" style={{ color: '#A1A1AA' }}>Tick if no VAT applies to this item</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setVatExempt(v => !v)}
-                    className="flex items-center shrink-0"
-                    style={{ marginLeft: '12px' }}
-                  >
-                    <div className={`w-9 h-5 rounded-full flex items-center transition-colors ${vatExempt ? 'bg-blue-500' : 'bg-[#D4D4D8]'}`}>
-                      <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform mx-0.5 ${vatExempt ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </div>
-                  </button>
                 </div>
 
                 {/* Installation */}
