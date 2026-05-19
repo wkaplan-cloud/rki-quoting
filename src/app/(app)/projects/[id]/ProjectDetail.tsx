@@ -165,7 +165,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     router.push(`/projects/${newProject.id}`)
   }, [project, lineItems, supabase, router])
 
-  const handleGeneratePDF = useCallback(async (type: 'quote' | 'invoice' | 'po' | 'production', supplierIdParam?: string, print = false) => {
+  const handleGeneratePDF = useCallback(async (type: 'quote' | 'invoice' | 'po' | 'production' | 'installation', supplierIdParam?: string, print = false) => {
     if ((type === 'quote' || type === 'invoice') && !project.client?.client_name) {
       toast.error('Please add a client to this project before generating a document.')
       return
@@ -550,16 +550,26 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                         className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
                         <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Job Cost Sheet
                       </button>
+                      <button onClick={() => { handleGeneratePDF('installation'); setPoMenuOpen(false) }}
+                        className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                        <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Installation Sheet
+                      </button>
                       <button onClick={() => { handleOpenProdSheetModal(); setPoMenuOpen(false) }}
                         className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
                         <Mail size={13} className="text-[#9A7B4F] flex-shrink-0" /> Email Job Cost Sheet
                       </button>
                     </>
                   ) : (
-                    <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
-                      <Printer size={13} className="flex-shrink-0" /> Job Cost Sheet
-                      <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio+</span>
-                    </div>
+                    <>
+                      <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
+                        <Printer size={13} className="flex-shrink-0" /> Job Cost Sheet
+                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio+</span>
+                      </div>
+                      <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
+                        <Printer size={13} className="flex-shrink-0" /> Installation Sheet
+                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio+</span>
+                      </div>
+                    </>
                   )}
                   {plan !== 'agency' && (
                     <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
