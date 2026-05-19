@@ -13,7 +13,7 @@ export default async function SupplierRespondPage({
 
   const { data: ss } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('id, supplier_name, status, viewed_at, session_id, session:sourcing_sessions(id, title, status, user_id, org_id, request_number, project:projects(project_name))')
+    .select('id, supplier_name, status, viewed_at, session_id, delivery_fee, session:sourcing_sessions(id, title, status, user_id, org_id, request_number, project:projects(project_name))')
     .eq('token', token)
     .maybeSingle()
 
@@ -105,6 +105,7 @@ export default async function SupplierRespondPage({
       requestRef={requestRef}
       studioName={settings?.business_name ?? 'Your Studio'}
       assignments={mappedAssignments}
+      initialDeliveryFee={(ss as any).delivery_fee ?? null}
       showBackLink={!portalAccount}
     />
   )

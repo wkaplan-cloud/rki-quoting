@@ -27,9 +27,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       notes?: string | null
       attachment_url?: string | null
       supplier_specs?: Record<string, string> | null
+      installation_included?: boolean | null
+      installation_cost?: number | null
+      vat_exempt?: boolean
     }
 
-    const { assignment_id, unit_price, fabric_quantity, fabric_unit, lead_time_weeks, valid_until, notes, attachment_url, supplier_specs } = body
+    const { assignment_id, unit_price, fabric_quantity, fabric_unit, lead_time_weeks, valid_until, notes, attachment_url, supplier_specs, installation_included, installation_cost, vat_exempt } = body
 
     if (!assignment_id) return NextResponse.json({ error: 'assignment_id is required' }, { status: 400 })
     if (unit_price == null || unit_price < 0) return NextResponse.json({ error: 'unit_price is required' }, { status: 400 })
@@ -83,6 +86,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           notes: notes ?? null,
           attachment_url: attachment_url ?? null,
           supplier_specs: supplier_specs ?? null,
+          installation_included: installation_included ?? null,
+          installation_cost: installation_cost ?? null,
+          vat_exempt: vat_exempt ?? false,
           submitted_at: now,
           updated_at: now,
         },
