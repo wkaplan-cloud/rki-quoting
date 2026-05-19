@@ -95,10 +95,10 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                   }
                   const c = computed.find(ci => ci.id === item.id)
                   if (!c) return null
-                  const alt = itemIndex++ % 2 === 1
+                  itemIndex++
                   itemNum++
                   return (
-                    <View key={item.id} style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border, backgroundColor: alt ? theme.surface : undefined }}>
+                    <View key={item.id} style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border }}>
                       <Text style={{ fontSize: 6.5, color: theme.muted, width: 20 }}>{itemNum}.</Text>
                       <Text style={{ fontSize: 9, color: theme.text, flex: 1, paddingLeft: item.indent_level > 0 ? 8 : 0 }}>{cap(item.item_name)}</Text>
                       <Text style={{ fontSize: 9, color: theme.text, width: 44, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>

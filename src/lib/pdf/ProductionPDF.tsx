@@ -133,11 +133,11 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
             )
           }
           const c = computeLineItem(item)
-          const alt = itemIndex++ % 2 === 1
+          itemIndex++
           itemNum++
           const isLinked = !!item.parent_item_id
           return (
-            <View key={item.id} style={[s.row, alt ? s.rowAlt : {}, isLinked ? s.rowLinked : {}]}>
+            <View key={item.id} style={[s.row, isLinked ? s.rowLinked : {}]}>
               <Text style={[s.td, s.tdMuted, { width: W.num, textAlign: 'right', paddingRight: 4, fontSize: 6.5 }]}>{itemNum}.</Text>
               <View style={{ width: W.item, paddingRight: 3, paddingLeft: isLinked ? 4 : 0 }}>
                 <Text style={s.td}>{cap(item.item_name)}</Text>
