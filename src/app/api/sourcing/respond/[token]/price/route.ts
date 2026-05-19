@@ -49,26 +49,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     const now = new Date().toISOString()
 
+    // Always fetch the item (needed for spec comparison and audit log)
+    const { data: itemRow } = await supabaseAdmin
+      .from('sourcing_session_items')
+      .select('title, item_specs, dimensions, colour_finish')
+      .eq('id', assignment.item_id)
+      .maybeSingle()
+
     // Detect whether the supplier changed any specs vs. the original item
     let specApprovalUpdates: Record<string, unknown> = { spec_approval_status: null, pending_supplier_specs: null }
-    if (supplier_specs && Object.keys(supplier_specs).length > 0) {
-      const { data: itemRow } = await supabaseAdmin
-        .from('sourcing_session_items')
-        .select('item_specs, dimensions, colour_finish')
-        .eq('id', assignment.item_id)
-        .maybeSingle()
-      if (itemRow) {
-        const origSpecs: Record<string, string> = {
-          ...(itemRow.item_specs ?? {}),
-          ...(itemRow.dimensions ? { dimensions: itemRow.dimensions } : {}),
-          ...(itemRow.colour_finish ? { colour_finish: itemRow.colour_finish } : {}),
-        }
-        const hasChange = Object.keys({ ...origSpecs, ...supplier_specs }).some(
-          k => (supplier_specs[k] ?? '') !== (origSpecs[k] ?? '')
-        )
-        if (hasChange) {
-          specApprovalUpdates = { spec_approval_status: 'pending', pending_supplier_specs: supplier_specs }
-        }
+    if (supplier_specs && Object.keys(supplier_specs).length > 0 && itemRow) {
+      const origSpecs: Record<string, string> = {
+        ...(itemRow.item_specs ?? {}),
+        ...(itemRow.dimensions ? { dimensions: itemRow.dimensions } : {}),
+        ...(itemRow.colour_finish ? { colour_finish: itemRow.colour_finish } : {}),
+      }
+      const hasChange = Object.keys({ ...origSpecs, ...supplier_specs }).some(
+        k => (supplier_specs[k] ?? '') !== (origSpecs[k] ?? '')
+      )
+      if (hasChange) {
+        specApprovalUpdates = { spec_approval_status: 'pending', pending_supplier_specs: supplier_specs }
       }
     }
 
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (sessionSS) {
       const { data: sessionRow } = await supabaseAdmin
         .from('sourcing_sessions')
-        .select('id, status')
+        .select('id, status, org_id, project_id')
         .eq('id', sessionSS.session_id)
         .single()
 
@@ -146,6 +146,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           .from('sourcing_sessions')
           .update({ status: 'in_progress' })
           .eq('id', sessionSS.session_id)
+      }
+
+      // Audit log — supplier submitted a price
+      if (sessionRow) {
+        const isUpdate = !!assignment.status && assignment.status === 'responded'
+        await supabaseAdmin.from('audit_logs').insert({
+          org_id: sessionRow.org_id,
+          project_id: sessionRow.project_id ?? null,
+          user_email: null,
+          action: isUpdate ? 'updated' : 'responded',
+          table_name: 'sourcing_item_responses',
+          record_id: assignment_id,
+          old_data: null,
+          new_data: {
+            supplier_name: ss.supplier_name,
+            item_title: (itemRow as any)?.title ?? null,
+            unit_price: unit_price,
+            installation_included: installation_included ?? null,
+            installation_cost: installation_cost ?? null,
+            vat_exempt: vat_exempt ?? false,
+          },
+        })
       }
     }
 

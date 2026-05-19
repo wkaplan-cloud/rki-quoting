@@ -32,6 +32,9 @@ interface Response {
   notes: string | null
   attachment_url: string | null
   supplier_specs: Record<string, string> | null
+  installation_included: boolean | null
+  installation_cost: number | null
+  vat_exempt: boolean
 }
 
 interface Assignment {
@@ -55,6 +58,7 @@ interface SessionSupplier {
   token: string
   status: string
   sent_at: string | null
+  delivery_fee: number | null
   supplier_message_count: number
   assignments: Assignment[]
 }
@@ -997,6 +1001,11 @@ function ComparisonTable({
                     <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${statusCls}`}>
                       {effectiveStatus.replace('_', ' ')}
                     </span>
+                    {ss.delivery_fee != null && (
+                      <p className="text-[10px] text-[#8A877F] mt-1">
+                        Delivery: <span className="font-medium text-[#2C2C2A]">R{ss.delivery_fee.toLocaleString()}</span>
+                      </p>
+                    )}
                   </th>
                 )
               })}
@@ -1104,9 +1113,20 @@ function ComparisonTable({
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Lowest</span>
                             )}
                             {isAccepted && <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />}
+                            {response.vat_exempt && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">VAT excl</span>
+                            )}
                           </div>
                           {response.lead_time_weeks && (
                             <p className="text-[10px] text-[#8A877F] mt-0.5">{response.lead_time_weeks}w lead</p>
+                          )}
+                          {response.installation_included === false && (
+                            <p className="text-[10px] text-amber-700 mt-0.5">
+                              Install: R{(response.installation_cost ?? 0).toLocaleString()} extra
+                            </p>
+                          )}
+                          {response.installation_included === true && (
+                            <p className="text-[10px] text-emerald-600 mt-0.5">Install incl.</p>
                           )}
                           {response.notes && !response.notes.startsWith("[CAN'T SUPPLY]") && (
                             <p className="text-[10px] text-amber-600 mt-0.5 truncate max-w-[130px]" title={response.notes}>
@@ -1319,6 +1339,7 @@ function SupplierCard({
           <p className="text-xs text-[#8A877F] mt-0.5">
             {ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}
             {ss.sent_at ? ` · Sent ${fmtDateTime(ss.sent_at)}` : ''}
+            {ss.delivery_fee != null ? ` · Delivery: R${ss.delivery_fee.toLocaleString()}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -1425,7 +1446,16 @@ function SupplierCard({
                     {hasResponse && assignment?.response && specStatus !== 'pending' && (
                       <div className="flex items-center gap-3 flex-wrap mt-1">
                         <span className="text-sm font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
+                        {assignment.response.vat_exempt && (
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">VAT exempt</span>
+                        )}
                         {assignment.response.lead_time_weeks && <span className="text-xs text-[#8A877F]">{assignment.response.lead_time_weeks}w lead</span>}
+                        {assignment.response.installation_included === true && (
+                          <span className="text-xs text-emerald-600">Install incl.</span>
+                        )}
+                        {assignment.response.installation_included === false && (
+                          <span className="text-xs text-amber-700">+ R{(assignment.response.installation_cost ?? 0).toLocaleString()} install</span>
+                        )}
                         {assignment.responded_at && <span className="text-[10px] text-[#C4BFB5]">Replied {fmtDateTime(assignment.responded_at)}</span>}
                         {assignment.response.notes && <span className="text-xs text-[#8A877F] italic truncate max-w-[180px]">{assignment.response.notes}</span>}
                         {assignment.response.attachment_url && (

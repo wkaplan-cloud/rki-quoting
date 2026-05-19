@@ -65,9 +65,12 @@ interface Props {
 }
 
 const ACTION_COLOR: Record<string, string> = {
-  created: 'text-green-600 bg-green-50',
-  updated: 'text-blue-600 bg-blue-50',
-  deleted: 'text-red-600 bg-red-50',
+  created:   'text-green-600 bg-green-50',
+  updated:   'text-blue-600 bg-blue-50',
+  deleted:   'text-red-600 bg-red-50',
+  sent:      'text-purple-600 bg-purple-50',
+  responded: 'text-amber-600 bg-amber-50',
+  accepted:  'text-emerald-600 bg-emerald-50',
 }
 
 const TABLE_LABEL: Record<string, string> = {
@@ -78,6 +81,10 @@ const TABLE_LABEL: Record<string, string> = {
   settings: 'Settings',
   price_lists: 'Price List',
   price_list_items: 'Price List Item',
+  sourcing_sessions: 'Price Request',
+  sourcing_session_items: 'Request Item',
+  sourcing_item_assignments: 'Quote',
+  sourcing_item_responses: 'Supplier Quote',
 }
 
 function getRecordLabel(log: AuditLog): string {
@@ -98,6 +105,14 @@ function getRecordLabel(log: AuditLog): string {
       return (d.name as string) || '—'
     case 'price_list_items':
       return (d.fabric_name as string) || '—'
+    case 'sourcing_sessions':
+      return (d.session_title as string) || '—'
+    case 'sourcing_session_items':
+      return (d.title as string) || (d.item_title as string) || '—'
+    case 'sourcing_item_assignments':
+      return [(d.item_title as string), (d.supplier_name as string)].filter(Boolean).join(' → ') || '—'
+    case 'sourcing_item_responses':
+      return [(d.item_title as string), (d.supplier_name as string)].filter(Boolean).join(' — ') || '—'
     default:
       return '—'
   }

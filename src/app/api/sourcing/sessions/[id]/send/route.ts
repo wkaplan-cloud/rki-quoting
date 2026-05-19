@@ -217,6 +217,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (successes.length > 0) {
       await supabase.from('sourcing_sessions').update({ status: 'sent' }).eq('id', id)
+
+      // Audit log — record which suppliers received this send
+      const sentSupplierIds = settled
+        .filter((s): s is PromiseFulfilledResult<{ id: string; success: boolean }> => s.status === 'fulfilled' && (s as any).value?.success)
+        .map(s => s.value.id)
+      const sentSupplierNames = toSend
+        .filter(ss => sentSupplierIds.includes(ss.id))
+        .map(ss => ss.supplier_name)
+      await supabaseAdmin.from('audit_logs').insert({
+        org_id: orgId,
+        project_id: session.project_id ?? null,
+        user_email: user.email ?? null,
+        action: 'sent',
+        table_name: 'sourcing_sessions',
+        record_id: id,
+        old_data: null,
+        new_data: {
+          session_title: session.title,
+          suppliers_notified: sentSupplierNames,
+          items_count: sessionSuppliers?.flatMap((ss: any) => ss.assignments ?? []).length ?? 0,
+        },
+      })
     }
 
     if (successes.length === 0) {

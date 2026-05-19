@@ -114,6 +114,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
+    // Audit log — designer accepted a supplier's quote for this item
+    const { data: sessionForAudit } = await supabase
+      .from('sourcing_sessions')
+      .select('org_id, project_id')
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (sessionForAudit) {
+      await supabase.from('audit_logs').insert({
+        org_id: (sessionForAudit as any).org_id,
+        project_id: (sessionForAudit as any).project_id ?? null,
+        user_email: user.email ?? null,
+        action: 'accepted',
+        table_name: 'sourcing_item_assignments',
+        record_id: assignment_id,
+        old_data: null,
+        new_data: {
+          item_title: item?.title ?? null,
+          supplier_name: acceptedSupplierName,
+          unit_price: acceptedPrice,
+        },
+      })
+    }
+
     return NextResponse.json({ success: true, piece: pieceResult })
   } catch (e) {
     return apiError(e)

@@ -25,8 +25,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
 
-    // Verify session ownership — item RLS cascades through session, but an explicit
-    // check provides defense-in-depth if RLS is misconfigured or fails silently
     if (!await assertSessionOwnership(supabase, sessionId, orgId)) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
@@ -41,6 +39,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       category?: string
       item_specs?: Record<string, string> | null
     }
+
+    // Fetch current item and session status before updating (for audit log)
+    const [{ data: currentItem }, { data: session }] = await Promise.all([
+      supabase.from('sourcing_session_items').select('title, work_type, specifications, item_quantity, dimensions, colour_finish, category, item_specs').eq('id', itemId).maybeSingle(),
+      supabase.from('sourcing_sessions').select('status, project_id').eq('id', sessionId).maybeSingle(),
+    ])
 
     const { data, error } = await supabase
       .from('sourcing_session_items')
@@ -59,6 +63,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Audit log — only when session is already active (sent or in progress)
+    if (session && ['sent', 'in_progress', 'completed'].includes((session as any).status)) {
+      await supabase.from('audit_logs').insert({
+        org_id: orgId,
+        project_id: (session as any).project_id ?? null,
+        user_email: user.email ?? null,
+        action: 'updated',
+        table_name: 'sourcing_session_items',
+        record_id: itemId,
+        old_data: currentItem ?? null,
+        new_data: { ...data, session_was_active: true },
+      })
+    }
+
     return NextResponse.json({ data })
   } catch (e) {
     return apiError(e)
@@ -80,7 +99,28 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
+    // Fetch item + session before deletion for audit log
+    const [{ data: deletedItem }, { data: session }] = await Promise.all([
+      supabase.from('sourcing_session_items').select('title, item_quantity, specifications').eq('id', itemId).maybeSingle(),
+      supabase.from('sourcing_sessions').select('status, project_id').eq('id', sessionId).maybeSingle(),
+    ])
+
     await supabase.from('sourcing_session_items').delete().eq('id', itemId)
+
+    // Audit log — only when session was already active
+    if (session && ['sent', 'in_progress', 'completed'].includes((session as any).status)) {
+      await supabase.from('audit_logs').insert({
+        org_id: orgId,
+        project_id: (session as any).project_id ?? null,
+        user_email: user.email ?? null,
+        action: 'deleted',
+        table_name: 'sourcing_session_items',
+        record_id: itemId,
+        old_data: { ...(deletedItem ?? {}), session_was_active: true },
+        new_data: null,
+      })
+    }
+
     return NextResponse.json({ success: true })
   } catch (e) {
     return apiError(e)
