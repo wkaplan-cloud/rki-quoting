@@ -685,7 +685,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             <button onClick={() => handleGeneratePDF('quote', undefined, true)}
               title="Print quote"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
-              <Printer size={13} />
+              <Printer size={16} />
             </button>
             <button onClick={handleDuplicate}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer">
