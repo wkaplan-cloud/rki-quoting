@@ -173,7 +173,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
 
             return (
               <View key={item.id}>
-                <View style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <View style={styles.tableRow}>
                   <Text style={[styles.td, styles.tdMuted, { width: 20, fontSize: 6.5 }]}>{itemNumber}.</Text>
                   <View style={[{ flex: 2 }]}>
                     <Text style={styles.td}>{cap(item.item_name)}</Text>
