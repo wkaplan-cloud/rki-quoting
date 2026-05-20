@@ -121,16 +121,20 @@ async function getAuth(): Promise<{ authHeader: string; apiBase: string; company
   }
 }
 
-function buildUrl(apiBase: string, companyId: string, path: string): string {
+function buildUrl(apiBase: string, companyId: string, path: string, extra?: Record<string, string | number>): string {
   // Do not use URLSearchParams for apikey — Sage requires literal curly braces.
   const apiKey = process.env.SAGE_API_KEY
-  const base = `${apiBase}${path}?CompanyId=${companyId}`
-  return apiKey ? `${base}&apikey=${apiKey}` : base
+  let base = `${apiBase}${path}?CompanyId=${companyId}`
+  if (apiKey) base += `&apikey=${apiKey}`
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) base += `&${k}=${v}`
+  }
+  return base
 }
 
-export async function sageGet(path: string) {
+export async function sageGet(path: string, extra?: Record<string, string | number>) {
   const { authHeader, apiBase, companyId } = await getAuth()
-  const res = await fetch(buildUrl(apiBase, companyId, path), {
+  const res = await fetch(buildUrl(apiBase, companyId, path, extra), {
     headers: {
       Authorization: authHeader,
       Accept: 'application/json',
@@ -138,6 +142,28 @@ export async function sageGet(path: string) {
   })
   if (!res.ok) throw new Error(`Sage API error ${res.status}: ${await res.text()}`)
   return res.json()
+}
+
+/** Fetches all pages from a paginated Sage endpoint, returning a flat array of results. */
+export async function sageGetAll<T = Record<string, unknown>>(path: string): Promise<T[]> {
+  const PAGE_SIZE = 100
+  const all: T[] = []
+  let skip = 0
+
+  while (true) {
+    const data = await sageGet(path, { '$top': PAGE_SIZE, '$skip': skip })
+    const page: T[] = Array.isArray(data) ? data : (data.Results ?? [])
+    all.push(...page)
+
+    // Stop if we got fewer than a full page (last page)
+    if (page.length < PAGE_SIZE) break
+    // Stop if the API tells us the total and we've reached it
+    const total: number = data.TotalResults ?? data.totalResults ?? Infinity
+    skip += PAGE_SIZE
+    if (skip >= total) break
+  }
+
+  return all
 }
 
 export async function sagePost(path: string, body: object) {
