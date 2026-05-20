@@ -891,9 +891,29 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     />
                   </td>
 
-                  {/* Computed — readonly */}
-                  <td className="px-2 py-1.5 text-right text-sm tabular-nums text-[#2C2C2A] font-medium whitespace-nowrap">
-                    {formatZAR(c.sale_price)}
+                  {/* Sale Price — editable override */}
+                  <td className={COL}>
+                    {locked ? (
+                      <span className="block text-right text-sm tabular-nums text-[#2C2C2A] font-medium whitespace-nowrap">{formatZAR(c.sale_price)}</span>
+                    ) : (
+                      <div className="relative">
+                        <CurrencyInput
+                          value={c.sale_price}
+                          onChange={v => updateLocal(item.id, 'sale_price_override', v)}
+                          onBlur={v => saveField(item.id, 'sale_price_override', v)}
+                          className={NUM_INPUT}
+                        />
+                        {item.sale_price_override !== null && (
+                          <button
+                            title="Clear override — revert to markup-computed price"
+                            onClick={() => { updateLocal(item.id, 'sale_price_override', null); saveField(item.id, 'sale_price_override', null) }}
+                            className="absolute -top-1.5 -right-1 flex items-center gap-0.5 text-amber-500 hover:text-amber-700 cursor-pointer"
+                          >
+                            <span className="text-[9px] font-semibold leading-none">override ×</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className={`px-2 py-1.5 text-right text-sm tabular-nums whitespace-nowrap ${c.profit >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                     {formatZAR(c.profit)}

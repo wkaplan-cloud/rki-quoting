@@ -73,6 +73,7 @@ export interface LineItem {
   delivery_address: string | null
   cost_price: number
   markup_percentage: number
+  sale_price_override: number | null
   sort_order: number
   row_type: 'item' | 'section'
   indent_level: number
