@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { DashboardPipeline } from './DashboardPipeline'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { redirect } from 'next/navigation'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -13,6 +14,17 @@ export default async function DashboardPage() {
     supabase.auth.getUser(),
     supabase.rpc('get_current_org_id'),
   ])
+
+  if (!orgId) {
+    // Check if this is a supplier account and send them to the right place
+    const { data: portalAccount } = await supabase
+      .from('supplier_portal_accounts')
+      .select('id')
+      .eq('auth_user_id', user?.id ?? '')
+      .maybeSingle()
+    if (portalAccount) redirect('/supplier-portal/dashboard')
+    else redirect('/supplier-portal/register?notice=no-portal-account')
+  }
   const currentUserId = user?.id ?? ''
   const [{ data: projects }, { data: settings }, { data: org }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name), stages:project_stages(*)').is('archived_at', null).order('created_at', { ascending: false }),

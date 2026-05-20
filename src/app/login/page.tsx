@@ -133,19 +133,6 @@ export default function LoginPage() {
         router.push('/platform')
         return
       }
-      if (user) {
-        const { data: orgMember } = await supabase.from('org_members').select('id').eq('user_id', user.id).maybeSingle()
-        if (!orgMember) {
-          const { data: portalAccount } = await supabase.from('supplier_portal_accounts').select('id').eq('auth_user_id', user.id).maybeSingle()
-          if (portalAccount) {
-            router.push('/supplier-portal/dashboard')
-            return
-          }
-          await supabase.auth.signOut()
-          router.push('/supplier-portal/register?notice=no-portal-account')
-          return
-        }
-      }
       router.push('/dashboard')
     }
   }
