@@ -1106,7 +1106,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 onClick={() => setSageModalTab('push')}
                 className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'push' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
               >
-                Push New Invoice
+                {sageInvoiceId ? 'Update Invoice' : 'Push New Invoice'}
               </button>
               <button
                 onClick={() => { setSageModalTab('link'); if (sageInvoices.length === 0 && !sageInvoicesLoading) loadSageInvoices() }}
@@ -1118,6 +1118,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
             {sageModalTab === 'push' ? (
               <>
+                {sageInvoiceId && (
+                  <div className="px-5 py-3 bg-amber-50 border-b border-amber-200">
+                    <p className="text-xs text-amber-800 font-medium">This will overwrite the existing Sage invoice</p>
+                    <p className="text-xs text-amber-700 mt-0.5">All line items in Sage will be replaced with the current QuotingHub figures. Any changes made directly in Sage will be lost.</p>
+                  </div>
+                )}
                 <div className="px-5 py-3 border-b border-[#EDE9E1]">
                   <p className="text-xs text-[#8A877F] mb-2">Select the Sage customer to attach this invoice to</p>
                   <input
@@ -1152,7 +1158,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 <div className="px-5 py-3 border-t border-[#EDE9E1] flex items-center justify-between">
                   <button onClick={() => setSageModalOpen(false)} className="text-sm text-[#8A877F] hover:text-[#2C2C2A]">Cancel</button>
                   <Button size="sm" onClick={handlePushToSage} disabled={!sageSelectedCustomer || sagePushing}>
-                    {sagePushing ? 'Pushing…' : 'Push Invoice'}
+                    {sagePushing ? 'Pushing…' : sageInvoiceId ? 'Overwrite Invoice' : 'Push Invoice'}
                   </Button>
                 </div>
               </>
