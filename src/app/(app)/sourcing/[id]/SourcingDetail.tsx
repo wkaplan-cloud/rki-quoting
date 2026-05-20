@@ -963,18 +963,31 @@ function ComparisonTable({
     if (min < Infinity) minPricePerItem[item.id] = min
   }
 
-  // Total cost per supplier (sum of responded prices × qty)
+  // Items subtotal = unit_price × qty (no extras)
   const supplierTotals: Record<string, number> = {}
+  // Grand total = items + installation costs (flat per item) + session delivery fee
+  const supplierGrandTotals: Record<string, number> = {}
   for (const ss of suppliers) {
-    let total = 0
+    let subtotal = 0
+    let installTotal = 0
     for (const a of ss.assignments) {
       if (a.response && a.status !== 'supplier_declined') {
         const qty = items.find(i => i.id === a.item_id)?.item_quantity ?? 1
-        total += a.response.unit_price * qty
+        subtotal += a.response.unit_price * qty
+        if (a.response.installation_included === false && a.response.installation_cost) {
+          installTotal += a.response.installation_cost
+        }
       }
     }
-    supplierTotals[ss.id] = total
+    supplierTotals[ss.id] = subtotal
+    supplierGrandTotals[ss.id] = subtotal + installTotal + (ss.delivery_fee ?? 0)
   }
+
+  // Show the grand total row only when at least one supplier has installation or delivery extras
+  const hasGrandTotalExtras = suppliers.some(ss =>
+    (ss.delivery_fee != null && ss.delivery_fee > 0) ||
+    ss.assignments.some(a => a.response?.installation_included === false && (a.response?.installation_cost ?? 0) > 0)
+  )
 
   const STATUS_COLORS: Record<string, string> = {
     pending:     'bg-[#F5F2EC] text-[#8A877F]',
@@ -1169,7 +1182,9 @@ function ComparisonTable({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-[#EDE9E1]" style={{ background: '#FAFAF8' }}>
-              <td className="px-5 py-3 text-xs font-semibold text-[#8A877F] sticky left-0 bg-[#FAFAF8] z-10">Total (responded)</td>
+              <td className="px-5 py-3 text-xs font-semibold text-[#8A877F] sticky left-0 bg-[#FAFAF8] z-10">
+                {hasGrandTotalExtras ? 'Items subtotal' : 'Total (responded)'}
+              </td>
               {suppliers.map(ss => (
                 <td key={ss.id} className="px-5 py-3">
                   {supplierTotals[ss.id] > 0 ? (
@@ -1180,6 +1195,35 @@ function ComparisonTable({
                 </td>
               ))}
             </tr>
+            {hasGrandTotalExtras && (
+              <tr className="border-t border-[#EDE9E1]" style={{ background: '#F5F2EC' }}>
+                <td className="px-5 py-3.5 sticky left-0 z-10" style={{ background: '#F5F2EC' }}>
+                  <p className="text-xs font-semibold text-[#2C2C2A]">Grand total</p>
+                  <p className="text-[10px] text-[#8A877F]">incl. installation + delivery</p>
+                </td>
+                {suppliers.map(ss => {
+                  const installTotal = ss.assignments.reduce((sum, a) =>
+                    sum + (a.response?.installation_included === false ? (a.response?.installation_cost ?? 0) : 0), 0)
+                  const deliveryFee = ss.delivery_fee ?? 0
+                  const grand = supplierGrandTotals[ss.id] ?? 0
+                  return (
+                    <td key={ss.id} className="px-5 py-3.5">
+                      {grand > 0 ? (
+                        <div>
+                          <span className="text-sm font-bold text-[#2C2C2A]">R{grand.toLocaleString()}</span>
+                          <div className="text-[10px] text-[#8A877F] mt-0.5 space-y-0.5">
+                            {installTotal > 0 && <p>+ R{installTotal.toLocaleString()} install</p>}
+                            {deliveryFee > 0 && <p>+ R{deliveryFee.toLocaleString()} delivery</p>}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[#D4CFC7]">—</span>
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            )}
           </tfoot>
         </table>
       </div>
