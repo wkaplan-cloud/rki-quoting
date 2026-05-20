@@ -44,13 +44,17 @@ export async function POST(req: NextRequest) {
     const computed = computeLineItems(lineItems ?? [])
 
     // Fetch tax types and the full customer record in parallel
-    // Use OData filter instead of /{id} path — Sage wraps results in { Results: [] }
+    // Try direct path first; fall back to OData filter — both return formats are handled
     const [taxTypesResp, customerRaw] = await Promise.all([
       sageGet('/TaxType/Get'),
-      sageGet('/Customer/Get', { '$filter': `ID eq ${sageContactId}`, '$top': 1 }).catch(() => null),
+      sageGet(`/Customer/Get/${Number(sageContactId)}`).catch(() =>
+        sageGet('/Customer/Get', { '$filter': `ID eq ${Number(sageContactId)}`, '$top': 1 }).catch(() => null)
+      ),
     ])
     const customerResp: Record<string, unknown> | null =
-      customerRaw?.Results?.[0] ?? (Array.isArray(customerRaw) ? customerRaw[0] : customerRaw) ?? null
+      customerRaw?.Results?.[0] ??
+      (Array.isArray(customerRaw) ? customerRaw[0] : null) ??
+      (customerRaw?.ID ? customerRaw : null)
 
     // SelectionId is a Sage Item ID — stored in settings by the studio admin
     const selectionId: number = settings.sage_item_id
