@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
       Date: docDate,
       DueDate: dueDate,
       Inclusive: false,
-      Reference: project.project_number,
+      Reference: `Quote ${project.project_number}`,
       Description: trunc(project.project_name),
       Lines: lines,
       ...customerFields,
