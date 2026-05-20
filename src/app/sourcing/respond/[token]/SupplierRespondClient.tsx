@@ -727,15 +727,12 @@ function PriceForm({
                 </div>
               )}
               <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
-                {/* Price + Lead Time */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Price + Lead Time — same label height so inputs align */}
+                <div className="grid grid-cols-2 gap-4 items-start">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
                       Unit Price (excl. VAT) <span style={{ color: '#EF4444' }}>*</span>
                     </label>
-                    <p className="text-[10px] mb-1.5" style={{ color: '#A1A1AA' }}>
-                      Price before VAT — VAT will be added by the studio when invoicing.
-                    </p>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
                       <input
@@ -752,18 +749,6 @@ function PriceForm({
                         onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
                       />
                     </div>
-                    {/* VAT exempt — small checkbox, only for the rare exception */}
-                    <label className="flex items-center gap-1.5 mt-2 cursor-pointer w-fit">
-                      <input
-                        type="checkbox"
-                        checked={vatExempt}
-                        onChange={e => setVatExempt(e.target.checked)}
-                        className="w-3 h-3 rounded accent-blue-500"
-                      />
-                      <span className="text-[10px]" style={{ color: vatExempt ? '#3B82F6' : '#A1A1AA' }}>
-                        This item is zero-rated / VAT exempt
-                      </span>
-                    </label>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Lead Time (weeks)</label>
@@ -781,6 +766,18 @@ function PriceForm({
                     />
                   </div>
                 </div>
+                {/* VAT exempt — sits below the price row so it doesn't affect input alignment */}
+                <label className="flex items-center gap-1.5 cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    checked={vatExempt}
+                    onChange={e => setVatExempt(e.target.checked)}
+                    className="w-3 h-3 rounded accent-blue-500"
+                  />
+                  <span className="text-[10px]" style={{ color: vatExempt ? '#3B82F6' : '#A1A1AA' }}>
+                    This item is zero-rated / VAT exempt
+                  </span>
+                </label>
 
                 {/* Installation */}
                 <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #E4E4E7' }}>
@@ -1006,6 +1003,114 @@ function QuoteUpload({ token, locked }: { token: string; locked?: boolean }) {
 }
 
 
+function DeliveryFeeModal({
+  token,
+  initialValue,
+  onSaved,
+  onClose,
+}: {
+  token: string
+  initialValue: number | null
+  onSaved: (fee: number | null) => void
+  onClose: () => void
+}) {
+  const [fee, setFee] = useState(initialValue != null ? initialValue.toString() : '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    setSaving(true)
+    setError(null)
+    try {
+      const feeValue = fee !== '' ? Number(fee) : null
+      const res = await fetch(`/api/sourcing/respond/${token}/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delivery_fee: feeValue }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      setSaved(true)
+      onSaved(feeValue)
+      setTimeout(onClose, 700)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm mx-4 rounded-2xl overflow-hidden shadow-2xl"
+        style={{ background: '#FFFFFF' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-6 py-5" style={{ borderBottom: '1px solid #E4E4E7' }}>
+          <p className="text-base font-semibold" style={{ color: '#18181B' }}>Delivery Fee</p>
+          <p className="text-sm mt-1" style={{ color: '#71717A' }}>
+            What&apos;s the total delivery cost covering all items in this quote? Enter 0 if delivery is free.
+          </p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
+              Amount (excl. VAT)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={fee}
+                onChange={e => { setFee(e.target.value); setSaved(false) }}
+                placeholder="0.00"
+                autoFocus
+                className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave() } }}
+              />
+            </div>
+          </div>
+          {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 text-sm rounded-lg transition-opacity hover:opacity-70"
+              style={{ color: '#71717A', border: '1px solid #E4E4E7' }}
+            >
+              Skip for now
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+              style={{
+                background: saved ? '#ECFDF5' : '#34495E',
+                color: saved ? '#065F46' : '#FFFFFF',
+                border: saved ? '1px solid #A7F3D0' : 'none',
+              }}
+            >
+              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save delivery fee'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SupplierRespondClient({
   token,
   sessionSupplierId,
@@ -1021,11 +1126,14 @@ export function SupplierRespondClient({
   const [items, setItems] = useState(assignments)
   const [declining, setDeclining] = useState(false)
   const [fullyDeclined, setFullyDeclined] = useState(false)
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false)
+  const [currentDeliveryFee, setCurrentDeliveryFee] = useState(initialDeliveryFee)
 
   function handleSaved(assignmentId: string, response: Assignment['response']) {
     setItems(prev =>
       prev.map(a => a.id === assignmentId ? { ...a, status: 'responded', response } : a)
     )
+    setShowDeliveryModal(true)
   }
 
   function handleDeclined(assignmentId: string) {
@@ -1081,6 +1189,14 @@ export function SupplierRespondClient({
 
   return (
     <div className="min-h-screen" style={{ background: '#F4F4F5' }}>
+      {showDeliveryModal && (
+        <DeliveryFeeModal
+          token={token}
+          initialValue={currentDeliveryFee}
+          onSaved={fee => setCurrentDeliveryFee(fee)}
+          onClose={() => setShowDeliveryModal(false)}
+        />
+      )}
       {/* Header — only shown for standalone (unauthenticated) token access */}
       {showBackLink && (
         <div style={{ background: '#27272A' }}>
@@ -1142,7 +1258,7 @@ export function SupplierRespondClient({
             ))}
           </div>
           <DeliveryFeeSection token={token} initialDeliveryFee={initialDeliveryFee} />
-          <QuoteUpload token={token} locked={allDone} />
+          <QuoteUpload token={token} />
           <div className="pt-2 border-t border-[#E4E4E7]">
             <button type="button" onClick={handleDeclineAll} disabled={declining}
               className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
@@ -1197,7 +1313,7 @@ export function SupplierRespondClient({
             </div>
             <div className="space-y-4">
               <DeliveryFeeSection token={token} initialDeliveryFee={initialDeliveryFee} />
-              <QuoteUpload token={token} locked={allDone} />
+              <QuoteUpload token={token} />
               <div className="pt-2 border-t border-[#E4E4E7]">
                 <button type="button" onClick={handleDeclineAll} disabled={declining}
                   className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70 disabled:opacity-40 mx-auto"
