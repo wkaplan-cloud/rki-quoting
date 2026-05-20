@@ -265,6 +265,7 @@ interface Settings {
   production_sheet_email?: string | null
   pdf_template?: string | null
   pdf_color_theme?: string | null
+  sage_invoice_message?: string | null
 }
 
 type Tab = 'general' | 'branding' | 'accounting'
@@ -469,6 +470,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
     lead_time:              settings?.lead_time ?? '',
     pdf_template:           settings?.pdf_template ?? 'minimal',
     pdf_color_theme:        settings?.pdf_color_theme ?? 'warm',
+    sage_invoice_message:   settings?.sage_invoice_message ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -879,6 +881,21 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                           </div>
                         )}
                         {showItemDropdown && sageItems.length === 0 && !fetchingItems && <p className="text-xs text-[#8A877F]">No items found in Sage.</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-[#8A877F] block">Default Invoice Message</label>
+                        <p className="text-xs text-[#8A877F]">Paste the message from your Sage invoice settings here — it will be included on every invoice pushed to Sage.</p>
+                        <Textarea
+                          value={form.sage_invoice_message}
+                          onChange={e => set('sage_invoice_message', e.target.value)}
+                          rows={4}
+                          placeholder="e.g. Thank you for your business. Please make payment within 30 days."
+                        />
+                        <Button type="button" onClick={async () => {
+                          const { error } = await supabase.from('settings').update({ sage_invoice_message: form.sage_invoice_message }).eq('id', settings!.id)
+                          if (error) toast.error(error.message)
+                          else toast.success('Invoice message saved')
+                        }}>Save message</Button>
                       </div>
                     </>
                   ) : (
