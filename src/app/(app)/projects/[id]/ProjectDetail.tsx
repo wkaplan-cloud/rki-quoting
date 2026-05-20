@@ -323,7 +323,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     }
   }, [prodSheetEmailInput, initialProductionSheetEmail, project.id, supabase])
 
-  const openSageModal = useCallback(() => {
+  const openSageModal = useCallback(async () => {
     setSageModalOpen(true)
     setSageModalTab('push')
     setSageSelectedCustomer(null)
@@ -332,7 +332,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     setSageSelectedInvoice(null)
     setSageInvoiceSearch('')
     setSageInvoices([])
-  }, [])
+
+    if (sageInvoiceId) {
+      const res = await fetch(`/api/sage/invoice-customer?invoiceId=${sageInvoiceId}`)
+      const customer = await res.json()
+      if (customer?.id) {
+        setSageSelectedCustomer(customer)
+        setSageCustomerSearch(customer.name)
+      }
+    }
+  }, [sageInvoiceId])
 
   // Debounced customer search — fires 350ms after the user stops typing (2+ chars)
   useEffect(() => {
