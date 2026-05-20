@@ -143,21 +143,18 @@ export async function POST(req: NextRequest) {
     const docDate = toSageDate(now)
     const dueDate = toSageDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000))
 
-    // Mirror what Sage does manually: copy the customer's addresses and tax ref onto the invoice
+    // Mirror what Sage does manually: copy the customer's addresses and tax ref onto the invoice.
+    // Sage uses flat numbered fields (DeliveryAddress01-05, PostalAddress01-05) not nested objects.
     const customerFields: Record<string, unknown> = {}
     if (customerResp) {
-      const vatNumber = customerResp.TaxNumber ?? customerResp.VatRegistrationNumber ?? customerResp.TaxReference ?? customerResp.TaxRegistrationNumber ?? null
-      if (vatNumber) {
-        customerFields.TaxReferenceNumber = vatNumber
-        customerFields.TaxNumber = vatNumber
-      }
-      // Sage API versions differ — send both names so one sticks
-      if (customerResp.PhysicalAddress) {
-        customerFields.PhysicalAddress = customerResp.PhysicalAddress
-        customerFields.DeliveryAddress = customerResp.PhysicalAddress
-      }
-      if (customerResp.PostalAddress) {
-        customerFields.PostalAddress = customerResp.PostalAddress
+      const taxRef = customerResp.TaxReference ?? customerResp.TaxNumber ?? customerResp.VatRegistrationNumber ?? null
+      if (taxRef) customerFields.TaxReference = taxRef
+
+      for (let i = 1; i <= 5; i++) {
+        const da = customerResp[`DeliveryAddress0${i}`]
+        const pa = customerResp[`PostalAddress0${i}`]
+        if (da !== undefined) customerFields[`DeliveryAddress0${i}`] = da
+        if (pa !== undefined) customerFields[`PostalAddress0${i}`] = pa
       }
     }
 
