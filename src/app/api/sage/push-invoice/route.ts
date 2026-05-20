@@ -28,11 +28,16 @@ export async function POST(req: NextRequest) {
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     if (!settings?.sage_item_id) return NextResponse.json({ error: 'Sage Item ID not configured — set it in Admin → Settings' }, { status: 400 })
 
-    // Block update if invoice is already paid
+    // Block update if invoice has any payment against it
     const existingStatus = (project.sage_invoice_status ?? '').toUpperCase()
     if (project.sage_invoice_id && (existingStatus === 'PAID')) {
       return NextResponse.json({
-        error: 'This invoice has already been marked as paid in Sage and cannot be updated. Use Sync to confirm the current status.',
+        error: 'This invoice has already been paid in Sage and cannot be updated.',
+      }, { status: 400 })
+    }
+    if (project.sage_invoice_id && stages?.deposit_received) {
+      return NextResponse.json({
+        error: 'A deposit has been received against this invoice. It cannot be overwritten.',
       }, { status: 400 })
     }
 

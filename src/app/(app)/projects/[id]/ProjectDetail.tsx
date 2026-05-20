@@ -677,7 +677,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isPaid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                   Sage: {sageInvoiceStatus ?? 'Pushed'}
                 </span>
-                {sageConnected && !isPaid && (
+                {sageConnected && !isPaid && !stages?.deposit_received && (
                   <button onClick={openSageModal}
                     title="Overwrites the Sage invoice with QuotingHub's current line items and amounts — any changes the accountant made directly in Sage will be lost"
                     className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
