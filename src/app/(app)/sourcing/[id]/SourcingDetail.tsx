@@ -1353,6 +1353,11 @@ function SupplierCard({
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
               {effectiveStatus.replace('_', ' ')}
             </span>
+            {ss.delivery_fee != null && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#F5F2EC] text-[#8A877F]">
+                Delivery: R{ss.delivery_fee.toLocaleString()}
+              </span>
+            )}
             {respondedCount > 0 && (
               <button
                 type="button"
@@ -1383,7 +1388,6 @@ function SupplierCard({
           <p className="text-xs text-[#8A877F] mt-0.5">
             {ss.email} · {assignedItems.length} item{assignedItems.length !== 1 ? 's' : ''}
             {ss.sent_at ? ` · Sent ${fmtDateTime(ss.sent_at)}` : ''}
-            {ss.delivery_fee != null ? ` · Delivery: R${ss.delivery_fee.toLocaleString()}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
