@@ -34,6 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       category?: string
       item_specs?: Record<string, string> | null
       sort_order?: number
+      piece_id?: string | null
     }
     if (!body.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
 
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         category: body.category ?? 'general',
         item_specs: body.item_specs ?? null,
         sort_order,
+        piece_id: body.piece_id ?? null,
       })
       .select()
       .single()

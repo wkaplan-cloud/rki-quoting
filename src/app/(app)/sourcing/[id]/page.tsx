@@ -23,6 +23,7 @@ export default async function SourcingDetailPage({
     { data: items },
     { data: suppliers },
     { data: projects },
+    { data: pieces },
   ] = await Promise.all([
     supabase.from('sourcing_sessions').select('*, project:projects(project_name)').eq('id', id).maybeSingle() as any,
     supabase
@@ -33,6 +34,7 @@ export default async function SourcingDetailPage({
     supabase.from('sourcing_session_items').select('*, category, item_specs, pushed_to_project_id').eq('session_id', id).order('sort_order', { ascending: true }),
     supabase.from('suppliers').select('id, supplier_name, email').order('supplier_name').limit(500),
     supabase.from('projects').select('id, project_number, project_name').is('archived_at', null).order('created_at', { ascending: false }).limit(50),
+    supabase.from('pieces').select('id, name, category, work_type, dimensions, colour_finish, item_specs, base_price, image_urls, description').order('name'),
   ])
 
   if (!session) notFound()
@@ -99,6 +101,7 @@ export default async function SourcingDetailPage({
           initialSuppliers={enrichedSuppliers}
           allSuppliers={(suppliers ?? []) as { id: string; supplier_name: string; email: string | null }[]}
           projects={(projects ?? []) as { id: string; project_number: string | null; project_name: string }[]}
+          pieces={(pieces ?? []) as any[]}
         />
       </div>
     </div>

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, X, Pencil, Trash2, ImagePlus, Tag, ArrowRight,
   Loader2, ChevronLeft, ChevronRight, LayoutGrid, PackageOpen,
 } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
+import { createClient } from '@/lib/supabase/client'
 
 interface Piece {
   id: string
@@ -498,6 +499,133 @@ function AddToQuoteModal({
   )
 }
 
+// ---- Price Request Modal ----
+function PriceRequestModal({ piece, onClose }: { piece: Piece; onClose: () => void }) {
+  const router = useRouter()
+  const [sessions, setSessions] = useState<{ id: string; title: string; request_number: number | null; status: string }[] | null>(null)
+  const [adding, setAdding] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('sourcing_sessions')
+      .select('id, title, request_number, status')
+      .not('archived', 'eq', true)
+      .in('status', ['draft', 'sent', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => setSessions(data ?? []))
+  }, [])
+
+  async function handleAddToSession(sessionId: string) {
+    setAdding(sessionId)
+    try {
+      const isGeneral = !piece.category || piece.category === 'general'
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: piece.name,
+          category: piece.category ?? 'general',
+          work_type: isGeneral ? (piece.work_type ?? null) : null,
+          specifications: piece.description ?? null,
+          item_quantity: 1,
+          dimensions: isGeneral ? (piece.dimensions ?? null) : null,
+          colour_finish: isGeneral ? (piece.colour_finish ?? null) : null,
+          item_specs: !isGeneral ? (piece.item_specs ?? null) : null,
+          ref_image_urls: piece.image_urls?.length ? piece.image_urls : null,
+          piece_id: piece.id,
+        }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      router.push(`/sourcing/${sessionId}`)
+    } catch (err: any) {
+      alert(err.message)
+      setAdding(null)
+    }
+  }
+
+  async function handleCreateNew() {
+    setCreating(true)
+    try {
+      const res = await fetch(`/api/pieces/${piece.id}/send-for-pricing`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      router.push(`/sourcing/${json.session_id}`)
+    } catch (err: any) {
+      alert(err.message)
+      setCreating(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#EDE9E1]">
+          <div>
+            <h2 className="text-base font-bold text-[#2C2C2A]">Price request</h2>
+            <p className="text-xs text-[#8A877F] mt-0.5">{piece.name}</p>
+          </div>
+          <button onClick={onClose} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors"><X size={18} /></button>
+        </div>
+
+        <div className="px-6 py-5 space-y-3">
+          {/* Create new */}
+          <button
+            onClick={handleCreateNew}
+            disabled={creating}
+            className="w-full flex items-center gap-3 px-4 py-3 border-2 border-dashed border-[#D4CFC7] rounded-xl text-left hover:border-[#C4A46B] hover:bg-[#FEFDF9] transition-colors disabled:opacity-50"
+          >
+            <div className="w-9 h-9 rounded-lg border-2 border-dashed border-[#D4CFC7] flex items-center justify-center shrink-0 text-[#8A877F]">
+              {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-[#2C2C2A]">Create new price request</p>
+              <p className="text-xs text-[#8A877F]">Starts a fresh request with this piece</p>
+            </div>
+          </button>
+
+          {/* Existing open sessions */}
+          {sessions === null ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 size={16} className="animate-spin text-[#C4BFB5]" />
+            </div>
+          ) : sessions.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Add to existing request</p>
+              <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                {sessions.map(s => {
+                  const ref = s.request_number ? `PR-${String(s.request_number).padStart(3, '0')}` : null
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => handleAddToSession(s.id)}
+                      disabled={!!adding || creating}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#F5F2EC] rounded-xl hover:bg-[#EDE9E1] transition-colors text-left disabled:opacity-50"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#2C2C2A] truncate">{s.title}</p>
+                        {ref && (
+                          <p className="text-xs text-[#8A877F]">{ref} · {s.status.replace('_', ' ')}</p>
+                        )}
+                      </div>
+                      {adding === s.id
+                        ? <Loader2 size={13} className="animate-spin text-[#8A877F] shrink-0" />
+                        : <ArrowRight size={13} className="text-[#C4BFB5] shrink-0" />
+                      }
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function pricedAgoLabel(iso: string): { label: string; stale: boolean } {
   const months = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24 * 30.5))
   if (months < 1) return { label: 'priced this month', stale: false }
@@ -648,7 +776,7 @@ export function PiecesClient({ initialPieces, suppliers, projects }: Props) {
   const [showAdd, setShowAdd] = useState(false)
   const [editingPiece, setEditingPiece] = useState<Piece | null>(null)
   const [addToQuote, setAddToQuote] = useState<Piece | null>(null)
-  const [sendingPricing, setSendingPricing] = useState<string | null>(null)
+  const [pricingModal, setPricingModal] = useState<Piece | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
   function showToast(msg: string) {
@@ -675,18 +803,8 @@ export function PiecesClient({ initialPieces, suppliers, projects }: Props) {
     }
   }
 
-  async function handleSendForPricing(piece: Piece) {
-    setSendingPricing(piece.id)
-    try {
-      const res = await fetch(`/api/pieces/${piece.id}/send-for-pricing`, { method: 'POST' })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      router.push(`/sourcing/${json.session_id}`)
-    } catch (err: any) {
-      alert(err.message)
-    } finally {
-      setSendingPricing(null)
-    }
+  function handleSendForPricing(piece: Piece) {
+    setPricingModal(piece)
   }
 
   return (
@@ -746,14 +864,9 @@ export function PiecesClient({ initialPieces, suppliers, projects }: Props) {
         </div>
       )}
 
-      {/* Sending for pricing overlay */}
-      {sendingPricing && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center">
-          <div className="bg-white rounded-2xl px-8 py-6 flex items-center gap-4 shadow-2xl">
-            <Loader2 size={20} className="animate-spin text-[#C4A46B]" />
-            <p className="text-sm font-medium text-[#2C2C2A]">Creating price request…</p>
-          </div>
-        </div>
+      {/* Price request modal */}
+      {pricingModal && (
+        <PriceRequestModal piece={pricingModal} onClose={() => setPricingModal(null)} />
       )}
 
       {/* Modals */}

@@ -6,10 +6,24 @@ import {
   Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
   X, Check, CheckCircle2, ImagePlus,
   AlertTriangle, ArrowRight, BarChart3, Download,
+  PackageOpen, ChevronRight, ChevronLeft,
 } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
 // ---- Types ----
+interface PieceOption {
+  id: string
+  name: string
+  category: string
+  work_type: string | null
+  dimensions: string | null
+  colour_finish: string | null
+  item_specs: Record<string, string> | null
+  base_price: number | null
+  image_urls: string[]
+  description: string | null
+}
+
 interface SessionItem {
   id: string
   title: string
@@ -78,6 +92,7 @@ interface Props {
   initialSuppliers: SessionSupplier[]
   allSuppliers: { id: string; supplier_name: string; email: string | null }[]
   projects: { id: string; project_number: string | null; project_name: string }[]
+  pieces: PieceOption[]
 }
 
 const INPUT = 'w-full px-3 py-2 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white'
@@ -313,6 +328,382 @@ function AddItemForm({ sessionId, onAdded, sortOrder }: { sessionId: string; onA
         </button>
       </div>
     </form>
+  )
+}
+
+// ---- Add Piece Form (picker modal → form) ----
+function AddPieceForm({ sessionId, onAdded, sortOrder, pieces }: {
+  sessionId: string
+  onAdded: (item: SessionItem) => void
+  sortOrder: number
+  pieces: PieceOption[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [view, setView] = useState<'picker' | 'form'>('picker')
+  const [selectedPiece, setSelectedPiece] = useState<PieceOption | null>(null)
+  const [search, setSearch] = useState('')
+
+  // Form fields
+  const [title, setTitle] = useState('')
+  const [qty, setQty] = useState('')
+  const [specs, setSpecs] = useState('')
+  const [refImages, setRefImages] = useState<File[]>([])
+  const [saving, setSaving] = useState(false)
+  const [category, setCategory] = useState<CategoryKey>('general')
+  const [specValues, setSpecValues] = useState<Record<string, string>>({})
+  const [workType, setWorkType] = useState('')
+  const [dimensions, setDimensions] = useState('')
+  const [colourFinish, setColourFinish] = useState('')
+  const [saveToLibrary, setSaveToLibrary] = useState(false)
+
+  function openWithPiece(piece: PieceOption | null) {
+    if (piece) {
+      setSelectedPiece(piece)
+      setTitle(piece.name)
+      setCategory((piece.category as CategoryKey) || 'general')
+      setSpecValues(piece.item_specs ?? {})
+      setWorkType(piece.work_type ?? '')
+      setDimensions(piece.dimensions ?? '')
+      setColourFinish(piece.colour_finish ?? '')
+      setSpecs(piece.description ?? '')
+      setQty('1')
+    } else {
+      setSelectedPiece(null)
+      setTitle('')
+      setCategory('general')
+      setSpecValues({})
+      setWorkType('')
+      setDimensions('')
+      setColourFinish('')
+      setSpecs('')
+      setQty('')
+    }
+    setSaveToLibrary(false)
+    setRefImages([])
+    setView('form')
+  }
+
+  function close() {
+    setOpen(false)
+    setView('picker')
+    setSearch('')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim()) return
+    setSaving(true)
+    try {
+      // Upload ref images to sourcing session
+      let refImageUrls: string[] = []
+      if (refImages.length > 0) {
+        const formData = new FormData()
+        refImages.forEach(f => formData.append('files', f))
+        formData.append('session_id', sessionId)
+        const uploadRes = await fetch(`/api/sourcing/sessions/${sessionId}/item-images`, { method: 'POST', body: formData })
+        if (uploadRes.ok) refImageUrls = (await uploadRes.json()).urls ?? []
+      }
+
+      const cleanSpecs = Object.fromEntries(Object.entries(specValues).filter(([, v]) => v.trim()))
+      const isGeneral = category === 'general'
+
+      // Optionally save a brand-new piece to the library first
+      let piece_id = selectedPiece?.id ?? null
+      if (saveToLibrary && !selectedPiece) {
+        const pieceRes = await fetch('/api/pieces', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: title.trim(),
+            description: specs.trim() || null,
+            category,
+            work_type: isGeneral ? (workType.trim() || null) : null,
+            dimensions: isGeneral ? (dimensions.trim() || null) : null,
+            colour_finish: isGeneral ? (colourFinish.trim() || null) : null,
+            item_specs: !isGeneral && Object.keys(cleanSpecs).length > 0 ? cleanSpecs : null,
+          }),
+        })
+        if (pieceRes.ok) {
+          const pj = await pieceRes.json()
+          piece_id = pj.data?.id ?? null
+        }
+      }
+
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          item_quantity: qty ? Number(qty) : null,
+          specifications: specs.trim() || null,
+          ref_image_urls: refImageUrls.length > 0 ? refImageUrls : (selectedPiece?.image_urls?.length ? selectedPiece.image_urls : null),
+          category,
+          sort_order: sortOrder,
+          work_type: isGeneral ? (workType.trim() || null) : null,
+          dimensions: isGeneral ? (dimensions.trim() || null) : null,
+          colour_finish: isGeneral ? (colourFinish.trim() || null) : null,
+          item_specs: !isGeneral && Object.keys(cleanSpecs).length > 0 ? cleanSpecs : null,
+          piece_id,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      onAdded(json.data)
+      close()
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const filtered = pieces.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="flex items-center gap-1.5 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors py-1">
+        <Plus size={14} /> Add Piece
+      </button>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={close}>
+      <div
+        className="bg-white rounded-2xl w-full max-w-2xl max-h-[88vh] overflow-hidden flex flex-col shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#EDE9E1]">
+          <div className="flex items-center gap-2">
+            {view === 'form' && (
+              <button type="button" onClick={() => setView('picker')} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            <h2 className="text-base font-bold text-[#2C2C2A]">
+              {view === 'picker' ? 'Add Piece' : selectedPiece ? selectedPiece.name : 'New Piece'}
+            </h2>
+          </div>
+          <button type="button" onClick={close} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* PICKER VIEW */}
+        {view === 'picker' && (
+          <div className="flex flex-col overflow-hidden flex-1">
+            <div className="px-6 py-3 border-b border-[#EDE9E1]">
+              <input
+                autoFocus
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search your pieces library…"
+                className={INPUT}
+              />
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {/* Create new option always at top */}
+              <button
+                type="button"
+                onClick={() => openWithPiece(null)}
+                className="w-full flex items-center gap-3 px-4 py-3 border-2 border-dashed border-[#D4CFC7] rounded-xl text-left hover:border-[#C4A46B] hover:bg-[#FEFDF9] transition-colors"
+              >
+                <div className="w-10 h-10 rounded-lg border-2 border-dashed border-[#D4CFC7] flex items-center justify-center shrink-0 text-[#8A877F]">
+                  <Plus size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[#2C2C2A]">Create new piece</p>
+                  <p className="text-xs text-[#C4BFB5]">Add from scratch — optionally save to your library</p>
+                </div>
+              </button>
+
+              {pieces.length === 0 ? (
+                <p className="text-sm text-[#8A877F] text-center py-6">Your Pieces library is empty.</p>
+              ) : filtered.length === 0 ? (
+                <p className="text-sm text-[#8A877F] text-center py-6">No pieces match &ldquo;{search}&rdquo;</p>
+              ) : (
+                filtered.map(piece => (
+                  <button
+                    key={piece.id}
+                    type="button"
+                    onClick={() => openWithPiece(piece)}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-[#EDE9E1] rounded-xl hover:border-[#C4A46B] hover:bg-[#FEFDF9] transition-colors text-left"
+                  >
+                    {piece.image_urls?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={piece.image_urls[0]} alt={piece.name} className="w-10 h-10 object-cover rounded-lg border border-[#EDE9E1] shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-[#F5F2EC] flex items-center justify-center shrink-0">
+                        <PackageOpen size={15} className="text-[#C4BFB5]" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#2C2C2A] truncate">{piece.name}</p>
+                      <p className="text-xs text-[#8A877F] truncate">
+                        {piece.category !== 'general' ? piece.category : (piece.work_type ?? '—')}
+                        {piece.base_price ? ` · R${piece.base_price.toLocaleString()}` : ''}
+                      </p>
+                    </div>
+                    <ChevronRight size={14} className="text-[#C4BFB5] shrink-0" />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* FORM VIEW */}
+        {view === 'form' && (
+          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+            {selectedPiece && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#F5F2EC] text-xs text-[#8A877F]">
+                <PackageOpen size={12} />
+                From your library — edits apply to this price request only
+              </div>
+            )}
+
+            {/* Name + qty */}
+            <div className="grid grid-cols-3 gap-2">
+              <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="Piece name *" required className={`${INPUT} col-span-2`} />
+              <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)} placeholder="Qty" className={INPUT} />
+            </div>
+
+            {/* Category */}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Category</p>
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORIES.map(cat => (
+                  <button key={cat.key} type="button"
+                    onClick={() => { setCategory(cat.key as CategoryKey); setSpecValues({}) }}
+                    className="px-3 py-1 text-xs font-medium rounded-full border transition-colors"
+                    style={category === cat.key
+                      ? { background: '#2C2C2A', color: '#F5F2EC', borderColor: '#2C2C2A' }
+                      : { background: 'white', color: '#8A877F', borderColor: '#D4CFC7' }
+                    }
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* General free-text fields */}
+            {category === 'general' && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={workType} onChange={e => setWorkType(e.target.value)} placeholder="Work type / category" className={INPUT} />
+                  <input value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="Dimensions" className={INPUT} />
+                </div>
+                <input value={colourFinish} onChange={e => setColourFinish(e.target.value)} placeholder="Colour / Finish" className={INPUT} />
+              </div>
+            )}
+
+            {/* Structured spec fields */}
+            {CATEGORY_FIELDS[category].length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F]">
+                  Specifications <span className="normal-case font-normal text-[#C4BFB5]">— fill in what you know</span>
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATEGORY_FIELDS[category].map(field => {
+                    const val = specValues[field.key] ?? ''
+                    if (field.type === 'select') return (
+                      <div key={field.key}>
+                        <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
+                        <select value={val} onChange={e => setSpecValues(p => ({ ...p, [field.key]: e.target.value }))} className={INPUT}>
+                          <option value="">—</option>
+                          {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </div>
+                    )
+                    if (field.type === 'textarea') return (
+                      <div key={field.key} className="col-span-2">
+                        <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
+                        <textarea value={val} onChange={e => setSpecValues(p => ({ ...p, [field.key]: e.target.value }))}
+                          rows={2} placeholder={field.placeholder} className={`${INPUT} resize-none`} />
+                      </div>
+                    )
+                    return (
+                      <div key={field.key}>
+                        <label className="block text-[10px] text-[#8A877F] mb-0.5">
+                          {field.label}{field.unit && <span className="text-[#C4BFB5] ml-1">({field.unit})</span>}
+                        </label>
+                        <input
+                          type={field.type === 'number' ? 'number' : 'text'}
+                          min={field.type === 'number' ? '0' : undefined}
+                          step={field.type === 'number' ? 'any' : undefined}
+                          value={val}
+                          onChange={e => setSpecValues(p => ({ ...p, [field.key]: e.target.value }))}
+                          placeholder={field.placeholder ?? (field.unit ? 'e.g. 600' : '')}
+                          className={INPUT}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Comments */}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Comments</p>
+              <textarea value={specs} onChange={e => setSpecs(e.target.value)} rows={3}
+                placeholder="Additional notes or requirements for the supplier…"
+                className={`${INPUT} resize-none`} />
+            </div>
+
+            {/* Ref images (only for new pieces, not from library) */}
+            {!selectedPiece && (
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-[#8A877F] hover:text-[#2C2C2A] transition-colors w-fit">
+                  <ImagePlus size={13} />
+                  Add reference images (up to 5)
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={e => {
+                    const files = Array.from(e.target.files ?? [])
+                    setRefImages(prev => [...prev, ...files].slice(0, 5))
+                    e.target.value = ''
+                  }} />
+                </label>
+                {refImages.length > 0 && (
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    {refImages.map((f, i) => (
+                      <div key={i} className="relative group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={URL.createObjectURL(f)} alt={f.name} className="w-14 h-14 object-cover rounded-lg border border-[#D4CFC7]" />
+                        <button type="button" onClick={() => setRefImages(prev => prev.filter((_, j) => j !== i))}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Save to library — only for brand-new pieces */}
+            {!selectedPiece && (
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={saveToLibrary} onChange={e => setSaveToLibrary(e.target.checked)}
+                  className="w-4 h-4 rounded border-[#D4CFC7]" />
+                <span className="text-sm text-[#8A877F]">Save to Pieces library</span>
+              </label>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1 pb-2">
+              <button type="button" onClick={() => setView('picker')}
+                className="px-4 py-2 text-sm text-[#8A877F] border border-[#D4CFC7] rounded-xl hover:border-[#8A877F] transition-colors">
+                Back
+              </button>
+              <button type="submit" disabled={saving || !title.trim()}
+                className="px-5 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-semibold rounded-xl disabled:opacity-50 transition-opacity flex items-center gap-2">
+                {saving && <Loader2 size={13} className="animate-spin" />}
+                {saving ? 'Adding…' : 'Add Piece'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -1651,7 +2042,7 @@ function ProgressRail({ itemsDone, suppliersDone, assignDone }: { itemsDone: boo
 }
 
 // ---- Main Component ----
-export function SourcingDetail({ session, initialItems, initialSuppliers, allSuppliers, projects }: Props) {
+export function SourcingDetail({ session, initialItems, initialSuppliers, allSuppliers, projects, pieces }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
   const [items, setItems] = useState<SessionItem[]>(initialItems)
@@ -1988,7 +2379,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                         })}
                       </div>
                     )}
-                    {!isArchived && <AddItemForm sessionId={session.id} onAdded={handleItemAdded} sortOrder={items.length} />}
+                    {!isArchived && <AddPieceForm sessionId={session.id} onAdded={handleItemAdded} sortOrder={items.length} pieces={pieces} />}
                   </div>
 
                   {/* Right: Suppliers */}
