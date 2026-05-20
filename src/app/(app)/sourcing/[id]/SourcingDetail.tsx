@@ -6,7 +6,7 @@ import {
   Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
   X, Check, CheckCircle2, ImagePlus,
   AlertTriangle, ArrowRight, BarChart3, Download,
-  PackageOpen, ChevronRight, ChevronLeft,
+  PackageOpen, ChevronRight, ChevronLeft, Trash2,
 } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
@@ -355,6 +355,7 @@ function AddPieceForm({ sessionId, onAdded, sortOrder, pieces }: {
   const [dimensions, setDimensions] = useState('')
   const [colourFinish, setColourFinish] = useState('')
   const [saveToLibrary, setSaveToLibrary] = useState(false)
+  const [saveAsNewPiece, setSaveAsNewPiece] = useState(false)
 
   function openWithPiece(piece: PieceOption | null) {
     if (piece) {
@@ -379,6 +380,7 @@ function AddPieceForm({ sessionId, onAdded, sortOrder, pieces }: {
       setQty('')
     }
     setSaveToLibrary(false)
+    setSaveAsNewPiece(false)
     setRefImages([])
     setView('form')
   }
@@ -407,9 +409,10 @@ function AddPieceForm({ sessionId, onAdded, sortOrder, pieces }: {
       const cleanSpecs = Object.fromEntries(Object.entries(specValues).filter(([, v]) => v.trim()))
       const isGeneral = category === 'general'
 
-      // Optionally save a brand-new piece to the library first
+      // Optionally save to the library first
       let piece_id = selectedPiece?.id ?? null
-      if (saveToLibrary && !selectedPiece) {
+      const shouldSaveToLibrary = (saveToLibrary && !selectedPiece) || (saveAsNewPiece && !!selectedPiece)
+      if (shouldSaveToLibrary) {
         const pieceRes = await fetch('/api/pieces', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -680,12 +683,19 @@ function AddPieceForm({ sessionId, onAdded, sortOrder, pieces }: {
               </div>
             )}
 
-            {/* Save to library — only for brand-new pieces */}
+            {/* Library options */}
             {!selectedPiece && (
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input type="checkbox" checked={saveToLibrary} onChange={e => setSaveToLibrary(e.target.checked)}
                   className="w-4 h-4 rounded border-[#D4CFC7]" />
                 <span className="text-sm text-[#8A877F]">Save to Pieces library</span>
+              </label>
+            )}
+            {selectedPiece && (
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" checked={saveAsNewPiece} onChange={e => setSaveAsNewPiece(e.target.checked)}
+                  className="w-4 h-4 rounded border-[#D4CFC7]" />
+                <span className="text-sm text-[#8A877F]">Save edited version as a new piece in library</span>
               </label>
             )}
 
@@ -2092,6 +2102,12 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     setExpandedItemId(null)
   }
 
+  async function handleDeleteItem(itemId: string) {
+    if (!window.confirm('Remove this item from the price request?')) return
+    const res = await fetch(`/api/sourcing/sessions/${session.id}/items/${itemId}`, { method: 'DELETE' })
+    if (res.ok) setItems(prev => prev.filter(i => i.id !== itemId))
+  }
+
   function handleSupplierAdded(ss: SessionSupplier) {
     setSuppliers(prev => [...prev, ss])
   }
@@ -2339,10 +2355,9 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                           const catLabel = CATEGORIES.find(c => c.key === catKey)?.label
                           return (
                             <div key={item.id} className="bg-white border border-[#EDE9E1] rounded-xl overflow-hidden">
-                              <button
-                                type="button"
+                              <div
                                 onClick={() => setExpandedItemId(isExpanded ? null : item.id)}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAF8] transition-colors"
+                                className="group w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAF8] transition-colors cursor-pointer"
                               >
                                 {item.ref_image_urls && item.ref_image_urls.length > 0 && (
                                   // eslint-disable-next-line @next/next/no-img-element
@@ -2368,8 +2383,20 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                                     }
                                   </p>
                                 </div>
-                                {isExpanded ? <ChevronUp size={13} className="text-[#8A877F] shrink-0" /> : <ChevronDown size={13} className="text-[#8A877F] shrink-0" />}
-                              </button>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {!isArchived && item.status !== 'accepted' && (
+                                    <button
+                                      type="button"
+                                      onClick={e => { e.stopPropagation(); handleDeleteItem(item.id) }}
+                                      className="p-1 text-transparent group-hover:text-[#C4BFB5] hover:!text-red-400 hover:bg-red-50 rounded transition-colors"
+                                      title="Remove from price request"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  )}
+                                  {isExpanded ? <ChevronUp size={13} className="text-[#8A877F]" /> : <ChevronDown size={13} className="text-[#8A877F]" />}
+                                </div>
+                              </div>
 
                               {isExpanded && (
                                 <ItemEditPanel item={item} sessionId={session.id} onSaved={handleItemUpdated} onCancel={() => setExpandedItemId(null)} />
