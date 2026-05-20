@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         return {
           SelectionId: selectionId,
           LineType: 0,
-          Description: trunc((!item.description || item.item_name === 'Fabric') ? item.item_name : `${item.item_name} — ${item.description}`),
+          Description: trunc(item.item_name),
           Quantity: item.quantity,
           UnitPriceExclusive: c?.sale_price ?? 0,
           TaxTypeId: taxTypeId,
