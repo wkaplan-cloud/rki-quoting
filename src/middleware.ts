@@ -61,6 +61,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/confirming') ||
     pathname.startsWith('/set-password') ||
     pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/auth/reset') ||
     pathname.startsWith('/api/auth/set-password') ||
     pathname.startsWith('/api/auth') ||
     pathname === '/opengraph-image' ||
