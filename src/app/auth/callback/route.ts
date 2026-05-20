@@ -13,12 +13,16 @@ export async function GET(request: NextRequest) {
   // generateLink() produces an OTP-style action link. When clicked, Supabase verifies
   // server-side and redirects to our callback with ?token_hash=xxx&type=xxx (NOT ?code=xxx).
   if (token_hash && type) {
-    const otpType = type === 'invite' ? 'invite' : 'email'
+    const otpType = type === 'invite' ? 'invite' : type === 'recovery' ? 'recovery' : 'email'
     const { error } = await supabase.auth.verifyOtp({ token_hash, type: otpType })
 
     if (error) {
       // Token invalid or already used — send to login with a message
       return NextResponse.redirect(`${origin}/login?error=confirmation_failed`)
+    }
+
+    if (type === 'recovery') {
+      return NextResponse.redirect(`${origin}/set-password?mode=recovery`)
     }
 
     if (type === 'invite') {
