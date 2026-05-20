@@ -690,6 +690,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 </span>
                 {sageConnected && !isPaid && (
                   <button onClick={handleSyncSageStatus} disabled={sageSyncing}
+                    title="Checks Sage for the latest payment status — use this after the accountant records a deposit or payment in Sage"
                     className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer">
                     <RefreshCw size={11} className={sageSyncing ? 'animate-spin' : ''} />
                     {sageSyncing ? 'Syncing…' : 'Sync'}
