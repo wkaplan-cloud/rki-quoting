@@ -127,7 +127,7 @@ function buildUrl(apiBase: string, companyId: string, path: string, extra?: Reco
   let base = `${apiBase}${path}?CompanyId=${companyId}`
   if (apiKey) base += `&apikey=${apiKey}`
   if (extra) {
-    for (const [k, v] of Object.entries(extra)) base += `&${k}=${v}`
+    for (const [k, v] of Object.entries(extra)) base += `&${k}=${encodeURIComponent(String(v))}`
   }
   return base
 }

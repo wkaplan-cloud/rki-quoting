@@ -323,7 +323,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     }
   }, [prodSheetEmailInput, initialProductionSheetEmail, project.id, supabase])
 
-  const openSageModal = useCallback(async () => {
+  const openSageModal = useCallback(() => {
     setSageModalOpen(true)
     setSageModalTab('push')
     setSageSelectedCustomer(null)
@@ -332,19 +332,30 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     setSageSelectedInvoice(null)
     setSageInvoiceSearch('')
     setSageInvoices([])
-    setSageCustomersLoading(true)
-    try {
-      const res = await fetch('/api/sage/customers')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setSageCustomers(Array.isArray(data) ? data : [])
-    } catch (e: unknown) {
-      toast.error((e instanceof Error ? e.message : 'Failed to load Sage customers'))
-      setSageModalOpen(false)
-    } finally {
-      setSageCustomersLoading(false)
-    }
   }, [])
+
+  // Debounced customer search — fires 350ms after the user stops typing (2+ chars)
+  useEffect(() => {
+    const q = sageCustomerSearch.trim()
+    if (q.length < 2) {
+      setSageCustomers([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setSageCustomersLoading(true)
+      try {
+        const res = await fetch(`/api/sage/customers?q=${encodeURIComponent(q)}`)
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error)
+        setSageCustomers(Array.isArray(data) ? data : [])
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : 'Failed to search Sage customers')
+      } finally {
+        setSageCustomersLoading(false)
+      }
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [sageCustomerSearch])
 
   const loadSageInvoices = useCallback(async () => {
     setSageInvoicesLoading(true)
@@ -472,9 +483,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     inv.customerName.toLowerCase().includes(sageInvoiceSearch.toLowerCase())
   )
 
-  const filteredSageCustomers = sageCustomers.filter(c =>
-    c.name.toLowerCase().includes(sageCustomerSearch.toLowerCase())
-  )
+  // Results are already filtered server-side; alias for use in JSX
+  const filteredSageCustomers = sageCustomers
 
   return (
     <div className="flex flex-col h-full">
@@ -1121,9 +1131,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 </div>
                 <div className="overflow-y-auto flex-1">
                   {sageCustomersLoading ? (
-                    <p className="text-xs text-[#8A877F] text-center py-6">Loading customers…</p>
-                  ) : sageCustomers.length === 0 ? (
-                    <p className="text-xs text-[#8A877F] text-center py-6">No customers found in Sage</p>
+                    <p className="text-xs text-[#8A877F] text-center py-6">Searching…</p>
+                  ) : sageCustomerSearch.trim().length < 2 ? (
+                    <p className="text-xs text-[#8A877F] text-center py-6">Type at least 2 characters to search</p>
                   ) : filteredSageCustomers.length === 0 ? (
                     <p className="text-xs text-[#8A877F] text-center py-6">No customers match</p>
                   ) : (
