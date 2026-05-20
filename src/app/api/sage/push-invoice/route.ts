@@ -8,7 +8,7 @@ export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
   try {
-    const { projectId, sageContactId } = await req.json()
+    const { projectId, sageContactId, sageCustomerName = '' } = await req.json()
     if (!projectId || !sageContactId) {
       return NextResponse.json({ error: 'Missing projectId or sageContactId' }, { status: 400 })
     }
@@ -170,6 +170,8 @@ export async function POST(req: NextRequest) {
         sage_invoice_id: String(sageId),
         sage_invoice_status: String(sageStatus),
         sage_pushed_at: pushedAt,
+        sage_customer_id: String(sageContactId),
+        sage_customer_name: sageCustomerName,
         status: newProjectStatus,
       }).eq('id', projectId),
       // Auto-advance project to "Invoice" status when invoice is pushed to Sage

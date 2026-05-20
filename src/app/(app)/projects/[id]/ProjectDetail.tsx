@@ -69,6 +69,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sageSyncing, setSageSyncing] = useState(false)
   const [sageInvoiceId, setSageInvoiceId] = useState(initial.sage_invoice_id ?? null)
   const [sageInvoiceStatus, setSageInvoiceStatus] = useState(initial.sage_invoice_status ?? null)
+  const [sageLinkedCustomer, setSageLinkedCustomer] = useState<SageCustomer | null>(
+    initial.sage_customer_id ? { id: initial.sage_customer_id, name: initial.sage_customer_name ?? '' } : null
+  )
   const [depositAmountReceived, setDepositAmountReceived] = useState<number | null>(initial.deposit_amount_received ?? null)
   // Xero state
   const [pushingXero, setPushingXero] = useState(false)
@@ -323,26 +326,23 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     }
   }, [prodSheetEmailInput, initialProductionSheetEmail, project.id, supabase])
 
-  const openSageModal = useCallback(async () => {
+  const openSageModal = useCallback(() => {
     setSageModalOpen(true)
     setSageModalTab('push')
-    setSageSelectedCustomer(null)
-    setSageCustomerSearch('')
-    setSageCustomers([])
     setSageSelectedInvoice(null)
     setSageInvoiceSearch('')
     setSageInvoices([])
 
-    if (sageInvoiceId) {
-      const res = await fetch(`/api/sage/invoice-customer?invoiceId=${sageInvoiceId}`)
-      const customer = await res.json()
-      if (customer?.id) {
-        setSageSelectedCustomer(customer)
-        setSageCustomerSearch(customer.name)
-        setSageCustomers([customer])
-      }
+    if (sageLinkedCustomer) {
+      setSageSelectedCustomer(sageLinkedCustomer)
+      setSageCustomerSearch(sageLinkedCustomer.name)
+      setSageCustomers([sageLinkedCustomer])
+    } else {
+      setSageSelectedCustomer(null)
+      setSageCustomerSearch('')
+      setSageCustomers([])
     }
-  }, [sageInvoiceId])
+  }, [sageLinkedCustomer])
 
   // Debounced customer search — fires 350ms after the user stops typing (2+ chars)
   useEffect(() => {
@@ -415,12 +415,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       const res = await fetch('/api/sage/push-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: project.id, sageContactId: sageSelectedCustomer.id }),
+        body: JSON.stringify({ projectId: project.id, sageContactId: sageSelectedCustomer.id, sageCustomerName: sageSelectedCustomer.name }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setSageInvoiceId(data.sage_invoice_id)
       setSageInvoiceStatus(data.status ?? 'DRAFT')
+      setSageLinkedCustomer(sageSelectedCustomer)
       setSageModalOpen(false)
       toast.success(sageInvoiceId ? 'Invoice updated in Sage' : 'Invoice pushed to Sage')
     } catch (e: unknown) {
