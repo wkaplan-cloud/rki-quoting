@@ -12,10 +12,15 @@ export async function GET(req: NextRequest) {
     if (!invoiceId) return NextResponse.json({ error: 'Missing invoiceId' }, { status: 400 })
 
     const invoice = await sageGet(`/TaxInvoice/Get/${invoiceId}`)
-    const customer = invoice.Customer ?? invoice.customer
-    if (!customer?.ID) return NextResponse.json(null)
 
-    return NextResponse.json({ id: customer.ID, name: customer.Name ?? '' })
+    // Sage returns either a nested Customer object or flat CustomerID/CustomerName fields
+    const nested = invoice.Customer ?? invoice.customer
+    const id = nested?.ID ?? nested?.Id ?? invoice.CustomerID ?? invoice.CustomerId ?? null
+    const name = nested?.Name ?? invoice.CustomerName ?? ''
+
+    if (!id) return NextResponse.json(null)
+
+    return NextResponse.json({ id: String(id), name })
   } catch (e: unknown) {
     console.error('[sage/invoice-customer]', e)
     return NextResponse.json(null)
