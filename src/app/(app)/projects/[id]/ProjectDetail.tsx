@@ -339,6 +339,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       if (customer?.id) {
         setSageSelectedCustomer(customer)
         setSageCustomerSearch(customer.name)
+        setSageCustomers([customer])
       }
     }
   }, [sageInvoiceId])
