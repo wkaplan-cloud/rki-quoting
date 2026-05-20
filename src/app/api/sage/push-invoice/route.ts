@@ -43,8 +43,11 @@ export async function POST(req: NextRequest) {
 
     const computed = computeLineItems(lineItems ?? [])
 
-    // Fetch the default tax type from Sage
-    const taxTypesResp = await sageGet('/TaxType/Get')
+    // Fetch tax types and the full customer record in parallel
+    const [taxTypesResp, customerResp] = await Promise.all([
+      sageGet('/TaxType/Get'),
+      sageGet(`/Customer/Get/${sageContactId}`).catch(() => null),
+    ])
 
     // SelectionId is a Sage Item ID — stored in settings by the studio admin
     const selectionId: number = settings.sage_item_id
@@ -133,6 +136,14 @@ export async function POST(req: NextRequest) {
     const docDate = toSageDate(now)
     const dueDate = toSageDate(new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000))
 
+    // Mirror what Sage does manually: copy the customer's addresses and tax ref onto the invoice
+    const customerFields: Record<string, unknown> = {}
+    if (customerResp) {
+      if (customerResp.TaxNumber) customerFields.TaxReferenceNumber = customerResp.TaxNumber
+      if (customerResp.PhysicalAddress) customerFields.PhysicalAddress = customerResp.PhysicalAddress
+      if (customerResp.PostalAddress) customerFields.PostalAddress = customerResp.PostalAddress
+    }
+
     const basePayload: Record<string, unknown> = {
       CustomerID: Number(sageContactId),
       Date: docDate,
@@ -141,6 +152,7 @@ export async function POST(req: NextRequest) {
       Reference: project.project_number,
       Description: trunc(project.project_name),
       Lines: lines,
+      ...customerFields,
       ...(settings?.sage_invoice_message ? { Message: settings.sage_invoice_message } : {}),
     }
 
