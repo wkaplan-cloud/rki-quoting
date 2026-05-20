@@ -698,6 +698,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 )}
                 {sageConnected && !isPaid && !stages?.deposit_received && (
                   <button onClick={openSageModal}
+                    title="Overwrites the Sage invoice line items with the current QuotingHub figures — use this if the quote changed after the invoice was pushed"
                     className="flex items-center gap-1 px-2 py-1 text-xs text-[#8A877F] border border-[#D8D3C8] rounded hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer">
                     <Upload size={11} /> Update Lines
                   </button>
