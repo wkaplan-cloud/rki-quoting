@@ -142,7 +142,11 @@ export async function POST(req: NextRequest) {
     // Mirror what Sage does manually: copy the customer's addresses and tax ref onto the invoice
     const customerFields: Record<string, unknown> = {}
     if (customerResp) {
-      if (customerResp.TaxNumber) customerFields.TaxReferenceNumber = customerResp.TaxNumber
+      const vatNumber = customerResp.TaxNumber ?? customerResp.VatRegistrationNumber ?? customerResp.TaxReference ?? customerResp.TaxRegistrationNumber ?? null
+      if (vatNumber) {
+        customerFields.TaxReferenceNumber = vatNumber
+        customerFields.TaxNumber = vatNumber
+      }
       // Sage API versions differ — send both names so one sticks
       if (customerResp.PhysicalAddress) {
         customerFields.PhysicalAddress = customerResp.PhysicalAddress
