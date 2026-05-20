@@ -900,7 +900,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         <CurrencyInput
                           value={c.sale_price}
                           onChange={v => updateLocal(item.id, 'sale_price_override', v)}
-                          onBlur={v => saveField(item.id, 'sale_price_override', v)}
+                          onBlur={v => {
+                            const impliedMarkup = item.cost_price > 0
+                              ? Math.round((v / item.cost_price - 1) * 10000) / 100
+                              : item.markup_percentage
+                            onChange(lineItems.map(li =>
+                              li.id === item.id ? { ...li, sale_price_override: v, markup_percentage: impliedMarkup } : li
+                            ))
+                            saveField(item.id, 'sale_price_override', v)
+                            saveField(item.id, 'markup_percentage', impliedMarkup)
+                          }}
                           className={NUM_INPUT}
                         />
                         {item.sale_price_override !== null && (
