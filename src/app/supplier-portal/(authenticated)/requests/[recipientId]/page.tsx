@@ -25,11 +25,15 @@ export default async function PortalRequestPage({
 
   const { data: ss } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('token, email')
+    .select('token, email, portal_account_id')
     .eq('id', recipientId)
     .maybeSingle()
 
-  if (!ss || ss.email.toLowerCase() !== account.email.toLowerCase()) notFound()
+  if (!ss) notFound()
+
+  const emailMatch = ss.email.toLowerCase() === account.email.toLowerCase()
+  const directMatch = (ss as any).portal_account_id === account.id
+  if (!emailMatch && !directMatch) notFound()
 
   redirect(`/sourcing/respond/${ss.token}`)
 }
