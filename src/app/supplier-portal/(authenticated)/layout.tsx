@@ -18,7 +18,7 @@ export default async function SupplierPortalLayout({
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
-  if (!account) redirect('/supplier-portal/login')
+  if (!account) redirect('/supplier-portal/not-a-supplier')
 
   // Count pending assignments (items this supplier still needs to price)
   const { data: sessionSuppliers } = await supabaseAdmin

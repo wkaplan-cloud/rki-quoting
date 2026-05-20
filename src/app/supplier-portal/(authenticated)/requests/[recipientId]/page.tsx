@@ -21,7 +21,7 @@ export default async function PortalRequestPage({
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
-  if (!account) redirect('/supplier-portal/login')
+  if (!account) redirect('/supplier-portal/not-a-supplier')
 
   const { data: ss } = await supabaseAdmin
     .from('sourcing_session_suppliers')
