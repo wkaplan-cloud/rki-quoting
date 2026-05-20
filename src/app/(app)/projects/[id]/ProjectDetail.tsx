@@ -1111,21 +1111,22 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               <h2 className="text-sm font-semibold text-[#1A1A18]">Sage Invoice</h2>
             </div>
 
-            {/* Tabs — always shown so user can re-link if they picked the wrong invoice */}
-            <div className="flex border-b border-[#EDE9E1]">
-              <button
-                onClick={() => setSageModalTab('push')}
-                className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'push' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
-              >
-                {sageInvoiceId ? 'Update Invoice' : 'Push New Invoice'}
-              </button>
-              <button
-                onClick={() => { setSageModalTab('link'); if (sageInvoices.length === 0 && !sageInvoicesLoading) loadSageInvoices() }}
-                className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'link' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
-              >
-                {sageInvoiceId ? 'Re-link Invoice' : 'Link Existing Invoice'}
-              </button>
-            </div>
+            {!sageInvoiceId && (
+              <div className="flex border-b border-[#EDE9E1]">
+                <button
+                  onClick={() => setSageModalTab('push')}
+                  className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'push' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+                >
+                  Push New Invoice
+                </button>
+                <button
+                  onClick={() => { setSageModalTab('link'); if (sageInvoices.length === 0 && !sageInvoicesLoading) loadSageInvoices() }}
+                  className={`flex-1 px-5 py-2.5 text-xs font-medium transition-colors ${sageModalTab === 'link' ? 'text-[#9A7B4F] border-b-2 border-[#9A7B4F]' : 'text-[#8A877F] hover:text-[#2C2C2A]'}`}
+                >
+                  Link Existing Invoice
+                </button>
+              </div>
+            )}
 
             {sageModalTab === 'push' ? (
               <>
