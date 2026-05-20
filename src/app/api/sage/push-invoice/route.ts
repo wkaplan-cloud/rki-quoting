@@ -44,10 +44,13 @@ export async function POST(req: NextRequest) {
     const computed = computeLineItems(lineItems ?? [])
 
     // Fetch tax types and the full customer record in parallel
-    const [taxTypesResp, customerResp] = await Promise.all([
+    // Use OData filter instead of /{id} path — Sage wraps results in { Results: [] }
+    const [taxTypesResp, customerRaw] = await Promise.all([
       sageGet('/TaxType/Get'),
-      sageGet(`/Customer/Get/${sageContactId}`).catch(() => null),
+      sageGet('/Customer/Get', { '$filter': `ID eq ${sageContactId}`, '$top': 1 }).catch(() => null),
     ])
+    const customerResp: Record<string, unknown> | null =
+      customerRaw?.Results?.[0] ?? (Array.isArray(customerRaw) ? customerRaw[0] : customerRaw) ?? null
 
     // SelectionId is a Sage Item ID — stored in settings by the studio admin
     const selectionId: number = settings.sage_item_id
@@ -140,8 +143,14 @@ export async function POST(req: NextRequest) {
     const customerFields: Record<string, unknown> = {}
     if (customerResp) {
       if (customerResp.TaxNumber) customerFields.TaxReferenceNumber = customerResp.TaxNumber
-      if (customerResp.PhysicalAddress) customerFields.PhysicalAddress = customerResp.PhysicalAddress
-      if (customerResp.PostalAddress) customerFields.PostalAddress = customerResp.PostalAddress
+      // Sage API versions differ — send both names so one sticks
+      if (customerResp.PhysicalAddress) {
+        customerFields.PhysicalAddress = customerResp.PhysicalAddress
+        customerFields.DeliveryAddress = customerResp.PhysicalAddress
+      }
+      if (customerResp.PostalAddress) {
+        customerFields.PostalAddress = customerResp.PostalAddress
+      }
     }
 
     const basePayload: Record<string, unknown> = {
