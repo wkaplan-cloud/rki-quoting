@@ -35,6 +35,7 @@ interface Props {
 
 const INPUT = 'w-full px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#C4A46B] bg-white'
 const LABEL = 'block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1'
+const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 
 // ---- Image Lightbox ----
 function ImageLightbox({ urls, startIndex, onClose }: { urls: string[]; startIndex: number; onClose: () => void }) {
@@ -297,7 +298,7 @@ function PieceModal({
           {/* Year (always) */}
           <div>
             <label className={LABEL}>Year</label>
-            <input type="number" min="1900" max="2099" value={year} onChange={e => setYear(e.target.value)} className={INPUT} placeholder="e.g. 2023" />
+            <input type="number" min="1900" max="2099" value={year} onChange={e => setYear(e.target.value)} className={`${INPUT} ${NO_SPINNER}`} placeholder="e.g. 2023" />
           </div>
 
           {/* Supplier */}
@@ -315,7 +316,7 @@ function PieceModal({
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#8A877F]">R</span>
               <input type="number" min="0" step="0.01" value={basePrice} onChange={e => setBasePrice(e.target.value)}
-                className={`${INPUT} pl-7`} placeholder="0.00" />
+                className={`${INPUT} pl-7 ${NO_SPINNER}`} placeholder="0.00" />
             </div>
           </div>
 
@@ -447,11 +448,11 @@ function AddToQuoteModal({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={LABEL}>Quantity</label>
-                  <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} className={INPUT} />
+                  <input type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} className={`${INPUT} ${NO_SPINNER}`} />
                 </div>
                 <div>
                   <label className={LABEL}>Markup %</label>
-                  <input type="number" min="0" max="500" value={markup} onChange={e => setMarkup(e.target.value)} className={INPUT} />
+                  <input type="number" min="0" max="500" value={markup} onChange={e => setMarkup(e.target.value)} className={`${INPUT} ${NO_SPINNER}`} />
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Combobox } from '@/components/ui/Combobox'
@@ -569,7 +570,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
                 type="number" min="0" step="0.5" placeholder="Design fee %"
                 value={newProjectForm.design_fee}
                 onChange={e => setNewProjectForm(f => ({ ...f, design_fee: e.target.value }))}
-                className="w-36 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F]"
+                className={`w-36 px-3 py-2 border border-[#D8D3C8] rounded text-sm outline-none focus:border-[#9A7B4F] ${NO_SPINNER}`}
               />
               <span className="text-xs text-[#8A877F]">% design fee</span>
             </div>

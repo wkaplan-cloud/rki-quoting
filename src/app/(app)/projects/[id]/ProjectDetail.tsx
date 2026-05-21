@@ -1,5 +1,6 @@
 'use client'
 import { useState, useCallback, useRef, useEffect } from 'react'
+const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItems, computeTotals, formatZAR } from '@/lib/quoting'
@@ -852,7 +853,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   value={designFeePct}
                   onChange={e => handleDesignFeeChange(parseFloat(e.target.value) || 0)}
                   disabled={isPaid}
-                  className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed ${NO_SPINNER}`}
                 />
                 %)
               </span>
@@ -867,7 +868,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                     type="number" min="0" max="100" step="0.5"
                     value={vatRate}
                     onChange={e => handleVatRateChange(parseFloat(e.target.value) || 0)}
-                    className="w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent"
+                    className={`w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent ${NO_SPINNER}`}
                   />
                 ) : (
                   <span className="text-sm text-[#2C2C2A]">{vatRate}</span>
@@ -888,7 +889,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   value={depositPct}
                   onChange={e => handleDepositPctChange(parseFloat(e.target.value) || 0)}
                   disabled={isPaid}
-                  className="w-8 text-center text-sm text-[#9A7B4F] border-b border-dashed border-[#9A7B4F]/40 focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`w-8 text-center text-sm text-[#9A7B4F] border-b border-dashed border-[#9A7B4F]/40 focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed ${NO_SPINNER}`}
                 />
                 %)
               </span>

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, Package, Paperclip, X, MessageSquare, Send } from 'lucide-react'
 import { compressImage } from '@/lib/compressImage'
@@ -410,7 +411,7 @@ export function SupplierPortalRequestDetail({ recipientId, data }: Props) {
                 <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Fabric / Material Quantity Needed</label>
                 <div className="flex gap-2">
                   <input type="number" min="0" step="any" placeholder="e.g. 5" value={fabricQty} onChange={e => setFabricQty(e.target.value)}
-                    className="w-28 px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]" />
+                    className={`w-28 px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] ${NO_SPINNER}`} />
                   <input type="text" placeholder="Unit (e.g. metres)" value={fabricUnit} onChange={e => setFabricUnit(e.target.value)}
                     className="flex-1 px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]" />
                 </div>
@@ -434,13 +435,13 @@ export function SupplierPortalRequestDetail({ recipientId, data }: Props) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-[#8A877F] font-medium">R</span>
                   <input type="number" min="0" step="0.01" placeholder="0.00" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} required
-                    className="flex-1 px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]" />
+                    className={`flex-1 px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] ${NO_SPINNER}`} />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Lead Time (weeks)</label>
                 <input type="number" min="0" step="1" placeholder="e.g. 6" value={leadTime} onChange={e => setLeadTime(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F]" />
+                  className={`w-full px-3 py-2 text-sm bg-[#F5F2EC] border border-[#D8D3C8] rounded focus:outline-none focus:ring-1 focus:ring-[#9A7B4F] ${NO_SPINNER}`} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[#2C2C2A] mb-1.5">Attach Quote / Document <span className="text-[#8A877F] font-normal">(optional)</span></label>
