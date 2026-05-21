@@ -16,11 +16,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     if (!ss) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const body = await req.json() as { delivery_fee?: number | null }
+    const body = await req.json() as { delivery_fee?: number | null; installation_fee?: number | null }
+
+    const updates: Record<string, unknown> = {}
+    if ('delivery_fee' in body) updates.delivery_fee = body.delivery_fee ?? null
+    if ('installation_fee' in body) updates.installation_fee = body.installation_fee ?? null
 
     const { error } = await supabaseAdmin
       .from('sourcing_session_suppliers')
-      .update({ delivery_fee: body.delivery_fee ?? null })
+      .update(updates)
       .eq('id', ss.id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

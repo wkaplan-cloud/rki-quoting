@@ -67,7 +67,10 @@ export default async function SourcingDetailPage({
       token: ss.token,
       status: ss.status,
       sent_at: ss.sent_at,
+      installation_fee: ss.installation_fee ?? null,
       delivery_fee: ss.delivery_fee ?? null,
+      installation_pushed_project_id: ss.installation_pushed_project_id ?? null,
+      delivery_pushed_project_id: ss.delivery_pushed_project_id ?? null,
       supplier_message_count: ss.supplier_message_count ?? 0,
       assignments,
     }

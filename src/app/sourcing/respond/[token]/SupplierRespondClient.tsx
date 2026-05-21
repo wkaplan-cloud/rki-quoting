@@ -179,6 +179,7 @@ interface Props {
   studioName: string
   assignments: Assignment[]
   initialDeliveryFee: number | null
+  initialInstallationFee: number | null
   showBackLink?: boolean
 }
 
@@ -208,12 +209,6 @@ function PriceForm({
   const [leadTime, setLeadTime] = useState(assignment.response?.lead_time_weeks?.toString() ?? '')
   const [notes, setNotes] = useState(assignment.response?.notes ?? '')
   const [vatExempt, setVatExempt] = useState<boolean>(assignment.response?.vat_exempt ?? false)
-  const [installationIncluded, setInstallationIncluded] = useState<boolean | null>(
-    assignment.response?.installation_included ?? null
-  )
-  const [installationCost, setInstallationCost] = useState(
-    assignment.response?.installation_cost?.toString() ?? ''
-  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [specEdits, setSpecEdits] = useState<Record<string, string>>(() => {
@@ -232,10 +227,6 @@ function PriceForm({
       setError('Please enter a valid unit price')
       return
     }
-    if (installationIncluded === false && (!installationCost || isNaN(Number(installationCost)))) {
-      setError('Please enter the installation cost')
-      return
-    }
     setSaving(true)
     setError(null)
     try {
@@ -248,8 +239,6 @@ function PriceForm({
           lead_time_weeks: leadTime ? Number(leadTime) : null,
           notes: notes.trim() || null,
           supplier_specs: Object.keys(specEdits).length > 0 ? specEdits : null,
-          installation_included: installationIncluded,
-          installation_cost: installationIncluded === false && installationCost ? Number(installationCost) : null,
           vat_exempt: vatExempt,
         }),
       })
@@ -779,58 +768,6 @@ function PriceForm({
                   </span>
                 </label>
 
-                {/* Installation */}
-                <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #E4E4E7' }}>
-                  <div className="px-3 py-2" style={{ background: '#F4F4F5', borderBottom: installationIncluded === false ? '1px solid #E4E4E7' : 'none' }}>
-                    <p className="text-xs font-semibold mb-2" style={{ color: '#18181B' }}>Installation</p>
-                    <div className="flex gap-1.5">
-                      {([ [null, 'N/A'], [true, 'Included in price'], [false, 'Not included'] ] as [boolean | null, string][]).map(([val, label]) => (
-                        <button
-                          key={String(val)}
-                          type="button"
-                          onClick={() => setInstallationIncluded(val)}
-                          className="flex-1 py-1.5 text-[11px] font-medium rounded-md transition-colors"
-                          style={{
-                            background: installationIncluded === val
-                              ? val === true ? '#ECFDF5' : val === false ? '#FFF7ED' : '#18181B'
-                              : 'transparent',
-                            color: installationIncluded === val
-                              ? val === true ? '#065F46' : val === false ? '#92400E' : '#FFFFFF'
-                              : '#71717A',
-                            border: `1px solid ${installationIncluded === val
-                              ? val === true ? '#A7F3D0' : val === false ? '#FED7AA' : '#18181B'
-                              : '#E4E4E7'}`,
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {installationIncluded === false && (
-                    <div className="px-3 py-3">
-                      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
-                        Installation Cost (excl. VAT) <span style={{ color: '#EF4444' }}>*</span>
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={installationCost}
-                          onChange={e => setInstallationCost(e.target.value)}
-                          placeholder="0.00"
-                          className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
-                          style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
-                          onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-                          onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Notes */}
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Notes</label>
@@ -863,6 +800,73 @@ function PriceForm({
       )}
     </div>
     </>
+  )
+}
+
+function InstallationFeeSection({ token, initialInstallationFee }: { token: string; initialInstallationFee: number | null }) {
+  const [installationFee, setInstallationFee] = useState(initialInstallationFee != null ? initialInstallationFee.toString() : '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    setSaving(true)
+    setSaved(false)
+    setError(null)
+    try {
+      const res = await fetch(`/api/sourcing/respond/${token}/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ installation_fee: installationFee !== '' ? Number(installationFee) : null }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      setSaved(true)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+      <div className="px-5 py-3" style={{ borderBottom: '1px solid #E4E4E7' }}>
+        <p className="text-sm font-semibold" style={{ color: '#18181B' }}>Installation Fee</p>
+        <p className="text-xs mt-0.5" style={{ color: '#A1A1AA' }}>Total installation cost for all items in this quote (excl. VAT). Leave blank if not applicable.</p>
+      </div>
+      <div className="px-5 py-4 space-y-3">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={installationFee}
+            onChange={e => { setInstallationFee(e.target.value); setSaved(false) }}
+            placeholder="0.00"
+            className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+            style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+            onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+            onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+          />
+        </div>
+        {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full py-2 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+          style={{
+            background: saved ? '#ECFDF5' : '#F4F4F5',
+            color: saved ? '#065F46' : '#18181B',
+            border: `1px solid ${saved ? '#A7F3D0' : '#E4E4E7'}`,
+          }}
+        >
+          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save installation fee'}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -1121,6 +1125,7 @@ export function SupplierRespondClient({
   studioName,
   assignments,
   initialDeliveryFee,
+  initialInstallationFee,
   showBackLink = false,
 }: Props) {
   const [items, setItems] = useState(assignments)
@@ -1257,6 +1262,7 @@ export function SupplierRespondClient({
               <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} onSpecApprovalRequested={handleSpecApprovalRequested} />
             ))}
           </div>
+          <InstallationFeeSection token={token} initialInstallationFee={initialInstallationFee} />
           <DeliveryFeeSection token={token} initialDeliveryFee={initialDeliveryFee} />
           <QuoteUpload token={token} />
           <div className="pt-2 border-t border-[#E4E4E7]">
@@ -1312,6 +1318,7 @@ export function SupplierRespondClient({
               ))}
             </div>
             <div className="space-y-4">
+              <InstallationFeeSection token={token} initialInstallationFee={initialInstallationFee} />
               <DeliveryFeeSection token={token} initialDeliveryFee={initialDeliveryFee} />
               <QuoteUpload token={token} />
               <div className="pt-2 border-t border-[#E4E4E7]">

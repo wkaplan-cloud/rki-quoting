@@ -72,7 +72,10 @@ interface SessionSupplier {
   token: string
   status: string
   sent_at: string | null
+  installation_fee: number | null
   delivery_fee: number | null
+  installation_pushed_project_id: string | null
+  delivery_pushed_project_id: string | null
   supplier_message_count: number
   assignments: Assignment[]
 }
@@ -1635,7 +1638,7 @@ function ComparisonTable({
 // ---- Supplier Card ----
 function SupplierCard({
   ss, items, sessionId, sessionStatus,
-  onAssignToggle, onAccept, onOpenPush, onRemove, onSend, onSpecAction, pushedItems, projects,
+  onAssignToggle, onAccept, onOpenPush, onRemove, onSend, onSpecAction, pushedItems, pushedExtras, onExtraPushed, projects,
 }: {
   ss: SessionSupplier
   items: SessionItem[]
@@ -1648,6 +1651,8 @@ function SupplierCard({
   onSend: (ssId: string) => Promise<void>
   onSpecAction: (ssId: string, assignmentId: string, status: 'approved' | 'rejected') => void
   pushedItems: Record<string, string>
+  pushedExtras: Record<string, string>
+  onExtraPushed: (ssId: string, type: 'installation' | 'delivery', projectId: string) => void
   projects: Props['projects']
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -1656,6 +1661,10 @@ function SupplierCard({
   const [accepting, setAccepting] = useState<string | null>(null)
   const [approvingSpec, setApprovingSpec] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const [pushingExtra, setPushingExtra] = useState<'installation' | 'delivery' | null>(null)
+  const [extraProjectId, setExtraProjectId] = useState<string>('')
+  const [extraMarkup, setExtraMarkup] = useState<string>('0')
+  const [showExtraPicker, setShowExtraPicker] = useState<'installation' | 'delivery' | null>(null)
 
   const assignedItemIds = new Set(ss.assignments.map(a => a.item_id))
   const assignedItems = items.filter(item => assignedItemIds.has(item.id))
@@ -1739,6 +1748,25 @@ function SupplierCard({
     }
   }
 
+  async function handlePushExtra(type: 'installation' | 'delivery') {
+    if (!extraProjectId) return
+    setPushingExtra(type)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/suppliers/${ss.id}/push-extra`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, project_id: extraProjectId, markup_percentage: Number(extraMarkup) || 0 }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      onExtraPushed(ss.id, type, extraProjectId)
+      setShowExtraPicker(null)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setPushingExtra(null)
+    }
+  }
+
   const statusColor = STATUS_COLORS[effectiveStatus] ?? STATUS_COLORS.pending
 
   return (
@@ -1754,6 +1782,11 @@ function SupplierCard({
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
               {effectiveStatus.replace('_', ' ')}
             </span>
+            {ss.installation_fee != null && (
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#F5F2EC] text-[#8A877F]">
+                Install: R{ss.installation_fee.toLocaleString()}
+              </span>
+            )}
             {ss.delivery_fee != null && (
               <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#F5F2EC] text-[#8A877F]">
                 Delivery: R{ss.delivery_fee.toLocaleString()}
@@ -1979,6 +2012,73 @@ function SupplierCard({
             </div>
           )}
 
+          {/* Extras: installation and delivery push */}
+          {(ss.installation_fee != null || ss.delivery_fee != null) && (
+            <div className="px-4 pb-3 border-t border-[#F5F2EC] pt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#A89F91] mb-2">Additional Costs</p>
+              <div className="space-y-2">
+                {(['installation', 'delivery'] as const).filter(type =>
+                  (type === 'installation' ? ss.installation_fee : ss.delivery_fee) != null
+                ).map(type => {
+                  const fee = type === 'installation' ? ss.installation_fee! : ss.delivery_fee!
+                  const pushedProjectId = pushedExtras[`${ss.id}_${type}`]
+                  const pushedProject = pushedProjectId ? projects.find(p => p.id === pushedProjectId) : null
+                  const label = type === 'installation' ? 'Installation' : 'Delivery'
+
+                  return (
+                    <div key={type} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm text-[#2C2C2A] font-medium">{label}</span>
+                        <span className="text-sm text-[#8A877F]">R{fee.toLocaleString()}</span>
+                      </div>
+                      {pushedProjectId ? (
+                        <a
+                          href={`/projects/${pushedProjectId}`}
+                          className="text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors underline underline-offset-2 shrink-0"
+                        >
+                          On Quote — {pushedProject?.project_name ?? 'View'} ↗
+                        </a>
+                      ) : showExtraPicker === type ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <select
+                            value={extraProjectId}
+                            onChange={e => setExtraProjectId(e.target.value)}
+                            className="text-xs border border-[#D4CFC7] rounded-lg px-2 py-1 bg-white text-[#2C2C2A] outline-none focus:border-[#C4A46B]"
+                          >
+                            <option value="">Select project…</option>
+                            {projects.map(p => (
+                              <option key={p.id} value={p.id}>{p.project_name}{p.project_number ? ` (${p.project_number})` : ''}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handlePushExtra(type)}
+                            disabled={!extraProjectId || pushingExtra === type}
+                            className="text-xs px-2.5 py-1 rounded-lg font-semibold disabled:opacity-40 transition-colors"
+                            style={{ background: '#2C2C2A', color: '#F5F2EC' }}
+                          >
+                            {pushingExtra === type ? <Loader2 size={10} className="animate-spin" /> : 'Push'}
+                          </button>
+                          <button type="button" onClick={() => setShowExtraPicker(null)} className="text-[#A89F91] hover:text-[#2C2C2A]">
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setShowExtraPicker(type); setExtraProjectId('') }}
+                          className="text-xs text-[#C4A46B] hover:text-[#9A7B4F] font-medium transition-colors shrink-0"
+                        >
+                          Add to Project Quote →
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Assign more items (unassigned only) */}
           {unassignedItems.length > 0 && (
             <div className="px-4 pb-3">
@@ -2070,6 +2170,15 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     const map: Record<string, string> = {}
     for (const item of initialItems) {
       if ((item as any).pushed_to_project_id) map[item.id] = (item as any).pushed_to_project_id
+    }
+    return map
+  })
+  // keyed by `${ssId}_installation` or `${ssId}_delivery` → project_id
+  const [pushedExtras, setPushedExtras] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const ss of initialSuppliers) {
+      if (ss.installation_pushed_project_id) map[`${ss.id}_installation`] = ss.installation_pushed_project_id
+      if (ss.delivery_pushed_project_id) map[`${ss.id}_delivery`] = ss.delivery_pushed_project_id
     }
     return map
   })
@@ -2437,6 +2546,10 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                             onSend={handleSendToSupplier}
                             onSpecAction={handleSpecAction}
                             pushedItems={pushedItems}
+                            pushedExtras={pushedExtras}
+                            onExtraPushed={(ssId, type, projectId) =>
+                              setPushedExtras(prev => ({ ...prev, [`${ssId}_${type}`]: projectId }))
+                            }
                             projects={projects}
                           />
                         ))}
