@@ -1682,7 +1682,12 @@ function ComparisonTable({
                       <td key={ss.id} className="px-5 py-3">
                         <p className="text-xs font-semibold text-[#2C2C2A] mb-1.5">R{fee.toLocaleString()}</p>
                         {pushedProject ? (
-                          <span className="text-[10px] text-emerald-600 font-medium">On Quote — {pushedProject.project_name} ↗</span>
+                          <a
+                            href={`/projects/${pushedProjectId}`}
+                            className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors underline underline-offset-2"
+                          >
+                            On Quote — {pushedProject.project_name} ↗
+                          </a>
                         ) : isPickerOpen ? (
                           <div className="space-y-1.5">
                             <select
