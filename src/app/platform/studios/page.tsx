@@ -47,13 +47,14 @@ async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
 
   const ids = confirmed.map(u => u.id)
 
-  // Filter out users who have completed onboarding
-  const { data: members } = await supabaseAdmin
-    .from('org_members')
-    .select('user_id')
-    .in('user_id', ids)
+  // Filter out users who have completed onboarding or are suppliers
+  const [{ data: members }, { data: suppliers }] = await Promise.all([
+    supabaseAdmin.from('org_members').select('user_id').in('user_id', ids),
+    supabaseAdmin.from('supplier_portal_accounts').select('auth_user_id').in('auth_user_id', ids),
+  ])
 
   const hasOrg = new Set((members ?? []).map((m: { user_id: string }) => m.user_id))
+  const isSupplier = new Set((suppliers ?? []).map((s: { auth_user_id: string }) => s.auth_user_id))
 
   // Get nudge records for these users
   const { data: nudges } = await supabaseAdmin
@@ -64,7 +65,7 @@ async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
   const nudgeMap = new Map((nudges ?? []).map((n: { user_id: string; sent_at: string }) => [n.user_id, n.sent_at]))
 
   return confirmed
-    .filter(u => !hasOrg.has(u.id))
+    .filter(u => !hasOrg.has(u.id) && !isSupplier.has(u.id))
     .map(u => ({
       user_id: u.id,
       email: u.email!,
