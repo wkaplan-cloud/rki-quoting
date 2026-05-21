@@ -819,7 +819,7 @@ function PriceForm({
   )
 }
 
-function InstallationFeeSection({ token, initialInstallationFee }: { token: string; initialInstallationFee: number | null }) {
+function InstallationFeeSection({ token, initialInstallationFee, locked }: { token: string; initialInstallationFee: number | null; locked?: boolean }) {
   const [installationFee, setInstallationFee] = useState(initialInstallationFee != null ? initialInstallationFee.toString() : '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -852,41 +852,55 @@ function InstallationFeeSection({ token, initialInstallationFee }: { token: stri
         <p className="text-xs mt-0.5" style={{ color: '#A1A1AA' }}>Total installation cost for all items in this quote (excl. VAT). Leave blank if not applicable.</p>
       </div>
       <div className="px-5 py-4 space-y-3">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={installationFee}
-            onChange={e => { setInstallationFee(e.target.value); setSaved(false) }}
-            placeholder="0.00"
-            className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
-            style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
-            onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-            onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-          />
-        </div>
-        {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full py-2 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-          style={{
-            background: saved ? '#ECFDF5' : '#F4F4F5',
-            color: saved ? '#065F46' : '#18181B',
-            border: `1px solid ${saved ? '#A7F3D0' : '#E4E4E7'}`,
-          }}
-        >
-          {saving ? 'Saving…' : saved ? '✓ Applied' : 'Apply to Order'}
-        </button>
+        {locked ? (
+          <>
+            <div className="flex items-center justify-between px-3 py-2.5 rounded-lg" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7' }}>
+              <span className="text-sm font-semibold" style={{ color: '#18181B' }}>
+                R {initialInstallationFee != null ? Number(initialInstallationFee).toFixed(2) : '0.00'}
+              </span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>Submitted</span>
+            </div>
+            <p className="text-xs" style={{ color: '#A1A1AA' }}>Contact the studio to make changes.</p>
+          </>
+        ) : (
+          <>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={installationFee}
+                onChange={e => { setInstallationFee(e.target.value); setSaved(false) }}
+                placeholder="0.00"
+                className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
+                style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+              />
+            </div>
+            {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full py-2 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+              style={{
+                background: saved ? '#ECFDF5' : '#F4F4F5',
+                color: saved ? '#065F46' : '#18181B',
+                border: `1px solid ${saved ? '#A7F3D0' : '#E4E4E7'}`,
+              }}
+            >
+              {saving ? 'Saving…' : saved ? '✓ Applied' : 'Apply to Order'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
-function DeliveryFeeSection({ token, initialDeliveryFee }: { token: string; initialDeliveryFee: number | null }) {
+function DeliveryFeeSection({ token, initialDeliveryFee, locked }: { token: string; initialDeliveryFee: number | null; locked?: boolean }) {
   const [deliveryFee, setDeliveryFee] = useState(initialDeliveryFee != null ? initialDeliveryFee.toString() : '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -919,35 +933,49 @@ function DeliveryFeeSection({ token, initialDeliveryFee }: { token: string; init
         <p className="text-xs mt-0.5" style={{ color: '#A1A1AA' }}>Total delivery cost covering all items in this quote (excl. VAT). Enter 0 if delivery is free.</p>
       </div>
       <div className="px-5 py-4 space-y-3">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={deliveryFee}
-            onChange={e => { setDeliveryFee(e.target.value); setSaved(false) }}
-            placeholder="0.00"
-            className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
-            style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
-            onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
-            onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-          />
-        </div>
-        {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full py-2 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
-          style={{
-            background: saved ? '#ECFDF5' : '#F4F4F5',
-            color: saved ? '#065F46' : '#18181B',
-            border: `1px solid ${saved ? '#A7F3D0' : '#E4E4E7'}`,
-          }}
-        >
-          {saving ? 'Saving…' : saved ? '✓ Applied' : 'Apply to Order'}
-        </button>
+        {locked ? (
+          <>
+            <div className="flex items-center justify-between px-3 py-2.5 rounded-lg" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7' }}>
+              <span className="text-sm font-semibold" style={{ color: '#18181B' }}>
+                R {initialDeliveryFee != null ? Number(initialDeliveryFee).toFixed(2) : '0.00'}
+              </span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' }}>Submitted</span>
+            </div>
+            <p className="text-xs" style={{ color: '#A1A1AA' }}>Contact the studio to make changes.</p>
+          </>
+        ) : (
+          <>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={deliveryFee}
+                onChange={e => { setDeliveryFee(e.target.value); setSaved(false) }}
+                placeholder="0.00"
+                className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
+                style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+              />
+            </div>
+            {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full py-2 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
+              style={{
+                background: saved ? '#ECFDF5' : '#F4F4F5',
+                color: saved ? '#065F46' : '#18181B',
+                border: `1px solid ${saved ? '#A7F3D0' : '#E4E4E7'}`,
+              }}
+            >
+              {saving ? 'Saving…' : saved ? '✓ Applied' : 'Apply to Order'}
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -1307,8 +1335,8 @@ export function SupplierRespondClient({
               <PriceForm key={assignment.id} assignment={assignment} token={token} onSaved={handleSaved} onDeclined={handleDeclined} onSpecApprovalRequested={handleSpecApprovalRequested} />
             ))}
           </div>
-          <InstallationFeeSection token={token} initialInstallationFee={initialInstallationFee} />
-          <DeliveryFeeSection token={token} initialDeliveryFee={initialDeliveryFee} />
+          <InstallationFeeSection token={token} initialInstallationFee={currentInstallationFee} locked={currentInstallationFee !== null} />
+          <DeliveryFeeSection token={token} initialDeliveryFee={currentDeliveryFee} locked={currentDeliveryFee !== null} />
           <QuoteUpload token={token} />
           <div className="pt-2 border-t border-[#E4E4E7]">
             <button type="button" onClick={handleDeclineAll} disabled={declining}
@@ -1363,8 +1391,8 @@ export function SupplierRespondClient({
               ))}
             </div>
             <div className="space-y-4">
-              <InstallationFeeSection token={token} initialInstallationFee={initialInstallationFee} />
-              <DeliveryFeeSection token={token} initialDeliveryFee={initialDeliveryFee} />
+              <InstallationFeeSection token={token} initialInstallationFee={currentInstallationFee} locked={currentInstallationFee !== null} />
+              <DeliveryFeeSection token={token} initialDeliveryFee={currentDeliveryFee} locked={currentDeliveryFee !== null} />
               <QuoteUpload token={token} />
               <div className="pt-2 border-t border-[#E4E4E7]">
                 <button type="button" onClick={handleDeclineAll} disabled={declining}
