@@ -1,7 +1,6 @@
 {
   "crons": [
     { "path": "/api/cron/load-catalogue",    "schedule": "0 2 * * *"  },
-    { "path": "/api/cron/sync-prices",       "schedule": "20 2 * * *" },
-    { "path": "/api/cron/onboarding-nudge",  "schedule": "0 * * * *"  }
+    { "path": "/api/cron/sync-prices",       "schedule": "20 2 * * *" }
   ]
 }
