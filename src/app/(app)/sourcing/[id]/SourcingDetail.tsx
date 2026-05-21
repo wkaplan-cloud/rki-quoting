@@ -1056,21 +1056,29 @@ function SpecApprovalPanel({
 
       {/* Price summary */}
       {response && (
-        <div className="px-3 py-2.5 bg-white flex items-center gap-5" style={{ borderBottom: '1px solid #FEF9EC' }}>
-          <div>
-            <p className="text-[10px] text-[#8A877F] mb-0.5">Their price</p>
-            <p className="text-sm font-bold text-[#2C2C2A]">R{response.unit_price.toLocaleString()}</p>
-          </div>
-          {response.lead_time_weeks && (
+        <>
+          <div className="px-3 py-2.5 bg-white flex items-center gap-5" style={{ borderBottom: response.notes ? 'none' : '1px solid #FEF9EC' }}>
             <div>
-              <p className="text-[10px] text-[#8A877F] mb-0.5">Lead time</p>
-              <p className="text-sm font-medium text-[#2C2C2A]">{response.lead_time_weeks}w</p>
+              <p className="text-[10px] text-[#8A877F] mb-0.5">Their price</p>
+              <p className="text-sm font-bold text-[#2C2C2A]">R{response.unit_price.toLocaleString()}</p>
+            </div>
+            {response.lead_time_weeks && (
+              <div>
+                <p className="text-[10px] text-[#8A877F] mb-0.5">Lead time</p>
+                <p className="text-sm font-medium text-[#2C2C2A]">{response.lead_time_weeks}w</p>
+              </div>
+            )}
+          </div>
+          {response.notes && (
+            <div className="px-3 py-2.5 bg-white flex items-start gap-2" style={{ borderBottom: '1px solid #FEF9EC' }}>
+              <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-semibold text-amber-700 mb-0.5">Supplier note</p>
+                <p className="text-xs text-amber-800 leading-relaxed">{response.notes}</p>
+              </div>
             </div>
           )}
-          {response.notes && (
-            <p className="text-xs text-[#8A877F] italic flex-1">{response.notes}</p>
-          )}
-        </div>
+        </>
       )}
 
       {/* Read-only spec comparison */}
@@ -1546,9 +1554,10 @@ function ComparisonTable({
                             <p className="text-[10px] text-emerald-600 mt-0.5">Install incl.</p>
                           )}
                           {response.notes && !response.notes.startsWith("[CAN'T SUPPLY]") && (
-                            <p className="text-[10px] text-amber-600 mt-0.5 truncate max-w-[130px]" title={response.notes}>
-                              ⚠ {response.notes}
-                            </p>
+                            <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded-lg" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                              <AlertTriangle size={10} className="text-amber-500 shrink-0 mt-0.5" />
+                              <p className="text-[10px] text-amber-800 leading-snug">{response.notes}</p>
+                            </div>
                           )}
                           <div className="mt-2">
                             {isAccepted ? (
@@ -1926,7 +1935,8 @@ function SupplierCard({
 
 
                     {hasResponse && assignment?.response && specStatus !== 'pending' && (
-                      <div className="flex items-center gap-3 flex-wrap mt-1">
+                      <div className="mt-1 space-y-1.5">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-sm font-semibold text-[#2C2C2A]">R{assignment.response.unit_price.toLocaleString()}</span>
                         {assignment.response.vat_exempt && (
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">VAT exempt</span>
@@ -1939,7 +1949,6 @@ function SupplierCard({
                           <span className="text-xs text-amber-700">+ R{(assignment.response.installation_cost ?? 0).toLocaleString()} install</span>
                         )}
                         {assignment.responded_at && <span className="text-[10px] text-[#C4BFB5]">Replied {fmtDateTime(assignment.responded_at)}</span>}
-                        {assignment.response.notes && <span className="text-xs text-[#8A877F] italic truncate max-w-[180px]">{assignment.response.notes}</span>}
                         {assignment.response.attachment_url && (
                           <a
                             href={assignment.response.attachment_url}
@@ -1980,6 +1989,16 @@ function SupplierCard({
                             </button>
                           )
                         )}
+                      </div>
+                      {assignment.response.notes && (
+                        <div className="flex items-start gap-1.5 px-2.5 py-2 rounded-lg" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                          <AlertTriangle size={11} className="text-amber-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-[10px] font-semibold text-amber-700 mb-0.5">Supplier note</p>
+                            <p className="text-xs text-amber-800 leading-relaxed">{assignment.response.notes}</p>
+                          </div>
+                        </div>
+                      )}
                       </div>
                     )}
 
