@@ -72,6 +72,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // If the session was marked completed, reopen it now that there's a new pending item
+    const { data: sessionRow } = await supabase
+      .from('sourcing_sessions')
+      .select('status')
+      .eq('id', session_id)
+      .single()
+    if (sessionRow?.status === 'completed') {
+      await supabase.from('sourcing_sessions').update({ status: 'in_progress' }).eq('id', session_id)
+    }
+
     return NextResponse.json({ data })
   } catch (e) {
     return apiError(e)

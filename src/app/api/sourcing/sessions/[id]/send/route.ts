@@ -139,7 +139,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ])
 
     if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (!['draft', 'sent', 'in_progress'].includes(session.status)) {
+    if (!['draft', 'sent', 'in_progress', 'completed'].includes(session.status)) {
       return NextResponse.json({ error: 'Session cannot be sent in its current state' }, { status: 400 })
     }
 
