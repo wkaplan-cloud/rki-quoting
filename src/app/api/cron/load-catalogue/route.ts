@@ -234,16 +234,18 @@ export async function GET(req: NextRequest) {
         error_message: resumeToken,
       }).eq('id', logId)
 
-      // Self-chain: fire the next chunk as a background request after the response is sent.
-      // Mirrors the "Load New Fabrics" button which keeps calling with trigger=continue until partial=false.
       const appUrl = process.env.NEXT_PUBLIC_APP_URL
         ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
       if (appUrl) {
         after(async () => {
-          fetch(`${appUrl}/api/cron/load-catalogue?trigger=continue`, {
+          // Await with a short abort so the request is guaranteed sent before this function shuts down.
+          // The abort only cancels our wait — Vercel keeps processing the continue invocation independently.
+          const controller = new AbortController()
+          setTimeout(() => controller.abort(), 8_000)
+          await fetch(`${appUrl}/api/cron/load-catalogue?trigger=continue`, {
             headers: { Authorization: `Bearer ${process.env.CRON_SECRET ?? ''}` },
+            signal: controller.signal,
           }).catch(() => undefined)
-          await new Promise(r => setTimeout(r, 500))
         })
       }
 
