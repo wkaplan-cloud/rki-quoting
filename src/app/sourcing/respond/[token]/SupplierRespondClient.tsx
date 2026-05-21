@@ -189,6 +189,8 @@ const INPUT = {
   color: '#FAFAFA',
 }
 
+const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+
 function PriceForm({
   assignment,
   token,
@@ -614,7 +616,7 @@ function PriceForm({
                             <input type={field.type === 'number' ? 'number' : 'text'} value={val}
                               onChange={e => setSpecEdits(p => ({ ...p, [field.key]: e.target.value }))}
                               placeholder={field.placeholder ?? ''}
-                              className="w-full px-2 py-1.5 text-xs rounded-lg outline-none" style={inputStyle} />
+                              className={`w-full px-2 py-1.5 text-xs rounded-lg outline-none${field.type === 'number' ? ' ' + NO_SPINNER : ''}`} style={inputStyle} />
                           </div>
                         )
                       })}
@@ -746,7 +748,7 @@ function PriceForm({
                         onChange={e => setUnitPrice(e.target.value)}
                         placeholder="0.00"
                         required
-                        className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                        className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
                         style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                         onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                         onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
@@ -762,7 +764,7 @@ function PriceForm({
                       value={leadTime}
                       onChange={e => setLeadTime(e.target.value)}
                       placeholder="e.g. 6"
-                      className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                      className={`w-full px-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
                       style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                       onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                       onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
@@ -859,7 +861,7 @@ function InstallationFeeSection({ token, initialInstallationFee }: { token: stri
             value={installationFee}
             onChange={e => { setInstallationFee(e.target.value); setSaved(false) }}
             placeholder="0.00"
-            className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+            className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
             style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
             onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
             onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
@@ -926,7 +928,7 @@ function DeliveryFeeSection({ token, initialDeliveryFee }: { token: string; init
             value={deliveryFee}
             onChange={e => { setDeliveryFee(e.target.value); setSaved(false) }}
             placeholder="0.00"
-            className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+            className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
             style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
             onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
             onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
@@ -1095,7 +1097,7 @@ function ExtraFeesModal({
                 onChange={e => { setDelivery(e.target.value); setSaved(false) }}
                 placeholder="0.00"
                 autoFocus
-                className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
                 style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                 onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                 onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
@@ -1115,7 +1117,7 @@ function ExtraFeesModal({
                 value={installation}
                 onChange={e => { setInstallation(e.target.value); setSaved(false) }}
                 placeholder="0.00"
-                className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                className={`w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none ${NO_SPINNER}`}
                 style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                 onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                 onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
