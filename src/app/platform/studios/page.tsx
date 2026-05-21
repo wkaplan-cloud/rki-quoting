@@ -4,6 +4,7 @@ import { Building2, Users, FolderOpen, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { QuickDeleteButton } from './[id]/DeleteStudioButton'
 import { AssignRepCell } from './AssignRepCell'
+import { IncompleteSignups, type IncompleteSignup } from './IncompleteSignups'
 
 function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string; trialEndsAt: string | null }) {
   if (status === 'active') {
@@ -30,6 +31,48 @@ function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string
     return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/40">Cancelled</span>
   }
   return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/40">{status}</span>
+}
+
+async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+  const allUsers = authData?.users ?? []
+
+  // Users who confirmed email within the last 30 days
+  const confirmed = allUsers.filter(u =>
+    u.email_confirmed_at && u.email_confirmed_at >= cutoff
+  )
+  if (confirmed.length === 0) return []
+
+  const ids = confirmed.map(u => u.id)
+
+  // Filter out users who have completed onboarding
+  const { data: members } = await supabaseAdmin
+    .from('org_members')
+    .select('user_id')
+    .in('user_id', ids)
+
+  const hasOrg = new Set((members ?? []).map((m: { user_id: string }) => m.user_id))
+
+  // Get nudge records for these users
+  const { data: nudges } = await supabaseAdmin
+    .from('onboarding_nudges')
+    .select('user_id, sent_at')
+    .in('user_id', ids)
+
+  const nudgeMap = new Map((nudges ?? []).map((n: { user_id: string; sent_at: string }) => [n.user_id, n.sent_at]))
+
+  return confirmed
+    .filter(u => !hasOrg.has(u.id))
+    .map(u => ({
+      user_id: u.id,
+      email: u.email!,
+      full_name: (u.user_metadata?.full_name as string | null) ?? null,
+      confirmed_at: u.email_confirmed_at!,
+      nudge_sent_at: nudgeMap.get(u.id) ?? null,
+    }))
+    .sort((a, b) => b.confirmed_at.localeCompare(a.confirmed_at))
 }
 
 export default async function StudiosPage() {
@@ -63,8 +106,11 @@ export default async function StudiosPage() {
     })
   )
 
-  const activeStudios = enriched.filter(o => o.status !== 'archived')
-  const archivedStudios = enriched.filter(o => o.status === 'archived')
+  const [activeStudios, archivedStudios, incompleteSignups] = [
+    enriched.filter(o => o.status !== 'archived'),
+    enriched.filter(o => o.status === 'archived'),
+    await getIncompleteSignups(),
+  ]
 
   const trialCount = activeStudios.filter(o => o.subscription_status === 'trialing').length
   const activeCount = activeStudios.filter(o => o.subscription_status === 'active').length
@@ -106,6 +152,8 @@ export default async function StudiosPage() {
           <StudioTable studios={archivedStudios} archived />
         </div>
       )}
+
+      <IncompleteSignups signups={incompleteSignups} />
     </div>
   )
 }
