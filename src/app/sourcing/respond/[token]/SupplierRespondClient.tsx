@@ -329,9 +329,11 @@ function PriceForm({
           </div>
         )}
         {item.specifications && (
-          <div className="px-5 pb-3" style={{ background: bgColor }}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>Notes from studio</p>
-            <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
+          <div className="px-5 pb-3 pt-3" style={{ background: bgColor }}>
+            <div className="rounded-lg px-4 py-3" style={{ background: '#FFFBEB', border: '1.5px solid #FDE68A' }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#92600A' }}>Note from studio</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium" style={{ color: '#6B4500' }}>{item.specifications}</p>
+            </div>
           </div>
         )}
       </div>
@@ -416,7 +418,12 @@ function PriceForm({
               {item.colour_finish && <span className="text-xs" style={{ color: '#71717A' }}>{item.colour_finish}</span>}
             </div>
             {item.specifications && !expanded && (
-              <p className="text-xs mt-1 italic line-clamp-2" style={{ color: '#A1A1AA' }}>{item.specifications}</p>
+              <div className="flex items-start gap-1.5 mt-2">
+                <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FFFBEB', color: '#92600A', border: '1px solid #FDE68A' }}>
+                  Studio note
+                </span>
+                <p className="text-xs italic line-clamp-2" style={{ color: '#6B4500' }}>{item.specifications}</p>
+              </div>
             )}
             {item.ref_image_urls && item.ref_image_urls.length > 0 && !expanded && (
               <div className="flex gap-1.5 mt-2">
@@ -479,7 +486,12 @@ function PriceForm({
             {item.colour_finish && <span className="text-xs" style={{ color: '#71717A' }}>{item.colour_finish}</span>}
           </div>
           {item.specifications && !expanded && (
-            <p className="text-xs mt-1 italic line-clamp-2" style={{ color: '#A1A1AA' }}>{item.specifications}</p>
+            <div className="flex items-start gap-1.5 mt-2">
+              <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: '#FFFBEB', color: '#92600A', border: '1px solid #FDE68A' }}>
+                Studio note
+              </span>
+              <p className="text-xs italic line-clamp-2" style={{ color: '#6B4500' }}>{item.specifications}</p>
+            </div>
           )}
           {item.ref_image_urls && item.ref_image_urls.length > 0 && !expanded && (
             <div className="flex gap-1.5 mt-2">
@@ -635,8 +647,10 @@ function PriceForm({
               {/* Notes / specifications text (read-only from designer) */}
               {item.specifications && (
                 <div className="px-5 pb-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: '#A1A1AA' }}>Notes from studio</p>
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: '#52525B' }}>{item.specifications}</p>
+                  <div className="rounded-lg px-4 py-3" style={{ background: '#FFFBEB', border: '1.5px solid #FDE68A' }}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#92600A' }}>Note from studio</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium" style={{ color: '#6B4500' }}>{item.specifications}</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -863,7 +877,7 @@ function InstallationFeeSection({ token, initialInstallationFee }: { token: stri
             border: `1px solid ${saved ? '#A7F3D0' : '#E4E4E7'}`,
           }}
         >
-          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save installation fee'}
+          {saving ? 'Saving…' : saved ? '✓ Applied' : 'Apply to Order'}
         </button>
       </div>
     </div>
@@ -930,7 +944,7 @@ function DeliveryFeeSection({ token, initialDeliveryFee }: { token: string; init
             border: `1px solid ${saved ? '#A7F3D0' : '#E4E4E7'}`,
           }}
         >
-          {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save delivery fee'}
+          {saving ? 'Saving…' : saved ? '✓ Applied' : 'Apply to Order'}
         </button>
       </div>
     </div>
@@ -1007,36 +1021,40 @@ function QuoteUpload({ token, locked }: { token: string; locked?: boolean }) {
 }
 
 
-function DeliveryFeeModal({
+function ExtraFeesModal({
   token,
-  initialValue,
+  initialDeliveryFee,
+  initialInstallationFee,
   onSaved,
   onClose,
 }: {
   token: string
-  initialValue: number | null
-  onSaved: (fee: number | null) => void
+  initialDeliveryFee: number | null
+  initialInstallationFee: number | null
+  onSaved: (delivery: number | null, installation: number | null) => void
   onClose: () => void
 }) {
-  const [fee, setFee] = useState(initialValue != null ? initialValue.toString() : '')
+  const [delivery, setDelivery] = useState(initialDeliveryFee != null ? initialDeliveryFee.toString() : '')
+  const [installation, setInstallation] = useState(initialInstallationFee != null ? initialInstallationFee.toString() : '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleSave() {
+  async function handleApply() {
     setSaving(true)
     setError(null)
     try {
-      const feeValue = fee !== '' ? Number(fee) : null
+      const deliveryValue = delivery !== '' ? Number(delivery) : null
+      const installationValue = installation !== '' ? Number(installation) : null
       const res = await fetch(`/api/sourcing/respond/${token}/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ delivery_fee: feeValue }),
+        body: JSON.stringify({ delivery_fee: deliveryValue, installation_fee: installationValue }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setSaved(true)
-      onSaved(feeValue)
+      onSaved(deliveryValue, installationValue)
       setTimeout(onClose, 700)
     } catch (err: any) {
       setError(err.message)
@@ -1057,15 +1075,15 @@ function DeliveryFeeModal({
         onClick={e => e.stopPropagation()}
       >
         <div className="px-6 py-5" style={{ borderBottom: '1px solid #E4E4E7' }}>
-          <p className="text-base font-semibold" style={{ color: '#18181B' }}>Delivery Fee</p>
+          <p className="text-base font-semibold" style={{ color: '#18181B' }}>Delivery &amp; Installation</p>
           <p className="text-sm mt-1" style={{ color: '#71717A' }}>
-            What&apos;s the total delivery cost covering all items in this quote? Enter 0 if delivery is free.
+            Add any project-level fees below. These cover the full order, not individual items. Leave blank if not applicable.
           </p>
         </div>
         <div className="px-6 py-5 space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
-              Amount (excl. VAT)
+              Delivery Fee (excl. VAT)
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
@@ -1073,15 +1091,35 @@ function DeliveryFeeModal({
                 type="number"
                 min="0"
                 step="0.01"
-                value={fee}
-                onChange={e => { setFee(e.target.value); setSaved(false) }}
+                value={delivery}
+                onChange={e => { setDelivery(e.target.value); setSaved(false) }}
                 placeholder="0.00"
                 autoFocus
                 className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
                 style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
                 onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
                 onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSave() } }}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>
+              Installation Fee (excl. VAT)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#A1A1AA' }}>R</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={installation}
+                onChange={e => { setInstallation(e.target.value); setSaved(false) }}
+                placeholder="0.00"
+                className="w-full pl-7 pr-3 py-2.5 text-sm rounded-lg outline-none"
+                style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }}
+                onFocus={e => (e.currentTarget.style.borderColor = '#71717A')}
+                onBlur={e => (e.currentTarget.style.borderColor = '#E4E4E7')}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleApply() } }}
               />
             </div>
           </div>
@@ -1093,11 +1131,11 @@ function DeliveryFeeModal({
               className="flex-1 py-2.5 text-sm rounded-lg transition-opacity hover:opacity-70"
               style={{ color: '#71717A', border: '1px solid #E4E4E7' }}
             >
-              Skip for now
+              Skip
             </button>
             <button
               type="button"
-              onClick={handleSave}
+              onClick={handleApply}
               disabled={saving}
               className="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-opacity disabled:opacity-50"
               style={{
@@ -1106,7 +1144,7 @@ function DeliveryFeeModal({
                 border: saved ? '1px solid #A7F3D0' : 'none',
               }}
             >
-              {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save delivery fee'}
+              {saving ? 'Saving…' : saved ? '✓ Applied' : 'Apply to Order'}
             </button>
           </div>
         </div>
@@ -1131,14 +1169,15 @@ export function SupplierRespondClient({
   const [items, setItems] = useState(assignments)
   const [declining, setDeclining] = useState(false)
   const [fullyDeclined, setFullyDeclined] = useState(false)
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false)
+  const [showExtraFeesModal, setShowExtraFeesModal] = useState(false)
   const [currentDeliveryFee, setCurrentDeliveryFee] = useState(initialDeliveryFee)
+  const [currentInstallationFee, setCurrentInstallationFee] = useState(initialInstallationFee)
 
   function handleSaved(assignmentId: string, response: Assignment['response']) {
     setItems(prev =>
       prev.map(a => a.id === assignmentId ? { ...a, status: 'responded', response } : a)
     )
-    setShowDeliveryModal(true)
+    setShowExtraFeesModal(true)
   }
 
   function handleDeclined(assignmentId: string) {
@@ -1194,12 +1233,16 @@ export function SupplierRespondClient({
 
   return (
     <div className="min-h-screen" style={{ background: '#F4F4F5' }}>
-      {showDeliveryModal && (
-        <DeliveryFeeModal
+      {showExtraFeesModal && (
+        <ExtraFeesModal
           token={token}
-          initialValue={currentDeliveryFee}
-          onSaved={fee => setCurrentDeliveryFee(fee)}
-          onClose={() => setShowDeliveryModal(false)}
+          initialDeliveryFee={currentDeliveryFee}
+          initialInstallationFee={currentInstallationFee}
+          onSaved={(delivery, installation) => {
+            setCurrentDeliveryFee(delivery)
+            setCurrentInstallationFee(installation)
+          }}
+          onClose={() => setShowExtraFeesModal(false)}
         />
       )}
       {/* Header — only shown for standalone (unauthenticated) token access */}
