@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data: assignment } = await supabase
       .from('sourcing_item_assignments')
-      .select('*, response:sourcing_item_responses(*), supplier:sourcing_session_suppliers(supplier_name, supplier_id, delivery_fee)')
+      .select('*, response:sourcing_item_responses(*), supplier:sourcing_session_suppliers(supplier_name, supplier_id)')
       .eq('item_id', itemId)
       .eq('status', 'accepted')
       .maybeSingle()
@@ -55,6 +55,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const response = Array.isArray(assignment.response) ? assignment.response[0] : assignment.response
     const supplierData = Array.isArray(assignment.supplier) ? assignment.supplier[0] : assignment.supplier
+
+    // Fetch delivery_fee directly — avoids silent type-stripping from the join
+    const { data: sessionSupplierRow } = await supabase
+      .from('sourcing_session_suppliers')
+      .select('delivery_fee')
+      .eq('id', assignment.session_supplier_id)
+      .maybeSingle()
 
     // Fetch office address for default delivery_address
     const { data: settings } = await supabase
@@ -124,7 +131,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // Add delivery line item — once per supplier per project
-    const deliveryFee = (supplierData as typeof supplierData & { delivery_fee?: number | null })?.delivery_fee
+    const deliveryFee = (sessionSupplierRow as any)?.delivery_fee as number | null | undefined
     if (deliveryFee != null && deliveryFee > 0) {
       // Find all other items assigned to this same session supplier
       const { data: otherAssignments } = await supabase
