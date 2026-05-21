@@ -44,7 +44,7 @@ export default async function StudiosPage() {
       const [{ count: memberCount }, { data: adminMember }, { count: projectCount }] = await Promise.all([
         supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('org_id', org.id).eq('status', 'active'),
         supabaseAdmin.from('org_members').select('user_id, full_name, invited_email, status').eq('org_id', org.id).eq('role', 'admin').order('status', { ascending: true }).limit(1).maybeSingle(),
-        supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).eq('org_id', org.id),
+        supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).eq('org_id', org.id).is('archived_at', null),
       ])
 
       let businessName = org.name
