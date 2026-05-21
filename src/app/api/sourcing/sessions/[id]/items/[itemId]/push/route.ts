@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data: assignment } = await supabase
       .from('sourcing_item_assignments')
-      .select('*, response:sourcing_item_responses(*), supplier:sourcing_session_suppliers(supplier_name, supplier_id)')
+      .select('*, response:sourcing_item_responses(*), supplier:sourcing_session_suppliers(supplier_name, supplier_id, delivery_fee)')
       .eq('item_id', itemId)
       .eq('status', 'accepted')
       .maybeSingle()
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .limit(1)
       .maybeSingle()
 
-    const sort_order = (lastItem?.sort_order ?? -1) + 1
+    let sort_order = (lastItem?.sort_order ?? -1) + 1
     const markup = markup_percentage ?? 0
 
     const { data: lineItem, error } = await supabase
@@ -100,6 +100,70 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Add installation line item if supplier quoted it separately
+    const resp = response as typeof response & { installation_included?: boolean | null; installation_cost?: number | null }
+    if (resp.installation_included === false && resp.installation_cost != null && resp.installation_cost > 0) {
+      sort_order += 1
+      await supabase.from('line_items').insert({
+        project_id,
+        item_name: 'Installation',
+        description: null,
+        quantity: 1,
+        cost_price: resp.installation_cost,
+        markup_percentage: markup,
+        supplier_id: supplierData?.supplier_id ?? null,
+        supplier_name: supplierData?.supplier_name ?? null,
+        dimensions: null,
+        colour_finish: null,
+        lead_time_weeks: null,
+        delivery_address: deliveryAddress,
+        sort_order,
+        row_type: 'item',
+      })
+    }
+
+    // Add delivery line item — once per supplier per project
+    const deliveryFee = (supplierData as typeof supplierData & { delivery_fee?: number | null })?.delivery_fee
+    if (deliveryFee != null && deliveryFee > 0) {
+      // Find all other items assigned to this same session supplier
+      const { data: otherAssignments } = await supabase
+        .from('sourcing_item_assignments')
+        .select('item_id')
+        .eq('session_supplier_id', assignment.session_supplier_id)
+        .neq('item_id', itemId)
+
+      const otherItemIds = (otherAssignments ?? []).map((a: { item_id: string }) => a.item_id)
+      let deliveryAlreadyPushed = false
+      if (otherItemIds.length > 0) {
+        const { count } = await supabase
+          .from('sourcing_session_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('pushed_to_project_id', project_id)
+          .in('id', otherItemIds)
+        deliveryAlreadyPushed = (count ?? 0) > 0
+      }
+
+      if (!deliveryAlreadyPushed) {
+        sort_order += 1
+        await supabase.from('line_items').insert({
+          project_id,
+          item_name: 'Delivery',
+          description: null,
+          quantity: 1,
+          cost_price: deliveryFee,
+          markup_percentage: markup,
+          supplier_id: supplierData?.supplier_id ?? null,
+          supplier_name: supplierData?.supplier_name ?? null,
+          dimensions: null,
+          colour_finish: null,
+          lead_time_weeks: null,
+          delivery_address: deliveryAddress,
+          sort_order,
+          row_type: 'item',
+        })
+      }
+    }
 
     // Record which project this item was pushed to so the UI persists after reload
     await supabase
