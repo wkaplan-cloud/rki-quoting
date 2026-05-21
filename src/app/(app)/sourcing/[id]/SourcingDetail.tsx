@@ -1345,6 +1345,7 @@ function PushModal({ item, assignment, response, supplierName, projects, session
 // ---- Comparison Matrix ----
 function ComparisonTable({
   items, suppliers, onAccept, accepting, onOpenPush, pushedItems, projects, onApproveSpec,
+  sessionId, pushedExtras, onExtraPushed,
 }: {
   items: SessionItem[]
   suppliers: SessionSupplier[]
@@ -1354,9 +1355,35 @@ function ComparisonTable({
   pushedItems: Record<string, string>
   projects: Props['projects']
   onApproveSpec: (ssId: string, assignmentId: string, itemId: string, action: 'approve' | 'reject', finalSpecs?: Record<string, string>) => Promise<void>
+  sessionId: string
+  pushedExtras: Record<string, string>
+  onExtraPushed: (ssId: string, type: 'installation' | 'delivery', projectId: string) => void
 }) {
   const [expandedSpecCell, setExpandedSpecCell] = useState<string | null>(null)
   const [approvingSpecMatrix, setApprovingSpecMatrix] = useState<string | null>(null)
+  const [showExtraPicker, setShowExtraPicker] = useState<{ ssId: string; type: 'installation' | 'delivery' } | null>(null)
+  const [extraProjectId, setExtraProjectId] = useState('')
+  const [extraMarkup, setExtraMarkup] = useState('0')
+  const [pushingExtra, setPushingExtra] = useState(false)
+
+  async function handlePushExtra(ssId: string, type: 'installation' | 'delivery') {
+    if (!extraProjectId) return
+    setPushingExtra(true)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/suppliers/${ssId}/push-extra`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, project_id: extraProjectId, markup_percentage: Number(extraMarkup) || 0 }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      onExtraPushed(ssId, type, extraProjectId)
+      setShowExtraPicker(null)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setPushingExtra(false)
+    }
+  }
   const assignedItems = items.filter(item =>
     suppliers.some(ss => ss.assignments.some(a => a.item_id === item.id))
   )
@@ -1637,6 +1664,66 @@ function ComparisonTable({
                 })}
               </tr>
             )}
+            {(['delivery', 'installation'] as const).map(type => {
+              const hasAny = suppliers.some(ss => (type === 'delivery' ? ss.delivery_fee : ss.installation_fee) != null)
+              if (!hasAny) return null
+              return (
+                <tr key={type} className="border-t border-[#EDE9E1]" style={{ background: '#FAFAF8' }}>
+                  <td className="px-5 py-3 text-xs font-semibold text-[#8A877F] sticky left-0 bg-[#FAFAF8] z-10 capitalize">
+                    {type} fee
+                  </td>
+                  {suppliers.map(ss => {
+                    const fee = type === 'delivery' ? ss.delivery_fee : ss.installation_fee
+                    if (fee == null) return <td key={ss.id} className="px-5 py-3"><span className="text-xs text-[#D4CFC7]">—</span></td>
+                    const pushedProjectId = pushedExtras[`${ss.id}_${type}`]
+                    const pushedProject = pushedProjectId ? projects.find(p => p.id === pushedProjectId) : null
+                    const isPickerOpen = showExtraPicker?.ssId === ss.id && showExtraPicker?.type === type
+                    return (
+                      <td key={ss.id} className="px-5 py-3">
+                        <p className="text-xs font-semibold text-[#2C2C2A] mb-1.5">R{fee.toLocaleString()}</p>
+                        {pushedProject ? (
+                          <span className="text-[10px] text-emerald-600 font-medium">✓ On quote</span>
+                        ) : isPickerOpen ? (
+                          <div className="space-y-1.5">
+                            <select
+                              value={extraProjectId}
+                              onChange={e => setExtraProjectId(e.target.value)}
+                              className="w-full text-xs rounded-lg px-2 py-1.5 border border-[#D4CFC7] bg-white text-[#2C2C2A] outline-none"
+                            >
+                              <option value="">Select project…</option>
+                              {projects.map(p => <option key={p.id} value={p.id}>{p.project_number ? `[${p.project_number}] ${p.project_name}` : p.project_name}</option>)}
+                            </select>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handlePushExtra(ss.id, type)}
+                                disabled={pushingExtra || !extraProjectId}
+                                className="flex-1 text-[10px] font-semibold py-1 rounded-lg disabled:opacity-50 transition-opacity"
+                                style={{ background: '#2C2C2A', color: '#F5F2EC' }}
+                              >
+                                {pushingExtra ? '…' : 'Push'}
+                              </button>
+                              <button
+                                onClick={() => setShowExtraPicker(null)}
+                                className="px-2 text-[10px] rounded-lg border border-[#D4CFC7] text-[#8A877F]"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setShowExtraPicker({ ssId: ss.id, type }); setExtraProjectId(''); setExtraMarkup('0') }}
+                            className="text-[10px] text-[#9A7B4F] hover:underline font-medium"
+                          >
+                            Add to quote →
+                          </button>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+              )
+            })}
           </tfoot>
         </table>
       </div>
@@ -2619,6 +2706,11 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                   pushedItems={pushedItems}
                   projects={projects}
                   onApproveSpec={handleApproveSpecFromMatrix}
+                  sessionId={session.id}
+                  pushedExtras={pushedExtras}
+                  onExtraPushed={(ssId, type, projectId) =>
+                    setPushedExtras(prev => ({ ...prev, [`${ssId}_${type}`]: projectId }))
+                  }
                 />
               ) : (
                 <div className="border border-dashed border-[#D4CFC7] rounded-xl p-12 text-center">
