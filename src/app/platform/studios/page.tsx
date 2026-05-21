@@ -40,16 +40,12 @@ export default async function StudiosPage() {
 
   const enriched = await Promise.all(
     (orgs ?? []).map(async (org) => {
-      const [{ count: memberCount }, { data: adminMember }] = await Promise.all([
+      // Fetch active member count, admin (any status, prefer active), and project count by org_id in parallel
+      const [{ count: memberCount }, { data: adminMember }, { count: projectCount }] = await Promise.all([
         supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('org_id', org.id).eq('status', 'active'),
-        supabaseAdmin.from('org_members').select('user_id, full_name, invited_email').eq('org_id', org.id).eq('role', 'admin').eq('status', 'active').maybeSingle(),
+        supabaseAdmin.from('org_members').select('user_id, full_name, invited_email, status').eq('org_id', org.id).eq('role', 'admin').order('status', { ascending: true }).limit(1).maybeSingle(),
+        supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).eq('org_id', org.id),
       ])
-
-      let projectCount = 0
-      if (adminMember?.user_id) {
-        const { count } = await supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).eq('user_id', adminMember.user_id)
-        projectCount = count ?? 0
-      }
 
       let businessName = org.name
       if (adminMember?.user_id) {
@@ -61,7 +57,7 @@ export default async function StudiosPage() {
         ...org,
         businessName,
         memberCount: memberCount ?? 0,
-        projectCount,
+        projectCount: projectCount ?? 0,
         adminName: adminMember?.full_name || adminMember?.invited_email || '—',
       }
     })
