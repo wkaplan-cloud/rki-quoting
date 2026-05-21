@@ -1,0 +1,15 @@
+name: Onboarding Nudge
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # every hour
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  nudge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call onboarding nudge cron
+        run: |
+          curl -sf -X GET https://quotinghub.co.za/api/cron/onboarding-nudge \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
