@@ -1682,7 +1682,7 @@ function ComparisonTable({
                       <td key={ss.id} className="px-5 py-3">
                         <p className="text-xs font-semibold text-[#2C2C2A] mb-1.5">R{fee.toLocaleString()}</p>
                         {pushedProject ? (
-                          <span className="text-[10px] text-emerald-600 font-medium">✓ On quote</span>
+                          <span className="text-[10px] text-emerald-600 font-medium">On Quote — {pushedProject.project_name} ↗</span>
                         ) : isPickerOpen ? (
                           <div className="space-y-1.5">
                             <select
@@ -1715,7 +1715,7 @@ function ComparisonTable({
                             onClick={() => { setShowExtraPicker({ ssId: ss.id, type }); setExtraProjectId(''); setExtraMarkup('0') }}
                             className="text-[10px] text-[#9A7B4F] hover:underline font-medium"
                           >
-                            Add to quote →
+                            Add to Project Quote →
                           </button>
                         )}
                       </td>
