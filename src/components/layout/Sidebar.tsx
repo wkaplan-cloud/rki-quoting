@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, ChevronLeft, Menu,
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose,
 } from 'lucide-react'
 
 const mainLinks = [
@@ -85,17 +85,17 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
           <button
             onClick={onDesktopToggle}
             className={`hidden md:flex absolute inset-0 items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/5 transition-colors z-10 ${desktopExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100 md:group-hover:opacity-0'}`}
-            aria-label="Expand navigation"
+            aria-label="Pin navigation open"
           >
-            <Menu size={15} />
+            <PanelLeft size={15} />
           </button>
           {/* Desktop: collapse button — visible only when expanded */}
           <button
             onClick={onDesktopToggle}
             className={`hidden md:flex absolute top-3 right-3 w-6 h-6 items-center justify-center rounded text-white/70 hover:text-white hover:bg-white/10 transition-colors z-10 ${desktopExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none md:group-hover:opacity-100'}`}
-            aria-label="Collapse navigation"
+            aria-label="Unpin navigation"
           >
-            <ChevronLeft size={12} />
+            <PanelLeftClose size={15} />
           </button>
           {/* Full logo: always on mobile, visible on desktop when expanded */}
           <div className={`px-4 py-5 flex flex-col items-center transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100 md:pointer-events-none'}`}>
