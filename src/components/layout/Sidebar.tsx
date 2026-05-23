@@ -9,14 +9,14 @@ import {
 
 const mainLinks = [
   { href: '/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/projects',  label: 'Projects',   icon: FolderOpen },
+  { href: '/projects',  label: 'Projects',   icon: FolderOpen, tourId: 'nav-projects' },
   { href: '/pieces',    label: 'Our Pieces', icon: LayoutGrid, soloLocked: true },
 ]
 
 const secondaryLinks = [
-  { href: '/clients',            label: 'Clients',            icon: Users },
-  { href: '/suppliers',          label: 'Suppliers',          icon: Truck },
-  { href: '/price-lists',        label: 'Price Lists',        icon: BookOpen },
+  { href: '/clients',     label: 'Clients',     icon: Users,     tourId: 'nav-clients' },
+  { href: '/suppliers',   label: 'Suppliers',   icon: Truck,     tourId: 'nav-suppliers' },
+  { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
 ]
 
 interface Props {
@@ -68,6 +68,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
       )}
 
       <aside
+        data-tour="sidebar"
         className={`group bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
           w-44 ${desktopExpanded ? 'md:w-44' : 'md:w-12 md:hover:w-44'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
@@ -110,7 +111,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
 
         {/* Main nav */}
         <nav className="flex-1 pt-4 pb-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          {mainLinks.map(({ href, label, icon: Icon, soloLocked }: { href: string; label: string; icon: any; soloLocked?: boolean }) => {
+          {mainLinks.map(({ href, label, icon: Icon, soloLocked, tourId }: { href: string; label: string; icon: any; soloLocked?: boolean; tourId?: string }) => {
             if (soloLocked && plan === 'solo') {
               return (
                 <button
@@ -132,6 +133,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                 key={href}
                 href={href}
                 onClick={onClose}
+                data-tour={tourId}
                 className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
                   ${isActive(href)
                     ? 'bg-[#9A7B4F]/20 text-white'
@@ -149,12 +151,12 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
 
           <div className="border-t border-white/10 my-2 mx-2" />
 
-          {secondaryLinks.map(({ href, label, icon: Icon }) => (
+          {secondaryLinks.map(({ href, label, icon: Icon, tourId }: { href: string; label: string; icon: any; tourId?: string }) => (
             <Link
               key={href}
               href={href}
               onClick={onClose}
-              
+              data-tour={tourId}
               className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
                 ${isActive(href)
                   ? 'text-white/80'

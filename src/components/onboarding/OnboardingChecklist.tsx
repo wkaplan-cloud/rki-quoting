@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, Circle, X, ChevronRight } from 'lucide-react'
+import { startTour } from './GuidedTour'
 
 interface Props {
   hasClients: boolean
@@ -39,8 +40,13 @@ export function OnboardingChecklist({ hasClients, hasSuppliers, hasProjects, has
 
   if (!visible) return null
 
+  function retakeTour() {
+    localStorage.removeItem('qh-tour-seen')
+    startTour()
+  }
+
   return (
-    <div className="bg-white border border-[#D8D3C8] rounded-lg p-5">
+    <div data-tour="checklist" className="bg-white border border-[#D8D3C8] rounded-lg p-5">
       <div className="flex items-start justify-between mb-1">
         <h2 className="text-sm font-semibold text-[#1A1A18]">Getting started</h2>
         <button onClick={dismiss} className="text-[#8A877F] hover:text-[#1A1A18] transition-colors -mt-0.5" aria-label="Dismiss checklist">
@@ -81,6 +87,13 @@ export function OnboardingChecklist({ hasClients, hasSuppliers, hasProjects, has
           )
         })}
       </div>
+
+      <button
+        onClick={retakeTour}
+        className="mt-4 text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors"
+      >
+        Retake the tour →
+      </button>
     </div>
   )
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { ArrowRight, Users, FolderOpen, FileText } from 'lucide-react'
+import { startTour } from './GuidedTour'
 
 const STEPS = [
   {
@@ -31,6 +32,7 @@ export function WelcomeModal() {
   function dismiss() {
     localStorage.setItem('qh-welcome-seen', '1')
     setShow(false)
+    setTimeout(startTour, 300)
   }
 
   if (!show) return null

@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { DashboardPipeline } from './DashboardPipeline'
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
 import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist'
+import { GuidedTour } from '@/components/onboarding/GuidedTour'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
@@ -122,10 +123,11 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col h-full">
       <WelcomeModal />
+      <GuidedTour />
       <PageHeader
         title="Dashboard"
         actions={
-          <Link href="/projects/new" className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-medium rounded hover:bg-[#9A7B4F] transition-colors">
+          <Link data-tour="new-project" href="/projects/new" className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2C2C2A] text-[#F5F2EC] text-sm font-medium rounded hover:bg-[#9A7B4F] transition-colors">
             <Plus size={15} /> New Project
           </Link>
         }
@@ -141,7 +143,7 @@ export default async function DashboardPage() {
         {/* Summary cards */}
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Overview</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
+          <div data-tour="dashboard-cards" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
             {summaryCards.map(({ label, value, sub, alert }) => (
               <div key={label} className={`bg-white border rounded p-3 md:p-4 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
                 <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider leading-tight">{label}</p>
