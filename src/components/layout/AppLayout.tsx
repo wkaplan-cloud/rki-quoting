@@ -85,7 +85,7 @@ export function AppLayout({
         )}
       </div>
 
-      <main className="md:ml-12 flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip pt-16 md:pt-0">
+      <main className={`${desktopExpanded ? 'md:ml-44' : 'md:ml-12'} flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip pt-16 md:pt-0 md:transition-[margin-left] md:duration-200`}>
         {/* ── Grace-period banner ── shown when trial has expired, before account is locked */}
         {showGraceBanner && (
           <div className="bg-red-600 text-white px-4 py-3 flex items-center justify-center gap-3 text-sm flex-wrap">
