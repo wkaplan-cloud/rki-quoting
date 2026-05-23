@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Menu, AlertTriangle } from 'lucide-react'
 import { Sidebar } from './Sidebar'
@@ -35,8 +35,13 @@ export function AppLayout({
   graceDaysLeft: number | null
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [desktopExpanded, setDesktopExpanded] = useState(false)
+  const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-expanded')
+    if (saved !== null) setDesktopExpanded(saved === 'true')
+  }, [])
 
   // Show red grace-period banner when trial has expired but account still accessible
   const showGraceBanner = trialExpired && graceDaysLeft !== null
@@ -56,7 +61,11 @@ export function AppLayout({
         subscriptionStatus={subscriptionStatus}
         trialDaysLeft={trialDaysLeft}
         desktopExpanded={desktopExpanded}
-        onDesktopToggle={() => setDesktopExpanded(e => !e)}
+        onDesktopToggle={() => setDesktopExpanded(e => {
+          const next = !e
+          localStorage.setItem('sidebar-expanded', String(next))
+          return next
+        })}
       />
       {feedbackOpen && (
         <FeedbackModal
