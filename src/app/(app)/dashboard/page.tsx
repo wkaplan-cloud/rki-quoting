@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DashboardPipeline } from './DashboardPipeline'
+import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
+import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
@@ -26,10 +28,12 @@ export default async function DashboardPage() {
     else redirect('/supplier-portal/register?notice=no-portal-account')
   }
   const currentUserId = user?.id ?? ''
-  const [{ data: projects }, { data: settings }, { data: org }] = await Promise.all([
+  const [{ data: projects }, { data: settings }, { data: org }, { count: clientCount }, { count: supplierCount }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(client_name), stages:project_stages(*)').is('archived_at', null).order('created_at', { ascending: false }),
     supabase.from('settings').select('sage_company_id, quote_validity_days').maybeSingle(),
     orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null }),
+    supabase.from('clients').select('*', { count: 'exact', head: true }),
+    supabase.from('suppliers').select('*', { count: 'exact', head: true }),
   ])
   const plan = org?.plan ?? 'trial'
   const isSolo = plan === 'solo'
@@ -97,6 +101,11 @@ export default async function DashboardPage() {
     awaitingDeposit, staleQuotes, inProduction, readyToInvoice, invoicesOutstanding,
   } = metrics
 
+  const hasClients = (clientCount ?? 0) > 0
+  const hasSuppliers = (supplierCount ?? 0) > 0
+  const hasProjects = ps.length > 0
+  const hasSentQuote = ps.some(p => stagesMap[p.id]?.quote_sent || ['Quote', 'Invoice', 'Paid', 'Completed'].includes(p.status))
+
   const allSummaryCards = [
     { label: 'Active Projects',        value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },
     { label: 'Awaiting Deposit',       value: awaitingDeposit.toString(),       sub: 'Quote sent — deposit not yet received',              alert: awaitingDeposit > 0 },
@@ -112,6 +121,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full">
+      <WelcomeModal />
       <PageHeader
         title="Dashboard"
         actions={
@@ -122,6 +132,12 @@ export default async function DashboardPage() {
       />
 
       <div className="p-4 md:p-8 space-y-8">
+        <OnboardingChecklist
+          hasClients={hasClients}
+          hasSuppliers={hasSuppliers}
+          hasProjects={hasProjects}
+          hasSentQuote={hasSentQuote}
+        />
         {/* Summary cards */}
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Overview</h2>
