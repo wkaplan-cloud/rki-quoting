@@ -21,30 +21,19 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
 
   const adminMember = members?.find(m => m.role === 'admin' && m.status === 'active')
 
-  const { data: lastProjectRow } = await supabaseAdmin
-    .from('projects')
-    .select('created_at')
-    .eq('org_id', id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const [{ data: settings }, { data: projects }, { data: sourcingSessions }] = await Promise.all([
+  const [{ data: settings }, { data: projects }, { data: sourcingSessions }, { data: lastProjectRow }] = await Promise.all([
     adminMember?.user_id
       ? supabaseAdmin.from('settings').select('*').eq('user_id', adminMember.user_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    adminMember?.user_id
-      ? supabaseAdmin.from('projects').select('id, project_name, project_number, status, created_at').eq('user_id', adminMember.user_id).order('created_at', { ascending: false }).limit(20)
-      : Promise.resolve({ data: [] }),
-    adminMember?.user_id
-      ? supabaseAdmin.from('sourcing_sessions').select('id, title, status, created_at').eq('user_id', adminMember.user_id).order('created_at', { ascending: false }).limit(20)
-      : Promise.resolve({ data: [] }),
+    supabaseAdmin.from('projects').select('id, project_name, project_number, status, created_at').eq('org_id', id).order('created_at', { ascending: false }).limit(20),
+    supabaseAdmin.from('sourcing_sessions').select('id, title, status, created_at').eq('org_id', id).order('created_at', { ascending: false }).limit(20),
+    supabaseAdmin.from('projects').select('created_at').eq('org_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
   ])
 
   // Sourcing fee for this studio
   let studioTotalFee = 0
   let studioAcceptedCount = 0
-  if (adminMember?.user_id && sourcingSessions && sourcingSessions.length > 0) {
+  if (sourcingSessions && sourcingSessions.length > 0) {
     const sessionIds = sourcingSessions.map((s: any) => s.id)
     const { data: itemsInSessions } = await supabaseAdmin
       .from('sourcing_session_items')

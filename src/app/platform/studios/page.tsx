@@ -76,62 +76,77 @@ async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
 export default async function StudiosPage() {
   const { data: orgs } = await supabaseAdmin
     .from('organizations')
-    .select('id, name, created_at, plan, trial_ends_at, subscription_status, status, archived_at, assigned_rep')
+    .select('id, name, created_at, plan, trial_ends_at, subscription_status, status, archived_at, assigned_rep, is_internal')
     .order('created_at', { ascending: false })
 
-  // Get last project date per org efficiently
-  const { data: recentProjects } = await supabaseAdmin
-    .from('projects')
-    .select('org_id, created_at')
-    .order('created_at', { ascending: false })
-    .limit(2000)
+  const orgIds = (orgs ?? []).map(o => o.id)
 
+  // 4 bulk queries + incomplete signups in parallel — replaces the previous N×4 query pattern
+  const [
+    { data: allActiveMembers },
+    { data: allAdminMembers },
+    { data: allProjectsData },
+    incompleteSignups,
+  ] = await Promise.all([
+    supabaseAdmin.from('org_members').select('org_id').eq('status', 'active').in('org_id', orgIds),
+    supabaseAdmin.from('org_members').select('org_id, user_id, full_name, invited_email').eq('role', 'admin').in('org_id', orgIds).order('status', { ascending: true }),
+    supabaseAdmin.from('projects').select('org_id, created_at, archived_at, status').order('created_at', { ascending: false }),
+    getIncompleteSignups(),
+  ])
+
+  // Build lookup maps from bulk data
+  const memberCountByOrg = new Map<string, number>()
+  for (const m of allActiveMembers ?? []) {
+    memberCountByOrg.set(m.org_id, (memberCountByOrg.get(m.org_id) ?? 0) + 1)
+  }
+
+  const adminByOrg = new Map<string, { user_id: string | null; full_name: string | null; invited_email: string | null }>()
+  for (const m of allAdminMembers ?? []) {
+    if (!adminByOrg.has(m.org_id)) adminByOrg.set(m.org_id, m)
+  }
+
+  const projectCountByOrg = new Map<string, number>()
   const lastActiveByOrg = new Map<string, string>()
-  for (const p of recentProjects ?? []) {
-    if (p.org_id && !lastActiveByOrg.has(p.org_id)) {
-      lastActiveByOrg.set(p.org_id, p.created_at)
+  for (const p of allProjectsData ?? []) {
+    if (p.org_id && !lastActiveByOrg.has(p.org_id)) lastActiveByOrg.set(p.org_id, p.created_at)
+    if (p.org_id && !p.archived_at && p.status !== 'Cancelled') {
+      projectCountByOrg.set(p.org_id, (projectCountByOrg.get(p.org_id) ?? 0) + 1)
     }
   }
 
+  // One bulk settings fetch for all admin user_ids
+  const adminUserIds = [...new Set(
+    [...adminByOrg.values()].map(a => a.user_id).filter((id): id is string => !!id)
+  )]
+  const { data: allSettings } = adminUserIds.length > 0
+    ? await supabaseAdmin.from('settings').select('user_id, business_name').in('user_id', adminUserIds)
+    : { data: [] as { user_id: string; business_name: string | null }[] }
+  const businessNameByUserId = new Map((allSettings ?? []).map(s => [s.user_id, s.business_name]))
+
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000)
 
-  const enriched = await Promise.all(
-    (orgs ?? []).map(async (org) => {
-      const [{ count: memberCount }, { data: adminMember }, { count: projectCount }] = await Promise.all([
-        supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('org_id', org.id).eq('status', 'active'),
-        supabaseAdmin.from('org_members').select('user_id, full_name, invited_email, status').eq('org_id', org.id).eq('role', 'admin').order('status', { ascending: true }).limit(1).maybeSingle(),
-        supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).eq('org_id', org.id).is('archived_at', null).neq('status', 'Cancelled'),
-      ])
+  const enriched = (orgs ?? []).map(org => {
+    const admin = adminByOrg.get(org.id)
+    const businessName = (admin?.user_id && businessNameByUserId.get(admin.user_id)) || org.name
+    const lastActive = lastActiveByOrg.get(org.id) ?? null
+    const isPaid = org.subscription_status === 'active'
+    const isInternal = (org as any).is_internal ?? false
+    const isChurnRisk = isPaid && !isInternal && (!lastActive || new Date(lastActive) < thirtyDaysAgo)
 
-      let businessName = org.name
-      if (adminMember?.user_id) {
-        const { data: settings } = await supabaseAdmin.from('settings').select('business_name').eq('user_id', adminMember.user_id).maybeSingle()
-        if (settings?.business_name) businessName = settings.business_name
-      }
+    return {
+      ...org,
+      businessName,
+      memberCount: memberCountByOrg.get(org.id) ?? 0,
+      projectCount: projectCountByOrg.get(org.id) ?? 0,
+      adminName: admin?.full_name || admin?.invited_email || '—',
+      lastActive,
+      isChurnRisk,
+      isInternal,
+    }
+  })
 
-      const lastActive = lastActiveByOrg.get(org.id) ?? null
-      const isPaid = org.subscription_status === 'active'
-      const isInternal = (org as any).is_internal ?? false
-      const isChurnRisk = isPaid && !isInternal && (!lastActive || new Date(lastActive) < thirtyDaysAgo)
-
-      return {
-        ...org,
-        businessName,
-        memberCount: memberCount ?? 0,
-        projectCount: projectCount ?? 0,
-        adminName: adminMember?.full_name || adminMember?.invited_email || '—',
-        lastActive,
-        isChurnRisk,
-        isInternal,
-      }
-    })
-  )
-
-  const [activeStudios, archivedStudios, incompleteSignups] = [
-    enriched.filter(o => o.status !== 'archived'),
-    enriched.filter(o => o.status === 'archived'),
-    await getIncompleteSignups(),
-  ]
+  const activeStudios = enriched.filter(o => o.status !== 'archived')
+  const archivedStudios = enriched.filter(o => o.status === 'archived')
 
   const trialCount = activeStudios.filter(o => o.subscription_status === 'trialing').length
   const activeCount = activeStudios.filter(o => o.subscription_status === 'active').length

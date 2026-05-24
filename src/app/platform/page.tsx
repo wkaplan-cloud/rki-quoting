@@ -19,6 +19,7 @@ export default async function PlatformDashboard() {
     { count: newProjectsCount },
     { data: allProjects },
     { data: sourcingOrgs },
+    { data: acceptedAssignments },
   ] = await Promise.all([
     supabaseAdmin.from('organizations').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('status', 'active'),
@@ -31,13 +32,9 @@ export default async function PlatformDashboard() {
     supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }),
     // For feature adoption: which orgs have ever created a sourcing session
     supabaseAdmin.from('sourcing_sessions').select('org_id'),
+    // Sourcing fee stats — no dependency on above, run in parallel
+    supabaseAdmin.from('sourcing_item_assignments').select('response:sourcing_item_responses(unit_price), item:sourcing_session_items(session:sourcing_sessions(project:projects(status)))').eq('status', 'accepted'),
   ])
-
-  // Sourcing fee stats
-  const { data: acceptedAssignments } = await supabaseAdmin
-    .from('sourcing_item_assignments')
-    .select('response:sourcing_item_responses(unit_price), item:sourcing_session_items(session:sourcing_sessions(project:projects(status)))')
-    .eq('status', 'accepted')
 
   let totalFeeCollectible = 0
   for (const a of acceptedAssignments ?? []) {
