@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { CheckCircle2, Circle } from 'lucide-react'
+import { CheckCircle2, Circle, TrendingUp } from 'lucide-react'
 
 const RATES: Record<string, { upfront: number; monthly: number }> = {
   solo:   { upfront: 650,  monthly: 70  },
@@ -46,11 +46,46 @@ export function CommissionsPanel({ orgs }: { orgs: OrgRow[] }) {
     setRows(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))
   }
 
+  // Platform-wide totals
+  const allActiveClients = rows.filter(r => r.subscription_status === 'active' && RATES[r.plan ?? ''])
+  const totalMonthlyOwed = allActiveClients.reduce((sum, c) => {
+    const rate = RATES[c.plan ?? '']
+    if (!rate || monthsSince(c.created_at) >= 12) return sum
+    return sum + rate.monthly
+  }, 0)
+  const totalUpfrontUnpaid = allActiveClients
+    .filter(c => !c.rep_upfront_paid)
+    .reduce((sum, c) => sum + (RATES[c.plan ?? '']?.upfront ?? 0), 0)
+  const totalUpfrontPaid = allActiveClients
+    .filter(c => c.rep_upfront_paid)
+    .reduce((sum, c) => sum + (RATES[c.plan ?? '']?.upfront ?? 0), 0)
+
   return (
     <div className="p-8 space-y-10">
       <div>
         <h1 className="font-serif text-3xl text-white mb-1">Commissions</h1>
         <p className="text-sm text-white/40">Track rep payouts — upfront on signup, monthly while subscribed (max 12 months)</p>
+      </div>
+
+      {/* Platform totals */}
+      <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp size={14} className="text-[#C4A46B]" />
+          <h2 className="text-sm font-medium text-white">All reps combined</h2>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: 'Active commissioned clients', value: allActiveClients.length.toString(), color: 'text-white' },
+            { label: 'Monthly owed this month', value: fmt(totalMonthlyOwed), color: 'text-[#C4A46B]' },
+            { label: 'Upfront still unpaid', value: fmt(totalUpfrontUnpaid), color: totalUpfrontUnpaid > 0 ? 'text-amber-400' : 'text-white/30' },
+            { label: 'Upfront paid to date', value: fmt(totalUpfrontPaid), color: 'text-emerald-400' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="bg-white/5 rounded-lg px-4 py-3">
+              <p className={`text-xl font-semibold ${color}`}>{value}</p>
+              <p className="text-xs text-white/30 mt-1">{label}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {REPS.map(rep => {

@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Building2, Users, FolderOpen, MessageSquare, TrendingUp, AlertTriangle, DollarSign, Activity } from 'lucide-react'
+import { Building2, Users, FolderOpen, MessageSquare, TrendingUp, AlertTriangle, DollarSign, Activity, Percent, ArrowUpRight, Zap } from 'lucide-react'
+
+const PLAN_PRICE: Record<string, number> = { solo: 699, studio: 1499, agency: 2499 }
 
 export default async function PlatformDashboard() {
   const now = new Date()
@@ -15,14 +17,20 @@ export default async function PlatformDashboard() {
     { data: recentStudios },
     { data: orgs },
     { count: newProjectsCount },
+    { data: allProjects },
+    { data: sourcingOrgs },
   ] = await Promise.all([
     supabaseAdmin.from('organizations').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('status', 'active'),
     supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('contact_submissions').select('*', { count: 'exact', head: true }).eq('read', false),
     supabaseAdmin.from('organizations').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
-    supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at').eq('status', 'active'),
+    supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at, status').eq('status', 'active'),
     supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
+    // For churn risk: paid studios — get their org_ids and last project dates
+    supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }).limit(1000),
+    // For feature adoption: which orgs have sourcing sessions
+    supabaseAdmin.from('sourcing_sessions').select('org_id').limit(2000),
   ])
 
   // Sourcing fee stats
@@ -42,9 +50,11 @@ export default async function PlatformDashboard() {
     }
   }
 
-  const activeOrgs = orgs ?? []
-  const paidCount = activeOrgs.filter(o => o.subscription_status === 'active').length
+  const activeOrgs = (orgs ?? []).filter(o => o.status === 'active')
+  const paidOrgs = activeOrgs.filter(o => o.subscription_status === 'active')
+  const paidCount = paidOrgs.length
   const trialCount = activeOrgs.filter(o => o.subscription_status === 'trialing').length
+
   const expiringTrials = activeOrgs.filter(o => {
     if (o.subscription_status !== 'trialing' || !o.trial_ends_at) return false
     const end = new Date(o.trial_ends_at)
@@ -55,14 +65,35 @@ export default async function PlatformDashboard() {
     return new Date(o.trial_ends_at) < now
   })
 
-  const fmt = (n: number) => `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  // MRR
+  const mrr = paidOrgs.reduce((sum, o) => sum + (PLAN_PRICE[o.plan ?? ''] ?? 0), 0)
 
-  const stats = [
-    { label: 'Studios online', value: studioCount ?? 0, icon: Building2, color: 'text-[#C4A46B]' },
-    { label: 'Total users', value: userCount ?? 0, icon: Users, color: 'text-blue-400' },
-    { label: 'Total projects', value: projectCount ?? 0, icon: FolderOpen, color: 'text-emerald-400' },
-    { label: 'Unread messages', value: unreadCount ?? 0, icon: MessageSquare, color: 'text-rose-400' },
-  ]
+  // Trial conversion rate
+  const totalTrialOutcomes = paidCount + expiredTrials.length
+  const conversionRate = totalTrialOutcomes > 0 ? Math.round((paidCount / totalTrialOutcomes) * 100) : 0
+
+  // Churn risk: paid studios with no project in last 30 days
+  const lastProjectByOrg = new Map<string, string>()
+  for (const p of allProjects ?? []) {
+    if (p.org_id && !lastProjectByOrg.has(p.org_id)) {
+      lastProjectByOrg.set(p.org_id, p.created_at)
+    }
+  }
+  const churnRiskOrgs = paidOrgs.filter(o => {
+    const last = lastProjectByOrg.get(o.id)
+    if (!last) return true
+    return new Date(last) < new Date(thirtyDaysAgo)
+  })
+
+  // Feature adoption
+  const orgsWithSourcing = new Set((sourcingOrgs ?? []).map((s: any) => s.org_id))
+  const orgsWithProjects = new Set((allProjects ?? []).map((p: any) => p.org_id))
+  const totalActiveCount = activeOrgs.length || 1
+  const sourcingAdoptionPct = Math.round((orgsWithSourcing.size / totalActiveCount) * 100)
+  const projectAdoptionPct = Math.round((orgsWithProjects.size / totalActiveCount) * 100)
+
+  const fmt = (n: number) => `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const fmtShort = (n: number) => `R ${n.toLocaleString('en-ZA')}`
 
   return (
     <div className="p-8">
@@ -72,8 +103,17 @@ export default async function PlatformDashboard() {
       </div>
 
       {/* Alerts */}
-      {(expiringTrials.length > 0 || expiredTrials.length > 0) && (
+      {(expiringTrials.length > 0 || expiredTrials.length > 0 || churnRiskOrgs.length > 0) && (
         <div className="mb-6 space-y-2">
+          {churnRiskOrgs.length > 0 && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+              <AlertTriangle size={14} className="text-rose-400 shrink-0" />
+              <p className="text-sm text-rose-300">
+                <span className="font-semibold">{churnRiskOrgs.length} paid studio{churnRiskOrgs.length > 1 ? 's' : ''}</span> at churn risk — no project activity in 30+ days
+              </p>
+              <a href="/platform/studios" className="ml-auto text-xs text-rose-400 hover:underline">View →</a>
+            </div>
+          )}
           {expiringTrials.length > 0 && (
             <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
               <AlertTriangle size={14} className="text-amber-400 shrink-0" />
@@ -93,9 +133,32 @@ export default async function PlatformDashboard() {
         </div>
       )}
 
+      {/* MRR hero */}
+      <div className="bg-[#1A1A18] border border-[#9A7B4F]/30 rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Monthly Recurring Revenue</p>
+            <p className="text-4xl font-semibold text-white">{fmtShort(mrr)}</p>
+            <p className="text-xs text-white/30 mt-1.5">
+              {paidCount} paid studio{paidCount !== 1 ? 's' : ''} ·
+              {' '}Solo × {paidOrgs.filter(o => o.plan === 'solo').length} · Studio × {paidOrgs.filter(o => o.plan === 'studio').length} · Agency × {paidOrgs.filter(o => o.plan === 'agency').length}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-white/40 uppercase tracking-wider mb-2">ARR</p>
+            <p className="text-2xl font-semibold text-[#C4A46B]">{fmtShort(mrr * 12)}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Primary stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map(({ label, value, icon: Icon, color }) => (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {[
+          { label: 'Studios online', value: studioCount ?? 0, icon: Building2, color: 'text-[#C4A46B]' },
+          { label: 'Total users', value: userCount ?? 0, icon: Users, color: 'text-blue-400' },
+          { label: 'Total projects', value: projectCount ?? 0, icon: FolderOpen, color: 'text-emerald-400' },
+          { label: 'Unread messages', value: unreadCount ?? 0, icon: MessageSquare, color: 'text-rose-400' },
+        ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-white/40 uppercase tracking-wider">{label}</span>
@@ -107,7 +170,7 @@ export default async function PlatformDashboard() {
       </div>
 
       {/* Secondary stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Paid subscriptions', value: paidCount.toString(), color: 'text-emerald-400', icon: Activity },
           { label: 'In trial', value: trialCount.toString(), color: 'text-[#C4A46B]', icon: Activity },
@@ -122,6 +185,94 @@ export default async function PlatformDashboard() {
             <p className="text-2xl font-semibold text-white">{value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Trial conversion + churn risk row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        {/* Trial conversion funnel */}
+        <div className="lg:col-span-2 bg-[#1A1A18] border border-white/10 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <ArrowUpRight size={14} className="text-[#C4A46B]" />
+            <h2 className="text-sm font-medium text-white">Trial conversion</h2>
+          </div>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-white/40">Converted to paid</span>
+                <span className="text-xs font-semibold text-emerald-400">{paidCount}</span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${conversionRate}%` }} />
+              </div>
+            </div>
+            <div className="text-2xl font-semibold text-white w-16 text-right">{conversionRate}%</div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Paid', value: paidCount, color: 'text-emerald-400' },
+              { label: 'Active trials', value: trialCount - expiredTrials.length, color: 'text-[#C4A46B]' },
+              { label: 'Expired (not converted)', value: expiredTrials.length, color: 'text-red-400' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-white/5 rounded-lg px-3 py-2.5 text-center">
+                <p className={`text-xl font-semibold ${color}`}>{value}</p>
+                <p className="text-xs text-white/30 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Churn risk */}
+        <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle size={14} className={churnRiskOrgs.length > 0 ? 'text-rose-400' : 'text-white/30'} />
+            <h2 className="text-sm font-medium text-white">Churn risk</h2>
+          </div>
+          <p className={`text-4xl font-semibold mb-1 ${churnRiskOrgs.length > 0 ? 'text-rose-400' : 'text-white'}`}>
+            {churnRiskOrgs.length}
+          </p>
+          <p className="text-xs text-white/30 mb-4">Paid studios, no activity 30+ days</p>
+          {churnRiskOrgs.length > 0 && (
+            <div className="space-y-1.5">
+              {churnRiskOrgs.slice(0, 3).map(o => (
+                <a key={o.id} href={`/platform/studios/${o.id}`} className="flex items-center justify-between text-xs text-white/50 hover:text-white transition-colors">
+                  <span className="truncate">{o.plan}</span>
+                  <span className="text-white/20 capitalize">{o.plan}</span>
+                </a>
+              ))}
+              {churnRiskOrgs.length > 3 && (
+                <a href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">+{churnRiskOrgs.length - 3} more →</a>
+              )}
+            </div>
+          )}
+          {churnRiskOrgs.length === 0 && (
+            <p className="text-xs text-emerald-400">All paid studios active</p>
+          )}
+        </div>
+      </div>
+
+      {/* Feature adoption */}
+      <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap size={14} className="text-[#C4A46B]" />
+          <h2 className="text-sm font-medium text-white">Feature adoption</h2>
+          <span className="text-xs text-white/30 ml-1">across all {activeOrgs.length} active studios</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { label: 'Have created a project', pct: projectAdoptionPct, count: orgsWithProjects.size, color: 'bg-blue-500' },
+            { label: 'Using sourcing / price requests', pct: sourcingAdoptionPct, count: orgsWithSourcing.size, color: 'bg-[#C4A46B]' },
+          ].map(({ label, pct, count, color }) => (
+            <div key={label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-white/50">{label}</span>
+                <span className="text-xs font-semibold text-white">{count} <span className="text-white/30">({pct}%)</span></span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Recent studios */}

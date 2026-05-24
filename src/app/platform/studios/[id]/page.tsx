@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Users, FolderOpen, ArrowLeftRight } from 'lucide-react'
+import { ArrowLeft, Users, FolderOpen, ArrowLeftRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
 import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
+import { StudioNotes } from './StudioNotes'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,6 +20,14 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
     .order('invited_at')
 
   const adminMember = members?.find(m => m.role === 'admin' && m.status === 'active')
+
+  const { data: lastProjectRow } = await supabaseAdmin
+    .from('projects')
+    .select('created_at')
+    .eq('org_id', id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   const [{ data: settings }, { data: projects }, { data: sourcingSessions }] = await Promise.all([
     adminMember?.user_id
@@ -149,14 +158,27 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
             </div>
           </div>
           <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center">
-                <ArrowLeftRight size={16} className="text-[#C4A46B]" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold text-white">{sourcingSessions?.length ?? 0}</p>
-                <p className="text-xs text-white/40">Sourcing sessions</p>
-              </div>
+            <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center">
+              <ArrowLeftRight size={16} className="text-[#C4A46B]" />
             </div>
+            <div>
+              <p className="text-2xl font-semibold text-white">{sourcingSessions?.length ?? 0}</p>
+              <p className="text-xs text-white/40">Sourcing sessions</p>
+            </div>
+          </div>
+          <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <Clock size={16} className="text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">
+                {lastProjectRow?.created_at
+                  ? new Date(lastProjectRow.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : 'Never'}
+              </p>
+              <p className="text-xs text-white/40">Last project created</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -167,6 +189,9 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         status={org.subscription_status ?? 'trialing'}
         trialEndsAt={org.trial_ends_at ?? null}
       />
+
+      {/* Internal notes */}
+      <StudioNotes orgId={id} initial={(org as any).platform_notes ?? null} />
 
       {/* Members */}
       <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
