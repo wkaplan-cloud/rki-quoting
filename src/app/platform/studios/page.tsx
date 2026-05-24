@@ -229,7 +229,7 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
                       )}
                     </div>
                     {studio.isChurnRisk && (
-                      <AlertTriangle size={12} className="text-rose-400 shrink-0" title="Churn risk" />
+                      <span title="Churn risk"><AlertTriangle size={12} className="text-rose-400 shrink-0" /></span>
                     )}
                   </div>
                 </td>
