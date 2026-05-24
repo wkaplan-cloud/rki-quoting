@@ -27,10 +27,10 @@ export default async function PlatformDashboard() {
     supabaseAdmin.from('organizations').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
     supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at, status, is_internal').eq('status', 'active'),
     supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
-    // For churn risk: paid studios — get their org_ids and last project dates
-    supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }).limit(1000),
-    // For feature adoption: which orgs have sourcing sessions
-    supabaseAdmin.from('sourcing_sessions').select('org_id').limit(2000),
+    // For churn risk + feature adoption: get all project org_ids (ordered so first hit per org = most recent)
+    supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }),
+    // For feature adoption: which orgs have ever created a sourcing session
+    supabaseAdmin.from('sourcing_sessions').select('org_id'),
   ])
 
   // Sourcing fee stats
@@ -87,9 +87,14 @@ export default async function PlatformDashboard() {
     return new Date(last) < new Date(thirtyDaysAgo)
   })
 
-  // Feature adoption
-  const orgsWithSourcing = new Set((sourcingOrgs ?? []).map((s: any) => s.org_id))
-  const orgsWithProjects = new Set((allProjects ?? []).map((p: any) => p.org_id))
+  // Feature adoption — only count orgs that are in billableOrgs
+  const billableOrgIds = new Set(billableOrgs.map(o => o.id))
+  const orgsWithSourcing = new Set(
+    (sourcingOrgs ?? []).map((s: any) => s.org_id).filter((id: string) => billableOrgIds.has(id))
+  )
+  const orgsWithProjects = new Set(
+    (allProjects ?? []).map((p: any) => p.org_id).filter((id: string) => billableOrgIds.has(id))
+  )
   const totalActiveCount = billableOrgs.length || 1
   const sourcingAdoptionPct = Math.round((orgsWithSourcing.size / totalActiveCount) * 100)
   const projectAdoptionPct = Math.round((orgsWithProjects.size / totalActiveCount) * 100)
