@@ -5,8 +5,9 @@ import { CommissionsPanel, type OrgRow } from './CommissionsPanel'
 export default async function CommissionsPage() {
   const { data: orgs } = await supabaseAdmin
     .from('organizations')
-    .select('id, name, plan, subscription_status, created_at, assigned_rep, rep_upfront_paid, rep_monthly_last_paid_at')
+    .select('id, name, plan, subscription_status, created_at, assigned_rep, rep_upfront_paid, rep_monthly_last_paid_at, is_internal')
     .eq('status', 'active')
+    .eq('is_internal', false)
     .not('assigned_rep', 'is', null)
     .order('created_at', { ascending: false })
 

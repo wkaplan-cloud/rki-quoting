@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Building2, Users, FolderOpen, ChevronRight, AlertTriangle } from 'lucide-react'
+import { Building2, Users, FolderOpen, ChevronRight, AlertTriangle, FlaskConical } from 'lucide-react'
 import Link from 'next/link'
 import { QuickDeleteButton } from './[id]/DeleteStudioButton'
 import { AssignRepCell } from './AssignRepCell'
@@ -111,7 +111,8 @@ export default async function StudiosPage() {
 
       const lastActive = lastActiveByOrg.get(org.id) ?? null
       const isPaid = org.subscription_status === 'active'
-      const isChurnRisk = isPaid && (!lastActive || new Date(lastActive) < thirtyDaysAgo)
+      const isInternal = (org as any).is_internal ?? false
+      const isChurnRisk = isPaid && !isInternal && (!lastActive || new Date(lastActive) < thirtyDaysAgo)
 
       return {
         ...org,
@@ -121,6 +122,7 @@ export default async function StudiosPage() {
         adminName: adminMember?.full_name || adminMember?.invited_email || '—',
         lastActive,
         isChurnRisk,
+        isInternal,
       }
     })
   )
@@ -242,7 +244,13 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
                 <td className="px-5 py-3.5">
                   {archived
                     ? <span className="text-xs text-amber-400/70">{studio.archived_at ? new Date(studio.archived_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
-                    : <PlanBadge plan={studio.plan ?? 'trial'} status={studio.subscription_status ?? 'trialing'} trialEndsAt={studio.trial_ends_at} />
+                    : studio.isInternal
+                      ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/15 text-violet-400">
+                          <FlaskConical size={10} /> Internal
+                        </span>
+                      )
+                      : <PlanBadge plan={studio.plan ?? 'trial'} status={studio.subscription_status ?? 'trialing'} trialEndsAt={studio.trial_ends_at} />
                   }
                 </td>
                 {!archived && (

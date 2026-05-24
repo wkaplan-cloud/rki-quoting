@@ -17,6 +17,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     plan?: string
     status?: string
     extendDays?: number
+    is_internal?: boolean
   }
 
   if (body.extendDays) {
@@ -43,10 +44,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Update plan and/or status
-  const update: Record<string, string> = {}
+  const update: Record<string, unknown> = {}
   if (body.plan) update.plan = body.plan
   if (body.status) update.subscription_status = body.status
   if (body.status === 'active' && !body.plan) update.plan = 'solo' // default when activating
+  if (typeof body.is_internal === 'boolean') update.is_internal = body.is_internal
 
   const { error } = await supabaseAdmin
     .from('organizations')

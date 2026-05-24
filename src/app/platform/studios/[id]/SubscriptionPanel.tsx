@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { CreditCard } from 'lucide-react'
+import { CreditCard, FlaskConical } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
@@ -22,15 +22,18 @@ export function SubscriptionPanel({
   plan,
   status,
   trialEndsAt,
+  isInternal,
 }: {
   orgId: string
   plan: string
   status: string
   trialEndsAt: string | null
+  isInternal: boolean
 }) {
   const router = useRouter()
   const [selectedPlan, setSelectedPlan] = useState(plan)
   const [selectedStatus, setSelectedStatus] = useState(status)
+  const [internal, setInternal] = useState(isInternal)
   const [saving, setSaving] = useState(false)
 
   const daysLeft = trialEndsAt
@@ -42,7 +45,7 @@ export function SubscriptionPanel({
     const res = await fetch(`/api/platform/studios/${orgId}/subscription`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: selectedPlan, status: selectedStatus }),
+      body: JSON.stringify({ plan: selectedPlan, status: selectedStatus, is_internal: internal }),
     })
     setSaving(false)
     if (res.ok) {
@@ -103,6 +106,24 @@ export function SubscriptionPanel({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Internal account toggle */}
+        <div className="flex items-center justify-between pt-1 pb-1 border-t border-white/5">
+          <div className="flex items-center gap-2">
+            <FlaskConical size={13} className={internal ? 'text-violet-400' : 'text-white/30'} />
+            <div>
+              <p className="text-xs text-white/70 font-medium">Internal / test account</p>
+              <p className="text-xs text-white/30">Excluded from MRR, churn risk, and conversion metrics</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setInternal(v => !v)}
+            className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer focus:outline-none ${internal ? 'bg-violet-500' : 'bg-white/10'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${internal ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
         </div>
 
         <button

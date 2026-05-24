@@ -188,6 +188,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         plan={org.plan ?? 'trial'}
         status={org.subscription_status ?? 'trialing'}
         trialEndsAt={org.trial_ends_at ?? null}
+        isInternal={(org as any).is_internal ?? false}
       />
 
       {/* Internal notes */}

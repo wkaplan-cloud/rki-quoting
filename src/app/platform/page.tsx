@@ -25,7 +25,7 @@ export default async function PlatformDashboard() {
     supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('contact_submissions').select('*', { count: 'exact', head: true }).eq('read', false),
     supabaseAdmin.from('organizations').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
-    supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at, status').eq('status', 'active'),
+    supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at, status, is_internal').eq('status', 'active'),
     supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     // For churn risk: paid studios — get their org_ids and last project dates
     supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }).limit(1000),
@@ -51,16 +51,18 @@ export default async function PlatformDashboard() {
   }
 
   const activeOrgs = (orgs ?? []).filter(o => o.status === 'active')
-  const paidOrgs = activeOrgs.filter(o => o.subscription_status === 'active')
+  // Exclude internal/test accounts from all business metrics
+  const billableOrgs = activeOrgs.filter(o => !(o as any).is_internal)
+  const paidOrgs = billableOrgs.filter(o => o.subscription_status === 'active')
   const paidCount = paidOrgs.length
-  const trialCount = activeOrgs.filter(o => o.subscription_status === 'trialing').length
+  const trialCount = billableOrgs.filter(o => o.subscription_status === 'trialing').length
 
-  const expiringTrials = activeOrgs.filter(o => {
+  const expiringTrials = billableOrgs.filter(o => {
     if (o.subscription_status !== 'trialing' || !o.trial_ends_at) return false
     const end = new Date(o.trial_ends_at)
     return end > now && end <= new Date(sevenDaysFromNow)
   })
-  const expiredTrials = activeOrgs.filter(o => {
+  const expiredTrials = billableOrgs.filter(o => {
     if (o.subscription_status !== 'trialing' || !o.trial_ends_at) return false
     return new Date(o.trial_ends_at) < now
   })
@@ -79,7 +81,7 @@ export default async function PlatformDashboard() {
       lastProjectByOrg.set(p.org_id, p.created_at)
     }
   }
-  const churnRiskOrgs = paidOrgs.filter(o => {
+  const churnRiskOrgs = paidOrgs.filter(o => {  // paidOrgs already excludes internal
     const last = lastProjectByOrg.get(o.id)
     if (!last) return true
     return new Date(last) < new Date(thirtyDaysAgo)
@@ -88,7 +90,7 @@ export default async function PlatformDashboard() {
   // Feature adoption
   const orgsWithSourcing = new Set((sourcingOrgs ?? []).map((s: any) => s.org_id))
   const orgsWithProjects = new Set((allProjects ?? []).map((p: any) => p.org_id))
-  const totalActiveCount = activeOrgs.length || 1
+  const totalActiveCount = billableOrgs.length || 1
   const sourcingAdoptionPct = Math.round((orgsWithSourcing.size / totalActiveCount) * 100)
   const projectAdoptionPct = Math.round((orgsWithProjects.size / totalActiveCount) * 100)
 
@@ -255,7 +257,7 @@ export default async function PlatformDashboard() {
         <div className="flex items-center gap-2 mb-4">
           <Zap size={14} className="text-[#C4A46B]" />
           <h2 className="text-sm font-medium text-white">Feature adoption</h2>
-          <span className="text-xs text-white/30 ml-1">across all {activeOrgs.length} active studios</span>
+          <span className="text-xs text-white/30 ml-1">across all {billableOrgs.length} billable studios</span>
         </div>
         <div className="grid grid-cols-2 gap-4">
           {[
