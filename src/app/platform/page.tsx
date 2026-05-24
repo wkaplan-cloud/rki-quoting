@@ -1,54 +1,107 @@
 export const dynamic = 'force-dynamic'
+import { unstable_cache } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Building2, Users, FolderOpen, MessageSquare, TrendingUp, AlertTriangle, DollarSign, Activity, Percent, ArrowUpRight, Zap } from 'lucide-react'
+import { Building2, Users, FolderOpen, MessageSquare, TrendingUp, AlertTriangle, DollarSign, Activity, ArrowUpRight, Zap } from 'lucide-react'
 
 const PLAN_PRICE: Record<string, number> = { solo: 699, studio: 1499, agency: 2499 }
 
-export default async function PlatformDashboard() {
-  const now = new Date()
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString()
-  const sevenDaysFromNow = new Date(now.getTime() + 7 * 86400000).toISOString()
+// Cache all DB queries for 5 minutes — admin dashboard doesn't need real-time precision
+const getDashboardData = unstable_cache(
+  async () => {
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString()
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 86400000).toISOString()
 
-  const [
-    { count: studioCount },
-    { count: userCount },
-    { count: projectCount },
-    { count: unreadCount },
-    { data: recentStudios },
-    { data: orgs },
-    { count: newProjectsCount },
-    { data: allProjects },
-    { data: sourcingOrgs },
-    { data: acceptedAssignments },
-  ] = await Promise.all([
-    supabaseAdmin.from('organizations').select('*', { count: 'exact', head: true }),
-    supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }),
-    supabaseAdmin.from('contact_submissions').select('*', { count: 'exact', head: true }).eq('read', false),
-    supabaseAdmin.from('organizations').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
-    supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at, status, is_internal').eq('status', 'active'),
-    supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
-    // For churn risk + feature adoption: get all project org_ids (ordered so first hit per org = most recent)
-    supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }),
-    // For feature adoption: which orgs have ever created a sourcing session
-    supabaseAdmin.from('sourcing_sessions').select('org_id'),
-    // Sourcing fee stats — no dependency on above, run in parallel
-    supabaseAdmin.from('sourcing_item_assignments').select('response:sourcing_item_responses(unit_price), item:sourcing_session_items(session:sourcing_sessions(project:projects(status)))').eq('status', 'accepted'),
-  ])
+    const [
+      { count: studioCount },
+      { count: userCount },
+      { count: projectCount },
+      { count: unreadCount },
+      { data: recentStudios },
+      { data: orgs },
+      { count: newProjectsCount },
+      { data: allProjects },
+      { data: sourcingOrgs },
+      // Simplified to 2-level join — prices only, no project status yet
+      { data: acceptedWithPrices },
+      // Paid/completed project IDs for fee filtering — far fewer rows than all assignments
+      { data: completedProjects },
+    ] = await Promise.all([
+      supabaseAdmin.from('organizations').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('contact_submissions').select('*', { count: 'exact', head: true }).eq('read', false),
+      supabaseAdmin.from('organizations').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
+      supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at, status, is_internal').eq('status', 'active'),
+      supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
+      supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }),
+      supabaseAdmin.from('sourcing_sessions').select('org_id'),
+      // 2-level join: assignments → prices (no deep nesting)
+      supabaseAdmin.from('sourcing_item_assignments')
+        .select('item_id, response:sourcing_item_responses(unit_price)')
+        .eq('status', 'accepted'),
+      // Paid/completed project IDs — used to filter fees without a 4-level join
+      supabaseAdmin.from('projects').select('id').in('status', ['Paid', 'Completed']),
+    ])
 
-  let totalFeeCollectible = 0
-  for (const a of acceptedAssignments ?? []) {
-    const response = Array.isArray((a as any).response) ? (a as any).response[0] : (a as any).response
-    const item = Array.isArray((a as any).item) ? (a as any).item[0] : (a as any).item
-    const session = Array.isArray(item?.session) ? item?.session[0] : item?.session
-    const project = Array.isArray(session?.project) ? session?.project[0] : session?.project
-    if (['Paid', 'Completed'].includes(project?.status)) {
-      totalFeeCollectible += (response?.unit_price ?? 0) * 0.01
+    // Compute fees collectible without deep nesting:
+    // accepted assignments → session items → sessions → filter by completed project IDs
+    let totalFeeCollectible = 0
+    const acceptedItemIds = (acceptedWithPrices ?? []).map((a: any) => a.item_id).filter(Boolean) as string[]
+    const completedProjectIds = new Set((completedProjects ?? []).map((p: any) => p.id))
+
+    if (acceptedItemIds.length > 0) {
+      const { data: itemStatuses } = await supabaseAdmin
+        .from('sourcing_session_items')
+        .select('id, session:sourcing_sessions(project_id)')
+        .in('id', acceptedItemIds)
+
+      const completedItemIds = new Set<string>()
+      for (const item of itemStatuses ?? []) {
+        const session = Array.isArray((item as any).session) ? (item as any).session[0] : (item as any).session
+        if (session?.project_id && completedProjectIds.has(session.project_id)) {
+          completedItemIds.add(item.id)
+        }
+      }
+
+      for (const a of acceptedWithPrices ?? []) {
+        if (completedItemIds.has((a as any).item_id)) {
+          const resp = Array.isArray((a as any).response) ? (a as any).response[0] : (a as any).response
+          totalFeeCollectible += (resp?.unit_price ?? 0) * 0.01
+        }
+      }
     }
-  }
 
-  const activeOrgs = (orgs ?? []).filter(o => o.status === 'active')
-  // Exclude internal/test accounts from all business metrics
+    return {
+      studioCount,
+      userCount,
+      projectCount,
+      unreadCount,
+      recentStudios: recentStudios ?? [],
+      orgs: orgs ?? [],
+      newProjectsCount,
+      allProjects: allProjects ?? [],
+      sourcingOrgs: sourcingOrgs ?? [],
+      totalFeeCollectible,
+      nowIso: now.toISOString(),
+      thirtyDaysAgo,
+      sevenDaysFromNow,
+    }
+  },
+  ['platform-dashboard'],
+  { revalidate: 300 }
+)
+
+export default async function PlatformDashboard() {
+  const {
+    studioCount, userCount, projectCount, unreadCount,
+    recentStudios, orgs, newProjectsCount, allProjects, sourcingOrgs,
+    totalFeeCollectible, nowIso, thirtyDaysAgo, sevenDaysFromNow,
+  } = await getDashboardData()
+
+  const now = new Date(nowIso)
+
+  const activeOrgs = orgs.filter(o => o.status === 'active')
   const billableOrgs = activeOrgs.filter(o => !(o as any).is_internal)
   const paidOrgs = billableOrgs.filter(o => o.subscription_status === 'active')
   const paidCount = paidOrgs.length
@@ -64,33 +117,29 @@ export default async function PlatformDashboard() {
     return new Date(o.trial_ends_at) < now
   })
 
-  // MRR
   const mrr = paidOrgs.reduce((sum, o) => sum + (PLAN_PRICE[o.plan ?? ''] ?? 0), 0)
 
-  // Trial conversion rate
   const totalTrialOutcomes = paidCount + expiredTrials.length
   const conversionRate = totalTrialOutcomes > 0 ? Math.round((paidCount / totalTrialOutcomes) * 100) : 0
 
-  // Churn risk: paid studios with no project in last 30 days
   const lastProjectByOrg = new Map<string, string>()
-  for (const p of allProjects ?? []) {
+  for (const p of allProjects) {
     if (p.org_id && !lastProjectByOrg.has(p.org_id)) {
       lastProjectByOrg.set(p.org_id, p.created_at)
     }
   }
-  const churnRiskOrgs = paidOrgs.filter(o => {  // paidOrgs already excludes internal
+  const churnRiskOrgs = paidOrgs.filter(o => {
     const last = lastProjectByOrg.get(o.id)
     if (!last) return true
     return new Date(last) < new Date(thirtyDaysAgo)
   })
 
-  // Feature adoption — only count orgs that are in billableOrgs
   const billableOrgIds = new Set(billableOrgs.map(o => o.id))
   const orgsWithSourcing = new Set(
-    (sourcingOrgs ?? []).map((s: any) => s.org_id).filter((id: string) => billableOrgIds.has(id))
+    sourcingOrgs.map((s: any) => s.org_id).filter((id: string) => billableOrgIds.has(id))
   )
   const orgsWithProjects = new Set(
-    (allProjects ?? []).map((p: any) => p.org_id).filter((id: string) => billableOrgIds.has(id))
+    allProjects.map((p: any) => p.org_id).filter((id: string) => billableOrgIds.has(id))
   )
   const totalActiveCount = billableOrgs.length || 1
   const sourcingAdoptionPct = Math.round((orgsWithSourcing.size / totalActiveCount) * 100)
@@ -289,10 +338,10 @@ export default async function PlatformDashboard() {
           <a href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">View all →</a>
         </div>
         <div className="divide-y divide-white/5">
-          {recentStudios?.length === 0 && (
+          {recentStudios.length === 0 && (
             <p className="px-5 py-6 text-sm text-white/30 text-center">No studios yet</p>
           )}
-          {recentStudios?.map(studio => (
+          {recentStudios.map((studio: any) => (
             <a
               key={studio.id}
               href={`/platform/studios/${studio.id}`}
