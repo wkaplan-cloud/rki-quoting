@@ -704,7 +704,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       {showTabs && (
         <>
           <div style={{ display: activeTab === 'as_built' ? undefined : 'none' }}>
-            <AsBuiltTab sections={initSections} items={initItems} contractTotal={contractTotal} />
+            <AsBuiltTab
+              sections={sections as unknown as ElecQuoteSection[]}
+              items={allItems as ElecQuoteLineItem[]}
+              contractTotal={contractTotal}
+            />
           </div>
           <div style={{ display: activeTab === 'claims' ? undefined : 'none' }}>
             <ClaimsTab
@@ -712,8 +716,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               portalAccountId={portalAccountId}
               initialClaims={claims}
               extraClaims={voCreatedClaims}
-              items={initItems}
-              sections={initSections}
+              items={allItems as ElecQuoteLineItem[]}
+              sections={sections as unknown as ElecQuoteSection[]}
               contractTotal={contractTotal}
               approvedVOTotal={approvedVOTotal}
               contractType={q.contract_type}
