@@ -115,6 +115,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const companyName = account.company_name ?? account.email ?? 'Company'
 
     const buffer = await renderToBuffer(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(ElecClaimPDF, {
         claim,
         lineItems:        lineItemsForPDF,
@@ -125,7 +126,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         companyName,
         contractTotal,
         prevTotalClaimed,
-      }) as React.ReactElement
+      }) as any
     )
 
     const titleWord = claim.claim_type === 'proforma' ? 'Proforma' : 'Invoice'

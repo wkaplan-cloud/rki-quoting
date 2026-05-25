@@ -54,6 +54,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const companyName = account.company_name ?? account.email ?? 'Company'
 
     const buffer = await renderToBuffer(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(ElecQuotePDF, {
         quote,
         client:      (client ?? null) as ElecClient | null,
@@ -61,7 +62,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         items:       (items    ?? []) as ElecQuoteLineItem[],
         settings:    (settings ?? null) as ElecSettings | null,
         companyName,
-      }) as React.ReactElement
+      }) as any
     )
 
     return new NextResponse(new Uint8Array(buffer), {
