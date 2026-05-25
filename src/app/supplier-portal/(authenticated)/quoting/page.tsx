@@ -44,6 +44,7 @@ type QuoteRow = {
 type ClaimRow = {
   quote_id: string
   period_month: string
+  claim_type: string
   total_claimed: number
   total_certified: number
   total_invoiced: number
@@ -72,7 +73,7 @@ export default async function QuotingDashboardPage() {
       .order('created_at', { ascending: false }),
     supabaseAdmin
       .from('elec_claims')
-      .select('quote_id, period_month, total_claimed, total_certified, total_invoiced, total_paid, status')
+      .select('quote_id, period_month, claim_type, total_claimed, total_certified, total_invoiced, total_paid, status')
       .eq('portal_account_id', account.id),
   ])
 
@@ -102,38 +103,40 @@ export default async function QuotingDashboardPage() {
   })
 
   const claims: ClaimRow[] = (claimsRaw ?? []).map((c: any) => ({
-    quote_id:       c.quote_id,
-    period_month:   c.period_month,
-    total_claimed:  c.total_claimed   ?? 0,
+    quote_id:        c.quote_id,
+    period_month:    c.period_month,
+    claim_type:      c.claim_type      ?? 'invoice',
+    total_claimed:   c.total_claimed   ?? 0,
     total_certified: c.total_certified ?? 0,
-    total_invoiced: c.total_invoiced  ?? 0,
-    total_paid:     c.total_paid      ?? 0,
-    status:         c.status,
+    total_invoiced:  c.total_invoiced  ?? 0,
+    total_paid:      c.total_paid      ?? 0,
+    status:          c.status,
   }))
 
-  // Per-quote claim totals (non-draft)
+  // Per-quote claim totals (non-draft, progress claims only — exclude retention)
   const claimsByQuote: Record<string, { claimed: number; invoiced: number; paid: number }> = {}
   for (const c of claims) {
-    if (c.status === 'draft') continue
+    if (c.status === 'draft' || c.claim_type === 'retention') continue
     if (!claimsByQuote[c.quote_id]) claimsByQuote[c.quote_id] = { claimed: 0, invoiced: 0, paid: 0 }
     claimsByQuote[c.quote_id].claimed  += c.total_claimed
     claimsByQuote[c.quote_id].invoiced += c.total_invoiced
     claimsByQuote[c.quote_id].paid     += c.total_paid
   }
 
-  const pipeline     = quotes.filter(q => ['draft', 'quoted', 'approved'].includes(q.status))
-  const active       = quotes.filter(q => q.status === 'in_progress')
+  const pipeline      = quotes.filter(q => ['draft', 'quoted', 'approved'].includes(q.status))
+  const active        = quotes.filter(q => q.status === 'in_progress')
   const pipelineValue = pipeline.reduce((s, q) => s + q.contract_value, 0)
-  const activeValue   = active.reduce((s, q) => s + q.contract_value, 0)
+  const activeValue   = active.reduce((s, q) => s + q.contract_value + q.approved_vo_value, 0)
 
-  const year      = new Date().getFullYear().toString()
-  const ytd       = claims.filter(c => c.status !== 'draft' && c.period_month.startsWith(year))
-  const paidYTD   = ytd.reduce((s, c) => s + c.total_paid, 0)
+  const year    = new Date().getFullYear().toString()
+  const ytd     = claims.filter(c => c.status !== 'draft' && c.period_month.startsWith(year))
+  const paidYTD = ytd.reduce((s, c) => s + c.total_paid, 0)
 
-  const nonDraft      = claims.filter(c => c.status !== 'draft')
-  const totalInvoiced = nonDraft.reduce((s, c) => s + c.total_invoiced, 0)
-  const totalPaid     = nonDraft.reduce((s, c) => s + c.total_paid,     0)
-  const outstanding   = totalInvoiced - totalPaid
+  // Outstanding = total claimed (sent to client) minus total paid, across all non-draft claims
+  const nonDraft    = claims.filter(c => c.status !== 'draft')
+  const totalSent   = nonDraft.reduce((s, c) => s + c.total_claimed, 0)
+  const totalPaid   = nonDraft.reduce((s, c) => s + c.total_paid,    0)
+  const outstanding = totalSent - totalPaid
 
   // Monthly RECON — non-draft, most recent 12
   const reconMap: Record<string, { claimed: number; certified: number; invoiced: number; paid: number }> = {}
