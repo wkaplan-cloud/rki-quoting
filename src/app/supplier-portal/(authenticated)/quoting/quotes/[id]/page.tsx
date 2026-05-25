@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { QuoteEditor } from './QuoteEditor'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecVariationOrder, ElecSnagItem, ElecCOC } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -26,6 +26,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
     { data: variations },
     { data: snags },
     { data: coc },
+    { data: claims },
     { data: settings },
   ] = await Promise.all([
     supabaseAdmin
@@ -65,8 +66,13 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .eq('quote_id', id)
       .maybeSingle(),
     supabaseAdmin
+      .from('elec_claims')
+      .select('*, line_items:elec_claim_line_items(*)')
+      .eq('quote_id', id)
+      .order('created_at', { ascending: false }),
+    supabaseAdmin
       .from('elec_settings')
-      .select('vo_prefix, coc_prefix')
+      .select('vo_prefix, coc_prefix, claim_prefix')
       .eq('portal_account_id', account.id)
       .maybeSingle(),
   ])
@@ -83,6 +89,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       variations={(variations ?? []) as ElecVariationOrder[]}
       snags={(snags ?? []) as ElecSnagItem[]}
       coc={(coc ?? null) as ElecCOC | null}
+      claims={(claims ?? []) as (ElecClaim & { line_items: ElecClaimLineItem[] })[]}
       voPrefix={settings?.vo_prefix ?? 'VO'}
       cocPrefix={settings?.coc_prefix ?? 'COC'}
     />

@@ -6,11 +6,12 @@ import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X,
 } from 'lucide-react'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 import { AsBuiltTab } from './AsBuiltTab'
 import { VariationsTab } from './VariationsTab'
 import { SnagTab } from './SnagTab'
 import { COCTab } from './COCTab'
+import { ClaimsTab } from './ClaimsTab'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -411,14 +412,15 @@ interface Props {
   variations: ElecVariationOrder[]
   snags: ElecSnagItem[]
   coc: ElecCOC | null
+  claims: (ElecClaim & { line_items: ElecClaimLineItem[] })[]
   voPrefix: string
   cocPrefix: string
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-type QuoteTab = 'quote' | 'as_built' | 'variations' | 'snag' | 'coc'
+type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'snag' | 'coc'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, voPrefix, cocPrefix }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, claims, voPrefix, cocPrefix }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -555,6 +557,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const TABS: { id: QuoteTab; label: string }[] = [
     { id: 'quote',      label: 'Quote' },
     { id: 'as_built',   label: 'As-Built' },
+    { id: 'claims',     label: 'Claims' },
     { id: 'variations', label: 'Variations' },
     { id: 'snag',       label: 'Snag List' },
     { id: 'coc',        label: 'COC' },
@@ -613,6 +616,16 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         <>
           <div style={{ display: activeTab === 'as_built' ? undefined : 'none' }}>
             <AsBuiltTab sections={initSections} items={initItems} contractTotal={contractTotal} />
+          </div>
+          <div style={{ display: activeTab === 'claims' ? undefined : 'none' }}>
+            <ClaimsTab
+              quoteId={q.id}
+              portalAccountId={portalAccountId}
+              initialClaims={claims}
+              items={initItems}
+              sections={initSections}
+              contractTotal={contractTotal}
+            />
           </div>
           <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>
             <VariationsTab quoteId={q.id} initialVOs={variations} voPrefix={voPrefix} />
