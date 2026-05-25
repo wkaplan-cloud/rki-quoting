@@ -742,15 +742,15 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
       {/* Summary */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         {[
-          { label: 'Contract Value',   value: fmtR(contractTotal),    color: S.text,   sub: approvedVOTotal > 0 ? `+ ${fmtR(approvedVOTotal)} VOs` : null },
-          { label: 'Total Claimed',    value: fmtR(totalClaimed),     color: S.accent, sub: null },
-          { label: 'Total Certified',  value: fmtR(totalCertified),   color: S.gold,   sub: null },
-          { label: 'Balance to Claim', value: fmtR(balance),          color: balance >= 0 ? S.muted : S.danger, sub: null },
+          { label: 'Contract Value',   value: fmtR(contractTotal),  color: S.text,                              sub: approvedVOTotal > 0 ? `+ ${fmtR(approvedVOTotal)} VOs` : null,                    subColor: S.green },
+          { label: 'Total Claimed',    value: fmtR(totalClaimed),   color: S.accent,                            sub: null,                                                                                   subColor: S.muted },
+          { label: 'Total Certified',  value: fmtR(totalCertified), color: S.gold,                              sub: null,                                                                                   subColor: S.muted },
+          { label: 'Balance to Claim', value: fmtR(balance),        color: balance >= 0 ? S.muted : S.danger,  sub: retentionHeld > 0 && !hasRetentionClaim ? `Retention held: ${fmtR(retentionHeld)}` : null, subColor: S.gold },
         ].map(card => (
           <div key={card.label} className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{card.label}</p>
             <p className="text-lg font-bold" style={{ color: card.color }}>{card.value}</p>
-            {card.sub && <p className="text-[10px] mt-0.5" style={{ color: S.green }}>{card.sub}</p>}
+            {card.sub && <p className="text-[10px] mt-0.5" style={{ color: card.subColor }}>{card.sub}</p>}
           </div>
         ))}
       </div>
