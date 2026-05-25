@@ -187,6 +187,7 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
   const supabase = createClient()
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -200,7 +201,8 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
         .order('usage_count', { ascending: false })
         .limit(8)
       const results = (data ?? []) as Suggestion[]
-      setSuggestions(results); setOpen(results.length > 0)
+      setSuggestions(results)
+      if (focused) setOpen(results.length > 0)
     }, 200)
     return () => clearTimeout(t)
   }, [value, portalAccountId, locked]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -217,7 +219,8 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
         placeholder="Description"
         className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none"
         style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, minWidth: 180 }}
-        onFocus={() => { if (suggestions.length > 0) setOpen(true) }}
+        onFocus={() => { setFocused(true); if (suggestions.length > 0) setOpen(true) }}
+        onBlur={() => setFocused(false)}
       />
       {open && (
         <div className="absolute top-full left-0 right-0 z-20 rounded-xl overflow-hidden mt-1"
