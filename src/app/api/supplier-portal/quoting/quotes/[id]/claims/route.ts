@@ -37,6 +37,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       sent_at?: string | null
       line_items: { quote_line_item_id: string; percentage_claimed: number; amount_claimed: number }[]
       retention_amount?: number
+      fixed_amount?: number
+      variation_order_id?: string | null
     }
 
     // Auto-number: count all claims for this account
@@ -59,7 +61,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const totalClaimed = body.claim_type === 'retention'
       ? (body.retention_amount ?? 0)
-      : body.line_items.reduce((s, li) => s + li.amount_claimed, 0)
+      : body.line_items.length > 0
+        ? body.line_items.reduce((s, li) => s + li.amount_claimed, 0)
+        : (body.fixed_amount ?? 0)
 
     const { data: claim, error: claimErr } = await supabaseAdmin
       .from('elec_claims')
@@ -76,6 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         sent_to_email:      body.sent_to_email ?? null,
         sent_at:            body.sent_at ?? null,
         notes:              body.notes ?? null,
+        variation_order_id: body.variation_order_id ?? null,
       })
       .select()
       .single()

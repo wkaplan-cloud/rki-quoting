@@ -224,6 +224,7 @@ export interface ElecClaim {
   sent_to_email: string | null
   sent_at: string | null
   notes: string | null
+  variation_order_id: string | null
   created_at: string
   // Joined
   line_items?: ElecClaimLineItem[]

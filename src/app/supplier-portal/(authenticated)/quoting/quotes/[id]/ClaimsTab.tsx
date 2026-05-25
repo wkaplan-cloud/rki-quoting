@@ -138,6 +138,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         sent_to_email: sentToEmail.trim() || null,
         sent_at: submitFlag ? new Date().toISOString() : null,
         notes: notes.trim() || null,
+        variation_order_id: null,
         created_at: new Date().toISOString(),
         line_items: itemsWithClaim.map(l => ({
           id: crypto.randomUUID(),
@@ -366,7 +367,7 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
         status: submitFlag ? 'submitted' : 'draft', total_claimed: retentionHeld,
         total_certified: null, total_invoiced: null, total_paid: null,
         sent_to_name: sentToName.trim() || null, sent_to_email: sentToEmail.trim() || null,
-        sent_at: null, notes: notes.trim() || null, created_at: new Date().toISOString(),
+        sent_at: null, notes: notes.trim() || null, variation_order_id: null, created_at: new Date().toISOString(),
         line_items: [],
       }
       onCreated(newClaim)

@@ -635,7 +635,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             />
           </div>
           <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>
-            <VariationsTab quoteId={q.id} initialVOs={variations} voPrefix={voPrefix} />
+            <VariationsTab quoteId={q.id} portalAccountId={portalAccountId} initialVOs={variations} initialClaims={claims} voPrefix={voPrefix} />
           </div>
           <div style={{ display: activeTab === 'snag' ? undefined : 'none' }}>
             <SnagTab quoteId={q.id} initialSnags={snags} />
