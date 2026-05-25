@@ -6,7 +6,11 @@ import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X,
 } from 'lucide-react'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC } from '@/lib/elec-types'
+import { AsBuiltTab } from './AsBuiltTab'
+import { VariationsTab } from './VariationsTab'
+import { SnagTab } from './SnagTab'
+import { COCTab } from './COCTab'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -404,11 +408,17 @@ interface Props {
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
   clients: Pick<ElecClient, 'id' | 'client_name' | 'company'>[]
+  variations: ElecVariationOrder[]
+  snags: ElecSnagItem[]
+  coc: ElecCOC | null
+  voPrefix: string
+  cocPrefix: string
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
+type QuoteTab = 'quote' | 'as_built' | 'variations' | 'snag' | 'coc'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, voPrefix, cocPrefix }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -428,8 +438,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [deletedItemIds, setDeletedItemIds]       = useState<string[]>([])
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError]   = useState('')
+  const [activeTab, setActiveTab]   = useState<QuoteTab>('quote')
 
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
+  const showTabs = ['in_progress', 'completed'].includes(q.status)
   const allItems = [...freeItems, ...sections.flatMap(s => s.items)]
   const subtotal  = allItems.reduce((s, i) => s + itemTotal(i), 0)
   const vatAmt    = subtotal * ((q.vat_rate ?? 15) / 100)
@@ -502,7 +514,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   }, [portalAccountId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Auto-save: 1.5s debounce after any data change ──────────────────────────
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isMountRef = useRef(true)
 
   useEffect(() => {
@@ -540,6 +552,16 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const st = STATUS_CONFIG[q.status]
 
+  const TABS: { id: QuoteTab; label: string }[] = [
+    { id: 'quote',      label: 'Quote' },
+    { id: 'as_built',   label: 'As-Built' },
+    { id: 'variations', label: 'Variations' },
+    { id: 'snag',       label: 'Snag List' },
+    { id: 'coc',        label: 'COC' },
+  ]
+
+  const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
+
   return (
     <div className="max-w-4xl mx-auto pb-16">
       {/* Top bar */}
@@ -568,6 +590,40 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>{st.label}</span>
       </div>
+
+      {/* Tab nav (only in_progress / completed) */}
+      {showTabs && (
+        <div className="flex gap-1 mb-6 p-1 rounded-xl" style={{ background: S.bg }}>
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: activeTab === tab.id ? S.card : 'transparent',
+                color:      activeTab === tab.id ? S.text : S.muted,
+                boxShadow:  activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+              }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Non-quote tabs */}
+      {showTabs && activeTab === 'as_built' && (
+        <AsBuiltTab sections={initSections} items={initItems} contractTotal={contractTotal} />
+      )}
+      {showTabs && activeTab === 'variations' && (
+        <VariationsTab quoteId={q.id} initialVOs={variations} voPrefix={voPrefix} />
+      )}
+      {showTabs && activeTab === 'snag' && (
+        <SnagTab quoteId={q.id} initialSnags={snags} />
+      )}
+      {showTabs && activeTab === 'coc' && (
+        <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} />
+      )}
+
+      {/* Quote tab content */}
+      <div style={{ display: !showTabs || activeTab === 'quote' ? undefined : 'none' }}>
 
       {/* Project name */}
       <input value={q.project_name} onChange={e => setQ(p => ({ ...p, project_name: e.target.value }))}
@@ -800,6 +856,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </button>
         )}
       </div>
+
+      </div>{/* end quote tab */}
     </div>
   )
 }

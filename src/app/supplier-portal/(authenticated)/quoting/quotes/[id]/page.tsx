@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { QuoteEditor } from './QuoteEditor'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecVariationOrder, ElecSnagItem, ElecCOC } from '@/lib/elec-types'
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -18,7 +18,16 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
     .single()
   if (!account) redirect('/supplier-portal/not-a-supplier')
 
-  const [{ data: quote }, { data: sections }, { data: items }, { data: clients }] = await Promise.all([
+  const [
+    { data: quote },
+    { data: sections },
+    { data: items },
+    { data: clients },
+    { data: variations },
+    { data: snags },
+    { data: coc },
+    { data: settings },
+  ] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
       .select('*, client:elec_clients(id, client_name, company)')
@@ -40,6 +49,26 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .select('id, client_name, company')
       .eq('portal_account_id', account.id)
       .order('client_name'),
+    supabaseAdmin
+      .from('elec_variation_orders')
+      .select('*')
+      .eq('quote_id', id)
+      .order('created_at', { ascending: false }),
+    supabaseAdmin
+      .from('elec_snag_items')
+      .select('*')
+      .eq('quote_id', id)
+      .order('created_at', { ascending: false }),
+    supabaseAdmin
+      .from('elec_coc')
+      .select('*')
+      .eq('quote_id', id)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('elec_settings')
+      .select('vo_prefix, coc_prefix')
+      .eq('portal_account_id', account.id)
+      .maybeSingle(),
   ])
 
   if (!quote) notFound()
@@ -51,6 +80,11 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       sections={(sections ?? []) as ElecQuoteSection[]}
       items={(items ?? []) as ElecQuoteLineItem[]}
       clients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company'>[]}
+      variations={(variations ?? []) as ElecVariationOrder[]}
+      snags={(snags ?? []) as ElecSnagItem[]}
+      coc={(coc ?? null) as ElecCOC | null}
+      voPrefix={settings?.vo_prefix ?? 'VO'}
+      cocPrefix={settings?.coc_prefix ?? 'COC'}
     />
   )
 }
