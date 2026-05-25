@@ -593,7 +593,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         {/* Project type */}
         <div>
           <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Project Type</label>
-          <select value={q.project_type ?? ''} onChange={e => setQ(p => ({ ...p, project_type: e.target.value || null }))}
+          <select value={q.project_type ?? ''} onChange={e => setQ(p => ({ ...p, project_type: (e.target.value || null) as ElecQuote['project_type'] }))}
             disabled={locked}
             className="w-full px-3 py-2 text-sm rounded-lg outline-none"
             style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: q.project_type ? S.text : S.muted }}>
