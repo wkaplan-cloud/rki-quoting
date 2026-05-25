@@ -24,8 +24,15 @@ export default async function SupplierProfilePage() {
 
   if (!account) redirect('/supplier-portal/login')
 
+  const { data: elecSettings } = await supabaseAdmin
+    .from('elec_settings')
+    .select('cidb_registration_number, company_registration_number, vat_registration_number, bank_name, bank_account_number, bank_branch_code, bank_account_type')
+    .eq('portal_account_id', account.id)
+    .maybeSingle()
+
   return (
     <SupplierProfileClient
+      portalAccountId={account.id}
       account={{
         email: account.email,
         company_name: account.company_name ?? '',
@@ -36,6 +43,7 @@ export default async function SupplierProfilePage() {
         description: account.description ?? '',
         website: account.website ?? '',
       }}
+      elecSettings={elecSettings ?? null}
       categoryOptions={CATEGORY_OPTIONS}
     />
   )

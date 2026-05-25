@@ -79,17 +79,6 @@ export function SettingsClient({ portalAccountId, settings }: Props) {
   const justUpgraded = searchParams.get('upgraded') === '1'
   const supabase = createClient()
 
-  // Business identity
-  const [cidb, setCidb]     = useState(settings?.cidb_registration_number ?? '')
-  const [compReg, setCompReg] = useState(settings?.company_registration_number ?? '')
-  const [vatReg, setVatReg] = useState(settings?.vat_registration_number ?? '')
-
-  // Banking
-  const [bankName, setBankName]         = useState(settings?.bank_name ?? '')
-  const [accNumber, setAccNumber]       = useState(settings?.bank_account_number ?? '')
-  const [branchCode, setBranchCode]     = useState(settings?.bank_branch_code ?? '')
-  const [accType, setAccType]           = useState(settings?.bank_account_type ?? 'Current')
-
   // Defaults
   const [vatRate, setVatRate]               = useState(String(settings?.default_vat_rate ?? 15))
   const [retention, setRetention]           = useState(String(settings?.default_retention_percentage ?? 0))
@@ -121,13 +110,6 @@ export function SettingsClient({ portalAccountId, settings }: Props) {
     setError('')
     const payload = {
       portal_account_id:              portalAccountId,
-      cidb_registration_number:       cidb.trim() || null,
-      company_registration_number:    compReg.trim() || null,
-      vat_registration_number:        vatReg.trim() || null,
-      bank_name:                      bankName.trim() || null,
-      bank_account_number:            accNumber.trim() || null,
-      bank_branch_code:               branchCode.trim() || null,
-      bank_account_type:              accType.trim() || null,
       default_vat_rate:               parseFloat(vatRate) || 15,
       default_retention_percentage:   parseFloat(retention) || 0,
       default_payment_terms_days:     parseInt(paymentTerms) || 30,
@@ -166,51 +148,8 @@ export function SettingsClient({ portalAccountId, settings }: Props) {
 
         <div>
           <h1 className="text-xl font-bold" style={{ color: S.text }}>Quoting Settings</h1>
-          <p className="text-sm mt-1" style={{ color: S.muted }}>These defaults pre-fill on every new quote and appear on your PDFs.</p>
+          <p className="text-sm mt-1" style={{ color: S.muted }}>Default values and numbering for your quotes. Company documents and banking details live in your <a href="/supplier-portal/profile" style={{ color: S.accent, textDecoration: 'underline' }}>Profile</a>.</p>
         </div>
-
-        {/* Business Identity */}
-        <Section title="Business Identity">
-          <Field label="CIDB Registration Number" hint="Appears on quotes and COC documents">
-            <Input value={cidb} onChange={setCidb} placeholder="e.g. 123456" />
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Company Registration">
-              <Input value={compReg} onChange={setCompReg} placeholder="e.g. 2020/123456/07" />
-            </Field>
-            <Field label="VAT Registration">
-              <Input value={vatReg} onChange={setVatReg} placeholder="e.g. 4123456789" />
-            </Field>
-          </div>
-        </Section>
-
-        {/* Banking */}
-        <Section title="Banking Details">
-          <p className="text-xs -mt-2 mb-2" style={{ color: S.muted }}>Printed on invoice PDFs for EFT payments.</p>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Bank Name">
-              <Input value={bankName} onChange={setBankName} placeholder="e.g. FNB" />
-            </Field>
-            <Field label="Account Type">
-              <select
-                value={accType}
-                onChange={e => setAccType(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
-                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
-              >
-                <option>Current</option>
-                <option>Savings</option>
-                <option>Cheque</option>
-              </select>
-            </Field>
-            <Field label="Account Number">
-              <Input value={accNumber} onChange={setAccNumber} placeholder="e.g. 62012345678" />
-            </Field>
-            <Field label="Branch Code">
-              <Input value={branchCode} onChange={setBranchCode} placeholder="e.g. 250655" />
-            </Field>
-          </div>
-        </Section>
 
         {/* Quote Defaults */}
         <Section title="Quote Defaults">
