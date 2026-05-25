@@ -645,11 +645,12 @@ interface Props {
   items: ElecQuoteLineItem[]
   sections: ElecQuoteSection[]
   contractTotal: number
+  approvedVOTotal?: number
   contractType: ElecContractType
   retentionPct: number
 }
 
-export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, contractType, retentionPct }: Props) {
+export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, approvedVOTotal = 0, contractType, retentionPct }: Props) {
   const [claims, setClaims] = useState<ClaimWithItems[]>(initialClaims)
 
   useEffect(() => {
@@ -667,7 +668,8 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
   const totalClaimed   = activeClaims.reduce((s, c) => s + c.total_claimed, 0)
   const totalCertified = activeClaims.filter(c => c.total_certified != null).reduce((s, c) => s + (c.total_certified ?? 0), 0)
   const totalPaid      = claims.filter(c => c.status === 'paid').reduce((s, c) => s + (c.total_paid ?? c.total_claimed), 0)
-  const balance        = contractTotal - totalClaimed
+  const adjustedContract = contractTotal + approvedVOTotal
+  const balance          = adjustedContract - totalClaimed
 
   // Retention: calculated from certified (or claimed if not certified) amounts × retention %
   const certifiedBase  = activeClaims.filter(c => c.claim_type !== 'retention').reduce((s, c) => s + (c.total_certified ?? c.total_claimed), 0)
@@ -732,14 +734,15 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
       {/* Summary */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         {[
-          { label: 'Contract Value',   value: fmtR(contractTotal), color: S.text },
-          { label: 'Total Claimed',    value: fmtR(totalClaimed),  color: S.accent },
-          { label: 'Total Certified',  value: fmtR(totalCertified), color: S.gold },
-          { label: 'Balance to Claim', value: fmtR(balance),       color: balance > 0 ? S.muted : S.green },
+          { label: 'Contract Value',   value: fmtR(contractTotal),    color: S.text,   sub: approvedVOTotal > 0 ? `+ ${fmtR(approvedVOTotal)} VOs` : null },
+          { label: 'Total Claimed',    value: fmtR(totalClaimed),     color: S.accent, sub: null },
+          { label: 'Total Certified',  value: fmtR(totalCertified),   color: S.gold,   sub: null },
+          { label: 'Balance to Claim', value: fmtR(balance),          color: balance >= 0 ? S.muted : S.danger, sub: null },
         ].map(card => (
           <div key={card.label} className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{card.label}</p>
             <p className="text-lg font-bold" style={{ color: card.color }}>{card.value}</p>
+            {card.sub && <p className="text-[10px] mt-0.5" style={{ color: S.green }}>{card.sub}</p>}
           </div>
         ))}
       </div>

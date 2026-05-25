@@ -564,6 +564,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   ]
 
   const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
+  const approvedVOTotal = variations.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
 
   return (
     <div className="max-w-4xl mx-auto pb-16">
@@ -631,6 +632,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               items={initItems}
               sections={initSections}
               contractTotal={contractTotal}
+              approvedVOTotal={approvedVOTotal}
               contractType={q.contract_type}
               retentionPct={q.retention_percentage}
             />
