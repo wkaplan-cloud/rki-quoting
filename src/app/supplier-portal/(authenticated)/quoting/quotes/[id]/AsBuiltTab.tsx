@@ -104,10 +104,12 @@ export function AsBuiltTab({ sections, items: initialItems, contractTotal }: Pro
           </div>
           {groupItems.map(item => {
             const contractVal = item.quoted_quantity * item.quoted_unit_rate
-            const abQty = item.as_built_quantity ?? item.quoted_quantity
+            const abQtySet  = item.as_built_quantity !== null
+            const abRateSet = item.as_built_unit_rate !== null
+            const abQty  = item.as_built_quantity ?? item.quoted_quantity
             const abRate = item.as_built_unit_rate ?? item.quoted_unit_rate
-            const abVal = abQty * abRate
-            const diff = abVal - contractVal
+            const abVal  = abQty * abRate
+            const diff   = abVal - contractVal
             return (
               <div key={item.id} className="rounded-lg mb-1.5 px-2 py-2"
                 style={{ background: S.bg, border: `1px solid ${S.border}` }}>
@@ -123,14 +125,24 @@ export function AsBuiltTab({ sections, items: initialItems, contractTotal }: Pro
                   <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{item.quoted_quantity}</span>
                   <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(item.quoted_unit_rate)}</span>
                   <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(contractVal)}</span>
-                  <input type="number" value={item.as_built_quantity ?? item.quoted_quantity}
+                  {/* AB Qty — grey/faint when not yet set, accent when edited */}
+                  <input type="number" value={abQty}
                     onChange={e => updateItem(item.id, { as_built_quantity: parseFloat(e.target.value) || 0 })}
                     className="px-1.5 py-1 text-xs text-right rounded outline-none w-full"
-                    style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.accent }} />
-                  <input type="number" value={item.as_built_unit_rate ?? item.quoted_unit_rate}
+                    style={{
+                      background: abQtySet ? '#fff' : 'transparent',
+                      border: `1px solid ${abQtySet ? S.accent : S.border}`,
+                      color: abQtySet ? S.accent : S.muted,
+                    }} />
+                  {/* AB Rate — same pattern */}
+                  <input type="number" value={abRate}
                     onChange={e => updateItem(item.id, { as_built_unit_rate: parseFloat(e.target.value) || 0 })}
                     className="px-1.5 py-1 text-xs text-right rounded outline-none w-full"
-                    style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.accent }} />
+                    style={{
+                      background: abRateSet ? '#fff' : 'transparent',
+                      border: `1px solid ${abRateSet ? S.accent : S.border}`,
+                      color: abRateSet ? S.accent : S.muted,
+                    }} />
                   <span className="text-xs text-right font-semibold font-mono"
                     style={{ color: diff > 0.01 ? S.gold : diff < -0.01 ? S.danger : S.text }}>
                     {fmtR(abVal)}
