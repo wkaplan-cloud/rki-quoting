@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Search, FileText, X, ChevronRight, Calendar, User } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import type { ElecQuote, ElecClient, ElecQuoteStatus } from '@/lib/elec-types'
 
 const S = {
@@ -27,22 +28,124 @@ const PROJECT_TYPES = [
 ]
 
 interface Props {
+  portalAccountId: string
   initialQuotes: (ElecQuote & { client: ElecClient | null })[]
   clients: Pick<ElecClient, 'id' | 'client_name' | 'company'>[]
+}
+
+type ClientOption = Pick<ElecClient, 'id' | 'client_name' | 'company'>
+
+function ClientCombobox({ clients, portalAccountId, value, onChange }: {
+  clients: ClientOption[]
+  portalAccountId: string
+  value: string
+  onChange: (id: string | null, name: string) => void
+}) {
+  const supabase = createClient()
+  const [input, setInput] = useState(value)
+  const [open, setOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const filtered = input.trim().length > 0
+    ? clients.filter(c =>
+        c.client_name.toLowerCase().includes(input.toLowerCase()) ||
+        (c.company ?? '').toLowerCase().includes(input.toLowerCase())
+      ).slice(0, 6)
+    : clients.slice(0, 6)
+
+  const exactMatch = clients.some(c => c.client_name.toLowerCase() === input.trim().toLowerCase())
+
+  async function addNew() {
+    if (!input.trim() || creating) return
+    setCreating(true)
+    const { data, error } = await supabase
+      .from('elec_clients')
+      .insert({ portal_account_id: portalAccountId, client_name: input.trim() })
+      .select('id, client_name')
+      .single()
+    if (!error && data) { onChange(data.id, data.client_name); setOpen(false) }
+    setCreating(false)
+  }
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative">
+        <input
+          value={input}
+          onChange={e => { setInput(e.target.value); setOpen(true) }}
+          placeholder="Search or add client…"
+          className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none pr-7"
+          style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+          onFocus={e => { setOpen(true); e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+          onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
+        />
+        {input && (
+          <button onMouseDown={e => { e.preventDefault(); setInput(''); onChange(null, '') }}
+            className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: S.muted }}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 right-0 z-20 rounded-xl mt-1 overflow-hidden"
+          style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+          {filtered.map(c => (
+            <button key={c.id}
+              onMouseDown={e => { e.preventDefault(); setInput(c.client_name); onChange(c.id, c.client_name); setOpen(false) }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
+              onMouseEnter={e => e.currentTarget.style.background = S.bg}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                {c.client_name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm" style={{ color: S.text }}>{c.client_name}</p>
+                {c.company && <p className="text-xs truncate" style={{ color: S.muted }}>{c.company}</p>}
+              </div>
+            </button>
+          ))}
+          {input.trim() && !exactMatch && (
+            <button
+              onMouseDown={e => { e.preventDefault(); addNew() }}
+              disabled={creating}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm"
+              style={{ borderTop: filtered.length > 0 ? `1px solid ${S.border}` : undefined }}
+              onMouseEnter={e => e.currentTarget.style.background = S.bg}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <Plus size={13} style={{ color: S.accent }} />
+              <span style={{ color: S.accent }}>{creating ? 'Adding…' : `Add "${input.trim()}" as new client`}</span>
+            </button>
+          )}
+          {filtered.length === 0 && !input.trim() && (
+            <p className="px-3 py-3 text-sm" style={{ color: S.muted }}>Start typing to search or add a client</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function fmt(n: number) {
   return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function NewQuoteModal({ clients, onClose, onCreated }: {
+function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
   clients: Props['clients']
+  portalAccountId: string
   onClose: () => void
   onCreated: (id: string) => void
 }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [projectName, setProjectName] = useState('')
-  const [clientId, setClientId] = useState('')
+  const [clientId, setClientId] = useState<string | null>(null)
   const [projectType, setProjectType] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -59,7 +162,7 @@ function NewQuoteModal({ clients, onClose, onCreated }: {
     const res = await fetch('/api/supplier-portal/quoting/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_name: projectName.trim(), client_id: clientId || null, project_type: projectType || null }),
+      body: JSON.stringify({ project_name: projectName.trim(), client_id: clientId, project_type: projectType || null }),
     })
     const data = await res.json() as { id?: string; error?: string }
     if (!res.ok || !data.id) { setError(data.error ?? 'Failed to create quote'); setLoading(false); return }
@@ -95,12 +198,12 @@ function NewQuoteModal({ clients, onClose, onCreated }: {
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Client</label>
-            <select value={clientId} onChange={e => setClientId(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
-              style={{ background: S.input, border: `1.5px solid ${S.border}`, color: clientId ? S.text : S.muted }}>
-              <option value="">Select client (optional)</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}{c.company ? ` — ${c.company}` : ''}</option>)}
-            </select>
+            <ClientCombobox
+              clients={clients}
+              portalAccountId={portalAccountId}
+              value=""
+              onChange={(id) => setClientId(id)}
+            />
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Project Type</label>
@@ -127,7 +230,7 @@ function NewQuoteModal({ clients, onClose, onCreated }: {
   )
 }
 
-export function QuotesList({ initialQuotes, clients }: Props) {
+export function QuotesList({ portalAccountId, initialQuotes, clients }: Props) {
   const router = useRouter()
   const [quotes] = useState(initialQuotes)
   const [search, setSearch] = useState('')
@@ -246,6 +349,7 @@ export function QuotesList({ initialQuotes, clients }: Props) {
       {showNewModal && (
         <NewQuoteModal
           clients={clients}
+          portalAccountId={portalAccountId}
           onClose={() => setShowNewModal(false)}
           onCreated={id => router.push(`/supplier-portal/quoting/quotes/${id}`)}
         />

@@ -32,6 +32,7 @@ export default async function QuotesPage() {
 
   return (
     <QuotesList
+      portalAccountId={account.id}
       initialQuotes={(quotes ?? []) as (ElecQuote & { client: ElecClient | null })[]}
       clients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company'>[]}
     />

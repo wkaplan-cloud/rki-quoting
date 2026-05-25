@@ -125,23 +125,23 @@ export function AsBuiltTab({ sections, items: initialItems, contractTotal }: Pro
                   <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{item.quoted_quantity}</span>
                   <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(item.quoted_unit_rate)}</span>
                   <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(contractVal)}</span>
-                  {/* AB Qty — grey/faint when not yet set, accent when edited */}
+                  {/* AB Qty — always editable; accent highlight when value differs from contract */}
                   <input type="number" value={abQty}
                     onChange={e => updateItem(item.id, { as_built_quantity: parseFloat(e.target.value) || 0 })}
                     className="px-1.5 py-1 text-xs text-right rounded outline-none w-full"
                     style={{
-                      background: abQtySet ? '#fff' : 'transparent',
+                      background: abQtySet ? '#fff' : S.input,
                       border: `1px solid ${abQtySet ? S.accent : S.border}`,
-                      color: abQtySet ? S.accent : S.muted,
+                      color: abQtySet ? S.accent : S.text,
                     }} />
-                  {/* AB Rate — same pattern */}
+                  {/* AB Rate — always editable; accent highlight when value differs from contract */}
                   <input type="number" value={abRate}
                     onChange={e => updateItem(item.id, { as_built_unit_rate: parseFloat(e.target.value) || 0 })}
                     className="px-1.5 py-1 text-xs text-right rounded outline-none w-full"
                     style={{
-                      background: abRateSet ? '#fff' : 'transparent',
+                      background: abRateSet ? '#fff' : S.input,
                       border: `1px solid ${abRateSet ? S.accent : S.border}`,
-                      color: abRateSet ? S.accent : S.muted,
+                      color: abRateSet ? S.accent : S.text,
                     }} />
                   <span className="text-xs text-right font-semibold font-mono"
                     style={{ color: diff > 0.01 ? S.gold : diff < -0.01 ? S.danger : S.text }}>
