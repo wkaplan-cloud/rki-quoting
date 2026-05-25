@@ -42,10 +42,11 @@ export function AsBuiltTab({ sections, items: initialItems, contractTotal }: Pro
     setSaveStatus('saving'); setSaveError('')
     try {
       for (const item of current) {
-        await supabase
+        const { error } = await supabase
           .from('elec_quote_line_items')
           .update({ as_built_quantity: item.as_built_quantity, as_built_unit_rate: item.as_built_unit_rate })
           .eq('id', item.id)
+        if (error) throw new Error(error.message)
       }
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2500)

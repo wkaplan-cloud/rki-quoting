@@ -608,18 +608,22 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </div>
       )}
 
-      {/* Non-quote tabs */}
-      {showTabs && activeTab === 'as_built' && (
-        <AsBuiltTab sections={initSections} items={initItems} contractTotal={contractTotal} />
-      )}
-      {showTabs && activeTab === 'variations' && (
-        <VariationsTab quoteId={q.id} initialVOs={variations} voPrefix={voPrefix} />
-      )}
-      {showTabs && activeTab === 'snag' && (
-        <SnagTab quoteId={q.id} initialSnags={snags} />
-      )}
-      {showTabs && activeTab === 'coc' && (
-        <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} />
+      {/* Non-quote tabs — always mounted to preserve state; hidden when inactive */}
+      {showTabs && (
+        <>
+          <div style={{ display: activeTab === 'as_built' ? undefined : 'none' }}>
+            <AsBuiltTab sections={initSections} items={initItems} contractTotal={contractTotal} />
+          </div>
+          <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>
+            <VariationsTab quoteId={q.id} initialVOs={variations} voPrefix={voPrefix} />
+          </div>
+          <div style={{ display: activeTab === 'snag' ? undefined : 'none' }}>
+            <SnagTab quoteId={q.id} initialSnags={snags} />
+          </div>
+          <div style={{ display: activeTab === 'coc' ? undefined : 'none' }}>
+            <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} />
+          </div>
+        </>
       )}
 
       {/* Quote tab content */}
