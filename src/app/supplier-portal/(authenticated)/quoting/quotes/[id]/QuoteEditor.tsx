@@ -556,7 +556,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const TABS: { id: QuoteTab; label: string }[] = [
     { id: 'quote',      label: 'Quote' },
-    { id: 'as_built',   label: 'As-Built' },
+    ...(q.contract_type !== 'lump_sum' ? [{ id: 'as_built' as QuoteTab, label: 'As-Built' }] : []),
     { id: 'claims',     label: 'Claims' },
     { id: 'variations', label: 'Variations' },
     { id: 'snag',       label: 'Snag List' },
@@ -630,6 +630,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               items={initItems}
               sections={initSections}
               contractTotal={contractTotal}
+              contractType={q.contract_type}
+              retentionPct={q.retention_percentage}
             />
           </div>
           <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>

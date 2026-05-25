@@ -28,13 +28,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const body = await req.json() as {
       period_month: string        // YYYY-MM-01
-      claim_type: 'invoice' | 'proforma'
+      claim_type: 'invoice' | 'proforma' | 'retention'
       claim_date: string
       sent_to_name?: string | null
       sent_to_email?: string | null
       notes?: string | null
       submit?: boolean
       line_items: { quote_line_item_id: string; percentage_claimed: number; amount_claimed: number }[]
+      retention_amount?: number
     }
 
     // Auto-number: count all claims for this account
@@ -55,7 +56,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const num = String((count ?? 0) + 1).padStart(3, '0')
     const claimNumber = `${prefix}-${year}-${num}`
 
-    const totalClaimed = body.line_items.reduce((s, li) => s + li.amount_claimed, 0)
+    const totalClaimed = body.claim_type === 'retention'
+      ? (body.retention_amount ?? 0)
+      : body.line_items.reduce((s, li) => s + li.amount_claimed, 0)
 
     const { data: claim, error: claimErr } = await supabaseAdmin
       .from('elec_claims')

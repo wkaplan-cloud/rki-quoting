@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, ChevronDown, ChevronRight, Check, AlertCircle, Download } from 'lucide-react'
-import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus } from '@/lib/elec-types'
+import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -28,7 +28,7 @@ function fmtMonth(dateStr: string) {
 }
 
 type ClaimWithItems = ElecClaim & { line_items: ElecClaimLineItem[] }
-type View = 'list' | 'new' | 'detail'
+type View = 'list' | 'new' | 'detail' | 'retention'
 
 // How much of an item has already been claimed in submitted/certified/invoiced/paid claims
 function prevPct(itemId: string, claims: ClaimWithItems[], excludeId?: string): number {
@@ -41,12 +41,13 @@ function prevPct(itemId: string, claims: ClaimWithItems[], excludeId?: string): 
 }
 
 // ─── New claim form ───────────────────────────────────────────────────────────
-function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, onCreated, onCancel }: {
+function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contractType, onCreated, onCancel }: {
   quoteId: string
   portalAccountId: string
   claims: ClaimWithItems[]
   items: ElecQuoteLineItem[]
   sections: ElecQuoteSection[]
+  contractType: ElecContractType
   onCreated: (claim: ClaimWithItems) => void
   onCancel: () => void
 }) {
@@ -66,6 +67,18 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, onCre
 
   function getPct(itemId: string): number {
     return parseFloat(pcts[itemId] ?? '0') || 0
+  }
+
+  function fillFromAsBuilt() {
+    const newPcts: Record<string, string> = {}
+    for (const item of items) {
+      const abQty = item.as_built_quantity ?? item.quoted_quantity
+      const abPct = item.quoted_quantity > 0 ? (abQty / item.quoted_quantity) * 100 : 0
+      const alreadyClaimed = prevPct(item.id, claims)
+      const thisPct = Math.max(0, Math.min(100 - alreadyClaimed, abPct - alreadyClaimed))
+      if (thisPct > 0.01) newPcts[item.id] = String(Math.round(thisPct * 10) / 10)
+    }
+    setPcts(newPcts)
   }
 
   const lineItems = items.map(item => {
@@ -195,7 +208,16 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, onCre
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
         <h3 className="font-bold" style={{ color: S.text }}>New Claim</h3>
-        <button onClick={onCancel} style={{ color: S.muted }}><X size={15} /></button>
+        <div className="flex items-center gap-2">
+          {contractType === 're_measurement' && (
+            <button onClick={fillFromAsBuilt}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+              style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+              Fill from As-Built
+            </button>
+          )}
+          <button onClick={onCancel} style={{ color: S.muted }}><X size={15} /></button>
+        </div>
       </div>
 
       {/* Meta fields */}
@@ -294,6 +316,129 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, onCre
           className="px-5 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
           style={{ background: S.accent }}>
           {loading && submitNow ? 'Submitting…' : 'Submit Claim'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Retention release form ───────────────────────────────────────────────────
+function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, onCancel }: {
+  quoteId: string
+  portalAccountId: string
+  retentionHeld: number
+  onCreated: (claim: ClaimWithItems) => void
+  onCancel: () => void
+}) {
+  const today = new Date().toISOString().split('T')[0]
+  const [claimDate, setClaimDate] = useState(today)
+  const [sentToName, setSentToName] = useState('')
+  const [sentToEmail, setSentToEmail] = useState('')
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(submitFlag: boolean) {
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/quotes/${quoteId}/claims`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          period_month: claimDate.slice(0, 7) + '-01',
+          claim_type: 'retention',
+          claim_date: claimDate,
+          sent_to_name: sentToName.trim() || null,
+          sent_to_email: sentToEmail.trim() || null,
+          notes: notes.trim() || null,
+          submit: submitFlag,
+          line_items: [],
+          retention_amount: retentionHeld,
+        }),
+      })
+      const data = await res.json() as { id?: string; claim_number?: string; error?: string }
+      if (!res.ok || !data.id) { setError(data.error ?? 'Failed'); setLoading(false); return }
+      const newClaim: ClaimWithItems = {
+        id: data.id, quote_id: quoteId, portal_account_id: portalAccountId,
+        claim_number: data.claim_number!, claim_date: claimDate,
+        period_month: claimDate.slice(0, 7) + '-01', claim_type: 'retention',
+        status: submitFlag ? 'submitted' : 'draft', total_claimed: retentionHeld,
+        total_certified: null, total_invoiced: null, total_paid: null,
+        sent_to_name: sentToName.trim() || null, sent_to_email: sentToEmail.trim() || null,
+        sent_at: null, notes: notes.trim() || null, created_at: new Date().toISOString(),
+        line_items: [],
+      }
+      onCreated(newClaim)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Error')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <div>
+          <h3 className="font-bold" style={{ color: S.text }}>Retention Release</h3>
+          <p className="text-xs mt-0.5" style={{ color: S.muted }}>Claim back held retention at practical completion</p>
+        </div>
+        <button onClick={onCancel} style={{ color: S.muted }}><X size={15} /></button>
+      </div>
+
+      <div className="px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <div className="rounded-xl p-4" style={{ background: 'rgba(58,124,165,0.04)', border: `1px solid ${S.border}` }}>
+          <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Retention Amount to Claim</p>
+          <p className="text-2xl font-bold" style={{ color: S.accent }}>{fmtR(retentionHeld)}</p>
+          <p className="text-xs mt-1" style={{ color: S.muted }}>Based on certified amounts × retention %</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Claim Date</label>
+          <input type="date" value={claimDate} onChange={e => setClaimDate(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To (Name)</label>
+          <input value={sentToName} onChange={e => setSentToName(e.target.value)} placeholder="Optional"
+            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+        </div>
+        <div>
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To (Email)</label>
+          <input type="email" value={sentToEmail} onChange={e => setSentToEmail(e.target.value)} placeholder="Optional"
+            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+        </div>
+        <div className="col-span-3">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
+          <input value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder="e.g. Practical completion certificate issued — 01 May 2025"
+            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+        </div>
+      </div>
+
+      {error && (
+        <div className="mx-5 mb-3 px-3 py-2 rounded flex items-center gap-2 text-sm"
+          style={{ background: '#FEF2F2', color: S.danger, border: '1px solid #FECACA' }}>
+          <AlertCircle size={13} />{error}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-3 px-5 py-4">
+        <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
+        <button onClick={() => handleSubmit(false)} disabled={loading}
+          className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          style={{ background: S.bg, color: S.text, border: `1px solid ${S.border}` }}>
+          Save Draft
+        </button>
+        <button onClick={() => handleSubmit(true)} disabled={loading}
+          className="px-5 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
+          style={{ background: S.accent }}>
+          {loading ? 'Submitting…' : 'Submit'}
         </button>
       </div>
     </div>
@@ -461,7 +606,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
             Certify →
           </button>
         )}
-        {claim.status === 'submitted' && claim.claim_type === 'invoice' && (
+        {claim.status === 'submitted' && (claim.claim_type === 'invoice' || claim.claim_type === 'retention') && (
           <button onClick={() => advance('paid', { total_paid: claim.total_claimed })}
             disabled={loading}
             className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
@@ -497,9 +642,11 @@ interface Props {
   items: ElecQuoteLineItem[]
   sections: ElecQuoteSection[]
   contractTotal: number
+  contractType: ElecContractType
+  retentionPct: number
 }
 
-export function ClaimsTab({ quoteId, portalAccountId, initialClaims, items, sections, contractTotal }: Props) {
+export function ClaimsTab({ quoteId, portalAccountId, initialClaims, items, sections, contractTotal, contractType, retentionPct }: Props) {
   const [claims, setClaims] = useState<ClaimWithItems[]>(initialClaims)
   const [view, setView] = useState<View>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -509,6 +656,11 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, items, sect
   const totalCertified = activeClaims.filter(c => c.total_certified != null).reduce((s, c) => s + (c.total_certified ?? 0), 0)
   const totalPaid      = claims.filter(c => c.status === 'paid').reduce((s, c) => s + (c.total_paid ?? c.total_claimed), 0)
   const balance        = contractTotal - totalClaimed
+
+  // Retention: calculated from certified (or claimed if not certified) amounts × retention %
+  const certifiedBase  = activeClaims.filter(c => c.claim_type !== 'retention').reduce((s, c) => s + (c.total_certified ?? c.total_claimed), 0)
+  const retentionHeld  = retentionPct > 0 ? Math.round(certifiedBase * retentionPct) / 100 : 0
+  const hasRetentionClaim = claims.some(c => c.claim_type === 'retention')
 
   const hasDraft = claims.some(c => c.status === 'draft')
 
@@ -529,6 +681,19 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, items, sect
         claims={claims}
         items={items}
         sections={sections}
+        contractType={contractType}
+        onCreated={handleCreated}
+        onCancel={() => setView('list')}
+      />
+    )
+  }
+
+  if (view === 'retention') {
+    return (
+      <NewRetentionForm
+        quoteId={quoteId}
+        portalAccountId={portalAccountId}
+        retentionHeld={retentionHeld}
         onCreated={handleCreated}
         onCancel={() => setView('list')}
       />
@@ -570,16 +735,28 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, items, sect
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>Claims</h2>
-        <button
-          onClick={() => setView('new')}
-          disabled={hasDraft}
-          title={hasDraft ? 'Finish or delete the existing draft claim first' : undefined}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-          onMouseEnter={e => { if (!hasDraft) e.currentTarget.style.background = 'rgba(58,124,165,0.15)' }}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
-          <Plus size={12} /> New Claim
-        </button>
+        <div className="flex items-center gap-2">
+          {retentionPct > 0 && retentionHeld > 0 && !hasRetentionClaim && (
+            <button
+              onClick={() => setView('retention')}
+              disabled={hasDraft}
+              title={hasDraft ? 'Finish the existing draft first' : `Release ${fmtR(retentionHeld)} retention`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ color: S.gold, background: 'rgba(217,164,65,0.1)', border: `1px solid rgba(217,164,65,0.3)` }}>
+              Release Retention
+            </button>
+          )}
+          <button
+            onClick={() => setView('new')}
+            disabled={hasDraft}
+            title={hasDraft ? 'Finish or delete the existing draft claim first' : undefined}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
+            onMouseEnter={e => { if (!hasDraft) e.currentTarget.style.background = 'rgba(58,124,165,0.15)' }}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+            <Plus size={12} /> New Claim
+          </button>
+        </div>
       </div>
 
       {hasDraft && (
@@ -615,7 +792,7 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, items, sect
                       style={{ background: st.bg, color: st.color }}>{st.label}</span>
                     <span className="text-[11px] px-1.5 py-0.5 rounded"
                       style={{ background: S.bg, color: S.muted }}>
-                      {c.claim_type === 'proforma' ? 'Proforma' : 'Invoice'}
+                      {c.claim_type === 'retention' ? 'Retention' : c.claim_type === 'proforma' ? 'Proforma' : 'Invoice'}
                     </span>
                   </div>
                   <p className="text-xs" style={{ color: S.muted }}>{fmtMonth(c.period_month)}</p>

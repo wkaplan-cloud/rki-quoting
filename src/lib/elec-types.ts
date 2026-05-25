@@ -204,7 +204,7 @@ export interface ElecVariationOrder {
 
 // ─── Claims ───────────────────────────────────────────────────────────────────
 
-export type ElecClaimType = 'invoice' | 'proforma'
+export type ElecClaimType = 'invoice' | 'proforma' | 'retention'
 export type ElecClaimStatus = 'draft' | 'submitted' | 'certified' | 'invoiced' | 'paid'
 
 export interface ElecClaim {
