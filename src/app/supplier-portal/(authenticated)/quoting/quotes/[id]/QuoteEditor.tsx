@@ -426,8 +426,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const [q, setQ] = useState(initialQuote)
   const [clientDisplay, setClientDisplay] = useState(initialQuote.client?.client_name ?? '')
-  // Local clients list — grows if user adds inline
   const [clients, setClients] = useState(initialClients)
+  const [voCreatedClaims, setVOCreatedClaims] = useState<(ElecClaim & { line_items: ElecClaimLineItem[] })[]>([])
 
   const [sections, setSections] = useState<SectionState[]>(() =>
     initSections.map(s => ({ ...s, items: initItems.filter(i => i.section_id === s.id).map(i => ({ ...i, _expanded: false })) }))
@@ -627,6 +627,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               quoteId={q.id}
               portalAccountId={portalAccountId}
               initialClaims={claims}
+              extraClaims={voCreatedClaims}
               items={initItems}
               sections={initSections}
               contractTotal={contractTotal}
@@ -635,7 +636,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             />
           </div>
           <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>
-            <VariationsTab quoteId={q.id} portalAccountId={portalAccountId} initialVOs={variations} initialClaims={claims} voPrefix={voPrefix} />
+            <VariationsTab
+              quoteId={q.id}
+              portalAccountId={portalAccountId}
+              initialVOs={variations}
+              initialClaims={claims}
+              voPrefix={voPrefix}
+              onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
+            />
           </div>
           <div style={{ display: activeTab === 'snag' ? undefined : 'none' }}>
             <SnagTab quoteId={q.id} initialSnags={snags} />

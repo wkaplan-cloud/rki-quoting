@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Check, FileText, AlertCircle } from 'lucide-react'
-import type { ElecVariationOrder, ElecVOStatus, ElecClaim } from '@/lib/elec-types'
+import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -28,9 +28,10 @@ interface Props {
   initialVOs: ElecVariationOrder[]
   initialClaims: VOClaim[]
   voPrefix: string
+  onClaimCreated: (claim: ElecClaim & { line_items: ElecClaimLineItem[] }) => void
 }
 
-export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix }: Props) {
+export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, onClaimCreated }: Props) {
   const supabase = createClient()
   const [vos, setVOs] = useState(initialVOs)
   const [voClaims, setVOClaims] = useState<VOClaim[]>(initialClaims.filter(c => c.variation_order_id != null))
@@ -110,12 +111,34 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       const data = await res.json() as { id?: string; claim_number?: string; error?: string }
       if (!res.ok || !data.id) { setVOError(data.error ?? 'Failed'); setVOLoading(false); return }
 
-      setVOClaims(prev => [...prev, {
+      const fullClaim: ElecClaim & { line_items: ElecClaimLineItem[] } = {
         id: data.id!,
+        quote_id: quoteId,
+        portal_account_id: portalAccountId,
         claim_number: data.claim_number!,
+        claim_date: voClaimDate,
+        period_month: voClaimDate.slice(0, 7) + '-01',
+        claim_type: 'invoice',
         status: submitFlag ? 'submitted' : 'draft',
+        total_claimed: vo.value,
+        total_certified: null,
+        total_invoiced: null,
+        total_paid: null,
+        sent_to_name: voSentToName.trim() || null,
+        sent_to_email: voSentToEmail.trim() || null,
+        sent_at: sentAt,
+        notes: voNotes.trim() || null,
+        variation_order_id: vo.id,
+        created_at: new Date().toISOString(),
+        line_items: [],
+      }
+      setVOClaims(prev => [...prev, {
+        id: fullClaim.id,
+        claim_number: fullClaim.claim_number,
+        status: fullClaim.status,
         variation_order_id: vo.id,
       }])
+      onClaimCreated(fullClaim)
       setInvoicingVoId(null)
       setVOClaimDate(new Date().toISOString().split('T')[0])
       setVOSentToName(''); setVOSentToEmail(''); setVONotes('')

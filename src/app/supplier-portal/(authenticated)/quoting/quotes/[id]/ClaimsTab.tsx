@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, ChevronDown, ChevronRight, Check, AlertCircle, Download } from 'lucide-react'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType } from '@/lib/elec-types'
@@ -641,6 +641,7 @@ interface Props {
   quoteId: string
   portalAccountId: string
   initialClaims: ClaimWithItems[]
+  extraClaims?: ClaimWithItems[]
   items: ElecQuoteLineItem[]
   sections: ElecQuoteSection[]
   contractTotal: number
@@ -648,8 +649,17 @@ interface Props {
   retentionPct: number
 }
 
-export function ClaimsTab({ quoteId, portalAccountId, initialClaims, items, sections, contractTotal, contractType, retentionPct }: Props) {
+export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, contractType, retentionPct }: Props) {
   const [claims, setClaims] = useState<ClaimWithItems[]>(initialClaims)
+
+  useEffect(() => {
+    if (extraClaims.length === 0) return
+    setClaims(prev => {
+      const existingIds = new Set(prev.map(c => c.id))
+      const newOnes = extraClaims.filter(c => !existingIds.has(c.id))
+      return newOnes.length > 0 ? [...newOnes, ...prev] : prev
+    })
+  }, [extraClaims])
   const [view, setView] = useState<View>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
