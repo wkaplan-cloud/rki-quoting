@@ -163,6 +163,8 @@ export interface ElecQuoteLineItem {
   quoted_unit_rate: number
   labour_rate: number | null
   material_rate: number | null
+  cost_unit_rate: number | null
+  markup_percentage: number | null
   // As-built
   as_built_quantity: number | null
   as_built_unit_rate: number | null
