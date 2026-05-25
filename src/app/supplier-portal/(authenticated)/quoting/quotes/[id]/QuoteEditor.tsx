@@ -871,7 +871,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </button>
         )}
         {q.status === 'in_progress' && (
-          <span className="text-sm" style={{ color: S.muted }}>Project in progress — manage from the As-Built tab</span>
+          <span className="text-sm" style={{ color: S.muted }}>
+            {q.contract_type === 'lump_sum'
+              ? 'Project in progress — use the Claims tab to invoice'
+              : 'Project in progress — manage from the As-Built tab'}
+          </span>
         )}
         {(q.status === 'quoted' || q.status === 'approved') && (
           <button onClick={() => { if (confirm('Cancel this quote?')) transition('cancelled') }}
