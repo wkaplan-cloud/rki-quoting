@@ -668,102 +668,131 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         className="w-full text-2xl font-bold bg-transparent outline-none mb-4"
         style={{ color: S.text, border: 'none' }} />
 
-      {/* Header card */}
-      <div className="rounded-2xl p-5 mb-4 grid grid-cols-2 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-        {/* Client — combobox */}
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Client</label>
-          <ClientCombobox
-            clientId={q.client_id}
-            displayName={clientDisplay}
-            clients={clients}
-            portalAccountId={portalAccountId}
-            disabled={locked}
-            onChange={(id, name) => {
-              setQ(p => ({ ...p, client_id: id }))
-              setClientDisplay(name)
-              // If a new client was added inline, add to local list so it appears next time
-              if (id && !clients.find(c => c.id === id)) {
-                setClients(cs => [...cs, { id, client_name: name, company: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))
-              }
-            }}
-          />
+      {/* Header card — condensed summary when locked, form when editable */}
+      {locked ? (
+        <div className="rounded-2xl p-5 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          {/* Client block */}
+          {q.client && (
+            <div className="pb-4 mb-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <p className="text-sm font-semibold" style={{ color: S.text }}>{q.client.client_name}</p>
+              {q.client.company && <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client.company}</p>}
+              {(q.client.email || q.client.contact_number) && (
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                  {[q.client.email, q.client.contact_number].filter(Boolean).join(' · ')}
+                </p>
+              )}
+            </div>
+          )}
+          {/* Project & contract details */}
+          <div className="grid grid-cols-3 gap-x-6 gap-y-3">
+            {q.project_address && (
+              <div className="col-span-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Address</p>
+                <p className="text-sm" style={{ color: S.text }}>{q.project_address}</p>
+              </div>
+            )}
+            {[
+              { label: 'Project Type',    value: q.project_type ? q.project_type.charAt(0).toUpperCase() + q.project_type.slice(1) : null },
+              { label: 'Contract Type',   value: q.contract_type === 'lump_sum' ? 'Lump Sum' : q.contract_type === 're_measurement' ? 'Re-measurement' : 'Cost Plus' },
+              { label: 'Quote Date',      value: q.quoted_date ?? null },
+              { label: 'Est. Completion', value: q.expected_completion_date ?? null },
+              { label: 'Retention',       value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
+              { label: 'Payment Terms',   value: q.payment_terms_days ? `${q.payment_terms_days} days` : null },
+              { label: 'Defects Liability', value: q.defects_liability_period_days ? `${q.defects_liability_period_days} days` : null },
+            ].filter(f => f.value).map(f => (
+              <div key={f.label}>
+                <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{f.label}</p>
+                <p className="text-sm" style={{ color: S.text }}>{f.value}</p>
+              </div>
+            ))}
+          </div>
+          {q.notes && (
+            <p className="text-sm mt-4 pt-4 italic" style={{ color: S.muted, borderTop: `1px solid ${S.border}` }}>{q.notes}</p>
+          )}
         </div>
+      ) : (
+        <div className="rounded-2xl p-5 mb-4 grid grid-cols-2 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          {/* Client — combobox */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Client</label>
+            <ClientCombobox
+              clientId={q.client_id}
+              displayName={clientDisplay}
+              clients={clients}
+              portalAccountId={portalAccountId}
+              disabled={false}
+              onChange={(id, name) => {
+                setQ(p => ({ ...p, client_id: id }))
+                setClientDisplay(name)
+                if (id && !clients.find(c => c.id === id)) {
+                  setClients(cs => [...cs, { id, client_name: name, company: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))
+                }
+              }}
+            />
+          </div>
 
-        {/* Project address */}
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Project Address</label>
-          <input value={q.project_address ?? ''} onChange={e => setQ(p => ({ ...p, project_address: e.target.value || null }))}
-            disabled={locked} placeholder="Site address"
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
+          {/* Project address */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Project Address</label>
+            <input value={q.project_address ?? ''} onChange={e => setQ(p => ({ ...p, project_address: e.target.value || null }))}
+              placeholder="Site address"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
 
-        {/* Project type */}
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Project Type</label>
-          <select value={q.project_type ?? ''} onChange={e => setQ(p => ({ ...p, project_type: (e.target.value || null) as ElecQuote['project_type'] }))}
-            disabled={locked}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: q.project_type ? S.text : S.muted }}>
-            <option value="">Select type</option>
-            {['residential','commercial','industrial','retail'].map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
-          </select>
-        </div>
+          {/* Project type */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Project Type</label>
+            <select value={q.project_type ?? ''} onChange={e => setQ(p => ({ ...p, project_type: (e.target.value || null) as ElecQuote['project_type'] }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: q.project_type ? S.text : S.muted }}>
+              <option value="">Select type</option>
+              {['residential','commercial','industrial','retail'].map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+            </select>
+          </div>
 
-        {/* Contract type */}
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Contract Type</label>
-          <select value={q.contract_type ?? 'lump_sum'} onChange={e => setQ(p => ({ ...p, contract_type: e.target.value as ElecQuote['contract_type'] }))}
-            disabled={locked}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: S.text }}>
-            <option value="lump_sum">Lump Sum</option>
-            <option value="re_measurement">Re-measurement</option>
-            <option value="cost_plus">Cost Plus</option>
-          </select>
-        </div>
+          {/* Contract type */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Contract Type</label>
+            <select value={q.contract_type ?? 'lump_sum'} onChange={e => setQ(p => ({ ...p, contract_type: e.target.value as ElecQuote['contract_type'] }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+              <option value="lump_sum">Lump Sum</option>
+              <option value="re_measurement">Re-measurement</option>
+              <option value="cost_plus">Cost Plus</option>
+            </select>
+          </div>
 
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Quote Date</label>
-          <input type="date" value={q.quoted_date ?? ''} onChange={e => setQ(p => ({ ...p, quoted_date: e.target.value || null }))}
-            disabled={locked}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Quote Date</label>
+            <input type="date" value={q.quoted_date ?? ''} onChange={e => setQ(p => ({ ...p, quoted_date: e.target.value || null }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
 
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Expected Completion</label>
-          <input type="date" value={q.expected_completion_date ?? ''} onChange={e => setQ(p => ({ ...p, expected_completion_date: e.target.value || null }))}
-            disabled={locked}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Expected Completion</label>
+            <input type="date" value={q.expected_completion_date ?? ''} onChange={e => setQ(p => ({ ...p, expected_completion_date: e.target.value || null }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
 
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>VAT Rate (%)</label>
-          <input type="number" value={q.vat_rate ?? 15} onChange={e => setQ(p => ({ ...p, vat_rate: parseFloat(e.target.value) || 15 }))}
-            disabled={locked}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Retention (%)</label>
+            <input type="number" value={q.retention_percentage ?? 0} onChange={e => setQ(p => ({ ...p, retention_percentage: parseFloat(e.target.value) || 0 }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
 
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Retention (%)</label>
-          <input type="number" value={q.retention_percentage ?? 0} onChange={e => setQ(p => ({ ...p, retention_percentage: parseFloat(e.target.value) || 0 }))}
-            disabled={locked}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          <div className="col-span-2">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
+            <textarea value={q.notes ?? ''} onChange={e => setQ(p => ({ ...p, notes: e.target.value || null }))}
+              rows={2} placeholder="Any notes for this quote…"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
         </div>
-
-        <div className="col-span-2">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
-          <textarea value={q.notes ?? ''} onChange={e => setQ(p => ({ ...p, notes: e.target.value || null }))}
-            disabled={locked} rows={2} placeholder="Any notes for this quote…"
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
-            style={{ background: locked ? S.bg : S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
-      </div>
+      )}
 
       {/* Line items */}
       <div className="mb-4">
