@@ -33,9 +33,11 @@ type QuoteRow = {
   quote_number: string
   project_name: string
   status: ElecQuoteStatus
+  contract_type: string
   expected_completion_date: string | null
   client_name: string | null
   contract_value: number
+  approved_vo_value: number
   as_built_value: number
 }
 
@@ -64,7 +66,7 @@ export default async function QuotingDashboardPage() {
   const [{ data: quotesRaw }, { data: claimsRaw }] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
-      .select('id, quote_number, project_name, status, expected_completion_date, client:elec_clients(client_name), line_items:elec_quote_line_items(quoted_quantity, quoted_unit_rate, as_built_quantity, as_built_unit_rate)')
+      .select('id, quote_number, project_name, status, contract_type, expected_completion_date, client:elec_clients(client_name), line_items:elec_quote_line_items(quoted_quantity, quoted_unit_rate, as_built_quantity, as_built_unit_rate), variation_orders:elec_variation_orders(status, value)')
       .eq('portal_account_id', account.id)
       .is('archived_at', null)
       .order('created_at', { ascending: false }),
@@ -77,7 +79,9 @@ export default async function QuotingDashboardPage() {
   const quotes: QuoteRow[] = (quotesRaw ?? []).map((q: any) => {
     const client = Array.isArray(q.client) ? q.client[0] : q.client
     const lis: any[] = Array.isArray(q.line_items) ? q.line_items : []
+    const vos: any[] = Array.isArray(q.variation_orders) ? q.variation_orders : []
     const contract_value = lis.reduce((s: number, li: any) => s + (li.quoted_quantity ?? 0) * (li.quoted_unit_rate ?? 0), 0)
+    const approved_vo_value = vos.filter((v: any) => v.status === 'approved').reduce((s: number, v: any) => s + (v.value ?? 0), 0)
     const as_built_value = lis.reduce((s: number, li: any) => {
       const qty  = li.as_built_quantity  ?? li.quoted_quantity  ?? 0
       const rate = li.as_built_unit_rate ?? li.quoted_unit_rate ?? 0
@@ -88,9 +92,11 @@ export default async function QuotingDashboardPage() {
       quote_number: q.quote_number,
       project_name: q.project_name,
       status: q.status as ElecQuoteStatus,
+      contract_type: q.contract_type ?? 'lump_sum',
       expected_completion_date: q.expected_completion_date ?? null,
       client_name: client?.client_name ?? null,
       contract_value,
+      approved_vo_value,
       as_built_value,
     }
   })
@@ -122,8 +128,12 @@ export default async function QuotingDashboardPage() {
 
   const year      = new Date().getFullYear().toString()
   const ytd       = claims.filter(c => c.status !== 'draft' && c.period_month.startsWith(year))
-  const invoicedYTD = ytd.reduce((s, c) => s + c.total_invoiced, 0)
-  const paidYTD     = ytd.reduce((s, c) => s + c.total_paid,     0)
+  const paidYTD   = ytd.reduce((s, c) => s + c.total_paid, 0)
+
+  const nonDraft      = claims.filter(c => c.status !== 'draft')
+  const totalInvoiced = nonDraft.reduce((s, c) => s + c.total_invoiced, 0)
+  const totalPaid     = nonDraft.reduce((s, c) => s + c.total_paid,     0)
+  const outstanding   = totalInvoiced - totalPaid
 
   // Monthly RECON — non-draft, most recent 12
   const reconMap: Record<string, { claimed: number; certified: number; invoiced: number; paid: number }> = {}
@@ -138,10 +148,10 @@ export default async function QuotingDashboardPage() {
   const reconMonths = Object.keys(reconMap).sort((a, b) => b.localeCompare(a)).slice(0, 12)
 
   const statCards = [
-    { label: 'Pipeline',     value: fmtR(pipelineValue), sub: `${pipeline.length} quote${pipeline.length !== 1 ? 's' : ''}`,    color: S.accent },
-    { label: 'Active Jobs',  value: fmtR(activeValue),   sub: `${active.length} job${active.length !== 1 ? 's' : ''}`,           color: S.green  },
-    { label: 'Invoiced YTD', value: fmtR(invoicedYTD),   sub: year,                                                               color: S.gold   },
-    { label: 'Paid YTD',     value: fmtR(paidYTD),       sub: year,                                                               color: S.green  },
+    { label: 'Pipeline',    value: fmtR(pipelineValue), sub: `${pipeline.length} quote${pipeline.length !== 1 ? 's' : ''}`, color: S.accent },
+    { label: 'Active Jobs', value: fmtR(activeValue),   sub: `${active.length} job${active.length !== 1 ? 's' : ''}`,      color: S.green  },
+    { label: 'Outstanding', value: fmtR(outstanding),   sub: 'Invoiced but not yet paid',                                   color: outstanding > 0 ? S.gold : S.muted },
+    { label: 'Paid YTD',   value: fmtR(paidYTD),       sub: year,                                                          color: S.green  },
   ]
 
   return (
@@ -227,8 +237,13 @@ export default async function QuotingDashboardPage() {
           </div>
           {active.map((q, i) => {
             const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
-            const balance = q.contract_value - ct.invoiced
-            const completionPct = q.contract_value > 0 ? Math.round((q.as_built_value / q.contract_value) * 100) : 0
+            const adjustedContract = q.contract_value + q.approved_vo_value
+            const balance = adjustedContract - ct.invoiced
+            const completionPct = adjustedContract > 0
+              ? q.contract_type === 'lump_sum'
+                ? Math.min(100, Math.round((ct.invoiced / adjustedContract) * 100))
+                : Math.min(100, Math.round((q.as_built_value / q.contract_value) * 100))
+              : 0
             return (
               <Link
                 key={q.id}
@@ -254,7 +269,7 @@ export default async function QuotingDashboardPage() {
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] mb-0.5" style={{ color: S.muted }}>Contract</p>
-                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(q.contract_value)}</p>
+                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(adjustedContract)}</p>
                   <p className="text-[10px] mt-0.5 font-semibold"
                     style={{ color: balance > 0.01 ? S.gold : S.muted }}>
                     Balance: {fmtR(balance)}
