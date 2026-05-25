@@ -665,8 +665,9 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const activeClaims = claims.filter(c => c.status !== 'draft')
-  const totalClaimed   = activeClaims.reduce((s, c) => s + c.total_claimed, 0)
-  const totalCertified = activeClaims.filter(c => c.total_certified != null).reduce((s, c) => s + (c.total_certified ?? 0), 0)
+  const progressClaims = activeClaims.filter(c => c.claim_type !== 'retention')
+  const totalClaimed   = progressClaims.reduce((s, c) => s + c.total_claimed, 0)
+  const totalCertified = progressClaims.filter(c => c.total_certified != null).reduce((s, c) => s + (c.total_certified ?? 0), 0)
   const totalPaid      = claims.filter(c => c.status === 'paid').reduce((s, c) => s + (c.total_paid ?? c.total_claimed), 0)
   const adjustedContract = contractTotal + approvedVOTotal
   const balance          = adjustedContract - totalClaimed
