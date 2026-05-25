@@ -55,7 +55,6 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
   const thisMonth = today.slice(0, 7)
 
   const [periodMonth, setPeriodMonth] = useState(thisMonth)
-  const [claimType, setClaimType] = useState<'invoice' | 'proforma'>('invoice')
   const [claimDate, setClaimDate] = useState(today)
   const [sentToName, setSentToName] = useState('')
   const [sentToEmail, setSentToEmail] = useState('')
@@ -107,7 +106,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           period_month: periodMonth + '-01',
-          claim_type: claimType,
+          claim_type: 'invoice',
           claim_date: claimDate,
           sent_to_name: sentToName.trim() || null,
           sent_to_email: sentToEmail.trim() || null,
@@ -132,7 +131,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         claim_number: data.claim_number!,
         claim_date: claimDate,
         period_month: periodMonth + '-01',
-        claim_type: claimType,
+        claim_type: 'invoice',
         status: submitFlag ? 'submitted' : 'draft',
         total_claimed: totalThisClaim,
         total_certified: null,
@@ -217,7 +216,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
     <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
-        <h3 className="font-bold" style={{ color: S.text }}>New Claim</h3>
+        <h3 className="font-bold" style={{ color: S.text }}>New Claim / Invoice</h3>
         <div className="flex items-center gap-2">
           {contractType === 're_measurement' && (
             <button onClick={fillFromAsBuilt}
@@ -231,28 +230,12 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
       </div>
 
       {/* Meta fields */}
-      <div className="grid grid-cols-3 gap-4 px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+      <div className="grid grid-cols-2 gap-4 px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
         <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Period</label>
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Billing Period</label>
           <input type="month" value={periodMonth} onChange={e => setPeriodMonth(e.target.value)}
             className="w-full px-3 py-2 text-sm rounded-lg outline-none"
             style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Type</label>
-          <div className="flex gap-2 mt-0.5">
-            {(['invoice', 'proforma'] as const).map(t => (
-              <button key={t} onClick={() => setClaimType(t)}
-                className="flex-1 py-2 text-sm rounded-lg font-medium"
-                style={{
-                  background: claimType === t ? S.accent : S.input,
-                  color: claimType === t ? '#fff' : S.muted,
-                  border: `1px solid ${claimType === t ? S.accent : S.border}`,
-                }}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
         </div>
         <div>
           <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Claim Date</label>
@@ -272,7 +255,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
             className="w-full px-3 py-2 text-sm rounded-lg outline-none"
             style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
         </div>
-        <div>
+        <div className="col-span-2">
           <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional"
             className="w-full px-3 py-2 text-sm rounded-lg outline-none"
@@ -501,8 +484,11 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
             <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
               style={{ background: st.bg, color: st.color }}>{st.label}</span>
             <span className="text-xs px-2 py-0.5 rounded-full"
-              style={{ background: S.bg, color: S.muted }}>
-              {claim.claim_type.charAt(0).toUpperCase() + claim.claim_type.slice(1)}
+              style={{
+                background: claim.claim_type === 'retention' ? 'rgba(217,164,65,0.1)' : ['invoiced','paid'].includes(claim.status) ? 'rgba(22,163,74,0.1)' : S.bg,
+                color: claim.claim_type === 'retention' ? S.gold : ['invoiced','paid'].includes(claim.status) ? S.green : S.muted,
+              }}>
+              {claim.claim_type === 'retention' ? 'Retention' : ['invoiced','paid'].includes(claim.status) ? 'Tax Invoice' : 'Claim'}
             </span>
           </div>
           <p className="text-xs" style={{ color: S.muted }}>{fmtMonth(claim.period_month)} · {claim.claim_date}</p>
@@ -593,7 +579,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
             <button onClick={() => setShowCertForm(false)} className="px-3 py-1.5 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
             <button onClick={certify} disabled={loading}
               className="px-4 py-1.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
-              style={{ background: S.gold }}>{loading ? 'Saving…' : 'Certify'}</button>
+              style={{ background: S.gold }}>{loading ? 'Saving…' : 'Record Certification'}</button>
           </div>
         </div>
       )}
@@ -609,24 +595,30 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
             className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
             style={{ background: S.accent }}>Send to Client →</button>
         )}
-        {claim.status === 'submitted' && claim.claim_type === 'proforma' && !showCertForm && (
-          <button onClick={() => setShowCertForm(true)}
-            className="px-4 py-2 rounded-lg text-sm font-semibold"
-            style={{ background: 'rgba(217,164,65,0.1)', color: S.gold, border: `1px solid ${S.gold}` }}>
-            Certify →
-          </button>
-        )}
-        {claim.status === 'submitted' && (claim.claim_type === 'invoice' || claim.claim_type === 'retention') && (
+        {claim.status === 'submitted' && claim.claim_type === 'retention' && (
           <button onClick={() => advance('paid', { total_paid: claim.total_claimed })}
             disabled={loading}
             className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
             style={{ background: S.green }}>Mark Paid →</button>
         )}
+        {claim.status === 'submitted' && claim.claim_type !== 'retention' && !showCertForm && (
+          <>
+            <button onClick={() => setShowCertForm(true)}
+              className="px-4 py-2 rounded-lg text-sm font-semibold"
+              style={{ background: 'rgba(217,164,65,0.1)', color: S.gold, border: `1px solid rgba(217,164,65,0.4)` }}>
+              Record Certification →
+            </button>
+            <button onClick={() => advance('invoiced', { total_invoiced: claim.total_claimed })}
+              disabled={loading}
+              className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
+              style={{ background: S.green }}>Issue Tax Invoice →</button>
+          </>
+        )}
         {claim.status === 'certified' && (
           <button onClick={() => advance('invoiced', { total_invoiced: claim.total_certified ?? claim.total_claimed })}
             disabled={loading}
             className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
-            style={{ background: S.green }}>Mark Invoiced →</button>
+            style={{ background: S.green }}>Issue Tax Invoice →</button>
         )}
         {claim.status === 'invoiced' && (
           <button onClick={() => advance('paid', { total_paid: claim.total_invoiced ?? claim.total_certified ?? claim.total_claimed })}
@@ -814,8 +806,11 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
                     <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
                       style={{ background: st.bg, color: st.color }}>{st.label}</span>
                     <span className="text-[11px] px-1.5 py-0.5 rounded"
-                      style={{ background: S.bg, color: S.muted }}>
-                      {c.claim_type === 'retention' ? 'Retention' : c.claim_type === 'proforma' ? 'Proforma' : 'Invoice'}
+                      style={{
+                        background: c.claim_type === 'retention' ? 'rgba(217,164,65,0.1)' : ['invoiced','paid'].includes(c.status) ? 'rgba(22,163,74,0.1)' : S.bg,
+                        color: c.claim_type === 'retention' ? S.gold : ['invoiced','paid'].includes(c.status) ? S.green : S.muted,
+                      }}>
+                      {c.claim_type === 'retention' ? 'Retention' : ['invoiced','paid'].includes(c.status) ? 'Tax Invoice' : 'Claim'}
                     </span>
                     {c.variation_order_id && (
                       <span className="text-[11px] font-medium px-1.5 py-0.5 rounded"
