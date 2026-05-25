@@ -238,10 +238,10 @@ export default async function QuotingDashboardPage() {
           {active.map((q, i) => {
             const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
             const adjustedContract = q.contract_value + q.approved_vo_value
-            const balance = adjustedContract - ct.invoiced
+            const balance = adjustedContract - ct.claimed
             const completionPct = adjustedContract > 0
               ? q.contract_type === 'lump_sum'
-                ? Math.min(100, Math.round((ct.invoiced / adjustedContract) * 100))
+                ? Math.min(100, Math.round((ct.claimed / adjustedContract) * 100))
                 : Math.min(100, Math.round((q.as_built_value / q.contract_value) * 100))
               : 0
             return (
@@ -271,8 +271,8 @@ export default async function QuotingDashboardPage() {
                   <p className="text-[10px] mb-0.5" style={{ color: S.muted }}>Contract</p>
                   <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(adjustedContract)}</p>
                   <p className="text-[10px] mt-0.5 font-semibold"
-                    style={{ color: balance > 0.01 ? S.gold : S.muted }}>
-                    Balance: {fmtR(balance)}
+                    style={{ color: balance > 0.01 ? S.gold : S.green }}>
+                    {balance > 0.01 ? `To claim: ${fmtR(balance)}` : 'Fully claimed'}
                   </p>
                 </div>
               </Link>
