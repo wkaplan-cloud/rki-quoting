@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { SupplierPortalNav } from './SupplierPortalNav'
+import { SupplierPortalShell } from './SupplierPortalShell'
 
 export default async function SupplierPortalLayout({
   children,
@@ -41,16 +41,8 @@ export default async function SupplierPortalLayout({
   const displayName = account.company_name ?? account.email
 
   return (
-    <div className="flex min-h-screen" style={{ background: '#F5F7F9' }}>
-      <SupplierPortalNav
-        companyName={displayName}
-        pendingCount={pendingCount}
-      />
-      <main className="md:ml-12 flex-1 pt-14 md:pt-0">
-        <div className="px-6 py-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <SupplierPortalShell companyName={displayName} pendingCount={pendingCount}>
+      {children}
+    </SupplierPortalShell>
   )
 }

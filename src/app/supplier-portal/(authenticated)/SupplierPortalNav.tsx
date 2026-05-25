@@ -2,12 +2,14 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   companyName: string
   pendingCount: number
+  desktopExpanded: boolean
+  onDesktopToggle: () => void
 }
 
 const NAV_ITEMS = [
@@ -26,7 +28,7 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
-export function SupplierPortalNav({ companyName, pendingCount }: Props) {
+export function SupplierPortalNav({ companyName, pendingCount, desktopExpanded, onDesktopToggle }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -37,7 +39,7 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
     router.push('/supplier-portal/login')
   }
 
-  const labelCls = 'text-xs whitespace-nowrap opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 pr-3'
+  const labelCls = `text-xs whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`
 
   return (
     <>
@@ -59,8 +61,8 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
 
       {/* Sidebar */}
       <aside
-        className={`group flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden
-          w-52 md:w-12 md:hover:w-52 md:transition-[width] md:duration-200
+        className={`group flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
+          w-52 ${desktopExpanded ? 'md:w-52' : 'md:w-12 md:hover:w-52'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         style={{ background: S.sidebar, borderRight: `1px solid ${S.sidebarBorder}` }}
       >
@@ -73,12 +75,26 @@ export function SupplierPortalNav({ companyName, pendingCount }: Props) {
 
         {/* Logo / brand area */}
         <div className="flex-shrink-0 relative" style={{ borderBottom: `1px solid ${S.sidebarBorder}` }}>
-          {/* Collapsed: initials */}
-          <span className="hidden md:flex md:group-hover:hidden absolute inset-0 items-center justify-center text-xs font-bold select-none pointer-events-none" style={{ color: S.textMuted }}>
-            SP
-          </span>
-          {/* Expanded */}
-          <div className="px-5 py-5 flex flex-col items-center text-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150">
+          {/* Desktop: expand button — visible only when collapsed */}
+          <button
+            onClick={onDesktopToggle}
+            className={`hidden md:flex absolute inset-0 items-center justify-center transition-colors z-10 ${desktopExpanded ? 'opacity-0 pointer-events-none' : 'opacity-100 md:group-hover:opacity-0'}`}
+            style={{ color: S.textMuted }}
+            aria-label="Pin navigation open"
+          >
+            <PanelLeft size={15} />
+          </button>
+          {/* Desktop: collapse button — visible only when expanded */}
+          <button
+            onClick={onDesktopToggle}
+            className={`hidden md:flex absolute top-3 right-3 w-6 h-6 items-center justify-center rounded transition-colors z-10 ${desktopExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none md:group-hover:opacity-100'}`}
+            style={{ color: S.textMuted }}
+            aria-label="Unpin navigation"
+          >
+            <PanelLeftClose size={15} />
+          </button>
+          {/* Expanded content */}
+          <div className={`px-5 py-5 flex flex-col items-center text-center transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100 md:pointer-events-none'}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="QuotingHub" className="w-28 h-auto object-contain mb-3" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
             <p className="text-xs font-semibold max-w-full" style={{ color: S.textLight }}>{companyName}</p>
