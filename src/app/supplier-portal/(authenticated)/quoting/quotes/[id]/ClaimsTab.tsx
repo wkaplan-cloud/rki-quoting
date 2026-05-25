@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronDown, ChevronRight, Check, AlertCircle } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronRight, Check, AlertCircle, Download } from 'lucide-react'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus } from '@/lib/elec-types'
 
 const S = {
@@ -352,6 +352,11 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
           </div>
           <p className="text-xs" style={{ color: S.muted }}>{fmtMonth(claim.period_month)} · {claim.claim_date}</p>
         </div>
+        <a href={`/api/supplier-portal/quoting/claims/${claim.id}/pdf`} target="_blank" rel="noreferrer"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+          style={{ background: S.accent, color: '#fff' }}>
+          <Download size={11} /> PDF
+        </a>
         <button onClick={onClose} style={{ color: S.muted }}><X size={15} /></button>
       </div>
 

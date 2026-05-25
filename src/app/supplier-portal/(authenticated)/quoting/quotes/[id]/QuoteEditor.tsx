@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
-  AlertCircle, Check, GripVertical, FolderPlus, Loader2, X,
+  AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download,
 } from 'lucide-react'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 import { AsBuiltTab } from './AsBuiltTab'
@@ -590,6 +590,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <Save size={12} /> Save
           </button>
         )}
+        <a href={`/api/supplier-portal/quoting/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+          style={{ background: S.accent, color: '#fff' }}>
+          <Download size={12} /> PDF
+        </a>
         <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>{st.label}</span>
       </div>
