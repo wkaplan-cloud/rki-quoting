@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -20,8 +20,9 @@ const NAV_ITEMS = [
 ]
 
 const QUOTING_NAV_ITEMS = [
-  { href: '/supplier-portal/quoting/quotes',   label: 'Quotes',    icon: FileText },
-  { href: '/supplier-portal/quoting/settings', label: 'Settings',  icon: Settings },
+  { href: '/supplier-portal/quoting/quotes',   label: 'Quotes',   icon: FileText },
+  { href: '/supplier-portal/quoting/clients',  label: 'Clients',  icon: Users    },
+  { href: '/supplier-portal/quoting/settings', label: 'Settings', icon: Settings },
 ]
 
 const S = {
