@@ -34,6 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       sent_to_email?: string | null
       notes?: string | null
       submit?: boolean
+      sent_at?: string | null
       line_items: { quote_line_item_id: string; percentage_claimed: number; amount_claimed: number }[]
       retention_amount?: number
     }
@@ -73,6 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         total_claimed:      totalClaimed,
         sent_to_name:       body.sent_to_name ?? null,
         sent_to_email:      body.sent_to_email ?? null,
+        sent_at:            body.sent_at ?? null,
         notes:              body.notes ?? null,
       })
       .select()

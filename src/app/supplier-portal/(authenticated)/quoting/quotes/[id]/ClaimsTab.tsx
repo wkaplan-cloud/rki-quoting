@@ -109,6 +109,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
           sent_to_email: sentToEmail.trim() || null,
           notes: notes.trim() || null,
           submit: submitFlag,
+          sent_at: submitFlag ? new Date().toISOString() : null,
           line_items: itemsWithClaim.map(l => ({
             quote_line_item_id: l.item.id,
             percentage_claimed: l.thisPct,
@@ -135,7 +136,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         total_paid: null,
         sent_to_name: sentToName.trim() || null,
         sent_to_email: sentToEmail.trim() || null,
-        sent_at: null,
+        sent_at: submitFlag ? new Date().toISOString() : null,
         notes: notes.trim() || null,
         created_at: new Date().toISOString(),
         line_items: itemsWithClaim.map(l => ({
@@ -315,7 +316,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         <button onClick={() => { setSubmitNow(true); handleSubmit(true) }} disabled={loading}
           className="px-5 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
           style={{ background: S.accent }}>
-          {loading && submitNow ? 'Submitting…' : 'Submit Claim'}
+          {loading && submitNow ? 'Sending…' : 'Send to Client'}
         </button>
       </div>
     </div>
@@ -597,7 +598,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
           <button onClick={() => advance('submitted', { sent_at: new Date().toISOString() })}
             disabled={loading}
             className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
-            style={{ background: S.accent }}>Submit →</button>
+            style={{ background: S.accent }}>Send to Client →</button>
         )}
         {claim.status === 'submitted' && claim.claim_type === 'proforma' && !showCertForm && (
           <button onClick={() => setShowCertForm(true)}
