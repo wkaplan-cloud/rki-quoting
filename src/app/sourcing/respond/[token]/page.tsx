@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { SupplierRespondClient } from './SupplierRespondClient'
-import { SupplierPortalNav } from '@/app/supplier-portal/(authenticated)/SupplierPortalNav'
+import { SupplierPortalShell } from '@/app/supplier-portal/(authenticated)/SupplierPortalShell'
 
 export default async function SupplierRespondPage({
   params,
@@ -113,15 +113,12 @@ export default async function SupplierRespondPage({
 
   if (portalAccount) {
     return (
-      <div className="flex min-h-screen" style={{ background: '#F4F4F5' }}>
-        <SupplierPortalNav
-          companyName={portalAccount.company_name ?? portalAccount.email}
-          pendingCount={pendingCount}
-        />
-        <div className="md:ml-12 flex-1 pt-14 md:pt-0">
-          {content}
-        </div>
-      </div>
+      <SupplierPortalShell
+        companyName={portalAccount.company_name ?? portalAccount.email}
+        pendingCount={pendingCount}
+      >
+        {content}
+      </SupplierPortalShell>
     )
   }
 
