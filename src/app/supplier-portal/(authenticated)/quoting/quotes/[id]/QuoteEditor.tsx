@@ -45,8 +45,8 @@ function newItem(quoteId: string, sectionId: string | null, sortOrder: number): 
     id: crypto.randomUUID(), quote_id: quoteId, section_id: sectionId,
     description: '', unit: 'nr', item_type: 'both', drawing_reference: null,
     subcontractor_name: null, quoted_quantity: 1, quoted_unit_rate: 0,
-    labour_rate: null, material_rate: null, as_built_quantity: null,
-    as_built_unit_rate: null, variation_order_id: null, is_variation: false,
+    labour_rate: null, material_rate: null, cost_unit_rate: null, markup_percentage: null,
+    as_built_quantity: null, as_built_unit_rate: null, variation_order_id: null, is_variation: false,
     sort_order: sortOrder, _expanded: false,
   }
 }
@@ -273,7 +273,13 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked }: {
           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
         {numInput(item.quoted_quantity, v => set({ quoted_quantity: v }), 'Qty')}
-        {numInput(item.quoted_unit_rate, v => set({ quoted_unit_rate: v }), 'Rate')}
+        {numInput(item.quoted_unit_rate, v => {
+          const patch: Partial<ItemState> = { quoted_unit_rate: v }
+          if (item.cost_unit_rate != null && item.cost_unit_rate > 0) {
+            patch.markup_percentage = Math.round(((v - item.cost_unit_rate) / item.cost_unit_rate) * 1000) / 10
+          }
+          set(patch)
+        }, 'Rate')}
         <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 100 }}>
           {fmtR(itemTotal(item))}
         </div>
@@ -334,6 +340,66 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked }: {
                 style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
             </div>
           )}
+          {/* Costing — internal only */}
+          <div className="col-span-2 pt-3 mt-1" style={{ borderTop: `1px dashed ${S.border}` }}>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-2.5" style={{ color: S.muted }}>Cost &amp; Margin (internal)</p>
+            <div className="grid grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Cost Rate</label>
+                <input type="number" value={item.cost_unit_rate ?? ''}
+                  onChange={e => {
+                    const cost = e.target.value === '' ? null : parseFloat(e.target.value)
+                    const patch: Partial<ItemState> = { cost_unit_rate: cost }
+                    if (cost != null && cost > 0) {
+                      if (item.markup_percentage != null) {
+                        patch.quoted_unit_rate = Math.round(cost * (1 + item.markup_percentage / 100) * 100) / 100
+                      } else if ((item.quoted_unit_rate ?? 0) > 0) {
+                        patch.markup_percentage = Math.round(((item.quoted_unit_rate - cost) / cost) * 1000) / 10
+                      }
+                    }
+                    set(patch)
+                  }}
+                  disabled={locked} placeholder="0.00"
+                  className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
+                  style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Markup %</label>
+                <input type="number" value={item.markup_percentage ?? ''}
+                  onChange={e => {
+                    const markup = e.target.value === '' ? null : parseFloat(e.target.value)
+                    const patch: Partial<ItemState> = { markup_percentage: markup }
+                    if (markup != null && item.cost_unit_rate != null && item.cost_unit_rate > 0) {
+                      patch.quoted_unit_rate = Math.round(item.cost_unit_rate * (1 + markup / 100) * 100) / 100
+                    }
+                    set(patch)
+                  }}
+                  disabled={locked} placeholder="0"
+                  className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
+                  style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+              </div>
+              {item.cost_unit_rate != null && (
+                <>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Profit / Unit</label>
+                    <div className="px-2.5 py-1.5 text-sm rounded-lg text-right font-medium"
+                      style={{ background: S.bg, border: `1px solid ${S.border}`, color: ((item.quoted_unit_rate ?? 0) - item.cost_unit_rate) >= 0 ? S.green : S.danger }}>
+                      {fmtR((item.quoted_unit_rate ?? 0) - item.cost_unit_rate)}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Margin %</label>
+                    <div className="px-2.5 py-1.5 text-sm rounded-lg text-right font-medium"
+                      style={{ background: S.bg, border: `1px solid ${S.border}`, color: (item.quoted_unit_rate ?? 0) > 0 ? (((item.quoted_unit_rate ?? 0) - item.cost_unit_rate) >= 0 ? S.green : S.danger) : S.muted }}>
+                      {(item.quoted_unit_rate ?? 0) > 0
+                        ? `${Math.round(((item.quoted_unit_rate - item.cost_unit_rate) / item.quoted_unit_rate) * 1000) / 10}%`
+                        : '—'}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -348,6 +414,9 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const subtotal = section.items.reduce((s, i) => s + itemTotal(i), 0)
+  const sectionCostTotal = section.items.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
+  const hasCosting = section.items.some(i => i.cost_unit_rate != null)
+  const sectionMarginPct = hasCosting && subtotal > 0 ? ((subtotal - sectionCostTotal) / subtotal * 100) : null
   const colHdr = (label: string, w: number, align: 'left' | 'right' | 'center' = 'left') => (
     <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: w, textAlign: align, flexShrink: 0 }}>{label}</div>
   )
@@ -362,6 +431,12 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
           disabled={locked} placeholder="Section title (e.g. DB Board)"
           className="flex-1 bg-transparent text-sm font-semibold outline-none" style={{ color: S.text }} />
         <span className="text-sm font-semibold flex-shrink-0" style={{ color: S.accent }}>{fmtR(subtotal)}</span>
+        {sectionMarginPct !== null && (
+          <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0 font-medium"
+            style={{ background: sectionMarginPct >= 0 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: sectionMarginPct >= 0 ? S.green : S.danger }}>
+            {Math.round(sectionMarginPct * 10) / 10}% margin
+          </span>
+        )}
         <span className="text-xs flex-shrink-0" style={{ color: S.muted }}>{section.items.length} item{section.items.length !== 1 ? 's' : ''}</span>
         {!locked && (
           <button onClick={onDelete} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
@@ -483,7 +558,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
             subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
             quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
-            material_rate: item.material_rate, is_variation: item.is_variation, sort_order: ii,
+            material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
+            markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
           })
         }
       }
@@ -494,7 +570,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
           subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
           quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
-          material_rate: item.material_rate, is_variation: item.is_variation, sort_order: ii,
+          material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
+          markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
         })
       }
 
@@ -568,6 +645,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
   const approvedVOTotal = variations.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
+  const costTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
+  const grossProfit = subtotal - costTotal
+  const hasCostData = allItems.some(i => i.cost_unit_rate != null)
 
   return (
     <div className="max-w-4xl mx-auto pb-16">
@@ -866,10 +946,34 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       {/* Totals */}
       <div className="rounded-2xl p-5 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <div className="space-y-2 max-w-sm ml-auto">
-          <div className="flex justify-between text-sm">
-            <span style={{ color: S.muted }}>Subtotal (ex VAT)</span>
-            <span className="font-medium" style={{ color: S.text }}>{fmtR(subtotal)}</span>
-          </div>
+          {hasCostData && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: S.muted }}>Revenue (ex VAT)</span>
+                <span className="font-medium" style={{ color: S.text }}>{fmtR(subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: S.muted }}>Cost (ex VAT)</span>
+                <span className="font-medium" style={{ color: S.text }}>{fmtR(costTotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: S.muted }}>Gross Profit</span>
+                <span className="font-medium" style={{ color: grossProfit >= 0 ? S.green : S.danger }}>{fmtR(grossProfit)}</span>
+              </div>
+              <div className="flex justify-between text-sm pb-2" style={{ borderBottom: `1px solid ${S.border}` }}>
+                <span style={{ color: S.muted }}>Margin</span>
+                <span className="font-semibold" style={{ color: grossProfit >= 0 ? S.green : S.danger }}>
+                  {subtotal > 0 ? `${Math.round(grossProfit / subtotal * 1000) / 10}%` : '—'}
+                </span>
+              </div>
+            </>
+          )}
+          {!hasCostData && (
+            <div className="flex justify-between text-sm">
+              <span style={{ color: S.muted }}>Subtotal (ex VAT)</span>
+              <span className="font-medium" style={{ color: S.text }}>{fmtR(subtotal)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span style={{ color: S.muted }}>VAT ({q.vat_rate ?? 15}%)</span>
             <span className="font-medium" style={{ color: S.text }}>{fmtR(vatAmt)}</span>
