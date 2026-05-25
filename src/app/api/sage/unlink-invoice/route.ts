@@ -29,8 +29,10 @@ export async function POST(req: NextRequest) {
       sage_pushed_at: null,
     }).eq('id', projectId)
 
-    // Unmark final_invoice_paid so the project is no longer locked
+    // Reset invoice stages — the Sage invoice was voided, so treat it as never sent
     await supabase.from('project_stages').update({
+      final_invoice_sent: false,
+      final_invoice_sent_at: null,
       final_invoice_paid: false,
       final_invoice_paid_at: null,
     }).eq('project_id', projectId)
