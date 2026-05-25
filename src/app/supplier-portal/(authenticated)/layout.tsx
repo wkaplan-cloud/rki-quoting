@@ -14,7 +14,7 @@ export default async function SupplierPortalLayout({
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, company_name, email')
+    .select('id, company_name, email, plan, subscription_status')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
@@ -39,9 +39,10 @@ export default async function SupplierPortalLayout({
   }
 
   const displayName = account.company_name ?? account.email
+  const hasQuoting = account.plan === 'quoting' && account.subscription_status === 'active'
 
   return (
-    <SupplierPortalShell companyName={displayName} pendingCount={pendingCount}>
+    <SupplierPortalShell companyName={displayName} pendingCount={pendingCount} hasQuoting={hasQuoting}>
       {children}
     </SupplierPortalShell>
   )

@@ -82,6 +82,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/sourcing/respond') ||
     pathname.startsWith('/api/paystack/subscription-callback') ||
     pathname.startsWith('/api/paystack/webhook') ||
+    pathname.startsWith('/api/supplier-portal/paystack/callback') ||
     pathname.startsWith('/supplier-portal/login') ||
     pathname.startsWith('/supplier-portal/register') ||
     pathname === '/supplier-portal' ||

@@ -6,9 +6,10 @@ interface Props {
   children: React.ReactNode
   companyName: string
   pendingCount: number
+  hasQuoting: boolean
 }
 
-export function SupplierPortalShell({ children, companyName, pendingCount }: Props) {
+export function SupplierPortalShell({ children, companyName, pendingCount, hasQuoting }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
 
   useEffect(() => {
@@ -21,6 +22,7 @@ export function SupplierPortalShell({ children, companyName, pendingCount }: Pro
       <SupplierPortalNav
         companyName={companyName}
         pendingCount={pendingCount}
+        hasQuoting={hasQuoting}
         desktopExpanded={desktopExpanded}
         onDesktopToggle={() => setDesktopExpanded(e => {
           const next = !e

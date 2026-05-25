@@ -20,6 +20,31 @@ export async function POST(req: NextRequest) {
 
     // ── First payment success — activate org (backup if callback missed) ──────
     case 'charge.success': {
+      // Supplier quoting upgrade
+      if (data?.metadata?.type === 'supplier_quoting') {
+        const portalAccountId = data?.metadata?.portal_account_id
+        const planCategory    = data?.metadata?.plan_category
+        if (!portalAccountId) break
+        const { data: acc } = await supabaseAdmin
+          .from('supplier_portal_accounts')
+          .select('subscription_status')
+          .eq('id', portalAccountId)
+          .single()
+        if (acc && acc.subscription_status !== 'active') {
+          await supabaseAdmin.from('supplier_portal_accounts').update({
+            plan:                'quoting',
+            plan_category:       planCategory ?? 'electrician',
+            subscription_status: 'active',
+            paystack_reference:  null,
+          }).eq('id', portalAccountId)
+          await supabaseAdmin
+            .from('elec_settings')
+            .upsert({ portal_account_id: portalAccountId }, { onConflict: 'portal_account_id', ignoreDuplicates: true })
+        }
+        break
+      }
+
+      // Designer org subscription
       const orgId = data?.metadata?.org_id
       const planId = data?.metadata?.plan
       if (!orgId) break
@@ -82,13 +107,17 @@ export async function POST(req: NextRequest) {
       break
     }
 
-    // ── Subscription cancelled/disabled — deactivate org ─────────────────────
+    // ── Subscription cancelled/disabled — deactivate org + supplier ──────────
     case 'subscription.disable':
     case 'subscription.not_renew': {
       const subscriptionCode = data?.subscription_code
       if (!subscriptionCode) break
 
       await supabaseAdmin.from('organizations')
+        .update({ subscription_status: 'cancelled' })
+        .eq('paystack_subscription_code', subscriptionCode)
+
+      await supabaseAdmin.from('supplier_portal_accounts')
         .update({ subscription_status: 'cancelled' })
         .eq('paystack_subscription_code', subscriptionCode)
       break

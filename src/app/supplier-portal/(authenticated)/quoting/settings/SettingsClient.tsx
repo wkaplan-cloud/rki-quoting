@@ -1,0 +1,294 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Check, Zap } from 'lucide-react'
+import type { ElecSettings } from '@/lib/elec-types'
+
+const S = {
+  bg:     '#F0F2F5',
+  card:   '#FFFFFF',
+  accent: '#3A7CA5',
+  text:   '#18181B',
+  muted:  '#71717A',
+  border: '#E4E4E7',
+  input:  '#F4F4F5',
+}
+
+interface Props {
+  portalAccountId: string
+  settings: ElecSettings | null
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>{label}</label>
+      {children}
+      {hint && <p className="text-xs mt-1" style={{ color: S.muted }}>{hint}</p>}
+    </div>
+  )
+}
+
+function Input({ value, onChange, placeholder, type = 'text' }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; type?: string
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors"
+      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+      onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+      onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
+    />
+  )
+}
+
+function NumberInput({ value, onChange, placeholder, min }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; min?: number
+}) {
+  return (
+    <input
+      type="number"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      min={min}
+      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors"
+      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+      onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+      onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
+    />
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl p-6" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+      <h2 className="text-sm font-bold uppercase tracking-widest mb-5" style={{ color: S.muted }}>{title}</h2>
+      <div className="space-y-4">{children}</div>
+    </div>
+  )
+}
+
+export function SettingsClient({ portalAccountId, settings }: Props) {
+  const searchParams = useSearchParams()
+  const justUpgraded = searchParams.get('upgraded') === '1'
+  const supabase = createClient()
+
+  // Business identity
+  const [cidb, setCidb]     = useState(settings?.cidb_registration_number ?? '')
+  const [compReg, setCompReg] = useState(settings?.company_registration_number ?? '')
+  const [vatReg, setVatReg] = useState(settings?.vat_registration_number ?? '')
+
+  // Banking
+  const [bankName, setBankName]         = useState(settings?.bank_name ?? '')
+  const [accNumber, setAccNumber]       = useState(settings?.bank_account_number ?? '')
+  const [branchCode, setBranchCode]     = useState(settings?.bank_branch_code ?? '')
+  const [accType, setAccType]           = useState(settings?.bank_account_type ?? 'Current')
+
+  // Defaults
+  const [vatRate, setVatRate]               = useState(String(settings?.default_vat_rate ?? 15))
+  const [retention, setRetention]           = useState(String(settings?.default_retention_percentage ?? 0))
+  const [paymentTerms, setPaymentTerms]     = useState(String(settings?.default_payment_terms_days ?? 30))
+  const [defectsLiability, setDefectsLiability] = useState(String(settings?.default_defects_liability_days ?? 90))
+
+  // Prefixes
+  const [quotePrefix, setQuotePrefix]   = useState(settings?.quote_prefix ?? 'EQ')
+  const [claimPrefix, setClaimPrefix]   = useState(settings?.claim_prefix ?? 'CLM')
+  const [voPrefix, setVoPrefix]         = useState(settings?.vo_prefix ?? 'VO')
+  const [cocPrefix, setCocPrefix]       = useState(settings?.coc_prefix ?? 'COC')
+
+  // Footer
+  const [footer, setFooter] = useState(settings?.email_footer_text ?? '')
+
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
+  const [error, setError]   = useState('')
+
+  // Auto-dismiss saved banner
+  useEffect(() => {
+    if (!saved) return
+    const t = setTimeout(() => setSaved(false), 3000)
+    return () => clearTimeout(t)
+  }, [saved])
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    const payload = {
+      portal_account_id:              portalAccountId,
+      cidb_registration_number:       cidb.trim() || null,
+      company_registration_number:    compReg.trim() || null,
+      vat_registration_number:        vatReg.trim() || null,
+      bank_name:                      bankName.trim() || null,
+      bank_account_number:            accNumber.trim() || null,
+      bank_branch_code:               branchCode.trim() || null,
+      bank_account_type:              accType.trim() || null,
+      default_vat_rate:               parseFloat(vatRate) || 15,
+      default_retention_percentage:   parseFloat(retention) || 0,
+      default_payment_terms_days:     parseInt(paymentTerms) || 30,
+      default_defects_liability_days: parseInt(defectsLiability) || 90,
+      quote_prefix:                   quotePrefix.trim() || 'EQ',
+      claim_prefix:                   claimPrefix.trim() || 'CLM',
+      vo_prefix:                      voPrefix.trim() || 'VO',
+      coc_prefix:                     cocPrefix.trim() || 'COC',
+      email_footer_text:              footer.trim() || null,
+      updated_at:                     new Date().toISOString(),
+    }
+
+    const { error: err } = await supabase
+      .from('elec_settings')
+      .upsert(payload, { onConflict: 'portal_account_id' })
+
+    setSaving(false)
+    if (err) { setError(err.message); return }
+    setSaved(true)
+  }
+
+  return (
+    <div className="min-h-screen py-8 px-4" style={{ background: S.bg }}>
+      <div className="max-w-2xl mx-auto space-y-6">
+
+        {/* Upgrade success banner */}
+        {justUpgraded && (
+          <div className="rounded-xl px-5 py-4 flex items-center gap-3" style={{ background: 'rgba(58,124,165,0.1)', border: `1px solid rgba(58,124,165,0.25)` }}>
+            <Zap size={16} style={{ color: S.accent, flexShrink: 0 }} />
+            <div>
+              <p className="text-sm font-semibold" style={{ color: S.accent }}>You&apos;re now on the Quoting plan</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>Complete your settings below and then head to the Quoting section to create your first quote.</p>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: S.text }}>Quoting Settings</h1>
+          <p className="text-sm mt-1" style={{ color: S.muted }}>These defaults pre-fill on every new quote and appear on your PDFs.</p>
+        </div>
+
+        {/* Business Identity */}
+        <Section title="Business Identity">
+          <Field label="CIDB Registration Number" hint="Appears on quotes and COC documents">
+            <Input value={cidb} onChange={setCidb} placeholder="e.g. 123456" />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Company Registration">
+              <Input value={compReg} onChange={setCompReg} placeholder="e.g. 2020/123456/07" />
+            </Field>
+            <Field label="VAT Registration">
+              <Input value={vatReg} onChange={setVatReg} placeholder="e.g. 4123456789" />
+            </Field>
+          </div>
+        </Section>
+
+        {/* Banking */}
+        <Section title="Banking Details">
+          <p className="text-xs -mt-2 mb-2" style={{ color: S.muted }}>Printed on invoice PDFs for EFT payments.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Bank Name">
+              <Input value={bankName} onChange={setBankName} placeholder="e.g. FNB" />
+            </Field>
+            <Field label="Account Type">
+              <select
+                value={accType}
+                onChange={e => setAccType(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+              >
+                <option>Current</option>
+                <option>Savings</option>
+                <option>Cheque</option>
+              </select>
+            </Field>
+            <Field label="Account Number">
+              <Input value={accNumber} onChange={setAccNumber} placeholder="e.g. 62012345678" />
+            </Field>
+            <Field label="Branch Code">
+              <Input value={branchCode} onChange={setBranchCode} placeholder="e.g. 250655" />
+            </Field>
+          </div>
+        </Section>
+
+        {/* Quote Defaults */}
+        <Section title="Quote Defaults">
+          <p className="text-xs -mt-2 mb-2" style={{ color: S.muted }}>Pre-filled on every new quote. You can override per project.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="VAT Rate (%)" hint="Standard SA VAT = 15">
+              <NumberInput value={vatRate} onChange={setVatRate} placeholder="15" min={0} />
+            </Field>
+            <Field label="Retention (%)" hint="% held back until final completion">
+              <NumberInput value={retention} onChange={setRetention} placeholder="0" min={0} />
+            </Field>
+            <Field label="Payment Terms (days)" hint="e.g. 30 = net 30">
+              <NumberInput value={paymentTerms} onChange={setPaymentTerms} placeholder="30" min={1} />
+            </Field>
+            <Field label="Defects Liability (days)" hint="Standard = 90 days after practical completion">
+              <NumberInput value={defectsLiability} onChange={setDefectsLiability} placeholder="90" min={1} />
+            </Field>
+          </div>
+        </Section>
+
+        {/* Document Prefixes */}
+        <Section title="Document Numbering">
+          <p className="text-xs -mt-2 mb-2" style={{ color: S.muted }}>Prefix used when auto-numbering documents. e.g. EQ-2024-001</p>
+          <div className="grid grid-cols-4 gap-4">
+            <Field label="Quotes">
+              <Input value={quotePrefix} onChange={setQuotePrefix} placeholder="EQ" />
+            </Field>
+            <Field label="Claims">
+              <Input value={claimPrefix} onChange={setClaimPrefix} placeholder="CLM" />
+            </Field>
+            <Field label="Var. Orders">
+              <Input value={voPrefix} onChange={setVoPrefix} placeholder="VO" />
+            </Field>
+            <Field label="COC">
+              <Input value={cocPrefix} onChange={setCocPrefix} placeholder="COC" />
+            </Field>
+          </div>
+        </Section>
+
+        {/* PDF Footer */}
+        <Section title="PDF Footer">
+          <Field label="Footer Text" hint="Appears at the bottom of all generated PDFs">
+            <textarea
+              value={footer}
+              onChange={e => setFooter(e.target.value)}
+              rows={3}
+              placeholder="e.g. All work guaranteed for 12 months. E&OE."
+              className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none resize-none transition-colors"
+              style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+              onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+              onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
+            />
+          </Field>
+        </Section>
+
+        {error && (
+          <p className="px-4 py-3 rounded-lg text-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+            {error}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between pb-8">
+          {saved ? (
+            <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#16A34A' }}>
+              <Check size={16} />
+              Settings saved
+            </div>
+          ) : <div />}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-opacity"
+            style={{ background: S.accent }}
+          >
+            {saving ? 'Saving…' : 'Save Settings'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -2,12 +2,13 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   companyName: string
   pendingCount: number
+  hasQuoting: boolean
   desktopExpanded: boolean
   onDesktopToggle: () => void
 }
@@ -16,6 +17,11 @@ const NAV_ITEMS = [
   { href: '/supplier-portal/home',       label: 'Dashboard',      icon: Home,  showBadge: false },
   { href: '/supplier-portal/dashboard',  label: 'Price Requests', icon: Inbox, showBadge: true  },
   { href: '/supplier-portal/price-list', label: 'My Price List',  icon: Tag,   showBadge: false },
+]
+
+const QUOTING_NAV_ITEMS = [
+  { href: '/supplier-portal/quoting/quotes',   label: 'Quotes',    icon: FileText },
+  { href: '/supplier-portal/quoting/settings', label: 'Settings',  icon: Settings },
 ]
 
 const S = {
@@ -28,7 +34,7 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
-export function SupplierPortalNav({ companyName, pendingCount, desktopExpanded, onDesktopToggle }: Props) {
+export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, desktopExpanded, onDesktopToggle }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -103,39 +109,93 @@ export function SupplierPortalNav({ companyName, pendingCount, desktopExpanded, 
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 pt-3 pb-2 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          {NAV_ITEMS.map(({ href, label, icon: Icon, showBadge }) => {
-            const active = pathname.startsWith(href)
-            const badge = showBadge ? pendingCount : 0
-            return (
+        <nav className="flex-1 pt-3 pb-2 overflow-y-auto overflow-x-hidden">
+          <div className="space-y-0.5">
+            {NAV_ITEMS.map(({ href, label, icon: Icon, showBadge }) => {
+              const active = pathname.startsWith(href)
+              const badge = showBadge ? pendingCount : 0
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
+                  style={{
+                    background: active ? S.activeBg : 'transparent',
+                    borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
+                  }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                >
+                  <span className="flex items-center justify-center w-9 flex-shrink-0">
+                    <Icon size={15} style={{ color: active ? S.textLight : S.textMuted }} />
+                  </span>
+                  <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
+                    {label}
+                  </span>
+                  {badge > 0 && (
+                    <span className={`${labelCls} ml-auto`}>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block" style={{ background: '#D9A441', color: '#1E2A38' }}>
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+
+          {/* Quoting section */}
+          <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
+            {hasQuoting ? (
+              <>
+                <p className={`${labelCls} px-4 mb-1 text-[10px] font-bold uppercase tracking-widest`} style={{ color: S.textMuted }}>
+                  Quoting
+                </p>
+                <div className="space-y-0.5">
+                  {QUOTING_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+                    const active = pathname.startsWith(href)
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
+                        style={{
+                          background: active ? S.activeBg : 'transparent',
+                          borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
+                        }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <span className="flex items-center justify-center w-9 flex-shrink-0">
+                          <Icon size={15} style={{ color: active ? S.textLight : S.textMuted }} />
+                        </span>
+                        <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
+                          {label}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </>
+            ) : (
               <Link
-                key={href}
-                href={href}
+                href="/supplier-portal/upgrade"
                 onClick={() => setMobileOpen(false)}
                 className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
-                style={{
-                  background: active ? S.activeBg : 'transparent',
-                  borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
-                }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                onMouseEnter={e => { e.currentTarget.style.background = S.hoverBg }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
               >
                 <span className="flex items-center justify-center w-9 flex-shrink-0">
-                  <Icon size={15} style={{ color: active ? S.textLight : S.textMuted }} />
+                  <Zap size={14} style={{ color: '#D9A441' }} />
                 </span>
-                <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
-                  {label}
+                <span className={`${labelCls} font-semibold flex-1`} style={{ color: '#D9A441' }}>
+                  Upgrade to Quoting
                 </span>
-                {badge > 0 && (
-                  <span className={`${labelCls} ml-auto`}>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block" style={{ background: '#D9A441', color: '#1E2A38' }}>
-                      {badge > 99 ? '99+' : badge}
-                    </span>
-                  </span>
-                )}
               </Link>
-            )
-          })}
+            )}
+          </div>
         </nav>
 
         {/* Footer */}
