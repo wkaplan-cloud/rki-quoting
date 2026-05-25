@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
     }
 
     // If fully paid → mark paid in full in project_stages and update project status
-    if (status === 'Paid' || status === 'PAID') {
+    // Guard: a R0 invoice is voided/cancelled, not genuinely paid — skip it
+    if ((status === 'Paid' || status === 'PAID') && invTotal > 0) {
       if (stages && !stages.final_invoice_paid) {
         await supabase.from('project_stages').update({
           final_invoice_paid: true,

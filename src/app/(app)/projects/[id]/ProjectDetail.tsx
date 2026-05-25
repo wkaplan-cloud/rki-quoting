@@ -68,6 +68,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [sageLinking, setSageLinking] = useState(false)
   const [sagePushing, setSagePushing] = useState(false)
   const [sageSyncing, setSageSyncing] = useState(false)
+  const [sageUnlinking, setSageUnlinking] = useState(false)
   const [sageInvoiceId, setSageInvoiceId] = useState(initial.sage_invoice_id ?? null)
   const [sageInvoiceStatus, setSageInvoiceStatus] = useState(initial.sage_invoice_status ?? null)
   const [sageLinkedCustomer, setSageLinkedCustomer] = useState<SageCustomer | null>(
@@ -464,6 +465,29 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     }
   }, [project.id, router])
 
+  const handleUnlinkSageInvoice = useCallback(async () => {
+    if (!window.confirm('Unlink the Sage invoice and unlock this project for editing? The invoice in Sage will not be deleted.')) return
+    setSageUnlinking(true)
+    try {
+      const res = await fetch('/api/sage/unlink-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setSageInvoiceId(null)
+      setSageInvoiceStatus(null)
+      setStages(prev => prev ? { ...prev, final_invoice_paid: false, final_invoice_paid_at: null } : prev)
+      toast.success('Sage invoice unlinked — project unlocked')
+      router.refresh()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to unlink')
+    } finally {
+      setSageUnlinking(false)
+    }
+  }, [project.id, router])
+
   const handlePushToXero = useCallback(async () => {
     setPushingXero(true)
     try {
@@ -704,6 +728,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                     <Upload size={11} /> Update Lines
                   </button>
                 )}
+                {isAdmin && isPaid && (
+                  <button onClick={handleUnlinkSageInvoice} disabled={sageUnlinking}
+                    title="Admin: unlink this Sage invoice and unlock the project for editing (use when an invoice was voided/cancelled in Sage)"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-red-500 border border-red-200 rounded hover:border-red-400 hover:text-red-600 transition-colors disabled:opacity-50 cursor-pointer">
+                    {sageUnlinking ? 'Unlinking…' : 'Unlink'}
+                  </button>
+                )}
               </div>
             ) : (sageConnected && stages?.quote_sent) ? (
               <button onClick={openSageModal}
@@ -812,7 +843,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         {isPaid && (
           <div className="mb-4 flex items-center gap-2.5 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
             <span className="text-base">🔒</span>
-            <span><strong>Invoice paid in full.</strong> This project is locked — no edits can be made after payment.</span>
+            <span><strong>Invoice paid in full.</strong> This project is locked — no edits can be made after payment.{isAdmin && ' Use the Unlink button above to unlock if this invoice was voided or cancelled in Sage.'}</span>
           </div>
         )}
         <LineItemsTable
