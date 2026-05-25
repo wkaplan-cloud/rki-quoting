@@ -74,7 +74,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
       const abQty = item.as_built_quantity ?? item.quoted_quantity
       const abPct = item.quoted_quantity > 0 ? (abQty / item.quoted_quantity) * 100 : 0
       const alreadyClaimed = prevPct(item.id, claims)
-      const thisPct = Math.max(0, Math.min(100 - alreadyClaimed, abPct - alreadyClaimed))
+      const thisPct = Math.max(0, abPct - alreadyClaimed)
       if (thisPct > 0.01) newPcts[item.id] = String(Math.round(thisPct * 10) / 10)
     }
     setPcts(newPcts)
@@ -89,7 +89,11 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
       const prev = prevPct(item.id, claims)
       const thisPct = getPct(item.id)
       const thisAmt = contractVal * thisPct / 100
-      const remaining = Math.max(0, 100 - prev)
+      // Re-measurement: ceiling is as-built %; lump sum: ceiling is 100%
+      const abPct = contractType === 're_measurement' && item.quoted_quantity > 0
+        ? ((item.as_built_quantity ?? item.quoted_quantity) / item.quoted_quantity) * 100
+        : 100
+      const remaining = Math.max(0, abPct - prev)
       return { item, contractVal, prev, thisPct, thisAmt, remaining }
     })
 
