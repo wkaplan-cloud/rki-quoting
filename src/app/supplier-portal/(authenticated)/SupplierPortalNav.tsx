@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -20,9 +20,10 @@ const NAV_ITEMS = [
 ]
 
 const QUOTING_NAV_ITEMS = [
-  { href: '/supplier-portal/quoting/quotes',   label: 'Quotes',   icon: FileText },
-  { href: '/supplier-portal/quoting/clients',  label: 'Clients',  icon: Users    },
-  { href: '/supplier-portal/quoting/settings', label: 'Settings', icon: Settings },
+  { href: '/supplier-portal/quoting',          label: 'Dashboard', icon: LayoutDashboard, exact: true  },
+  { href: '/supplier-portal/quoting/quotes',   label: 'Quotes',    icon: FileText,        exact: false },
+  { href: '/supplier-portal/quoting/clients',  label: 'Clients',   icon: Users,           exact: false },
+  { href: '/supplier-portal/quoting/settings', label: 'Settings',  icon: Settings,        exact: false },
 ]
 
 const S = {
@@ -111,6 +112,9 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, deskt
 
         {/* Nav items */}
         <nav className="flex-1 pt-3 pb-2 overflow-y-auto overflow-x-hidden">
+          <p className={`${labelCls} px-4 mb-1 text-[10px] font-bold uppercase tracking-widest`} style={{ color: S.textMuted }}>
+            Price Requests
+          </p>
           <div className="space-y-0.5">
             {NAV_ITEMS.map(({ href, label, icon: Icon, showBadge }) => {
               const active = pathname.startsWith(href)
@@ -154,8 +158,8 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, deskt
                   Quoting
                 </p>
                 <div className="space-y-0.5">
-                  {QUOTING_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-                    const active = pathname.startsWith(href)
+                  {QUOTING_NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
+                    const active = exact ? pathname === href : pathname.startsWith(href)
                     return (
                       <Link
                         key={href}
