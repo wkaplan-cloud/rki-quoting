@@ -6,10 +6,10 @@ interface Props {
   children: React.ReactNode
   companyName: string
   pendingCount: number
-  hasQuoting: boolean
+  hasQuoting?: boolean
 }
 
-export function SupplierPortalShell({ children, companyName, pendingCount, hasQuoting }: Props) {
+export function SupplierPortalShell({ children, companyName, pendingCount, hasQuoting = false }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
 
   useEffect(() => {
