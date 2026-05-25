@@ -81,14 +81,18 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
     setPcts(newPcts)
   }
 
-  const lineItems = items.map(item => {
-    const contractVal = item.quoted_quantity * item.quoted_unit_rate
-    const prev = prevPct(item.id, claims)
-    const thisPct = getPct(item.id)
-    const thisAmt = contractVal * thisPct / 100
-    const remaining = Math.max(0, 100 - prev)
-    return { item, contractVal, prev, thisPct, thisAmt, remaining }
-  })
+  const invoicedVOIds = new Set(claims.filter(c => c.variation_order_id).map(c => c.variation_order_id!))
+
+  const lineItems = items
+    .filter(item => !(item.is_variation && item.variation_order_id && invoicedVOIds.has(item.variation_order_id)))
+    .map(item => {
+      const contractVal = item.quoted_quantity * item.quoted_unit_rate
+      const prev = prevPct(item.id, claims)
+      const thisPct = getPct(item.id)
+      const thisAmt = contractVal * thisPct / 100
+      const remaining = Math.max(0, 100 - prev)
+      return { item, contractVal, prev, thisPct, thisAmt, remaining }
+    })
 
   const totalThisClaim = lineItems.reduce((s, l) => s + l.thisAmt, 0)
   const totalContract = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
@@ -187,7 +191,11 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
                 type="number" min="0" max={remaining} step="0.5"
                 value={pcts[item.id] ?? ''}
                 disabled={fullyDone}
-                onChange={e => setPcts(p => ({ ...p, [item.id]: e.target.value }))}
+                onChange={e => {
+                  const raw = parseFloat(e.target.value)
+                  const clamped = isNaN(raw) ? '' : String(Math.min(raw, remaining))
+                  setPcts(p => ({ ...p, [item.id]: clamped }))
+                }}
                 placeholder="0"
                 className="px-1.5 py-1 text-xs text-right rounded outline-none w-full"
                 style={{ background: fullyDone ? S.bg : '#fff', border: `1px solid ${fullyDone ? S.border : S.accent}`, color: S.accent }}
@@ -809,6 +817,12 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
                       style={{ background: S.bg, color: S.muted }}>
                       {c.claim_type === 'retention' ? 'Retention' : c.claim_type === 'proforma' ? 'Proforma' : 'Invoice'}
                     </span>
+                    {c.variation_order_id && (
+                      <span className="text-[11px] font-medium px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
+                        VO
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs" style={{ color: S.muted }}>{fmtMonth(c.period_month)}</p>
                 </div>
