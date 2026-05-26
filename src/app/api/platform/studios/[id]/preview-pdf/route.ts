@@ -99,7 +99,7 @@ export async function GET(
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createElement(QuotePDF, {
+      createElement(QuotePDF as any, {
         project: MOCK_PROJECT,
         client: MOCK_CLIENT,
         lineItems: MOCK_LINE_ITEMS,
@@ -122,8 +122,7 @@ export async function GET(
         validityDays: settings?.quote_validity_days ?? 30,
         paymentTerms: settings?.payment_terms ?? null,
         leadTime: settings?.lead_time ?? null,
-      } as any)
-    )
+      })
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
