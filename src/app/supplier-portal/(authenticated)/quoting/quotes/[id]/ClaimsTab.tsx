@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronRight, AlertCircle, Download } from 'lucide-react'
+import { Plus, X, ChevronRight, AlertCircle, Download, Printer } from 'lucide-react'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType, ElecClient } from '@/lib/elec-types'
 
 type ClaimClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
@@ -602,6 +602,13 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
           </div>
           <p className="text-xs" style={{ color: S.muted }}>{fmtMonth(claim.period_month)} · {claim.claim_date}</p>
         </div>
+        <button onClick={() => window.open(`/api/supplier-portal/quoting/claims/${claim.id}/pdf?inline=1`, '_blank')}
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
+          style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
+          onMouseEnter={e => (e.currentTarget.style.background = S.border)}
+          onMouseLeave={e => (e.currentTarget.style.background = S.input)}>
+          <Printer size={11} /> Print
+        </button>
         <a href={`/api/supplier-portal/quoting/claims/${claim.id}/pdf`} target="_blank" rel="noreferrer"
           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
           style={{ background: S.accent, color: '#fff' }}>

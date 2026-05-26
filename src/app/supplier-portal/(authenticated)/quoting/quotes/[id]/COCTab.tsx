@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Loader2, AlertCircle, Download } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Download, Printer } from 'lucide-react'
 import type { ElecCOC } from '@/lib/elec-types'
 
 const S = {
@@ -80,6 +80,12 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
     setDownloading(false)
   }
 
+  async function handlePrint() {
+    clearTimeout(autoSaveTimer.current)
+    await handleSave()
+    window.open(`/api/supplier-portal/quoting/coc/${coc.id}/pdf?inline=1`, '_blank')
+  }
+
   const inp = (label: string, val: string | null, cb: (v: string) => void, placeholder?: string, type = 'text') => (
     <div>
       <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{label}</label>
@@ -107,6 +113,16 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
             {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
             {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
           </div>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
+            onMouseEnter={e => (e.currentTarget.style.background = S.border)}
+            onMouseLeave={e => (e.currentTarget.style.background = S.input)}
+            title="Print COC"
+          >
+            <Printer size={12} /> Print
+          </button>
           <button
             onClick={handleDownload}
             disabled={downloading}

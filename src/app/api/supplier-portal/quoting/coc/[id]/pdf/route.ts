@@ -10,7 +10,8 @@ import type { ElecCOC, ElecQuote, ElecClient, ElecSettings } from '@/lib/elec-ty
 
 export const maxDuration = 60
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const inline = req.nextUrl.searchParams.get('inline') === '1'
   try {
     const { id: cocId } = await params
     const supabase = await createClient()
@@ -67,7 +68,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${coc.coc_number}-COC.pdf"`,
+        'Content-Disposition': inline ? `inline; filename="${coc.coc_number}-COC.pdf"` : `attachment; filename="${coc.coc_number}-COC.pdf"`,
       },
     })
   } catch (e) {

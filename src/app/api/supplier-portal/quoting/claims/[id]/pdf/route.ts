@@ -11,7 +11,8 @@ import type { ClaimLineItemForPDF } from '@/lib/pdf/ElecClaimPDF'
 
 export const maxDuration = 60
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const inline = req.nextUrl.searchParams.get('inline') === '1'
   try {
     const { id: claimId } = await params
     const supabase = await createClient()
@@ -136,7 +137,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${claim.claim_number}-${titleWord}.pdf"`,
+        'Content-Disposition': inline ? `inline; filename="${claim.claim_number}-${titleWord}.pdf"` : `attachment; filename="${claim.claim_number}-${titleWord}.pdf"`,
       },
     })
   } catch (e) {
