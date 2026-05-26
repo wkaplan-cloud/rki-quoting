@@ -175,8 +175,9 @@ export function ElecClaimPDF({
             {!claim.sent_to_name && client && (
               <>
                 <Text style={s.infoBold}>{client.client_name}</Text>
-                {client.company && <Text style={s.infoRow}>{client.company}</Text>}
-                {client.email   && <Text style={s.infoRow}>{client.email}</Text>}
+                {client.company    && <Text style={s.infoRow}>{client.company}</Text>}
+                {client.email      && <Text style={s.infoRow}>{client.email}</Text>}
+                {client.vat_number && <Text style={s.infoRow}>VAT: {client.vat_number}</Text>}
               </>
             )}
           </View>
