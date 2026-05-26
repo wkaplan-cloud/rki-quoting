@@ -122,6 +122,10 @@ export function WeekCalendar({
     jobId: string; date: string; start: string; end: string
   } | null>(null)
 
+  const weekDays  = getWeekDays(weekStart)
+  const weekEnd   = weekDays[6]
+  const todayStr  = toDateStr(new Date())
+
   // Scroll to 7:30am on mount
   useEffect(() => {
     if (scrollRef.current) {
@@ -196,10 +200,6 @@ export function WeekCalendar({
       window.removeEventListener('mouseup', onUp)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const weekDays  = getWeekDays(weekStart)
-  const weekEnd   = weekDays[6]
-  const todayStr  = toDateStr(new Date())
 
   // Fetch jobs when week changes
   const fetchJobs = useCallback(async (start: Date, end: Date) => {
