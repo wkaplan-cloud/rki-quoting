@@ -248,6 +248,8 @@ interface Settings {
   phone?: string | null
   email_from?: string | null
   logo_url?: string | null
+  letterhead_url?: string | null
+  letterhead_filename?: string | null
   bank_name?: string | null
   bank_account_number?: string | null
   bank_branch_code?: string | null
@@ -802,8 +804,14 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                     const { error: uploadError } = await supabase.storage
                       .from('branding')
                       .upload(path, compressed, { upsert: true, contentType: compressed.type })
-                    if (uploadError) { toast.error('Upload failed: ' + uploadError.message) }
-                    else toast.success("Letterhead uploaded — we'll be in touch to apply your branding.")
+                    if (uploadError) { toast.error('Upload failed: ' + uploadError.message); setUploading(false); e.target.value = ''; return }
+                    const { data: lhUrlData } = supabase.storage.from('branding').getPublicUrl(path)
+                    await fetch('/api/branding/letterhead', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ url: lhUrlData.publicUrl, filename: file.name }),
+                    })
+                    toast.success("Letterhead uploaded — we'll be in touch to apply your branding.")
                     setUploading(false)
                     e.target.value = ''
                   }}
