@@ -486,7 +486,7 @@ interface Props {
   quote: ElecQuote & { client: ElecClient | null }
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
-  clients: Pick<ElecClient, 'id' | 'client_name' | 'company'>[]
+  clients: Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'qs_name' | 'qs_email'>[]
   variations: ElecVariationOrder[]
   snags: ElecSnagItem[]
   coc: ElecCOC | null
@@ -722,6 +722,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               approvedVOTotal={approvedVOTotal}
               contractType={q.contract_type}
               retentionPct={q.retention_percentage}
+              client={clients.find(c => c.id === q.client_id) ?? null}
             />
           </div>
           <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>
@@ -809,7 +810,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                 setQ(p => ({ ...p, client_id: id }))
                 setClientDisplay(name)
                 if (id && !clients.find(c => c.id === id)) {
-                  setClients(cs => [...cs, { id, client_name: name, company: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))
+                  setClients(cs => [...cs, { id, client_name: name, company: null, email: null, qs_name: null, qs_email: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))
                 }
               }}
             />

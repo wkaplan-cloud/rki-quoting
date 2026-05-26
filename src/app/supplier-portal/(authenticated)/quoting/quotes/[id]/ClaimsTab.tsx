@@ -1,8 +1,10 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronDown, ChevronRight, Check, AlertCircle, Download } from 'lucide-react'
-import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType } from '@/lib/elec-types'
+import { Plus, X, ChevronRight, AlertCircle, Download } from 'lucide-react'
+import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType, ElecClient } from '@/lib/elec-types'
+
+type ClaimClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -47,28 +49,45 @@ function prevPct(itemId: string, claims: ClaimWithItems[], excludeId?: string): 
 }
 
 // ─── New claim form ───────────────────────────────────────────────────────────
-function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contractType, onCreated, onCancel }: {
+function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contractType, client, onCreated, onCancel }: {
   quoteId: string
   portalAccountId: string
   claims: ClaimWithItems[]
   items: ElecQuoteLineItem[]
   sections: ElecQuoteSection[]
   contractType: ElecContractType
+  client: ClaimClient | null
   onCreated: (claim: ClaimWithItems) => void
   onCancel: () => void
 }) {
+  const supabase = createClient()
   const today = new Date().toISOString().split('T')[0]
   const thisMonth = today.slice(0, 7)
 
   const [periodMonth, setPeriodMonth] = useState(thisMonth)
   const [claimDate, setClaimDate] = useState(today)
-  const [sentToName, setSentToName] = useState('')
-  const [sentToEmail, setSentToEmail] = useState('')
+  const [sentToName, setSentToName] = useState(client?.client_name ?? '')
+  const [sentToEmail, setSentToEmail] = useState(client?.email ?? '')
+  const [qsName, setQsName] = useState(client?.qs_name ?? '')
+  const [qsEmail, setQsEmail] = useState(client?.qs_email ?? '')
+  const [sendToClient, setSendToClient] = useState(true)
+  const [sendToQs, setSendToQs] = useState(!!(client?.qs_email))
   const [notes, setNotes] = useState('')
   const [pcts, setPcts] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [submitNow, setSubmitNow] = useState(false)
+
+  // Auto-save changed contact details back to the client record
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  function scheduleClientSave(patch: Partial<ElecClient>) {
+    if (!client) return
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      void supabase.from('elec_clients').update(patch).eq('id', client.id)
+    }, 1200)
+  }
+  useEffect(() => () => clearTimeout(autoSaveTimer.current), [])
 
   function getPct(itemId: string): number {
     return parseFloat(pcts[itemId] ?? '0') || 0
@@ -118,8 +137,10 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
           period_month: periodMonth + '-01',
           claim_type: 'invoice',
           claim_date: claimDate,
-          sent_to_name: sentToName.trim() || null,
-          sent_to_email: sentToEmail.trim() || null,
+          sent_to_name: sendToClient ? (sentToName.trim() || null) : null,
+          sent_to_email: sendToClient ? (sentToEmail.trim() || null) : null,
+          qs_name: sendToQs ? (qsName.trim() || null) : null,
+          qs_email: sendToQs ? (qsEmail.trim() || null) : null,
           notes: notes.trim() || null,
           submit: submitFlag,
           sent_at: submitFlag ? new Date().toISOString() : null,
@@ -147,8 +168,10 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         total_certified: null,
         total_invoiced: null,
         total_paid: null,
-        sent_to_name: sentToName.trim() || null,
-        sent_to_email: sentToEmail.trim() || null,
+        sent_to_name: sendToClient ? (sentToName.trim() || null) : null,
+        sent_to_email: sendToClient ? (sentToEmail.trim() || null) : null,
+        qs_name: sendToQs ? (qsName.trim() || null) : null,
+        qs_email: sendToQs ? (qsEmail.trim() || null) : null,
         sent_at: submitFlag ? new Date().toISOString() : null,
         notes: notes.trim() || null,
         variation_order_id: null,
@@ -240,32 +263,74 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
       </div>
 
       {/* Meta fields */}
-      <div className="grid grid-cols-2 gap-4 px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Billing Period</label>
-          <input type="month" value={periodMonth} onChange={e => setPeriodMonth(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+      <div className="px-5 py-4 space-y-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Billing Period</label>
+            <input type="month" value={periodMonth} onChange={e => setPeriodMonth(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Claim Date</label>
+            <input type="date" value={claimDate} onChange={e => setClaimDate(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
         </div>
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Claim Date</label>
-          <input type="date" value={claimDate} onChange={e => setClaimDate(e.target.value)}
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+
+        {/* Recipient cards */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Client */}
+          <div className="rounded-xl p-3" style={{ border: `1px solid ${sendToClient ? S.accent : S.border}`, background: sendToClient ? 'rgba(58,124,165,0.03)' : S.bg }}>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Client</span>
+              <button
+                type="button"
+                onClick={() => setSendToClient(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ background: sendToClient ? S.accent : S.bg, color: sendToClient ? '#fff' : S.muted, border: `1px solid ${sendToClient ? S.accent : S.border}` }}>
+                {sendToClient ? 'Included' : 'Excluded'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              <input value={sentToName} onChange={e => { setSentToName(e.target.value); scheduleClientSave({ client_name: e.target.value }) }}
+                placeholder="Client name"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg outline-none"
+                style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+              <input type="email" value={sentToEmail} onChange={e => { setSentToEmail(e.target.value); scheduleClientSave({ email: e.target.value }) }}
+                placeholder="client@email.com"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg outline-none"
+                style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+            </div>
+          </div>
+
+          {/* QS */}
+          <div className="rounded-xl p-3" style={{ border: `1px solid ${sendToQs ? S.gold : S.border}`, background: sendToQs ? 'rgba(217,164,65,0.03)' : S.bg }}>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>QS / Principal Agent</span>
+              <button
+                type="button"
+                onClick={() => setSendToQs(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ background: sendToQs ? S.gold : S.bg, color: sendToQs ? '#fff' : S.muted, border: `1px solid ${sendToQs ? S.gold : S.border}` }}>
+                {sendToQs ? 'Included' : 'Excluded'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              <input value={qsName} onChange={e => { setQsName(e.target.value); scheduleClientSave({ qs_name: e.target.value }) }}
+                placeholder="QS name"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg outline-none"
+                style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+              <input type="email" value={qsEmail} onChange={e => { setQsEmail(e.target.value); scheduleClientSave({ qs_email: e.target.value }) }}
+                placeholder="qs@email.com"
+                className="w-full px-2.5 py-1.5 text-xs rounded-lg outline-none"
+                style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+            </div>
+          </div>
         </div>
+
         <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To (Name)</label>
-          <input value={sentToName} onChange={e => setSentToName(e.target.value)} placeholder="Optional"
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To (Email)</label>
-          <input type="email" value={sentToEmail} onChange={e => setSentToEmail(e.target.value)} placeholder="Optional"
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-        </div>
-        <div className="col-span-2">
           <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
           <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional"
             className="w-full px-3 py-2 text-sm rounded-lg outline-none"
@@ -368,7 +433,7 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
         status: submitFlag ? 'submitted' : 'draft', total_claimed: retentionHeld,
         total_certified: null, total_invoiced: null, total_paid: null,
         sent_to_name: sentToName.trim() || null, sent_to_email: sentToEmail.trim() || null,
-        sent_at: null, notes: notes.trim() || null, variation_order_id: null, created_at: new Date().toISOString(),
+        sent_at: null, notes: notes.trim() || null, qs_name: null, qs_email: null, variation_order_id: null, created_at: new Date().toISOString(),
         line_items: [],
       }
       onCreated(newClaim)
@@ -798,9 +863,10 @@ interface Props {
   approvedVOTotal?: number
   contractType: ElecContractType
   retentionPct: number
+  client?: ClaimClient | null
 }
 
-export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, approvedVOTotal = 0, contractType, retentionPct }: Props) {
+export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, approvedVOTotal = 0, contractType, retentionPct, client = null }: Props) {
   const [claims, setClaims] = useState<ClaimWithItems[]>(initialClaims)
 
   useEffect(() => {
@@ -854,6 +920,7 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
         items={items}
         sections={sections}
         contractType={contractType}
+        client={client}
         onCreated={handleCreated}
         onCancel={() => setView('list')}
       />

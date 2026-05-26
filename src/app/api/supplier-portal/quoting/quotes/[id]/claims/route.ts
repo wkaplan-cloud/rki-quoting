@@ -32,6 +32,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       claim_date: string
       sent_to_name?: string | null
       sent_to_email?: string | null
+      qs_name?: string | null
+      qs_email?: string | null
       notes?: string | null
       submit?: boolean
       sent_at?: string | null
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         total_claimed:      totalClaimed,
         sent_to_name:       body.sent_to_name ?? null,
         sent_to_email:      body.sent_to_email ?? null,
+        qs_name:            body.qs_name ?? null,
+        qs_email:           body.qs_email ?? null,
         sent_at:            body.sent_at ?? null,
         notes:              body.notes ?? null,
         variation_order_id: body.variation_order_id ?? null,

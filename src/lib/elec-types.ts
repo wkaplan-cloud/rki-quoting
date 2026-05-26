@@ -44,6 +44,8 @@ export interface ElecClient {
   address: string | null
   payment_terms_days: number | null
   notes: string | null
+  qs_name: string | null
+  qs_email: string | null
   created_at: string
 }
 
@@ -224,6 +226,8 @@ export interface ElecClaim {
   total_paid: number | null
   sent_to_name: string | null
   sent_to_email: string | null
+  qs_name: string | null
+  qs_email: string | null
   sent_at: string | null
   notes: string | null
   variation_order_id: string | null

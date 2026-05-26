@@ -23,6 +23,7 @@ interface Props {
 const EMPTY: Partial<ElecClient> = {
   client_name: '', company: '', email: '', contact_number: '',
   vat_number: '', address: '', payment_terms_days: undefined, notes: '',
+  qs_name: '', qs_email: '',
 }
 
 function Input({ label, value, onChange, placeholder, type = 'text', hint }: {
@@ -90,6 +91,13 @@ function Modal({ title, onClose, onSave, saving, error, form, setForm }: {
             <Input label="Email" type="email" value={form.email ?? ''} onChange={v => setForm({ ...form, email: v })} placeholder="john@example.com" />
             <Input label="Contact Number" value={form.contact_number ?? ''} onChange={v => setForm({ ...form, contact_number: v })} placeholder="011 123 4567" />
             <Input label="VAT Number" value={form.vat_number ?? ''} onChange={v => setForm({ ...form, vat_number: v })} placeholder="4123456789" />
+            <div className="col-span-2 pt-2" style={{ borderTop: '1px dashed #E4E4E7' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: '#71717A' }}>QS / Principal Agent</p>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="QS Name" value={form.qs_name ?? ''} onChange={v => setForm({ ...form, qs_name: v })} placeholder="e.g. Jane Doe" />
+                <Input label="QS Email" type="email" value={form.qs_email ?? ''} onChange={v => setForm({ ...form, qs_email: v })} placeholder="qs@firm.co.za" />
+              </div>
+            </div>
             <Input
               label="Payment Terms (days)"
               type="number"
@@ -208,6 +216,8 @@ export function ClientsClient({ portalAccountId, initialClients }: Props) {
       address:           form.address?.trim() || null,
       payment_terms_days: form.payment_terms_days ?? null,
       notes:             form.notes?.trim() || null,
+      qs_name:           form.qs_name?.trim() || null,
+      qs_email:          form.qs_email?.trim() || null,
     }
 
     if (editing) {

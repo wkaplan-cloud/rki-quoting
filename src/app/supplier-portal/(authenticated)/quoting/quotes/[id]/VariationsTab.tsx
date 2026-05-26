@@ -126,6 +126,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
         total_paid: null,
         sent_to_name: voSentToName.trim() || null,
         sent_to_email: voSentToEmail.trim() || null,
+        qs_name: null,
+        qs_email: null,
         sent_at: sentAt,
         notes: voNotes.trim() || null,
         variation_order_id: vo.id,
