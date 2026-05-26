@@ -36,10 +36,7 @@ export default function SupplierPortalLandingPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/supplier-portal/login"
-              className="text-sm font-medium transition-colors"
-              style={{ color: '#94A3B8' }}
-              onMouseOver={e => (e.currentTarget.style.color = '#E2E8F0')}
-              onMouseOut={e => (e.currentTarget.style.color = '#94A3B8')}
+              className="text-sm font-medium transition-colors text-slate-400 hover:text-slate-200"
             >
               Sign in
             </Link>
