@@ -36,7 +36,7 @@ function SupplierLoginForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left panel — brand blue with large logo */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col items-center justify-between py-16 px-12" style={{ background: '#34495E' }}>
+      <div className="hidden lg:flex lg:w-2/5 flex-col items-center justify-between py-16 px-12" style={{ background: '#1E2A38' }}>
         <div />
         <div className="flex flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -69,7 +69,7 @@ function SupplierLoginForm() {
                 autoFocus
                 className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
                 style={{ background: '#F4F4F5', border: '1.5px solid #E4E4E7', color: '#18181B', transition: 'border-color 0.15s, background 0.15s' }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#34495E'; e.currentTarget.style.background = '#FFFFFF' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
                 onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
               />
             </div>
@@ -85,7 +85,7 @@ function SupplierLoginForm() {
                   autoComplete="current-password"
                   className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none"
                   style={{ background: '#F4F4F5', border: '1.5px solid #E4E4E7', color: '#18181B', transition: 'border-color 0.15s, background 0.15s' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#34495E'; e.currentTarget.style.background = '#FFFFFF' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
                   onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
                 />
                 <button
@@ -107,7 +107,7 @@ function SupplierLoginForm() {
               type="submit"
               disabled={loading}
               className="w-full py-3 text-sm font-semibold rounded-lg disabled:opacity-50 cursor-pointer mt-1"
-              style={{ background: '#34495E', color: '#FFFFFF', transition: 'opacity 0.15s' }}
+              style={{ background: '#3A7CA5', color: '#FFFFFF', transition: 'opacity 0.15s' }}
             >
               {loading ? 'Signing in…' : 'Sign In'}
             </button>
@@ -116,7 +116,7 @@ function SupplierLoginForm() {
           <div className="mt-6 pt-5 space-y-2 text-center" style={{ borderTop: '1px solid #F4F4F5' }}>
             <p className="text-sm" style={{ color: '#71717A' }}>
               New supplier?{' '}
-              <Link href="/supplier-portal/register" className="font-medium hover:underline" style={{ color: '#34495E' }}>Create an account</Link>
+              <Link href="/supplier-portal/register" className="font-medium hover:underline" style={{ color: '#3A7CA5' }}>Create an account</Link>
             </p>
             <p className="text-xs">
               <Link href="/forgot-password" className="hover:underline" style={{ color: '#A1A1AA' }}>Forgot password?</Link>

@@ -37,7 +37,7 @@ function StyledInput({ type = 'text', value, onChange, placeholder, required, au
       autoComplete={autoComplete}
       className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
       style={INPUT_STYLE}
-      onFocus={e => { e.currentTarget.style.borderColor = '#34495E'; e.currentTarget.style.background = '#FFFFFF' }}
+      onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
       onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
     />
   )
@@ -127,7 +127,7 @@ function RegisterForm() {
       )}
 
       {/* Left panel — brand blue with large logo */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between py-16 px-12" style={{ background: '#34495E' }}>
+      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between py-16 px-12" style={{ background: '#1E2A38' }}>
         <div className="flex flex-col items-center gap-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="QuotingHub" className="w-64 object-contain" style={{ filter: 'invert(1) brightness(1)' }} />
@@ -165,7 +165,7 @@ function RegisterForm() {
             <p className="text-sm mb-6" style={{ color: '#71717A' }}>Supplier Portal · Free forever</p>
 
             {noPortalAccount && (
-              <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F2F5', border: '1px solid #D1D8E0', color: '#34495E' }}>
+              <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F2F5', border: '1px solid #D1D8E0', color: '#3A7CA5' }}>
                 <strong>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
               </div>
             )}
@@ -190,8 +190,8 @@ function RegisterForm() {
                       onClick={() => setSupplierCategory(opt.value)}
                       className="text-left px-3.5 py-3 rounded-xl text-sm transition-all"
                       style={{
-                        background: active ? '#34495E' : '#F4F4F5',
-                        border: `1.5px solid ${active ? '#34495E' : '#E4E4E7'}`,
+                        background: active ? '#1E2A38' : '#F4F4F5',
+                        border: `1.5px solid ${active ? '#1E2A38' : '#E4E4E7'}`,
                         color: active ? '#FFFFFF' : '#3F3F46',
                       }}
                     >
@@ -223,7 +223,7 @@ function RegisterForm() {
                     autoComplete="new-password"
                     className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#34495E'; e.currentTarget.style.background = '#FFFFFF' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
                     onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
                   />
                   <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#A1A1AA' }}>
@@ -242,7 +242,7 @@ function RegisterForm() {
                     autoComplete="new-password"
                     className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#34495E'; e.currentTarget.style.background = '#FFFFFF' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
                     onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
                   />
                   <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#A1A1AA' }}>
@@ -254,7 +254,7 @@ function RegisterForm() {
               {/* Platform fee notice — product suppliers only */}
               {supplierCategory === 'manufacturer' && (
                 <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F2F5', border: '1px solid #D1D8E0', color: '#4A5568' }}>
-                  <p className="font-semibold mb-1" style={{ color: '#34495E' }}>Platform Fee</p>
+                  <p className="font-semibold mb-1" style={{ color: '#3A7CA5' }}>Platform Fee</p>
                   <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
                 </div>
               )}
@@ -265,13 +265,13 @@ function RegisterForm() {
                   checked={tcAccepted}
                   onChange={e => setTcAccepted(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded cursor-pointer shrink-0"
-                  style={{ accentColor: '#34495E' }}
+                  style={{ accentColor: '#3A7CA5' }}
                 />
                 <span className="text-xs leading-relaxed" style={{ color: '#71717A' }}>
                   I agree to the{' '}
-                  <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#34495E' }}>Terms &amp; Conditions</a>
+                  <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#3A7CA5' }}>Terms &amp; Conditions</a>
                   {' '}and{' '}
-                  <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#34495E' }}>Privacy Policy</a>
+                  <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#3A7CA5' }}>Privacy Policy</a>
                   {supplierCategory === 'manufacturer' && ', including the 1% platform fee on confirmed deals'}.
                 </span>
               </label>
@@ -286,7 +286,7 @@ function RegisterForm() {
                 type="submit"
                 disabled={loading || !tcAccepted}
                 className="w-full py-3 text-white text-sm font-semibold rounded-lg disabled:opacity-50 cursor-pointer mt-1"
-                style={{ background: '#34495E', transition: 'opacity 0.15s' }}
+                style={{ background: '#3A7CA5', transition: 'opacity 0.15s' }}
               >
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>
@@ -294,7 +294,7 @@ function RegisterForm() {
 
             <p className="text-center text-sm mt-6 pt-5" style={{ color: '#71717A', borderTop: '1px solid #F4F4F5' }}>
               Already have an account?{' '}
-              <Link href="/supplier-portal/login" className="font-medium hover:underline" style={{ color: '#34495E' }}>Sign in</Link>
+              <Link href="/supplier-portal/login" className="font-medium hover:underline" style={{ color: '#3A7CA5' }}>Sign in</Link>
             </p>
           </div>
         </div>
