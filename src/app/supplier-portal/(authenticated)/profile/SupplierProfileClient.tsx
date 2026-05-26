@@ -209,7 +209,7 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
           {/* Logo upload */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#71717A' }}>Company Logo</label>
-            <p className="text-xs mb-3" style={{ color: '#A1A1AA' }}>Appears on the top-left of all PDFs in place of your company name text. PNG or SVG recommended.</p>
+            <p className="text-xs mb-3" style={{ color: '#A1A1AA' }}>Appears on the top-left of all PDFs in place of your company name text. Ideal size: <strong style={{ color: '#52525B' }}>400 × 120 px</strong> (landscape). PNG or SVG gives the sharpest result.</p>
             <div className="flex items-center gap-4">
               {logoUrl ? (
                 <div className="relative group">
@@ -248,7 +248,7 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
                   {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                   {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
                 </button>
-                <p className="text-[10px] mt-1.5" style={{ color: '#A1A1AA' }}>Max 5 MB · PNG, JPG, or SVG</p>
+                <p className="text-[10px] mt-1.5" style={{ color: '#A1A1AA' }}>Max 5 MB · PNG, SVG, or JPG</p>
               </div>
             </div>
           </div>
