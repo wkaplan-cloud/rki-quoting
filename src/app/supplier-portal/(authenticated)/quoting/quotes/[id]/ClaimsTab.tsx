@@ -30,13 +30,19 @@ function fmtMonth(dateStr: string) {
 type ClaimWithItems = ElecClaim & { line_items: ElecClaimLineItem[] }
 type View = 'list' | 'new' | 'detail' | 'retention'
 
-// How much of an item has already been claimed in submitted/certified/invoiced/paid claims
+// How much of an item has already been claimed/certified in prior non-draft claims.
+// For settled claims (certified/invoiced/paid) use the certified %, so any uncertified
+// portion stays claimable on the next claim. For submitted-but-not-yet-certified use claimed %.
 function prevPct(itemId: string, claims: ClaimWithItems[], excludeId?: string): number {
   return claims
     .filter(c => c.status !== 'draft' && c.id !== excludeId)
     .reduce((sum, c) => {
       const li = c.line_items.find(l => l.quote_line_item_id === itemId)
-      return sum + (li?.percentage_claimed ?? 0)
+      if (!li) return sum
+      const settled = ['certified', 'invoiced', 'paid'].includes(c.status)
+      return sum + (settled && li.percentage_certified != null
+        ? li.percentage_certified
+        : li.percentage_claimed)
     }, 0)
 }
 
@@ -446,15 +452,21 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
 function ClaimDetail({ claim, items, onStatusChange, onClose }: {
   claim: ClaimWithItems
   items: ElecQuoteLineItem[]
-  onStatusChange: (id: string, patch: Partial<ElecClaim>) => void
+  onStatusChange: (id: string, patch: Partial<ClaimWithItems>) => void
   onClose: () => void
 }) {
   const supabase = createClient()
-  const [certAmount, setCertAmount] = useState(String(claim.total_certified ?? claim.total_claimed))
-  const [certBy, setCertBy] = useState('')
   const [showCertForm, setShowCertForm] = useState(false)
+  // keyed by elec_claim_line_item.id → certified % string
+  const [certPcts, setCertPcts] = useState<Record<string, string>>(() =>
+    Object.fromEntries(claim.line_items.map(li => [li.id, String(li.percentage_certified ?? li.percentage_claimed)]))
+  )
+  const [certBy, setCertBy] = useState('')
   const [loading, setLoading] = useState(false)
+  const [certError, setCertError] = useState('')
   const st = CLAIM_STATUS[claim.status]
+
+  const itemMap = Object.fromEntries(items.map(i => [i.id, i]))
 
   async function advance(status: ElecClaimStatus, extra?: Partial<ElecClaim>) {
     setLoading(true)
@@ -465,18 +477,46 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
   }
 
   async function certify() {
-    setLoading(true)
-    const certified = parseFloat(certAmount) || 0
-    const patch: Partial<ElecClaim> = {
-      status: 'certified',
-      total_certified: certified,
+    setLoading(true); setCertError('')
+    try {
+      // Build per-item certified values
+      const lineUpdates = claim.line_items.map(li => {
+        const pct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
+        const qi = itemMap[li.quote_line_item_id]
+        const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
+        return { id: li.id, percentage_certified: pct, amount_certified: contractVal * pct / 100 }
+      })
+      const totalCertified = lineUpdates.reduce((s, u) => s + u.amount_certified, 0)
+
+      // Update each claim line item
+      for (const u of lineUpdates) {
+        const { error } = await supabase
+          .from('elec_claim_line_items')
+          .update({ percentage_certified: u.percentage_certified, amount_certified: u.amount_certified })
+          .eq('id', u.id)
+        if (error) throw new Error(error.message)
+      }
+
+      // Update claim header
+      const patch: Partial<ElecClaim> = { status: 'certified', total_certified: totalCertified }
+      const { error } = await supabase.from('elec_claims').update(patch).eq('id', claim.id)
+      if (error) throw new Error(error.message)
+
+      onStatusChange(claim.id, {
+        ...patch,
+        line_items: claim.line_items.map(li => {
+          const u = lineUpdates.find(x => x.id === li.id)!
+          return { ...li, percentage_certified: u.percentage_certified, amount_certified: u.amount_certified }
+        }),
+      } as Partial<ElecClaim>)
+      setShowCertForm(false)
+    } catch (e: unknown) {
+      setCertError(e instanceof Error ? e.message : 'Save failed')
     }
-    const { error } = await supabase.from('elec_claims').update(patch).eq('id', claim.id)
-    if (!error) { onStatusChange(claim.id, patch); setShowCertForm(false) }
     setLoading(false)
   }
 
-  const itemMap = Object.fromEntries(items.map(i => [i.id, i]))
+  const isCertified = ['certified', 'invoiced', 'paid'].includes(claim.status)
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
@@ -505,30 +545,68 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
         <button onClick={onClose} style={{ color: S.muted }}><X size={15} /></button>
       </div>
 
-      {/* Line items */}
+      {/* Line items — show certified columns once certified */}
       {claim.line_items.length > 0 && (
         <div className="px-5 py-4">
           <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-            <div className="grid px-3 py-2 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ gridTemplateColumns: '1fr 90px 70px 90px', gap: 8, color: S.muted, background: S.bg }}>
-              <span>Description</span>
-              <span className="text-right">Contract Val</span>
-              <span className="text-right">% Claimed</span>
-              <span className="text-right">Amount</span>
-            </div>
-            {claim.line_items.map(li => {
-              const qi = itemMap[li.quote_line_item_id]
-              const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
-              return (
-                <div key={li.id} className="grid px-3 py-2 items-center"
-                  style={{ gridTemplateColumns: '1fr 90px 70px 90px', gap: 8, borderTop: `1px solid ${S.border}` }}>
-                  <span className="text-sm truncate" style={{ color: S.text }}>{qi?.description || '—'}</span>
-                  <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(contractVal)}</span>
-                  <span className="text-xs text-right" style={{ color: S.muted }}>{li.percentage_claimed.toFixed(0)}%</span>
-                  <span className="text-xs text-right font-semibold font-mono" style={{ color: S.text }}>{fmtR(li.amount_claimed)}</span>
+            {isCertified ? (
+              <>
+                <div className="grid px-3 py-2 text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ gridTemplateColumns: '1fr 70px 80px 70px 80px 72px', gap: 6, color: S.muted, background: S.bg }}>
+                  <span>Description</span>
+                  <span className="text-right">Clmd %</span>
+                  <span className="text-right">Clmd Amt</span>
+                  <span className="text-right" style={{ color: S.gold }}>Cert %</span>
+                  <span className="text-right" style={{ color: S.gold }}>Cert Amt</span>
+                  <span className="text-right">Diff</span>
                 </div>
-              )
-            })}
+                {claim.line_items.map(li => {
+                  const qi = itemMap[li.quote_line_item_id]
+                  const diff = (li.amount_certified ?? li.amount_claimed) - li.amount_claimed
+                  return (
+                    <div key={li.id} className="grid px-3 py-2 items-center"
+                      style={{ gridTemplateColumns: '1fr 70px 80px 70px 80px 72px', gap: 6, borderTop: `1px solid ${S.border}` }}>
+                      <span className="text-xs truncate" style={{ color: S.text }}>{qi?.description || '—'}</span>
+                      <span className="text-xs text-right" style={{ color: S.muted }}>{li.percentage_claimed.toFixed(0)}%</span>
+                      <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(li.amount_claimed)}</span>
+                      <span className="text-xs text-right font-semibold" style={{ color: S.gold }}>
+                        {li.percentage_certified != null ? `${li.percentage_certified.toFixed(0)}%` : '—'}
+                      </span>
+                      <span className="text-xs text-right font-semibold font-mono" style={{ color: S.gold }}>
+                        {li.amount_certified != null ? fmtR(li.amount_certified) : '—'}
+                      </span>
+                      <span className="text-xs text-right font-mono"
+                        style={{ color: diff < -0.01 ? S.danger : diff > 0.01 ? S.green : S.muted }}>
+                        {diff < -0.01 ? '–' : diff > 0.01 ? '+' : ''}{fmtR(Math.abs(diff))}
+                      </span>
+                    </div>
+                  )
+                })}
+              </>
+            ) : (
+              <>
+                <div className="grid px-3 py-2 text-[10px] font-semibold uppercase tracking-wider"
+                  style={{ gridTemplateColumns: '1fr 90px 70px 90px', gap: 8, color: S.muted, background: S.bg }}>
+                  <span>Description</span>
+                  <span className="text-right">Contract Val</span>
+                  <span className="text-right">% Claimed</span>
+                  <span className="text-right">Amount</span>
+                </div>
+                {claim.line_items.map(li => {
+                  const qi = itemMap[li.quote_line_item_id]
+                  const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
+                  return (
+                    <div key={li.id} className="grid px-3 py-2 items-center"
+                      style={{ gridTemplateColumns: '1fr 90px 70px 90px', gap: 8, borderTop: `1px solid ${S.border}` }}>
+                      <span className="text-sm truncate" style={{ color: S.text }}>{qi?.description || '—'}</span>
+                      <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(contractVal)}</span>
+                      <span className="text-xs text-right" style={{ color: S.muted }}>{li.percentage_claimed.toFixed(0)}%</span>
+                      <span className="text-xs text-right font-semibold font-mono" style={{ color: S.text }}>{fmtR(li.amount_claimed)}</span>
+                    </div>
+                  )
+                })}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -541,10 +619,18 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
             <span className="font-semibold" style={{ color: S.text }}>{fmtR(claim.total_claimed)}</span>
           </div>
           {claim.total_certified != null && (
-            <div className="flex justify-between text-sm">
-              <span style={{ color: S.muted }}>Total Certified</span>
-              <span className="font-semibold" style={{ color: S.gold }}>{fmtR(claim.total_certified)}</span>
-            </div>
+            <>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: S.muted }}>Total Certified</span>
+                <span className="font-semibold" style={{ color: S.gold }}>{fmtR(claim.total_certified)}</span>
+              </div>
+              {claim.total_certified < claim.total_claimed && (
+                <div className="flex justify-between text-xs px-2 py-1 rounded" style={{ background: 'rgba(220,38,38,0.06)' }}>
+                  <span style={{ color: S.danger }}>Uncertified (carried forward)</span>
+                  <span className="font-semibold" style={{ color: S.danger }}>{fmtR(claim.total_claimed - claim.total_certified)}</span>
+                </div>
+              )}
+            </>
           )}
           {claim.total_invoiced != null && (
             <div className="flex justify-between text-sm">
@@ -561,29 +647,89 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
         </div>
       </div>
 
-      {/* Certification form (proforma path) */}
+      {/* Per-item certification form */}
       {showCertForm && (
-        <div className="mx-5 mb-4 px-4 py-3 rounded-xl" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
-          <p className="text-sm font-semibold mb-3" style={{ color: S.text }}>Enter Certified Amount</p>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="mx-5 mb-4 rounded-xl overflow-hidden" style={{ border: `1px solid ${S.gold}` }}>
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(217,164,65,0.06)', borderBottom: `1px solid rgba(217,164,65,0.2)` }}>
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Certified Amount (R)</label>
-              <input type="number" value={certAmount} onChange={e => setCertAmount(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none text-right"
-                style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+              <p className="text-sm font-semibold" style={{ color: S.text }}>Record Certification</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>Enter the QS certified % per item — any reduction is carried forward to your next claim</p>
             </div>
-            <div>
+            <div style={{ minWidth: 200 }}>
               <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Certified By</label>
               <input value={certBy} onChange={e => setCertBy(e.target.value)} placeholder="Name / QS / Engineer"
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                className="w-full px-3 py-1.5 text-sm rounded-lg outline-none"
                 style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowCertForm(false)} className="px-3 py-1.5 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
-            <button onClick={certify} disabled={loading}
-              className="px-4 py-1.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
-              style={{ background: S.gold }}>{loading ? 'Saving…' : 'Record Certification'}</button>
+
+          {/* Per-item table */}
+          <div style={{ background: S.card }}>
+            <div className="grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider"
+              style={{ gridTemplateColumns: '1fr 80px 90px 80px 90px', gap: 8, color: S.muted, background: S.bg, borderBottom: `1px solid ${S.border}` }}>
+              <span>Description</span>
+              <span className="text-right">Claimed %</span>
+              <span className="text-right">Claimed Amt</span>
+              <span className="text-right" style={{ color: S.gold }}>Cert %</span>
+              <span className="text-right" style={{ color: S.gold }}>Cert Amt</span>
+            </div>
+            {claim.line_items.map(li => {
+              const qi = itemMap[li.quote_line_item_id]
+              const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
+              const certPct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
+              const certAmt = contractVal * certPct / 100
+              const reduced = certPct < li.percentage_claimed - 0.01
+              return (
+                <div key={li.id} className="grid px-4 py-2 items-center"
+                  style={{ gridTemplateColumns: '1fr 80px 90px 80px 90px', gap: 8, borderBottom: `1px solid ${S.border}` }}>
+                  <span className="text-xs truncate" style={{ color: S.text }}>{qi?.description || '—'}</span>
+                  <span className="text-xs text-right" style={{ color: S.muted }}>{li.percentage_claimed.toFixed(0)}%</span>
+                  <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(li.amount_claimed)}</span>
+                  <input
+                    type="number" min="0" step="0.5"
+                    value={certPcts[li.id] ?? String(li.percentage_claimed)}
+                    onChange={e => setCertPcts(p => ({ ...p, [li.id]: e.target.value }))}
+                    className="px-2 py-1 text-xs text-right rounded outline-none w-full"
+                    style={{ background: reduced ? 'rgba(220,38,38,0.06)' : '#fff', border: `1px solid ${reduced ? S.danger : S.gold}`, color: reduced ? S.danger : S.gold }} />
+                  <span className="text-xs text-right font-semibold font-mono" style={{ color: reduced ? S.danger : S.gold }}>
+                    {fmtR(certAmt)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Total + actions */}
+          <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(217,164,65,0.04)', borderTop: `1px solid rgba(217,164,65,0.2)` }}>
+            <div className="text-sm">
+              <span style={{ color: S.muted }}>Total certified: </span>
+              <strong style={{ color: S.gold }}>
+                {fmtR(claim.line_items.reduce((s, li) => {
+                  const qi = itemMap[li.quote_line_item_id]
+                  const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
+                  const pct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
+                  return s + contractVal * pct / 100
+                }, 0))}
+              </strong>
+              {(() => {
+                const uncert = claim.total_claimed - claim.line_items.reduce((s, li) => {
+                  const qi = itemMap[li.quote_line_item_id]
+                  const contractVal = qi ? qi.quoted_quantity * qi.quoted_unit_rate : 0
+                  const pct = parseFloat(certPcts[li.id] ?? String(li.percentage_claimed)) || 0
+                  return s + contractVal * pct / 100
+                }, 0)
+                return uncert > 0.01
+                  ? <span className="ml-3 text-xs" style={{ color: S.danger }}>{fmtR(uncert)} carried forward</span>
+                  : null
+              })()}
+            </div>
+            <div className="flex gap-2 items-center">
+              {certError && <span className="text-xs" style={{ color: S.danger }}>{certError}</span>}
+              <button onClick={() => { setShowCertForm(false); setCertError('') }} className="px-3 py-1.5 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
+              <button onClick={certify} disabled={loading}
+                className="px-4 py-1.5 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
+                style={{ background: S.gold }}>{loading ? 'Saving…' : 'Record Certification'}</button>
+            </div>
           </div>
         </div>
       )}
@@ -695,7 +841,7 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
     setView('list')
   }
 
-  function handleStatusChange(id: string, patch: Partial<ElecClaim>) {
+  function handleStatusChange(id: string, patch: Partial<ClaimWithItems>) {
     setClaims(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c))
   }
 
