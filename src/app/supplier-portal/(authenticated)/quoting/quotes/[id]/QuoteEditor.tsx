@@ -313,24 +313,6 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked }: {
               className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none"
               style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
           </div>
-          {(item.item_type === 'both' || item.item_type === 'labour') && (
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Labour Rate</label>
-              <input type="number" value={item.labour_rate ?? ''} onChange={e => set({ labour_rate: parseFloat(e.target.value) || null })}
-                disabled={locked} placeholder="0.00"
-                className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
-                style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-          )}
-          {(item.item_type === 'both' || item.item_type === 'material') && (
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Material Rate</label>
-              <input type="number" value={item.material_rate ?? ''} onChange={e => set({ material_rate: parseFloat(e.target.value) || null })}
-                disabled={locked} placeholder="0.00"
-                className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
-                style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-          )}
           {item.item_type === 'subcontract' && (
             <div className="col-span-2">
               <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Subcontractor</label>
