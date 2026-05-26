@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
-  AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Share2, Copy,
+  AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
 } from 'lucide-react'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 import { AsBuiltTab } from './AsBuiltTab'
@@ -502,22 +502,46 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
   const showTabs = ['in_progress', 'completed'].includes(q.status)
 
-  const [shareLoading, setShareLoading] = useState(false)
-  const [shareCopied, setShareCopied] = useState(false)
+  const [showSendModal, setShowSendModal] = useState(false)
+  const [sendEmail, setSendEmail] = useState('')
+  const [sendMethod, setSendMethod] = useState<'link' | 'pdf'>('link')
+  const [sendMessage, setSendMessage] = useState('')
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
-  async function handleShare() {
-    setShareLoading(true)
+  function openSendModal() {
+    setSendEmail(q.client?.email ?? '')
+    setSendMethod('link')
+    setSendMessage('')
+    setSendStatus('idle')
+    setShowSendModal(true)
+  }
+
+  async function handleSendToClient() {
+    if (!sendEmail.trim() || sendStatus === 'sending') return
+    setSendStatus('sending')
+    const endpoint = sendMethod === 'link'
+      ? `/api/supplier-portal/quoting/quotes/${q.id}/send-link`
+      : `/api/supplier-portal/quoting/quotes/${q.id}/send-pdf`
     try {
-      const res = await fetch(`/api/supplier-portal/quoting/quotes/${q.id}/share`, { method: 'POST' })
-      const json = await res.json() as { token?: string }
-      if (json.token) {
-        const url = `${window.location.origin}/q/${json.token}`
-        await navigator.clipboard.writeText(url)
-        setShareCopied(true)
-        setTimeout(() => setShareCopied(false), 2500)
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
+      })
+      const json = await res.json() as { ok?: boolean; error?: string }
+      if (json.ok) {
+        setSendStatus('sent')
+        // Update local status to quoted if it was draft
+        if (q.status === 'draft') {
+          setQ(p => ({ ...p, status: 'quoted', quoted_date: new Date().toISOString().split('T')[0] }))
+        }
+        setTimeout(() => setShowSendModal(false), 1800)
+      } else {
+        setSendStatus('error')
+        setSaveError(json.error ?? 'Failed to send')
       }
-    } finally {
-      setShareLoading(false)
+    } catch {
+      setSendStatus('error')
     }
   }
   const allItems = [...freeItems, ...sections.flatMap(s => s.items)]
@@ -677,16 +701,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           style={{ background: S.accent, color: '#fff' }}>
           <Download size={12} /> PDF
         </a>
-        {q.status === 'quoted' && (
-          <button
-            onClick={() => void handleShare()}
-            disabled={shareLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
-            style={{ background: shareCopied ? 'rgba(22,163,74,0.1)' : 'rgba(58,124,165,0.1)', color: shareCopied ? S.green : S.accent, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.3)' : 'rgba(58,124,165,0.25)'}` }}>
-            {shareLoading ? <Loader2 size={12} className="animate-spin" /> : shareCopied ? <Copy size={12} /> : <Share2 size={12} />}
-            {shareCopied ? 'Link copied!' : 'Share'}
-          </button>
-        )}
         <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>{st.label}</span>
       </div>
@@ -1016,9 +1030,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
               <Save size={13} /> Save Draft
             </button>
-            <button onClick={() => transition('quoted', { quoted_date: new Date().toISOString().split('T')[0] })}
-              className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: S.accent }}>
-              Send Quote →
+            <button onClick={openSendModal}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white"
+              style={{ background: S.accent }}>
+              <Send size={13} /> Send to Client →
             </button>
           </>
         )}
@@ -1026,6 +1041,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           <button onClick={() => transition('draft')}
             className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: S.bg, color: S.muted }}>
             ← Back to Draft
+          </button>
+          <button onClick={openSendModal}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium"
+            style={{ background: 'rgba(58,124,165,0.1)', color: S.accent, border: `1px solid rgba(58,124,165,0.25)` }}>
+            <Send size={13} /> Send Again
           </button>
           <button onClick={() => transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: S.green }}>
@@ -1054,6 +1074,127 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       </div>
 
       </div>{/* end quote tab */}
+
+      {/* ── Send to Client Modal ──────────────────────────────────────────── */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSendModal(false) }}>
+          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-base" style={{ color: S.text }}>Send to Client</h2>
+              <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: S.muted }}
+                onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {sendStatus === 'sent' ? (
+              <div className="py-8 text-center">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                  style={{ background: 'rgba(22,163,74,0.1)' }}>
+                  <Check size={22} style={{ color: S.green }} />
+                </div>
+                <p className="font-semibold" style={{ color: S.green }}>Email sent!</p>
+                <p className="text-sm mt-1" style={{ color: S.muted }}>{sendEmail}</p>
+              </div>
+            ) : (
+              <>
+                {/* Email */}
+                <div className="mb-4">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>
+                    Client Email
+                  </label>
+                  <input
+                    type="email"
+                    value={sendEmail}
+                    onChange={e => setSendEmail(e.target.value)}
+                    placeholder="client@example.com"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+                  />
+                </div>
+
+                {/* Send method */}
+                <div className="mb-4">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>
+                    How to send
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setSendMethod('link')}
+                      className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left transition-all"
+                      style={{
+                        background: sendMethod === 'link' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        border: `1.5px solid ${sendMethod === 'link' ? S.accent : S.border}`,
+                      }}>
+                      <div className="flex items-center gap-1.5">
+                        <Link size={13} style={{ color: sendMethod === 'link' ? S.accent : S.muted }} />
+                        <span className="text-xs font-semibold" style={{ color: sendMethod === 'link' ? S.accent : S.text }}>
+                          Approval Link
+                        </span>
+                      </div>
+                      <span className="text-[11px] leading-snug" style={{ color: S.muted }}>
+                        Client approves online with one click
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setSendMethod('pdf')}
+                      className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left transition-all"
+                      style={{
+                        background: sendMethod === 'pdf' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        border: `1.5px solid ${sendMethod === 'pdf' ? S.accent : S.border}`,
+                      }}>
+                      <div className="flex items-center gap-1.5">
+                        <FileText size={13} style={{ color: sendMethod === 'pdf' ? S.accent : S.muted }} />
+                        <span className="text-xs font-semibold" style={{ color: sendMethod === 'pdf' ? S.accent : S.text }}>
+                          PDF Attachment
+                        </span>
+                      </div>
+                      <span className="text-[11px] leading-snug" style={{ color: S.muted }}>
+                        Quote PDF attached to the email
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Optional message */}
+                <div className="mb-5">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>
+                    Message <span style={{ color: S.muted, fontWeight: 400 }}>(optional)</span>
+                  </label>
+                  <textarea
+                    value={sendMessage}
+                    onChange={e => setSendMessage(e.target.value)}
+                    rows={2}
+                    placeholder="Add a personal note to the email…"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none resize-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+                  />
+                </div>
+
+                {sendStatus === 'error' && (
+                  <p className="text-xs mb-3 flex items-center gap-1.5" style={{ color: S.danger }}>
+                    <AlertCircle size={12} /> {saveError || 'Failed to send — please try again'}
+                  </p>
+                )}
+
+                <button
+                  onClick={() => void handleSendToClient()}
+                  disabled={!sendEmail.trim() || sendStatus === 'sending'}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
+                  style={{ background: S.accent, color: '#fff' }}>
+                  {sendStatus === 'sending' ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  {sendStatus === 'sending' ? 'Sending…' : `Send ${sendMethod === 'link' ? 'Approval Link' : 'PDF'}`}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
