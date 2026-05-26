@@ -1003,10 +1003,17 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       <div className="rounded-2xl p-4 flex items-center gap-3 flex-wrap" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <span className="text-sm font-medium flex-1" style={{ color: S.muted }}>Status</span>
         {q.status === 'draft' && (
-          <button onClick={() => transition('quoted', { quoted_date: new Date().toISOString().split('T')[0] })}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: S.accent }}>
-            Send Quote →
-          </button>
+          <>
+            <button onClick={() => void handleSave()} disabled={saveStatus === 'saving'}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
+              <Save size={13} /> Save Draft
+            </button>
+            <button onClick={() => transition('quoted', { quoted_date: new Date().toISOString().split('T')[0] })}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: S.accent }}>
+              Send Quote →
+            </button>
+          </>
         )}
         {q.status === 'quoted' && <>
           <button onClick={() => transition('draft')}
