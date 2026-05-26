@@ -12,10 +12,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
-      .select('id')
+      .select('id, company_name')
       .eq('auth_user_id', user.id)
       .single()
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
+
+    const companyCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
 
     // Verify quote ownership
     const { data: quote } = await supabaseAdmin
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .eq('portal_account_id', account.id)
 
     const num = String((count ?? 0) + 1).padStart(3, '0')
-    const claimNumber = `${prefix}-${year}-${num}`
+    const claimNumber = companyCode ? `${companyCode}-${prefix}-${year}-${num}` : `${prefix}-${year}-${num}`
 
     const totalClaimed = body.claim_type === 'retention'
       ? (body.retention_amount ?? 0)

@@ -13,10 +13,12 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id')
+    .select('id, company_name')
     .eq('auth_user_id', user.id)
     .single()
   if (!account) redirect('/supplier-portal/not-a-supplier')
+
+  const companyCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
 
   const [
     { data: quote },
@@ -92,6 +94,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       claims={(claims ?? []) as (ElecClaim & { line_items: ElecClaimLineItem[] })[]}
       voPrefix={settings?.vo_prefix ?? 'VO'}
       cocPrefix={settings?.coc_prefix ?? 'COC'}
+      companyCode={companyCode}
     />
   )
 }

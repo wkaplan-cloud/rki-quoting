@@ -493,12 +493,13 @@ interface Props {
   claims: (ElecClaim & { line_items: ElecClaimLineItem[] })[]
   voPrefix: string
   cocPrefix: string
+  companyCode: string
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'snag' | 'coc'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, claims, voPrefix, cocPrefix }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, claims, voPrefix, cocPrefix, companyCode }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -732,6 +733,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               initialVOs={variations}
               initialClaims={claims}
               voPrefix={voPrefix}
+              companyCode={companyCode}
               onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
             />
           </div>
@@ -739,7 +741,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <SnagTab quoteId={q.id} initialSnags={snags} />
           </div>
           <div style={{ display: activeTab === 'coc' ? undefined : 'none' }}>
-            <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} />
+            <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} companyCode={companyCode} />
           </div>
         </>
       )}

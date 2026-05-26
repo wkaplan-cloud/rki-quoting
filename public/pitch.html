@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuotingHub — One Pager</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page { size: A4; margin: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #F5F2EC;
+    color: #2C2C2A;
+    width: 210mm;
+    height: 297mm;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: #fff;
+    padding: 12px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #D8D3C8;
+  }
+
+  .header img {
+    height: 72px;
+    width: auto;
+  }
+
+  .header-tag {
+    font-family: 'Inter', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9A7B4F;
+    border: 1px solid #9A7B4F40;
+    padding: 5px 12px;
+    border-radius: 100px;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 24px 40px 20px;
+    border-bottom: 1px solid #D8D3C8;
+  }
+
+  .hero h1 {
+    font-family: 'Cormorant Garant', serif;
+    font-size: 42px;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: #2C2C2A;
+    margin-bottom: 10px;
+    max-width: 480px;
+  }
+
+  .hero h1 span {
+    color: #9A7B4F;
+  }
+
+  .hero p {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #6B6864;
+    max-width: 480px;
+  }
+
+  /* ── Problem strip ── */
+  .problem {
+    background: #9A7B4F;
+    padding: 12px 40px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .problem-icon {
+    width: 28px;
+    height: 28px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .problem p {
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.95);
+    line-height: 1.55;
+  }
+
+  .problem strong {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* ── Features ── */
+  .features {
+    padding: 20px 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    align-content: start;
+    gap: 14px;
+    flex: 1;
+  }
+
+  .feature {
+    background: #fff;
+    border: 1px solid #D8D3C8;
+    border-radius: 10px;
+    padding: 16px 18px 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #9A7B4F, #C4A46B);
+  }
+
+  .feature-num {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: #C4A46B;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .feature h3 {
+    font-family: 'Cormorant Garant', serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: #2C2C2A;
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .feature p {
+    font-size: 11px;
+    line-height: 1.6;
+    color: #6B6864;
+  }
+
+  /* ── Workflow strip ── */
+  .workflow {
+    padding: 0 40px 20px;
+  }
+
+  .workflow-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #9A7B4F;
+    margin-bottom: 10px;
+  }
+
+  .workflow-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #fff;
+    border: 1px solid #D8D3C8;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .workflow-step {
+    flex: 1;
+    padding: 10px 12px;
+    text-align: center;
+    border-right: 1px solid #D8D3C8;
+  }
+
+  .workflow-step:last-child { border-right: none; }
+
+  .workflow-step .step-n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #9A7B4F;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .workflow-step p {
+    font-size: 10.5px;
+    color: #2C2C2A;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  /* ── Footer / CTA ── */
+  .footer {
+    background: #2C2C2A;
+    padding: 22px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-left h2 {
+    font-family: 'Cormorant Garant', serif;
+    font-size: 20px;
+    font-weight: 500;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .footer-left p {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+  }
+
+  .cta-btn {
+    background: #9A7B4F;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .footer-contact {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 3px;
+  }
+
+  @media print {
+    body { width: 210mm; }
+    .header, .footer { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .problem { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .feature::before { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .workflow-step .step-n { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <img src="quotinghub_white_bg.jpg" alt="QuotingHub" />
+    <span class="header-tag">For Interior Designers</span>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Quote smarter.<br /><span>Win more jobs.</span></h1>
+    <p>QuotingHub is the only quoting platform built specifically for interior designers and decorators — with live fabric pricing, instant supplier requests, and professional quotes sent in one click.</p>
+  </div>
+
+  <!-- Problem -->
+  <div class="problem">
+    <div class="problem-icon">
+      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.9)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+    </div>
+    <p><strong>The problem:</strong> Most designers spend 2–3 hours per quote — calling reps for prices, checking stock manually, building quotes in spreadsheets, then emailing the PO separately. That's time that should be spent designing.</p>
+  </div>
+
+  <!-- Features -->
+  <div class="features">
+
+    <div class="feature">
+      <div class="feature-num">Feature 01</div>
+      <h3>Live Pricing &amp; Stock</h3>
+      <p>Connected directly to Home Fabrics. Current pricing and live stock levels auto-populate the moment you select a fabric — no calls, no emails, no surprises.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-num">Feature 02</div>
+      <h3>Instant Price Requests</h3>
+      <p>For custom or bespoke items, send a price request to multiple suppliers simultaneously with one click. Compare their responses side by side and allocate the winning price straight into your quote.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-num">Feature 03</div>
+      <h3>One-Click Quote to Client</h3>
+      <p>When your quote is ready, one click generates a professional PDF and sends it to your client. No formatting, no separate tools, no email drafting.</p>
+    </div>
+
+    <div class="feature">
+      <div class="feature-num">Feature 04</div>
+      <h3>One-Click PO to Supplier</h3>
+      <p>Once a job is confirmed, send the purchase order to your supplier in a single click. Everything tracked, everything in one place.</p>
+    </div>
+
+  </div>
+
+  <!-- Workflow -->
+  <div class="workflow">
+    <div class="workflow-label">The full workflow — in one platform</div>
+    <div class="workflow-steps">
+      <div class="workflow-step">
+        <div class="step-n">1</div>
+        <p>Select fabric &amp; check live stock</p>
+      </div>
+      <div class="workflow-step">
+        <div class="step-n">2</div>
+        <p>Request &amp; compare supplier prices</p>
+      </div>
+      <div class="workflow-step">
+        <div class="step-n">3</div>
+        <p>Build your quote instantly</p>
+      </div>
+      <div class="workflow-step">
+        <div class="step-n">4</div>
+        <p>Send PDF to client</p>
+      </div>
+      <div class="workflow-step">
+        <div class="step-n">5</div>
+        <p>Send PO to supplier</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer CTA -->
+  <div class="footer">
+    <div class="footer-left">
+      <h2>Ready to see it in action?</h2>
+      <p class="footer-contact">Book a free 15-minute demo — we'll show you exactly how it works.</p>
+      <p class="footer-contact" style="margin-top:6px;">quotinghub.co.za</p>
+    </div>
+    <a href="https://quotinghub.co.za" class="cta-btn">Book a Demo →</a>
+  </div>
+
+</body>
+</html>

@@ -28,10 +28,11 @@ interface Props {
   initialVOs: ElecVariationOrder[]
   initialClaims: VOClaim[]
   voPrefix: string
+  companyCode: string
   onClaimCreated: (claim: ElecClaim & { line_items: ElecClaimLineItem[] }) => void
 }
 
-export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, onClaimCreated }: Props) {
+export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, onClaimCreated }: Props) {
   const supabase = createClient()
   const [vos, setVOs] = useState(initialVOs)
   const [voClaims, setVOClaims] = useState<VOClaim[]>(initialClaims.filter(c => c.variation_order_id != null))
@@ -60,7 +61,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     if (!formDesc.trim()) { setError('Description required'); return }
     setLoading(true); setError('')
     const num = String(vos.length + 1).padStart(3, '0')
-    const voNumber = `${voPrefix}-${year}-${num}`
+    const voNumber = companyCode ? `${companyCode}-${voPrefix}-${year}-${num}` : `${voPrefix}-${year}-${num}`
     const { data, error: err } = await supabase
       .from('elec_variation_orders')
       .insert({

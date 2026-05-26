@@ -11,7 +11,7 @@ export default async function QuotingSettingsPage() {
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id')
+    .select('id, company_name')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -23,5 +23,5 @@ export default async function QuotingSettingsPage() {
     .eq('portal_account_id', account.id)
     .maybeSingle()
 
-  return <SettingsClient portalAccountId={account.id} settings={settings as ElecSettings | null} />
+  return <SettingsClient portalAccountId={account.id} companyName={account.company_name ?? ''} settings={settings as ElecSettings | null} />
 }

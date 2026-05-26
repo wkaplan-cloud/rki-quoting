@@ -11,10 +11,12 @@ export async function POST(req: NextRequest) {
 
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
-      .select('id')
+      .select('id, company_name')
       .eq('auth_user_id', user.id)
       .single()
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
+
+    const companyCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
 
     const body = await req.json() as {
       project_name: string
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest) {
       .eq('portal_account_id', account.id)
 
     const num = String((count ?? 0) + 1).padStart(3, '0')
-    const quoteNumber = `${prefix}-${year}-${num}`
+    const quoteNumber = companyCode ? `${companyCode}-${prefix}-${year}-${num}` : `${prefix}-${year}-${num}`
 
     const { data: quote, error: err } = await supabaseAdmin
       .from('elec_quotes')

@@ -14,16 +14,18 @@ interface Props {
   quoteId: string
   initialCOC: ElecCOC | null
   cocPrefix: string
+  companyCode: string
 }
 
-export function COCTab({ quoteId, initialCOC, cocPrefix }: Props) {
+export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
   const supabase = createClient()
   const year = new Date().getFullYear()
+  const defaultCocNumber = companyCode ? `${companyCode}-${cocPrefix}-${year}-001` : `${cocPrefix}-${year}-001`
 
   const [coc, setCOC] = useState<ElecCOC>(() => initialCOC ?? {
     id: crypto.randomUUID(),
     quote_id: quoteId,
-    coc_number: `${cocPrefix}-${year}-001`,
+    coc_number: defaultCocNumber,
     installation_description: '',
     issue_date: new Date().toISOString().split('T')[0],
     tester_name: '',
@@ -97,7 +99,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix }: Props) {
       </div>
 
       <div className="rounded-2xl p-5 grid grid-cols-2 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-        {inp('COC Number', coc.coc_number, v => set({ coc_number: v }), `e.g. ${cocPrefix}-${year}-001`)}
+        {inp('COC Number', coc.coc_number, v => set({ coc_number: v }), `e.g. ${defaultCocNumber}`)}
         {inp('Issue Date', coc.issue_date, v => set({ issue_date: v }), '', 'date')}
         {inp('Tester Name', coc.tester_name, v => set({ tester_name: v }), 'Full name of tester')}
         {inp('Tester Registration No.', coc.tester_registration_number, v => set({ tester_registration_number: v || null }), 'e.g. ECA-123456')}

@@ -15,8 +15,13 @@ const S = {
   input:  '#F4F4F5',
 }
 
+function companyCode(name: string): string {
+  return name.split(/\s+/).map(w => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
+}
+
 interface Props {
   portalAccountId: string
+  companyName: string
   settings: ElecSettings | null
 }
 
@@ -74,7 +79,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export function SettingsClient({ portalAccountId, settings }: Props) {
+export function SettingsClient({ portalAccountId, companyName, settings }: Props) {
   const searchParams = useSearchParams()
   const justUpgraded = searchParams.get('upgraded') === '1'
   const supabase = createClient()
@@ -172,21 +177,39 @@ export function SettingsClient({ portalAccountId, settings }: Props) {
 
         {/* Document Prefixes */}
         <Section title="Document Numbering">
-          <p className="text-xs -mt-2 mb-2" style={{ color: S.muted }}>Prefix used when auto-numbering documents. e.g. EQ-2024-001</p>
-          <div className="grid grid-cols-4 gap-4">
-            <Field label="Quotes">
-              <Input value={quotePrefix} onChange={setQuotePrefix} placeholder="EQ" />
-            </Field>
-            <Field label="Claims">
-              <Input value={claimPrefix} onChange={setClaimPrefix} placeholder="CLM" />
-            </Field>
-            <Field label="Var. Orders">
-              <Input value={voPrefix} onChange={setVoPrefix} placeholder="VO" />
-            </Field>
-            <Field label="COC">
-              <Input value={cocPrefix} onChange={setCocPrefix} placeholder="COC" />
-            </Field>
-          </div>
+          {(() => {
+            const code = companyCode(companyName)
+            const year = new Date().getFullYear()
+            return (
+              <>
+                <div className="-mt-2 mb-4 px-3.5 py-3 rounded-lg flex items-center justify-between gap-4" style={{ background: '#F4F4F5', border: `1px solid ${S.border}` }}>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: S.muted }}>Company Code</p>
+                    <p className="text-lg font-bold font-mono" style={{ color: S.accent }}>{code || '—'}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Derived from your company name · prepended to all document numbers</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: S.muted }}>Example</p>
+                    <p className="text-xs font-mono font-semibold" style={{ color: S.text }}>{code ? `${code}-${quotePrefix || 'EQ'}-${year}-001` : `${quotePrefix || 'EQ'}-${year}-001`}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-4">
+                  <Field label="Quotes">
+                    <Input value={quotePrefix} onChange={setQuotePrefix} placeholder="EQ" />
+                  </Field>
+                  <Field label="Claims">
+                    <Input value={claimPrefix} onChange={setClaimPrefix} placeholder="CLM" />
+                  </Field>
+                  <Field label="Var. Orders">
+                    <Input value={voPrefix} onChange={setVoPrefix} placeholder="VO" />
+                  </Field>
+                  <Field label="COC">
+                    <Input value={cocPrefix} onChange={setCocPrefix} placeholder="COC" />
+                  </Field>
+                </div>
+              </>
+            )
+          })()}
         </Section>
 
         {/* PDF Footer */}
