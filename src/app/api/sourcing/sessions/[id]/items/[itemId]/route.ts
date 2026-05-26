@@ -38,6 +38,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       colour_finish?: string | null
       category?: string
       item_specs?: Record<string, string> | null
+      ref_image_urls?: string[] | null
     }
 
     // Fetch current item and session status before updating (for audit log)
@@ -57,6 +58,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         ...(body.colour_finish !== undefined && { colour_finish: body.colour_finish?.trim() ?? null }),
         ...(body.category !== undefined && { category: body.category }),
         ...(body.item_specs !== undefined && { item_specs: body.item_specs }),
+        ...(body.ref_image_urls !== undefined && { ref_image_urls: body.ref_image_urls }),
       })
       .eq('id', itemId)
       .select()

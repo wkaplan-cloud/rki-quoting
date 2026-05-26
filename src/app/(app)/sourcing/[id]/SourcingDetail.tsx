@@ -741,6 +741,8 @@ function ItemEditPanel({
   const [dimensions, setDimensions] = useState(item.dimensions ?? '')
   const [colourFinish, setColourFinish] = useState(item.colour_finish ?? '')
   const [saving, setSaving] = useState(false)
+  const [existingUrls, setExistingUrls] = useState<string[]>(item.ref_image_urls ?? [])
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([])
 
   const isGeneral = category === 'general'
   const fields = CATEGORY_FIELDS[category] ?? []
@@ -749,11 +751,27 @@ function ItemEditPanel({
     setSpecValues(prev => ({ ...prev, [key]: val }))
   }
 
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    setNewImageFiles(prev => [...prev, ...files].slice(0, 5 - existingUrls.length))
+    e.target.value = ''
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
     setSaving(true)
     try {
+      // Upload any new images first
+      let uploadedUrls: string[] = []
+      if (newImageFiles.length > 0) {
+        const formData = new FormData()
+        newImageFiles.forEach(f => formData.append('files', f))
+        const uploadRes = await fetch(`/api/sourcing/sessions/${sessionId}/item-images`, { method: 'POST', body: formData })
+        if (uploadRes.ok) uploadedUrls = (await uploadRes.json()).urls ?? []
+      }
+      const finalUrls = [...existingUrls, ...uploadedUrls]
+
       const cleanSpecs = Object.fromEntries(Object.entries(specValues).filter(([, v]) => v.trim()))
       const res = await fetch(`/api/sourcing/sessions/${sessionId}/items/${item.id}`, {
         method: 'PATCH',
@@ -767,17 +785,21 @@ function ItemEditPanel({
           dimensions: isGeneral ? (dimensions.trim() || null) : null,
           colour_finish: isGeneral ? (colourFinish.trim() || null) : null,
           item_specs: !isGeneral && Object.keys(cleanSpecs).length > 0 ? cleanSpecs : null,
+          ref_image_urls: finalUrls.length > 0 ? finalUrls : null,
         }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      onSaved({ ...item, ...json.data })
+      onSaved({ ...item, ...json.data, ref_image_urls: finalUrls.length > 0 ? finalUrls : null })
     } catch (err: any) {
       alert(err.message)
     } finally {
       setSaving(false)
     }
   }
+
+  const totalImages = existingUrls.length + newImageFiles.length
+  const canAddMore = totalImages < 5
 
   return (
     <form onSubmit={handleSave} className="border-t border-[#EDE9E1] px-4 py-4 space-y-3" style={{ background: '#FAFAF8' }}>
@@ -830,6 +852,45 @@ function ItemEditPanel({
       )}
 
       <textarea value={specs} onChange={e => setSpecs(e.target.value)} placeholder="Specifications / notes for supplier" rows={2} className={INPUT} />
+
+      {/* Reference images */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Reference images</p>
+        <div className="flex gap-2 flex-wrap">
+          {/* Existing uploaded images */}
+          {existingUrls.map((url, i) => (
+            <div key={url} className="relative group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`ref ${i + 1}`} className="w-14 h-14 object-cover rounded-lg border border-[#D4CFC7]" />
+              <button
+                type="button"
+                onClick={() => setExistingUrls(prev => prev.filter((_, j) => j !== i))}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >×</button>
+            </div>
+          ))}
+          {/* Newly added (not yet uploaded) images */}
+          {newImageFiles.map((f, i) => (
+            <div key={i} className="relative group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={URL.createObjectURL(f)} alt={f.name} className="w-14 h-14 object-cover rounded-lg border border-[#D4CFC7] opacity-70" />
+              <button
+                type="button"
+                onClick={() => setNewImageFiles(prev => prev.filter((_, j) => j !== i))}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >×</button>
+            </div>
+          ))}
+          {/* Add more button */}
+          {canAddMore && (
+            <label className="w-14 h-14 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#D4CFC7] text-[#8A877F] hover:border-[#C4A46B] hover:text-[#C4A46B] transition-colors cursor-pointer">
+              <ImagePlus size={16} />
+              <span className="text-[9px] mt-0.5">{5 - totalImages} left</span>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+            </label>
+          )}
+        </div>
+      </div>
 
       <div className="flex justify-end gap-2 pt-1">
         <button type="button" onClick={onCancel} className="px-4 py-1.5 text-xs text-[#8A877F] hover:text-[#2C2C2A] border border-[#D4CFC7] rounded-lg hover:border-[#8A877F] transition-colors">Cancel</button>
