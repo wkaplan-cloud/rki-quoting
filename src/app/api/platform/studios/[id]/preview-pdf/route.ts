@@ -45,11 +45,17 @@ const MOCK_CLIENT: Client = {
   created_at: new Date().toISOString(),
 }
 
+const NULL_EXTRAS = {
+  fabric_image_url: null, unit: null, lead_time_weeks: null, lead_time_days: null,
+  dimensions: null, colour_finish: null, twinbru_product_id: null, twinbru_cost_price: null,
+  fabric_width_cm: null, parent_item_id: null, created_at: new Date().toISOString(),
+}
+
 const MOCK_LINE_ITEMS: LineItem[] = [
-  { id: '1', project_id: 'preview', item_name: 'Custom Dining Table', description: 'Solid oak, 2400mm × 900mm', quantity: 1, supplier_id: null, supplier_name: 'Artisan Furniture Co.', delivery_address: null, cost_price: 18500, markup_percentage: 35, sale_price_override: null, sort_order: 0, row_type: 'item', indent_level: 0, received: false },
-  { id: '2', project_id: 'preview', item_name: 'Upholstered Dining Chairs', description: 'Set of 8 — linen blend', quantity: 8, supplier_id: null, supplier_name: 'Fabric & Form', delivery_address: null, cost_price: 3200, markup_percentage: 35, sale_price_override: null, sort_order: 1, row_type: 'item', indent_level: 0, received: false },
-  { id: '3', project_id: 'preview', item_name: 'Pendant Light Cluster', description: 'Brushed brass, 5-drop', quantity: 1, supplier_id: null, supplier_name: 'Luminaire SA', delivery_address: null, cost_price: 7800, markup_percentage: 30, sale_price_override: null, sort_order: 2, row_type: 'item', indent_level: 0, received: false },
-  { id: '4', project_id: 'preview', item_name: 'Feature Rug', description: '3000mm × 2000mm hand-knotted wool', quantity: 1, supplier_id: null, supplier_name: 'The Rug Collective', delivery_address: null, cost_price: 12000, markup_percentage: 25, sale_price_override: null, sort_order: 3, row_type: 'item', indent_level: 0, received: false },
+  { id: '1', project_id: 'preview', item_name: 'Custom Dining Table', description: 'Solid oak, 2400mm × 900mm', quantity: 1, supplier_id: null, supplier_name: 'Artisan Furniture Co.', delivery_address: null, cost_price: 18500, markup_percentage: 35, sale_price_override: null, sort_order: 0, row_type: 'item', indent_level: 0, received: false, ...NULL_EXTRAS },
+  { id: '2', project_id: 'preview', item_name: 'Upholstered Dining Chairs', description: 'Set of 8 — linen blend', quantity: 8, supplier_id: null, supplier_name: 'Fabric & Form', delivery_address: null, cost_price: 3200, markup_percentage: 35, sale_price_override: null, sort_order: 1, row_type: 'item', indent_level: 0, received: false, ...NULL_EXTRAS },
+  { id: '3', project_id: 'preview', item_name: 'Pendant Light Cluster', description: 'Brushed brass, 5-drop', quantity: 1, supplier_id: null, supplier_name: 'Luminaire SA', delivery_address: null, cost_price: 7800, markup_percentage: 30, sale_price_override: null, sort_order: 2, row_type: 'item', indent_level: 0, received: false, ...NULL_EXTRAS },
+  { id: '4', project_id: 'preview', item_name: 'Feature Rug', description: '3000mm × 2000mm hand-knotted wool', quantity: 1, supplier_id: null, supplier_name: 'The Rug Collective', delivery_address: null, cost_price: 12000, markup_percentage: 25, sale_price_override: null, sort_order: 3, row_type: 'item', indent_level: 0, received: false, ...NULL_EXTRAS },
 ]
 
 export async function GET(
