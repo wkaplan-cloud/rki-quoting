@@ -94,7 +94,12 @@ export function ElecClaimPDF({
 }: ElecClaimPDFProps) {
   const isDraft      = claim.status === 'draft'
   const isRetention  = claim.claim_type === 'retention'
-  const docTitle     = ['invoiced', 'paid'].includes(claim.status) ? 'TAX INVOICE' : 'PAYMENT CLAIM'
+  const isReMeasure  = quote.contract_type === 're_measurement'
+  const isCostPlus   = quote.contract_type === 'cost_plus'
+  const docTitle     = isRetention
+    ? (['invoiced', 'paid'].includes(claim.status) ? 'TAX INVOICE' : 'RETENTION RELEASE')
+    : (['invoiced', 'paid'].includes(claim.status) ? 'TAX INVOICE' : 'PAYMENT CLAIM')
+  const contractLabel = (isReMeasure || isCostPlus) ? 'Estimated Value' : 'Contract Value'
   const thisClaimed  = claim.total_claimed ?? 0
   const retentionPct = (!isRetention && quote.retention_percentage > 0) ? quote.retention_percentage : 0
   const retentionAmt = retentionPct > 0 ? Math.round(thisClaimed * retentionPct) / 100 : 0
@@ -179,39 +184,60 @@ export function ElecClaimPDF({
             <Text style={s.infoBoxHd}>CONTRACT DETAILS</Text>
             <Text style={s.infoBold}>{quote.project_name}</Text>
             {quote.project_address && <Text style={s.infoRow}>{quote.project_address}</Text>}
-            <Text style={s.infoRow}>Contract Value: {fmtR(contractTotal)}</Text>
-            {quote.retention_percentage > 0 && (
+            <Text style={s.infoRow}>{contractLabel}: {fmtR(contractTotal)}</Text>
+            {(isReMeasure || isCostPlus) && (
+              <Text style={[s.infoRow, { color: MUTED }]}>
+                {isReMeasure ? 'Re-measurement' : 'Cost-plus'} contract — final value based on actuals
+              </Text>
+            )}
+            {quote.retention_percentage > 0 && !isRetention && (
               <Text style={s.infoRow}>Retention: {quote.retention_percentage}%</Text>
             )}
           </View>
         </View>
 
-        {/* Line items table */}
-        <View style={s.tableHead}>
-          <Text style={[s.th, { flex: 1 }]}>Description</Text>
-          <Text style={[s.th, { width: 75, textAlign: 'right' }]}>Contract Value</Text>
-          <Text style={[s.th, { width: 65, textAlign: 'right' }]}>Prev Claimed</Text>
-          <Text style={[s.th, { width: 65, textAlign: 'right' }]}>This %</Text>
-          <Text style={[s.th, { width: 75, textAlign: 'right' }]}>This Claim</Text>
-          <Text style={[s.th, { width: 75, textAlign: 'right' }]}>Total To Date</Text>
-        </View>
-
-        <LineRows list={freeItems} />
-
-        {sections.map(sec => {
-          const secItems = lineItems.filter(li => li.section_id === sec.id)
-          if (secItems.length === 0) return null
-          const secThisClaim = secItems.reduce((sum, li) => sum + li.this_claimed, 0)
-          return (
-            <View key={sec.id}>
-              <View style={s.secRow} wrap={false}>
-                <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
-                <Text style={[s.secLabel, { width: 75, textAlign: 'right' }]}>{fmtR(secThisClaim)}</Text>
-              </View>
-              <LineRows list={secItems} indent />
+        {/* Line items table — skipped for retention claims */}
+        {isRetention ? (
+          <View style={{ marginTop: 8, padding: 14, borderWidth: 0.5, borderColor: GOLD, borderRadius: 3, backgroundColor: '#FFFBF0' }}>
+            <Text style={{ fontSize: 7.5, color: GOLD, fontFamily: 'Helvetica-Bold', letterSpacing: 0.5, marginBottom: 6 }}>
+              RETENTION RELEASE
+            </Text>
+            <Text style={{ fontSize: 9, color: DARK, marginBottom: 3 }}>
+              Release of retention held in terms of the contract.
+            </Text>
+            {claim.notes ? (
+              <Text style={{ fontSize: 8, color: MUTED }}>{claim.notes}</Text>
+            ) : null}
+          </View>
+        ) : (
+          <>
+            <View style={s.tableHead}>
+              <Text style={[s.th, { flex: 1 }]}>Description</Text>
+              <Text style={[s.th, { width: 75, textAlign: 'right' }]}>{contractLabel}</Text>
+              <Text style={[s.th, { width: 65, textAlign: 'right' }]}>Prev Claimed</Text>
+              <Text style={[s.th, { width: 65, textAlign: 'right' }]}>This %</Text>
+              <Text style={[s.th, { width: 75, textAlign: 'right' }]}>This Claim</Text>
+              <Text style={[s.th, { width: 75, textAlign: 'right' }]}>Total To Date</Text>
             </View>
-          )
-        })}
+
+            <LineRows list={freeItems} />
+
+            {sections.map(sec => {
+              const secItems = lineItems.filter(li => li.section_id === sec.id)
+              if (secItems.length === 0) return null
+              const secThisClaim = secItems.reduce((sum, li) => sum + li.this_claimed, 0)
+              return (
+                <View key={sec.id}>
+                  <View style={s.secRow} wrap={false}>
+                    <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
+                    <Text style={[s.secLabel, { width: 75, textAlign: 'right' }]}>{fmtR(secThisClaim)}</Text>
+                  </View>
+                  <LineRows list={secItems} indent />
+                </View>
+              )
+            })}
+          </>
+        )}
 
         {/* Totals */}
         <View style={s.totalsWrap}>
