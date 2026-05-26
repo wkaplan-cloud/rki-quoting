@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2 } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import toast from 'react-hot-toast'
@@ -84,29 +84,6 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnl
   )
 }
 
-function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-[10001] bg-black/90 flex items-center justify-center"
-      onClick={onClose}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url}
-        alt=""
-        className="max-h-[85vh] max-w-[85vw] object-contain rounded-xl"
-        onClick={e => e.stopPropagation()}
-      />
-      <button
-        className="absolute top-4 right-4 text-white/70 hover:text-white transition-opacity cursor-pointer"
-        onClick={onClose}
-      >
-        <X size={22} />
-      </button>
-    </div>
-  )
-}
-
 const LINE_ITEM_TIPS = [
   { col: 'Item', tip: 'The name of the product or service. Type to search your saved items or enter a new name. Select a supplier with a price list first to enable fabric/product lookup.' },
   { col: 'Dimensions', tip: 'Width × height or other measurements (e.g. 2400 × 800). Shown on the Job Cost Sheet. Not visible to the client.' },
@@ -146,9 +123,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   // New supplier mini-form modal (lineItemId = which row triggered it)
   const [newSupplierModal, setNewSupplierModal] = useState<{ name: string; email: string; markup: string; lineItemId: string } | null>(null)
-  const [imageUploading, setImageUploading] = useState<Record<string, boolean>>({})
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-  const imageInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const lineItemsRef = useRef(lineItems)
   useEffect(() => { lineItemsRef.current = lineItems }, [lineItems])
 
@@ -394,27 +368,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       await supabase.from('line_items').update({ parent_item_id: above.id, indent_level: 1 }).eq('id', id)
     }
   }, [lineItems, onChange, supabase])
-
-  const handleImageUpload = useCallback(async (lineItemId: string, file: File) => {
-    setImageUploading(m => ({ ...m, [lineItemId]: true }))
-    const fd = new FormData()
-    fd.append('file', file)
-    try {
-      const res = await fetch(`/api/line-items/${lineItemId}/image`, { method: 'POST', body: fd })
-      const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'Upload failed'); return }
-      updateLocal(lineItemId, 'fabric_image_url', data.url)
-    } catch {
-      toast.error('Upload failed')
-    } finally {
-      setImageUploading(m => ({ ...m, [lineItemId]: false }))
-    }
-  }, [updateLocal])
-
-  const handleImageRemove = useCallback(async (lineItemId: string) => {
-    updateLocal(lineItemId, 'fabric_image_url', null)
-    await fetch(`/api/line-items/${lineItemId}/image`, { method: 'DELETE' })
-  }, [updateLocal])
 
   const deleteRow = useCallback(async (id: string) => {
     await supabase.from('line_items').delete().eq('id', id)
@@ -712,51 +665,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           </div>
                         )
                       })()}
-
-                      {/* Image thumbnail / upload */}
-                      {item.fabric_image_url ? (
-                        <div className="relative mt-1.5 group/img inline-block">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.fabric_image_url}
-                            alt=""
-                            onClick={() => setLightboxUrl(item.fabric_image_url)}
-                            className="h-10 w-14 object-cover rounded cursor-pointer border border-[#E8E4DC] hover:opacity-90 transition-opacity"
-                          />
-                          {!locked && (
-                            <button
-                              onClick={() => handleImageRemove(item.id)}
-                              title="Remove image"
-                              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white border border-[#D8D3C8] text-[#8A877F] hover:text-red-500 hover:border-red-300 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer shadow-sm"
-                            >
-                              <X size={9} />
-                            </button>
-                          )}
-                        </div>
-                      ) : !locked && (
-                        <div className="mt-1">
-                          <input
-                            ref={el => { imageInputRefs.current[item.id] = el }}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                            className="hidden"
-                            onChange={e => {
-                              const file = e.target.files?.[0]
-                              if (file) handleImageUpload(item.id, file)
-                              e.target.value = ''
-                            }}
-                          />
-                          <button
-                            onClick={() => imageInputRefs.current[item.id]?.click()}
-                            disabled={imageUploading[item.id]}
-                            title="Add image"
-                            className="flex items-center gap-1 text-[9px] text-[#C4BFB5] hover:text-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            <ImagePlus size={11} />
-                            {imageUploading[item.id] ? 'Uploading…' : 'Add image'}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </td>
 
@@ -1241,10 +1149,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
             </div>
           </div>
         </div>
-      )}
-
-      {lightboxUrl && (
-        <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
       )}
     </div>
   )
