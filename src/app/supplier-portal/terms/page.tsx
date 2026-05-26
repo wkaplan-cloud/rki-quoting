@@ -82,15 +82,19 @@ export default function SupplierTermsPage() {
           <section>
             <h2 className="text-base font-semibold text-[#2C2C2A] mb-3">5. Platform fee</h2>
             <div className="bg-white rounded-xl p-5 border border-[#EDE9E1] text-sm leading-relaxed space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#A09A8A]">Applies to product suppliers only</p>
               <p>
                 A platform fee of <strong className="text-[#2C2C2A]">1% of the confirmed deal value (excluding VAT)</strong> is
-                charged to the supplier for each order confirmed through QuotingHub.
+                charged to product suppliers (e.g. fabric, stone, woodwork, upholstery) for each order confirmed through QuotingHub.
               </p>
               <p>A deal is considered &quot;confirmed&quot; when a design studio accepts a price submitted by you via the Portal.</p>
               <p>The fee is invoiced to the supplier and is payable within 30 days of invoice date.</p>
               <p>
                 QuotingHub reserves the right to update the platform fee with 30 days&apos; written notice.
                 Continued use of the platform after notice constitutes acceptance of the new fee.
+              </p>
+              <p className="text-xs text-[#A09A8A] pt-1 border-t border-[#EDE9E1]">
+                Trade and service providers (electricians, plumbers, and similar) who access QuotingHub via a subscription module are not subject to this fee.
               </p>
             </div>
           </section>

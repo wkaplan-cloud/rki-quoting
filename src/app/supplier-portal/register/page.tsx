@@ -56,6 +56,7 @@ function RegisterForm() {
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [supplierCategory, setSupplierCategory] = useState<'manufacturer' | 'trades' | ''>('')
   const [tcAccepted, setTcAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -92,6 +93,7 @@ function RegisterForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (!supplierCategory) { setError('Please select your supplier type to continue'); return }
     if (!companyName.trim()) { setError('Please enter your company name'); return }
     if (password !== confirm) { setError('Passwords do not match'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
@@ -106,7 +108,7 @@ function RegisterForm() {
     const res = await fetch('/api/supplier-portal/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), contact_name: contactName.trim(), cf_token: cfToken }),
+      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), contact_name: contactName.trim(), supplier_category: supplierCategory, cf_token: cfToken }),
     })
     const data = await res.json() as { error?: string }
     if (!res.ok) { setError(data.error ?? 'Registration failed'); setLoading(false); return }
@@ -172,6 +174,35 @@ function RegisterForm() {
               <strong style={{ color: '#18181B' }}>Important:</strong> Use the same email address that design studios use when sending you price requests.
             </div>
 
+            {/* Supplier type selector */}
+            <div className="mb-5">
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#71717A' }}>I am a</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {([
+                  { value: 'manufacturer', label: 'Product Supplier', sub: 'Fabric, stone, woodwork, upholstery…' },
+                  { value: 'trades', label: 'Trade / Service Provider', sub: 'Electrician, plumber, HVAC…' },
+                ] as const).map(opt => {
+                  const active = supplierCategory === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSupplierCategory(opt.value)}
+                      className="text-left px-3.5 py-3 rounded-xl text-sm transition-all"
+                      style={{
+                        background: active ? '#34495E' : '#F4F4F5',
+                        border: `1.5px solid ${active ? '#34495E' : '#E4E4E7'}`,
+                        color: active ? '#FFFFFF' : '#3F3F46',
+                      }}
+                    >
+                      <p className="font-semibold text-xs leading-snug">{opt.label}</p>
+                      <p className="text-[10px] mt-0.5 leading-snug" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#A1A1AA' }}>{opt.sub}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <Field label="Company Name">
                 <StyledInput value={companyName} onChange={setCompanyName} placeholder="e.g. ABC Fabrics (Pty) Ltd" required autoFocus />
@@ -220,11 +251,13 @@ function RegisterForm() {
                 </div>
               </Field>
 
-              {/* Platform fee notice */}
-              <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F2F5', border: '1px solid #D1D8E0', color: '#4A5568' }}>
-                <p className="font-semibold mb-1" style={{ color: '#34495E' }}>Platform Fee</p>
-                <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
-              </div>
+              {/* Platform fee notice — product suppliers only */}
+              {supplierCategory === 'manufacturer' && (
+                <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F2F5', border: '1px solid #D1D8E0', color: '#4A5568' }}>
+                  <p className="font-semibold mb-1" style={{ color: '#34495E' }}>Platform Fee</p>
+                  <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
+                </div>
+              )}
 
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
                 <input
@@ -239,7 +272,7 @@ function RegisterForm() {
                   <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#34495E' }}>Terms &amp; Conditions</a>
                   {' '}and{' '}
                   <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#34495E' }}>Privacy Policy</a>
-                  , including the 1% platform fee on confirmed deals.
+                  {supplierCategory === 'manufacturer' && ', including the 1% platform fee on confirmed deals'}.
                 </span>
               </label>
 
