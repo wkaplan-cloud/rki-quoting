@@ -91,11 +91,12 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
     let compressed: File
     try { compressed = await compressImage(file) } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed'); setUploading(false); return }
     const ext = compressed.name.split('.').pop() ?? 'jpg'
+    const storagePath = `supplier-portal/${portalAccountId}/logo.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('branding')
-      .upload(`logo.${ext}`, compressed, { upsert: true, contentType: compressed.type })
+      .upload(storagePath, compressed, { upsert: true, contentType: compressed.type })
     if (uploadError) { setError('Upload failed: ' + uploadError.message); setUploading(false); return }
-    const { data } = supabase.storage.from('branding').getPublicUrl(`logo.${ext}`)
+    const { data } = supabase.storage.from('branding').getPublicUrl(storagePath)
     const url = data.publicUrl + '?t=' + Date.now()
     setLogoUrl(url)
     // Save immediately so the logo persists without needing to hit Save Profile
