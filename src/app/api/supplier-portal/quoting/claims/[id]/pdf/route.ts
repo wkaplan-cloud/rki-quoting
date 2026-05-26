@@ -129,7 +129,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }) as any
     )
 
-    const titleWord = claim.claim_type === 'proforma' ? 'Proforma' : 'Invoice'
+    const titleWord = claim.claim_type === 'retention' ? 'Retention' : ['invoiced', 'paid'].includes(claim.status) ? 'Tax-Invoice' : 'Claim'
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',

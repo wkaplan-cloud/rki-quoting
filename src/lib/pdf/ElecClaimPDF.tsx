@@ -92,13 +92,16 @@ export interface ElecClaimPDFProps {
 export function ElecClaimPDF({
   claim, lineItems, sections, quote, client, settings, companyName, contractTotal, prevTotalClaimed,
 }: ElecClaimPDFProps) {
-  const isDraft     = claim.status === 'draft'
-  const isProforma  = claim.claim_type === 'proforma'
-  const docTitle    = isProforma ? 'PROFORMA INVOICE' : 'TAX INVOICE'
-  const thisClaimed = claim.total_claimed ?? 0
-  const vatRate     = quote.vat_rate ?? settings?.default_vat_rate ?? 15
-  const vatAmount   = thisClaimed * (vatRate / 100)
-  const totalPayable = thisClaimed + vatAmount
+  const isDraft      = claim.status === 'draft'
+  const isRetention  = claim.claim_type === 'retention'
+  const docTitle     = ['invoiced', 'paid'].includes(claim.status) ? 'TAX INVOICE' : 'PAYMENT CLAIM'
+  const thisClaimed  = claim.total_claimed ?? 0
+  const retentionPct = (!isRetention && quote.retention_percentage > 0) ? quote.retention_percentage : 0
+  const retentionAmt = retentionPct > 0 ? Math.round(thisClaimed * retentionPct) / 100 : 0
+  const netThisClaim = thisClaimed - retentionAmt
+  const vatRate      = quote.vat_rate ?? settings?.default_vat_rate ?? 15
+  const vatAmount    = thisClaimed * (vatRate / 100)
+  const totalPayable = netThisClaim + vatAmount
   const cumulativeTotal = prevTotalClaimed + thisClaimed
 
   const freeItems = lineItems.filter(li => li.section_id === null)
@@ -213,19 +216,35 @@ export function ElecClaimPDF({
         {/* Totals */}
         <View style={s.totalsWrap}>
           <View style={s.totalsBox}>
-            <View style={s.tRow}>
-              <Text style={s.tLabel}>Previously claimed</Text>
-              <Text style={s.tVal}>{fmtR(prevTotalClaimed)}</Text>
-            </View>
+            {!isRetention && (
+              <>
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Previously claimed</Text>
+                  <Text style={s.tVal}>{fmtR(prevTotalClaimed)}</Text>
+                </View>
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Cumulative to date</Text>
+                  <Text style={s.tVal}>{fmtR(cumulativeTotal)}</Text>
+                </View>
+                <View style={s.tDivider} />
+              </>
+            )}
             <View style={s.tRow}>
               <Text style={s.tLabel}>This claim (excl. VAT)</Text>
               <Text style={s.tVal}>{fmtR(thisClaimed)}</Text>
             </View>
-            <View style={s.tRow}>
-              <Text style={s.tLabel}>Cumulative to date</Text>
-              <Text style={s.tVal}>{fmtR(cumulativeTotal)}</Text>
-            </View>
-            <View style={s.tDivider} />
+            {retentionAmt > 0 && (
+              <>
+                <View style={s.tRow}>
+                  <Text style={[s.tLabel, { color: GOLD }]}>Less retention ({retentionPct}%)</Text>
+                  <Text style={[s.tVal, { color: GOLD }]}>– {fmtR(retentionAmt)}</Text>
+                </View>
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Net this claim (excl. VAT)</Text>
+                  <Text style={s.tVal}>{fmtR(netThisClaim)}</Text>
+                </View>
+              </>
+            )}
             <View style={s.tRow}>
               <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
               <Text style={s.tVal}>{fmtR(vatAmount)}</Text>
