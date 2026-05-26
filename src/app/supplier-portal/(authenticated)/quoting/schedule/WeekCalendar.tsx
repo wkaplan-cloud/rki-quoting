@@ -121,6 +121,7 @@ export function WeekCalendar({
   const [dragPreview, setDragPreview] = useState<{
     jobId: string; date: string; start: string; end: string
   } | null>(null)
+  const justDraggedRef = useRef(false)
 
   const weekDays  = getWeekDays(weekStart)
   const weekEnd   = weekDays[6]
@@ -181,6 +182,8 @@ export function WeekCalendar({
       const { previewDate, previewStart, previewEnd, job } = d
       dragRef.current = null
       setDragPreview(null)
+      justDraggedRef.current = true
+      setTimeout(() => { justDraggedRef.current = false }, 100)
       setJobs(js => js.map(j => j.id === job.id
         ? { ...j, scheduled_date: previewDate, start_time: previewStart, end_time: previewEnd }
         : j))
@@ -224,6 +227,7 @@ export function WeekCalendar({
 
   // ── Open add modal from clicking on time grid ─────────────────────────────
   function openAdd(date: Date, e: React.MouseEvent<HTMLDivElement>) {
+    if (justDraggedRef.current) return
     if ((e.target as HTMLElement).closest('[data-job]')) return
     const rect  = e.currentTarget.getBoundingClientRect()
     const y     = e.clientY - rect.top
