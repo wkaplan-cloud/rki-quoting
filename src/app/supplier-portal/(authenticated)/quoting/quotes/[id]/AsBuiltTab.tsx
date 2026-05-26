@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Loader2, AlertCircle } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Download } from 'lucide-react'
 import type { ElecQuoteLineItem, ElecQuoteSection } from '@/lib/elec-types'
 
 const S = {
@@ -15,12 +15,13 @@ function fmtR(n: number) {
 }
 
 interface Props {
+  quoteId: string
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
   contractTotal: number
 }
 
-export function AsBuiltTab({ sections, items: initialItems, contractTotal }: Props) {
+export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal }: Props) {
   const supabase = createClient()
   const [items, setItems] = useState<ElecQuoteLineItem[]>(initialItems)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -189,10 +190,19 @@ export function AsBuiltTab({ sections, items: initialItems, contractTotal }: Pro
             <span className="mx-3">·</span>
             <span style={{ color: S.accent }}>AB = As-Built (editable)</span>
           </p>
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
-            {saveStatus === 'saving' && <><Loader2 size={12} className="animate-spin" />Saving…</>}
-            {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
-            {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
+              {saveStatus === 'saving' && <><Loader2 size={12} className="animate-spin" />Saving…</>}
+              {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
+              {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
+            </div>
+            <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/as-built-pdf`} target="_blank" rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.15)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
+              <Download size={11} /> Download PDF
+            </a>
           </div>
         </div>
       </div>

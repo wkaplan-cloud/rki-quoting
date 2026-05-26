@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Download } from 'lucide-react'
 import type { ElecSnagItem, ElecSnagStatus } from '@/lib/elec-types'
 
 const S = {
@@ -90,6 +90,13 @@ export function SnagTab({ quoteId, initialSnags }: Props) {
         {filterBtn('in_progress', `In Progress (${counts.in_progress})`)}
         {filterBtn('resolved',    `Resolved (${counts.resolved})`)}
         <div className="flex-1" />
+        <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/snag-pdf`} target="_blank" rel="noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+          style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.15)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
+          <Download size={11} /> Download PDF
+        </a>
         <button onClick={() => setShowAdd(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
           style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}

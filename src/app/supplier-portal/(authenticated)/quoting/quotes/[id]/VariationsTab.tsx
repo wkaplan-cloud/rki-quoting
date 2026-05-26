@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Check, FileText, AlertCircle } from 'lucide-react'
+import { Plus, X, Check, FileText, AlertCircle, Download } from 'lucide-react'
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 
 const S = {
@@ -218,15 +218,24 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>Variation Orders</h2>
-        {!showAdd && (
-          <button onClick={() => setShowAdd(true)}
+        <div className="flex items-center gap-2">
+          <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/variations-pdf`} target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-            style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
-            <Plus size={12} /> Add VO
-          </button>
-        )}
+            style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.15)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
+            <Download size={11} /> Download PDF
+          </a>
+          {!showAdd && (
+            <button onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+              <Plus size={12} /> Add VO
+            </button>
+          )}
+        </div>
       </div>
 
       {vos.length === 0 && !showAdd && (

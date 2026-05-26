@@ -706,6 +706,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         <>
           <div style={{ display: activeTab === 'as_built' ? undefined : 'none' }}>
             <AsBuiltTab
+              quoteId={q.id}
               sections={sections as unknown as ElecQuoteSection[]}
               items={allItems as ElecQuoteLineItem[]}
               contractTotal={contractTotal}
