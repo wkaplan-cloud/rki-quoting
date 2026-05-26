@@ -10,7 +10,8 @@ import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSe
 
 export const maxDuration = 60
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const inline = req.nextUrl.searchParams.get('inline') === '1'
   try {
     const { id: quoteId } = await params
     const supabase = await createClient()
@@ -70,10 +71,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     )
 
     const slug = quote.quote_number ?? quoteId
+    const disposition = inline ? `inline; filename="${slug}-As-Built.pdf"` : `attachment; filename="${slug}-As-Built.pdf"`
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${slug}-As-Built.pdf"`,
+        'Content-Disposition': disposition,
       },
     })
   } catch (e) {

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Loader2, AlertCircle, Download } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Download, Printer } from 'lucide-react'
 import type { ElecQuoteLineItem, ElecQuoteSection } from '@/lib/elec-types'
 
 const S = {
@@ -196,6 +196,13 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
               {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
               {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
             </div>
+            <button onClick={() => window.open(`/api/supplier-portal/quoting/quotes/${quoteId}/as-built-pdf?inline=1`, '_blank')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
+              onMouseEnter={e => (e.currentTarget.style.background = S.border)}
+              onMouseLeave={e => (e.currentTarget.style.background = S.input)}>
+              <Printer size={11} /> Print
+            </button>
             <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/as-built-pdf`} target="_blank" rel="noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
               style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}

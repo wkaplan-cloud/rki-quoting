@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Check, FileText, AlertCircle, Download } from 'lucide-react'
+import { Plus, X, Check, FileText, AlertCircle, Download, Printer } from 'lucide-react'
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 
 const S = {
@@ -219,6 +219,13 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>Variation Orders</h2>
         <div className="flex items-center gap-2">
+          <button onClick={() => window.open(`/api/supplier-portal/quoting/quotes/${quoteId}/variations-pdf?inline=1`, '_blank')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+            style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
+            onMouseEnter={e => (e.currentTarget.style.background = S.border)}
+            onMouseLeave={e => (e.currentTarget.style.background = S.input)}>
+            <Printer size={11} /> Print
+          </button>
           <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/variations-pdf`} target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
             style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}
