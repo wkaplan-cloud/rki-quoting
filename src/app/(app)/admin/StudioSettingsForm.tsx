@@ -488,7 +488,11 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
       .upload(path, compressed, { upsert: true, contentType: compressed.type })
     if (uploadError) { toast.error('Upload failed: ' + uploadError.message); setUploading(false); return }
     const { data } = supabase.storage.from('branding').getPublicUrl(path)
-    set('logo_url', data.publicUrl + '?t=' + Date.now())
+    const publicUrl = data.publicUrl + '?t=' + Date.now()
+    set('logo_url', publicUrl)
+    if (settings?.id) {
+      await supabase.from('settings').update({ logo_url: publicUrl }).eq('id', settings.id)
+    }
     toast.success('Logo uploaded')
     setUploading(false)
   }
