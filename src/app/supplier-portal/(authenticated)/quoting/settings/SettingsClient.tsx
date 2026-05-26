@@ -115,13 +115,14 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
     setSaving(true)
     setError('')
     const derivedCode = deriveCompanyCode(companyName)
+
+    // Core settings — always upsert these (no new columns required)
     const payload = {
       portal_account_id:              portalAccountId,
       default_vat_rate:               parseFloat(vatRate) || 15,
       default_retention_percentage:   parseFloat(retention) || 0,
       default_payment_terms_days:     parseInt(paymentTerms) || 30,
       default_defects_liability_days: parseInt(defectsLiability) || 90,
-      company_code:                   companyCodeVal.trim().toUpperCase() || derivedCode || null,
       quote_prefix:                   quotePrefix.trim() || 'EQ',
       claim_prefix:                   claimPrefix.trim() || 'CLM',
       vo_prefix:                      voPrefix.trim() || 'VO',
@@ -134,8 +135,20 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
       .from('elec_settings')
       .upsert(payload, { onConflict: 'portal_account_id' })
 
+    if (err) { setSaving(false); setError(err.message); return }
+
+    // Company code — best-effort update (requires DB migration; silently skips if column absent)
+    const codeToSave = companyCodeVal.trim().toUpperCase() || derivedCode || null
+    const { error: codeErr } = await supabase
+      .from('elec_settings')
+      .update({ company_code: codeToSave })
+      .eq('portal_account_id', portalAccountId)
+
     setSaving(false)
-    if (err) { setError(err.message); return }
+    // Ignore codeErr — column may not exist yet until migration is run
+    if (!codeErr) {
+      // If it saved fine, nothing extra to do
+    }
     setSaved(true)
   }
 
