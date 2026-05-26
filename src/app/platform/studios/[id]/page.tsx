@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Users, FolderOpen, ArrowLeftRight, Clock, Palette } from 'lucide-react'
+import { ArrowLeft, Users, FolderOpen, ArrowLeftRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { SubscriptionPanel } from './SubscriptionPanel'
 import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
 import { StudioNotes } from './StudioNotes'
+import { BrandingPanel } from './BrandingPanel'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -180,43 +181,17 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         isInternal={(org as any).is_internal ?? false}
       />
 
-      {/* Branding */}
-      {(settings?.logo_url || (settings as any)?.letterhead_url) && (
-        <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 mb-6">
-          <h2 className="text-xs text-white/40 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Palette size={12} /> Branding
-          </h2>
-          <div className="flex flex-wrap gap-6">
-            {settings?.logo_url && (
-              <div>
-                <p className="text-xs text-white/30 mb-2">Logo</p>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={settings.logo_url} alt="Studio logo" className="h-12 max-w-[160px] object-contain rounded border border-white/10 p-2 bg-white/5" />
-              </div>
-            )}
-            {(settings as any)?.letterhead_url && (
-              <div>
-                <p className="text-xs text-white/30 mb-2">Letterhead</p>
-                <div className="flex items-center gap-3 px-3 py-2.5 bg-white/5 border border-white/10 rounded-lg">
-                  <div>
-                    <p className="text-sm text-white/80 font-medium">
-                      {(settings as any).letterhead_filename ?? 'Uploaded file'}
-                    </p>
-                    <p className="text-xs text-white/30 mt-0.5">Awaiting custom PDF build</p>
-                  </div>
-                  <a
-                    href={(settings as any).letterhead_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 flex-shrink-0 px-3 py-1.5 bg-[#C4A46B]/10 border border-[#C4A46B]/20 text-[#C4A46B] text-xs font-medium rounded-lg hover:bg-[#C4A46B]/20 transition-colors"
-                  >
-                    View file →
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Branding & PDF Template */}
+      {adminMember?.user_id && (
+        <BrandingPanel
+          orgId={id}
+          adminUserId={adminMember.user_id}
+          logoUrl={settings?.logo_url ?? null}
+          letterheadUrl={(settings as any)?.letterhead_url ?? null}
+          letterheadFilename={(settings as any)?.letterhead_filename ?? null}
+          currentTemplate={settings?.pdf_template ?? null}
+          currentTheme={settings?.pdf_color_theme ?? null}
+        />
       )}
 
       {/* Internal notes */}

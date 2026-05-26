@@ -20,7 +20,7 @@ export async function PATCH(
   const { id: userId } = await params
   const body = await req.json()
 
-  const allowed = ['sourcing_enabled']
+  const allowed = ['sourcing_enabled', 'pdf_template', 'pdf_color_theme']
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]

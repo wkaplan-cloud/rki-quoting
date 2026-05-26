@@ -1,0 +1,173 @@
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { ExternalLink, Check, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+const TEMPLATES = [
+  { key: 'minimal', label: 'Minimal' },
+  { key: 'classic', label: 'Classic' },
+  { key: 'bold',    label: 'Bold' },
+] as const
+
+const THEMES = [
+  { key: 'warm',     label: 'Warm',     primary: '#1A1A18', accent: '#9A7B4F' },
+  { key: 'navy',     label: 'Navy',     primary: '#1B3A5C', accent: '#2E6DA4' },
+  { key: 'slate',    label: 'Slate',    primary: '#2D3748', accent: '#718096' },
+  { key: 'forest',   label: 'Forest',   primary: '#1E3A2F', accent: '#2D6A4F' },
+  { key: 'charcoal', label: 'Charcoal', primary: '#1C1C1C', accent: '#555555' },
+] as const
+
+type TemplateKey = typeof TEMPLATES[number]['key']
+type ThemeKey = typeof THEMES[number]['key']
+
+interface Props {
+  orgId: string
+  adminUserId: string
+  logoUrl: string | null
+  letterheadUrl: string | null
+  letterheadFilename: string | null
+  currentTemplate: string | null
+  currentTheme: string | null
+}
+
+export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, letterheadFilename, currentTemplate, currentTheme }: Props) {
+  const router = useRouter()
+  const [template, setTemplate] = useState<TemplateKey>((currentTemplate as TemplateKey) ?? 'minimal')
+  const [theme, setTheme] = useState<ThemeKey>((currentTheme as ThemeKey) ?? 'warm')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const previewUrl = `/api/platform/studios/${orgId}/preview-pdf?template=${template}&theme=${theme}`
+
+  async function apply() {
+    setSaving(true)
+    setSaved(false)
+    try {
+      const res = await fetch(`/api/platform/studios/${adminUserId}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdf_template: template, pdf_color_theme: theme }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error ?? 'Failed to save')
+      }
+      setSaved(true)
+      toast.success('Template applied to studio')
+      router.refresh()
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 mb-6">
+      <h2 className="text-xs text-white/40 uppercase tracking-wider mb-5">Branding & PDF Template</h2>
+
+      {/* Logo + letterhead row */}
+      {(logoUrl || letterheadUrl) && (
+        <div className="flex flex-wrap gap-6 mb-6 pb-6 border-b border-white/10">
+          {logoUrl && (
+            <div>
+              <p className="text-xs text-white/30 mb-2">Logo</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={logoUrl} alt="Studio logo" className="h-10 max-w-[140px] object-contain rounded border border-white/10 p-2 bg-white/5" />
+            </div>
+          )}
+          {letterheadUrl && (
+            <div>
+              <p className="text-xs text-white/30 mb-2">Letterhead</p>
+              <div className="flex items-center gap-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg">
+                <div>
+                  <p className="text-sm text-white/70">{letterheadFilename ?? 'Uploaded file'}</p>
+                  <p className="text-xs text-white/30 mt-0.5">Use as reference when building custom template</p>
+                </div>
+                <a
+                  href={letterheadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-[#C4A46B]/10 border border-[#C4A46B]/20 text-[#C4A46B] text-xs font-medium rounded-lg hover:bg-[#C4A46B]/20 transition-colors"
+                >
+                  <ExternalLink size={11} /> View
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Template picker */}
+      <div className="mb-5">
+        <p className="text-xs text-white/40 mb-3">Template</p>
+        <div className="flex gap-2">
+          {TEMPLATES.map(t => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTemplate(t.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
+                template === t.key
+                  ? 'bg-[#C4A46B]/15 border-[#C4A46B]/40 text-[#C4A46B]'
+                  : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Theme picker */}
+      <div className="mb-6">
+        <p className="text-xs text-white/40 mb-3">Colour Theme</p>
+        <div className="flex gap-2 flex-wrap">
+          {THEMES.map(t => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTheme(t.key)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs border transition-colors cursor-pointer ${
+                theme === t.key
+                  ? 'bg-[#C4A46B]/15 border-[#C4A46B]/40 text-[#C4A46B]'
+                  : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
+              }`}
+            >
+              <span className="flex gap-1">
+                <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: t.primary }} />
+                <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: t.accent }} />
+              </span>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        <a
+          href={previewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 text-white/70 text-sm rounded-lg hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <ExternalLink size={13} />
+          Preview PDF
+        </a>
+        <button
+          type="button"
+          onClick={apply}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-[#C4A46B] text-[#1A1A18] text-sm font-semibold rounded-lg hover:bg-[#d4b47b] transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : null}
+          {saving ? 'Applying…' : saved ? 'Applied' : 'Apply to Studio'}
+        </button>
+        {saved && <span className="text-xs text-emerald-400">Saved — studio will see this on next PDF</span>}
+      </div>
+    </div>
+  )
+}
