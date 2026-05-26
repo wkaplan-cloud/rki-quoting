@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer } from 'lucide-react'
-import type { ElecJob, ElecJobStatus, ElecStaff } from '@/lib/elec-types'
+import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image } from 'lucide-react'
+import type { ElecJob, ElecJobStatus, ElecJobPhoto, ElecStaff } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -110,6 +110,10 @@ export function WeekCalendar({
   const [form, setForm]           = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving]       = useState(false)
   const [deleting, setDeleting]   = useState(false)
+  const [photos, setPhotos]       = useState<ElecJobPhoto[]>([])
+  const [shareLink, setShareLink] = useState<string | null>(null)
+  const [copied, setCopied]       = useState(false)
+  const [lightbox, setLightbox]   = useState<string | null>(null)
   const scrollRef                 = useRef<HTMLDivElement>(null)
   const gridRef                   = useRef<HTMLDivElement>(null)
   const weekDaysRef               = useRef<Date[]>([])
@@ -252,9 +256,23 @@ export function WeekCalendar({
       status:         job.status,
     })
     setModal({ mode: 'edit', job })
+    setPhotos([])
+    setShareLink(null)
+    void fetch(`/api/supplier-portal/quoting/jobs/${job.id}/photos`)
+      .then(r => r.json()).then((data: ElecJobPhoto[]) => setPhotos(Array.isArray(data) ? data : []))
   }
 
-  function closeModal() { setModal(null); setForm(EMPTY_FORM) }
+  function closeModal() { setModal(null); setForm(EMPTY_FORM); setPhotos([]); setShareLink(null); setCopied(false) }
+
+  async function handleCopyLink(jobId: string) {
+    const res = await fetch(`/api/supplier-portal/quoting/jobs/${jobId}/share`, { method: 'POST' })
+    const { token } = await res.json() as { token: string }
+    const url = `${window.location.origin}/job/${token}`
+    setShareLink(url)
+    await navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
 
   // Auto-fill address when quote is selected
   function handleQuoteChange(quoteId: string) {
@@ -764,6 +782,57 @@ export function WeekCalendar({
               </div>
             </div>
 
+            {/* Share with worker */}
+            {modal.mode === 'edit' && modal.job && (
+              <div className="px-5 pt-1 pb-2">
+                <div className="rounded-xl p-3" style={{ background: 'rgba(58,124,165,0.05)', border: `1px solid rgba(58,124,165,0.15)` }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Share2 size={12} style={{ color: S.accent }} />
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.accent }}>Worker Link</span>
+                    </div>
+                    <button
+                      onClick={() => void handleCopyLink(modal.job!.id)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      style={{ background: copied ? 'rgba(22,163,74,0.1)' : S.accent, color: copied ? S.green : '#fff' }}>
+                      {copied ? <><CheckCheck size={11} /> Copied!</> : <><Copy size={11} /> Copy Link</>}
+                    </button>
+                  </div>
+                  {shareLink ? (
+                    <p className="text-[10px] truncate font-mono" style={{ color: S.muted }}>{shareLink}</p>
+                  ) : (
+                    <p className="text-[10px]" style={{ color: S.muted }}>Send this link to your worker via WhatsApp — they can view job details and upload photos directly from their phone.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Photos */}
+            {modal.mode === 'edit' && (
+              <div className="px-5 pb-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Image size={12} style={{ color: S.muted }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.muted }}>
+                    Photos {photos.length > 0 && `(${photos.length})`}
+                  </span>
+                </div>
+                {photos.length === 0 ? (
+                  <p className="text-xs" style={{ color: S.muted }}>No photos yet — share the worker link above to collect on-site photos.</p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {photos.map(p => (
+                      <button key={p.id} onClick={() => setLightbox(p.public_url)}
+                        className="aspect-square rounded-lg overflow-hidden relative"
+                        style={{ border: `1px solid ${S.border}` }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.public_url} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Save button */}
             <div className="px-5 pb-5">
               <button onClick={() => void handleSave()}
@@ -776,6 +845,18 @@ export function WeekCalendar({
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* Photo lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90"
+          onClick={() => setLightbox(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="" className="max-w-full max-h-full object-contain" style={{ maxHeight: '90vh' }} />
+          <button className="absolute top-4 right-4 p-2 rounded-full" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }} onClick={() => setLightbox(null)}>
+            <X size={20} />
+          </button>
         </div>
       )}
 

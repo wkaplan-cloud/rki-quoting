@@ -335,10 +335,23 @@ export interface ElecJob {
   start_time: string       // 'HH:MM:SS'
   end_time: string         // 'HH:MM:SS'
   status: ElecJobStatus
+  share_token: string | null
+  share_token_created_at: string | null
   created_at: string
   // Joined
   staff?: ElecStaff | null
   quote?: { id: string; quote_number: string; project_name: string } | null
+}
+
+export interface ElecJobPhoto {
+  id: string
+  job_id: string
+  portal_account_id: string
+  storage_path: string
+  public_url: string
+  file_name: string | null
+  uploaded_by_name: string | null
+  created_at: string
 }
 
 // ─── Dashboard / Recon types ──────────────────────────────────────────────────
