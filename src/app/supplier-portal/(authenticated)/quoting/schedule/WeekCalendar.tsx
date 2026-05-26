@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image, Camera } from 'lucide-react'
 import type { ElecJob, ElecJobStatus, ElecJobPhoto, ElecStaff } from '@/lib/elec-types'
 
 const S = {
@@ -189,7 +189,7 @@ export function WeekCalendar({
       justDraggedRef.current = true
       setTimeout(() => { justDraggedRef.current = false }, 100)
       setJobs(js => js.map(j => j.id === job.id
-        ? { ...j, scheduled_date: previewDate, start_time: previewStart, end_time: previewEnd }
+        ? { ...j, scheduled_date: previewDate, start_time: previewStart, end_time: previewEnd, photo_count: j.photo_count }
         : j))
       void fetch(`/api/supplier-portal/quoting/jobs/${job.id}`, {
         method: 'PATCH',
@@ -259,7 +259,11 @@ export function WeekCalendar({
     setPhotos([])
     setShareLink(null)
     void fetch(`/api/supplier-portal/quoting/jobs/${job.id}/photos`)
-      .then(r => r.json()).then((data: ElecJobPhoto[]) => setPhotos(Array.isArray(data) ? data : []))
+      .then(r => r.json()).then((data: ElecJobPhoto[]) => {
+        const list = Array.isArray(data) ? data : []
+        setPhotos(list)
+        setJobs(js => js.map(j => j.id === job.id ? { ...j, photo_count: list.length } : j))
+      })
   }
 
   function closeModal() { setModal(null); setForm(EMPTY_FORM); setPhotos([]); setShareLink(null); setCopied('idle') }
@@ -605,6 +609,12 @@ export function WeekCalendar({
                           <p className="text-[10px] leading-tight truncate mt-0.5 font-medium" style={{ color }}>
                             {staffMember.name.split(' ')[0]}
                           </p>
+                        )}
+                        {(job.photo_count ?? 0) > 0 && (
+                          <div className="flex items-center gap-0.5 mt-0.5" style={{ color }}>
+                            <Camera size={9} />
+                            <span className="text-[9px] font-semibold">{job.photo_count}</span>
+                          </div>
                         )}
                       </div>
                     )

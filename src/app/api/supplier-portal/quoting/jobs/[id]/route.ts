@@ -23,11 +23,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .update(body)
       .eq('id', id)
       .eq('portal_account_id', account.id)
-      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name)')
+      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name), elec_job_photos(count)')
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    return NextResponse.json(data)
+    const { elec_job_photos, ...rest } = data as typeof data & { elec_job_photos: { count: number }[] | null }
+    return NextResponse.json({ ...rest, photo_count: elec_job_photos?.[0]?.count ?? 0 })
   } catch (e) {
     return apiError(e)
   }

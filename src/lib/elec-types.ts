@@ -341,6 +341,7 @@ export interface ElecJob {
   // Joined
   staff?: ElecStaff | null
   quote?: { id: string; quote_number: string; project_name: string } | null
+  photo_count?: number
 }
 
 export interface ElecJobPhoto {

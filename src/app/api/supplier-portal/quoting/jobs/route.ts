@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabaseAdmin
       .from('elec_jobs')
-      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name)')
+      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name), elec_job_photos(count)')
       .eq('portal_account_id', account.id)
       .order('start_time')
 
@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
     if (end)   query = query.lte('scheduled_date', end)
 
     const { data } = await query
-    return NextResponse.json(data ?? [])
+    const jobs = (data ?? []).map(({ elec_job_photos, ...j }) => ({
+      ...j,
+      photo_count: (elec_job_photos as { count: number }[] | null)?.[0]?.count ?? 0,
+    }))
+    return NextResponse.json(jobs)
   } catch (e) {
     return apiError(e)
   }
