@@ -28,7 +28,14 @@ export async function middleware(request: NextRequest) {
 
   if (isSupplierSubdomain) {
     // Already on a supplier-portal path — let it through
-    if (pathname.startsWith('/supplier-portal') || pathname.startsWith('/sourcing/respond') || pathname.startsWith('/api/')) {
+    if (
+      pathname.startsWith('/supplier-portal') ||
+      pathname.startsWith('/sourcing/respond') ||
+      pathname.startsWith('/api/') ||
+      pathname.startsWith('/job/') ||   // worker photo pages — public, no auth
+      pathname.startsWith('/q/') ||     // quote approval — public, no auth
+      pathname.startsWith('/c/')        // claim view — public, no auth
+    ) {
       // fall through to auth check below
     } else if (pathname.startsWith('/requests/')) {
       // Email links use /requests/[id] shorthand — redirect to the full supplier-portal path
@@ -80,6 +87,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/privacy') ||
     pathname.startsWith('/sourcing/respond') ||
     pathname.startsWith('/api/sourcing/respond') ||
+    pathname.startsWith('/job/') ||
+    pathname.startsWith('/api/job/') ||
     pathname.startsWith('/api/paystack/subscription-callback') ||
     pathname.startsWith('/api/paystack/webhook') ||
     pathname.startsWith('/api/supplier-portal/paystack/callback') ||
