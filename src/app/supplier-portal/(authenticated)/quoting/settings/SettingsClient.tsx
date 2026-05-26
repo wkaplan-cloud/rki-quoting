@@ -15,7 +15,7 @@ const S = {
   input:  '#F4F4F5',
 }
 
-function companyCode(name: string): string {
+function deriveCompanyCode(name: string): string {
   return name.split(/\s+/).map(w => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
 }
 
@@ -90,7 +90,8 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
   const [paymentTerms, setPaymentTerms]     = useState(String(settings?.default_payment_terms_days ?? 30))
   const [defectsLiability, setDefectsLiability] = useState(String(settings?.default_defects_liability_days ?? 90))
 
-  // Prefixes
+  // Company code + prefixes
+  const [companyCodeVal, setCompanyCodeVal] = useState(settings?.company_code ?? '')
   const [quotePrefix, setQuotePrefix]   = useState(settings?.quote_prefix ?? 'EQ')
   const [claimPrefix, setClaimPrefix]   = useState(settings?.claim_prefix ?? 'CLM')
   const [voPrefix, setVoPrefix]         = useState(settings?.vo_prefix ?? 'VO')
@@ -113,12 +114,14 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
   async function handleSave() {
     setSaving(true)
     setError('')
+    const derivedCode = deriveCompanyCode(companyName)
     const payload = {
       portal_account_id:              portalAccountId,
       default_vat_rate:               parseFloat(vatRate) || 15,
       default_retention_percentage:   parseFloat(retention) || 0,
       default_payment_terms_days:     parseInt(paymentTerms) || 30,
       default_defects_liability_days: parseInt(defectsLiability) || 90,
+      company_code:                   companyCodeVal.trim().toUpperCase() || derivedCode || null,
       quote_prefix:                   quotePrefix.trim() || 'EQ',
       claim_prefix:                   claimPrefix.trim() || 'CLM',
       vo_prefix:                      voPrefix.trim() || 'VO',
@@ -178,19 +181,26 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
         {/* Document Prefixes */}
         <Section title="Document Numbering">
           {(() => {
-            const code = companyCode(companyName)
+            const derivedCode = deriveCompanyCode(companyName)
+            const effectiveCode = companyCodeVal.trim().toUpperCase() || derivedCode
             const year = new Date().getFullYear()
             return (
               <>
-                <div className="-mt-2 mb-4 px-3.5 py-3 rounded-lg flex items-center justify-between gap-4" style={{ background: '#F4F4F5', border: `1px solid ${S.border}` }}>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest mb-0.5" style={{ color: S.muted }}>Company Code</p>
-                    <p className="text-lg font-bold font-mono" style={{ color: S.accent }}>{code || '—'}</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Derived from your company name · prepended to all document numbers</p>
+                <div className="-mt-2 mb-4 flex items-end gap-4">
+                  <div className="flex-1">
+                    <Field label="Company Code" hint={`Auto-derived from your company name: "${derivedCode || '—'}". Override here if needed.`}>
+                      <Input
+                        value={companyCodeVal}
+                        onChange={v => setCompanyCodeVal(v.toUpperCase().slice(0, 6))}
+                        placeholder={derivedCode || 'e.g. RKI'}
+                      />
+                    </Field>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: S.muted }}>Example</p>
-                    <p className="text-xs font-mono font-semibold" style={{ color: S.text }}>{code ? `${code}-${quotePrefix || 'EQ'}-${year}-001` : `${quotePrefix || 'EQ'}-${year}-001`}</p>
+                  <div className="shrink-0 pb-0.5 text-right">
+                    <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: S.muted }}>Quote example</p>
+                    <p className="text-xs font-mono font-semibold" style={{ color: S.text }}>
+                      {effectiveCode ? `${effectiveCode}-${quotePrefix || 'EQ'}-${year}-001` : `${quotePrefix || 'EQ'}-${year}-001`}
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-4">

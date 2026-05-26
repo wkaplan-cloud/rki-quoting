@@ -17,8 +17,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .single()
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    const companyCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
-
     // Verify quote ownership
     const { data: quote } = await supabaseAdmin
       .from('elec_quotes')
@@ -48,10 +46,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Auto-number: count all claims for this account
     const { data: settings } = await supabaseAdmin
       .from('elec_settings')
-      .select('claim_prefix')
+      .select('company_code, claim_prefix')
       .eq('portal_account_id', account.id)
       .maybeSingle()
 
+    const autoCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
+    const companyCode = (settings?.company_code ?? '').trim() || autoCode
     const prefix = settings?.claim_prefix ?? 'CLM'
     const year = new Date().getFullYear()
 

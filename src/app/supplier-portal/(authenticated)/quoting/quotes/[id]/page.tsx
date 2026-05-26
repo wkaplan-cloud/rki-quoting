@@ -18,8 +18,6 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
     .single()
   if (!account) redirect('/supplier-portal/not-a-supplier')
 
-  const companyCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
-
   const [
     { data: quote },
     { data: sections },
@@ -74,10 +72,13 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .order('created_at', { ascending: false }),
     supabaseAdmin
       .from('elec_settings')
-      .select('vo_prefix, coc_prefix, claim_prefix')
+      .select('company_code, vo_prefix, coc_prefix, claim_prefix')
       .eq('portal_account_id', account.id)
       .maybeSingle(),
   ])
+
+  const autoCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
+  const companyCode = (settings?.company_code ?? '').trim() || autoCode
 
   if (!quote) notFound()
 

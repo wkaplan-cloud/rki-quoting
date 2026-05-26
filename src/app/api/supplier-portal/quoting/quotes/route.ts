@@ -16,8 +16,6 @@ export async function POST(req: NextRequest) {
       .single()
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    const companyCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
-
     const body = await req.json() as {
       project_name: string
       client_id?: string | null
@@ -28,10 +26,12 @@ export async function POST(req: NextRequest) {
     // Get settings for prefix + defaults
     const { data: settings } = await supabaseAdmin
       .from('elec_settings')
-      .select('quote_prefix, default_vat_rate, default_retention_percentage, default_payment_terms_days, default_defects_liability_days')
+      .select('company_code, quote_prefix, default_vat_rate, default_retention_percentage, default_payment_terms_days, default_defects_liability_days')
       .eq('portal_account_id', account.id)
       .maybeSingle()
 
+    const autoCode   = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
+    const companyCode = (settings?.company_code ?? '').trim() || autoCode
     const prefix = settings?.quote_prefix ?? 'EQ'
     const year   = new Date().getFullYear()
 

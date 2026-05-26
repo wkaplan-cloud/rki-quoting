@@ -22,6 +22,7 @@ export interface ElecSettings {
   default_retention_percentage: number
   default_payment_terms_days: number
   default_defects_liability_days: number
+  company_code: string | null
   quote_prefix: string
   claim_prefix: string
   vo_prefix: string
