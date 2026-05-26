@@ -36,7 +36,6 @@ export default async function SupplierRespondPage({
 
   // Check if the current user is a logged-in supplier portal account — show nav if so
   let portalAccount: { company_name: string | null; email: string; id: string } | null = null
-  let pendingCount = 0
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -46,23 +45,7 @@ export default async function SupplierRespondPage({
         .select('id, company_name, email')
         .eq('auth_user_id', user.id)
         .maybeSingle()
-      if (acct) {
-        portalAccount = acct
-        // Count pending assignments for badge
-        const { data: ssRows } = await supabaseAdmin
-          .from('sourcing_session_suppliers')
-          .select('id')
-          .or(`portal_account_id.eq.${acct.id},email.eq.${acct.email}`)
-        const ssIds = (ssRows ?? []).map((s: any) => s.id)
-        if (ssIds.length > 0) {
-          const { count } = await supabaseAdmin
-            .from('sourcing_item_assignments')
-            .select('id', { count: 'exact', head: true })
-            .in('session_supplier_id', ssIds)
-            .eq('status', 'pending')
-          pendingCount = count ?? 0
-        }
-      }
+      if (acct) portalAccount = acct
     }
   } catch {
     // Unauthenticated — no nav
@@ -115,7 +98,6 @@ export default async function SupplierRespondPage({
     return (
       <SupplierPortalShell
         companyName={portalAccount.company_name ?? portalAccount.email}
-        pendingCount={pendingCount}
       >
         {content}
       </SupplierPortalShell>
