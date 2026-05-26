@@ -111,6 +111,16 @@ export function WeekCalendar({
   const [saving, setSaving]       = useState(false)
   const [deleting, setDeleting]   = useState(false)
   const scrollRef                 = useRef<HTMLDivElement>(null)
+  const gridRef                   = useRef<HTMLDivElement>(null)
+  const weekDaysRef               = useRef<Date[]>([])
+  const dragRef                   = useRef<{
+    job: ElecJob; offsetY: number; duration: number
+    active: boolean; startX: number; startY: number
+    previewDate: string; previewStart: string; previewEnd: string
+  } | null>(null)
+  const [dragPreview, setDragPreview] = useState<{
+    jobId: string; date: string; start: string; end: string
+  } | null>(null)
 
   // Scroll to 7:30am on mount
   useEffect(() => {
@@ -118,6 +128,74 @@ export function WeekCalendar({
       scrollRef.current.scrollTop = (0.5) * HOUR_HEIGHT
     }
   }, [])
+
+  // Keep weekDays ref in sync for drag handlers
+  useEffect(() => { weekDaysRef.current = weekDays }, [weekDays])
+
+  // Attach drag listeners to window
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      const d = dragRef.current
+      if (!d) return
+      if (!d.active) {
+        const dx = e.clientX - d.startX, dy = e.clientY - d.startY
+        if (Math.sqrt(dx * dx + dy * dy) < 5) return
+        d.active = true
+        document.body.style.cursor = 'grabbing'
+        document.body.style.userSelect = 'none'
+      }
+      if (!gridRef.current || !scrollRef.current) return
+      const rect = gridRef.current.getBoundingClientRect()
+      const scrollTop = scrollRef.current.scrollTop
+      const colWidth = (rect.width - 52) / 7
+      const dayIdx = Math.max(0, Math.min(6, Math.floor((e.clientX - rect.left - 52) / colWidth)))
+      const relY = e.clientY - rect.top + scrollTop - d.offsetY
+      const rawMins = START_HOUR * 60 + (relY / HOUR_HEIGHT) * 60
+      const snapped = Math.round(rawMins / 30) * 30
+      const clampedStart = Math.max(START_HOUR * 60, Math.min(snapped, END_HOUR * 60 - d.duration))
+      const preview = {
+        jobId: d.job.id,
+        date:  toDateStr(weekDaysRef.current[dayIdx]),
+        start: minsToTime(clampedStart),
+        end:   minsToTime(clampedStart + d.duration),
+      }
+      d.previewDate = preview.date; d.previewStart = preview.start; d.previewEnd = preview.end
+      setDragPreview(preview)
+    }
+
+    function onUp() {
+      const d = dragRef.current
+      if (!d) return
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      if (!d.active) {
+        dragRef.current = null
+        setDragPreview(null)
+        openEdit(d.job)
+        return
+      }
+      const { previewDate, previewStart, previewEnd, job } = d
+      dragRef.current = null
+      setDragPreview(null)
+      setJobs(js => js.map(j => j.id === job.id
+        ? { ...j, scheduled_date: previewDate, start_time: previewStart, end_time: previewEnd }
+        : j))
+      void fetch(`/api/supplier-portal/quoting/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduled_date: previewDate, start_time: previewStart, end_time: previewEnd }),
+      }).then(r => r.json()).then((updated: ElecJob) => {
+        setJobs(js => js.map(j => j.id === updated.id ? updated : j))
+      })
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const weekDays  = getWeekDays(weekStart)
   const weekEnd   = weekDays[6]
@@ -413,7 +491,7 @@ export function WeekCalendar({
 
         {/* Scrollable time grid */}
         <div ref={scrollRef} className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-          <div className="flex" style={{ height: HOURS.length * HOUR_HEIGHT }}>
+          <div ref={gridRef} className="flex" style={{ height: HOURS.length * HOUR_HEIGHT }}>
 
             {/* Time labels */}
             <div style={{ width: 52, flexShrink: 0 }}>
@@ -457,27 +535,39 @@ export function WeekCalendar({
                   {/* Job blocks */}
                   {dayJobs.map(job => {
                     const staffMember = job.staff ?? staff.find(s => s.id === job.staff_id)
-                    const color  = staffMember?.color ?? S.accent
-                    const top    = jobTop(job.start_time)
-                    const height = jobHeight(job.start_time, job.end_time)
-                    const isDone = job.status === 'completed' || job.status === 'cancelled'
+                    const color     = staffMember?.color ?? S.accent
+                    const top       = jobTop(job.start_time)
+                    const height    = jobHeight(job.start_time, job.end_time)
+                    const isDone    = job.status === 'completed' || job.status === 'cancelled'
+                    const isDragged = dragPreview?.jobId === job.id
 
                     return (
                       <div
                         key={job.id}
                         data-job
-                        onClick={e => { e.stopPropagation(); openEdit(job) }}
-                        className="absolute left-1 right-1 rounded-lg px-2 py-1 overflow-hidden cursor-pointer transition-opacity"
+                        onMouseDown={e => {
+                          e.stopPropagation()
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          dragRef.current = {
+                            job, offsetY: e.clientY - rect.top,
+                            duration: toMins(job.end_time.slice(0,5)) - toMins(job.start_time.slice(0,5)),
+                            active: false, startX: e.clientX, startY: e.clientY,
+                            previewDate: job.scheduled_date,
+                            previewStart: job.start_time.slice(0,5),
+                            previewEnd: job.end_time.slice(0,5),
+                          }
+                        }}
+                        className="absolute left-1 right-1 rounded-lg px-2 py-1 overflow-hidden"
                         style={{
-                          top,
-                          height,
+                          top, height, cursor: 'grab',
                           background: `${color}22`,
                           borderLeft: `3px solid ${color}`,
-                          opacity: isDone ? 0.5 : 1,
+                          opacity: isDragged ? 0.25 : isDone ? 0.5 : 1,
                           zIndex: 10,
+                          transition: isDragged ? 'none' : 'opacity 0.15s',
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = `${color}33`}
-                        onMouseLeave={e => e.currentTarget.style.background = `${color}22`}
+                        onMouseEnter={e => { if (!dragRef.current) e.currentTarget.style.background = `${color}33` }}
+                        onMouseLeave={e => { if (!dragRef.current) e.currentTarget.style.background = `${color}22` }}
                       >
                         <p className="text-[11px] font-semibold leading-tight truncate"
                           style={{ color: S.text, textDecoration: job.status === 'cancelled' ? 'line-through' : 'none' }}>
@@ -496,6 +586,33 @@ export function WeekCalendar({
                       </div>
                     )
                   })}
+
+                  {/* Drag ghost */}
+                  {dragPreview?.date === dateStr && (() => {
+                    const dragJob = jobs.find(j => j.id === dragPreview.jobId)
+                    const sm = dragJob?.staff ?? staff.find(s => s.id === dragJob?.staff_id)
+                    const c  = sm?.color ?? S.accent
+                    const t  = jobTop(dragPreview.start)
+                    const h  = jobHeight(dragPreview.start, dragPreview.end)
+                    return (
+                      <div
+                        className="absolute left-1 right-1 rounded-lg px-2 py-1 overflow-hidden pointer-events-none"
+                        style={{
+                          top: t, height: h, zIndex: 30,
+                          background: `${c}33`,
+                          border: `2px dashed ${c}`,
+                          opacity: 0.9,
+                        }}
+                      >
+                        <p className="text-[11px] font-semibold leading-tight truncate" style={{ color: S.text }}>
+                          {dragJob?.title}
+                        </p>
+                        <p className="text-[10px] leading-tight truncate mt-0.5" style={{ color: S.muted }}>
+                          {fmtTime(dragPreview.start)} – {fmtTime(dragPreview.end)}
+                        </p>
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}
