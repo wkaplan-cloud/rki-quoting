@@ -30,9 +30,9 @@ export default function SupplierPortalLandingPage() {
     <div className="min-h-screen" style={{ background: '#F8F9FA' }}>
       {/* Nav */}
       <header style={{ background: '#1E2A38', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 h-20 sm:h-32 flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+          <img src="/logo.png" alt="QuotingHub" className="h-16 sm:h-28 w-auto max-w-[160px] sm:max-w-[220px] object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
           <div className="flex items-center gap-3">
             <Link
               href="/supplier-portal/login"

@@ -5,9 +5,9 @@ export default function SupplierTermsPage() {
     <div className="min-h-screen bg-[#F5F2EC]">
       {/* Nav */}
       <header className="bg-[#2C2C2A]">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 h-20 sm:h-32 flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto object-contain" style={{ filter: 'invert(1) brightness(0.8)' }} />
+          <img src="/logo.png" alt="QuotingHub" className="h-16 sm:h-28 w-auto max-w-[160px] sm:max-w-[220px] object-contain" style={{ filter: 'invert(1) brightness(0.8)' }} />
           <div className="flex items-center gap-3">
             <Link href="/supplier-portal/login" className="text-sm text-white/60 hover:text-white transition-colors">Sign in</Link>
             <Link href="/supplier-portal/register"
