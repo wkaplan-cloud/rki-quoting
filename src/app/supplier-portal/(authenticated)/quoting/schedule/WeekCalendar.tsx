@@ -112,7 +112,7 @@ export function WeekCalendar({
   const [deleting, setDeleting]   = useState(false)
   const [photos, setPhotos]       = useState<ElecJobPhoto[]>([])
   const [shareLink, setShareLink] = useState<string | null>(null)
-  const [copied, setCopied]       = useState(false)
+  const [copied, setCopied]       = useState<'idle' | 'copying' | 'done'>('idle')
   const [lightbox, setLightbox]   = useState<string | null>(null)
   const scrollRef                 = useRef<HTMLDivElement>(null)
   const gridRef                   = useRef<HTMLDivElement>(null)
@@ -262,16 +262,17 @@ export function WeekCalendar({
       .then(r => r.json()).then((data: ElecJobPhoto[]) => setPhotos(Array.isArray(data) ? data : []))
   }
 
-  function closeModal() { setModal(null); setForm(EMPTY_FORM); setPhotos([]); setShareLink(null); setCopied(false) }
+  function closeModal() { setModal(null); setForm(EMPTY_FORM); setPhotos([]); setShareLink(null); setCopied('idle') }
 
   async function handleCopyLink(jobId: string) {
+    setCopied('copying')
     const res = await fetch(`/api/supplier-portal/quoting/jobs/${jobId}/share`, { method: 'POST' })
     const { token } = await res.json() as { token: string }
     const url = `${window.location.origin}/job/${token}`
     setShareLink(url)
     await navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2500)
+    setCopied('done')
+    setTimeout(() => setCopied('idle'), 2500)
   }
 
   // Auto-fill address when quote is selected
@@ -793,9 +794,12 @@ export function WeekCalendar({
                     </div>
                     <button
                       onClick={() => void handleCopyLink(modal.job!.id)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                      style={{ background: copied ? 'rgba(22,163,74,0.1)' : S.accent, color: copied ? S.green : '#fff' }}>
-                      {copied ? <><CheckCheck size={11} /> Copied!</> : <><Copy size={11} /> Copy Link</>}
+                      disabled={copied === 'copying'}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-70"
+                      style={{ background: copied === 'done' ? 'rgba(22,163,74,0.1)' : S.accent, color: copied === 'done' ? S.green : '#fff' }}>
+                      {copied === 'copying' && <><Loader2 size={11} className="animate-spin" /> Copying…</>}
+                      {copied === 'done'    && <><CheckCheck size={11} /> Copied!</>}
+                      {copied === 'idle'    && <><Copy size={11} /> Copy Link</>}
                     </button>
                   </div>
                   {shareLink ? (
