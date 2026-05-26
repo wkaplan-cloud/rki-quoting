@@ -32,7 +32,7 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40 }}>
             <View>
               {logoUrl
-                ? <Image src={logoUrl} style={{ maxWidth: 240, maxHeight: 56, objectFit: 'contain' }} />
+                ? <Image src={logoUrl} style={{ maxWidth: 240, maxHeight: 56, objectFit: 'contain', alignSelf: 'flex-start' }} />
                 : <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: theme.primary, letterSpacing: 0.3 }}>{businessName || 'Studio'}</Text>
               }
             </View>
