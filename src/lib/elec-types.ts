@@ -111,6 +111,8 @@ export interface ElecQuote {
   expected_completion_date: string | null
   practical_completion_date: string | null
   archived_at: string | null
+  share_token: string | null
+  share_token_created_at: string | null
   created_at: string
   // Joined
   client?: ElecClient

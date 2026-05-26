@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
-  AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download,
+  AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Share2, Copy,
 } from 'lucide-react'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 import { AsBuiltTab } from './AsBuiltTab'
@@ -501,6 +501,25 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
   const showTabs = ['in_progress', 'completed'].includes(q.status)
+
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+
+  async function handleShare() {
+    setShareLoading(true)
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/quotes/${q.id}/share`, { method: 'POST' })
+      const json = await res.json() as { token?: string }
+      if (json.token) {
+        const url = `${window.location.origin}/q/${json.token}`
+        await navigator.clipboard.writeText(url)
+        setShareCopied(true)
+        setTimeout(() => setShareCopied(false), 2500)
+      }
+    } finally {
+      setShareLoading(false)
+    }
+  }
   const allItems = [...freeItems, ...sections.flatMap(s => s.items)]
   const subtotal  = allItems.reduce((s, i) => s + itemTotal(i), 0)
   const vatAmt    = subtotal * ((q.vat_rate ?? 15) / 100)
@@ -658,6 +677,16 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           style={{ background: S.accent, color: '#fff' }}>
           <Download size={12} /> PDF
         </a>
+        {q.status === 'quoted' && (
+          <button
+            onClick={() => void handleShare()}
+            disabled={shareLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+            style={{ background: shareCopied ? 'rgba(22,163,74,0.1)' : 'rgba(58,124,165,0.1)', color: shareCopied ? S.green : S.accent, border: `1px solid ${shareCopied ? 'rgba(22,163,74,0.3)' : 'rgba(58,124,165,0.25)'}` }}>
+            {shareLoading ? <Loader2 size={12} className="animate-spin" /> : shareCopied ? <Copy size={12} /> : <Share2 size={12} />}
+            {shareCopied ? 'Link copied!' : 'Share'}
+          </button>
+        )}
         <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>{st.label}</span>
       </div>
