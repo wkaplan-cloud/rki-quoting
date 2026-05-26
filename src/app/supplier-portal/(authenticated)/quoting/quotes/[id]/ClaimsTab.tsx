@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronRight, AlertCircle, Download, Printer } from 'lucide-react'
+import { Plus, X, ChevronRight, AlertCircle, Download, Printer, Send, Link, FileText, Check as CheckIcon, Loader2 } from 'lucide-react'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType, ElecClient } from '@/lib/elec-types'
 
 type ClaimClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
@@ -175,6 +175,8 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         sent_at: submitFlag ? new Date().toISOString() : null,
         notes: notes.trim() || null,
         variation_order_id: null,
+        share_token: null,
+        share_token_created_at: null,
         created_at: new Date().toISOString(),
         line_items: itemsWithClaim.map(l => ({
           id: crypto.randomUUID(),
@@ -433,7 +435,7 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
         status: submitFlag ? 'submitted' : 'draft', total_claimed: retentionHeld,
         total_certified: null, total_invoiced: null, total_paid: null,
         sent_to_name: sentToName.trim() || null, sent_to_email: sentToEmail.trim() || null,
-        sent_at: null, notes: notes.trim() || null, qs_name: null, qs_email: null, variation_order_id: null, created_at: new Date().toISOString(),
+        sent_at: null, notes: notes.trim() || null, qs_name: null, qs_email: null, variation_order_id: null, share_token: null, share_token_created_at: null, created_at: new Date().toISOString(),
         line_items: [],
       }
       onCreated(newClaim)
@@ -530,6 +532,35 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
   const [loading, setLoading] = useState(false)
   const [certError, setCertError] = useState('')
   const st = CLAIM_STATUS[claim.status]
+
+  // Send modal state
+  const [showSendModal, setShowSendModal]   = useState(false)
+  const [sendMethod, setSendMethod]         = useState<'link' | 'pdf'>('pdf')
+  const [sendEmail, setSendEmail]           = useState(claim.sent_to_email ?? '')
+  const [sendMessage, setSendMessage]       = useState('')
+  const [sendStatus, setSendStatus]         = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [sendError, setSendError]           = useState('')
+
+  async function handleSend() {
+    if (!sendEmail.trim() || sendStatus === 'sending') return
+    setSendStatus('sending'); setSendError('')
+    try {
+      const route = sendMethod === 'link' ? 'send-link' : 'send-pdf'
+      const res = await fetch(`/api/supplier-portal/quoting/claims/${claim.id}/${route}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
+      })
+      const data = await res.json() as { ok?: boolean; status?: string; error?: string }
+      if (!res.ok || !data.ok) { setSendStatus('error'); setSendError(data.error ?? 'Failed to send'); return }
+      if (data.status && data.status !== claim.status) {
+        onStatusChange(claim.id, { status: data.status as typeof claim.status, sent_at: new Date().toISOString() })
+      }
+      setSendStatus('sent')
+    } catch {
+      setSendStatus('error'); setSendError('Network error')
+    }
+  }
 
   const itemMap = Object.fromEntries(items.map(i => [i.id, i]))
 
@@ -810,12 +841,22 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
       <div className="flex items-center gap-2 px-5 py-4 flex-wrap" style={{ borderTop: `1px solid ${S.border}` }}>
         <span className="text-xs flex-1" style={{ color: S.muted }}>
           {claim.sent_to_name && `Sent to: ${claim.sent_to_name}`}
+          {claim.sent_at && !claim.sent_to_name && `Sent ${new Date(claim.sent_at).toLocaleDateString('en-ZA')}`}
         </span>
+
+        {/* Send button — always available for draft/submitted */}
+        {(claim.status === 'draft' || claim.status === 'submitted') && (
+          <button onClick={() => { setSendStatus('idle'); setSendError(''); setShowSendModal(true) }}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold"
+            style={{ background: S.accent }}>
+            <Send size={13} />{claim.status === 'draft' ? 'Send to Client →' : 'Send Again →'}
+          </button>
+        )}
         {claim.status === 'draft' && (
           <button onClick={() => advance('submitted', { sent_at: new Date().toISOString() })}
             disabled={loading}
-            className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
-            style={{ background: S.accent }}>Send to Client →</button>
+            className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>Mark Submitted (no email)</button>
         )}
         {claim.status === 'submitted' && claim.claim_type === 'retention' && (
           <button onClick={() => advance('paid', { total_paid: claim.total_claimed })}
@@ -854,6 +895,94 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
             style={{ color: S.muted, background: S.bg }}>← Revert to Draft</button>
         )}
       </div>
+
+      {/* Send modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSendModal(false) }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <div>
+                <h2 className="font-bold text-sm" style={{ color: S.text }}>Send to Client</h2>
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>{claim.claim_number} · {fmtMonth(claim.period_month)}</p>
+              </div>
+              <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: S.muted }}>
+                <X size={15} />
+              </button>
+            </div>
+
+            {sendStatus === 'sent' ? (
+              <div className="px-5 py-10 flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(22,163,74,0.1)' }}>
+                  <CheckIcon size={22} style={{ color: S.green }} />
+                </div>
+                <p className="font-semibold text-sm" style={{ color: S.text }}>Sent successfully!</p>
+                <p className="text-xs text-center" style={{ color: S.muted }}>
+                  {sendMethod === 'pdf' ? 'PDF attached to email' : 'View link sent'} to {sendEmail}
+                </p>
+                <button onClick={() => setShowSendModal(false)}
+                  className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold text-white"
+                  style={{ background: S.accent }}>Done</button>
+              </div>
+            ) : (
+              <div className="p-5 space-y-4">
+                {/* Method cards */}
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { method: 'pdf' as const, icon: FileText, label: 'PDF Attachment', desc: 'Claim PDF sent as email attachment' },
+                    { method: 'link' as const, icon: Link, label: 'View Link', desc: 'Email with link to view online' },
+                  ] as const).map(({ method, icon: Icon, label, desc }) => (
+                    <button key={method} onClick={() => setSendMethod(method)}
+                      className="flex flex-col items-start gap-2 p-3 rounded-xl text-left transition-colors"
+                      style={{
+                        border: `2px solid ${sendMethod === method ? S.accent : S.border}`,
+                        background: sendMethod === method ? 'rgba(58,124,165,0.05)' : S.bg,
+                      }}>
+                      <Icon size={16} style={{ color: sendMethod === method ? S.accent : S.muted }} />
+                      <div>
+                        <p className="text-xs font-semibold" style={{ color: sendMethod === method ? S.accent : S.text }}>{label}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>{desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To *</label>
+                  <input type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
+                    placeholder="client@email.com"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+
+                {/* Message */}
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Message <span style={{ fontWeight: 400 }}>(optional)</span></label>
+                  <textarea value={sendMessage} onChange={e => setSendMessage(e.target.value)}
+                    rows={2} placeholder="Add a personal note…"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none resize-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+
+                {sendError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: '#FEF2F2', color: S.danger }}>
+                    <AlertCircle size={13} />{sendError}
+                  </div>
+                )}
+
+                <button onClick={() => void handleSend()}
+                  disabled={!sendEmail.trim() || sendStatus === 'sending'}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                  style={{ background: S.accent }}>
+                  {sendStatus === 'sending' ? <><Loader2 size={14} className="animate-spin" /> Sending…</> : <><Send size={14} /> Send {claim.status === 'draft' ? '& Submit' : ''}</>}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

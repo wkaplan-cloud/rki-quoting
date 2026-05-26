@@ -132,6 +132,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
         sent_at: sentAt,
         notes: voNotes.trim() || null,
         variation_order_id: vo.id,
+        share_token: null,
+        share_token_created_at: null,
         created_at: new Date().toISOString(),
         line_items: [],
       }
