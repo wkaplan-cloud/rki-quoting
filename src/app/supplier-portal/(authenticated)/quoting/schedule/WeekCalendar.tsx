@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer } from 'lucide-react'
 import type { ElecJob, ElecJobStatus, ElecStaff } from '@/lib/elec-types'
 
 const S = {
@@ -96,10 +96,12 @@ export function WeekCalendar({
   initialJobs,
   staff,
   quotes,
+  companyName,
 }: {
   initialJobs: ElecJob[]
   staff: ElecStaff[]
   quotes: QuoteOption[]
+  companyName: string
 }) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()))
   const [jobs, setJobs]           = useState<ElecJob[]>(initialJobs)
@@ -223,6 +225,101 @@ export function WeekCalendar({
     closeModal()
   }
 
+  // ── Print ─────────────────────────────────────────────────────────────────
+  function handlePrint() {
+    const DAYS_FULL = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    const rows = weekDays.map((day, i) => {
+      const dateStr  = toDateStr(day)
+      const dayJobs  = jobs
+        .filter(j => j.scheduled_date === dateStr && j.status !== 'cancelled')
+        .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+      const jobRows = dayJobs.length === 0
+        ? `<tr><td colspan="4" style="padding:8px 12px;color:#94A3B8;font-style:italic;font-size:13px;">No jobs scheduled</td></tr>`
+        : dayJobs.map(job => {
+            const staffMember = job.staff ?? staff.find(s => s.id === job.staff_id)
+            const color = staffMember?.color ?? '#3A7CA5'
+            return `
+              <tr style="border-bottom:1px solid #F1F5F9;">
+                <td style="padding:10px 12px;white-space:nowrap;font-size:13px;color:#475569;font-weight:600;">
+                  ${fmtTime(job.start_time)} – ${fmtTime(job.end_time)}
+                </td>
+                <td style="padding:10px 12px;font-size:13px;font-weight:700;color:#18181B;">
+                  ${job.title}
+                  ${job.address ? `<div style="font-weight:400;color:#64748B;font-size:12px;margin-top:2px;">${job.address}</div>` : ''}
+                  ${job.notes   ? `<div style="font-weight:400;color:#94A3B8;font-size:11px;margin-top:2px;font-style:italic;">${job.notes}</div>` : ''}
+                </td>
+                <td style="padding:10px 12px;font-size:13px;white-space:nowrap;">
+                  ${staffMember
+                    ? `<span style="display:inline-flex;align-items:center;gap:5px;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
+                        ${staffMember.name}
+                       </span>`
+                    : '<span style="color:#94A3B8;">Unassigned</span>'
+                  }
+                </td>
+                <td style="padding:10px 12px;font-size:12px;color:#94A3B8;white-space:nowrap;">
+                  ${job.status === 'completed' ? '✓ Done' : job.status === 'in_progress' ? '⚡ In Progress' : ''}
+                </td>
+              </tr>`
+          }).join('')
+
+      return `
+        <div style="margin-bottom:24px;break-inside:avoid;">
+          <div style="background:#1E2A38;color:#fff;padding:10px 16px;border-radius:6px 6px 0 0;display:flex;align-items:baseline;gap:10px;">
+            <span style="font-size:15px;font-weight:700;">${DAYS_FULL[i]}</span>
+            <span style="font-size:13px;opacity:0.6;">${day.getDate()} ${MONTHS[day.getMonth()]}</span>
+            ${dayJobs.length > 0 ? `<span style="margin-left:auto;font-size:12px;opacity:0.5;">${dayJobs.length} job${dayJobs.length !== 1 ? 's' : ''}</span>` : ''}
+          </div>
+          <table style="width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-top:none;border-radius:0 0 6px 6px;overflow:hidden;">
+            <colgroup>
+              <col style="width:130px">
+              <col style="width:auto">
+              <col style="width:140px">
+              <col style="width:90px">
+            </colgroup>
+            ${jobRows}
+          </table>
+        </div>`
+    }).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Week Schedule — ${companyName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, Arial, sans-serif; background: #fff; color: #18181B; padding: 32px; }
+    @media print {
+      body { padding: 16px; }
+      @page { margin: 16mm; size: A4 portrait; }
+    }
+  </style>
+</head>
+<body>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #1E2A38;">
+    <div>
+      <h1 style="font-size:22px;font-weight:800;color:#1E2A38;">${companyName}</h1>
+      <p style="font-size:14px;color:#64748B;margin-top:4px;">Week Schedule: ${startLabel} – ${endLabel}</p>
+    </div>
+    <div style="text-align:right;">
+      <p style="font-size:11px;color:#94A3B8;">Printed ${new Date().toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'})}</p>
+    </div>
+  </div>
+  ${rows}
+  <p style="margin-top:32px;font-size:10px;color:#CBD5E1;text-align:center;">Generated by QuotingHub · quotinghub.co.za</p>
+</body>
+</html>`
+
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    setTimeout(() => { w.print() }, 400)
+  }
+
   // ── Week label ────────────────────────────────────────────────────────────
   const startLabel = `${weekDays[0].getDate()} ${MONTHS[weekDays[0].getMonth()]}`
   const endLabel   = `${weekEnd.getDate()} ${MONTHS[weekEnd.getMonth()]} ${weekEnd.getFullYear()}`
@@ -260,6 +357,14 @@ export function WeekCalendar({
           onMouseEnter={e => e.currentTarget.style.background = S.border}
           onMouseLeave={e => e.currentTarget.style.background = S.bg}>
           Today
+        </button>
+
+        <button onClick={handlePrint}
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+          style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}
+          onMouseEnter={e => e.currentTarget.style.background = S.border}
+          onMouseLeave={e => e.currentTarget.style.background = S.bg}>
+          <Printer size={13} /> Print
         </button>
 
         <div className="flex-1" />

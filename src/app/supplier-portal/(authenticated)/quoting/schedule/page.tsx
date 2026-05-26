@@ -27,7 +27,7 @@ export default async function SchedulePage() {
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, plan, subscription_status')
+    .select('id, plan, subscription_status, company_name, email')
     .eq('auth_user_id', user.id)
     .single()
 
@@ -66,6 +66,7 @@ export default async function SchedulePage() {
         initialJobs={(jobs ?? []) as ElecJob[]}
         staff={(staff ?? []) as ElecStaff[]}
         quotes={(quotes ?? []) as { id: string; quote_number: string; project_name: string; project_address: string | null }[]}
+        companyName={account.company_name ?? account.email ?? 'Schedule'}
       />
     </div>
   )
