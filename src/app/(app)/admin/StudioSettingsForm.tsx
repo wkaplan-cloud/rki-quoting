@@ -795,8 +795,10 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                     setUploading(true)
                     let compressed: File
                     try { compressed = await compressImage(file) } catch (err) { toast.error(err instanceof Error ? err.message : 'Upload failed'); setUploading(false); e.target.value = ''; return }
+                    const { data: { user: lhUser } } = await supabase.auth.getUser()
+                    if (!lhUser) { toast.error('Not authenticated'); setUploading(false); e.target.value = ''; return }
                     const ext = compressed.name.split('.').pop()
-                    const path = `letterhead.${ext}`
+                    const path = `studios/${lhUser.id}/letterhead.${ext}`
                     const { error: uploadError } = await supabase.storage
                       .from('branding')
                       .upload(path, compressed, { upsert: true, contentType: compressed.type })
