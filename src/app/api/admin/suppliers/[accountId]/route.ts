@@ -3,6 +3,38 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ accountId: string }> }) {
+  try {
+    const { accountId } = await params
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    const { data: member } = await supabaseAdmin
+      .from('org_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (member?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    const body = await req.json() as { supplier_category?: string }
+    if (!body.supplier_category) return NextResponse.json({ error: 'supplier_category required' }, { status: 400 })
+
+    const { error } = await supabaseAdmin
+      .from('supplier_portal_accounts')
+      .update({ supplier_category: body.supplier_category })
+      .eq('id', accountId)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    return apiError(e)
+  }
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ accountId: string }> }) {
   try {
     const { accountId } = await params

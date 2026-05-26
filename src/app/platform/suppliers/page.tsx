@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Store, Globe, Phone, MapPin, BarChart3 } from 'lucide-react'
 import { PortalAccountLinker } from './PortalAccountLinker'
+import { SupplierCategoryBadge } from './SupplierCategoryBadge'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -10,7 +11,7 @@ function fmtDate(iso: string) {
 export default async function PlatformSuppliersPage() {
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id')
+    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category')
     .order('created_at', { ascending: false })
 
   const rows = accounts ?? []
@@ -206,7 +207,7 @@ export default async function PlatformSuppliersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  {['Company', 'Email', 'Categories', 'Contact', 'Requests', 'Registered', 'Status'].map(h => (
+                  {['Company', 'Email', 'Type', 'Categories', 'Contact', 'Requests', 'Registered', 'Status'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -234,6 +235,9 @@ export default async function PlatformSuppliersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-white/60 whitespace-nowrap text-xs">{row.email}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <SupplierCategoryBadge accountId={row.id} initial={(row as any).supplier_category ?? 'manufacturer'} />
+                      </td>
                       <td className="px-4 py-3">
                         {cats.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
