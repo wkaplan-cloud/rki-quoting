@@ -317,6 +317,28 @@ export interface ElecStaff {
   created_at: string
 }
 
+// ─── Jobs (scheduling) ───────────────────────────────────────────────────────
+
+export type ElecJobStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+
+export interface ElecJob {
+  id: string
+  portal_account_id: string
+  quote_id: string | null
+  staff_id: string | null
+  title: string
+  address: string | null
+  notes: string | null
+  scheduled_date: string   // 'YYYY-MM-DD'
+  start_time: string       // 'HH:MM:SS'
+  end_time: string         // 'HH:MM:SS'
+  status: ElecJobStatus
+  created_at: string
+  // Joined
+  staff?: ElecStaff | null
+  quote?: { id: string; quote_number: string; project_name: string } | null
+}
+
 // ─── Dashboard / Recon types ──────────────────────────────────────────────────
 
 export interface ElecMonthlyRecon {
