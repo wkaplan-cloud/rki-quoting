@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Loader2, AlertCircle } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Download } from 'lucide-react'
 import type { ElecCOC } from '@/lib/elec-types'
 
 const S = {
@@ -36,6 +36,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
   })
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
+  const [downloading, setDownloading] = useState(false)
   // Track whether the user has interacted — don't save a blank COC on first render
   const hasEditedRef = useRef(!!initialCOC)
 
@@ -70,6 +71,15 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
     return () => clearTimeout(autoSaveTimer.current)
   }, [coc]) // eslint-disable-line
 
+  async function handleDownload() {
+    setDownloading(true)
+    // Flush any pending auto-save first
+    clearTimeout(autoSaveTimer.current)
+    await handleSave()
+    window.open(`/api/supplier-portal/quoting/coc/${coc.id}/pdf`, '_blank')
+    setDownloading(false)
+  }
+
   const inp = (label: string, val: string | null, cb: (v: string) => void, placeholder?: string, type = 'text') => (
     <div>
       <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{label}</label>
@@ -91,10 +101,22 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
           <p className="text-sm font-semibold" style={{ color: S.text }}>Certificate of Compliance</p>
           <p className="text-xs" style={{ color: S.muted }}>Issued under the Occupational Health &amp; Safety Act</p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
-          {saveStatus === 'saving' && <><Loader2 size={12} className="animate-spin" />Saving…</>}
-          {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
-          {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
+            {saveStatus === 'saving' && <><Loader2 size={12} className="animate-spin" />Saving…</>}
+            {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
+            {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
+          </div>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity disabled:opacity-40"
+            style={{ background: S.accent, color: '#fff' }}
+            title="Download COC as PDF"
+          >
+            {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+            {downloading ? 'Generating…' : 'Download PDF'}
+          </button>
         </div>
       </div>
 
