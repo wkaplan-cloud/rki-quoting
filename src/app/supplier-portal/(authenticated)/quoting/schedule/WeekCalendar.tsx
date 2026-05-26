@@ -270,7 +270,7 @@ export function WeekCalendar({
     const { token } = await res.json() as { token: string }
     const url = `${window.location.origin}/job/${token}`
     setShareLink(url)
-    await navigator.clipboard.writeText(url)
+    void navigator.clipboard.writeText(url)
     setCopied('done')
     setTimeout(() => setCopied('idle'), 2500)
   }
