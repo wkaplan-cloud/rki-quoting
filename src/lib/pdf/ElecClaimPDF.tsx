@@ -156,7 +156,7 @@ export function ElecClaimPDF({
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
             {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 52, alignSelf: 'flex-start', marginBottom: metaParts ? 4 : 0 }} />
+              ? <Image src={logoUrl} style={{ maxWidth: 180, alignSelf: 'flex-start', marginBottom: metaParts ? 4 : 0 }} />
               : <Text style={s.company}>{companyName}</Text>
             }
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}

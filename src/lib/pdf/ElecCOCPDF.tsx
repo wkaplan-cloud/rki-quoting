@@ -67,7 +67,7 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName, logoUrl 
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
             {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 52, alignSelf: 'flex-start', marginBottom: 4 }} />
+              ? <Image src={logoUrl} style={{ maxWidth: 180, alignSelf: 'flex-start', marginBottom: 4 }} />
               : <Text style={s.company}>{companyName}</Text>
             }
             {settings?.vat_registration_number && <Text style={s.companyMeta}>VAT Reg: {settings.vat_registration_number}</Text>}
