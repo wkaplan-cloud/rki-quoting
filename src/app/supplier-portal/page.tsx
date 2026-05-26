@@ -56,7 +56,7 @@ export default function SupplierPortalLandingPage() {
         <div className="max-w-5xl mx-auto px-6 py-20 text-center">
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest mb-6"
-            style={{ background: 'rgba(217,164,65,0.15)', color: '#D9A441', border: '1px solid rgba(217,164,65,0.25)' }}
+            style={{ background: 'rgba(58,124,165,0.15)', color: '#3A7CA5', border: '1px solid rgba(58,124,165,0.25)' }}
           >
             QuotingHub Supplier Portal
           </div>
@@ -128,7 +128,7 @@ export default function SupplierPortalLandingPage() {
           <Link
             href="/supplier-portal/register"
             className="flex-shrink-0 inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl transition-opacity"
-            style={{ background: '#D9A441', color: '#1E2A38' }}
+            style={{ background: '#3A7CA5', color: '#FFFFFF' }}
           >
             Create free account <ArrowRight size={14} />
           </Link>
