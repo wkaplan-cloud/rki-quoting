@@ -673,8 +673,15 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
   const totalClaimed   = progressClaims.reduce((s, c) => s + c.total_claimed, 0)
   const totalCertified = progressClaims.filter(c => c.total_certified != null).reduce((s, c) => s + (c.total_certified ?? 0), 0)
   const totalPaid      = claims.filter(c => c.status === 'paid').reduce((s, c) => s + (c.total_paid ?? c.total_claimed), 0)
-  const adjustedContract = contractTotal + approvedVOTotal
-  const balance          = adjustedContract - totalClaimed
+  // Re-measurement: billable value is as-built total, not the original quoted amount
+  const adjustedContract = contractType === 're_measurement'
+    ? items.reduce((s, i) => {
+        const qty = i.as_built_quantity ?? i.quoted_quantity
+        const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
+        return s + qty * rate
+      }, 0) + approvedVOTotal
+    : contractTotal + approvedVOTotal
+  const balance = adjustedContract - totalClaimed
 
   // Retention: calculated from certified (or claimed if not certified) amounts × retention %
   const certifiedBase  = activeClaims.filter(c => c.claim_type !== 'retention').reduce((s, c) => s + (c.total_certified ?? c.total_claimed), 0)
@@ -739,7 +746,7 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
       {/* Summary */}
       <div className="grid grid-cols-4 gap-3 mb-4">
         {[
-          { label: 'Contract Value',   value: fmtR(contractTotal),  color: S.text,                              sub: approvedVOTotal > 0 ? `+ ${fmtR(approvedVOTotal)} VOs` : null,                    subColor: S.green },
+          { label: contractType === 're_measurement' ? 'As-Built Value' : 'Contract Value', value: fmtR(adjustedContract), color: S.text, sub: approvedVOTotal > 0 ? `+ ${fmtR(approvedVOTotal)} VOs` : null, subColor: S.green },
           { label: 'Total Claimed',    value: fmtR(totalClaimed),   color: S.accent,                            sub: null,                                                                                   subColor: S.muted },
           { label: 'Total Certified',  value: fmtR(totalCertified), color: S.gold,                              sub: null,                                                                                   subColor: S.muted },
           { label: 'Balance to Claim', value: fmtR(balance),        color: balance >= 0 ? S.muted : S.danger,  sub: retentionHeld > 0 && !hasRetentionClaim ? `Retention held: ${fmtR(retentionHeld)}` : null, subColor: S.gold },
