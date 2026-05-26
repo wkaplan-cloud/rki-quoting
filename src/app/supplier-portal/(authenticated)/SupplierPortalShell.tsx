@@ -5,16 +5,23 @@ import { SupplierPortalNav } from './SupplierPortalNav'
 interface Props {
   children: React.ReactNode
   companyName: string
-  pendingCount: number
   hasQuoting?: boolean
 }
 
-export function SupplierPortalShell({ children, companyName, pendingCount, hasQuoting = false }: Props) {
+export function SupplierPortalShell({ children, companyName, hasQuoting = false }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
+  const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
     const saved = localStorage.getItem('supplier-sidebar-expanded')
     if (saved !== null) setDesktopExpanded(saved === 'true')
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/supplier-portal/pending-count')
+      .then(r => r.json())
+      .then(d => setPendingCount(d.count ?? 0))
+      .catch(() => {})
   }, [])
 
   return (
