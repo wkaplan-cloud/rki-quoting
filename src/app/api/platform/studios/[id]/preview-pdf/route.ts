@@ -123,6 +123,7 @@ export async function GET(
         paymentTerms: settings?.payment_terms ?? null,
         leadTime: settings?.lead_time ?? null,
       })
+    )
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
