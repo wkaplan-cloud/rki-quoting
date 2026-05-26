@@ -40,8 +40,10 @@ export default function OnboardingPage() {
     setUploading(true)
     let compressed: File
     try { compressed = await compressImage(file) } catch (e) { toast.error(e instanceof Error ? e.message : 'Upload failed'); setUploading(false); return }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Not authenticated'); setUploading(false); return }
     const ext = compressed.name.split('.').pop()
-    const path = `logo.${ext}`
+    const path = `studios/${user.id}/logo.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('branding')
       .upload(path, compressed, { upsert: true, contentType: compressed.type })
