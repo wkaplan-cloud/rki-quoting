@@ -516,11 +516,12 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
 }
 
 // ─── Claim detail ─────────────────────────────────────────────────────────────
-function ClaimDetail({ claim, items, onStatusChange, onClose }: {
+function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = false }: {
   claim: ClaimWithItems
   items: ElecQuoteLineItem[]
   onStatusChange: (id: string, patch: Partial<ClaimWithItems>) => void
   onClose: () => void
+  autoOpenSend?: boolean
 }) {
   const supabase = createClient()
   const [showCertForm, setShowCertForm] = useState(false)
@@ -534,7 +535,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose }: {
   const st = CLAIM_STATUS[claim.status]
 
   // Send modal state
-  const [showSendModal, setShowSendModal]   = useState(false)
+  const [showSendModal, setShowSendModal]   = useState(autoOpenSend)
   const [sendMethod, setSendMethod]         = useState<'link' | 'pdf'>('pdf')
   const [sendEmail, setSendEmail]           = useState(claim.sent_to_email ?? '')
   const [sendMessage, setSendMessage]       = useState('')
@@ -1015,6 +1016,7 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
   }, [extraClaims])
   const [view, setView] = useState<View>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [autoOpenSend, setAutoOpenSend] = useState(false)
 
   const activeClaims = claims.filter(c => c.status !== 'draft')
   const progressClaims = activeClaims.filter(c => c.claim_type !== 'retention')
@@ -1040,7 +1042,13 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
 
   function handleCreated(claim: ClaimWithItems) {
     setClaims(prev => [claim, ...prev])
-    setView('list')
+    if (claim.status === 'submitted') {
+      setSelectedId(claim.id)
+      setAutoOpenSend(true)
+      setView('detail')
+    } else {
+      setView('list')
+    }
   }
 
   function handleStatusChange(id: string, patch: Partial<ClaimWithItems>) {
@@ -1081,11 +1089,9 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
       <ClaimDetail
         claim={selected}
         items={items}
-        onStatusChange={(id, patch) => {
-          handleStatusChange(id, patch)
-          // Update selected claim inline
-        }}
-        onClose={() => { setView('list'); setSelectedId(null) }}
+        autoOpenSend={autoOpenSend}
+        onStatusChange={(id, patch) => { handleStatusChange(id, patch) }}
+        onClose={() => { setView('list'); setSelectedId(null); setAutoOpenSend(false) }}
       />
     )
   }
