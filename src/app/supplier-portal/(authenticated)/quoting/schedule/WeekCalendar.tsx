@@ -314,7 +314,7 @@ export function WeekCalendar({
             <div style={{ width: 52, flexShrink: 0 }}>
               {HOURS.map(h => (
                 <div key={h} style={{ height: HOUR_HEIGHT, position: 'relative' }}>
-                  <span className="absolute -top-2.5 right-2 text-[10px] font-medium"
+                  <span className="absolute top-1 right-2 text-[10px] font-medium"
                     style={{ color: S.muted }}>
                     {h === 12 ? '12pm' : h > 12 ? `${h-12}pm` : `${h}am`}
                   </span>
