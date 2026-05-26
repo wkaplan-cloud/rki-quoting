@@ -33,12 +33,20 @@ interface Props {
 
 export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, letterheadFilename, currentTemplate, currentTheme }: Props) {
   const router = useRouter()
-  const [template, setTemplate] = useState<TemplateKey>((currentTemplate as TemplateKey) ?? 'minimal')
+
+  const isCustomCurrent = currentTemplate && !TEMPLATES.some(t => t.key === currentTemplate)
+
+  const [template, setTemplate] = useState<TemplateKey>(
+    (TEMPLATES.some(t => t.key === currentTemplate) ? currentTemplate : 'minimal') as TemplateKey
+  )
   const [theme, setTheme] = useState<ThemeKey>((currentTheme as ThemeKey) ?? 'warm')
+  const [customKey, setCustomKey] = useState(isCustomCurrent ? (currentTemplate ?? '') : '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const previewUrl = `/api/platform/studios/${orgId}/preview-pdf?template=${template}&theme=${theme}`
+  // Custom key takes precedence over the standard picker
+  const activeTemplateKey = customKey.trim() || template
+  const previewUrl = `/api/platform/studios/${orgId}/preview-pdf?template=${activeTemplateKey}&theme=${theme}`
 
   async function apply() {
     setSaving(true)
@@ -47,14 +55,14 @@ export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, lett
       const res = await fetch(`/api/platform/studios/${adminUserId}/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdf_template: template, pdf_color_theme: theme }),
+        body: JSON.stringify({ pdf_template: activeTemplateKey, pdf_color_theme: theme }),
       })
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error ?? 'Failed to save')
       }
       setSaved(true)
-      toast.success('Template applied to studio')
+      toast.success(`Applied "${activeTemplateKey}" template to studio`)
       router.refresh()
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -100,17 +108,25 @@ export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, lett
         </div>
       )}
 
-      {/* Template picker */}
+      {/* Current applied template */}
+      {currentTemplate && (
+        <p className="text-xs text-white/30 mb-4">
+          Currently applied: <span className="font-mono text-white/60 bg-white/5 px-1.5 py-0.5 rounded">{currentTemplate}</span>
+          {isCustomCurrent && <span className="ml-2 text-[#C4A46B]">custom</span>}
+        </p>
+      )}
+
+      {/* Standard template picker */}
       <div className="mb-5">
         <p className="text-xs text-white/40 mb-3">Template</p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {TEMPLATES.map(t => (
             <button
               key={t.key}
               type="button"
-              onClick={() => setTemplate(t.key)}
+              onClick={() => { setTemplate(t.key); setCustomKey('') }}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
-                template === t.key
+                activeTemplateKey === t.key
                   ? 'bg-[#C4A46B]/15 border-[#C4A46B]/40 text-[#C4A46B]'
                   : 'bg-white/5 border-white/10 text-white/50 hover:border-white/20 hover:text-white/70'
               }`}
@@ -119,6 +135,22 @@ export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, lett
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Custom template key input */}
+      <div className="mb-5">
+        <p className="text-xs text-white/40 mb-1.5">Custom template key</p>
+        <p className="text-xs text-white/25 mb-2">After building a custom template with Claude, paste its key here (e.g. <span className="font-mono">custom_rki_studio</span>). This overrides the picker above.</p>
+        <input
+          type="text"
+          value={customKey}
+          onChange={e => setCustomKey(e.target.value)}
+          placeholder="e.g. custom_rki_studio"
+          className="w-full max-w-xs px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white/80 placeholder-white/20 font-mono focus:outline-none focus:border-[#C4A46B]/40 transition-colors"
+        />
+        {customKey.trim() && (
+          <p className="text-xs text-[#C4A46B] mt-1.5">Custom key active — standard picker is overridden</p>
+        )}
       </div>
 
       {/* Theme picker */}
@@ -147,7 +179,7 @@ export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, lett
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <a
           href={previewUrl}
           target="_blank"
@@ -166,7 +198,7 @@ export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, lett
           {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : null}
           {saving ? 'Applying…' : saved ? 'Applied' : 'Apply to Studio'}
         </button>
-        {saved && <span className="text-xs text-emerald-400">Saved — studio will see this on next PDF</span>}
+        {saved && <span className="text-xs text-emerald-400">Saved — studio gets this on next PDF</span>}
       </div>
     </div>
   )
