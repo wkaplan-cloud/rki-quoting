@@ -25,11 +25,13 @@ values ('job-photos', 'job-photos', true)
 on conflict (id) do nothing;
 
 -- Allow public read of job photos
-create policy if not exists "Public read job photos"
+drop policy if exists "Public read job photos" on storage.objects;
+create policy "Public read job photos"
   on storage.objects for select
   using (bucket_id = 'job-photos');
 
--- Allow service role to insert (our API handles auth)
-create policy if not exists "Service role insert job photos"
+-- Allow anyone to insert (our API validates the share token)
+drop policy if exists "Public insert job photos" on storage.objects;
+create policy "Public insert job photos"
   on storage.objects for insert
   with check (bucket_id = 'job-photos');
