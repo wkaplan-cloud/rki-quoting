@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { compressImage } from '@/lib/compressImage'
 import { Check, Loader2, Upload, X } from 'lucide-react'
 
 interface Props {
@@ -86,12 +87,13 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
 
   async function handleLogoUpload(file: File) {
     if (!file.type.startsWith('image/')) { setError('Please upload an image file'); return }
-    if (file.size > 5 * 1024 * 1024) { setError('Logo must be under 5 MB'); return }
     setUploading(true); setError('')
-    const ext = file.name.split('.').pop() ?? 'png'
+    let compressed: File
+    try { compressed = await compressImage(file) } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed'); setUploading(false); return }
+    const ext = compressed.name.split('.').pop() ?? 'jpg'
     const { error: uploadError } = await supabase.storage
       .from('branding')
-      .upload(`logo.${ext}`, file, { upsert: true, contentType: file.type })
+      .upload(`logo.${ext}`, compressed, { upsert: true, contentType: compressed.type })
     if (uploadError) { setError('Upload failed: ' + uploadError.message); setUploading(false); return }
     const { data } = supabase.storage.from('branding').getPublicUrl(`logo.${ext}`)
     const url = data.publicUrl + '?t=' + Date.now()
