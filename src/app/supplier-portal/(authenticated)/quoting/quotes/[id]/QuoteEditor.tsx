@@ -350,12 +350,8 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked }: {
                   onChange={e => {
                     const cost = e.target.value === '' ? null : parseFloat(e.target.value)
                     const patch: Partial<ItemState> = { cost_unit_rate: cost }
-                    if (cost != null && cost > 0) {
-                      if (item.markup_percentage != null) {
-                        patch.quoted_unit_rate = Math.round(cost * (1 + item.markup_percentage / 100) * 100) / 100
-                      } else if ((item.quoted_unit_rate ?? 0) > 0) {
-                        patch.markup_percentage = Math.round(((item.quoted_unit_rate - cost) / cost) * 1000) / 10
-                      }
+                    if (cost != null && cost > 0 && item.markup_percentage != null) {
+                      patch.quoted_unit_rate = Math.round(cost * (1 + item.markup_percentage / 100) * 100) / 100
                     }
                     set(patch)
                   }}
