@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -24,6 +24,10 @@ const QUOTING_NAV_ITEMS = [
   { href: '/supplier-portal/quoting/quotes',   label: 'Quotes',    icon: FileText,        exact: false },
   { href: '/supplier-portal/quoting/clients',  label: 'Clients',   icon: Users,           exact: false },
   { href: '/supplier-portal/quoting/settings', label: 'Settings',  icon: Settings,        exact: false },
+]
+
+const TEAM_NAV_ITEMS = [
+  { href: '/supplier-portal/quoting/staff', label: 'Staff', icon: HardHat, exact: false },
 ]
 
 const S = {
@@ -159,6 +163,37 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, deskt
                 </p>
                 <div className="space-y-0.5">
                   {QUOTING_NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
+                    const active = exact ? pathname === href : pathname.startsWith(href)
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
+                        style={{
+                          background: active ? S.activeBg : 'transparent',
+                          borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
+                        }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+                      >
+                        <span className="flex items-center justify-center w-9 flex-shrink-0">
+                          <Icon size={15} style={{ color: active ? S.textLight : S.textMuted }} />
+                        </span>
+                        <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
+                          {label}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                {/* Team section */}
+                <p className={`${labelCls} px-4 mt-4 mb-1 text-[10px] font-bold uppercase tracking-widest`} style={{ color: S.textMuted }}>
+                  Team
+                </p>
+                <div className="space-y-0.5">
+                  {TEAM_NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
                     const active = exact ? pathname === href : pathname.startsWith(href)
                     return (
                       <Link

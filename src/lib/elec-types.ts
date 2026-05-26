@@ -301,6 +301,22 @@ export interface ElecSnagItem {
   created_at: string
 }
 
+// ─── Staff ────────────────────────────────────────────────────────────────────
+
+export type ElecStaffRole = 'electrician' | 'apprentice' | 'site_foreman' | 'helper' | 'admin'
+
+export interface ElecStaff {
+  id: string
+  portal_account_id: string
+  name: string
+  role: ElecStaffRole
+  phone: string | null
+  email: string | null
+  color: string
+  is_active: boolean
+  created_at: string
+}
+
 // ─── Dashboard / Recon types ──────────────────────────────────────────────────
 
 export interface ElecMonthlyRecon {
