@@ -1,5 +1,5 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecCOC, ElecQuote, ElecClient, ElecSettings } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
@@ -55,9 +55,10 @@ interface Props {
   client: ElecClient | null
   settings: ElecSettings | null
   companyName: string
+  logoUrl?: string | null
 }
 
-export function ElecCOCPDF({ coc, quote, client, settings, companyName }: Props) {
+export function ElecCOCPDF({ coc, quote, client, settings, companyName, logoUrl }: Props) {
   return (
     <Document>
       <Page size="A4" style={s.page}>
@@ -65,9 +66,12 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName }: Props)
         {/* Header */}
         <View style={s.header}>
           <View>
-            <Text style={s.company}>{companyName}</Text>
-            {settings?.vat_number && <Text style={s.companyMeta}>VAT Reg: {settings.vat_number}</Text>}
-            {settings?.registration_number && <Text style={s.companyMeta}>Reg: {settings.registration_number}</Text>}
+            {logoUrl
+              ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 52, objectFit: 'contain', marginBottom: 4 }} />
+              : <Text style={s.company}>{companyName}</Text>
+            }
+            {settings?.vat_registration_number && <Text style={s.companyMeta}>VAT Reg: {settings.vat_registration_number}</Text>}
+            {settings?.company_registration_number && <Text style={s.companyMeta}>Reg: {settings.company_registration_number}</Text>}
           </View>
           <View>
             <Text style={s.docTitle}>CERTIFICATE OF{'\n'}COMPLIANCE</Text>
@@ -83,8 +87,8 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName }: Props)
           <View style={s.infoBox}>
             <Text style={s.infoBoxHd}>FROM — ELECTRICAL CONTRACTOR</Text>
             <Text style={s.infoBold}>{companyName}</Text>
-            {settings?.contact_email && <Text style={s.infoRow}>{settings.contact_email}</Text>}
-            {settings?.contact_phone && <Text style={s.infoRow}>{settings.contact_phone}</Text>}
+            {settings?.cidb_registration_number && <Text style={s.infoRow}>CIDB: {settings.cidb_registration_number}</Text>}
+            {settings?.vat_registration_number && <Text style={s.infoRow}>VAT: {settings.vat_registration_number}</Text>}
           </View>
           <View style={s.infoBox}>
             <Text style={s.infoBoxHd}>CLIENT / PROPERTY OWNER</Text>

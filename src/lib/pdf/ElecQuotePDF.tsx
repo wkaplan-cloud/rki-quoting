@@ -1,5 +1,5 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
@@ -66,9 +66,10 @@ export interface ElecQuotePDFProps {
   items: ElecQuoteLineItem[]
   settings: ElecSettings | null
   companyName: string
+  logoUrl?: string | null
 }
 
-export function ElecQuotePDF({ quote, client, sections, items, settings, companyName }: ElecQuotePDFProps) {
+export function ElecQuotePDF({ quote, client, sections, items, settings, companyName, logoUrl }: ElecQuotePDFProps) {
   const freeItems    = items.filter(i => i.section_id === null)
   const contractTotal = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
   const vatRate       = quote.vat_rate ?? settings?.default_vat_rate ?? 15
@@ -115,7 +116,10 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
         {/* Header */}
         <View style={s.header}>
           <View>
-            <Text style={s.company}>{companyName}</Text>
+            {logoUrl
+              ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 52, objectFit: 'contain', marginBottom: metaParts ? 4 : 0 }} />
+              : <Text style={s.company}>{companyName}</Text>
+            }
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>

@@ -36,19 +36,22 @@ export async function PATCH(req: NextRequest) {
       categories?: string[]
       description?: string
       website?: string
+      logo_url?: string | null
     }
+
+    const patch: Record<string, unknown> = {}
+    if ('company_name'  in body) patch.company_name  = body.company_name?.trim()  || null
+    if ('contact_name'  in body) patch.contact_name  = body.contact_name?.trim()  || null
+    if ('phone'         in body) patch.phone         = body.phone?.trim()         || null
+    if ('address'       in body) patch.address       = body.address?.trim()       || null
+    if ('categories'    in body) patch.categories    = body.categories            ?? null
+    if ('description'   in body) patch.description   = body.description?.trim()   || null
+    if ('website'       in body) patch.website       = body.website?.trim()       || null
+    if ('logo_url'      in body) patch.logo_url      = body.logo_url              ?? null
 
     const { data, error } = await supabaseAdmin
       .from('supplier_portal_accounts')
-      .update({
-        company_name: body.company_name?.trim() || null,
-        contact_name: body.contact_name?.trim() || null,
-        phone: body.phone?.trim() || null,
-        address: body.address?.trim() || null,
-        categories: body.categories ?? null,
-        description: body.description?.trim() || null,
-        website: body.website?.trim() || null,
-      })
+      .update(patch)
       .eq('auth_user_id', user.id)
       .select()
       .single()

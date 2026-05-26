@@ -1,8 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2, Upload, X } from 'lucide-react'
 
 interface Props {
   portalAccountId: string
@@ -15,6 +15,7 @@ interface Props {
     categories: string[]
     description: string
     website: string
+    logo_url: string | null
   }
   elecSettings: {
     cidb_registration_number: string | null
@@ -68,6 +69,10 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
   const [branchCode, setBranchCode] = useState(elecSettings?.bank_branch_code ?? '')
   const [accType, setAccType]     = useState(elecSettings?.bank_account_type ?? 'Current')
 
+  const [logoUrl, setLogoUrl] = useState<string | null>(account.logo_url)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -77,6 +82,27 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
 
   function toggleCategory(cat: string) {
     setCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])
+  }
+
+  async function handleLogoUpload(file: File) {
+    if (!file.type.startsWith('image/')) { setError('Please upload an image file'); return }
+    if (file.size > 5 * 1024 * 1024) { setError('Logo must be under 5 MB'); return }
+    setUploading(true); setError('')
+    const ext = file.name.split('.').pop() ?? 'png'
+    const { error: uploadError } = await supabase.storage
+      .from('branding')
+      .upload(`logo.${ext}`, file, { upsert: true, contentType: file.type })
+    if (uploadError) { setError('Upload failed: ' + uploadError.message); setUploading(false); return }
+    const { data } = supabase.storage.from('branding').getPublicUrl(`logo.${ext}`)
+    const url = data.publicUrl + '?t=' + Date.now()
+    setLogoUrl(url)
+    // Save immediately so the logo persists without needing to hit Save Profile
+    await fetch('/api/supplier-portal/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ logo_url: url }),
+    })
+    setUploading(false)
   }
 
   async function handleDeleteRequest() {
@@ -102,7 +128,7 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
       const profileRes = await fetch('/api/supplier-portal/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company_name: companyName, contact_name: contactName, phone, address, categories, description, website }),
+        body: JSON.stringify({ company_name: companyName, contact_name: contactName, phone, address, categories, description, website, logo_url: logoUrl }),
       })
       const profileJson = await profileRes.json()
       if (!profileRes.ok) throw new Error(profileJson.error)
@@ -177,6 +203,53 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
         {/* Business Details */}
         <div className="p-5 rounded-xl space-y-5" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
           <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#71717A' }}>Business Details</p>
+
+          {/* Logo upload */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#71717A' }}>Company Logo</label>
+            <p className="text-xs mb-3" style={{ color: '#A1A1AA' }}>Appears on the top-left of all PDFs in place of your company name text. PNG or SVG recommended.</p>
+            <div className="flex items-center gap-4">
+              {logoUrl ? (
+                <div className="relative group">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logoUrl} alt="Company logo" className="h-14 max-w-[200px] object-contain rounded-lg border p-2 bg-white" style={{ borderColor: '#E4E4E7' }} />
+                  <button
+                    type="button"
+                    onClick={async () => { setLogoUrl(null); await fetch('/api/supplier-portal/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logo_url: null }) }) }}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: '#DC2626', color: '#fff' }}
+                    title="Remove logo"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              ) : (
+                <div className="h-14 w-32 rounded-lg flex items-center justify-center text-xs" style={{ border: '1.5px dashed #E4E4E7', color: '#A1A1AA' }}>
+                  No logo
+                </div>
+              )}
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) void handleLogoUpload(f); e.target.value = '' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg disabled:opacity-50 transition-opacity"
+                  style={{ background: '#F4F4F5', color: '#18181B', border: '1px solid #E4E4E7' }}
+                >
+                  {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                  {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
+                </button>
+                <p className="text-[10px] mt-1.5" style={{ color: '#A1A1AA' }}>Max 5 MB · PNG, JPG, or SVG</p>
+              </div>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Company / Trading Name">

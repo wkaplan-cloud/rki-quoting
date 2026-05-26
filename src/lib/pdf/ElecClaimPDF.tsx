@@ -1,5 +1,5 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecClaim, ElecQuote, ElecQuoteSection, ElecClient, ElecSettings } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
@@ -87,10 +87,11 @@ export interface ElecClaimPDFProps {
   companyName: string
   contractTotal: number
   prevTotalClaimed: number
+  logoUrl?: string | null
 }
 
 export function ElecClaimPDF({
-  claim, lineItems, sections, quote, client, settings, companyName, contractTotal, prevTotalClaimed,
+  claim, lineItems, sections, quote, client, settings, companyName, contractTotal, prevTotalClaimed, logoUrl,
 }: ElecClaimPDFProps) {
   const isDraft      = claim.status === 'draft'
   const isRetention  = claim.claim_type === 'retention'
@@ -154,7 +155,10 @@ export function ElecClaimPDF({
         {/* Header */}
         <View style={s.header}>
           <View>
-            <Text style={s.company}>{companyName}</Text>
+            {logoUrl
+              ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 52, objectFit: 'contain', marginBottom: metaParts ? 4 : 0 }} />
+              : <Text style={s.company}>{companyName}</Text>
+            }
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>

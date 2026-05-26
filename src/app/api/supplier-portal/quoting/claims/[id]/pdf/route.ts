@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ElecClaimPDF } from '@/lib/pdf/ElecClaimPDF'
+import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import type { ElecClaim, ElecClaimLineItem, ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 import type { ClaimLineItemForPDF } from '@/lib/pdf/ElecClaimPDF'
@@ -19,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
-      .select('id, company_name, email')
+      .select('id, company_name, email, logo_url')
       .eq('auth_user_id', user.id)
       .single()
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
@@ -113,6 +114,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     )
 
     const companyName = account.company_name ?? account.email ?? 'Company'
+    const logoUrl = await fetchLogoBase64((account as any).logo_url)
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,6 +128,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         companyName,
         contractTotal,
         prevTotalClaimed,
+        logoUrl,
       }) as any
     )
 

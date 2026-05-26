@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ElecCOCPDF } from '@/lib/pdf/ElecCOCPDF'
+import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import type { ElecCOC, ElecQuote, ElecClient, ElecSettings } from '@/lib/elec-types'
 
@@ -18,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
-      .select('id, company_name, email')
+      .select('id, company_name, email, logo_url')
       .eq('auth_user_id', user.id)
       .single()
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
@@ -49,6 +50,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const client = Array.isArray(quoteRaw.client) ? quoteRaw.client[0] : quoteRaw.client
     const companyName = account.company_name ?? account.email ?? 'Company'
+    const logoUrl = await fetchLogoBase64((account as any).logo_url)
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,6 +60,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         client:      (client ?? null) as ElecClient | null,
         settings:    (settings ?? null) as ElecSettings | null,
         companyName,
+        logoUrl,
       }) as any
     )
 
