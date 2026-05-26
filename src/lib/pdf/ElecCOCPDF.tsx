@@ -65,7 +65,7 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName, logoUrl 
 
         {/* Header */}
         <View style={s.header}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 16 }}>
             {logoUrl
               ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 52, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 4 }} />
               : <Text style={s.company}>{companyName}</Text>

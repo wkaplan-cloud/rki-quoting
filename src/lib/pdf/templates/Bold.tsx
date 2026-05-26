@@ -29,7 +29,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
 
         {/* Dark full-width header band */}
         <View style={{ backgroundColor: theme.headerBg, paddingVertical: 32, paddingHorizontal: 48, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 16 }}>
             {logoUrl
               ? <Image src={logoUrl} style={{ maxWidth: 220, maxHeight: 60, objectFit: 'contain', alignSelf: 'flex-start' }} />
               : <Text style={{ fontSize: 20, fontFamily: 'Helvetica-Bold', color: theme.headerText, letterSpacing: 1 }}>{businessName || 'Studio'}</Text>

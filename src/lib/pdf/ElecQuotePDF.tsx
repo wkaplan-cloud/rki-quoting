@@ -115,7 +115,7 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
 
         {/* Header */}
         <View style={s.header}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 16 }}>
             {logoUrl
               ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 52, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: metaParts ? 4 : 0 }} />
               : <Text style={s.company}>{companyName}</Text>

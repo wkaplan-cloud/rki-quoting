@@ -30,7 +30,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
 
           {/* Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-            <View>
+            <View style={{ flex: 1, paddingRight: 16 }}>
               {logoUrl
                 ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 8 }} />
                 : <Text style={{ fontSize: 16, fontFamily: 'Helvetica-Bold', color: theme.primary, letterSpacing: 0.5, marginBottom: 8 }}>{businessName || 'Studio'}</Text>
