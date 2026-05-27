@@ -702,7 +702,16 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           <Download size={12} /> PDF
         </a>
         <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+        {q.status === 'in_progress' ? (
+          <button
+            onClick={() => { if (confirm('Mark this project as completed?')) transition('completed') }}
+            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full transition-opacity hover:opacity-75"
+            style={{ background: st.bg, color: st.color }}>
+            {st.label} <span style={{ fontSize: 10 }}>▾</span>
+          </button>
+        ) : (
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+        )}
       </div>
 
       {/* Tab nav (only in_progress / completed) */}
