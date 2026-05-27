@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Check, FileText, AlertCircle, Download, Printer } from 'lucide-react'
+import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail } from 'lucide-react'
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 
 const S = {
@@ -56,7 +56,33 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   const [voLoading, setVOLoading] = useState(false)
   const [voError, setVOError] = useState('')
 
+  // Send to client form state
+  const [sendingVoId, setSendingVoId] = useState<string | null>(null)
+  const [sendEmail, setSendEmail] = useState('')
+  const [sendMessage, setSendMessage] = useState('')
+  const [sendLoading, setSendLoading] = useState(false)
+  const [sendError, setSendError] = useState('')
+
   const year = new Date().getFullYear()
+
+  async function handleSendToClient(voId: string) {
+    if (!sendEmail.trim()) { setSendError('Email required'); return }
+    setSendLoading(true); setSendError('')
+    const res = await fetch(`/api/supplier-portal/quoting/vos/${voId}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
+    })
+    const json = await res.json()
+    if (!res.ok) { setSendError(json.error ?? 'Failed to send'); setSendLoading(false); return }
+    setVOs(prev => {
+      const next = prev.map(v => v.id === voId ? { ...v, sent_to_email: sendEmail.trim(), sent_at: new Date().toISOString() } : v)
+      onVOsChanged?.(next)
+      return next
+    })
+    setSendingVoId(null); setSendEmail(''); setSendMessage('')
+    setSendLoading(false)
+  }
 
   async function handleCreate() {
     if (!formDesc.trim()) { setError('Description required'); return }
@@ -266,6 +292,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             const st = VO_STATUS[vo.status]
             const linkedClaim = voClaims.find(c => c.variation_order_id === vo.id)
             const isInvoicing = invoicingVoId === vo.id
+            const isSending = sendingVoId === vo.id
             return (
               <div key={vo.id}
                 style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
@@ -273,10 +300,16 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                 <div className="px-5 py-4">
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-xs font-mono" style={{ color: S.muted }}>{vo.vo_number}</span>
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
                           style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                        {vo.sent_at && (
+                          <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+                            <Mail size={10} /> Sent to {vo.sent_to_email}
+                          </span>
+                        )}
                         {linkedClaim && (
                           <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
                             style={{ background: 'rgba(22,163,74,0.08)', color: S.green }}>
@@ -289,21 +322,33 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       {vo.requested_by && <p className="text-xs mt-1" style={{ color: S.muted }}>Requested by: {vo.requested_by}</p>}
                       {vo.notes && <p className="text-xs mt-0.5 italic" style={{ color: S.muted }}>{vo.notes}</p>}
                       {vo.approved_date && <p className="text-xs mt-0.5" style={{ color: S.green }}>Approved {vo.approved_date}</p>}
+                      {vo.rejection_notes && <p className="text-xs mt-0.5 italic" style={{ color: S.danger }}>Reason: {vo.rejection_notes}</p>}
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      {vo.status === 'pending' && (
+                    <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                      {vo.status === 'pending' && !isSending && (
                         <>
+                          <button
+                            onClick={() => { setSendingVoId(vo.id); setSendError('') }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+                            <Send size={11} /> Send to Client
+                          </button>
                           <button onClick={() => updateStatus(vo.id, 'approved')}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
                             style={{ background: S.green }}>
-                            <Check size={11} /> Approve
+                            <Check size={11} /> Mark Approved (verbal)
                           </button>
                           <button onClick={() => updateStatus(vo.id, 'rejected')}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
                             style={{ background: '#FEF2F2', color: S.danger }}>
-                            <X size={11} /> Reject
+                            <X size={11} /> Mark Rejected
                           </button>
                         </>
+                      )}
+                      {isSending && (
+                        <button onClick={() => setSendingVoId(null)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg transition-opacity hover:opacity-75"
+                          style={{ color: S.muted, background: S.bg }}>Cancel</button>
                       )}
                       {vo.status === 'approved' && !linkedClaim && !isInvoicing && (
                         <button
@@ -321,6 +366,46 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                     </div>
                   </div>
                 </div>
+
+                {/* Send to client inline form */}
+                {isSending && (
+                  <div className="mx-5 mb-4 rounded-xl p-4" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+                    <p className="text-xs font-semibold mb-3" style={{ color: S.text }}>
+                      Send {vo.vo_number} to client for approval
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 mb-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Client Email *</label>
+                        <input type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
+                          autoFocus placeholder="client@example.com"
+                          className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                          style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Message (optional)</label>
+                        <textarea value={sendMessage} onChange={e => setSendMessage(e.target.value)} rows={2}
+                          placeholder="Add a note for the client…"
+                          className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
+                          style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                      </div>
+                    </div>
+                    {sendError && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded mb-3 text-sm"
+                        style={{ background: '#FEF2F2', color: S.danger, border: '1px solid #FECACA' }}>
+                        <AlertCircle size={13} />{sendError}
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => { setSendingVoId(null); setSendEmail(''); setSendMessage(''); setSendError('') }}
+                        className="px-4 py-2 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
+                      <button onClick={() => handleSendToClient(vo.id)} disabled={sendLoading || !sendEmail.trim()}
+                        className="flex items-center gap-1.5 px-5 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
+                        style={{ background: S.accent }}>
+                        <Send size={13} />{sendLoading ? 'Sending…' : 'Send Email'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Inline invoice form */}
                 {isInvoicing && (

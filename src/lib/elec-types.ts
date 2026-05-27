@@ -206,6 +206,10 @@ export interface ElecVariationOrder {
   approved_by: string | null
   approved_date: string | null
   notes: string | null
+  share_token: string | null
+  sent_to_email: string | null
+  sent_at: string | null
+  rejection_notes: string | null
   created_at: string
 }
 
