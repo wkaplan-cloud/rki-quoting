@@ -125,8 +125,10 @@ export default async function QuotingDashboardPage() {
 
   const pipeline      = quotes.filter(q => ['draft', 'quoted', 'approved'].includes(q.status))
   const active        = quotes.filter(q => q.status === 'in_progress')
+  const completed     = quotes.filter(q => q.status === 'completed')
   const pipelineValue = pipeline.reduce((s, q) => s + q.contract_value, 0)
   const activeValue   = active.reduce((s, q) => s + q.contract_value + q.approved_vo_value, 0)
+  const completedValue = completed.reduce((s, q) => s + q.contract_value + q.approved_vo_value, 0)
 
   const year    = new Date().getFullYear().toString()
   const ytd     = claims.filter(c => c.status !== 'draft' && c.period_month.startsWith(year))
@@ -151,10 +153,11 @@ export default async function QuotingDashboardPage() {
   const reconMonths = Object.keys(reconMap).sort((a, b) => b.localeCompare(a)).slice(0, 12)
 
   const statCards = [
-    { label: 'Pipeline',    value: fmtR(pipelineValue), sub: `${pipeline.length} quote${pipeline.length !== 1 ? 's' : ''}`, color: S.accent },
-    { label: 'Active Jobs', value: fmtR(activeValue),   sub: `${active.length} job${active.length !== 1 ? 's' : ''}`,      color: S.green  },
-    { label: 'Outstanding', value: fmtR(outstanding),   sub: 'Invoiced but not yet paid',                                   color: outstanding > 0 ? S.gold : S.muted },
-    { label: 'Paid YTD',   value: fmtR(paidYTD),       sub: year,                                                          color: S.green  },
+    { label: 'Pipeline',    value: fmtR(pipelineValue),  sub: `${pipeline.length} quote${pipeline.length !== 1 ? 's' : ''}`,       color: S.accent },
+    { label: 'Active Jobs', value: fmtR(activeValue),    sub: `${active.length} job${active.length !== 1 ? 's' : ''}`,             color: S.green  },
+    { label: 'Completed',   value: fmtR(completedValue), sub: `${completed.length} job${completed.length !== 1 ? 's' : ''}`,       color: '#166534' },
+    { label: 'Outstanding', value: fmtR(outstanding),    sub: 'Invoiced but not yet paid',                                          color: outstanding > 0 ? S.gold : S.muted },
+    { label: 'Paid YTD',   value: fmtR(paidYTD),        sub: year,                                                                 color: S.green  },
   ]
 
   return (
@@ -165,7 +168,7 @@ export default async function QuotingDashboardPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight" style={{ color: S.text }}>Quoting Dashboard</h1>
           <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-            {active.length} active · {pipeline.length} in pipeline
+            {active.length} active · {pipeline.length} in pipeline · {completed.length} completed
           </p>
         </div>
         <Link
@@ -178,7 +181,7 @@ export default async function QuotingDashboardPage() {
       </div>
 
       {/* Summary stat cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {statCards.map(card => (
           <div key={card.label} className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{card.label}</p>
@@ -276,6 +279,47 @@ export default async function QuotingDashboardPage() {
                   <p className="text-[10px] mt-0.5 font-semibold"
                     style={{ color: balance > 0.01 ? S.gold : S.green }}>
                     {balance > 0.01 ? `To claim: ${fmtR(balance)}` : 'Fully claimed'}
+                  </p>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Completed Jobs */}
+      {completed.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(22,101,52,0.04)' }}>
+            <p className="text-sm font-semibold" style={{ color: S.text }}>Completed Jobs</p>
+            <p className="text-[10px]" style={{ color: S.muted }}>{completed.length} project{completed.length !== 1 ? 's' : ''} · {fmtR(completedValue)} total contract value</p>
+          </div>
+          {completed.map((q, i) => {
+            const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
+            const adjustedContract = q.contract_value + q.approved_vo_value
+            return (
+              <Link
+                key={q.id}
+                href={`/supplier-portal/quoting/quotes/${q.id}`}
+                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#F9FAFB]"
+                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
+                      style={{ background: '#F0FDF4', color: '#166534' }}>{q.quote_number}</span>
+                  </div>
+                  {q.client_name && (
+                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client_name}</p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] mb-0.5" style={{ color: S.muted }}>Contract</p>
+                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(adjustedContract)}</p>
+                  <p className="text-[10px] mt-0.5 font-semibold"
+                    style={{ color: ct.paid >= adjustedContract * 0.99 ? S.green : S.gold }}>
+                    {ct.paid >= adjustedContract * 0.99 ? 'Fully paid' : `Outstanding: ${fmtR(adjustedContract - ct.paid)}`}
                   </p>
                 </div>
               </Link>
