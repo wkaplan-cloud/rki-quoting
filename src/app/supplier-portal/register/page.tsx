@@ -23,7 +23,7 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
       {/* Logo bar */}
       <div className="flex items-center justify-between px-8 py-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+        <img src="/logo.png" alt="QuotingHub" className="h-16 sm:h-20 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
         <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
           Already have an account?{' '}
           <Link href="/supplier-portal/login" className="hover:underline" style={{ color: 'rgba(255,255,255,0.6)' }}>Sign in</Link>
@@ -214,7 +214,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
       <div className="hidden lg:flex lg:w-[42%] flex-col justify-between py-14 px-12" style={{ background: panelBg }}>
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain mb-12" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+          <img src="/logo.png" alt="QuotingHub" className="h-16 sm:h-20 w-auto object-contain mb-12" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
           <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6" style={{ background: accentBg }}>
             {isElec ? <Zap size={20} style={{ color: accent }} /> : <Package size={20} style={{ color: accent }} />}
           </div>
@@ -261,7 +261,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
           {/* Mobile logo */}
           <div className="lg:hidden mb-8 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto mx-auto object-contain" />
+            <img src="/logo.png" alt="QuotingHub" className="h-16 sm:h-20 w-auto mx-auto object-contain" />
           </div>
 
           <div className="bg-white rounded-2xl p-8" style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)' }}>
