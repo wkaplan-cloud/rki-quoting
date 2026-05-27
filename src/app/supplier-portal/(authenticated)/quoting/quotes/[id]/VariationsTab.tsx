@@ -224,13 +224,12 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             <div className="col-span-2">
               <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Description *</label>
               <input value={formDesc} onChange={e => setFormDesc(e.target.value)} autoFocus
-                placeholder="Describe the variation work"
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
             <div>
               <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Charge to Client (R)</label>
-              <input type="number" value={formValue} onChange={e => setFormValue(e.target.value)} placeholder="0.00"
+              <input type="number" value={formValue} onChange={e => setFormValue(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none text-right"
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
@@ -247,13 +246,13 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                   return null
                 })()}
               </label>
-              <input type="number" value={formCost} onChange={e => setFormCost(e.target.value)} placeholder="Optional"
+              <input type="number" value={formCost} onChange={e => setFormCost(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none text-right"
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
             <div>
               <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Requested By</label>
-              <input value={formRequestedBy} onChange={e => setFormRequestedBy(e.target.value)} placeholder="Name or company"
+              <input value={formRequestedBy} onChange={e => setFormRequestedBy(e.target.value)}
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
