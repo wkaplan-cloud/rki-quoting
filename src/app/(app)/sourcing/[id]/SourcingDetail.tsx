@@ -972,6 +972,7 @@ function AddSupplierForm({
           pending_supplier_specs: null,
           spec_approval_status: null,
           spec_approved_at: null,
+          ignored: false,
           response: null,
         }))
 
@@ -2476,6 +2477,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
           pending_supplier_specs: null,
           spec_approval_status: null,
           spec_approved_at: null,
+          ignored: false,
           response: null,
         }
         return { ...s, assignments: [...s.assignments, newAssignment] }
