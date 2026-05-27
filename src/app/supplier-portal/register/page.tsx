@@ -21,9 +21,9 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
     <div className="min-h-screen flex flex-col" style={{ background: '#0F1923' }}>
 
       {/* Logo bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-6">
+      <div className="flex items-center justify-between px-6 sm:px-10 py-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-24 sm:h-32 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+        <img src="/logo.png" alt="QuotingHub" className="h-24 sm:h-32 w-auto max-w-[200px] sm:max-w-[260px] object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
         <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
           Already have an account?{' '}
           <Link href="/supplier-portal/login" className="hover:underline" style={{ color: 'rgba(255,255,255,0.6)' }}>Sign in</Link>
