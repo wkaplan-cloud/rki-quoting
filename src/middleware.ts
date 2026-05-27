@@ -26,6 +26,16 @@ export async function middleware(request: NextRequest) {
   const isSupplierSubdomain = host.startsWith('suppliers.')
   const { pathname } = request.nextUrl
 
+  // Main domain: /supplier-portal/* pages belong on the subdomain — redirect there
+  if (!isSupplierSubdomain && pathname.startsWith('/supplier-portal') && !pathname.startsWith('/api/')) {
+    const baseHost = host.replace(/^www\./, '')
+    if (!baseHost.startsWith('localhost') && !baseHost.startsWith('127.')) {
+      const dest = new URL(request.url)
+      dest.host = `suppliers.${baseHost}`
+      return NextResponse.redirect(dest)
+    }
+  }
+
   if (isSupplierSubdomain) {
     // Already on a supplier-portal path — let it through
     if (
