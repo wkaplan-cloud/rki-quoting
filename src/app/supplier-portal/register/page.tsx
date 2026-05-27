@@ -101,11 +101,11 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
               ))}
             </div>
             <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <div>
+              <div className="flex flex-col">
                 <span className="text-xs font-semibold" style={{ color: '#D9A441' }}>30-day free trial</span>
-                <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.35)' }}>then R499/mo</span>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>then R499/mo</span>
               </div>
-              <span className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(217,164,65,0.15)', color: '#D9A441' }}>Get started →</span>
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0" style={{ background: 'rgba(217,164,65,0.15)', color: '#D9A441' }}>Get started →</span>
             </div>
           </button>
 
