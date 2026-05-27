@@ -485,6 +485,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [clientDisplay, setClientDisplay] = useState(initialQuote.client?.client_name ?? '')
   const [clients, setClients] = useState(initialClients)
   const [voCreatedClaims, setVOCreatedClaims] = useState<(ElecClaim & { line_items: ElecClaimLineItem[] })[]>([])
+  const [liveVOs, setLiveVOs] = useState(variations)
 
   const [sections, setSections] = useState<SectionState[]>(() =>
     initSections.map(s => ({ ...s, items: initItems.filter(i => i.section_id === s.id).map(i => ({ ...i, _expanded: false })) }))
@@ -672,10 +673,12 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   ]
 
   const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
-  const approvedVOTotal = variations.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
+  const approvedVOTotal = liveVOs.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
   const costTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
   const grossProfit = subtotal - costTotal
   const hasCostData = allItems.some(i => i.cost_unit_rate != null)
+  const revisedTotal = contractTotal + approvedVOTotal
+  const revisedGrossProfit = revisedTotal - costTotal
 
   return (
     <div className="max-w-4xl mx-auto pb-16">
@@ -748,6 +751,33 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </div>
       )}
 
+      {/* Project profit strip — always visible when in progress / completed */}
+      {showTabs && (() => {
+        const metrics = [
+          { label: 'Contract', value: fmtR(contractTotal), color: S.text },
+          ...(approvedVOTotal !== 0 ? [{ label: 'Approved VOs', value: `+${fmtR(approvedVOTotal)}`, color: S.green }] : []),
+          { label: approvedVOTotal !== 0 ? 'Revised Total' : 'Contract Total', value: fmtR(revisedTotal), color: S.accent },
+          ...(hasCostData ? [
+            { label: 'Cost', value: fmtR(costTotal), color: S.text },
+            { label: 'Gross Profit', value: fmtR(revisedGrossProfit), color: revisedGrossProfit >= 0 ? S.green : S.danger },
+            { label: 'Margin', value: revisedTotal > 0 ? `${Math.round(revisedGrossProfit / revisedTotal * 1000) / 10}%` : '—', color: revisedGrossProfit >= 0 ? S.green : S.danger },
+          ] : []),
+        ]
+        return (
+          <div className="flex items-stretch rounded-2xl px-5 py-3.5 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            {metrics.map((m, i) => (
+              <div key={m.label} className="flex items-stretch">
+                {i > 0 && <div style={{ width: 1, background: S.border, margin: '0 20px', alignSelf: 'stretch' }} />}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{m.label}</p>
+                  <p className="text-sm font-bold" style={{ color: m.color }}>{m.value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       {/* Non-quote tabs — always mounted to preserve state; hidden when inactive */}
       {showTabs && (
         <>
@@ -783,6 +813,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               voPrefix={voPrefix}
               companyCode={companyCode}
               onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
+              onVOsChanged={setLiveVOs}
             />
           </div>
           <div style={{ display: activeTab === 'snag' ? undefined : 'none' }}>

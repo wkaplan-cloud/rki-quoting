@@ -30,9 +30,10 @@ interface Props {
   voPrefix: string
   companyCode: string
   onClaimCreated: (claim: ElecClaim & { line_items: ElecClaimLineItem[] }) => void
+  onVOsChanged?: (vos: ElecVariationOrder[]) => void
 }
 
-export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, onClaimCreated }: Props) {
+export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, onClaimCreated, onVOsChanged }: Props) {
   const supabase = createClient()
   const [vos, setVOs] = useState(initialVOs)
   const [voClaims, setVOClaims] = useState<VOClaim[]>(initialClaims.filter(c => c.variation_order_id != null))
@@ -85,7 +86,11 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     const patch: Partial<ElecVariationOrder> = { status }
     if (status === 'approved') patch.approved_date = new Date().toISOString().split('T')[0]
     await supabase.from('elec_variation_orders').update(patch).eq('id', voId)
-    setVOs(prev => prev.map(v => v.id === voId ? { ...v, ...patch } : v))
+    setVOs(prev => {
+      const next = prev.map(v => v.id === voId ? { ...v, ...patch } : v)
+      onVOsChanged?.(next)
+      return next
+    })
   }
 
   async function handleInvoiceVO(vo: ElecVariationOrder, submitFlag: boolean) {
