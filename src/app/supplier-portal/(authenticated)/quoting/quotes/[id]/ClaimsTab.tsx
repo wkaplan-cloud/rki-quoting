@@ -565,6 +565,14 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
     setLoading(false)
   }
 
+  async function issueInvoice(amount: number) {
+    await advance('invoiced', { total_invoiced: amount })
+    setSendEmail(e => e || (claim.sent_to_email ?? ''))
+    setSendStatus('idle')
+    setSendError('')
+    setShowSendModal(true)
+  }
+
   async function certify() {
     setLoading(true); setCertError('')
     try {
@@ -863,14 +871,14 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
               style={{ background: 'rgba(217,164,65,0.1)', color: S.gold, border: `1px solid rgba(217,164,65,0.4)` }}>
               Record Certification →
             </button>
-            <button onClick={() => advance('invoiced', { total_invoiced: claim.total_claimed })}
+            <button onClick={() => void issueInvoice(claim.total_claimed)}
               disabled={loading}
               className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
               style={{ background: S.green }}>Issue Tax Invoice →</button>
           </>
         )}
         {claim.status === 'certified' && (
-          <button onClick={() => advance('invoiced', { total_invoiced: claim.total_certified ?? claim.total_claimed })}
+          <button onClick={() => void issueInvoice(claim.total_certified ?? claim.total_claimed)}
             disabled={loading}
             className="px-4 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
             style={{ background: S.green }}>Issue Tax Invoice →</button>
