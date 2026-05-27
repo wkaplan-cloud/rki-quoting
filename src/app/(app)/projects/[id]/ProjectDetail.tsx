@@ -28,6 +28,7 @@ interface Props {
   depositPct: number
   initialStages: ProjectStages | null
   initialEmailLogs: EmailLog[]
+  quoteApproval: { decision: string | null; comment: string | null; submitted_at: string | null; client_name: string | null } | null
   emailTemplateQuote: string | null
   emailTemplateInvoice: string | null
   productionSheetEmail: string | null
@@ -40,11 +41,12 @@ interface Props {
   createdByName: string | null
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
   const [stages, setStages] = useState<ProjectStages | null>(initialStages)
+  const [declineBannerDismissed, setDeclineBannerDismissed] = useState(false)
   const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
   const [vatRate, setVatRate] = useState(initialVatRate)
   const [depositPct, setDepositPct] = useState(initialDepositPct)
@@ -538,6 +540,28 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         isAdmin={isAdmin}
         createdByName={createdByName}
       />
+
+      {/* Client declined banner */}
+      {quoteApproval?.decision === 'declined' && !declineBannerDismissed && (
+        <div className="mx-4 mt-3 flex items-start gap-3 px-4 py-3 rounded-xl border" style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}>
+          <span className="text-lg leading-none mt-0.5">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold" style={{ color: '#92400E' }}>
+              {quoteApproval.client_name ? `${quoteApproval.client_name} declined` : 'Client declined'} the quote
+            </p>
+            {quoteApproval.comment && (
+              <p className="text-sm mt-0.5 leading-relaxed" style={{ color: '#B45309' }}>{quoteApproval.comment}</p>
+            )}
+          </div>
+          <button
+            onClick={() => setDeclineBannerDismissed(true)}
+            className="text-xs shrink-0 mt-0.5 hover:opacity-70 transition-opacity"
+            style={{ color: '#B45309' }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Action bar — desktop only */}
       {(() => {

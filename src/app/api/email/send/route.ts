@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
@@ -39,6 +40,18 @@ export async function POST(req: NextRequest) {
   // Use override email from modal, or fall back to what's saved on the client
   const clientEmail = overrideEmail?.trim() || (project.client as any)?.email
   if (!clientEmail) return NextResponse.json({ error: 'Client email not set' }, { status: 400 })
+
+  // Generate (or refresh) an approval token for quote emails
+  let approvalToken: string | null = null
+  if (type === 'quote') {
+    approvalToken = crypto.randomUUID()
+    await supabaseAdmin
+      .from('quote_approvals')
+      .upsert(
+        { project_id: projectId, token: approvalToken, decision: null, comment: null, submitted_at: null },
+        { onConflict: 'project_id' }
+      )
+  }
 
   try {
     const logoUrl = await fetchLogoBase64(settings?.logo_url)
@@ -127,6 +140,29 @@ export async function POST(req: NextRequest) {
               </tr>
             </table>
 
+            ${approvalToken ? (() => {
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
+              const approveUrl = `${baseUrl}/approve/${approvalToken}?decision=approve`
+              const declineUrl = `${baseUrl}/approve/${approvalToken}?decision=decline`
+              return `
+            <!-- Approval actions -->
+            <table cellpadding="0" cellspacing="0" style="margin-top:28px;width:100%;">
+              <tr>
+                <td style="padding-right:8px;">
+                  <a href="${approveUrl}" target="_blank"
+                    style="display:block;text-align:center;padding:13px 20px;background-color:#16A34A;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;border-radius:8px;">
+                    ✓ &nbsp;Approve Quote
+                  </a>
+                </td>
+                <td style="padding-left:8px;">
+                  <a href="${declineUrl}" target="_blank"
+                    style="display:block;text-align:center;padding:13px 20px;background-color:#F5F2EC;color:#4A4A47;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px;border:1px solid #D8D3C8;">
+                    Decline
+                  </a>
+                </td>
+              </tr>
+            </table>`
+            })() : ''}
             <p style="margin:28px 0 0;font-size:13px;color:#8A877F;line-height:1.6;">The PDF is attached to this email. Please don't hesitate to reach out if you have any questions.</p>
           </td>
         </tr>

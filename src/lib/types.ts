@@ -103,6 +103,8 @@ export interface ProjectStages {
   project_id: string
   quote_sent: boolean
   quote_sent_at: string | null
+  client_approved: boolean
+  client_approved_at: string | null
   deposit_received: boolean
   deposit_received_at: string | null
   pos_sent: boolean
@@ -120,10 +122,11 @@ export interface ProjectStages {
 }
 
 export const STAGE_CONFIG = [
-  { key: 'quote_sent',         label: 'Quote Sent',         dateKey: 'quote_sent_at' },
-  { key: 'deposit_received',   label: 'Deposit Received',   dateKey: 'deposit_received_at' },
-  { key: 'fabrics_received',   label: 'Fabrics Received',   dateKey: 'fabrics_received_at' },
-  { key: 'final_invoice_paid', label: 'Paid in Full',       dateKey: 'final_invoice_paid_at' },
+  { key: 'quote_sent',         label: 'Quote Sent',            dateKey: 'quote_sent_at' },
+  { key: 'client_approved',    label: 'Client Approved',       dateKey: 'client_approved_at' },
+  { key: 'deposit_received',   label: 'Deposit Received',      dateKey: 'deposit_received_at' },
+  { key: 'fabrics_received',   label: 'Fabrics Received',      dateKey: 'fabrics_received_at' },
+  { key: 'final_invoice_paid', label: 'Paid in Full',          dateKey: 'final_invoice_paid_at' },
   { key: 'delivered_installed',label: 'Delivered & Installed', dateKey: 'delivered_installed_at' },
 ] as const
 

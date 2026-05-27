@@ -26,6 +26,7 @@ interface Props {
 const EMPTY_STAGES: ProjectStages = {
   id: '', project_id: '',
   quote_sent: false, quote_sent_at: null,
+  client_approved: false, client_approved_at: null,
   deposit_received: false, deposit_received_at: null,
   pos_sent: false, pos_sent_at: null,
   fabrics_received: false, fabrics_received_at: null,
