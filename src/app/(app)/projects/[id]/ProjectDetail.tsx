@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
 import toast from 'react-hot-toast'
-import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail } from 'lucide-react'
+import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail, ThumbsUp, ThumbsDown } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 interface SageCustomer { id: string; name: string; reference?: string }
 interface SageInvoice { id: string; reference: string; customerName: string; total: number; status: string; date: string }
 interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
+interface ApprovalLog { id: string; decision: 'approved' | 'declined'; comment: string | null; client_name: string | null; submitted_at: string }
 
 interface Props {
   project: Project & { client: { client_name: string; company: string | null; email: string | null } | null }
@@ -28,6 +29,7 @@ interface Props {
   depositPct: number
   initialStages: ProjectStages | null
   initialEmailLogs: EmailLog[]
+  initialApprovalLogs: ApprovalLog[]
   quoteApproval: { decision: string | null; comment: string | null; submitted_at: string | null; client_name: string | null } | null
   emailTemplateQuote: string | null
   emailTemplateInvoice: string | null
@@ -41,7 +43,7 @@ interface Props {
   createdByName: string | null
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -87,6 +89,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [emailSending, setEmailSending] = useState(false)
   const [emailBody, setEmailBody] = useState('')
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>(initialEmailLogs)
+  const [approvalLogs] = useState<ApprovalLog[]>(initialApprovalLogs)
   const [emailHistoryOpen, setEmailHistoryOpen] = useState(false)
   // Production sheet email modal state
   const [prodSheetModalOpen, setProdSheetModalOpen] = useState(false)
@@ -984,60 +987,100 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         </div>
       </div>
 
-      {/* Email log */}
-      {emailLogs.length > 0 && (
-        <div className="px-8 mt-6 border-t border-[#EDE9E1] pt-6">
-          <button
-            onClick={() => setEmailHistoryOpen(v => !v)}
-            className="flex items-center gap-2 text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3 hover:text-[#2C2C2A] transition-colors cursor-pointer w-full"
-          >
-            <Mail size={13} /> Email History
-            <span className="ml-1 bg-[#EDE9E1] text-[#8A877F] rounded-full px-1.5 py-0.5 normal-case tracking-normal font-normal">{emailLogs.length}</span>
-            <ChevronDown size={12} className={`ml-auto transition-transform ${emailHistoryOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {emailHistoryOpen && (
-          <div className="space-y-1">
-            {emailLogs.map(log => (
-              <div key={log.id} className="flex items-center justify-between px-4 py-2.5 bg-white border border-[#EDE9E1] rounded text-sm">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${
-                    log.type === 'po' ? 'bg-blue-50 text-blue-600' :
-                    log.type === 'invoice' ? 'bg-amber-50 text-amber-600' :
-                    'bg-[#9A7B4F]/10 text-[#9A7B4F]'
-                  }`}>
-                    {log.type === 'po' ? 'Purchase Order' : log.type}
-                  </span>
-                  <span className="text-[#2C2C2A]">
-                    {log.type === 'po' && log.supplier_name ? log.supplier_name : log.sent_to}
-                  </span>
-                  {log.type === 'po' && log.sent_to && (
-                    <span className="text-[#C4BFB5] text-xs">{log.sent_to}</span>
-                  )}
-                  <span className="text-[#C4BFB5] text-xs">
-                    {new Date(log.sent_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {' '}
-                    {new Date(log.sent_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    const t = log.type as 'quote' | 'invoice'
-                    setEmailModalType(t)
-                    setEmailInput(log.sent_to)
-                    const template = t === 'quote' ? emailTemplateQuote : emailTemplateInvoice
-                    setEmailBody(resolveTemplate(template, t))
-                    setEmailModalOpen(true)
-                  }}
-                  className="text-xs text-[#9A7B4F] hover:underline cursor-pointer"
-                >
-                  Resend
-                </button>
+      {/* Email + approval history */}
+      {(emailLogs.length > 0 || approvalLogs.length > 0) && (() => {
+        type MergedEntry =
+          | { kind: 'email'; log: EmailLog }
+          | { kind: 'approval'; log: ApprovalLog }
+        const merged: MergedEntry[] = [
+          ...emailLogs.map(l => ({ kind: 'email' as const, log: l, ts: new Date(l.sent_at).getTime() })),
+          ...approvalLogs.map(l => ({ kind: 'approval' as const, log: l, ts: new Date(l.submitted_at).getTime() })),
+        ].sort((a, b) => b.ts - a.ts)
+
+        return (
+          <div className="px-8 mt-6 border-t border-[#EDE9E1] pt-6">
+            <button
+              onClick={() => setEmailHistoryOpen(v => !v)}
+              className="flex items-center gap-2 text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3 hover:text-[#2C2C2A] transition-colors cursor-pointer w-full"
+            >
+              <Mail size={13} /> History
+              <span className="ml-1 bg-[#EDE9E1] text-[#8A877F] rounded-full px-1.5 py-0.5 normal-case tracking-normal font-normal">{merged.length}</span>
+              <ChevronDown size={12} className={`ml-auto transition-transform ${emailHistoryOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {emailHistoryOpen && (
+              <div className="space-y-1">
+                {merged.map(entry => {
+                  if (entry.kind === 'approval') {
+                    const a = entry.log
+                    const isApproved = a.decision === 'approved'
+                    return (
+                      <div key={`approval-${a.id}`} className="flex items-start gap-3 px-4 py-2.5 bg-white border border-[#EDE9E1] rounded text-sm">
+                        <span className={`mt-0.5 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium shrink-0 ${
+                          isApproved ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {isApproved ? <ThumbsUp size={10} /> : <ThumbsDown size={10} />}
+                          {isApproved ? 'Client Approved' : 'Client Declined'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          {a.client_name && (
+                            <span className="text-[#2C2C2A]">{a.client_name}</span>
+                          )}
+                          {a.comment && (
+                            <p className="text-xs text-[#5C5A55] mt-0.5 leading-relaxed italic">"{a.comment}"</p>
+                          )}
+                        </div>
+                        <span className="text-[#C4BFB5] text-xs shrink-0">
+                          {new Date(a.submitted_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {' '}
+                          {new Date(a.submitted_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )
+                  }
+                  const log = entry.log
+                  return (
+                    <div key={`email-${log.id}`} className="flex items-center justify-between px-4 py-2.5 bg-white border border-[#EDE9E1] rounded text-sm">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${
+                          log.type === 'po' ? 'bg-blue-50 text-blue-600' :
+                          log.type === 'invoice' ? 'bg-amber-50 text-amber-600' :
+                          'bg-[#9A7B4F]/10 text-[#9A7B4F]'
+                        }`}>
+                          {log.type === 'po' ? 'Purchase Order' : log.type}
+                        </span>
+                        <span className="text-[#2C2C2A]">
+                          {log.type === 'po' && log.supplier_name ? log.supplier_name : log.sent_to}
+                        </span>
+                        {log.type === 'po' && log.sent_to && (
+                          <span className="text-[#C4BFB5] text-xs">{log.sent_to}</span>
+                        )}
+                        <span className="text-[#C4BFB5] text-xs">
+                          {new Date(log.sent_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {' '}
+                          {new Date(log.sent_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const t = log.type as 'quote' | 'invoice'
+                          setEmailModalType(t)
+                          setEmailInput(log.sent_to)
+                          const template = t === 'quote' ? emailTemplateQuote : emailTemplateInvoice
+                          setEmailBody(resolveTemplate(template, t))
+                          setEmailModalOpen(true)
+                        }}
+                        className="text-xs text-[#9A7B4F] hover:underline cursor-pointer"
+                      >
+                        Resend
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
+            )}
           </div>
-          )}
-        </div>
-      )}
+        )
+      })()}
 
       {/* Email send modal */}
       {emailModalOpen && (

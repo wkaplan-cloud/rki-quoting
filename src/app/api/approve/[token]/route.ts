@@ -48,6 +48,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         )
     }
 
+    // Append to the audit log so history survives token refreshes
+    await supabaseAdmin.from('quote_approval_logs').insert({
+      project_id: approval.project_id,
+      decision,
+      comment: comment?.trim() || null,
+      client_name: client_name || null,
+      client_email: client_email || null,
+      submitted_at: now,
+    })
+
     // Fetch project to get user_id, then settings + auth email in parallel
     const { data: project } = await supabaseAdmin
       .from('projects')
