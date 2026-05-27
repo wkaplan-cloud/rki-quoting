@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, FileText, X, ChevronRight, Calendar, User } from 'lucide-react'
+import { Plus, Search, FileText, X, ChevronRight, Calendar, User, Archive, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { ElecQuote, ElecClient, ElecQuoteStatus } from '@/lib/elec-types'
 
@@ -30,6 +30,7 @@ const PROJECT_TYPES = [
 interface Props {
   portalAccountId: string
   initialQuotes: (ElecQuote & { client: ElecClient | null })[]
+  initialArchivedQuotes: (ElecQuote & { client: ElecClient | null })[]
   clients: Pick<ElecClient, 'id' | 'client_name' | 'company'>[]
 }
 
@@ -230,12 +231,23 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
   )
 }
 
-export function QuotesList({ portalAccountId, initialQuotes, clients }: Props) {
+export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuotes, clients }: Props) {
   const router = useRouter()
+  const supabase = createClient()
   const [quotes] = useState(initialQuotes)
+  const [archivedQuotes, setArchivedQuotes] = useState(initialArchivedQuotes)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ElecQuoteStatus | ''>('')
   const [showNewModal, setShowNewModal] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [unarchiving, setUnarchiving] = useState<string | null>(null)
+
+  async function unarchive(id: string) {
+    setUnarchiving(id)
+    await supabase.from('elec_quotes').update({ archived_at: null }).eq('id', id)
+    setArchivedQuotes(prev => prev.filter(q => q.id !== id))
+    setUnarchiving(null)
+  }
 
   const filtered = quotes.filter(q => {
     const matchesSearch = !search ||
@@ -343,6 +355,54 @@ export function QuotesList({ portalAccountId, initialQuotes, clients }: Props) {
       {quotes.length > 0 && filtered.length === 0 && (
         <div className="rounded-2xl py-10 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
           <p className="text-sm" style={{ color: S.muted }}>No quotes match your filters</p>
+        </div>
+      )}
+
+      {/* Archived section */}
+      {archivedQuotes.length > 0 && (
+        <div className="mt-8">
+          <button
+            onClick={() => setShowArchived(v => !v)}
+            className="flex items-center gap-2 text-sm font-semibold mb-3 transition-opacity hover:opacity-75"
+            style={{ color: S.muted }}>
+            <Archive size={14} />
+            Archived ({archivedQuotes.length})
+            <ChevronRight size={13} style={{ transform: showArchived ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }} />
+          </button>
+
+          {showArchived && (
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              {archivedQuotes.map((q, i) => (
+                <div key={q.id}
+                  className="flex items-center gap-4 px-5 py-4"
+                  style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, opacity: 0.7 }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: S.input }}>
+                    <Archive size={14} style={{ color: S.muted }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate" style={{ color: S.text }}>{q.project_name}</p>
+                    <div className="flex items-center gap-3 flex-wrap mt-0.5">
+                      <span className="text-xs font-mono" style={{ color: S.muted }}>{q.quote_number}</span>
+                      {q.client && (
+                        <span className="text-xs flex items-center gap-1" style={{ color: S.muted }}>
+                          <User size={10} />{q.client.client_name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => unarchive(q.id)}
+                    disabled={unarchiving === q.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-opacity hover:opacity-75"
+                    style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+                    <RotateCcw size={11} />
+                    {unarchiving === q.id ? 'Restoring…' : 'Unarchive'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
