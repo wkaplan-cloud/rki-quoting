@@ -197,7 +197,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const ccEmails: string[] = (ss as any).cc_emails ?? []
 
       const { error: emailError } = await resend.emails.send({
-        from: `${studioName} <no-reply@quotinghub.co.za>`,
+        from: `${studioName} <noreply@quotinghub.co.za>`,
         ...(replyTo ? { replyTo } : {}),
         to: ss.email,
         ...(ccEmails.length > 0 ? { cc: ccEmails } : {}),

@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         const subject = `Client ${decisionLabel} quote ${project.project_number} – ${project.project_name}`
         try {
           await resend.emails.send({
-            from: `QuotingHub <notifications@quotinghub.co.za>`,
+            from: `QuotingHub <noreply@quotinghub.co.za>`,
             to: notifyEmail,
             subject,
             html: buildNotificationEmail({ decision, comment, clientName: client_name, projectName: project.project_name, projectNumber: project.project_number, studioName }),

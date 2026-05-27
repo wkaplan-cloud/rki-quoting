@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       : `Dear ${project.client?.client_name ?? 'Client'},\n\nPlease find attached your ${label.toLowerCase()} for ${project.project_name}.\n\nReference: ${project.project_number}\n\nKind regards,\n${studioName}${userEmail ? `\n${userEmail}` : ''}`
 
     const { error: resendError } = await resend.emails.send({
-      from: `${studioName} <no-reply@quotinghub.co.za>`,
+      from: `${studioName} <noreply@quotinghub.co.za>`,
       ...(replyToEmail ? { replyTo: replyToEmail } : {}),
       to: clientEmail,
       subject,

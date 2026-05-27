@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           : `VO Rejected — ${vo.vo_number} · ${quote.project_name}`
 
         resend.emails.send({
-          from: 'QuotingHub Notifications <notifications@quotinghub.co.za>',
+          from: 'QuotingHub Notifications <noreply@quotinghub.co.za>',
           to: account.email,
           subject,
           html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head>

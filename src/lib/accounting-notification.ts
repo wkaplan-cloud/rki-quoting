@@ -84,7 +84,7 @@ export async function sendAccountingNotification(params: AccountingNotificationP
 
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
-      from: `${studioName} <no-reply@quotinghub.co.za>`,
+      from: `${studioName} <noreply@quotinghub.co.za>`,
       to: recipient,
       subject,
       text: [

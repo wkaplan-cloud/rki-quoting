@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     const studioName = businessName ?? 'Your Studio'
 
     const { error: resendError } = await resend.emails.send({
-      from: `${studioName} <no-reply@quotinghub.co.za>`,
+      from: `${studioName} <noreply@quotinghub.co.za>`,
       ...(replyToEmail ? { replyTo: replyToEmail } : {}),
       to: toEmail.trim(),
       subject,

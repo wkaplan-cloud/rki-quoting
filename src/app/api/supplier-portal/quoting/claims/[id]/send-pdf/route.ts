@@ -122,7 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const subject = `${titleWord} ${claim.claim_number}${quoteRaw.project_name ? ` – ${quoteRaw.project_name}` : ''}`
 
     await resend.emails.send({
-      from: `${companyName} via QuotingHub <notifications@quotinghub.co.za>`,
+      from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,
       subject,

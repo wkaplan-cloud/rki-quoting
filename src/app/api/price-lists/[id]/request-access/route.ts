@@ -34,7 +34,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const resend = new Resend(process.env.RESEND_API_KEY)
     const subject = `New price list access request — ${priceList?.name ?? id}`
     await resend.emails.send({
-      from: 'QuotingHub <no-reply@quotinghub.co.za>',
+      from: 'QuotingHub <noreply@quotinghub.co.za>',
       to: 'hello@quotinghub.co.za',
       subject,
       text: `${org?.name ?? orgId} has requested access to the ${priceList?.name ?? id} price list (${priceList?.supplier_name ?? ''}).\n\nReview and approve at: https://quotinghub.co.za/platform/price-lists`,

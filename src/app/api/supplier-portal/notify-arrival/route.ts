@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const subject = `Item Ready — ${session.title} (${supplierDisplay})`
   await resend.emails.send({
-    from: `QuotingHub Notifications <notifications@quotinghub.co.za>`,
+    from: `QuotingHub Notifications <noreply@quotinghub.co.za>`,
     to: studioEmail,
     subject,
     text: `Hi ${studioName},\n\n${supplierDisplay} has notified you that items from the following price request are ready:\n\n${session.title}\n\n${notes ? `Note from supplier: ${notes}\n\n` : ''}Please arrange collection or delivery at your earliest convenience.\n\nLog in at: https://quotinghub.co.za`,

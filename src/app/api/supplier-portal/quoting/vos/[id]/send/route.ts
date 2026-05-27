@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const fmtR = (n: number) => 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
     await resend.emails.send({
-      from: 'QuotingHub Notifications <notifications@quotinghub.co.za>',
+      from: 'QuotingHub Notifications <noreply@quotinghub.co.za>',
       to: body.email.trim(),
       subject: `Variation Order for approval — ${vo.vo_number} · ${quote.project_name}`,
       html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>

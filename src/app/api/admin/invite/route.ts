@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
   // Send branded invite email via Resend
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: resendError } = await resend.emails.send({
-    from: `${businessName} <no-reply@quotinghub.co.za>`,
+    from: `${businessName} <noreply@quotinghub.co.za>`,
     replyTo: user.email ?? undefined,
     to: email,
     subject: `You've been invited to join ${businessName} on QuotingHub`,

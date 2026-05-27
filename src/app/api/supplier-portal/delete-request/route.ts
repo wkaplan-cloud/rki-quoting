@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error } = await resend.emails.send({
-    from: 'QuotingHub <no-reply@quotinghub.co.za>',
+    from: 'QuotingHub <noreply@quotinghub.co.za>',
     to: 'hello@quotinghub.co.za',
     subject: `Supplier Account Deletion Request — ${account.company_name ?? account.email}`,
     html: `

@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     const subject = `Purchase Order ${poNumber} – ${project.project_name}`
 
     const { error: resendError } = await resend.emails.send({
-      from: `${studioName} <no-reply@quotinghub.co.za>`,
+      from: `${studioName} <noreply@quotinghub.co.za>`,
       ...(replyTo ? { replyTo } : {}),
       to: effectiveEmail,
       ...(effectiveEmailCc ? { cc: effectiveEmailCc } : {}),

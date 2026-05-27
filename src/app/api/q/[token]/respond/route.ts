@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           : `Changes requested — ${quote.quote_number} · ${quote.project_name}`
 
         resend.emails.send({
-          from: 'QuotingHub Notifications <notifications@quotinghub.co.za>',
+          from: 'QuotingHub Notifications <noreply@quotinghub.co.za>',
           to: account.email,
           subject,
           html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
