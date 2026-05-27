@@ -1059,11 +1059,19 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </button>
         )}
         {q.status === 'in_progress' && (
-          <span className="text-sm" style={{ color: S.muted }}>
-            {q.contract_type === 'lump_sum'
-              ? 'Project in progress — use the Claims tab to invoice'
-              : 'Project in progress — manage from the As-Built tab'}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm" style={{ color: S.muted }}>
+              {q.contract_type === 'lump_sum'
+                ? 'Project in progress — use the Claims tab to invoice'
+                : 'Project in progress — manage from the As-Built tab'}
+            </span>
+            <button
+              onClick={() => { if (confirm('Mark this project as completed?')) transition('completed') }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
+              style={{ background: 'rgba(22,101,52,0.1)', color: '#166534', border: '1px solid rgba(22,101,52,0.2)' }}>
+              Mark Complete ✓
+            </button>
+          </div>
         )}
         {(q.status === 'quoted' || q.status === 'approved') && (
           <button onClick={() => { if (confirm('Cancel this quote?')) transition('cancelled') }}
