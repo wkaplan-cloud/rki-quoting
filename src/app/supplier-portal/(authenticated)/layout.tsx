@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { SupplierPortalShell } from './SupplierPortalShell'
@@ -14,7 +15,7 @@ export default async function SupplierPortalLayout({
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, company_name, email, plan, subscription_status')
+    .select('id, company_name, email, plan, subscription_status, supplier_category')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
@@ -22,6 +23,14 @@ export default async function SupplierPortalLayout({
 
   const displayName = account.company_name ?? account.email
   const hasQuoting = account.plan === 'quoting' && account.subscription_status === 'active'
+
+  // Trades suppliers with no active quoting plan go straight to the upgrade page
+  const pathname = (await headers()).get('x-pathname') ?? ''
+  const isTrades = account.supplier_category === 'trades'
+  const upgradeExempt = pathname.startsWith('/supplier-portal/upgrade') || pathname.startsWith('/supplier-portal/profile')
+  if (isTrades && !hasQuoting && !upgradeExempt) {
+    redirect('/supplier-portal/upgrade')
+  }
 
   return (
     <SupplierPortalShell companyName={displayName} hasQuoting={hasQuoting}>

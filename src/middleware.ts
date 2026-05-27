@@ -120,6 +120,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
+  // Pass pathname to layouts via header (used for trades-supplier upgrade redirect)
+  supabaseResponse.headers.set('x-pathname', pathname)
   return supabaseResponse
 }
 
