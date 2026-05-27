@@ -742,7 +742,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             )
             if (!isPrimary && prevIsPrimary) {
               return [
-                <div key="divider" style={{ width: 1, alignSelf: 'stretch', background: S.border, flexShrink: 0, margin: '4px 2px' }} />,
+                <div key="divider" style={{ width: 1, height: 20, background: S.muted, flexShrink: 0, margin: '0 4px', opacity: 0.35 }} />,
                 btn,
               ]
             }
