@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, Check, Package, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const INPUT_STYLE = {
@@ -13,56 +13,131 @@ const INPUT_STYLE = {
   transition: 'border-color 0.15s, background 0.15s',
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+type Category = 'manufacturer' | 'trades'
+
+// ── Screen 1: type selector ───────────────────────────────────────────────────
+function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
   return (
-    <div>
-      <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>{label}</label>
-      {children}
+    <div className="min-h-screen flex flex-col" style={{ background: '#0F1923' }}>
+
+      {/* Logo bar */}
+      <div className="flex items-center justify-between px-8 py-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>
+          Already have an account?{' '}
+          <Link href="/supplier-portal/login" className="hover:underline" style={{ color: 'rgba(255,255,255,0.6)' }}>Sign in</Link>
+        </p>
+      </div>
+
+      {/* Hero */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] mb-4" style={{ color: '#3A7CA5' }}>Get started free</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-center mb-3 leading-tight" style={{ color: '#FFFFFF' }}>
+          What best describes<br />your business?
+        </h1>
+        <p className="text-sm text-center mb-12" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          We&apos;ll tailor your experience from the start.
+        </p>
+
+        <div className="grid sm:grid-cols-2 gap-5 w-full max-w-2xl">
+
+          {/* Product Supplier */}
+          <button
+            onClick={() => onSelect('manufacturer')}
+            className="group text-left rounded-2xl p-7 transition-all duration-200 hover:scale-[1.02]"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1.5px solid rgba(255,255,255,0.1)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(58,124,165,0.12)'; e.currentTarget.style.borderColor = 'rgba(58,124,165,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(58,124,165,0.2)' }}>
+              <Package size={22} style={{ color: '#3A7CA5' }} />
+            </div>
+            <h2 className="text-lg font-bold mb-1.5" style={{ color: '#FFFFFF' }}>Product Supplier</h2>
+            <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              Fabrics, stone, furniture, lighting, wallpaper — receive price requests from interior design studios.
+            </p>
+            <div className="space-y-1.5">
+              {['Free to join', 'All requests in one dashboard', '1% fee on accepted requests'].map(f => (
+                <div key={f} className="flex items-center gap-2">
+                  <Check size={11} style={{ color: '#3A7CA5', flexShrink: 0 }} />
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <span className="text-sm font-semibold" style={{ color: '#3A7CA5' }}>Free forever</span>
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(58,124,165,0.15)', color: '#3A7CA5' }}>Get started →</span>
+            </div>
+          </button>
+
+          {/* Electrician */}
+          <button
+            onClick={() => onSelect('trades')}
+            className="group text-left rounded-2xl p-7 transition-all duration-200 hover:scale-[1.02]"
+            style={{
+              background: 'rgba(217,164,65,0.06)',
+              border: '1.5px solid rgba(217,164,65,0.2)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(217,164,65,0.12)'; e.currentTarget.style.borderColor = 'rgba(217,164,65,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(217,164,65,0.06)'; e.currentTarget.style.borderColor = 'rgba(217,164,65,0.2)' }}
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(217,164,65,0.15)' }}>
+              <Zap size={22} style={{ color: '#D9A441' }} />
+            </div>
+            <h2 className="text-lg font-bold mb-1.5" style={{ color: '#FFFFFF' }}>Electrician</h2>
+            <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              Quote jobs, schedule your team, send progress claims and invoices — built specifically for electrical contractors.
+            </p>
+            <div className="space-y-1.5">
+              {['Full quoting & claims system', 'Team scheduling & job photos', 'PDF generation & COC tracker'].map(f => (
+                <div key={f} className="flex items-center gap-2">
+                  <Check size={11} style={{ color: '#D9A441', flexShrink: 0 }} />
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <div>
+                <span className="text-sm font-bold" style={{ color: '#D9A441' }}>R499</span>
+                <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.35)' }}>/month</span>
+              </div>
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(217,164,65,0.15)', color: '#D9A441' }}>Get started →</span>
+            </div>
+          </button>
+
+        </div>
+      </div>
     </div>
   )
 }
 
-function StyledInput({ type = 'text', value, onChange, placeholder, required, autoFocus, autoComplete }: {
-  type?: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; required?: boolean; autoFocus?: boolean; autoComplete?: string
-}) {
-  return (
-    <input
-      type={type}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      required={required}
-      autoFocus={autoFocus}
-      autoComplete={autoComplete}
-      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
-      style={INPUT_STYLE}
-      onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
-      onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
-    />
-  )
-}
-
-function RegisterForm() {
+// ── Screen 2: registration form ───────────────────────────────────────────────
+function RegisterForm({ category, onBack }: { category: Category; onBack: () => void }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const noPortalAccount = searchParams.get('notice') === 'no-portal-account'
   const supabase = createClient()
-  const [companyName, setCompanyName] = useState('')
-  const [contactName, setContactName] = useState('')
-  const [email, setEmail] = useState('')
 
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
+  const [companyName, setCompanyName]   = useState('')
+  const [contactName, setContactName]   = useState('')
+  const [email, setEmail]               = useState('')
+  const [password, setPassword]         = useState('')
+  const [confirm, setConfirm]           = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [supplierCategory, setSupplierCategory] = useState<'manufacturer' | 'trades' | ''>('')
-  const [tcAccepted, setTcAccepted] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [showConfirm, setShowConfirm]   = useState(false)
+  const [tcAccepted, setTcAccepted]     = useState(false)
+  const [loading, setLoading]           = useState(false)
+  const [error, setError]               = useState('')
+
   const widgetRef = useRef<HTMLDivElement>(null)
-  const widgetId = useRef<string | null>(null)
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  const widgetId  = useRef<string | null>(null)
+  const siteKey   = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
+  const isElec = category === 'trades'
 
   useEffect(() => {
     if (!siteKey) return
@@ -93,7 +168,6 @@ function RegisterForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (!supplierCategory) { setError('Please select your supplier type to continue'); return }
     if (!companyName.trim()) { setError('Please enter your company name'); return }
     if (password !== confirm) { setError('Passwords do not match'); return }
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
@@ -108,7 +182,7 @@ function RegisterForm() {
     const res = await fetch('/api/supplier-portal/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), contact_name: contactName.trim(), supplier_category: supplierCategory, cf_token: cfToken }),
+      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), contact_name: contactName.trim(), supplier_category: category, cf_token: cfToken }),
     })
     const data = await res.json() as { error?: string }
     if (!res.ok) { setError(data.error ?? 'Registration failed'); setLoading(false); return }
@@ -120,110 +194,163 @@ function RegisterForm() {
     router.push('/supplier-portal/home')
   }
 
+  const accent     = isElec ? '#D9A441' : '#3A7CA5'
+  const accentBg   = isElec ? 'rgba(217,164,65,0.1)' : 'rgba(58,124,165,0.1)'
+  const panelBg    = isElec ? '#1A1408' : '#0F1923'
+  const submitBg   = isElec ? '#D9A441' : '#3A7CA5'
+  const submitText = isElec ? '#1A1408' : '#FFFFFF'
+
+  const leftFeatures = isElec
+    ? ['Full quoting & progress claims', 'Team scheduling with drag & drop', 'Worker job links & photo uploads', 'PDF generation for all documents', 'COC tracker & snag list']
+    : ['Receive requests from design studios', 'Manage your full price list', 'Respond faster, win more business', 'All requests in one dashboard']
+
   return (
     <div className="min-h-screen flex">
       {siteKey && (
         <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit" strategy="lazyOnload" />
       )}
 
-      {/* Left panel — brand blue with large logo */}
-      <div className="hidden lg:flex lg:w-2/5 flex-col justify-between py-16 px-12" style={{ background: '#1E2A38' }}>
-        <div className="flex flex-col items-center gap-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="w-64 object-contain" style={{ filter: 'invert(1) brightness(1)' }} />
-          <p className="text-sm font-medium tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>Supplier Portal</p>
-        </div>
+      {/* Left panel */}
+      <div className="hidden lg:flex lg:w-[42%] flex-col justify-between py-14 px-12" style={{ background: panelBg }}>
         <div>
-          <p className="text-2xl font-bold leading-snug mb-3" style={{ color: '#FFFFFF' }}>
-            Join the QuotingHub<br />supplier network.
-          </p>
-          <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Receive price requests directly from interior design studios. Respond faster, win more business.
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto object-contain mb-12" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6" style={{ background: accentBg }}>
+            {isElec ? <Zap size={20} style={{ color: accent }} /> : <Package size={20} style={{ color: accent }} />}
+          </div>
+          <h2 className="text-2xl font-bold leading-snug mb-2" style={{ color: '#FFFFFF' }}>
+            {isElec ? 'Built for electrical contractors.' : 'Join the QuotingHub supplier network.'}
+          </h2>
+          <p className="text-sm leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            {isElec
+              ? 'Everything you need to quote, invoice, and manage your team — in one place.'
+              : 'Receive price requests directly from interior design studios. Respond faster, win more business.'}
           </p>
           <div className="space-y-3">
-            {['Free to join — no monthly fees', 'All price requests in one dashboard', 'Message designers directly per request'].map(f => (
-              <div key={f} className="flex items-center gap-2.5">
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'rgba(255,255,255,0.4)' }} />
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{f}</p>
+            {leftFeatures.map(f => (
+              <div key={f} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: accentBg }}>
+                  <Check size={10} style={{ color: accent }} />
+                </div>
+                <span className="text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>{f}</span>
               </div>
             ))}
           </div>
         </div>
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>© QuotingHub · quotinghub.co.za</p>
+
+        <div>
+          {isElec ? (
+            <div className="rounded-xl px-4 py-4 mb-6" style={{ background: 'rgba(217,164,65,0.08)', border: '1px solid rgba(217,164,65,0.2)' }}>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: '#D9A441' }}>R499/month after trial</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Cancel anytime. No lock-in.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl px-4 py-4 mb-6" style={{ background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)' }}>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: '#3A7CA5' }}>Free forever</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>1% fee applies to confirmed deals only.</p>
+            </div>
+          )}
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>© QuotingHub · quotinghub.co.za</p>
+        </div>
       </div>
 
-      {/* Right panel — form */}
-      <div className="flex-1 flex items-start justify-center p-8 overflow-y-auto" style={{ background: '#F8F9FA' }}>
-        <div className="w-full max-w-sm py-8">
+      {/* Right panel */}
+      <div className="flex-1 flex items-start justify-center p-6 sm:p-10 overflow-y-auto" style={{ background: '#F8F9FA' }}>
+        <div className="w-full max-w-sm py-6">
+
+          {/* Mobile logo */}
           <div className="lg:hidden mb-8 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto mx-auto object-contain" />
+            <img src="/logo.png" alt="QuotingHub" className="h-8 w-auto mx-auto object-contain" />
           </div>
 
           <div className="bg-white rounded-2xl p-8" style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)' }}>
+
+            {/* Back + heading */}
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-xs mb-6 hover:opacity-70 transition-opacity"
+              style={{ color: '#71717A' }}
+            >
+              <ArrowLeft size={13} /> Change account type
+            </button>
+
+            {/* Type badge */}
+            <div className="flex items-center gap-2 mb-5">
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: accentBg }}>
+                {isElec ? <Zap size={12} style={{ color: accent }} /> : <Package size={12} style={{ color: accent }} />}
+              </div>
+              <span className="text-xs font-semibold" style={{ color: accent }}>
+                {isElec ? 'Electrician' : 'Product Supplier'}
+              </span>
+            </div>
+
             <h1 className="text-2xl font-bold mb-1" style={{ color: '#18181B' }}>Create account</h1>
-            <p className="text-sm mb-6" style={{ color: '#71717A' }}>Supplier Portal · Free forever</p>
+            <p className="text-sm mb-6" style={{ color: '#71717A' }}>
+              {isElec ? 'Start your free trial — no card required' : 'Free forever · No monthly fees'}
+            </p>
 
             {noPortalAccount && (
               <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F2F5', border: '1px solid #D1D8E0', color: '#3A7CA5' }}>
-                <strong>No supplier account found.</strong> You signed in but don&apos;t have a Supplier Portal account yet. Register below to get access.
+                <strong>No supplier account found.</strong> Register below to get access.
               </div>
             )}
 
-            <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#52525B' }}>
-              <strong style={{ color: '#18181B' }}>Important:</strong> Use the same email address that design studios use when sending you price requests.
-            </div>
-
-            {/* Supplier type selector */}
-            <div className="mb-5">
-              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#71717A' }}>I am a</p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {([
-                  { value: 'manufacturer', label: 'Product Supplier', sub: 'Fabric, stone, woodwork, upholstery…' },
-                  { value: 'trades', label: 'Trade / Service Provider', sub: 'Electrician, plumber, HVAC…' },
-                ] as const).map(opt => {
-                  const active = supplierCategory === opt.value
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setSupplierCategory(opt.value)}
-                      className="text-left px-3.5 py-3 rounded-xl text-sm transition-all"
-                      style={{
-                        background: active ? '#1E2A38' : '#F4F4F5',
-                        border: `1.5px solid ${active ? '#1E2A38' : '#E4E4E7'}`,
-                        color: active ? '#FFFFFF' : '#3F3F46',
-                      }}
-                    >
-                      <p className="font-semibold text-xs leading-snug">{opt.label}</p>
-                      <p className="text-[10px] mt-0.5 leading-snug" style={{ color: active ? 'rgba(255,255,255,0.6)' : '#A1A1AA' }}>{opt.sub}</p>
-                    </button>
-                  )
-                })}
+            {!isElec && (
+              <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#52525B' }}>
+                <strong style={{ color: '#18181B' }}>Tip:</strong> Use the same email address that design studios use when sending you price requests.
               </div>
-            </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <Field label="Company Name">
-                <StyledInput value={companyName} onChange={setCompanyName} placeholder="e.g. ABC Fabrics (Pty) Ltd" required autoFocus />
-              </Field>
-              <Field label="Your Name">
-                <StyledInput value={contactName} onChange={setContactName} placeholder="Full name" autoComplete="name" />
-              </Field>
-              <Field label="Email">
-                <StyledInput type="email" value={email} onChange={setEmail} required autoComplete="email" />
-              </Field>
-              <Field label="Password">
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Company Name</label>
+                <input
+                  value={companyName} onChange={e => setCompanyName(e.target.value)}
+                  placeholder={isElec ? 'e.g. Smith Electrical (Pty) Ltd' : 'e.g. ABC Fabrics (Pty) Ltd'}
+                  required autoFocus
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = '#FFFFFF' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Your Name</label>
+                <input
+                  value={contactName} onChange={e => setContactName(e.target.value)}
+                  placeholder="Full name" autoComplete="name"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = '#FFFFFF' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Email</label>
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  required autoComplete="email"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                  style={INPUT_STYLE}
+                  onFocus={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = '#FFFFFF' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    required autoComplete="new-password"
                     className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = '#FFFFFF' }}
                     onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
                   />
                   <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#A1A1AA' }}>
@@ -231,48 +358,45 @@ function RegisterForm() {
                   </button>
                 </div>
                 <p className="text-xs mt-1" style={{ color: '#A1A1AA' }}>Min. 8 characters</p>
-              </Field>
-              <Field label="Confirm Password">
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Confirm Password</label>
                 <div className="relative">
                   <input
                     type={showConfirm ? 'text' : 'password'}
-                    value={confirm}
-                    onChange={e => setConfirm(e.target.value)}
-                    required
-                    autoComplete="new-password"
+                    value={confirm} onChange={e => setConfirm(e.target.value)}
+                    required autoComplete="new-password"
                     className="w-full px-3.5 py-2.5 pr-10 text-sm rounded-lg outline-none"
                     style={INPUT_STYLE}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.background = '#FFFFFF' }}
                     onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
                   />
                   <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#A1A1AA' }}>
                     {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
-              </Field>
+              </div>
 
-              {/* Platform fee notice — product suppliers only */}
-              {supplierCategory === 'manufacturer' && (
-                <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F2F5', border: '1px solid #D1D8E0', color: '#4A5568' }}>
-                  <p className="font-semibold mb-1" style={{ color: '#3A7CA5' }}>Platform Fee</p>
-                  <p>A fee of <strong>1% of the confirmed deal value</strong> is charged to the supplier for each order confirmed through QuotingHub.</p>
+              {/* Fee notice */}
+              {!isElec && (
+                <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F8FF', border: '1px solid #BFDBFE', color: '#1D4ED8' }}>
+                  A <strong>1% platform fee</strong> applies to the value of all confirmed deals through QuotingHub.
                 </div>
               )}
 
               <label className="flex items-start gap-2.5 cursor-pointer select-none">
                 <input
-                  type="checkbox"
-                  checked={tcAccepted}
-                  onChange={e => setTcAccepted(e.target.checked)}
+                  type="checkbox" checked={tcAccepted} onChange={e => setTcAccepted(e.target.checked)}
                   className="mt-0.5 w-4 h-4 rounded cursor-pointer shrink-0"
-                  style={{ accentColor: '#3A7CA5' }}
+                  style={{ accentColor: accent }}
                 />
                 <span className="text-xs leading-relaxed" style={{ color: '#71717A' }}>
                   I agree to the{' '}
-                  <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#3A7CA5' }}>Terms &amp; Conditions</a>
+                  <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: accent }}>Terms &amp; Conditions</a>
                   {' '}and{' '}
-                  <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: '#3A7CA5' }}>Privacy Policy</a>
-                  {supplierCategory === 'manufacturer' && ', including the 1% platform fee on confirmed deals'}.
+                  <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: accent }}>Privacy Policy</a>
+                  {!isElec && ', including the 1% platform fee on confirmed deals'}.
                 </span>
               </label>
 
@@ -285,8 +409,8 @@ function RegisterForm() {
               <button
                 type="submit"
                 disabled={loading || !tcAccepted}
-                className="w-full py-3 text-white text-sm font-semibold rounded-lg disabled:opacity-50 cursor-pointer mt-1"
-                style={{ background: '#3A7CA5', transition: 'opacity 0.15s' }}
+                className="w-full py-3 text-sm font-bold rounded-lg disabled:opacity-50 cursor-pointer mt-1"
+                style={{ background: submitBg, color: submitText, transition: 'opacity 0.15s' }}
               >
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>
@@ -294,7 +418,7 @@ function RegisterForm() {
 
             <p className="text-center text-sm mt-6 pt-5" style={{ color: '#71717A', borderTop: '1px solid #F4F4F5' }}>
               Already have an account?{' '}
-              <Link href="/supplier-portal/login" className="font-medium hover:underline" style={{ color: '#3A7CA5' }}>Sign in</Link>
+              <Link href="/supplier-portal/login" className="font-medium hover:underline" style={{ color: accent }}>Sign in</Link>
             </p>
           </div>
         </div>
@@ -303,10 +427,18 @@ function RegisterForm() {
   )
 }
 
+// ── Root component ─────────────────────────────────────────────────────────────
+function RegisterFlow() {
+  const [category, setCategory] = useState<Category | null>(null)
+
+  if (!category) return <TypeSelector onSelect={setCategory} />
+  return <RegisterForm category={category} onBack={() => setCategory(null)} />
+}
+
 export default function SupplierRegisterPage() {
   return (
     <Suspense>
-      <RegisterForm />
+      <RegisterFlow />
     </Suspense>
   )
 }
