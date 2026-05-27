@@ -21,42 +21,14 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Subdomain routing: suppliers.quotinghub.co.za → /supplier-portal/*
   const host = request.headers.get('host') ?? ''
-  const isSupplierSubdomain = host.startsWith('suppliers.')
   const { pathname } = request.nextUrl
 
-  // Main domain: /supplier-portal/* pages belong on the subdomain — redirect there
-  if (!isSupplierSubdomain && pathname.startsWith('/supplier-portal') && !pathname.startsWith('/api/')) {
-    const baseHost = host.replace(/^www\./, '')
-    if (!baseHost.startsWith('localhost') && !baseHost.startsWith('127.')) {
-      const dest = new URL(request.url)
-      dest.host = `suppliers.${baseHost}`
-      return NextResponse.redirect(dest)
-    }
-  }
-
-  if (isSupplierSubdomain) {
-    // Already on a supplier-portal path — let it through
-    if (
-      pathname.startsWith('/supplier-portal') ||
-      pathname.startsWith('/sourcing/respond') ||
-      pathname.startsWith('/api/') ||
-      pathname.startsWith('/job/') ||   // worker photo pages — public, no auth
-      pathname.startsWith('/q/') ||     // quote approval — public, no auth
-      pathname.startsWith('/c/')        // claim view — public, no auth
-    ) {
-      // fall through to auth check below
-    } else if (pathname.startsWith('/requests/')) {
-      // Email links use /requests/[id] shorthand — redirect to the full supplier-portal path
-      // so the auth check below can correctly redirect unauthenticated suppliers to login
-      return NextResponse.redirect(new URL(`/supplier-portal${pathname}`, request.url))
-    } else if (pathname === '/') {
-      return NextResponse.redirect(new URL('/supplier-portal', request.url))
-    } else {
-      // Any other path on the subdomain → redirect to supplier portal home
-      return NextResponse.redirect(new URL('/supplier-portal', request.url))
-    }
+  // suppliers.quotinghub.co.za is retired — 301 everything to the main domain
+  if (host.startsWith('suppliers.')) {
+    const dest = new URL(request.url)
+    dest.host = host.replace('suppliers.', '')
+    return NextResponse.redirect(dest, { status: 301 })
   }
 
   const { data: { user } } = await supabase.auth.getUser()

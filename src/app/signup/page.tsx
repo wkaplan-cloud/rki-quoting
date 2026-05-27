@@ -4,7 +4,6 @@ import Link from 'next/link'
 import Script from 'next/script'
 import { Eye, EyeOff, PenLine, ShoppingBag } from 'lucide-react'
 
-const SUPPLIER_PORTAL_URL = process.env.NEXT_PUBLIC_SUPPLIER_PORTAL_URL ?? 'https://suppliers.quotinghub.co.za'
 
 export default function SignupPage() {
   const [role, setRole] = useState<'designer' | null>(null)
@@ -146,7 +145,7 @@ export default function SignupPage() {
                   </div>
                 </button>
                 <a
-                  href={`${SUPPLIER_PORTAL_URL}/register`}
+                  href="/supplier-portal/register"
                   className="w-full flex items-center gap-4 px-5 py-4 border-2 border-[#D8D3C8] rounded-2xl text-left hover:border-[#9A7B4F] hover:bg-[#F5F2EC] transition-all duration-150 no-underline block"
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#F5F2EC] border border-[#D8D3C8] flex items-center justify-center shrink-0">

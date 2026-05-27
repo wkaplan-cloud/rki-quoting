@@ -27,7 +27,7 @@ export default function SupplierPrivacyPage() {
             <h2 className="text-base font-semibold text-[#2C2C2A] mb-3">1. Who we are</h2>
             <p className="text-sm leading-relaxed">
               QuotingHub is operated by QuotingHub (Pty) Ltd, registered in South Africa. This Privacy Policy
-              applies to the QuotingHub Supplier Portal available at suppliers.quotinghub.co.za. We act as the responsible
+              applies to the QuotingHub Supplier Portal available at quotinghub.co.za/supplier-portal. We act as the responsible
               party for personal information processed through this portal.
             </p>
             <p className="text-sm leading-relaxed mt-2">

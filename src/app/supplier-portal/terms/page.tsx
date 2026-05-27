@@ -28,7 +28,7 @@ export default function SupplierTermsPage() {
             <p className="text-sm leading-relaxed">
               By registering for or using the QuotingHub Supplier Portal (&quot;Portal&quot;), you agree to be bound by
               these Terms &amp; Conditions. If you do not agree, you may not use the Portal. These terms apply
-              to all suppliers who access the Portal at suppliers.quotinghub.co.za.
+              to all suppliers who access the Portal at quotinghub.co.za/supplier-portal.
             </p>
           </section>
 

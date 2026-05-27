@@ -185,7 +185,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link
-                href="https://suppliers.quotinghub.co.za"
+                href="/supplier-portal"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9A7B4F] hover:text-[#C4A46B] transition-colors"
               >
                 Access Supplier Portal <ChevronRight size={14} />

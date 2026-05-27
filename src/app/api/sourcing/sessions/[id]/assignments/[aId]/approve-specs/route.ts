@@ -6,7 +6,7 @@ import { apiError } from '@/lib/api-error'
 import { buildNotifEmail } from '@/lib/sourcing-notifications'
 
 const APP_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
-const SUPPLIER_PORTAL_URL = process.env.NEXT_PUBLIC_SUPPLIER_PORTAL_URL ?? 'https://suppliers.quotinghub.co.za'
+const SUPPLIER_PORTAL_URL = process.env.NEXT_PUBLIC_SUPPLIER_PORTAL_URL ?? 'https://quotinghub.co.za'
 
 // POST /api/sourcing/sessions/[id]/assignments/[aId]/approve-specs
 // Designer approves or rejects a supplier spec change request
