@@ -57,6 +57,7 @@ export default async function SourcingDetailPage({
       pending_supplier_specs: a.pending_supplier_specs ?? null,
       spec_approval_status: a.spec_approval_status ?? null,
       spec_approved_at: a.spec_approved_at ?? null,
+      ignored: a.ignored ?? false,
       response: Array.isArray(a.response) ? (a.response[0] ?? null) : a.response,
     }))
     return {

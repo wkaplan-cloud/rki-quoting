@@ -61,6 +61,7 @@ interface Assignment {
   pending_supplier_specs: Record<string, string> | null
   spec_approval_status: string | null
   spec_approved_at: string | null
+  ignored: boolean
   response: Response | null
 }
 
@@ -1405,13 +1406,15 @@ function PushModal({ item, assignment, response, supplierName, projects, session
 
 // ---- Comparison Matrix ----
 function ComparisonTable({
-  items, suppliers, onAccept, accepting, onOpenPush, pushedItems, projects, onApproveSpec,
+  items, suppliers, onAccept, accepting, onIgnore, ignoring, onOpenPush, pushedItems, projects, onApproveSpec,
   sessionId, pushedExtras, onExtraPushed,
 }: {
   items: SessionItem[]
   suppliers: SessionSupplier[]
   onAccept: (itemId: string, assignmentId: string) => void
   accepting: string | null
+  onIgnore: (assignmentId: string, ignored: boolean) => Promise<void>
+  ignoring: string | null
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   pushedItems: Record<string, string>
   projects: Props['projects']
@@ -1663,13 +1666,32 @@ function ComparisonTable({
                               )
                             ) : (
                               item.status !== 'accepted' && (
-                                <button
-                                  onClick={() => onAccept(item.id, assignment.id)}
-                                  disabled={accepting === assignment.id}
-                                  className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
-                                >
-                                  {accepting === assignment.id ? '…' : 'Select'}
-                                </button>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <button
+                                    onClick={() => onAccept(item.id, assignment.id)}
+                                    disabled={accepting === assignment.id}
+                                    className="text-[10px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                  >
+                                    {accepting === assignment.id ? '…' : 'Select'}
+                                  </button>
+                                  {assignment.ignored ? (
+                                    <button
+                                      onClick={() => onIgnore(assignment.id, false)}
+                                      disabled={ignoring === assignment.id}
+                                      className="text-[9px] text-[#C4BFB5] hover:text-[#8A877F] transition-colors whitespace-nowrap disabled:opacity-50"
+                                    >
+                                      {ignoring === assignment.id ? '…' : 'Ignored · undo'}
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => onIgnore(assignment.id, true)}
+                                      disabled={ignoring === assignment.id}
+                                      className="text-[9px] text-[#C4BFB5] hover:text-[#8A877F] transition-colors whitespace-nowrap disabled:opacity-50"
+                                    >
+                                      {ignoring === assignment.id ? '…' : 'Not now'}
+                                    </button>
+                                  )}
+                                </div>
                               )
                             )}
                           </div>
@@ -1800,7 +1822,7 @@ function ComparisonTable({
 // ---- Supplier Card ----
 function SupplierCard({
   ss, items, sessionId, sessionStatus,
-  onAssignToggle, onAccept, onOpenPush, onRemove, onSend, onSpecAction, pushedItems, pushedExtras, onExtraPushed, projects,
+  onAssignToggle, onAccept, onIgnore, onOpenPush, onRemove, onSend, onSpecAction, pushedItems, pushedExtras, onExtraPushed, projects,
 }: {
   ss: SessionSupplier
   items: SessionItem[]
@@ -1808,6 +1830,7 @@ function SupplierCard({
   sessionStatus: string
   onAssignToggle: (ssId: string, itemId: string, assigned: boolean) => void
   onAccept: (itemId: string, assignmentId: string) => void
+  onIgnore: (assignmentId: string, ignored: boolean) => void
   onOpenPush: (item: SessionItem, assignment: Assignment, response: Response, supplierName: string) => void
   onRemove: (ssId: string) => void
   onSend: (ssId: string) => Promise<void>
@@ -1821,6 +1844,7 @@ function SupplierCard({
   const [showAddItems, setShowAddItems] = useState(false)
   const [togglingItem, setTogglingItem] = useState<string | null>(null)
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [ignoring, setIgnoring] = useState<string | null>(null)
   const [approvingSpec, setApprovingSpec] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [pushingExtra, setPushingExtra] = useState<'installation' | 'delivery' | null>(null)
@@ -1907,6 +1931,23 @@ function SupplierCard({
       alert(err.message)
     } finally {
       setAccepting(null)
+    }
+  }
+
+  async function handleIgnore(assignmentId: string, ignored: boolean) {
+    setIgnoring(assignmentId)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${sessionId}/assignments/${assignmentId}/ignore`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ignored }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      onIgnore(assignmentId, ignored)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setIgnoring(null)
     }
   }
 
@@ -2114,15 +2155,36 @@ function SupplierCard({
                           </a>
                         )}
                         {!isAccepted && item.status !== 'accepted' && (
-                          <button
-                            type="button"
-                            onClick={() => handleAccept(item.id, assignment.id)}
-                            disabled={accepting === assignment.id}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                          >
-                            {accepting === assignment.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                            Select
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleAccept(item.id, assignment.id)}
+                              disabled={accepting === assignment.id}
+                              className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                            >
+                              {accepting === assignment.id ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+                              Select
+                            </button>
+                            {assignment.ignored ? (
+                              <button
+                                type="button"
+                                onClick={() => handleIgnore(assignment.id, false)}
+                                disabled={ignoring === assignment.id}
+                                className="text-[10px] text-[#C4BFB5] hover:text-[#8A877F] transition-colors disabled:opacity-50"
+                              >
+                                {ignoring === assignment.id ? '…' : 'Ignored · undo'}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleIgnore(assignment.id, true)}
+                                disabled={ignoring === assignment.id}
+                                className="text-[10px] text-[#C4BFB5] hover:text-[#8A877F] transition-colors disabled:opacity-50"
+                              >
+                                {ignoring === assignment.id ? '…' : 'Not now'}
+                              </button>
+                            )}
+                          </>
                         )}
                         {isAccepted && assignment?.response && (
                           pushedItems[item.id] ? (
@@ -2333,6 +2395,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
   const [sending, setSending] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const [accepting, setAccepting] = useState<string | null>(null)
+  const [ignoring, setIgnoring] = useState<string | null>(null)
   const [pushModal, setPushModal] = useState<{
     item: SessionItem; assignment: Assignment; response: Response; supplierName: string
   } | null>(null)
@@ -2432,6 +2495,30 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
     })))
     setItems(prev => prev.map(item => item.id === itemId ? { ...item, status: 'accepted' } : item))
     startTransition(() => router.refresh())
+  }
+
+  function handleIgnore(assignmentId: string, ignored: boolean) {
+    setSuppliers(prev => prev.map(ss => ({
+      ...ss,
+      assignments: ss.assignments.map(a => a.id === assignmentId ? { ...a, ignored } : a),
+    })))
+  }
+
+  async function handleIgnoreFromTable(assignmentId: string, ignored: boolean) {
+    setIgnoring(assignmentId)
+    try {
+      const res = await fetch(`/api/sourcing/sessions/${session.id}/assignments/${assignmentId}/ignore`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ignored }),
+      })
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+      handleIgnore(assignmentId, ignored)
+    } catch (err: any) {
+      alert(err.message)
+    } finally {
+      setIgnoring(null)
+    }
   }
 
   function handleSpecAction(ssId: string, assignmentId: string, status: 'approved' | 'rejected') {
@@ -2711,6 +2798,7 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                             sessionStatus={session.status}
                             onAssignToggle={handleAssignToggle}
                             onAccept={handleAccept}
+                            onIgnore={handleIgnore}
                             onOpenPush={(item, assignment, response, supplierName) =>
                               setPushModal({ item, assignment, response, supplierName })
                             }
@@ -2766,6 +2854,8 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
                   suppliers={suppliers}
                   onAccept={handleAcceptFromTable}
                   accepting={accepting}
+                  onIgnore={handleIgnoreFromTable}
+                  ignoring={ignoring}
                   onOpenPush={(item, assignment, response, supplierName) =>
                     setPushModal({ item, assignment, response, supplierName })
                   }
