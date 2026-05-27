@@ -541,6 +541,19 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         createdByName={createdByName}
       />
 
+      {/* Client approved — show comment if they left one */}
+      {quoteApproval?.decision === 'approved' && quoteApproval.comment && (
+        <div className="mx-4 mt-3 flex items-start gap-3 px-4 py-3 rounded-xl border" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+          <span className="text-lg leading-none mt-0.5">✓</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold" style={{ color: '#166534' }}>
+              {quoteApproval.client_name ? `${quoteApproval.client_name}'s note` : 'Client note'}
+            </p>
+            <p className="text-sm mt-0.5 leading-relaxed" style={{ color: '#15803D' }}>{quoteApproval.comment}</p>
+          </div>
+        </div>
+      )}
+
       {/* Client declined banner */}
       {quoteApproval?.decision === 'declined' && !declineBannerDismissed && (
         <div className="mx-4 mt-3 flex items-start gap-3 px-4 py-3 rounded-xl border" style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}>
