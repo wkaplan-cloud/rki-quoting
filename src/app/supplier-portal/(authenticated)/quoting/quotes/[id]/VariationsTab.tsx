@@ -350,7 +350,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         const margin = vo.value > 0 ? Math.round((vo.value - vo.cost_value) / vo.value * 1000) / 10 : 0
                         return <p className="text-xs mt-0.5" style={{ color: margin >= 0 ? S.green : S.danger }}>Cost: {fmtR(vo.cost_value)} · Margin: {margin}%</p>
                       })() : (
-                        <p className="text-xs mt-0.5" style={{ color: S.gold }}>⚠ No cost entered — profit strip excludes this VO</p>
+                        <p className="text-xs mt-0.5" style={{ color: S.gold }}>⚠ No cost entered — profit may be overstated</p>
                       )}
                     </div>
                     <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
