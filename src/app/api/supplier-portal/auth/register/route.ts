@@ -56,6 +56,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: authError?.message ?? 'Failed to create account' }, { status: 500 })
   }
 
+  const isTrades = supplier_category === 'trades'
+  const trialEndsAt = isTrades
+    ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    : null
+
   // Create portal account row
   const { error: insertError } = await supabaseAdmin
     .from('supplier_portal_accounts')
@@ -65,6 +70,11 @@ export async function POST(req: NextRequest) {
       company_name: company_name.trim(),
       contact_name: contact_name?.trim() || null,
       supplier_category: supplier_category ?? 'manufacturer',
+      ...(isTrades && {
+        plan: 'quoting',
+        subscription_status: 'trialing',
+        trial_ends_at: trialEndsAt,
+      }),
     })
 
   if (insertError) {

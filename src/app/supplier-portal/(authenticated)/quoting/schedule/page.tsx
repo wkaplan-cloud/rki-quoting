@@ -27,11 +27,12 @@ export default async function SchedulePage() {
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, plan, subscription_status, company_name, email')
+    .select('id, plan, subscription_status, trial_ends_at, company_name, email')
     .eq('auth_user_id', user.id)
     .single()
 
-  if (!account || !(account.plan === 'quoting' && account.subscription_status === 'active')) {
+  const isTrialing = account?.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
+  if (!account || !(account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing))) {
     redirect('/supplier-portal/upgrade')
   }
 

@@ -11,14 +11,15 @@ export default async function SupplierHomePage() {
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, company_name, email, plan, subscription_status')
+    .select('id, company_name, email, plan, subscription_status, trial_ends_at')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
   if (!account) redirect('/supplier-portal/login')
 
   const companyName = account.company_name ?? account.email
-  const hasQuoting = account.plan === 'quoting' && account.subscription_status === 'active'
+  const isTrialing = account.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
+  const hasQuoting = account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing)
 
   // Fetch all session-supplier rows for this account
   const { data: ssRows } = await supabaseAdmin
