@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronRight, AlertCircle, Download, Printer, Send, Link, FileText, Check as CheckIcon, Loader2 } from 'lucide-react'
+import { Plus, X, ChevronRight, AlertCircle, Download, Printer, Send, FileText, Check as CheckIcon, Loader2 } from 'lucide-react'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType, ElecClient } from '@/lib/elec-types'
 
 type ClaimClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
@@ -536,7 +536,6 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
 
   // Send modal state
   const [showSendModal, setShowSendModal]   = useState(autoOpenSend)
-  const [sendMethod, setSendMethod]         = useState<'link' | 'pdf'>('pdf')
   const [sendEmail, setSendEmail]           = useState(claim.sent_to_email ?? '')
   const [sendMessage, setSendMessage]       = useState('')
   const [sendStatus, setSendStatus]         = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
@@ -546,8 +545,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
     if (!sendEmail.trim() || sendStatus === 'sending') return
     setSendStatus('sending'); setSendError('')
     try {
-      const route = sendMethod === 'link' ? 'send-link' : 'send-pdf'
-      const res = await fetch(`/api/supplier-portal/quoting/claims/${claim.id}/${route}`, {
+      const res = await fetch(`/api/supplier-portal/quoting/claims/${claim.id}/send-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
@@ -920,7 +918,7 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
                 </div>
                 <p className="font-semibold text-sm" style={{ color: S.text }}>Sent successfully!</p>
                 <p className="text-xs text-center" style={{ color: S.muted }}>
-                  {sendMethod === 'pdf' ? 'PDF attached to email' : 'View link sent'} to {sendEmail}
+                  PDF attached and sent to {sendEmail}
                 </p>
                 <button onClick={() => setShowSendModal(false)}
                   className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold text-white"
@@ -928,27 +926,6 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
               </div>
             ) : (
               <div className="p-5 space-y-4">
-                {/* Method cards */}
-                <div className="grid grid-cols-2 gap-3">
-                  {([
-                    { method: 'pdf' as const, icon: FileText, label: 'PDF Attachment', desc: 'Claim PDF sent as email attachment' },
-                    { method: 'link' as const, icon: Link, label: 'View Link', desc: 'Email with link to view online' },
-                  ] as const).map(({ method, icon: Icon, label, desc }) => (
-                    <button key={method} onClick={() => setSendMethod(method)}
-                      className="flex flex-col items-start gap-2 p-3 rounded-xl text-left transition-colors"
-                      style={{
-                        border: `2px solid ${sendMethod === method ? S.accent : S.border}`,
-                        background: sendMethod === method ? 'rgba(58,124,165,0.05)' : S.bg,
-                      }}>
-                      <Icon size={16} style={{ color: sendMethod === method ? S.accent : S.muted }} />
-                      <div>
-                        <p className="text-xs font-semibold" style={{ color: sendMethod === method ? S.accent : S.text }}>{label}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>{desc}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
                 {/* Email */}
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To *</label>
