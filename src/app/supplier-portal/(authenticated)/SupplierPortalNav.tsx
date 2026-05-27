@@ -232,7 +232,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, deskt
                   <Zap size={14} style={{ color: '#D9A441' }} />
                 </span>
                 <span className={`${labelCls} font-semibold flex-1`} style={{ color: '#D9A441' }}>
-                  Upgrade to Quoting
+                  Electrician Quoting
                 </span>
               </Link>
             )}

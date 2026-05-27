@@ -11,13 +11,14 @@ export default async function SupplierHomePage() {
 
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, company_name, email')
+    .select('id, company_name, email, plan, subscription_status')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
   if (!account) redirect('/supplier-portal/login')
 
   const companyName = account.company_name ?? account.email
+  const hasQuoting = account.plan === 'quoting' && account.subscription_status === 'active'
 
   // Fetch all session-supplier rows for this account
   const { data: ssRows } = await supabaseAdmin
@@ -118,6 +119,7 @@ export default async function SupplierHomePage() {
   return (
     <HomeClient
       companyName={companyName}
+      hasQuoting={hasQuoting}
       stats={{ activeRequests, itemsToPrice, studiosConnected, acceptedQuotes }}
       needsAttention={needsAttention}
       recentRequests={recentRequests}
