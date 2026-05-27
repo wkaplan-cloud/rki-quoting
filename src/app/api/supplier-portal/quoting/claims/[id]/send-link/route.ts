@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const companyName = account.company_name ?? account.email ?? 'Your contractor'
     const clientName = claim.sent_to_name ?? ''
     const quote = Array.isArray(claim.quote) ? claim.quote[0] : claim.quote
-    const viewUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://app.quotinghub.co.za'}/c/${token}`
+    const viewUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'}/c/${token}`
     const titleWord = claim.claim_type === 'retention' ? 'Retention Release' : ['invoiced', 'paid'].includes(claim.status) ? 'Tax Invoice' : 'Progress Claim'
     const subject = `${titleWord} ${claim.claim_number}${quote?.project_name ? ` – ${quote.project_name}` : ''}`
 

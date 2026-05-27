@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const client = Array.isArray(quoteRaw.client) ? quoteRaw.client[0] : quoteRaw.client
     const companyName = account.company_name ?? account.email ?? 'Your contractor'
     const clientName = client?.client_name ?? ''
-    const approvalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'}/q/${token}`
+    const approvalUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'}/q/${token}`
 
     const subject = `Quote ${quoteRaw.quote_number} – ${quoteRaw.project_name}`
 
