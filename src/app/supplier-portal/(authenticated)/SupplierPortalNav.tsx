@@ -236,33 +236,34 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, deskt
               </Link>
             )}
           </div>
-          {/* Settings — always at bottom of nav, above the footer separator */}
-          {hasQuoting && (() => {
-            const active = pathname.startsWith('/supplier-portal/quoting/settings')
-            return (
-              <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
-                <Link
-                  href="/supplier-portal/quoting/settings"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
-                  style={{
-                    background: active ? S.activeBg : 'transparent',
-                    borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
-                  }}
-                  onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
-                  onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-                >
-                  <span className="flex items-center justify-center w-9 flex-shrink-0">
-                    <Settings size={15} style={{ color: active ? S.textLight : S.textMuted }} />
-                  </span>
-                  <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
-                    Settings
-                  </span>
-                </Link>
-              </div>
-            )
-          })()}
         </nav>
+
+        {/* Settings — sits just above the footer separator, no divider of its own */}
+        {hasQuoting && (() => {
+          const active = pathname.startsWith('/supplier-portal/quoting/settings')
+          return (
+            <div className="pb-1">
+              <Link
+                href="/supplier-portal/quoting/settings"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
+                style={{
+                  background: active ? S.activeBg : 'transparent',
+                  borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
+                }}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+              >
+                <span className="flex items-center justify-center w-9 flex-shrink-0">
+                  <Settings size={15} style={{ color: active ? S.textLight : S.textMuted }} />
+                </span>
+                <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
+                  Settings
+                </span>
+              </Link>
+            </div>
+          )
+        })()}
 
         {/* Footer */}
         <div className="flex-shrink-0 py-2 space-y-0.5" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
