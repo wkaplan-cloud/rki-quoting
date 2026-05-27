@@ -11,7 +11,7 @@ function fmtDate(iso: string) {
 export default async function PlatformSuppliersPage() {
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category')
+    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category, plan, subscription_status, trial_ends_at')
     .order('created_at', { ascending: false })
 
   const rows = accounts ?? []
@@ -109,20 +109,24 @@ export default async function PlatformSuppliersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total registered', value: rows.length.toString() },
           { label: 'Active (responded)', value: activeCount.toString() },
+          { label: 'On free trial', value: rows.filter(r => {
+            const ra = r as any
+            return ra.subscription_status === 'trialing' && ra.trial_ends_at && new Date(ra.trial_ends_at) > new Date()
+          }).length.toString(), highlight: true },
           { label: 'New this month', value: rows.filter(r => {
             if (!r.created_at) return false
             const d = new Date(r.created_at)
             const now = new Date()
             return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
           }).length.toString() },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-            <span className="text-xs text-white/40 uppercase tracking-wider block mb-3">{label}</span>
-            <p className="text-2xl font-semibold text-white">{value}</p>
+        ].map(({ label, value, highlight }) => (
+          <div key={label} className={`border rounded-xl p-5 ${highlight ? 'bg-[#1A1A10] border-[#C4A46B]/30' : 'bg-[#1A1A18] border-white/10'}`}>
+            <span className={`text-xs uppercase tracking-wider block mb-3 ${highlight ? 'text-[#C4A46B]/60' : 'text-white/40'}`}>{label}</span>
+            <p className={`text-2xl font-semibold ${highlight ? 'text-[#C4A46B]' : 'text-white'}`}>{value}</p>
           </div>
         ))}
       </div>
@@ -207,7 +211,7 @@ export default async function PlatformSuppliersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  {['Company', 'Email', 'Type', 'Categories', 'Contact', 'Requests', 'Registered', 'Status'].map(h => (
+                  {['Company', 'Email', 'Type', 'Subscription', 'Categories', 'Contact', 'Requests', 'Registered', 'Status'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -237,6 +241,32 @@ export default async function PlatformSuppliersPage() {
                       <td className="px-4 py-3 text-white/60 whitespace-nowrap text-xs">{row.email}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <SupplierCategoryBadge accountId={row.id} initial={(row as any).supplier_category ?? 'manufacturer'} />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {(() => {
+                          const ra = row as any
+                          const status = ra.subscription_status
+                          const trialEnd = ra.trial_ends_at ? new Date(ra.trial_ends_at) : null
+                          const now = new Date()
+                          if (status === 'active') {
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400">Active</span>
+                          }
+                          if (status === 'trialing' && trialEnd) {
+                            const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000))
+                            if (daysLeft > 0) {
+                              return (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C4A46B]/10 text-[#C4A46B]">
+                                  Trial · {daysLeft}d left
+                                </span>
+                              )
+                            }
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-950 text-red-400">Trial expired</span>
+                          }
+                          if (status === 'cancelled') {
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/30">Cancelled</span>
+                          }
+                          return <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/20">Free</span>
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         {cats.length > 0 ? (
