@@ -57,6 +57,21 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   const [voLoading, setVOLoading] = useState(false)
   const [voError, setVOError] = useState('')
 
+  // Inline cost editing
+  const [editingCostId, setEditingCostId] = useState<string | null>(null)
+  const [editingCostVal, setEditingCostVal] = useState('')
+
+  async function saveCost(voId: string) {
+    const cost = editingCostVal.trim() ? (parseFloat(editingCostVal) || null) : null
+    await supabase.from('elec_variation_orders').update({ cost_value: cost }).eq('id', voId)
+    setVOs(prev => {
+      const next = prev.map(v => v.id === voId ? { ...v, cost_value: cost } : v)
+      onVOsChanged?.(next)
+      return next
+    })
+    setEditingCostId(null)
+  }
+
   // Send to client modal state
   const [sendModalVO, setSendModalVO] = useState<ElecVariationOrder | null>(null)
   const [sendEmail, setSendEmail] = useState('')
@@ -346,11 +361,38 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       {vo.notes && <p className="text-xs mt-0.5 italic" style={{ color: S.muted }}>{vo.notes}</p>}
                       {vo.approved_date && <p className="text-xs mt-0.5" style={{ color: S.green }}>Approved {vo.approved_date}</p>}
                       {vo.rejection_notes && <p className="text-xs mt-0.5 italic" style={{ color: S.danger }}>Reason: {vo.rejection_notes}</p>}
-                      {vo.cost_value != null ? (() => {
+                      {editingCostId === vo.id ? (
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Cost (R)</span>
+                          <input
+                            type="number"
+                            autoFocus
+                            value={editingCostVal}
+                            onChange={e => setEditingCostVal(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') void saveCost(vo.id); if (e.key === 'Escape') setEditingCostId(null) }}
+                            className="px-2 py-0.5 text-xs rounded outline-none text-right w-28"
+                            style={{ background: S.input, border: `1px solid ${S.accent}`, color: S.text }} />
+                          <button onClick={() => void saveCost(vo.id)}
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded"
+                            style={{ background: S.accent, color: '#fff' }}>Save</button>
+                          <button onClick={() => setEditingCostId(null)}
+                            className="text-[10px]" style={{ color: S.muted }}>Cancel</button>
+                        </div>
+                      ) : vo.cost_value != null ? (() => {
                         const margin = vo.value > 0 ? Math.round((vo.value - vo.cost_value) / vo.value * 1000) / 10 : 0
-                        return <p className="text-xs mt-0.5" style={{ color: margin >= 0 ? S.green : S.danger }}>Cost: {fmtR(vo.cost_value)} · Margin: {margin}%</p>
+                        return (
+                          <button onClick={() => { setEditingCostId(vo.id); setEditingCostVal(String(vo.cost_value)) }}
+                            className="text-xs mt-0.5 text-left hover:opacity-75"
+                            style={{ color: margin >= 0 ? S.green : S.danger }}>
+                            Cost: {fmtR(vo.cost_value)} · Margin: {margin}% ✎
+                          </button>
+                        )
                       })() : (
-                        <p className="text-xs mt-0.5" style={{ color: S.gold }}>⚠ No cost entered — profit may be overstated</p>
+                        <button onClick={() => { setEditingCostId(vo.id); setEditingCostVal('') }}
+                          className="text-xs mt-0.5 text-left hover:opacity-75"
+                          style={{ color: S.gold }}>
+                          ⚠ No cost entered — profit may be overstated. Add cost →
+                        </button>
                       )}
                     </div>
                     <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
