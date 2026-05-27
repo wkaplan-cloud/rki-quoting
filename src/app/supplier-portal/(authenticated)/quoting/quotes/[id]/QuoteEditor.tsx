@@ -636,6 +636,12 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     setQ(prev => ({ ...prev, ...update }))
   }
 
+  async function archiveQuote() {
+    if (!confirm('Archive this draft? It will be hidden from your quotes list. You can contact support to recover it within 60 days.')) return
+    await supabase.from('elec_quotes').update({ archived_at: new Date().toISOString() }).eq('id', q.id)
+    router.push('/supplier-portal/quoting/quotes')
+  }
+
   function addSection() { setSections(ss => [...ss, newSection(q.id, ss.length)]) }
   function addFreeItem() { setFreeItems(items => [...items, newItem(q.id, null, items.length)]) }
 
@@ -1034,6 +1040,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         <span className="text-sm font-medium flex-1" style={{ color: S.muted }}>Status</span>
         {q.status === 'draft' && (
           <>
+            <button onClick={() => void archiveQuote()}
+              className="px-4 py-2 rounded-lg text-sm font-semibold"
+              style={{ background: '#FEF2F2', color: S.danger }}>
+              Archive
+            </button>
             <button onClick={() => void handleSave()} disabled={saveStatus === 'saving'}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
               style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
@@ -1068,12 +1079,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </button>
         )}
         {q.status === 'in_progress' && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm" style={{ color: S.muted }}>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm flex-1" style={{ color: S.muted }}>
               {q.contract_type === 'lump_sum'
                 ? 'Project in progress — use the Claims tab to invoice'
                 : 'Project in progress — manage from the As-Built tab'}
             </span>
+            <button
+              onClick={() => { if (confirm('Cancel this project? This cannot be undone.')) transition('cancelled') }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
+              style={{ background: '#FEF2F2', color: S.danger }}>
+              Cancel Project
+            </button>
             <button
               onClick={() => { if (confirm('Mark this project as completed?')) transition('completed') }}
               className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
