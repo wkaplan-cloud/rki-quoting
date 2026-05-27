@@ -19,7 +19,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-font-smoothing: antialiased; scrollbar-gutter: stable; }
+html { -webkit-font-smoothing: antialiased; overflow-y: scroll; }
 
 body {
   background: var(--color-cream);
