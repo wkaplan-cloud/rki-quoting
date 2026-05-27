@@ -48,31 +48,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         )
     }
 
-    // Fetch project + settings to notify the designer
-    const [{ data: project }, { data: settings }] = await Promise.all([
-      supabaseAdmin.from('projects').select('project_name, project_number, user_id').eq('id', approval.project_id).single(),
-      supabaseAdmin.from('settings').select('business_name, email_from').eq('user_id',
-        (await supabaseAdmin.from('projects').select('user_id').eq('id', approval.project_id).single()).data?.user_id ?? ''
-      ).maybeSingle(),
-    ])
+    // Fetch project to get user_id, then settings + auth email in parallel
+    const { data: project } = await supabaseAdmin
+      .from('projects')
+      .select('project_name, project_number, user_id')
+      .eq('id', approval.project_id)
+      .single()
 
     if (project) {
-      // Get the designer's auth email as fallback
-      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(project.user_id)
+      const [{ data: settings }, { data: authUser }] = await Promise.all([
+        supabaseAdmin.from('settings').select('business_name, email_from').eq('user_id', project.user_id).maybeSingle(),
+        supabaseAdmin.auth.admin.getUserById(project.user_id),
+      ])
+
       const notifyEmail = settings?.email_from?.trim() || authUser?.user?.email
       const studioName = settings?.business_name ?? 'Your studio'
 
       if (notifyEmail) {
         const decisionLabel = decision === 'approved' ? 'approved' : 'declined'
         const subject = `Client ${decisionLabel} quote ${project.project_number} – ${project.project_name}`
-
-        await resend.emails.send({
-          from: `QuotingHub <notifications@quotinghub.co.za>`,
-          to: notifyEmail,
-          subject,
-          html: buildNotificationEmail({ decision, comment, clientName: client_name, projectName: project.project_name, projectNumber: project.project_number, studioName }),
-          text: `Your client has ${decisionLabel} the quote for ${project.project_name} (${project.project_number}).${comment ? `\n\nClient comment: ${comment}` : ''}`,
-        })
+        try {
+          await resend.emails.send({
+            from: `QuotingHub <notifications@quotinghub.co.za>`,
+            to: notifyEmail,
+            subject,
+            html: buildNotificationEmail({ decision, comment, clientName: client_name, projectName: project.project_name, projectNumber: project.project_number, studioName }),
+            text: `Your client has ${decisionLabel} the quote for ${project.project_name} (${project.project_number}).${comment ? `\n\nClient comment: ${comment}` : ''}`,
+          })
+        } catch (emailErr) {
+          // Don't fail the client response if the notification email bounces
+          console.error('[approve] notification email failed', emailErr)
+        }
       }
     }
 
