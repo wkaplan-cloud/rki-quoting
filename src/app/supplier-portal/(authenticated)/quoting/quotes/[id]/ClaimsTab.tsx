@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronRight, AlertCircle, Download, Printer, Send, FileText, Check as CheckIcon, Loader2 } from 'lucide-react'
+import { Plus, X, ChevronLeft, ChevronRight, AlertCircle, Download, Printer, Send, FileText, Check as CheckIcon, Loader2 } from 'lucide-react'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType, ElecClient } from '@/lib/elec-types'
 
 type ClaimClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
@@ -252,16 +252,13 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
         <h3 className="font-bold" style={{ color: S.text }}>New Claim / Invoice</h3>
-        <div className="flex items-center gap-2">
-          {contractType === 're_measurement' && (
-            <button onClick={fillFromAsBuilt}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-              style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
-              Fill from As-Built
-            </button>
-          )}
-          <button onClick={onCancel} style={{ color: S.muted }}><X size={15} /></button>
-        </div>
+        {contractType === 're_measurement' && (
+          <button onClick={fillFromAsBuilt}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+            Fill from As-Built
+          </button>
+        )}
       </div>
 
       {/* Meta fields */}
@@ -447,12 +444,9 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-      <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
-        <div>
-          <h3 className="font-bold" style={{ color: S.text }}>Retention Release</h3>
-          <p className="text-xs mt-0.5" style={{ color: S.muted }}>Claim back held retention at practical completion</p>
-        </div>
-        <button onClick={onCancel} style={{ color: S.muted }}><X size={15} /></button>
+      <div className="px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <h3 className="font-bold" style={{ color: S.text }}>Retention Release</h3>
+        <p className="text-xs mt-0.5" style={{ color: S.muted }}>Claim back held retention at practical completion</p>
       </div>
 
       <div className="px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
@@ -644,7 +638,6 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
           style={{ background: S.accent, color: '#fff' }}>
           <Download size={11} /> PDF
         </a>
-        <button onClick={onClose} style={{ color: S.muted }}><X size={15} /></button>
       </div>
 
       {/* Line items — show certified columns once certified */}
@@ -1032,44 +1025,67 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
     setClaims(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c))
   }
 
+  function Breadcrumb({ label, onBack }: { label: string; onBack: () => void }) {
+    return (
+      <div className="flex items-center gap-2 mb-5">
+        <button onClick={onBack}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-75"
+          style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+          <ChevronLeft size={14} /> Claims
+        </button>
+        <span style={{ color: S.border, fontSize: 18, lineHeight: 1, userSelect: 'none' }}>/</span>
+        <span className="text-sm font-semibold" style={{ color: S.text }}>{label}</span>
+      </div>
+    )
+  }
+
   if (view === 'new') {
     return (
-      <NewClaimForm
-        quoteId={quoteId}
-        portalAccountId={portalAccountId}
-        claims={claims}
-        items={items}
-        sections={sections}
-        contractType={contractType}
-        client={client}
-        onCreated={handleCreated}
-        onCancel={() => setView('list')}
-      />
+      <div>
+        <Breadcrumb label="New Claim / Invoice" onBack={() => setView('list')} />
+        <NewClaimForm
+          quoteId={quoteId}
+          portalAccountId={portalAccountId}
+          claims={claims}
+          items={items}
+          sections={sections}
+          contractType={contractType}
+          client={client}
+          onCreated={handleCreated}
+          onCancel={() => setView('list')}
+        />
+      </div>
     )
   }
 
   if (view === 'retention') {
     return (
-      <NewRetentionForm
-        quoteId={quoteId}
-        portalAccountId={portalAccountId}
-        retentionHeld={retentionHeld}
-        onCreated={handleCreated}
-        onCancel={() => setView('list')}
-      />
+      <div>
+        <Breadcrumb label="Retention Release" onBack={() => setView('list')} />
+        <NewRetentionForm
+          quoteId={quoteId}
+          portalAccountId={portalAccountId}
+          retentionHeld={retentionHeld}
+          onCreated={handleCreated}
+          onCancel={() => setView('list')}
+        />
+      </div>
     )
   }
 
   const selected = claims.find(c => c.id === selectedId)
   if (view === 'detail' && selected) {
     return (
-      <ClaimDetail
-        claim={selected}
-        items={items}
-        autoOpenSend={autoOpenSend}
-        onStatusChange={(id, patch) => { handleStatusChange(id, patch) }}
-        onClose={() => { setView('list'); setSelectedId(null); setAutoOpenSend(false) }}
-      />
+      <div>
+        <Breadcrumb label={selected.claim_number} onBack={() => { setView('list'); setSelectedId(null); setAutoOpenSend(false) }} />
+        <ClaimDetail
+          claim={selected}
+          items={items}
+          autoOpenSend={autoOpenSend}
+          onStatusChange={(id, patch) => { handleStatusChange(id, patch) }}
+          onClose={() => { setView('list'); setSelectedId(null); setAutoOpenSend(false) }}
+        />
+      </div>
     )
   }
 

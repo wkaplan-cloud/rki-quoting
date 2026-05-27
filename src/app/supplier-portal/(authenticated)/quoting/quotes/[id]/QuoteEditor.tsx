@@ -726,9 +726,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       {/* Tab nav (only in_progress / completed) */}
       {showTabs && (
         <div className="flex items-center gap-1 mb-6 p-1 rounded-xl" style={{ background: S.bg }}>
-          {TABS.flatMap((tab, i) => {
-            const isPrimary = tab.id === 'quote' || tab.id === 'as_built'
-            const prevIsPrimary = TABS[i - 1]?.id === 'quote' || TABS[i - 1]?.id === 'as_built'
+          {TABS.flatMap(tab => {
             const btn = (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -740,9 +738,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                 {tab.label}
               </button>
             )
-            if (!isPrimary && prevIsPrimary) {
+            if (tab.id === 'claims' || tab.id === 'snag') {
               return [
-                <div key="divider" style={{ width: 1, height: 20, background: S.muted, flexShrink: 0, margin: '0 4px', opacity: 0.35 }} />,
+                <div key={`div-${tab.id}`} style={{ width: 1, height: 20, background: S.muted, flexShrink: 0, margin: '0 4px', opacity: 0.35 }} />,
                 btn,
               ]
             }

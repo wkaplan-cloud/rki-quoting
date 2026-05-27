@@ -182,7 +182,9 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
         <div className="rounded-2xl p-4 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm" style={{ color: S.text }}>New Variation Order</h3>
-            <button onClick={() => { setShowAdd(false); setError('') }} style={{ color: S.muted }}><X size={14} /></button>
+            <button onClick={() => { setShowAdd(false); setError('') }}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg transition-opacity hover:opacity-75"
+              style={{ color: S.muted, background: S.bg }}>Cancel</button>
           </div>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="col-span-2">
@@ -312,7 +314,9 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         </button>
                       )}
                       {isInvoicing && (
-                        <button onClick={() => setInvoicingVoId(null)} style={{ color: S.muted }}><X size={14} /></button>
+                        <button onClick={() => setInvoicingVoId(null)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg transition-opacity hover:opacity-75"
+                          style={{ color: S.muted, background: S.bg }}>Cancel</button>
                       )}
                     </div>
                   </div>
