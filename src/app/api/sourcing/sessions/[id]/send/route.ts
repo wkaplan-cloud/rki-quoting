@@ -191,7 +191,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       const isRegistered = !!resolvedPortalAccountId
       const respondUrl = isRegistered
-        ? `${SUPPLIER_PORTAL_URL}/requests/${ss.id}`
+        ? `${SUPPLIER_PORTAL_URL}/supplier-portal/requests/${ss.id}`
         : `${SITE_URL}/sourcing/respond/${ss.token}`
 
       const ccEmails: string[] = (ss as any).cc_emails ?? []

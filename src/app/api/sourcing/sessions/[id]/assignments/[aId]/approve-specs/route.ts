@@ -128,7 +128,7 @@ export async function POST(
 
             if (ssRow?.email && sessionRow) {
               const respondUrl = ssRow.portal_account_id
-                ? `${SUPPLIER_PORTAL_URL}/requests/${aRow.session_supplier_id}`
+                ? `${SUPPLIER_PORTAL_URL}/supplier-portal/requests/${aRow.session_supplier_id}`
                 : `${APP_URL}/sourcing/respond/${ssRow.token}`
 
               const resend = new Resend(process.env.RESEND_API_KEY)

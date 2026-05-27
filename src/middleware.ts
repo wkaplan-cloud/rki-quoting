@@ -31,6 +31,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(dest, { status: 301 })
   }
 
+  // /requests/[id] shorthand used in sourcing emails — redirect to full supplier-portal path
+  if (pathname.startsWith('/requests/')) {
+    return NextResponse.redirect(new URL(`/supplier-portal${pathname}`, request.url))
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
 
   // Platform admin routes — handled by their own layout auth check
