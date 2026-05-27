@@ -131,13 +131,6 @@ export function WeekCalendar({
   const weekEnd   = weekDays[6]
   const todayStr  = toDateStr(new Date())
 
-  // Scroll to 7:30am on mount
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = (0.5) * HOUR_HEIGHT
-    }
-  }, [])
-
   // Keep weekDays ref in sync for drag handlers
   useEffect(() => { weekDaysRef.current = weekDays }, [weekDays])
 
