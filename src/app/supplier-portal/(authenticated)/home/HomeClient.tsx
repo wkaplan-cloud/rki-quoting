@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { ArrowRight, Clock, TrendingUp, Package, Building2, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Clock, TrendingUp, Package, Building2, CheckCircle2, Info } from 'lucide-react'
 
 interface AttentionRow {
   id: string
@@ -69,6 +69,15 @@ export function HomeClient({ companyName, stats, needsAttention, recentRequests 
         <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#111827' }}>
           {greeting}, <span style={{ color: '#1E2A38' }}>{companyName}</span>
         </h1>
+      </div>
+
+      {/* Platform notice */}
+      <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(58,124,165,0.06)', border: '1px solid rgba(58,124,165,0.15)' }}>
+        <Info size={14} style={{ color: '#3A7CA5', flexShrink: 0, marginTop: 1 }} />
+        <p className="text-xs leading-relaxed" style={{ color: '#4B6B8A' }}>
+          <span className="font-semibold" style={{ color: '#1E2A38' }}>Price Requests is designed for manufacturers & product suppliers.</span>
+          {' '}A <span className="font-semibold">1% platform fee</span> applies to the value of all accepted price requests. This fee is invoiced monthly.
+        </p>
       </div>
 
       {/* Stat cards */}
