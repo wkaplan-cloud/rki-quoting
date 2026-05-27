@@ -214,7 +214,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
       <div className="hidden lg:flex lg:w-[42%] flex-col justify-between py-14 px-12" style={{ background: panelBg }}>
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-16 sm:h-20 w-auto object-contain mb-12" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
+          <img src="/logo.png" alt="QuotingHub" className="h-32 sm:h-40 w-auto object-contain mb-12" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} />
           <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6" style={{ background: accentBg }}>
             {isElec ? <Zap size={20} style={{ color: accent }} /> : <Package size={20} style={{ color: accent }} />}
           </div>
