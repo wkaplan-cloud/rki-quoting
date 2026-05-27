@@ -722,18 +722,29 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
       {/* Tab nav (only in_progress / completed) */}
       {showTabs && (
-        <div className="flex gap-1 mb-6 p-1 rounded-xl" style={{ background: S.bg }}>
-          {TABS.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                background: activeTab === tab.id ? S.card : 'transparent',
-                color:      activeTab === tab.id ? S.text : S.muted,
-                boxShadow:  activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-              }}>
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1 mb-6 p-1 rounded-xl" style={{ background: S.bg }}>
+          {TABS.flatMap((tab, i) => {
+            const isPrimary = tab.id === 'quote' || tab.id === 'as_built'
+            const prevIsPrimary = TABS[i - 1]?.id === 'quote' || TABS[i - 1]?.id === 'as_built'
+            const btn = (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  background: activeTab === tab.id ? S.card : 'transparent',
+                  color:      activeTab === tab.id ? S.text : S.muted,
+                  boxShadow:  activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                }}>
+                {tab.label}
+              </button>
+            )
+            if (!isPrimary && prevIsPrimary) {
+              return [
+                <div key="divider" style={{ width: 1, alignSelf: 'stretch', background: S.border, flexShrink: 0, margin: '4px 2px' }} />,
+                btn,
+              ]
+            }
+            return [btn]
+          })}
         </div>
       )}
 
