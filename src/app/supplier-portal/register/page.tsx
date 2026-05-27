@@ -102,8 +102,8 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
             </div>
             <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
               <div>
-                <span className="text-sm font-bold" style={{ color: '#D9A441' }}>R499</span>
-                <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.35)' }}>/month</span>
+                <span className="text-xs font-semibold" style={{ color: '#D9A441' }}>30-day free trial</span>
+                <span className="text-xs ml-1" style={{ color: 'rgba(255,255,255,0.35)' }}>then R499/mo</span>
               </div>
               <span className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(217,164,65,0.15)', color: '#D9A441' }}>Get started →</span>
             </div>
@@ -241,8 +241,8 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
         <div>
           {isElec ? (
             <div className="rounded-xl px-4 py-4 mb-6" style={{ background: 'rgba(217,164,65,0.08)', border: '1px solid rgba(217,164,65,0.2)' }}>
-              <p className="text-xs font-semibold mb-0.5" style={{ color: '#D9A441' }}>R499/month after trial</p>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Cancel anytime. No lock-in.</p>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: '#D9A441' }}>30 days free, then R499/month</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>No card required. Cancel anytime.</p>
             </div>
           ) : (
             <div className="rounded-xl px-4 py-4 mb-6" style={{ background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)' }}>
@@ -287,7 +287,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
 
             <h1 className="text-2xl font-bold mb-1" style={{ color: '#18181B' }}>Create account</h1>
             <p className="text-sm mb-6" style={{ color: '#71717A' }}>
-              {isElec ? 'Start your free trial — no card required' : 'Free forever · No monthly fees'}
+              {isElec ? '30-day free trial — no card required' : 'Free forever · No monthly fees'}
             </p>
 
             {noPortalAccount && (
