@@ -43,6 +43,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   // New VO form state
   const [formDesc, setFormDesc] = useState('')
   const [formValue, setFormValue] = useState('')
+  const [formCost, setFormCost] = useState('')
   const [formNotes, setFormNotes] = useState('')
   const [formRequestedBy, setFormRequestedBy] = useState('')
   const [loading, setLoading] = useState(false)
@@ -102,6 +103,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
         vo_number: voNumber,
         description: formDesc.trim(),
         value: parseFloat(formValue) || 0,
+        cost_value: formCost.trim() ? (parseFloat(formCost) || null) : null,
         requested_by: formRequestedBy.trim() || null,
         notes: formNotes.trim() || null,
         status: 'pending',
@@ -110,7 +112,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       .single()
     if (err) { setError(err.message); setLoading(false); return }
     setVOs(prev => [data as ElecVariationOrder, ...prev])
-    setFormDesc(''); setFormValue(''); setFormNotes(''); setFormRequestedBy('')
+    setFormDesc(''); setFormValue(''); setFormCost(''); setFormNotes(''); setFormRequestedBy('')
     setShowAdd(false); setLoading(false)
   }
 
@@ -227,8 +229,25 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Value (R)</label>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Charge to Client (R)</label>
               <input type="number" value={formValue} onChange={e => setFormValue(e.target.value)} placeholder="0.00"
+                className="w-full px-3 py-2 text-sm rounded-lg outline-none text-right"
+                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                Your Cost (R)
+                {(() => {
+                  const v = parseFloat(formValue) || 0
+                  const c = parseFloat(formCost) || 0
+                  if (v > 0 && c > 0) {
+                    const margin = Math.round((v - c) / v * 1000) / 10
+                    return <span className="ml-2 normal-case font-normal" style={{ color: margin >= 0 ? S.green : S.danger }}>{margin}% margin</span>
+                  }
+                  return null
+                })()}
+              </label>
+              <input type="number" value={formCost} onChange={e => setFormCost(e.target.value)} placeholder="Optional"
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none text-right"
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
@@ -238,7 +257,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
               <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2}
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
@@ -328,6 +347,12 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       {vo.notes && <p className="text-xs mt-0.5 italic" style={{ color: S.muted }}>{vo.notes}</p>}
                       {vo.approved_date && <p className="text-xs mt-0.5" style={{ color: S.green }}>Approved {vo.approved_date}</p>}
                       {vo.rejection_notes && <p className="text-xs mt-0.5 italic" style={{ color: S.danger }}>Reason: {vo.rejection_notes}</p>}
+                      {vo.cost_value != null ? (() => {
+                        const margin = vo.value > 0 ? Math.round((vo.value - vo.cost_value) / vo.value * 1000) / 10 : 0
+                        return <p className="text-xs mt-0.5" style={{ color: margin >= 0 ? S.green : S.danger }}>Cost: {fmtR(vo.cost_value)} · Margin: {margin}%</p>
+                      })() : (
+                        <p className="text-xs mt-0.5" style={{ color: S.gold }}>⚠ No cost entered — profit strip excludes this VO</p>
+                      )}
                     </div>
                     <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                       {vo.status === 'pending' && (

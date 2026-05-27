@@ -210,6 +210,7 @@ export interface ElecVariationOrder {
   sent_to_email: string | null
   sent_at: string | null
   rejection_notes: string | null
+  cost_value: number | null
   created_at: string
 }
 

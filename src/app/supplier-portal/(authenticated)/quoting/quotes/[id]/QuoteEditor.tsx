@@ -673,10 +673,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   ]
 
   const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
-  const approvedVOTotal = liveVOs.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
-  const costTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
-  const grossProfit = subtotal - costTotal
-  const hasCostData = allItems.some(i => i.cost_unit_rate != null)
+  const approvedVOs = liveVOs.filter(v => v.status === 'approved')
+  const approvedVOTotal = approvedVOs.reduce((s, v) => s + v.value, 0)
+  const approvedVOCostTotal = approvedVOs.reduce((s, v) => s + (v.cost_value ?? 0), 0)
+  const itemCostTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
+  const costTotal = itemCostTotal + approvedVOCostTotal
+  const grossProfit = subtotal - itemCostTotal
+  const hasCostData = allItems.some(i => i.cost_unit_rate != null) || approvedVOs.some(v => v.cost_value != null)
   const revisedTotal = contractTotal + approvedVOTotal
   const revisedGrossProfit = revisedTotal - costTotal
 
