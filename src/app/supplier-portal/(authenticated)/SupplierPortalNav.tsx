@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, UserCog, ClipboardList } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, UserCog, ClipboardList, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -48,6 +48,9 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
   const router = useRouter()
   const supabase = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [priceOpen, setPriceOpen] = useState(true)
+  const [projectsOpen, setProjectsOpen] = useState(true)
+  const [teamOpen, setTeamOpen] = useState(true)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -119,10 +122,13 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
 
         {/* Nav items */}
         <nav className="flex-1 pt-3 pb-2 overflow-y-auto overflow-x-hidden">
-          <p className={`${labelCls} px-4 mb-1 text-[10px] font-bold uppercase tracking-widest`} style={{ color: S.textMuted }}>
-            Price Requests
-          </p>
-          <div className="space-y-0.5">
+          <button
+            onClick={() => setPriceOpen(v => !v)}
+            className={`${labelCls} w-full flex items-center justify-between px-4 mb-1 group/hd`}>
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: S.textMuted }}>Price Requests</span>
+            <ChevronDown size={11} style={{ color: S.textMuted, transition: 'transform 0.2s', transform: priceOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+          </button>
+          <div className="space-y-0.5 overflow-hidden transition-all duration-200" style={{ maxHeight: priceOpen ? '200px' : '0px', opacity: priceOpen ? 1 : 0 }}>
             {NAV_ITEMS.map(({ href, label, icon: Icon, showBadge }) => {
               const active = pathname.startsWith(href)
               const badge = showBadge ? pendingCount : 0
@@ -161,10 +167,13 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
           <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
             {hasQuoting ? (
               <>
-                <p className={`${labelCls} px-4 mb-1 text-[10px] font-bold uppercase tracking-widest`} style={{ color: S.textMuted }}>
-                  Projects
-                </p>
-                <div className="space-y-0.5">
+                <button
+                  onClick={() => setProjectsOpen(v => !v)}
+                  className={`${labelCls} w-full flex items-center justify-between px-4 mb-1`}>
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: S.textMuted }}>Projects</span>
+                  <ChevronDown size={11} style={{ color: S.textMuted, transition: 'transform 0.2s', transform: projectsOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                </button>
+                <div className="space-y-0.5 overflow-hidden transition-all duration-200" style={{ maxHeight: projectsOpen ? '200px' : '0px', opacity: projectsOpen ? 1 : 0 }}>
                   {QUOTING_NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
                     const active = exact ? pathname === href : pathname.startsWith(href)
                     return (
@@ -192,10 +201,13 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
                 </div>
 
                 {/* Team section */}
-                <p className={`${labelCls} px-4 mt-4 mb-1 text-[10px] font-bold uppercase tracking-widest`} style={{ color: S.textMuted }}>
-                  Team
-                </p>
-                <div className="space-y-0.5">
+                <button
+                  onClick={() => setTeamOpen(v => !v)}
+                  className={`${labelCls} w-full flex items-center justify-between px-4 mt-4 mb-1`}>
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: S.textMuted }}>Team</span>
+                  <ChevronDown size={11} style={{ color: S.textMuted, transition: 'transform 0.2s', transform: teamOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                </button>
+                <div className="space-y-0.5 overflow-hidden transition-all duration-200" style={{ maxHeight: teamOpen ? '200px' : '0px', opacity: teamOpen ? 1 : 0 }}>
                   {TEAM_NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
                     const active = exact ? pathname === href : pathname.startsWith(href)
                     return (
