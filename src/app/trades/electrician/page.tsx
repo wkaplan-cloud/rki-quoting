@@ -10,7 +10,7 @@ import { NavMobile } from '../../_components/NavMobile'
 
 export const metadata: Metadata = {
   title: 'Quoting Software for South African Electricians | QuotingHub',
-  description: 'Professional quoting, invoicing, COCs, job cards, and GPS staff management for South African electricians. SANS 10142-1 compliant COC. 14-day free trial.',
+  description: 'Professional quoting, invoicing, COCs, job cards, and GPS staff management for South African electricians. SANS 10142-1 compliant COC. 30-day free trial.',
   alternates: { canonical: 'https://quotinghub.co.za/trades/electrician' },
   openGraph: {
     title: 'Quoting Software for South African Electricians | QuotingHub',
@@ -87,7 +87,7 @@ const INCLUDE_ITEMS = [
   'As-built drawings section',
   'Client portal for approvals',
   'Branded PDF documents',
-  '14-day free trial, no credit card',
+  '30-day free trial, no credit card',
 ]
 
 const FAQS = [
@@ -109,7 +109,7 @@ const FAQS = [
   },
   {
     q: 'Is there a long-term contract?',
-    a: 'No. Month-to-month, cancel any time. Start with a 14-day free trial — no credit card required.',
+    a: 'No. Month-to-month, cancel any time. Start with a 30-day free trial — no credit card required.',
   },
 ]
 
@@ -169,7 +169,7 @@ export default function ElectricianLandingPage() {
                 Log in to your account
               </Link>
             </div>
-            <p className="text-sm text-[#C4BFB5] mt-4">14-day free trial · No credit card required</p>
+            <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · No credit card required</p>
           </div>
         </div>
       </section>
@@ -182,7 +182,7 @@ export default function ElectricianLandingPage() {
             'Digital COC — SANS 10142-1',
             'GPS clock-in for all staff',
             'Job cards on any device',
-            '14-day free trial',
+            '30-day free trial',
           ].map(f => (
             <div key={f} className="flex items-center gap-2 text-sm text-[#8A877F]">
               <Check size={13} className="text-[#C4A46B] flex-shrink-0" />
@@ -325,7 +325,7 @@ export default function ElectricianLandingPage() {
               Other trades
             </Link>
           </div>
-          <p className="text-sm text-[#C4BFB5] mt-5">14-day free trial · No credit card required · Cancel any time</p>
+          <p className="text-sm text-[#C4BFB5] mt-5">30-day free trial · No credit card required · Cancel any time</p>
         </div>
       </section>
 
