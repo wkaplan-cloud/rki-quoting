@@ -246,9 +246,7 @@ export default async function QuotingDashboardPage() {
             const adjustedContract = q.contract_value + q.approved_vo_value
             const balance = adjustedContract - ct.claimed
             const completionPct = adjustedContract > 0
-              ? q.contract_type === 'lump_sum'
-                ? Math.min(100, Math.round((ct.claimed / adjustedContract) * 100))
-                : Math.min(100, Math.round((q.as_built_value / q.contract_value) * 100))
+              ? Math.min(100, Math.round((ct.claimed / adjustedContract) * 100))
               : 0
             return (
               <Link

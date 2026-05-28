@@ -159,7 +159,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, deskt
             {hasQuoting ? (
               <>
                 <p className={`${labelCls} px-4 mb-1 text-[10px] font-bold uppercase tracking-widest`} style={{ color: S.textMuted }}>
-                  Quoting
+                  Projects
                 </p>
                 <div className="space-y-0.5">
                   {QUOTING_NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {

@@ -561,7 +561,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     try {
       await supabase.from('elec_quotes').update({
         project_name: q.project_name, project_address: q.project_address,
-        client_id: q.client_id, project_type: q.project_type, contract_type: q.contract_type,
+        client_id: q.client_id, project_type: q.project_type,
         vat_rate: q.vat_rate, retention_percentage: q.retention_percentage,
         payment_terms_days: q.payment_terms_days, liquidated_damages_per_day: q.liquidated_damages_per_day,
         defects_liability_period_days: q.defects_liability_period_days,
@@ -665,11 +665,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const TABS: { id: QuoteTab; label: string }[] = [
     { id: 'quote',      label: 'Quote' },
-    ...(q.contract_type !== 'lump_sum' ? [{ id: 'as_built' as QuoteTab, label: 'As-Built' }] : []),
-    { id: 'claims',     label: 'Claims' },
     { id: 'variations', label: 'Variations' },
+    { id: 'claims',     label: 'Claims' },
     { id: 'snag',       label: 'Snag List' },
     { id: 'coc',        label: 'COC' },
+    { id: 'as_built',   label: 'As-Built' },
   ]
 
   const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
@@ -814,6 +814,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               initialClaims={claims}
               voPrefix={voPrefix}
               companyCode={companyCode}
+              sections={sections as unknown as ElecQuoteSection[]}
+              items={allItems as ElecQuoteLineItem[]}
               onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
               onVOsChanged={setLiveVOs}
             />
@@ -861,7 +863,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             )}
             {[
               { label: 'Project Type',    value: q.project_type ? q.project_type.charAt(0).toUpperCase() + q.project_type.slice(1) : null },
-              { label: 'Contract Type',   value: q.contract_type === 'lump_sum' ? 'Lump Sum' : q.contract_type === 're_measurement' ? 'Re-measurement' : 'Cost Plus' },
               { label: 'Quote Date',      value: q.quoted_date ?? null },
               { label: 'Est. Completion', value: q.expected_completion_date ?? null },
               { label: 'Retention',       value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
@@ -916,18 +917,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               style={{ background: S.input, border: `1px solid ${S.border}`, color: q.project_type ? S.text : S.muted }}>
               <option value="">Select type</option>
               {['residential','commercial','industrial','retail'].map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
-            </select>
-          </div>
-
-          {/* Contract type */}
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Contract Type</label>
-            <select value={q.contract_type ?? 'lump_sum'} onChange={e => setQ(p => ({ ...p, contract_type: e.target.value as ElecQuote['contract_type'] }))}
-              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
-              <option value="lump_sum">Lump Sum</option>
-              <option value="re_measurement">Re-measurement</option>
-              <option value="cost_plus">Cost Plus</option>
             </select>
           </div>
 
@@ -1125,9 +1114,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         {q.status === 'in_progress' && (
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm flex-1" style={{ color: S.muted }}>
-              {q.contract_type === 'lump_sum'
-                ? 'Project in progress — use the Claims tab to invoice'
-                : 'Project in progress — manage from the As-Built tab'}
+              Project in progress — use the Claims tab to invoice
             </span>
             <button
               onClick={() => { if (confirm('Cancel this project? This cannot be undone.')) transition('cancelled') }}
