@@ -13,6 +13,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://quotinghub.co.za/interior-design-software-george', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://quotinghub.co.za/interior-design-software-bloemfontein', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://quotinghub.co.za/interior-design-software-east-london', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://quotinghub.co.za/trades', changeFrequency: 'monthly', priority: 0.9 },
+    { url: 'https://quotinghub.co.za/trades/electrician', changeFrequency: 'monthly', priority: 0.9 },
     { url: 'https://quotinghub.co.za/faq', changeFrequency: 'monthly', priority: 0.7 },
     { url: 'https://quotinghub.co.za/blog', changeFrequency: 'weekly', priority: 0.8 },
     { url: 'https://quotinghub.co.za/blog/how-to-write-interior-design-quotation-south-africa', changeFrequency: 'monthly', priority: 0.8 },

@@ -316,7 +316,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
             {[
               { label: 'vs Excel', desc: 'No more manual calculations, broken formulas, or unstyled documents. QuotingHub handles the maths and produces professional PDFs automatically.' },
-              { label: 'vs Generic quoting tools', desc: 'Most quoting tools are built for tradespeople or services businesses. QuotingHub understands supplier price lists, markups, and design fees from the ground up.' },
+              { label: 'vs Generic quoting tools', desc: 'Generic quoting tools don\'t understand designer workflows — supplier price lists, markups, design fees, purchase orders. QuotingHub is built around the way design studios actually operate.' },
               { label: 'vs Doing it manually', desc: 'Every hour spent on admin is an hour not spent on design or client relationships. QuotingHub gives that time back.' },
             ].map(({ label, desc }) => (
               <div key={label} className="p-6 rounded-xl border border-[#EDE9E1]">
@@ -378,6 +378,7 @@ export default function LandingPage() {
             <Link href="/faq" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">FAQ</Link>
             <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
             <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
+            <Link href="/trades" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Trades</Link>
           </div>
         </div>
       </footer>
