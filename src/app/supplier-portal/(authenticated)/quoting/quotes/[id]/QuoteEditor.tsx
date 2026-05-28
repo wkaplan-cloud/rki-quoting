@@ -472,12 +472,13 @@ interface Props {
   voPrefix: string
   cocPrefix: string
   companyCode: string
+  sageConnected?: boolean
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'snag' | 'coc'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, claims, voPrefix, cocPrefix, companyCode }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -804,6 +805,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               contractType={q.contract_type}
               retentionPct={q.retention_percentage}
               client={clients.find(c => c.id === q.client_id) ?? null}
+              sageConnected={sageConnected}
             />
           </div>
           <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>

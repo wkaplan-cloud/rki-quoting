@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Zap } from 'lucide-react'
+import { Check, Zap, Link2, Link2Off, RefreshCw, ArrowUpRight } from 'lucide-react'
 import type { ElecSettings } from '@/lib/elec-types'
 
 const S = {
@@ -103,6 +103,44 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState('')
+
+  // Sage
+  const [sageConnected, setSageConnected] = useState(!!(settings?.sage_company_id))
+  const [sageCompanyId, setSageCompanyId] = useState(settings?.sage_company_id ?? '')
+  const [sageUsername, setSageUsername]   = useState(settings?.sage_username ?? '')
+  const [sageEmail, setSageEmail]         = useState('')
+  const [sagePassword, setSagePassword]   = useState('')
+  const [sageConnecting, setSageConnecting] = useState(false)
+  const [sageDisconnecting, setSageDisconnecting] = useState(false)
+  const [sageError, setSageError]         = useState('')
+  const [sageSuccess, setSageSuccess]     = useState('')
+
+  async function handleSageConnect() {
+    if (!sageEmail.trim() || !sagePassword.trim()) { setSageError('Email and password required'); return }
+    setSageConnecting(true); setSageError(''); setSageSuccess('')
+    const res = await fetch('/api/supplier-portal/quoting/sage/connect-basic', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sageEmail.trim(), password: sagePassword }),
+    })
+    const data = await res.json()
+    setSageConnecting(false)
+    if (!res.ok) { setSageError(data.error ?? 'Connection failed'); return }
+    setSageConnected(true)
+    setSageCompanyId(data.company_id)
+    setSageUsername(sageEmail.trim())
+    setSageSuccess(`Connected to ${data.company_name}`)
+    setSageEmail(''); setSagePassword('')
+  }
+
+  async function handleSageDisconnect() {
+    if (!confirm('Disconnect Sage? You can reconnect at any time.')) return
+    setSageDisconnecting(true)
+    const res = await fetch('/api/supplier-portal/quoting/sage/disconnect', { method: 'POST' })
+    setSageDisconnecting(false)
+    if (!res.ok) return
+    setSageConnected(false); setSageCompanyId(''); setSageUsername(''); setSageSuccess(''); setSageError('')
+  }
 
   // Auto-dismiss saved banner
   useEffect(() => {
@@ -249,6 +287,57 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
               onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
             />
           </Field>
+        </Section>
+
+        {/* Sage Accounting */}
+        <Section title="Sage Accounting">
+          {sageConnected ? (
+            <div>
+              <div className="flex items-center gap-3 p-4 rounded-xl mb-4" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
+                <Link2 size={16} style={{ color: '#16A34A', flexShrink: 0 }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: '#16A34A' }}>Connected to Sage</p>
+                  <p className="text-xs mt-0.5 truncate" style={{ color: S.muted }}>
+                    {sageUsername && <span>{sageUsername} · </span>}
+                    Company ID: {sageCompanyId}
+                  </p>
+                </div>
+                <button onClick={handleSageDisconnect} disabled={sageDisconnecting}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
+                  style={{ color: '#DC2626', background: '#FEF2F2' }}>
+                  <Link2Off size={12} /> {sageDisconnecting ? 'Disconnecting…' : 'Disconnect'}
+                </button>
+              </div>
+              {sageSuccess && <p className="text-xs mt-1" style={{ color: '#16A34A' }}>{sageSuccess}</p>}
+              <p className="text-xs" style={{ color: S.muted }}>
+                Claims and quotes can now be pushed to Sage as tax invoices directly from the Claims tab.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs mb-4 -mt-2" style={{ color: S.muted }}>
+                Connect your Sage One account to push claims as tax invoices and automatically sync payment status.
+              </p>
+              <div className="space-y-3">
+                <Field label="Sage Email">
+                  <Input type="email" value={sageEmail} onChange={setSageEmail} placeholder="your@email.com" />
+                </Field>
+                <Field label="Sage Password">
+                  <Input type="password" value={sagePassword} onChange={setSagePassword} placeholder="••••••••" />
+                </Field>
+              </div>
+              {sageError && (
+                <p className="mt-3 px-3 py-2 rounded-lg text-xs" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                  {sageError}
+                </p>
+              )}
+              <button onClick={handleSageConnect} disabled={sageConnecting || !sageEmail || !sagePassword}
+                className="mt-4 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: S.accent }}>
+                <ArrowUpRight size={14} /> {sageConnecting ? 'Connecting…' : 'Connect to Sage'}
+              </button>
+            </div>
+          )}
         </Section>
 
         {error && (

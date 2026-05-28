@@ -249,6 +249,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
         notes: voNotes.trim() || null,
         variation_order_id: vo.id,
         share_token: null, share_token_created_at: null,
+        sage_invoice_id: null, sage_invoice_status: null, sage_pushed_at: null, sage_customer_id: null, sage_customer_name: null,
         created_at: new Date().toISOString(),
         line_items: [],
       }

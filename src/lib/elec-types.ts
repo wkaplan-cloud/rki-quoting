@@ -28,6 +28,14 @@ export interface ElecSettings {
   vo_prefix: string
   coc_prefix: string
   email_footer_text: string | null
+  // Sage Accounting
+  sage_username: string | null
+  sage_password: string | null
+  sage_company_id: string | null
+  sage_access_token: string | null
+  sage_refresh_token: string | null
+  sage_token_expires_at: string | null
+  sage_item_id: number | null
   created_at: string
   updated_at: string
 }
@@ -241,6 +249,12 @@ export interface ElecClaim {
   variation_order_id: string | null
   share_token: string | null
   share_token_created_at: string | null
+  // Sage Accounting
+  sage_invoice_id: string | null
+  sage_invoice_status: string | null
+  sage_pushed_at: string | null
+  sage_customer_id: string | null
+  sage_customer_name: string | null
   created_at: string
   // Joined
   line_items?: ElecClaimLineItem[]

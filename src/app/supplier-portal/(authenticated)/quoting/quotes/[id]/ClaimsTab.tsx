@@ -177,6 +177,11 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
         variation_order_id: null,
         share_token: null,
         share_token_created_at: null,
+        sage_invoice_id: null,
+        sage_invoice_status: null,
+        sage_pushed_at: null,
+        sage_customer_id: null,
+        sage_customer_name: null,
         created_at: new Date().toISOString(),
         line_items: itemsWithClaim.map(l => ({
           id: crypto.randomUUID(),
@@ -432,7 +437,9 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
         status: submitFlag ? 'submitted' : 'draft', total_claimed: retentionHeld,
         total_certified: null, total_invoiced: null, total_paid: null,
         sent_to_name: sentToName.trim() || null, sent_to_email: sentToEmail.trim() || null,
-        sent_at: null, notes: notes.trim() || null, qs_name: null, qs_email: null, variation_order_id: null, share_token: null, share_token_created_at: null, created_at: new Date().toISOString(),
+        sent_at: null, notes: notes.trim() || null, qs_name: null, qs_email: null, variation_order_id: null, share_token: null, share_token_created_at: null,
+        sage_invoice_id: null, sage_invoice_status: null, sage_pushed_at: null, sage_customer_id: null, sage_customer_name: null,
+        created_at: new Date().toISOString(),
         line_items: [],
       }
       onCreated(newClaim)
@@ -510,12 +517,16 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
 }
 
 // ─── Claim detail ─────────────────────────────────────────────────────────────
-function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = false }: {
+function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = false, sageConnected = false, onSagePush, onSageSync, sageSyncing }: {
   claim: ClaimWithItems
   items: ElecQuoteLineItem[]
   onStatusChange: (id: string, patch: Partial<ClaimWithItems>) => void
   onClose: () => void
   autoOpenSend?: boolean
+  sageConnected?: boolean
+  onSagePush?: (claimId: string) => void
+  onSageSync?: (claimId: string) => void
+  sageSyncing?: string | null
 }) {
   const supabase = createClient()
   const [showCertForm, setShowCertForm] = useState(false)
@@ -894,6 +905,27 @@ function ClaimDetail({ claim, items, onStatusChange, onClose, autoOpenSend = fal
             className="px-3 py-2 rounded-lg text-xs"
             style={{ color: S.muted, background: S.bg }}>← Revert to Draft</button>
         )}
+        {/* Sage push / sync */}
+        {sageConnected && (claim.status === 'submitted' || claim.status === 'certified' || claim.status === 'invoiced') && !claim.sage_invoice_id && (
+          <button onClick={() => onSagePush?.(claim.id)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold"
+            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
+            ↑ Push to Sage
+          </button>
+        )}
+        {sageConnected && claim.sage_invoice_id && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] px-2 py-0.5 rounded-full font-medium"
+              style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+              Sage {claim.sage_invoice_status ?? 'Linked'}
+            </span>
+            <button onClick={() => onSageSync?.(claim.id)} disabled={sageSyncing === claim.id}
+              className="text-xs px-2 py-1 rounded-lg disabled:opacity-50"
+              style={{ color: S.muted, background: S.bg }}>
+              {sageSyncing === claim.id ? 'Syncing…' : '⟳ Sync'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Send modal */}
@@ -979,9 +1011,10 @@ interface Props {
   contractType: ElecContractType
   retentionPct: number
   client?: ClaimClient | null
+  sageConnected?: boolean
 }
 
-export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, approvedVOTotal = 0, contractType, retentionPct, client = null }: Props) {
+export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, approvedVOTotal = 0, contractType, retentionPct, client = null, sageConnected = false }: Props) {
   const [claims, setClaims] = useState<ClaimWithItems[]>(initialClaims)
 
   useEffect(() => {
@@ -995,6 +1028,57 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
   const [view, setView] = useState<View>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [autoOpenSend, setAutoOpenSend] = useState(false)
+
+  // Sage push state
+  const [sagePushClaimId, setSagePushClaimId] = useState<string | null>(null)
+  const [sageCustomers, setSageCustomers] = useState<{ id: string; name: string }[]>([])
+  const [sageCustomersLoaded, setSageCustomersLoaded] = useState(false)
+  const [sageSelectedCustomer, setSageSelectedCustomer] = useState<{ id: string; name: string } | null>(null)
+  const [sagePushing, setSagePushing] = useState(false)
+  const [sageSyncing, setSageSyncing] = useState<string | null>(null)
+  const [sageError, setSageError] = useState('')
+
+  async function openSagePush(claimId: string) {
+    setSagePushClaimId(claimId); setSageError(''); setSageSelectedCustomer(null)
+    if (!sageCustomersLoaded) {
+      const res = await fetch('/api/supplier-portal/quoting/sage/customers')
+      const data = await res.json()
+      if (res.ok) { setSageCustomers(data.customers ?? []); setSageCustomersLoaded(true) }
+      else setSageError(data.error ?? 'Failed to load customers')
+    }
+  }
+
+  async function handleSagePush() {
+    if (!sagePushClaimId || !sageSelectedCustomer) { setSageError('Select a Sage customer'); return }
+    setSagePushing(true); setSageError('')
+    const res = await fetch('/api/supplier-portal/quoting/sage/push-claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claimId: sagePushClaimId, sageCustomerId: sageSelectedCustomer.id, sageCustomerName: sageSelectedCustomer.name }),
+    })
+    const data = await res.json()
+    setSagePushing(false)
+    if (!res.ok) { setSageError(data.error ?? 'Push failed'); return }
+    setClaims(prev => prev.map(c => c.id === sagePushClaimId
+      ? { ...c, status: 'invoiced', sage_invoice_id: String(data.sage_invoice_id), sage_invoice_status: String(data.status), sage_customer_name: sageSelectedCustomer.name }
+      : c))
+    setSagePushClaimId(null)
+  }
+
+  async function handleSageSync(claimId: string) {
+    setSageSyncing(claimId); setSageError('')
+    const res = await fetch('/api/supplier-portal/quoting/sage/sync-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claimId }),
+    })
+    const data = await res.json()
+    setSageSyncing(null)
+    if (!res.ok) return
+    setClaims(prev => prev.map(c => c.id === claimId
+      ? { ...c, sage_invoice_status: data.status, ...(data.status === 'Paid' || data.status === 'PAID' ? { status: 'paid', total_paid: data.total } : data.amount_paid > 0 ? { total_paid: data.amount_paid } : {}) }
+      : c))
+  }
 
   const activeClaims = claims.filter(c => c.status !== 'draft')
   const progressClaims = activeClaims.filter(c => c.claim_type !== 'retention')
@@ -1092,6 +1176,10 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
           autoOpenSend={autoOpenSend}
           onStatusChange={(id, patch) => { handleStatusChange(id, patch) }}
           onClose={() => { setView('list'); setSelectedId(null); setAutoOpenSend(false) }}
+          sageConnected={sageConnected}
+          onSagePush={claimId => void openSagePush(claimId)}
+          onSageSync={claimId => void handleSageSync(claimId)}
+          sageSyncing={sageSyncing}
         />
       </div>
     )
@@ -1199,6 +1287,46 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
               </button>
             )
           })}
+        </div>
+      )}
+
+      {/* Sage Push Modal */}
+      {sagePushClaimId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={e => { if (e.target === e.currentTarget) setSagePushClaimId(null) }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <h2 className="font-bold text-sm" style={{ color: S.text }}>Push to Sage</h2>
+              <button onClick={() => setSagePushClaimId(null)} className="p-1.5 rounded-lg" style={{ color: S.muted }}>✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-sm" style={{ color: S.muted }}>Select the Sage customer this invoice should be raised against.</p>
+              {!sageCustomersLoaded && !sageError && (
+                <p className="text-sm" style={{ color: S.muted }}>Loading customers…</p>
+              )}
+              {sageCustomers.length > 0 && (
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Sage Customer</label>
+                  <select
+                    value={sageSelectedCustomer?.id ?? ''}
+                    onChange={e => setSageSelectedCustomer(sageCustomers.find(c => c.id === e.target.value) ?? null)}
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+                    <option value="">— Select customer —</option>
+                    {sageCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+              {sageError && (
+                <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626' }}>{sageError}</p>
+              )}
+              <button onClick={() => void handleSagePush()} disabled={sagePushing || !sageSelectedCustomer}
+                className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: S.accent }}>
+                {sagePushing ? 'Pushing…' : '↑ Push Invoice to Sage'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
