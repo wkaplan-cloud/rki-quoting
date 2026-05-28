@@ -63,7 +63,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
       {/* Hidden notification sound */}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} preload="auto">
-        <source src="/notification.mp3" type="audio/mpeg" />
+        <source src="/notification.wav" type="audio/wav" />
       </audio>
 
       <SupplierPortalNav
