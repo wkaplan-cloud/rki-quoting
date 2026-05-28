@@ -788,6 +788,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               sections={sections as unknown as ElecQuoteSection[]}
               items={allItems as ElecQuoteLineItem[]}
               contractTotal={contractTotal}
+              clientEmail={q.client?.email ?? null}
             />
           </div>
           <div style={{ display: activeTab === 'claims' ? undefined : 'none' }}>

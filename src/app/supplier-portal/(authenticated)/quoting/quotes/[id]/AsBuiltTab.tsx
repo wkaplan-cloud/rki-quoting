@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Loader2, AlertCircle, Download, Printer } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Download, Printer, Send, X } from 'lucide-react'
 import type { ElecQuoteLineItem, ElecQuoteSection } from '@/lib/elec-types'
 
 const S = {
@@ -19,13 +19,47 @@ interface Props {
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
   contractTotal: number
+  clientEmail?: string | null
 }
 
-export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal }: Props) {
+export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal, clientEmail }: Props) {
   const supabase = createClient()
   const [items, setItems] = useState<ElecQuoteLineItem[]>(initialItems)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
+
+  const [showSendModal, setShowSendModal] = useState(false)
+  const [sendEmail, setSendEmail] = useState('')
+  const [sendMessage, setSendMessage] = useState('')
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [sendError, setSendError] = useState('')
+
+  function openSendModal() {
+    setSendEmail(clientEmail ?? '')
+    setSendMessage('')
+    setSendStatus('idle')
+    setSendError('')
+    setShowSendModal(true)
+  }
+
+  async function handleSendToClient() {
+    if (!sendEmail.trim() || sendStatus === 'sending') return
+    setSendStatus('sending')
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/quotes/${quoteId}/send-as-built-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Send failed')
+      setSendStatus('sent')
+      setTimeout(() => setShowSendModal(false), 1800)
+    } catch (e: unknown) {
+      setSendStatus('error')
+      setSendError(e instanceof Error ? e.message : 'Failed to send')
+    }
+  }
 
   const asBuiltTotal = items.reduce((sum, item) => {
     const qty = item.as_built_quantity ?? item.quoted_quantity
@@ -210,6 +244,13 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
               onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
               <Download size={11} /> Download PDF
             </a>
+            <button onClick={openSendModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+              style={{ background: S.accent }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+              <Send size={11} /> Send to Client →
+            </button>
           </div>
         </div>
       </div>
@@ -220,6 +261,69 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
       {items.length === 0 && (
         <div className="rounded-2xl py-10 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
           <p className="text-sm" style={{ color: S.muted }}>No line items found</p>
+        </div>
+      )}
+
+      {/* Send to Client Modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSendModal(false) }}>
+          <div className="rounded-2xl w-full max-w-md p-6 shadow-2xl" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-base" style={{ color: S.text }}>Send As-Built to Client</h2>
+              <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: S.muted }}
+                onMouseEnter={e => (e.currentTarget.style.background = S.border)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <X size={15} />
+              </button>
+            </div>
+
+            {sendStatus === 'sent' ? (
+              <div className="py-8 flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(22,163,74,0.1)' }}>
+                  <Check size={22} style={{ color: S.green }} />
+                </div>
+                <p className="text-sm font-semibold" style={{ color: S.text }}>As-built sent!</p>
+                <p className="text-sm mt-1" style={{ color: S.muted }}>{sendEmail}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: S.muted }}>Client email</label>
+                  <input
+                    type="email"
+                    value={sendEmail}
+                    onChange={e => setSendEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: S.muted }}>Message (optional)</label>
+                  <textarea
+                    rows={3}
+                    value={sendMessage}
+                    onChange={e => setSendMessage(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+                  />
+                </div>
+                {sendStatus === 'error' && (
+                  <p className="flex items-center gap-1.5 text-xs" style={{ color: S.danger }}>
+                    <AlertCircle size={12} /> {sendError || 'Failed to send — please try again'}
+                  </p>
+                )}
+                <button
+                  onClick={() => void handleSendToClient()}
+                  disabled={!sendEmail.trim() || sendStatus === 'sending'}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ background: S.accent }}>
+                  {sendStatus === 'sending' ? <><Loader2 size={14} className="animate-spin" />Sending…</> : <><Send size={14} />Send As-Built PDF</>}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
