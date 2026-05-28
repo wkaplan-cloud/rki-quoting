@@ -1,0 +1,160 @@
+'use client'
+import { useState, useEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign } from 'lucide-react'
+import type { ElecNotification } from '@/lib/elec-types'
+
+const S = {
+  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  text: '#18181B', muted: '#71717A', border: '#E4E4E7',
+  danger: '#DC2626', green: '#16A34A',
+}
+
+function typeIcon(type: string) {
+  switch (type) {
+    case 'clock_in':   return <LogIn size={14} style={{ color: S.green }} />
+    case 'clock_out':  return <LogOut size={14} style={{ color: S.danger }} />
+    case 'claim':      return <FileText size={14} style={{ color: S.accent }} />
+    case 'payment':    return <DollarSign size={14} style={{ color: S.gold }} />
+    case 'approved':   return <CheckCircle2 size={14} style={{ color: S.green }} />
+    default:           return <Info size={14} style={{ color: S.muted }} />
+  }
+}
+
+function typeColor(type: string) {
+  switch (type) {
+    case 'clock_in':  return { bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.2)' }
+    case 'clock_out': return { bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.2)' }
+    case 'claim':     return { bg: 'rgba(58,124,165,0.08)', border: 'rgba(58,124,165,0.2)' }
+    case 'payment':   return { bg: 'rgba(217,164,65,0.08)', border: 'rgba(217,164,65,0.2)' }
+    default:          return { bg: S.bg, border: S.border }
+  }
+}
+
+function fmtRelative(iso: string) {
+  const ms = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(ms / 60000)
+  if (m < 1) return 'Just now'
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+}
+
+interface Props {
+  portalAccountId: string
+  initialNotifications: ElecNotification[]
+}
+
+export function NotificationsClient({ portalAccountId, initialNotifications }: Props) {
+  const supabase = createClient()
+  const [notifications, setNotifications] = useState<ElecNotification[]>(initialNotifications)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const isFirstRender = useRef(true)
+
+  // Mark all as read on mount
+  useEffect(() => {
+    const unread = initialNotifications.filter(n => !n.read_at)
+    if (unread.length > 0) {
+      void supabase
+        .from('elec_notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('portal_account_id', portalAccountId)
+        .is('read_at', null)
+    }
+    setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: new Date().toISOString() }))
+  }, []) // eslint-disable-line
+
+  // Realtime subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel(`notifications:${portalAccountId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'elec_notifications',
+        filter: `portal_account_id=eq.${portalAccountId}`,
+      }, (payload) => {
+        const newNotif = payload.new as ElecNotification
+        setNotifications(prev => [newNotif, ...prev])
+        // Play ring sound
+        try {
+          audioRef.current?.play().catch(() => {})
+        } catch {}
+      })
+      .subscribe()
+
+    return () => { void supabase.removeChannel(channel) }
+  }, [portalAccountId]) // eslint-disable-line
+
+  const unreadCount = notifications.filter(n => !n.read_at).length
+
+  return (
+    <div>
+      {/* Hidden audio element for notification sound */}
+      {/* eslint-disable-next-line */}
+      <audio ref={audioRef} preload="auto">
+        <source src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjU0AAAAAAAAAAAAAAAAJAAAAAAAAAAAASDs90hvAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" type="audio/mpeg" />
+      </audio>
+
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Bell size={18} style={{ color: S.accent }} />
+          <h1 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>Notifications</h1>
+          {unreadCount > 0 && (
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full text-white"
+              style={{ background: S.accent }}>{unreadCount}</span>
+          )}
+        </div>
+        {notifications.length > 0 && (
+          <button
+            onClick={async () => {
+              await supabase.from('elec_notifications').update({ read_at: new Date().toISOString() }).eq('portal_account_id', portalAccountId).is('read_at', null)
+              setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })))
+            }}
+            className="text-xs px-3 py-1.5 rounded-lg"
+            style={{ color: S.muted, background: S.bg, border: `1px solid ${S.border}` }}>
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      {notifications.length === 0 && (
+        <div className="rounded-2xl py-16 flex flex-col items-center gap-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <Bell size={32} style={{ color: S.border }} />
+          <p className="text-sm" style={{ color: S.muted }}>No notifications yet</p>
+          <p className="text-xs" style={{ color: S.muted }}>Activity from your team and projects will appear here in real time.</p>
+        </div>
+      )}
+
+      {notifications.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          {notifications.map((n, i) => {
+            const colors = typeColor(n.type)
+            const isUnread = !n.read_at
+            return (
+              <div key={n.id}
+                className="flex items-start gap-3 px-4 py-3.5"
+                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isUnread ? 'rgba(58,124,165,0.025)' : undefined }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: colors.bg, border: `1px solid ${colors.border}` }}>
+                  {typeIcon(n.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-semibold leading-snug" style={{ color: S.text }}>{n.title}</p>
+                    <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: S.muted }}>{fmtRelative(n.created_at)}</span>
+                  </div>
+                  {n.body && <p className="text-xs mt-0.5" style={{ color: S.muted }}>{n.body}</p>}
+                </div>
+                {isUnread && (
+                  <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ background: S.accent }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

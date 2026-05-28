@@ -303,6 +303,74 @@ export interface ElecCOC {
   tester_registration_number: string | null
   valid_until: string | null
   notes: string | null
+  // Extended fields (phase 2)
+  installation_address: string | null
+  owner_name: string | null
+  supply_authority: string | null
+  supply_voltage: string | null
+  supply_phases: string | null
+  supply_earthing: string | null
+  main_breaker_amps: string | null
+  work_type: string | null
+  installation_type: string | null
+  earth_continuity: string | null
+  insulation_resistance: string | null
+  polarity: string | null
+  earth_leakage: string | null
+  overcurrent_protection: string | null
+  phase_rotation: string | null
+  sent_to_name: string | null
+  sent_to_email: string | null
+  sent_at: string | null
+  share_token: string | null
+  created_at: string
+}
+
+// ─── Org Members (additional admins) ─────────────────────────────────────────
+
+export interface PortalOrgMember {
+  id: string
+  portal_account_id: string
+  auth_user_id: string | null
+  email: string
+  name: string | null
+  role: string
+  invited_by: string | null
+  invite_token: string | null
+  invited_at: string
+  accepted_at: string | null
+  created_at: string
+}
+
+// ─── Time Punches ─────────────────────────────────────────────────────────────
+
+export type TimePunchType = 'clock_in' | 'clock_out'
+
+export interface ElecTimePunch {
+  id: string
+  portal_account_id: string
+  staff_id: string
+  punch_type: TimePunchType
+  punched_at: string
+  latitude: number | null
+  longitude: number | null
+  job_id: string | null
+  notes: string | null
+  created_at: string
+  // Joined
+  staff?: ElecStaff
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export interface ElecNotification {
+  id: string
+  portal_account_id: string
+  type: string
+  title: string
+  body: string | null
+  read_at: string | null
+  metadata: Record<string, unknown>
   created_at: string
 }
 
@@ -335,6 +403,10 @@ export interface ElecStaff {
   email: string | null
   color: string
   is_active: boolean
+  auth_user_id: string | null
+  invite_token: string | null
+  invite_sent_at: string | null
+  invite_accepted_at: string | null
   created_at: string
 }
 

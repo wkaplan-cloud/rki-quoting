@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Mail, Power } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Mail, Power, Send, CheckCircle2 } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole } from '@/lib/elec-types'
 
 const S = {
@@ -283,8 +283,22 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
   deleting: boolean
   toggling: boolean
 }) {
+  const [inviting, setInviting] = useState(false)
+  const [inviteSent, setInviteSent] = useState(false)
+
   const roleLabel = ROLES.find(r => r.value === s.role)?.label ?? s.role
   const inactive = !s.is_active
+  const hasAccount = !!s.invite_accepted_at || !!s.auth_user_id
+  const invitePending = !!s.invite_sent_at && !hasAccount
+
+  async function handleInvite() {
+    if (!s.email || inviting) return
+    setInviting(true)
+    await fetch(`/api/supplier-portal/quoting/staff/${s.id}/invite`, { method: 'POST' })
+    setInviting(false)
+    setInviteSent(true)
+    setTimeout(() => setInviteSent(false), 4000)
+  }
 
   return (
     <div className="rounded-2xl p-4 flex items-center gap-4"
@@ -304,6 +318,18 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
             style={{ background: roleBg(s.role), color: roleColor(s.role) }}>
             {roleLabel}
           </span>
+          {hasAccount && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
+              ✓ Has account
+            </span>
+          )}
+          {invitePending && !inviteSent && (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(217,164,65,0.1)', color: S.gold }}>
+              Invite pending
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3 mt-1 flex-wrap">
           {s.phone && (
@@ -324,6 +350,16 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
 
       {/* Actions */}
       <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Invite to portal — only if they have an email and no account yet */}
+        {s.email && !hasAccount && (
+          <button onClick={() => void handleInvite()} disabled={inviting}
+            title={inviteSent ? 'Invite sent!' : invitePending ? 'Resend invite' : 'Invite to portal'}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+            style={{ background: inviteSent ? 'rgba(22,163,74,0.1)' : 'rgba(58,124,165,0.08)', color: inviteSent ? S.green : S.accent, border: `1px solid ${inviteSent ? 'rgba(22,163,74,0.3)' : 'rgba(58,124,165,0.2)'}` }}>
+            {inviting ? <Loader2 size={11} className="animate-spin" /> : inviteSent ? <CheckCircle2 size={11} /> : <Send size={11} />}
+            {inviteSent ? 'Sent!' : 'Invite'}
+          </button>
+        )}
         <button onClick={onToggle} disabled={toggling} title={s.is_active ? 'Deactivate' : 'Activate'}
           className="p-2 rounded-lg disabled:opacity-50 transition-colors"
           style={{ color: s.is_active ? S.muted : S.green }}

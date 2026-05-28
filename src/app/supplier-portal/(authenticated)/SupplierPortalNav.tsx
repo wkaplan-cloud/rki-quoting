@@ -2,13 +2,14 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat, CalendarDays } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, UserCog } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   companyName: string
   pendingCount: number
   hasQuoting: boolean
+  notificationCount?: number
   desktopExpanded: boolean
   onDesktopToggle: () => void
 }
@@ -26,8 +27,9 @@ const QUOTING_NAV_ITEMS = [
 ]
 
 const TEAM_NAV_ITEMS = [
-  { href: '/supplier-portal/quoting/schedule', label: 'Schedule', icon: CalendarDays, exact: false },
-  { href: '/supplier-portal/quoting/staff',    label: 'Staff',    icon: HardHat,      exact: false },
+  { href: '/supplier-portal/quoting/schedule', label: 'Schedule',    icon: CalendarDays, exact: false },
+  { href: '/supplier-portal/quoting/staff',    label: 'Staff',       icon: HardHat,      exact: false },
+  { href: '/supplier-portal/quoting/team',     label: 'Team',        icon: UserCog,      exact: false },
 ]
 
 const S = {
@@ -40,7 +42,7 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
-export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, desktopExpanded, onDesktopToggle }: Props) {
+export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notificationCount = 0, desktopExpanded, onDesktopToggle }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -218,6 +220,42 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, deskt
                     )
                   })}
                 </div>
+
+                {/* Notifications */}
+                {(() => {
+                  const href = '/supplier-portal/notifications'
+                  const active = pathname.startsWith(href)
+                  return (
+                    <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
+                      <Link href={href} onClick={() => setMobileOpen(false)}
+                        className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
+                        style={{ background: active ? S.activeBg : 'transparent', borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent' }}
+                        onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
+                        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}>
+                        <span className="flex items-center justify-center w-9 flex-shrink-0 relative">
+                          <Bell size={15} style={{ color: active ? S.textLight : S.textMuted }} />
+                          {notificationCount > 0 && (
+                            <span className="absolute top-0 right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                              style={{ background: '#DC2626' }}>
+                              {notificationCount > 9 ? '9+' : notificationCount}
+                            </span>
+                          )}
+                        </span>
+                        <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
+                          Notifications
+                        </span>
+                        {notificationCount > 0 && (
+                          <span className={`${labelCls} ml-auto`}>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block text-white"
+                              style={{ background: '#DC2626' }}>
+                              {notificationCount > 99 ? '99+' : notificationCount}
+                            </span>
+                          </span>
+                        )}
+                      </Link>
+                    </div>
+                  )
+                })()}
               </>
             ) : (
               <Link

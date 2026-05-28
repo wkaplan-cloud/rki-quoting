@@ -264,11 +264,10 @@ export default async function QuotingDashboardPage() {
                   {q.client_name && (
                     <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client_name}</p>
                   )}
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2">
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: S.bg, width: '100px' }}>
                       <div className="h-full rounded-full" style={{ width: `${Math.min(completionPct, 100)}%`, background: S.accent }} />
                     </div>
-                    <span className="text-[10px]" style={{ color: S.muted }}>{completionPct}% complete</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">

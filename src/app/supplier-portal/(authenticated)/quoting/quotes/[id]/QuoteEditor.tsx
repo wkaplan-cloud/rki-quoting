@@ -826,7 +826,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <SnagTab quoteId={q.id} initialSnags={snags} />
           </div>
           <div style={{ display: activeTab === 'coc' ? undefined : 'none' }}>
-            <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} companyCode={companyCode} />
+            <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} companyCode={companyCode}
+              projectAddress={q.project_address ?? null}
+              clientName={q.client?.client_name ?? null}
+              clientEmail={q.client?.email ?? null} />
           </div>
         </>
       )}

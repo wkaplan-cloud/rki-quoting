@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { SupplierPortalNav } from './SupplierPortalNav'
 
 interface Props {
@@ -9,8 +10,12 @@ interface Props {
 }
 
 export function SupplierPortalShell({ children, companyName, hasQuoting = false }: Props) {
+  const supabase = createClient()
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
+  const [notificationCount, setNotificationCount] = useState(0)
+  const portalAccountIdRef = useRef<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('supplier-sidebar-expanded')
@@ -24,12 +29,48 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    fetch('/api/supplier-portal/notification-count')
+      .then(r => r.json())
+      .then((d: { count: number; portalAccountId: string | null }) => {
+        setNotificationCount(d.count ?? 0)
+        portalAccountIdRef.current = d.portalAccountId
+
+        if (!d.portalAccountId) return
+
+        // Subscribe to new notifications via Realtime
+        const channel = supabase
+          .channel(`shell-notifications:${d.portalAccountId}`)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'elec_notifications',
+            filter: `portal_account_id=eq.${d.portalAccountId}`,
+          }, () => {
+            setNotificationCount(c => c + 1)
+            // Play ring sound
+            try { audioRef.current?.play().catch(() => {}) } catch {}
+          })
+          .subscribe()
+
+        return () => { void supabase.removeChannel(channel) }
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line
+
   return (
     <div className="flex min-h-screen" style={{ background: '#F5F7F9' }}>
+      {/* Hidden notification sound */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio ref={audioRef} preload="auto">
+        <source src="/notification.mp3" type="audio/mpeg" />
+      </audio>
+
       <SupplierPortalNav
         companyName={companyName}
         pendingCount={pendingCount}
         hasQuoting={hasQuoting}
+        notificationCount={notificationCount}
         desktopExpanded={desktopExpanded}
         onDesktopToggle={() => setDesktopExpanded(e => {
           const next = !e

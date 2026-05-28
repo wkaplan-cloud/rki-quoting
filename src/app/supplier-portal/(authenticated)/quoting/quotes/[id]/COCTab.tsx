@@ -1,23 +1,28 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Loader2, AlertCircle, Download, Printer } from 'lucide-react'
+import { Check, Loader2, AlertCircle, Download, Printer, Send, X, CheckCircle2 } from 'lucide-react'
 import type { ElecCOC } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
   danger: '#DC2626', green: '#16A34A',
 }
+
+type TestResult = 'pass' | 'fail' | 'n/a'
 
 interface Props {
   quoteId: string
   initialCOC: ElecCOC | null
   cocPrefix: string
   companyCode: string
+  projectAddress?: string | null
+  clientName?: string | null
+  clientEmail?: string | null
 }
 
-export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
+export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAddress, clientName, clientEmail }: Props) {
   const supabase = createClient()
   const year = new Date().getFullYear()
   const defaultCocNumber = companyCode ? `${companyCode}-${cocPrefix}-${year}-001` : `${cocPrefix}-${year}-001`
@@ -32,12 +37,37 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
     tester_registration_number: null,
     valid_until: null,
     notes: null,
+    installation_address: projectAddress ?? null,
+    owner_name: clientName ?? null,
+    supply_authority: null,
+    supply_voltage: '230/400V',
+    supply_phases: 'three',
+    supply_earthing: 'TN-C-S',
+    main_breaker_amps: null,
+    work_type: 'new',
+    installation_type: 'residential',
+    earth_continuity: 'pass',
+    insulation_resistance: 'pass',
+    polarity: 'pass',
+    earth_leakage: 'pass',
+    overcurrent_protection: 'pass',
+    phase_rotation: 'pass',
+    sent_to_name: null,
+    sent_to_email: clientEmail ?? null,
+    sent_at: null,
+    share_token: null,
     created_at: new Date().toISOString(),
   })
+
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
   const [downloading, setDownloading] = useState(false)
-  // Track whether the user has interacted — don't save a blank COC on first render
+  const [showSendModal, setShowSendModal] = useState(false)
+  const [sendEmail, setSendEmail] = useState(clientEmail ?? '')
+  const [sendMessage, setSendMessage] = useState('')
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [sendError, setSendError] = useState('')
+
   const hasEditedRef = useRef(!!initialCOC)
 
   function set(patch: Partial<ElecCOC>) {
@@ -73,7 +103,6 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
 
   async function handleDownload() {
     setDownloading(true)
-    // Flush any pending auto-save first
     clearTimeout(autoSaveTimer.current)
     await handleSave()
     window.open(`/api/supplier-portal/quoting/coc/${coc.id}/pdf`, '_blank')
@@ -86,26 +115,92 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
     window.open(`/api/supplier-portal/quoting/coc/${coc.id}/pdf?inline=1`, '_blank')
   }
 
-  const inp = (label: string, val: string | null, cb: (v: string) => void, placeholder?: string, type = 'text') => (
-    <div>
-      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{label}</label>
-      <input type={type} value={val ?? ''} onChange={e => cb(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-        style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
-        onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
-        onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }} />
-    </div>
-  )
+  async function handleSend() {
+    if (!sendEmail.trim() || sendStatus === 'sending') return
+    setSendStatus('sending'); setSendError('')
+    clearTimeout(autoSaveTimer.current)
+    await handleSave()
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/coc/${coc.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
+      })
+      const data = await res.json() as { ok?: boolean; error?: string }
+      if (!res.ok || !data.ok) { setSendStatus('error'); setSendError(data.error ?? 'Failed to send'); return }
+      setCOC(prev => ({ ...prev, sent_to_email: sendEmail.trim(), sent_at: new Date().toISOString() }))
+      setSendStatus('sent')
+    } catch {
+      setSendStatus('error'); setSendError('Network error')
+    }
+  }
+
+  function ResultToggle({ val, onChange }: { val: string | null; onChange: (v: TestResult) => void }) {
+    const current = (val ?? 'pass') as TestResult
+    const opts: { v: TestResult; label: string; color: string; bg: string }[] = [
+      { v: 'pass', label: 'Pass', color: S.green, bg: 'rgba(22,163,74,0.1)' },
+      { v: 'fail', label: 'Fail', color: S.danger, bg: 'rgba(220,38,38,0.1)' },
+      { v: 'n/a',  label: 'N/A',  color: S.muted, bg: S.bg },
+    ]
+    return (
+      <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+        {opts.map(o => (
+          <button key={o.v} type="button"
+            onClick={() => onChange(o.v)}
+            className="flex-1 py-1 text-xs font-semibold transition-colors"
+            style={{ background: current === o.v ? o.bg : '#fff', color: current === o.v ? o.color : S.muted }}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  function Inp({ label, val, cb, placeholder, type = 'text' }: { label: string; val: string | null; cb: (v: string) => void; placeholder?: string; type?: string }) {
+    return (
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{label}</label>
+        <input type={type} value={val ?? ''} onChange={e => cb(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+          style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+          onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+          onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }} />
+      </div>
+    )
+  }
+
+  function Sel({ label, val, cb, options }: { label: string; val: string | null; cb: (v: string) => void; options: { v: string; label: string }[] }) {
+    return (
+      <div>
+        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{label}</label>
+        <select value={val ?? ''} onChange={e => cb(e.target.value)}
+          className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+          style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+          {options.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+        </select>
+      </div>
+    )
+  }
+
+  function SectionHead({ letter, title }: { letter: string; title: string }) {
+    return (
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+          style={{ background: S.accent }}>{letter}</div>
+        <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: S.text }}>{title}</h3>
+      </div>
+    )
+  }
 
   return (
-    <div>
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 rounded-2xl mb-4"
+      <div className="flex items-center justify-between px-4 py-3 rounded-2xl"
         style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <div>
           <p className="text-sm font-semibold" style={{ color: S.text }}>Certificate of Compliance</p>
-          <p className="text-xs" style={{ color: S.muted }}>Issued under the Occupational Health &amp; Safety Act</p>
+          <p className="text-xs" style={{ color: S.muted }}>SANS 10142-1 · OHS Act 85 of 1993 · EIR 2009</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
@@ -113,55 +208,193 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode }: Props) {
             {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
             {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
           </div>
-          <button
-            onClick={handlePrint}
+          <button onClick={handlePrint}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
             style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
             onMouseEnter={e => (e.currentTarget.style.background = S.border)}
-            onMouseLeave={e => (e.currentTarget.style.background = S.input)}
-            title="Print COC"
-          >
+            onMouseLeave={e => (e.currentTarget.style.background = S.input)}>
             <Printer size={12} /> Print
           </button>
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity disabled:opacity-40"
-            style={{ background: S.accent, color: '#fff' }}
-            title="Download COC as PDF"
-          >
+          <button onClick={() => { setSendStatus('idle'); setSendError(''); setShowSendModal(true) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+            style={{ background: coc.sent_at ? 'rgba(22,163,74,0.1)' : 'rgba(58,124,165,0.1)', color: coc.sent_at ? S.green : S.accent, border: `1px solid ${coc.sent_at ? 'rgba(22,163,74,0.3)' : 'rgba(58,124,165,0.3)'}` }}>
+            {coc.sent_at ? <><CheckCircle2 size={12} /> Sent</> : <><Send size={12} /> Send to Client</>}
+          </button>
+          <button onClick={handleDownload} disabled={downloading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40"
+            style={{ background: S.accent, color: '#fff' }}>
             {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-            {downloading ? 'Generating…' : 'Download PDF'}
+            {downloading ? 'Generating…' : 'PDF'}
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl p-5 grid grid-cols-2 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-        {inp('COC Number', coc.coc_number, v => set({ coc_number: v }), `e.g. ${defaultCocNumber}`)}
-        {inp('Issue Date', coc.issue_date, v => set({ issue_date: v }), '', 'date')}
-        {inp('Tester Name', coc.tester_name, v => set({ tester_name: v }), 'Full name of tester')}
-        {inp('Tester Registration No.', coc.tester_registration_number, v => set({ tester_registration_number: v || null }), 'e.g. ECA-123456')}
-        {inp('Valid Until', coc.valid_until, v => set({ valid_until: v || null }), '', 'date')}
-        <div />
-        <div className="col-span-2">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Installation Description</label>
-          <textarea value={coc.installation_description} onChange={e => set({ installation_description: e.target.value })}
-            rows={3} placeholder="Describe the electrical installation covered by this COC"
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
-            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
-            onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
-            onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }} />
-        </div>
-        <div className="col-span-2">
-          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
-          <textarea value={coc.notes ?? ''} onChange={e => set({ notes: e.target.value || null })}
-            rows={2} placeholder="Any additional notes"
-            className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
-            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
-            onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
-            onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }} />
+      {/* Section A — Installation Details */}
+      <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+        <SectionHead letter="A" title="Installation Details" />
+        <div className="grid grid-cols-2 gap-4">
+          <Inp label="COC Number" val={coc.coc_number} cb={v => set({ coc_number: v })} placeholder={defaultCocNumber} />
+          <Inp label="Issue Date" val={coc.issue_date} cb={v => set({ issue_date: v })} type="date" />
+          <Inp label="Valid Until" val={coc.valid_until} cb={v => set({ valid_until: v || null })} type="date" />
+          <Sel label="Work Type" val={coc.work_type} cb={v => set({ work_type: v })}
+            options={[
+              { v: 'new', label: 'New Installation' },
+              { v: 'addition', label: 'Addition to Existing' },
+              { v: 'alteration', label: 'Alteration / Rewire' },
+            ]} />
+          <Sel label="Installation Type" val={coc.installation_type} cb={v => set({ installation_type: v })}
+            options={[
+              { v: 'residential', label: 'Residential' },
+              { v: 'commercial', label: 'Commercial' },
+              { v: 'industrial', label: 'Industrial' },
+              { v: 'agricultural', label: 'Agricultural' },
+            ]} />
+          <Inp label="Owner / Occupier Name" val={coc.owner_name} cb={v => set({ owner_name: v || null })} placeholder={clientName ?? ''} />
+          <div className="col-span-2">
+            <Inp label="Installation Address" val={coc.installation_address} cb={v => set({ installation_address: v || null })} placeholder={projectAddress ?? 'Street, City, Province, Postal Code'} />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Description of Installation</label>
+            <textarea value={coc.installation_description} onChange={e => { hasEditedRef.current = true; setCOC(p => ({ ...p, installation_description: e.target.value })) }}
+              rows={3} placeholder="e.g. Complete wiring of 3-bedroom residential dwelling including DB board, lighting, plugs and outdoor circuits"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+              onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+              onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }} />
+          </div>
         </div>
       </div>
+
+      {/* Section B — Supply Details */}
+      <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+        <SectionHead letter="B" title="Supply Details" />
+        <div className="grid grid-cols-3 gap-4">
+          <Inp label="Supply Authority" val={coc.supply_authority} cb={v => set({ supply_authority: v || null })} placeholder="e.g. Eskom, City Power" />
+          <Sel label="Nominal Voltage" val={coc.supply_voltage} cb={v => set({ supply_voltage: v })}
+            options={[
+              { v: '230/400V', label: '230/400V (Standard)' },
+              { v: '230V', label: '230V (Single Phase)' },
+              { v: '400V', label: '400V (Three Phase)' },
+              { v: 'Other', label: 'Other' },
+            ]} />
+          <Sel label="Supply Phases" val={coc.supply_phases} cb={v => set({ supply_phases: v })}
+            options={[
+              { v: 'single', label: 'Single Phase' },
+              { v: 'three', label: 'Three Phase' },
+            ]} />
+          <Sel label="Earthing System" val={coc.supply_earthing} cb={v => set({ supply_earthing: v })}
+            options={[
+              { v: 'TN-C-S', label: 'TN-C-S (MEN)' },
+              { v: 'TN-S', label: 'TN-S' },
+              { v: 'TN-C', label: 'TN-C' },
+              { v: 'TT', label: 'TT' },
+              { v: 'IT', label: 'IT' },
+            ]} />
+          <Inp label="Main Breaker / Fuse Size (A)" val={coc.main_breaker_amps} cb={v => set({ main_breaker_amps: v || null })} placeholder="e.g. 60A" />
+        </div>
+      </div>
+
+      {/* Section C — Test Results */}
+      <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+        <SectionHead letter="C" title="Test Results" />
+        <p className="text-xs mb-4" style={{ color: S.muted }}>Tested in accordance with SANS 10142-1</p>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { key: 'earth_continuity',       label: 'Earth Continuity',               desc: 'All metalwork bonded and continuous' },
+            { key: 'insulation_resistance',  label: 'Insulation Resistance (500V DC)', desc: 'Min. 1 MΩ between conductors & earth' },
+            { key: 'polarity',               label: 'Polarity Correct',               desc: 'Live & neutral correctly connected' },
+            { key: 'earth_leakage',          label: 'Earth Leakage Protection',        desc: 'RCD trips within spec (30mA / 100mA)' },
+            { key: 'overcurrent_protection', label: 'Overcurrent Protection',          desc: 'Circuit breakers / fuses correctly sized' },
+            { key: 'phase_rotation',         label: 'Phase Rotation (3-phase)',        desc: 'Correct rotation for 3-phase circuits' },
+          ].map(({ key, label, desc }) => (
+            <div key={key} className="rounded-xl p-3" style={{ border: `1px solid ${S.border}`, background: S.bg }}>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: S.text }}>{label}</p>
+              <p className="text-[10px] mb-2" style={{ color: S.muted }}>{desc}</p>
+              <ResultToggle
+                val={(coc as unknown as Record<string, unknown>)[key] as string | null}
+                onChange={v => set({ [key]: v } as Partial<ElecCOC>)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section D — Tester / Inspector */}
+      <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+        <SectionHead letter="D" title="Tester / Inspector Details" />
+        <div className="grid grid-cols-2 gap-4">
+          <Inp label="Tester Name" val={coc.tester_name} cb={v => set({ tester_name: v })} placeholder="Full name of registered tester" />
+          <Inp label="Registration Number" val={coc.tester_registration_number} cb={v => set({ tester_registration_number: v || null })} placeholder="e.g. WReg/ECA-123456" />
+          <div className="col-span-2">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
+            <textarea value={coc.notes ?? ''} onChange={e => { hasEditedRef.current = true; setCOC(p => ({ ...p, notes: e.target.value || null })) }}
+              rows={2} placeholder="Any restrictions, exclusions or additional notes"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+              onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+              onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Send modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSendModal(false) }}>
+          <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <div>
+                <h2 className="font-bold text-sm" style={{ color: S.text }}>Send COC to Client</h2>
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>{coc.coc_number} · PDF attached</p>
+              </div>
+              <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: S.muted }}>
+                <X size={15} />
+              </button>
+            </div>
+
+            {sendStatus === 'sent' ? (
+              <div className="px-5 py-10 flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(22,163,74,0.1)' }}>
+                  <CheckCircle2 size={22} style={{ color: S.green }} />
+                </div>
+                <p className="font-semibold text-sm" style={{ color: S.text }}>COC sent successfully!</p>
+                <p className="text-xs text-center" style={{ color: S.muted }}>PDF sent to {sendEmail}</p>
+                <button onClick={() => setShowSendModal(false)}
+                  className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold text-white"
+                  style={{ background: S.accent }}>Done</button>
+              </div>
+            ) : (
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To *</label>
+                  <input type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
+                    placeholder="client@email.com"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Message <span style={{ fontWeight: 400 }}>(optional)</span></label>
+                  <textarea value={sendMessage} onChange={e => setSendMessage(e.target.value)}
+                    rows={2} placeholder="Add a personal note…"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none resize-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+                {sendError && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: '#FEF2F2', color: S.danger }}>
+                    <AlertCircle size={13} />{sendError}
+                  </div>
+                )}
+                <button onClick={() => void handleSend()}
+                  disabled={!sendEmail.trim() || sendStatus === 'sending'}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                  style={{ background: S.accent }}>
+                  {sendStatus === 'sending' ? <><Loader2 size={14} className="animate-spin" />Sending…</> : <><Send size={14} />Send COC</>}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
