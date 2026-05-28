@@ -479,3 +479,60 @@ export interface ElecDashboardSummary {
   total_paid_ytd: number
   forecast_50pct: number  // 50% of pipeline + active value
 }
+
+// ─── Job Cards ────────────────────────────────────────────────────────────────
+
+export type ElecJobCardType   = 'maintenance' | 'repair' | 'once_off' | 'callout'
+export type ElecJobCardStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+
+export interface ElecJobCard {
+  id: string
+  portal_account_id: string
+  quote_id: string | null
+  staff_id: string | null
+  client_id: string | null
+  job_number: string
+  job_type: ElecJobCardType
+  status: ElecJobCardStatus
+  title: string
+  location: string | null
+  scheduled_at: string | null
+  started_at: string | null
+  completed_at: string | null
+  work_description: string | null
+  work_found: string | null
+  work_done: string | null
+  resolution: string | null
+  notes: string | null
+  client_name: string | null
+  client_email: string | null
+  client_signature_url: string | null
+  sent_to_name: string | null
+  sent_to_email: string | null
+  sent_at: string | null
+  share_token: string | null
+  created_at: string
+  // Joined
+  staff?: ElecStaff | null
+  client?: ElecClient | null
+  quote?: { id: string; quote_number: string; project_name: string } | null
+  materials?: ElecJobCardMaterial[]
+  photos?: ElecJobCardPhoto[]
+}
+
+export interface ElecJobCardMaterial {
+  id: string
+  job_card_id: string
+  description: string
+  qty: number
+  unit_price: number | null
+  created_at: string
+}
+
+export interface ElecJobCardPhoto {
+  id: string
+  job_card_id: string
+  url: string
+  caption: string | null
+  uploaded_at: string
+}

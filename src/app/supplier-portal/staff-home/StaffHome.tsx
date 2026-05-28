@@ -1,7 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { MapPin, Clock, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle, User, ChevronDown, ChevronUp } from 'lucide-react'
-import type { ElecStaff, ElecTimePunch } from '@/lib/elec-types'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { MapPin, Clock, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ClipboardList, ChevronRight, Calendar } from 'lucide-react'
+import type { ElecStaff, ElecTimePunch, ElecJobCard } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -22,14 +23,27 @@ function fmtDuration(from: string, to: string) {
   return `${h}h ${m}m`
 }
 
+const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
+  pending:     { bg: 'rgba(217,164,65,0.1)',  color: '#D9A441', label: 'Pending' },
+  in_progress: { bg: 'rgba(58,124,165,0.1)',  color: '#3A7CA5', label: 'In Progress' },
+  completed:   { bg: 'rgba(22,163,74,0.1)',   color: '#16A34A', label: 'Completed' },
+  cancelled:   { bg: 'rgba(113,113,122,0.1)', color: '#71717A', label: 'Cancelled' },
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout',
+}
+
 interface Props {
   staff: Pick<ElecStaff, 'id' | 'name' | 'role' | 'color'>
   companyName: string
   initialPunches: ElecTimePunch[]
   isClockedIn: boolean
+  assignedJobCards: ElecJobCard[]
 }
 
-export function StaffHome({ staff, companyName, initialPunches, isClockedIn: initClockedIn }: Props) {
+export function StaffHome({ staff, companyName, initialPunches, isClockedIn: initClockedIn, assignedJobCards }: Props) {
+  const router = useRouter()
   const [punches, setPunches] = useState<ElecTimePunch[]>(initialPunches)
   const [isClockedIn, setIsClockedIn] = useState(initClockedIn)
   const [status, setStatus] = useState<'idle' | 'locating' | 'punching' | 'done' | 'error'>('idle')
@@ -201,6 +215,46 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
             </div>
           )
         })()}
+
+        {/* Assigned Job Cards */}
+        {assignedJobCards.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+              <ClipboardList size={11} className="inline mr-1" />My Jobs ({assignedJobCards.length})
+            </p>
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              {assignedJobCards.map((j, i) => {
+                const ss = STATUS_STYLE[j.status] ?? STATUS_STYLE.pending
+                const client = !Array.isArray(j.client) ? j.client : null
+                return (
+                  <button key={j.id}
+                    onClick={() => router.push(`/supplier-portal/staff-home/job/${j.id}`)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+                    style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: ss.bg }}>
+                      <ClipboardList size={15} style={{ color: ss.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-[10px] font-mono" style={{ color: S.muted }}>{j.job_number}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: ss.bg, color: ss.color }}>{ss.label}</span>
+                        <span className="text-[10px]" style={{ color: S.muted }}>{TYPE_LABEL[j.job_type]}</span>
+                      </div>
+                      <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{j.title}</p>
+                      <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap" style={{ color: S.muted }}>
+                        {j.location && <span className="flex items-center gap-0.5"><MapPin size={9} />{j.location}</span>}
+                        {j.scheduled_at && <span className="flex items-center gap-0.5"><Calendar size={9} />{new Date(j.scheduled_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
+                        {client && <span>{client.client_name}</span>}
+                      </div>
+                    </div>
+                    <ChevronRight size={15} style={{ color: S.muted }} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Punch history */}
         {days.length > 0 && (
