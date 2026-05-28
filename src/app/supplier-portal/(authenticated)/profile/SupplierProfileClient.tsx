@@ -3,7 +3,8 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
-import { Check, Loader2, Upload, X } from 'lucide-react'
+import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users } from 'lucide-react'
+import type { PortalOrgMember } from '@/lib/elec-types'
 
 interface Props {
   portalAccountId: string
@@ -28,6 +29,7 @@ interface Props {
     bank_account_type: string | null
   } | null
   categoryOptions: string[]
+  orgMembers: PortalOrgMember[] | null
 }
 
 const INPUT_STYLE = {
@@ -46,7 +48,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, account, elecSettings, categoryOptions }: Props) {
+export function SupplierProfileClient({ portalAccountId, account, elecSettings, categoryOptions, orgMembers }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -80,6 +82,44 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteRequesting, setDeleteRequesting] = useState(false)
   const [deleteRequested, setDeleteRequested] = useState(false)
+
+  // Admin Users
+  const [members, setMembers] = useState<PortalOrgMember[]>(orgMembers ?? [])
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteError, setInviteError] = useState('')
+  const [inviteDone, setInviteDone] = useState(false)
+
+  async function handleInviteAdmin() {
+    if (!inviteEmail.trim()) return
+    setInviting(true); setInviteError(''); setInviteDone(false)
+    const res = await fetch('/api/supplier-portal/quoting/team/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: inviteEmail.trim(), name: inviteName.trim() || undefined }),
+    })
+    const data = await res.json() as { ok?: boolean; error?: string }
+    setInviting(false)
+    if (!res.ok || !data.ok) { setInviteError(data.error ?? 'Failed'); return }
+    setInviteDone(true)
+    setMembers(prev => [...prev, {
+      id: crypto.randomUUID(),
+      portal_account_id: portalAccountId,
+      auth_user_id: null,
+      email: inviteEmail.trim(),
+      name: inviteName.trim() || null,
+      role: 'admin',
+      invited_by: null,
+      invite_token: null,
+      invited_at: new Date().toISOString(),
+      accepted_at: null,
+      created_at: new Date().toISOString(),
+    }])
+    setInviteEmail(''); setInviteName('')
+    setTimeout(() => { setInviteDone(false); setShowInvite(false) }, 2000)
+  }
 
   function toggleCategory(cat: string) {
     setCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])
@@ -386,6 +426,96 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
           )}
         </div>
       </form>
+
+      {/* Admin Users — only shown for quoting plan accounts */}
+      {orgMembers !== null && (
+        <div className="pt-6 border-t border-[#E4E4E7]">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#71717A' }}>Admin Users</p>
+              <p className="text-xs mt-0.5" style={{ color: '#A1A1AA' }}>Give other people full admin access to this organisation.</p>
+            </div>
+            <button onClick={() => setShowInvite(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ color: '#3A7CA5', background: 'rgba(58,124,165,0.08)' }}>
+              <Plus size={12} /> Invite Admin
+            </button>
+          </div>
+
+          {members.length === 0 && (
+            <div className="rounded-xl py-8 text-center" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+              <Users size={20} className="mx-auto mb-2" style={{ color: '#A1A1AA' }} />
+              <p className="text-sm" style={{ color: '#71717A' }}>No additional admins yet</p>
+            </div>
+          )}
+
+          {members.length > 0 && (
+            <div className="rounded-xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+              {members.map((m, i) => (
+                <div key={m.id} className="flex items-center gap-3 px-4 py-3.5"
+                  style={{ borderTop: i > 0 ? '1px solid #E4E4E7' : undefined }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                    style={{ background: m.accepted_at ? '#3A7CA5' : '#A1A1AA' }}>
+                    {(m.name ?? m.email).slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {m.name && <p className="text-sm font-semibold" style={{ color: '#18181B' }}>{m.name}</p>}
+                    <p className="text-xs" style={{ color: '#71717A' }}>{m.email}</p>
+                  </div>
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: m.accepted_at ? 'rgba(22,163,74,0.1)' : 'rgba(217,164,65,0.1)', color: m.accepted_at ? '#16A34A' : '#D9A441' }}>
+                    {m.accepted_at ? 'Active' : 'Pending'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Invite modal */}
+          {showInvite && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
+              onClick={e => { if (e.target === e.currentTarget) setShowInvite(false) }}>
+              <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #E4E4E7' }}>
+                  <h2 className="font-bold text-sm" style={{ color: '#18181B' }}>Invite Admin</h2>
+                  <button onClick={() => setShowInvite(false)} style={{ color: '#71717A' }}><X size={15} /></button>
+                </div>
+                {inviteDone ? (
+                  <div className="flex flex-col items-center py-8 gap-3">
+                    <CheckCircle2 size={36} style={{ color: '#16A34A' }} />
+                    <p className="text-sm font-semibold" style={{ color: '#18181B' }}>Invite sent!</p>
+                  </div>
+                ) : (
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#71717A' }}>Email *</label>
+                      <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="admin@example.com"
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                        style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#71717A' }}>Name (optional)</label>
+                      <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Full name"
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                        style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#18181B' }} />
+                    </div>
+                    {inviteError && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+                        <AlertCircle size={12} />{inviteError}
+                      </div>
+                    )}
+                    <button onClick={() => void handleInviteAdmin()} disabled={inviting || !inviteEmail.trim()}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                      style={{ background: '#3A7CA5' }}>
+                      {inviting ? <><Loader2 size={14} className="animate-spin inline mr-2" />Sending…</> : 'Send Invite'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Delete account */}
       <div className="pt-6 border-t border-[#E4E4E7]">

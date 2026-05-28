@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Mail, Power, Send, CheckCircle2 } from 'lucide-react'
-import type { ElecStaff, ElecStaffRole } from '@/lib/elec-types'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Mail, Power, Send, CheckCircle2, Clock, MapPin, LogIn, LogOut } from 'lucide-react'
+import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -43,6 +43,18 @@ function roleColor(role: ElecStaffRole) {
   return map[role] ?? S.muted
 }
 
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
+}
+function fmtDuration(ms: number) {
+  const h = Math.floor(ms / 3600000)
+  const m = Math.floor((ms % 3600000) / 60000)
+  return `${h}h ${m}m`
+}
+
 interface FormState {
   name: string
   role: ElecStaffRole
@@ -53,7 +65,15 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { name: '', role: 'electrician', phone: '', email: '', color: '#3A7CA5' }
 
-export function StaffManager({ initialStaff }: { initialStaff: ElecStaff[] }) {
+type Tab = 'staff' | 'timesheet'
+
+interface Props {
+  initialStaff: ElecStaff[]
+  punches: ElecTimePunch[]
+}
+
+export function StaffManager({ initialStaff, punches }: Props) {
+  const [tab, setTab] = useState<Tab>('staff')
   const [staff, setStaff] = useState(initialStaff)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -61,6 +81,23 @@ export function StaffManager({ initialStaff }: { initialStaff: ElecStaff[] }) {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+
+  // Timesheet helpers
+  const staffMap = Object.fromEntries(staff.map(s => [s.id, s]))
+  const dayMap: Record<string, Record<string, ElecTimePunch[]>> = {}
+  for (const p of punches) {
+    const day = p.punched_at.slice(0, 10)
+    if (!dayMap[day]) dayMap[day] = {}
+    if (!dayMap[day][p.staff_id]) dayMap[day][p.staff_id] = []
+    dayMap[day][p.staff_id].push(p)
+  }
+  const sortedDays = Object.keys(dayMap).sort((a, b) => b.localeCompare(a))
+
+  const lastPunchPerStaff: Record<string, ElecTimePunch> = {}
+  for (const p of [...punches].reverse()) {
+    if (!lastPunchPerStaff[p.staff_id]) lastPunchPerStaff[p.staff_id] = p
+  }
+  const onSiteStaff = Object.values(lastPunchPerStaff).filter(p => p.punch_type === 'clock_in')
 
   function openAdd() {
     setEditingId(null)
@@ -124,151 +161,251 @@ export function StaffManager({ initialStaff }: { initialStaff: ElecStaff[] }) {
   const active = staff.filter(s => s.is_active)
   const inactive = staff.filter(s => !s.is_active)
 
+  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'staff',     label: 'Staff',     icon: <UserCircle2 size={14} /> },
+    { key: 'timesheet', label: 'Timesheet', icon: <Clock size={14} /> },
+  ]
+
   return (
     <div className="max-w-3xl mx-auto pb-16">
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: S.text }}>Team</h1>
-          <p className="text-sm mt-0.5" style={{ color: S.muted }}>
-            {active.length} active member{active.length !== 1 ? 's' : ''}
-          </p>
+      {/* On-site banner */}
+      {onSiteStaff.length > 0 && (
+        <div className="rounded-2xl px-4 py-3 mb-4 flex items-center gap-3 flex-wrap"
+          style={{ background: 'rgba(22,163,74,0.06)', border: `1px solid rgba(22,163,74,0.2)` }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: S.green }} />
+          <span className="text-xs font-semibold" style={{ color: S.green }}>
+            {onSiteStaff.length} staff currently on-site
+          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {onSiteStaff.map(p => {
+              const s = staffMap[p.staff_id]
+              return s ? (
+                <span key={p.staff_id} className="text-xs px-2 py-0.5 rounded-full text-white font-medium"
+                  style={{ background: s.color ?? S.accent }}>
+                  {s.name} · {fmtTime(p.punched_at)}
+                </span>
+              ) : null
+            })}
+          </div>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ background: S.accent }}>
-          <Plus size={14} /> Add Member
-        </button>
+      )}
+
+      {/* Tab bar + add button */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: S.bg, border: `1px solid ${S.border}`, display: 'inline-flex' }}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold"
+              style={{ background: tab === t.key ? S.card : 'transparent', color: tab === t.key ? S.text : S.muted, boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+              {t.icon}{t.label}
+            </button>
+          ))}
+        </div>
+        {tab === 'staff' && (
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+            style={{ background: S.accent }}>
+            <Plus size={14} /> Add Member
+          </button>
+        )}
       </div>
 
-      {/* Add / Edit form */}
-      {showForm && (
-        <div className="rounded-2xl p-5 mb-5" style={{ background: S.card, border: `1.5px solid ${S.accent}` }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-sm" style={{ color: S.text }}>
-              {editingId ? 'Edit Member' : 'New Team Member'}
-            </h2>
-            <button onClick={closeForm} className="p-1.5 rounded-lg" style={{ color: S.muted }}
-              onMouseEnter={e => e.currentTarget.style.background = S.bg}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <X size={14} />
-            </button>
-          </div>
+      {/* ── Staff tab ── */}
+      {tab === 'staff' && (
+        <>
+          {/* Add / Edit form */}
+          {showForm && (
+            <div className="rounded-2xl p-5 mb-5" style={{ background: S.card, border: `1.5px solid ${S.accent}` }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-sm" style={{ color: S.text }}>
+                  {editingId ? 'Edit Member' : 'New Team Member'}
+                </h2>
+                <button onClick={closeForm} className="p-1.5 rounded-lg" style={{ color: S.muted }}
+                  onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <X size={14} />
+                </button>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Full Name *</label>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. John Dlamini"
-                className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Full Name *</label>
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. John Dlamini"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Role</label>
+                  <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as ElecStaffRole }))}
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+                    {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Phone</label>
+                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="e.g. 082 555 1234"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Email</label>
+                  <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="e.g. john@example.com"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>Calendar Colour</label>
+                  <div className="flex items-center gap-2">
+                    {COLORS.map(c => (
+                      <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))}
+                        className="w-7 h-7 rounded-full flex items-center justify-center transition-transform"
+                        style={{ background: c, transform: form.color === c ? 'scale(1.25)' : 'scale(1)', boxShadow: form.color === c ? `0 0 0 2px #fff, 0 0 0 3.5px ${c}` : 'none' }}>
+                        {form.color === c && <Check size={12} color="#fff" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-medium"
+                  style={{ background: S.bg, color: S.muted }}>
+                  Cancel
+                </button>
+                <button onClick={() => void handleSave()} disabled={!form.name.trim() || saving}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ background: S.accent }}>
+                  {saving && <Loader2 size={13} className="animate-spin" />}
+                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Member'}
+                </button>
+              </div>
             </div>
+          )}
 
+          {/* Empty state */}
+          {staff.length === 0 && !showForm && (
+            <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ background: 'rgba(58,124,165,0.1)' }}>
+                <UserCircle2 size={22} style={{ color: S.accent }} />
+              </div>
+              <p className="font-semibold mb-1" style={{ color: S.text }}>No team members yet</p>
+              <p className="text-sm mb-5" style={{ color: S.muted }}>Add your electricians, apprentices, and other staff.</p>
+              <button onClick={openAdd}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white mx-auto"
+                style={{ background: S.accent }}>
+                <Plus size={13} /> Add First Member
+              </button>
+            </div>
+          )}
+
+          {/* Active staff */}
+          {active.length > 0 && (
+            <div className="space-y-2 mb-6">
+              {active.map(s => (
+                <StaffCard key={s.id} staff={s}
+                  onEdit={() => openEdit(s)}
+                  onDelete={() => void handleDelete(s.id)}
+                  onToggle={() => void handleToggleActive(s)}
+                  deleting={deletingId === s.id}
+                  toggling={togglingId === s.id}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Inactive staff */}
+          {inactive.length > 0 && (
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Role</label>
-              <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as ElecStaffRole }))}
-                className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
-                {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Phone</label>
-              <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                placeholder="e.g. 082 555 1234"
-                className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Email</label>
-              <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                placeholder="e.g. john@example.com"
-                className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>Calendar Colour</label>
-              <div className="flex items-center gap-2">
-                {COLORS.map(c => (
-                  <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))}
-                    className="w-7 h-7 rounded-full flex items-center justify-center transition-transform"
-                    style={{ background: c, transform: form.color === c ? 'scale(1.25)' : 'scale(1)', boxShadow: form.color === c ? `0 0 0 2px #fff, 0 0 0 3.5px ${c}` : 'none' }}>
-                    {form.color === c && <Check size={12} color="#fff" />}
-                  </button>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+                Inactive
+              </p>
+              <div className="space-y-2">
+                {inactive.map(s => (
+                  <StaffCard key={s.id} staff={s}
+                    onEdit={() => openEdit(s)}
+                    onDelete={() => void handleDelete(s.id)}
+                    onToggle={() => void handleToggleActive(s)}
+                    deleting={deletingId === s.id}
+                    toggling={togglingId === s.id}
+                  />
                 ))}
               </div>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-medium"
-              style={{ background: S.bg, color: S.muted }}>
-              Cancel
-            </button>
-            <button onClick={() => void handleSave()} disabled={!form.name.trim() || saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-              style={{ background: S.accent }}>
-              {saving && <Loader2 size={13} className="animate-spin" />}
-              {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Member'}
-            </button>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
-      {/* Empty state */}
-      {staff.length === 0 && !showForm && (
-        <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-            style={{ background: 'rgba(58,124,165,0.1)' }}>
-            <UserCircle2 size={22} style={{ color: S.accent }} />
-          </div>
-          <p className="font-semibold mb-1" style={{ color: S.text }}>No team members yet</p>
-          <p className="text-sm mb-5" style={{ color: S.muted }}>Add your electricians, apprentices, and other staff.</p>
-          <button onClick={openAdd}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white mx-auto"
-            style={{ background: S.accent }}>
-            <Plus size={13} /> Add First Member
-          </button>
-        </div>
-      )}
-
-      {/* Active staff */}
-      {active.length > 0 && (
-        <div className="space-y-2 mb-6">
-          {active.map(s => (
-            <StaffCard key={s.id} staff={s}
-              onEdit={() => openEdit(s)}
-              onDelete={() => void handleDelete(s.id)}
-              onToggle={() => void handleToggleActive(s)}
-              deleting={deletingId === s.id}
-              toggling={togglingId === s.id}
-            />
+      {/* ── Timesheet tab ── */}
+      {tab === 'timesheet' && (
+        <div className="space-y-4">
+          {sortedDays.length === 0 && (
+            <div className="rounded-2xl py-12 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <p className="text-sm" style={{ color: S.muted }}>No clock-in activity in the last 30 days.</p>
+              <p className="text-xs mt-1" style={{ color: S.muted }}>Staff members need to log in on their phones to clock in/out.</p>
+            </div>
+          )}
+          {sortedDays.map(day => (
+            <div key={day} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="px-4 py-2.5" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
+                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>{fmtDate(day + 'T12:00:00')}</p>
+              </div>
+              {Object.entries(dayMap[day]).map(([staffId, staffPunches]) => {
+                const member = staffMap[staffId]
+                const ins = staffPunches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+                const outs = staffPunches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+                const firstIn = ins[0]
+                const lastOut = outs[outs.length - 1]
+                const duration = firstIn && lastOut
+                  ? fmtDuration(new Date(lastOut.punched_at).getTime() - new Date(firstIn.punched_at).getTime())
+                  : null
+                return (
+                  <div key={staffId} className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                          style={{ background: member?.color ?? S.accent }}>
+                          {member?.name?.slice(0, 2).toUpperCase() ?? '??'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: S.text }}>{member?.name ?? 'Unknown'}</p>
+                          {duration && <p className="text-xs" style={{ color: S.muted }}>{duration} total</p>}
+                        </div>
+                      </div>
+                      {!lastOut && firstIn && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
+                          style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>On site</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {staffPunches.sort((a, b) => a.punched_at.localeCompare(b.punched_at)).map(p => (
+                        <div key={p.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                          style={{ background: p.punch_type === 'clock_in' ? 'rgba(22,163,74,0.06)' : 'rgba(220,38,38,0.06)', border: `1px solid ${p.punch_type === 'clock_in' ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.2)'}` }}>
+                          {p.punch_type === 'clock_in'
+                            ? <LogIn size={10} style={{ color: S.green }} />
+                            : <LogOut size={10} style={{ color: S.danger }} />}
+                          <span className="text-xs font-semibold" style={{ color: p.punch_type === 'clock_in' ? S.green : S.danger }}>
+                            {fmtTime(p.punched_at)}
+                          </span>
+                          {p.latitude && <MapPin size={9} style={{ color: S.muted }} />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           ))}
-        </div>
-      )}
-
-      {/* Inactive staff */}
-      {inactive.length > 0 && (
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
-            Inactive
-          </p>
-          <div className="space-y-2">
-            {inactive.map(s => (
-              <StaffCard key={s.id} staff={s}
-                onEdit={() => openEdit(s)}
-                onDelete={() => void handleDelete(s.id)}
-                onToggle={() => void handleToggleActive(s)}
-                deleting={deletingId === s.id}
-                toggling={togglingId === s.id}
-              />
-            ))}
-          </div>
         </div>
       )}
     </div>
@@ -304,13 +441,11 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
     <div className="rounded-2xl p-4 flex items-center gap-4"
       style={{ background: S.card, border: `1px solid ${S.border}`, opacity: inactive ? 0.55 : 1 }}>
 
-      {/* Color avatar */}
       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 text-white"
         style={{ background: s.color }}>
         {s.name.charAt(0).toUpperCase()}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-sm" style={{ color: S.text }}>{s.name}</span>
@@ -348,9 +483,7 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-1 flex-shrink-0">
-        {/* Invite to portal — only if they have an email and no account yet */}
         {s.email && !hasAccount && (
           <button onClick={() => void handleInvite()} disabled={inviting}
             title={inviteSent ? 'Invite sent!' : invitePending ? 'Resend invite' : 'Invite to portal'}

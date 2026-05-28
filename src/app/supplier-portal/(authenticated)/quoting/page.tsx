@@ -235,6 +235,48 @@ export default async function QuotingDashboardPage() {
         </div>
       )}
 
+      {/* Pipeline */}
+      {pipeline.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.04)' }}>
+            <p className="text-sm font-semibold" style={{ color: S.text }}>Pipeline</p>
+            <p className="text-[10px]" style={{ color: S.muted }}>Quotes not yet in progress</p>
+          </div>
+          {pipeline.map((q, i) => {
+            const cfg = STATUS_CFG[q.status]
+            return (
+              <Link
+                key={q.id}
+                href={`/supplier-portal/quoting/quotes/${q.id}`}
+                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#F9FAFB]"
+                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
+                    {cfg && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
+                        style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                    )}
+                  </div>
+                  {q.client_name && (
+                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client_name}</p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(q.contract_value)}</p>
+                  {q.expected_completion_date && (
+                    <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>
+                      Due {new Date(q.expected_completion_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
       {/* Active Jobs */}
       {active.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
@@ -318,48 +360,6 @@ export default async function QuotingDashboardPage() {
                     style={{ color: ct.paid >= adjustedContract * 0.99 ? S.green : S.gold }}>
                     {ct.paid >= adjustedContract * 0.99 ? 'Fully paid' : `Outstanding: ${fmtR(adjustedContract - ct.paid)}`}
                   </p>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Pipeline */}
-      {pipeline.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.04)' }}>
-            <p className="text-sm font-semibold" style={{ color: S.text }}>Pipeline</p>
-            <p className="text-[10px]" style={{ color: S.muted }}>Quotes not yet in progress</p>
-          </div>
-          {pipeline.map((q, i) => {
-            const cfg = STATUS_CFG[q.status]
-            return (
-              <Link
-                key={q.id}
-                href={`/supplier-portal/quoting/quotes/${q.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#F9FAFB]"
-                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
-                    {cfg && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
-                        style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                    )}
-                  </div>
-                  {q.client_name && (
-                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client_name}</p>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(q.contract_value)}</p>
-                  {q.expected_completion_date && (
-                    <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>
-                      Due {new Date(q.expected_completion_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  )}
                 </div>
               </Link>
             )

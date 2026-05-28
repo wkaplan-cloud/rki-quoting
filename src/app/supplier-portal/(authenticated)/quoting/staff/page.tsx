@@ -2,9 +2,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { StaffManager } from './StaffManager'
-import type { ElecStaff } from '@/lib/elec-types'
+import type { ElecStaff, ElecTimePunch } from '@/lib/elec-types'
 
-export const metadata = { title: 'Team — QuotingHub' }
+export const metadata = { title: 'Staff — QuotingHub' }
 
 export default async function StaffPage() {
   const supabase = await createClient()
@@ -22,11 +22,26 @@ export default async function StaffPage() {
     redirect('/supplier-portal/upgrade')
   }
 
-  const { data: staff } = await supabaseAdmin
-    .from('elec_staff')
-    .select('*')
-    .eq('portal_account_id', account.id)
-    .order('created_at')
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  return <StaffManager initialStaff={(staff ?? []) as ElecStaff[]} />
+  const [{ data: staff }, { data: punches }] = await Promise.all([
+    supabaseAdmin
+      .from('elec_staff')
+      .select('*')
+      .eq('portal_account_id', account.id)
+      .order('created_at'),
+    supabaseAdmin
+      .from('elec_time_punches')
+      .select('*, staff:elec_staff(id, name, color, role)')
+      .eq('portal_account_id', account.id)
+      .gte('punched_at', since)
+      .order('punched_at', { ascending: false }),
+  ])
+
+  return (
+    <StaffManager
+      initialStaff={(staff ?? []) as ElecStaff[]}
+      punches={(punches ?? []) as ElecTimePunch[]}
+    />
+  )
 }
