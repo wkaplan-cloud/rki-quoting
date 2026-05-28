@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CheckCircle2, XCircle, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react'
 
 interface Props {
@@ -11,39 +11,28 @@ interface Props {
 }
 
 export function ApprovalForm({ token, projectName, projectNumber, clientName, initialDecision }: Props) {
-  const [decision, setDecision] = useState<'approved' | 'declined' | null>(initialDecision)
-  const [comment, setComment] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
+  const [finalDecision, setFinalDecision] = useState<'approved' | 'declined' | null>(initialDecision)
   const [errorMsg, setErrorMsg] = useState('')
+  const [note, setNote] = useState('')
+  const [noteStatus, setNoteStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
-  if (status === 'done') {
-    const isApproved = decision === 'approved'
-    return (
-      <div className="py-6 text-center">
-        {isApproved
-          ? <CheckCircle2 size={40} className="mx-auto mb-4" style={{ color: '#16A34A' }} />
-          : <XCircle size={40} className="mx-auto mb-4" style={{ color: '#8A877F' }} />
-        }
-        <p className="font-semibold mb-1.5" style={{ color: '#2C2C2A' }}>
-          {isApproved ? 'Quote approved — thank you!' : 'Response received — thank you.'}
-        </p>
-        <p className="text-sm leading-relaxed" style={{ color: '#8A877F' }}>
-          {isApproved
-            ? "Your approval has been sent. We'll be in touch shortly."
-            : "Your feedback has been sent. We'll review and follow up with you."}
-        </p>
-      </div>
-    )
-  }
+  // Auto-submit when arriving via email link with ?decision= in URL
+  useEffect(() => {
+    if (initialDecision) {
+      submit(initialDecision)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  async function handleSubmit() {
-    if (!decision) return
+  async function submit(decision: 'approved' | 'declined') {
     setStatus('submitting')
+    setFinalDecision(decision)
     try {
       const res = await fetch(`/api/approve/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, comment: comment.trim() || undefined }),
+        body: JSON.stringify({ decision }),
       })
       const json = await res.json() as { ok?: boolean; error?: string }
       if (json.ok || json.error === 'already_submitted') {
@@ -51,13 +40,102 @@ export function ApprovalForm({ token, projectName, projectNumber, clientName, in
       } else {
         setErrorMsg(json.error ?? 'Something went wrong. Please try again.')
         setStatus('error')
+        setFinalDecision(null)
       }
     } catch {
       setErrorMsg('Something went wrong. Please try again.')
       setStatus('error')
+      setFinalDecision(null)
     }
   }
 
+  async function sendNote() {
+    if (!note.trim()) return
+    setNoteStatus('saving')
+    try {
+      await fetch(`/api/approve/${token}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: note.trim() }),
+      })
+      setNoteStatus('saved')
+    } catch {
+      setNoteStatus('idle')
+    }
+  }
+
+  if (status === 'submitting') {
+    return (
+      <div className="py-8 text-center">
+        <Loader2 size={32} className="mx-auto mb-3 animate-spin" style={{ color: '#C4A46B' }} />
+        <p className="text-sm" style={{ color: '#8A877F' }}>Submitting…</p>
+      </div>
+    )
+  }
+
+  if (status === 'done') {
+    const isApproved = finalDecision === 'approved'
+    return (
+      <div className="space-y-5">
+        <div className="text-center py-2">
+          {isApproved
+            ? <CheckCircle2 size={40} className="mx-auto mb-3" style={{ color: '#16A34A' }} />
+            : <XCircle size={40} className="mx-auto mb-3" style={{ color: '#8A877F' }} />
+          }
+          <p className="font-semibold mb-1.5" style={{ color: '#2C2C2A' }}>
+            {isApproved ? 'Quote approved — thank you!' : 'Response received — thank you.'}
+          </p>
+          <p className="text-sm leading-relaxed" style={{ color: '#8A877F' }}>
+            {isApproved
+              ? "Your approval has been sent to the studio. We'll be in touch shortly."
+              : "Your response has been sent. The studio will follow up with you."}
+          </p>
+        </div>
+
+        {noteStatus === 'saved' ? (
+          <p className="text-sm text-center py-2" style={{ color: '#16A34A' }}>Note sent.</p>
+        ) : (
+          <>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#8A877F', letterSpacing: '0.08em' }}>
+                Add a note <span style={{ color: '#C4BFB5', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+              </label>
+              <textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                rows={3}
+                placeholder={isApproved ? 'Any notes for us?' : "Let us know what you'd like changed…"}
+                className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors"
+                style={{ backgroundColor: '#F5F2EC', border: '1px solid #D8D3C8', color: '#2C2C2A' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#C4A46B' }}
+                onBlur={e => { e.currentTarget.style.borderColor = '#D8D3C8' }}
+              />
+            </div>
+            {note.trim() && (
+              <button
+                onClick={sendNote}
+                disabled={noteStatus === 'saving'}
+                className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: '#4A4A47',
+                  color: '#FFFFFF',
+                  opacity: noteStatus === 'saving' ? 0.6 : 1,
+                  cursor: noteStatus === 'saving' ? 'not-allowed' : 'pointer',
+                  transition: 'opacity 0.15s',
+                }}
+              >
+                {noteStatus === 'saving' ? <><Loader2 size={14} className="animate-spin" /> Sending…</> : 'Send note'}
+              </button>
+            )}
+          </>
+        )}
+
+        <p className="text-xs text-center" style={{ color: '#C4BFB5' }}>Ref: {projectNumber}</p>
+      </div>
+    )
+  }
+
+  // Fallback: no URL decision — show direct-submit buttons (no two-step confirm)
   return (
     <div className="space-y-5">
       <p className="text-sm leading-relaxed" style={{ color: '#5C5A55' }}>
@@ -65,82 +143,31 @@ export function ApprovalForm({ token, projectName, projectNumber, clientName, in
         <strong style={{ color: '#2C2C2A' }}>{projectName}</strong>.
       </p>
 
-      {/* Decision buttons */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: '#8A877F', letterSpacing: '0.08em' }}>
           Your response
         </p>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => setDecision('approved')}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 font-semibold text-sm transition-all"
-            style={{
-              borderColor: decision === 'approved' ? '#16A34A' : '#D8D3C8',
-              backgroundColor: decision === 'approved' ? '#F0FDF4' : '#FFFFFF',
-              color: decision === 'approved' ? '#16A34A' : '#8A877F',
-            }}
+            onClick={() => submit('approved')}
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm"
+            style={{ backgroundColor: '#16A34A', color: '#FFFFFF' }}
           >
-            <ThumbsUp size={15} />
-            Approve
+            <ThumbsUp size={15} /> Approve
           </button>
           <button
-            onClick={() => setDecision('declined')}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 font-semibold text-sm transition-all"
-            style={{
-              borderColor: decision === 'declined' ? '#8A877F' : '#D8D3C8',
-              backgroundColor: decision === 'declined' ? '#F5F2EC' : '#FFFFFF',
-              color: decision === 'declined' ? '#4A4A47' : '#8A877F',
-            }}
+            onClick={() => submit('declined')}
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm border"
+            style={{ borderColor: '#D8D3C8', backgroundColor: '#F5F2EC', color: '#4A4A47' }}
           >
-            <ThumbsDown size={15} />
-            Decline
+            <ThumbsDown size={15} /> Decline
           </button>
         </div>
-      </div>
-
-      {/* Comment */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#8A877F', letterSpacing: '0.08em' }}>
-          Comment <span style={{ color: '#C4BFB5', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
-        </label>
-        <textarea
-          value={comment}
-          onChange={e => setComment(e.target.value)}
-          rows={3}
-          placeholder={decision === 'declined' ? "Let us know what you'd like changed…" : 'Any notes for us?'}
-          className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none transition-colors"
-          style={{ backgroundColor: '#F5F2EC', border: '1px solid #D8D3C8', color: '#2C2C2A' }}
-          onFocus={e => { e.currentTarget.style.borderColor = '#C4A46B' }}
-          onBlur={e => { e.currentTarget.style.borderColor = '#D8D3C8' }}
-        />
       </div>
 
       {status === 'error' && (
         <p className="text-sm" style={{ color: '#DC2626' }}>{errorMsg}</p>
       )}
-
-      <button
-        onClick={handleSubmit}
-        disabled={!decision || status === 'submitting'}
-        className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-        style={{
-          backgroundColor: decision === 'approved' ? '#16A34A' : decision === 'declined' ? '#4A4A47' : '#D8D3C8',
-          color: '#FFFFFF',
-          opacity: !decision || status === 'submitting' ? 0.6 : 1,
-          cursor: !decision ? 'not-allowed' : 'pointer',
-          transition: 'opacity 0.15s',
-        }}
-      >
-        {status === 'submitting' ? (
-          <><Loader2 size={15} className="animate-spin" /> Submitting…</>
-        ) : decision === 'approved' ? (
-          <><CheckCircle2 size={15} /> Confirm Approval</>
-        ) : decision === 'declined' ? (
-          'Submit Response'
-        ) : (
-          'Select a response above'
-        )}
-      </button>
 
       <p className="text-xs text-center" style={{ color: '#C4BFB5' }}>Ref: {projectNumber}</p>
     </div>

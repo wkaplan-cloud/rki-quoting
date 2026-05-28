@@ -99,6 +99,42 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   }
 }
 
+// PATCH /api/approve/[token] — public, attaches/updates the client's comment after decision
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  try {
+    const { token } = await params
+    const { comment } = await req.json() as { comment: string }
+
+    const { data: approval } = await supabaseAdmin
+      .from('quote_approvals')
+      .select('id, project_id, submitted_at')
+      .eq('token', token)
+      .maybeSingle()
+
+    if (!approval?.submitted_at) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    await supabaseAdmin.from('quote_approvals').update({ comment: comment?.trim() || null }).eq('id', approval.id)
+
+    // Also update the most recent log entry so the note shows in project history
+    const { data: latestLog } = await supabaseAdmin
+      .from('quote_approval_logs')
+      .select('id')
+      .eq('project_id', approval.project_id)
+      .order('submitted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (latestLog) {
+      await supabaseAdmin.from('quote_approval_logs').update({ comment: comment?.trim() || null }).eq('id', latestLog.id)
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('[approve PATCH]', e)
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
+  }
+}
+
 // GET /api/approve/[token] — public fetch for the approval page
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
