@@ -2,7 +2,6 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -13,12 +12,10 @@ const S = {
 function AcceptInviteContent() {
   const params = useSearchParams()
   const router = useRouter()
-  const supabase = createClient()
   const token = params.get('token') ?? ''
 
   const [status, setStatus] = useState<'loading' | 'form' | 'submitting' | 'done' | 'error'>('loading')
   const [staffName, setStaffName] = useState('')
-  const [staffEmail, setStaffEmail] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -31,7 +28,6 @@ function AcceptInviteContent() {
       .then((data: { name?: string; email?: string; company?: string; error?: string }) => {
         if (data.error) { setStatus('error'); setError(data.error); return }
         setStaffName(data.name ?? '')
-        setStaffEmail(data.email ?? '')
         setCompanyName(data.company ?? '')
         setStatus('form')
       })
@@ -43,29 +39,23 @@ function AcceptInviteContent() {
     if (password !== confirm) { setError('Passwords do not match'); return }
     setStatus('submitting'); setError('')
 
-    // Create / update the auth account
     const res = await fetch('/api/supplier-portal/staff/accept-invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, password }),
     })
-    const data = await res.json() as { ok?: boolean; error?: string }
+    const data = await res.json() as { ok?: boolean; error?: string; signInUrl?: string }
     if (!res.ok || !data.ok) { setStatus('form'); setError(data.error ?? 'Failed'); return }
 
-    // Sign in immediately so there's an active session before redirecting
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: staffEmail,
-      password,
-    })
-    if (signInError) {
-      // Account was created but sign-in failed — send them to login with a hint
-      setStatus('done')
-      setTimeout(() => router.push('/supplier-portal/login'), 2000)
-      return
-    }
-
     setStatus('done')
-    setTimeout(() => router.push('/supplier-portal/staff-home'), 1500)
+
+    // Use the server-generated magic sign-in link to establish the session.
+    // This is more reliable than signInWithPassword as it bypasses email confirmation.
+    if (data.signInUrl) {
+      setTimeout(() => { window.location.href = data.signInUrl! }, 1200)
+    } else {
+      setTimeout(() => router.push('/supplier-portal/staff-home'), 1200)
+    }
   }
 
   return (

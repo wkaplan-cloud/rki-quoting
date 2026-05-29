@@ -31,6 +31,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/set-password`)
     }
 
+    // If a next/redirect_to was specified (e.g. staff magic link), honour it
+    const next = searchParams.get('next') ?? searchParams.get('redirect_to')
+    if (next?.startsWith('/')) {
+      return NextResponse.redirect(`${origin}${next}`)
+    }
+
     // Self-signup: verifyOtp already logged them in.
     // Send to /welcome — that page shows a confirmation message with a "Continue" button → /onboarding.
     return NextResponse.redirect(`${origin}/welcome`)

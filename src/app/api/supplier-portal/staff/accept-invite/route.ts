@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
 
     if (staff.auth_user_id) {
       // Already has an account — update password
-      await supabaseAdmin.auth.admin.updateUserById(staff.auth_user_id, { password })
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(staff.auth_user_id, { password })
+      if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
       authUserId = staff.auth_user_id
     } else {
       // Create new auth user
@@ -39,9 +40,9 @@ export async function POST(req: NextRequest) {
         email_confirm: true,
       })
       if (createErr || !created.user) {
-        // User might already exist with this email
-        const { data: existing } = await supabaseAdmin.auth.admin.listUsers()
-        const existingUser = existing.users.find(u => u.email === staff.email)
+        // User might already exist (previous attempt) — find and update their password
+        const { data: existing } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+        const existingUser = existing?.users.find(u => u.email?.toLowerCase() === staff.email!.toLowerCase())
         if (existingUser) {
           await supabaseAdmin.auth.admin.updateUserById(existingUser.id, { password })
           authUserId = existingUser.id
@@ -53,6 +54,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Mark staff record as accepted
     await supabaseAdmin
       .from('elec_staff')
       .update({
@@ -62,7 +64,16 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', staff.id)
 
-    return NextResponse.json({ ok: true })
+    // Generate a one-time magic sign-in link so the client can establish a session
+    // without relying on signInWithPassword (which can fail with email confirmation issues)
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
+    const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: staff.email,
+      options: { redirectTo: `${baseUrl}/supplier-portal/staff-home` },
+    })
+
+    return NextResponse.json({ ok: true, signInUrl: linkData?.properties?.action_link ?? null })
   } catch (e) {
     return apiError(e)
   }
