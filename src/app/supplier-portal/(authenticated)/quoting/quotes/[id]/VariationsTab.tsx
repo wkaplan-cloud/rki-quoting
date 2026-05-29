@@ -1,8 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail, Loader2, CheckCircle, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
-import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem, ElecQuoteSection, ElecQuoteLineItem } from '@/lib/elec-types'
+import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem, ElecQuoteSection, ElecQuoteLineItem, ElecClient } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -30,6 +30,8 @@ interface FormLineItem {
   rate: string
 }
 
+type VOClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
+
 interface Props {
   quoteId: string
   portalAccountId: string
@@ -39,6 +41,7 @@ interface Props {
   companyCode: string
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
+  client?: VOClient | null
   onClaimCreated: (claim: ElecClaim & { line_items: ElecClaimLineItem[] }) => void
   onVOsChanged?: (vos: ElecVariationOrder[]) => void
 }
@@ -47,7 +50,7 @@ function newFormItem(): FormLineItem {
   return { _id: Math.random().toString(36).slice(2), description: '', unit: '', qty: '', rate: '' }
 }
 
-export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, sections, items, onClaimCreated, onVOsChanged }: Props) {
+export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, sections, items, client = null, onClaimCreated, onVOsChanged }: Props) {
   const supabase = createClient()
   const [vos, setVOs] = useState(initialVOs)
   const [voClaims, setVOClaims] = useState<VOClaim[]>(initialClaims.filter(c => c.variation_order_id != null))
@@ -66,8 +69,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
   // VO invoice form state
   const [voClaimDate, setVOClaimDate] = useState(new Date().toISOString().split('T')[0])
-  const [voSentToName, setVOSentToName] = useState('')
-  const [voSentToEmail, setVOSentToEmail] = useState('')
+  const [voSentToName, setVOSentToName] = useState(client?.client_name ?? '')
+  const [voSentToEmail, setVOSentToEmail] = useState(client?.email ?? '')
   const [voNotes, setVONotes] = useState('')
   const [voLoading, setVOLoading] = useState(false)
   const [voError, setVOError] = useState('')
@@ -75,6 +78,12 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   // Inline cost editing
   const [editingCostId, setEditingCostId] = useState<string | null>(null)
   const [editingCostVal, setEditingCostVal] = useState('')
+
+  // Sync contact fields when client changes on the quote
+  useEffect(() => {
+    setVOSentToName(client?.client_name ?? '')
+    setVOSentToEmail(client?.email ?? '')
+  }, [client?.id]) // eslint-disable-line
 
   // Send to client modal state
   const [sendModalVO, setSendModalVO] = useState<ElecVariationOrder | null>(null)
@@ -257,7 +266,9 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       onClaimCreated(fullClaim)
       setInvoicingVoId(null)
       setVOClaimDate(new Date().toISOString().split('T')[0])
-      setVOSentToName(''); setVOSentToEmail(''); setVONotes('')
+      setVOSentToName(client?.client_name ?? '')
+      setVOSentToEmail(client?.email ?? '')
+      setVONotes('')
     } catch (e: unknown) {
       setVOError(e instanceof Error ? e.message : 'Error')
     }
@@ -614,7 +625,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                     <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                       {vo.status === 'pending' && (
                         <>
-                          <button onClick={() => { setSendModalVO(vo); setSendDone(false) }}
+                          <button onClick={() => { setSendModalVO(vo); setSendEmail(vo.sent_to_email || client?.email || ''); setSendDone(false) }}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                             style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
                             <Send size={11} /> Send to Client

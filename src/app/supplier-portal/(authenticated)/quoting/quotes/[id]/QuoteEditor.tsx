@@ -703,6 +703,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               companyCode={companyCode}
               sections={sections as unknown as ElecQuoteSection[]}
               items={allItems as ElecQuoteLineItem[]}
+              client={clients.find(c => c.id === q.client_id) ?? null}
               onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
               onVOsChanged={setLiveVOs}
             />
