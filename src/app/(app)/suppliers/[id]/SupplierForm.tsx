@@ -51,6 +51,7 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
   const router = useRouter()
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Platform supplier — only the org contact fields are editable
   const [contact, setContact] = useState({
@@ -130,8 +131,11 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
 
   async function deleteSupplier() {
     if (!supplier) return
-    if (!confirm('Delete this supplier?')) return
-    await supabase.from('suppliers').delete().eq('id', supplier.id)
+    if (!confirm('Delete this supplier? This cannot be undone.')) return
+    setDeleting(true)
+    const { error } = await supabase.from('suppliers').delete().eq('id', supplier.id)
+    if (error) { toast.error(error.message); setDeleting(false); return }
+    toast.success('Supplier deleted')
     router.push('/suppliers')
   }
 
@@ -265,7 +269,7 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
       <div className="flex gap-3">
         <Button type="submit" disabled={saving}>{saving ? 'Saving…' : supplier ? 'Save Changes' : 'Create Supplier'}</Button>
         <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
-        {supplier && <Button type="button" variant="danger" onClick={deleteSupplier} className="ml-auto">Delete</Button>}
+        {supplier && <Button type="button" variant="danger" onClick={deleteSupplier} disabled={deleting} className="ml-auto">{deleting ? 'Deleting…' : 'Delete'}</Button>}
       </div>
     </form>
   )

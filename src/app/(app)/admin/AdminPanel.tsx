@@ -147,6 +147,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   const [inviting, setInviting] = useState(false)
   const [upgradeAgencyOpen, setUpgradeAgencyOpen] = useState(false)
   const [upgradingAgency, setUpgradingAgency] = useState(false)
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null)
   const [tab, setTab] = useState<'profile' | 'users' | 'studio' | 'profit' | 'audit'>(isAdmin ? 'users' : 'profile')
   const [confirmModal, setConfirmModal] = useState<{
     title: string
@@ -251,7 +252,9 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   }
 
   async function handleReactivate(id: string) {
+    setReactivatingId(id)
     const res = await fetch('/api/admin/members', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: 'active' }) })
+    setReactivatingId(null)
     if (!res.ok) { const { error } = await res.json(); toast.error(error ?? 'Failed'); return }
     setMembers(m => m.map(mem => mem.id === id ? { ...mem, status: 'active' } : mem))
     toast.success('User reactivated')
@@ -429,8 +432,8 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
                           </button>
                         )}
                         {m.status === 'inactive' && (
-                          <button onClick={() => handleReactivate(m.id)} className="text-xs text-[#8A877F] hover:text-green-600 transition-colors ml-auto cursor-pointer">
-                            Reactivate
+                          <button onClick={() => void handleReactivate(m.id)} disabled={reactivatingId === m.id} className="text-xs text-[#8A877F] hover:text-green-600 transition-colors ml-auto cursor-pointer disabled:opacity-50">
+                            {reactivatingId === m.id ? 'Reactivating…' : 'Reactivate'}
                           </button>
                         )}
                       </td>

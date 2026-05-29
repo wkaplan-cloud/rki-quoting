@@ -246,7 +246,8 @@ export function ClientsClient({ portalAccountId, initialClients }: Props) {
   async function handleDelete(client: ElecClient) {
     if (!confirm(`Delete ${client.client_name}? This cannot be undone.`)) return
     setDeleting(client.id)
-    await supabase.from('elec_clients').delete().eq('id', client.id)
+    const { error } = await supabase.from('elec_clients').delete().eq('id', client.id)
+    if (error) { setError(error.message); setDeleting(null); return }
     setClients(cs => cs.filter(c => c.id !== client.id))
     setDeleting(null)
   }

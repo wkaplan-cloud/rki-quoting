@@ -138,7 +138,7 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
     setSageDisconnecting(true)
     const res = await fetch('/api/supplier-portal/quoting/sage/disconnect', { method: 'POST' })
     setSageDisconnecting(false)
-    if (!res.ok) return
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setSageError(d.error ?? 'Failed to disconnect'); return }
     setSageConnected(false); setSageCompanyId(''); setSageUsername(''); setSageSuccess(''); setSageError('')
   }
 

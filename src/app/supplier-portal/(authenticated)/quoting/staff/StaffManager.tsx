@@ -144,14 +144,16 @@ export function StaffManager({ initialStaff, punches }: Props) {
       const res = await fetch(`/api/supplier-portal/quoting/staff/${editingId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       })
-      const updated = await res.json() as ElecStaff
-      setStaff(ss => ss.map(s => s.id === editingId ? updated : s))
+      const d = await res.json()
+      if (!res.ok) { alert(d.error ?? 'Failed to save'); setSaving(false); return }
+      setStaff(ss => ss.map(s => s.id === editingId ? d as ElecStaff : s))
     } else {
       const res = await fetch('/api/supplier-portal/quoting/staff', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       })
-      const created = await res.json() as ElecStaff
-      setStaff(ss => [...ss, created])
+      const d = await res.json()
+      if (!res.ok) { alert(d.error ?? 'Failed to save'); setSaving(false); return }
+      setStaff(ss => [...ss, d as ElecStaff])
     }
     setSaving(false)
     closeForm()
@@ -160,7 +162,8 @@ export function StaffManager({ initialStaff, punches }: Props) {
   async function handleDelete(id: string) {
     if (!confirm('Remove this team member?')) return
     setDeletingId(id)
-    await fetch(`/api/supplier-portal/quoting/staff/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/supplier-portal/quoting/staff/${id}`, { method: 'DELETE' })
+    if (!res.ok) { alert('Failed to remove member'); setDeletingId(null); return }
     setStaff(ss => ss.filter(s => s.id !== id))
     setDeletingId(null)
   }
@@ -462,8 +465,9 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
   async function handleInvite() {
     if (!s.email || inviting) return
     setInviting(true)
-    await fetch(`/api/supplier-portal/quoting/staff/${s.id}/invite`, { method: 'POST' })
+    const res = await fetch(`/api/supplier-portal/quoting/staff/${s.id}/invite`, { method: 'POST' })
     setInviting(false)
+    if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error ?? 'Failed to send invite'); return }
     setInviteSent(true)
     setTimeout(() => setInviteSent(false), 4000)
   }

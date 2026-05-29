@@ -21,12 +21,16 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
   const [showArchived, setShowArchived] = useState(false)
   const [myProjects, setMyProjects] = useState(true)
+  const [restoringId, setRestoringId] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   async function handleUnarchive(id: string) {
-    await supabase.from('projects').update({ archived_at: null }).eq('id', id)
+    setRestoringId(id)
+    const { error } = await supabase.from('projects').update({ archived_at: null }).eq('id', id)
+    if (error) { alert(error.message); setRestoringId(null); return }
     router.refresh()
+    setRestoringId(null)
   }
 
   const active   = projects.filter(p => !p.archived_at)
@@ -174,7 +178,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                   </td>
                   {showArchived && (
                     <td className="px-4 py-3 text-right">
-                      <button onClick={e => { e.stopPropagation(); handleUnarchive(p.id) }} className="text-xs text-[#9A7B4F] hover:underline cursor-pointer">Restore</button>
+                      <button onClick={e => { e.stopPropagation(); void handleUnarchive(p.id) }} disabled={restoringId === p.id} className="text-xs text-[#9A7B4F] hover:underline cursor-pointer disabled:opacity-50">{restoringId === p.id ? 'Restoring…' : 'Restore'}</button>
                     </td>
                   )}
                 </tr>

@@ -19,6 +19,7 @@ export function ClientForm({ client, projects }: Props) {
   const router = useRouter()
   const supabase = createSupabaseClient()
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [form, setForm] = useState({
     client_name: client?.client_name ?? '',
     company: client?.company ?? '',
@@ -52,7 +53,9 @@ export function ClientForm({ client, projects }: Props) {
   async function deleteClient() {
     if (!client) return
     if (!confirm('Delete this client? This cannot be undone.')) return
-    await supabase.from('clients').delete().eq('id', client.id)
+    setDeleting(true)
+    const { error } = await supabase.from('clients').delete().eq('id', client.id)
+    if (error) { toast.error(error.message); setDeleting(false); return }
     toast.success('Client deleted')
     router.push('/clients')
   }
@@ -75,7 +78,7 @@ export function ClientForm({ client, projects }: Props) {
         <div className="flex items-center gap-3 pt-2">
           <Button type="submit" disabled={saving}>{saving ? 'Saving…' : client ? 'Save Changes' : 'Create Client'}</Button>
           <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
-          {client && <Button type="button" variant="danger" onClick={deleteClient} className="ml-auto">Delete</Button>}
+          {client && <Button type="button" variant="danger" onClick={deleteClient} disabled={deleting} className="ml-auto">{deleting ? 'Deleting…' : 'Delete'}</Button>}
         </div>
       </form>
 
