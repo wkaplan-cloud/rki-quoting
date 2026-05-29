@@ -1,6 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect, useRef } from 'react'
 import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin } from 'lucide-react'
 import type { ElecNotification } from '@/lib/elec-types'
 
@@ -46,27 +45,32 @@ interface Props {
   initialNotifications: ElecNotification[]
 }
 
-export function NotificationsClient({ portalAccountId, initialNotifications }: Props) {
-  const supabase = createClient()
+export function NotificationsClient({ portalAccountId: _portalAccountId, initialNotifications }: Props) {
   const [notifications, setNotifications] = useState<ElecNotification[]>(initialNotifications)
+  const latestCreatedAt = useRef(initialNotifications[0]?.created_at ?? new Date(0).toISOString())
 
-  // Realtime: new notifications appear in the list instantly.
-  // Sound is handled by SupplierPortalShell which has an unlocked audio element.
+  // Poll every 5 s for new notifications
   useEffect(() => {
-    const channel = supabase
-      .channel(`notifications-page:${portalAccountId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'elec_notifications',
-        filter: `portal_account_id=eq.${portalAccountId}`,
-      }, (payload) => {
-        setNotifications(prev => [payload.new as ElecNotification, ...prev])
-      })
-      .subscribe()
+    let alive = true
 
-    return () => { void supabase.removeChannel(channel) }
-  }, [portalAccountId]) // eslint-disable-line
+    async function poll() {
+      try {
+        const res = await fetch(`/api/supplier-portal/notifications?since=${encodeURIComponent(latestCreatedAt.current)}`)
+        const d = await res.json() as { notifications: ElecNotification[] }
+        if (!alive || !d.notifications?.length) return
+        setNotifications(prev => {
+          const existingIds = new Set(prev.map(n => n.id))
+          const fresh = d.notifications.filter(n => !existingIds.has(n.id))
+          if (!fresh.length) return prev
+          latestCreatedAt.current = fresh[0].created_at
+          return [...fresh, ...prev]
+        })
+      } catch {}
+    }
+
+    const interval = setInterval(() => { void poll() }, 5000)
+    return () => { alive = false; clearInterval(interval) }
+  }, []) // eslint-disable-line
 
   const unreadCount = notifications.filter(n => !n.read_at).length
 

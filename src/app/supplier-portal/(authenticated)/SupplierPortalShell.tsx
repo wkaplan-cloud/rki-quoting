@@ -1,8 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { SupplierPortalNav } from './SupplierPortalNav'
-import type { RealtimeChannel } from '@supabase/supabase-js'
 
 interface Props {
   children: React.ReactNode
@@ -11,12 +9,11 @@ interface Props {
 }
 
 export function SupplierPortalShell({ children, companyName, hasQuoting = false }: Props) {
-  const supabase = createClient()
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const channelRef = useRef<RealtimeChannel | null>(null)
+  const prevCountRef = useRef(0)
 
   useEffect(() => {
     const saved = localStorage.getItem('supplier-sidebar-expanded')
@@ -30,7 +27,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
       .catch(() => {})
   }, [])
 
-  // Pre-unlock audio on first user interaction so autoplay works when notifications arrive
+  // Pre-unlock audio on first user interaction so autoplay works when a notification arrives
   useEffect(() => {
     const unlock = () => {
       const audio = audioRef.current
@@ -47,57 +44,29 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
     }
   }, [])
 
+  // Poll every 5 s — fast enough to feel live, works regardless of RLS/Realtime setup
   useEffect(() => {
     let alive = true
 
-    function fetchCount() {
-      return fetch('/api/supplier-portal/notification-count')
-        .then(r => r.json())
-        .then((d: { count: number; portalAccountId: string | null }) => d)
-        .catch(() => ({ count: 0, portalAccountId: null }))
-    }
-
-    fetchCount().then(d => {
-      if (!alive) return
-      setNotificationCount(d.count ?? 0)
-      if (!d.portalAccountId) return
-
-      const channel = supabase
-        .channel(`shell-notifications:${d.portalAccountId}`)
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'elec_notifications',
-          filter: `portal_account_id=eq.${d.portalAccountId}`,
-        }, () => {
-          if (!alive) return
-          setNotificationCount(c => c + 1)
+    async function poll() {
+      try {
+        const res = await fetch('/api/supplier-portal/notifications')
+        const d = await res.json() as { count: number }
+        if (!alive) return
+        const newCount = d.count ?? 0
+        if (newCount > prevCountRef.current) {
+          // New notification(s) arrived — play sound
           try { audioRef.current?.play().catch(() => {}) } catch {}
-        })
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'elec_notifications',
-          filter: `portal_account_id=eq.${d.portalAccountId}`,
-        }, () => {
-          if (!alive) return
-          fetchCount().then(d2 => { if (alive) setNotificationCount(d2.count ?? 0) })
-        })
-        .subscribe()
-
-      channelRef.current = channel
-    })
-
-    // Poll every 60 s as a fallback — corrects any count drift if Realtime events are missed
-    const poll = setInterval(() => {
-      if (alive) fetchCount().then(d => { if (alive) setNotificationCount(d.count ?? 0) })
-    }, 60_000)
-
-    return () => {
-      alive = false
-      clearInterval(poll)
-      if (channelRef.current) void supabase.removeChannel(channelRef.current)
+        }
+        prevCountRef.current = newCount
+        setNotificationCount(newCount)
+      } catch {}
     }
+
+    void poll() // immediate first fetch
+    const interval = setInterval(() => { void poll() }, 5000)
+
+    return () => { alive = false; clearInterval(interval) }
   }, []) // eslint-disable-line
 
   return (
