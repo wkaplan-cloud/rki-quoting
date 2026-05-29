@@ -224,27 +224,20 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
                 <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(m.unit_price != null ? m.qty * m.unit_price : null)}</Text>
               </View>
             ))}
-            {asInvoice ? (
-              <View>
-                <View style={[s.totalRow, { marginTop: 2 }]}>
-                  <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>Subtotal (excl. VAT)</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(totalExclVat)}</Text>
-                </View>
-                <View style={[s.totalRow, { marginTop: 1 }]}>
-                  <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>VAT ({vatRate}%)</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(vatAmt)}</Text>
-                </View>
-                <View style={[s.totalRow, { marginTop: 1, backgroundColor: ACCENT }]}>
-                  <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>TOTAL (incl. VAT)</Text>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>{fmtCurrency(totalInclVat)}</Text>
-                </View>
+            <View>
+              <View style={[s.totalRow, { marginTop: 2 }]}>
+                <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>Subtotal (excl. VAT)</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(totalExclVat)}</Text>
               </View>
-            ) : (
-              <View style={s.totalRow}>
-                <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 8 }]}>Total Materials</Text>
-                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 8, color: DARK }]}>{fmtCurrency(totalExclVat)}</Text>
+              <View style={[s.totalRow, { marginTop: 1 }]}>
+                <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>VAT ({vatRate}%)</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(vatAmt)}</Text>
               </View>
-            )}
+              <View style={[s.totalRow, { marginTop: 1, backgroundColor: ACCENT }]}>
+                <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>TOTAL (incl. VAT)</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>{fmtCurrency(totalInclVat)}</Text>
+              </View>
+            </View>
           </View>
         )}
 
