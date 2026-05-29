@@ -5,9 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon,
+  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus,
 } from 'lucide-react'
-import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType } from '@/lib/elec-types'
+import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
 
 const S = {
@@ -46,15 +46,19 @@ const JOB_TYPES: { value: ElecJobCardType; label: string }[] = [
 
 type Tab = 'home' | 'jobs' | 'history' | 'more'
 
+type ClientItem = Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>
+
 interface Props {
   staff: Pick<ElecStaff, 'id' | 'name' | 'role' | 'color'>
   companyName: string
+  portalAccountId: string
   initialPunches: ElecTimePunch[]
   isClockedIn: boolean
   assignedJobCards: ElecJobCard[]
+  initialClients: ClientItem[]
 }
 
-export function StaffHome({ staff, companyName, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards }: Props) {
+export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -82,6 +86,14 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
   const [newLocation, setNewLocation] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+
+  // Client picker in new-job modal
+  const [clients, setClients] = useState<ClientItem[]>(initialClients)
+  const [newClientId, setNewClientId] = useState<string | null>(null)
+  const [newClientName, setNewClientName] = useState('')
+  const [clientSearch, setClientSearch] = useState('')
+  const [clientFocused, setClientFocused] = useState(false)
+  const [creatingClient, setCreatingClient] = useState(false)
 
   // Sign out
   const [signingOut, setSigningOut] = useState(false)
@@ -146,13 +158,18 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
     const res = await fetch('/api/supplier-portal/quoting/job-cards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: newTitle.trim(), job_type: newType, location: newLocation.trim() || null }),
+      body: JSON.stringify({
+        title: newTitle.trim(),
+        job_type: newType,
+        location: newLocation.trim() || null,
+        client_id: newClientId || null,
+        client_name: newClientId ? null : (newClientName.trim() || null),
+      }),
     })
     const data = await res.json() as ElecJobCard & { error?: string }
     if (!res.ok || data.error) { setCreateError(data.error ?? 'Failed to create'); setCreating(false); return }
     setJobCards(prev => [data, ...prev])
-    setShowNewJob(false)
-    setNewTitle(''); setNewType('callout'); setNewLocation('')
+    resetModalState()
     setCreating(false)
     router.push(`/supplier-portal/staff-home/job/${data.id}`)
   }
@@ -161,6 +178,33 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
     setSigningOut(true)
     await supabase.auth.signOut()
     router.push('/supplier-portal/login')
+  }
+
+  async function createAndSelectClient() {
+    const name = clientSearch.trim()
+    if (!name || creatingClient) return
+    setCreatingClient(true)
+    const res = await fetch('/api/supplier-portal/staff/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_name: name }),
+    })
+    if (res.ok) {
+      const c = await res.json() as ClientItem
+      setClients(prev => [...prev, c].sort((a, b) => a.client_name.localeCompare(b.client_name)))
+      setNewClientId(c.id)
+      setNewClientName(c.client_name)
+      setClientSearch('')
+      setClientFocused(false)
+    }
+    setCreatingClient(false)
+  }
+
+  function resetModalState() {
+    setShowNewJob(false)
+    setNewTitle(''); setNewType('callout'); setNewLocation('')
+    setCreateError('')
+    setNewClientId(null); setNewClientName(''); setClientSearch(''); setClientFocused(false)
   }
 
   // Timesheet data
@@ -436,11 +480,11 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
       {/* New Job modal */}
       {showNewJob && (
         <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={e => { if (e.target === e.currentTarget) setShowNewJob(false) }}>
-          <div className="w-full rounded-t-3xl overflow-hidden" style={{ background: S.card, paddingBottom: 'env(safe-area-inset-bottom)' }}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+          onClick={e => { if (e.target === e.currentTarget) resetModalState() }}>
+          <div className="w-full rounded-t-3xl" style={{ background: S.card, paddingBottom: 'env(safe-area-inset-bottom)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="flex items-center justify-between px-5 py-4 sticky top-0 z-10" style={{ background: S.card, borderBottom: `1px solid ${S.border}` }}>
               <h2 className="font-bold text-base" style={{ color: S.text }}>New Job Card</h2>
-              <button onClick={() => setShowNewJob(false)} style={{ color: S.muted }}><X size={18} /></button>
+              <button onClick={() => resetModalState()} style={{ color: S.muted }}><X size={18} /></button>
             </div>
             <div className="p-5 space-y-4">
               <div>
@@ -480,6 +524,80 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
                   style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
                 />
               </div>
+
+              {/* Client picker */}
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Client (optional)</label>
+                {newClientId ? (
+                  <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl"
+                    style={{ background: 'rgba(58,124,165,0.08)', border: `1.5px solid ${S.accent}` }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                      style={{ background: 'rgba(58,124,165,0.15)', color: S.accent }}>
+                      {newClientName.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="flex-1 text-sm font-semibold" style={{ color: S.text }}>{newClientName}</span>
+                    <button onClick={() => { setNewClientId(null); setNewClientName(''); setClientSearch('') }}
+                      className="p-1" style={{ color: S.muted }}>
+                      <X size={15} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      value={clientSearch}
+                      onChange={e => setClientSearch(e.target.value)}
+                      onFocus={() => setClientFocused(true)}
+                      onBlur={() => setTimeout(() => setClientFocused(false), 150)}
+                      placeholder="Search or add client…"
+                      className="w-full px-3.5 py-3 rounded-xl outline-none"
+                      style={{ background: S.bg, border: `1.5px solid ${clientFocused ? S.accent : S.border}`, color: S.text, fontSize: '16px' }}
+                    />
+                    {(clientFocused || clientSearch.trim()) && (() => {
+                      const filtered = clientSearch.trim()
+                        ? clients.filter(c => c.client_name.toLowerCase().includes(clientSearch.toLowerCase())).slice(0, 6)
+                        : clients.slice(0, 5)
+                      const exactMatch = clients.some(c => c.client_name.toLowerCase() === clientSearch.trim().toLowerCase())
+                      if (!filtered.length && !clientSearch.trim()) return null
+                      return (
+                        <div className="mt-1 rounded-xl overflow-hidden" style={{ border: `1px solid ${S.border}`, background: S.card, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                          {filtered.map((c, i) => (
+                            <button key={c.id}
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => { setNewClientId(c.id); setNewClientName(c.client_name); setClientSearch(''); setClientFocused(false) }}
+                              className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
+                              style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
+                                {c.client_name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium" style={{ color: S.text }}>{c.client_name}</p>
+                                {c.company && <p className="text-xs truncate" style={{ color: S.muted }}>{c.company}</p>}
+                              </div>
+                            </button>
+                          ))}
+                          {clientSearch.trim() && !exactMatch && (
+                            <button
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => void createAndSelectClient()}
+                              disabled={creatingClient}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
+                              style={{ borderTop: filtered.length > 0 ? `1px solid ${S.border}` : undefined }}>
+                              {creatingClient
+                                ? <Loader2 size={14} className="animate-spin" style={{ color: S.accent }} />
+                                : <Plus size={14} style={{ color: S.accent }} />}
+                              <span className="text-sm font-medium" style={{ color: S.accent }}>
+                                {creatingClient ? 'Adding…' : `Add "${clientSearch.trim()}" as new client`}
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+              </div>
+
               {createError && (
                 <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>{createError}</p>
               )}

@@ -198,11 +198,9 @@ export function JobCardsClient({ initialJobCards, staff, clients }: Props) {
                     <p className="text-xs" style={{ color: S.muted }}>
                       {j.scheduled_at ? fmtDate(j.scheduled_at) : fmtDate(j.created_at)}
                     </p>
-                    {j.scheduled_at && (
-                      <p className="text-[10px] flex items-center justify-end gap-1 mt-0.5" style={{ color: S.muted }}>
-                        <Clock size={9} />Scheduled
-                      </p>
-                    )}
+                    <p className="text-[10px] flex items-center justify-end gap-1 mt-0.5" style={{ color: S.muted }}>
+                      <Clock size={9} />{j.scheduled_at ? 'Scheduled' : 'Created'}
+                    </p>
                   </div>
                   <ChevronRight size={16} style={{ color: S.muted }} />
                 </div>

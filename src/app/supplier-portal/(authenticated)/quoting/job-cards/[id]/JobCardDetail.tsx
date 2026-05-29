@@ -283,6 +283,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const StatusIcon = ss.icon
   const materials = card.materials ?? []
   const photos = card.photos ?? []
+  const staffMember = !Array.isArray(card.staff) ? card.staff : null
   const totalMaterials = materials.reduce((a, m) => a + m.qty * (m.unit_price ?? 0), 0)
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
@@ -361,13 +362,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           </div>
         </div>
 
-        {/* Sent badge */}
-        {card.sent_at && (
-          <div className="mt-3 flex items-center gap-2 text-xs pt-3" style={{ borderTop: `1px solid ${S.border}`, color: S.muted }}>
-            <Send size={11} />
-            Sent to {card.sent_to_name ?? card.sent_to_email} on {fmtDate(card.sent_at)}
-          </div>
-        )}
+        {/* Created by / sent info */}
+        <div className="mt-3 pt-3 flex items-center gap-4 text-xs flex-wrap" style={{ borderTop: `1px solid ${S.border}`, color: S.muted }}>
+          <span className="flex items-center gap-1"><Clock size={10} />Created {fmtDate(card.created_at)}</span>
+          {staffMember && <span className="flex items-center gap-1"><User size={10} />Created by {staffMember.name}</span>}
+          {card.sent_at && (
+            <span className="flex items-center gap-1">
+              <Send size={10} />Sent to {card.sent_to_name ?? card.sent_to_email} on {fmtDate(card.sent_at)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}

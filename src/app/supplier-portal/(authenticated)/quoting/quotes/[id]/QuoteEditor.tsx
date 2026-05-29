@@ -759,6 +759,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               { label: 'Retention',       value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
               { label: 'Payment Terms',   value: q.payment_terms_days ? `${q.payment_terms_days} days` : null },
               { label: 'Defects Liability', value: q.defects_liability_period_days ? `${q.defects_liability_period_days} days` : null },
+              { label: 'Created',         value: new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) },
             ].filter(f => f.value).map(f => (
               <div key={f.label}>
                 <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{f.label}</p>

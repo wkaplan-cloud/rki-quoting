@@ -343,6 +343,9 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
                         <Calendar size={10} />{q.quoted_date}
                       </span>
                     )}
+                    <span className="text-xs flex items-center gap-1" style={{ color: S.muted }}>
+                      Created {new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
                   </div>
                 </div>
                 <ChevronRight size={16} style={{ color: S.border, flexShrink: 0 }} />

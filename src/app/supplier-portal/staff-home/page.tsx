@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { StaffHome } from './StaffHome'
-import type { ElecTimePunch, ElecJobCard } from '@/lib/elec-types'
+import type { ElecTimePunch, ElecJobCard, ElecClient } from '@/lib/elec-types'
 
 export default async function StaffHomePage() {
   const supabase = await createClient()
@@ -24,9 +24,9 @@ export default async function StaffHomePage() {
     .eq('id', staff.portal_account_id)
     .single()
 
-  // Last 30 days punches + assigned job cards
+  // Last 30 days punches + assigned job cards + clients
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-  const [{ data: punches }, { data: jobCards }] = await Promise.all([
+  const [{ data: punches }, { data: jobCards }, { data: clients }] = await Promise.all([
     supabaseAdmin
       .from('elec_time_punches')
       .select('*')
@@ -40,6 +40,11 @@ export default async function StaffHomePage() {
       .eq('portal_account_id', staff.portal_account_id)
       .in('status', ['pending', 'in_progress'])
       .order('scheduled_at', { ascending: true }),
+    supabaseAdmin
+      .from('elec_clients')
+      .select('id, client_name, company, email')
+      .eq('portal_account_id', staff.portal_account_id)
+      .order('client_name', { ascending: true }),
   ])
 
   const lastPunch = (punches ?? [])[0] ?? null
@@ -49,9 +54,11 @@ export default async function StaffHomePage() {
     <StaffHome
       staff={staff}
       companyName={account?.company_name ?? ''}
+      portalAccountId={staff.portal_account_id}
       initialPunches={(punches ?? []) as ElecTimePunch[]}
       isClockedIn={isClockedIn}
       assignedJobCards={(jobCards ?? []) as ElecJobCard[]}
+      initialClients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>[]}
     />
   )
 }
