@@ -157,9 +157,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       resolution: card.resolution,
       notes: card.notes,
     })
-    // Sync company/QS details to the client record
+    // Sync all client details back to the client record
     if (card.client_id) {
       const patch: Record<string, string> = {}
+      if (card.client_email?.trim()) patch.email = card.client_email.trim()
+      if (card.location?.trim()) patch.address = card.location.trim()
       if (clientCompany.trim()) patch.company = clientCompany.trim()
       if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
       if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
@@ -206,14 +208,33 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   // ── photos ──────────────────────────────────────────────────────────────────
 
+  async function compressImage(file: File, maxWidth = 1920, quality = 0.82): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = document.createElement('img')
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const scale = Math.min(1, maxWidth / img.width)
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression failed')), 'image/jpeg', quality)
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
   async function handlePhotoUpload(files: FileList | null) {
     if (!files || files.length === 0) return
     setPhotoUploading(true)
     for (const file of Array.from(files)) {
+      const compressed = await compressImage(file)
       const fd = new FormData()
-      fd.append('file', file)
-      const caption = ''
-      if (caption) fd.append('caption', caption)
+      fd.append('file', compressed, file.name.replace(/\.[^.]+$/, '.jpg'))
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos`, {
         method: 'POST', body: fd,
       })
