@@ -131,13 +131,14 @@ export function NotificationsClient({ portalAccountId: _portalAccountId, initial
                     const lat = n.metadata?.latitude as number | undefined
                     const lng = n.metadata?.longitude as number | undefined
                     if (!lat || !lng) return null
+                    const addr = n.metadata?.address as string | undefined
                     const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`
                     return (
                       <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs mt-1"
                         style={{ color: S.accent }}>
                         <MapPin size={10} />
-                        {lat.toFixed(5)}, {lng.toFixed(5)}
+                        {addr ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`}
                       </a>
                     )
                   })()}

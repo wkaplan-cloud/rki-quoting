@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { reverseGeocode } from '@/lib/reverse-geocode'
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,14 +47,17 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Reverse-geocode the GPS coordinates (non-blocking — notification still fires even if this fails)
+    const address = latitude && longitude ? await reverseGeocode(latitude, longitude) : null
+
     // Create notification for admin
-    const gpsNote = latitude ? ` · GPS captured` : ''
+    const gpsNote = address ? ` · ${address}` : latitude ? ` · GPS captured` : ''
     await supabaseAdmin.from('elec_notifications').insert({
       portal_account_id: staff.portal_account_id,
       type: punch_type,
       title: `${staff.name} ${punch_type === 'clock_in' ? 'clocked in' : 'clocked out'}`,
       body: `${punch_type === 'clock_in' ? 'Clocked in' : 'Clocked out'}${gpsNote}`,
-      metadata: { staff_id: staff.id, punch_id: punch.id, latitude: latitude ?? null, longitude: longitude ?? null },
+      metadata: { staff_id: staff.id, punch_id: punch.id, latitude: latitude ?? null, longitude: longitude ?? null, address: address ?? null },
     })
 
     return NextResponse.json({ ok: true, punch })

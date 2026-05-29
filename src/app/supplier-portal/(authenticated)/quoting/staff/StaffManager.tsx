@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Mail, Power, Send, CheckCircle2, Clock, MapPin, LogIn, LogOut } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
+import { reverseGeocode } from '@/lib/reverse-geocode'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -75,6 +76,23 @@ interface Props {
 export function StaffManager({ initialStaff, punches }: Props) {
   const [tab, setTab] = useState<Tab>('staff')
   const [staff, setStaff] = useState(initialStaff)
+  const [geoAddresses, setGeoAddresses] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const coords = [...new Set(
+      punches.filter(p => p.latitude && p.longitude).map(p => `${p.latitude},${p.longitude}`)
+    )]
+    if (!coords.length) return
+    void (async () => {
+      const results: Record<string, string> = {}
+      for (const c of coords) {
+        const [lat, lng] = c.split(',').map(Number)
+        const addr = await reverseGeocode(lat, lng)
+        if (addr) results[c] = addr
+      }
+      setGeoAddresses(prev => ({ ...prev, ...results }))
+    })()
+  }, [punches]) // eslint-disable-line
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -406,7 +424,9 @@ export function StaffManager({ initialStaff, punches }: Props) {
                               style={{ color: S.accent, textDecoration: 'none' }}
                               title={`${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`}>
                               <MapPin size={9} />
-                              <span className="text-[9px] font-medium">GPS</span>
+                              <span className="text-[9px] font-medium">
+                                {geoAddresses[`${p.latitude},${p.longitude}`] ?? 'GPS'}
+                              </span>
                             </a>
                           )}
                         </div>
