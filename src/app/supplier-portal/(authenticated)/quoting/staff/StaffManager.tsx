@@ -112,7 +112,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
   const sortedDays = Object.keys(dayMap).sort((a, b) => b.localeCompare(a))
 
   const lastPunchPerStaff: Record<string, ElecTimePunch> = {}
-  for (const p of [...punches].reverse()) {
+  for (const p of punches) {
     if (!lastPunchPerStaff[p.staff_id]) lastPunchPerStaff[p.staff_id] = p
   }
   const onSiteStaff = Object.values(lastPunchPerStaff).filter(p => p.punch_type === 'clock_in')
