@@ -9,7 +9,8 @@ export default async function SourcingPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: sessions }, { data: clients }, { data: newResponseRows }] = await Promise.all([
+  // Fetch sessions, clients, response counts, and all org members in parallel
+  const [{ data: sessions }, { data: clients }, { data: newResponseRows }, { data: allMembers }] = await Promise.all([
     supabase
       .from('sourcing_sessions')
       .select('id, title, status, archived, created_at, project_id, request_number, user_id, project:projects(project_name), sourcing_session_items(count), sourcing_session_suppliers(count)')
@@ -20,6 +21,7 @@ export default async function SourcingPage() {
       .order('client_name', { ascending: true })
       .limit(200),
     supabase.rpc('get_session_new_response_counts', { p_user_id: user.id }),
+    supabase.from('org_members').select('user_id, full_name').eq('status', 'active'),
   ])
 
   const newResponseMap: Record<string, number> = {}
@@ -27,17 +29,9 @@ export default async function SourcingPage() {
     newResponseMap[row.session_id] = Number(row.new_response_count)
   }
 
-  // Resolve creator names from org_members
-  const userIds = [...new Set((sessions ?? []).map(s => s.user_id).filter(Boolean))]
-  let memberNames: Record<string, string> = {}
-  if (userIds.length > 0) {
-    const { data: members } = await supabase
-      .from('org_members')
-      .select('user_id, full_name')
-      .in('user_id', userIds)
-    for (const m of members ?? []) {
-      if (m.user_id) memberNames[m.user_id] = m.full_name ?? ''
-    }
+  const memberNames: Record<string, string> = {}
+  for (const m of allMembers ?? []) {
+    if (m.user_id) memberNames[m.user_id] = m.full_name ?? ''
   }
 
   const enriched = (sessions ?? []).map(s => {

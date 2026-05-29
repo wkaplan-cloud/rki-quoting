@@ -10,22 +10,19 @@ export default async function PriceListDetailPage({ params }: { params: Promise<
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: priceList }, { data: { user } }, { data: orgId }] = await Promise.all([
+  // Fetch price list, user, orgId, and access check all in parallel (access is speculative for non-global lists)
+  const [{ data: priceList }, { data: { user } }, { data: orgId }, { data: accessRows }] = await Promise.all([
     supabase.from('price_lists').select('*').eq('id', id).single(),
     supabase.auth.getUser(),
     supabase.rpc('get_current_org_id'),
+    supabaseAdmin.from('price_list_access').select('status, org_id').eq('price_list_id', id),
   ])
 
   if (!priceList) notFound()
 
-  // For global price lists, check the org has active access regardless of who is logged in
+  // For global price lists, check the org has active access
   if (priceList.is_global && orgId) {
-    const { data: access } = await supabaseAdmin
-      .from('price_list_access')
-      .select('status')
-      .eq('org_id', orgId)
-      .eq('price_list_id', id)
-      .maybeSingle()
+    const access = (accessRows ?? []).find(r => r.org_id === orgId) ?? null
 
     if (!access || access.status !== 'active') {
       return (

@@ -89,16 +89,20 @@ interface Props {
   companyName: string
   settings: ElecSettings | null
   logoBase64: string | null
+  asInvoice?: boolean
 }
 
-export function JobCardPDF({ jobCard, companyName, settings, logoBase64 }: Props) {
+export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoice = false }: Props) {
   const statusColor = STATUS_COLOR[jobCard.status] ?? MUTED
   const staffName = (jobCard.staff && !Array.isArray(jobCard.staff)) ? jobCard.staff.name : null
   const clientName = jobCard.client_name ?? ((jobCard.client && !Array.isArray(jobCard.client)) ? jobCard.client.client_name : null)
   const clientEmail = jobCard.client_email ?? ((jobCard.client && !Array.isArray(jobCard.client)) ? jobCard.client.email : null)
   const materials = jobCard.materials ?? []
-  const photos = jobCard.photos ?? []
-  const totalMaterials = materials.reduce((acc, m) => acc + m.qty * (m.unit_price ?? 0), 0)
+  const photos = (jobCard.photos ?? []).filter(p => p.url !== jobCard.client_signature_url)
+  const totalExclVat = materials.reduce((acc, m) => acc + m.qty * (m.unit_price ?? 0), 0)
+  const vatRate = settings?.default_vat_rate ?? 15
+  const vatAmt = totalExclVat * vatRate / 100
+  const totalInclVat = totalExclVat + vatAmt
 
   return (
     <Document>
@@ -118,7 +122,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64 }: Props
             )}
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={s.docTitle}>JOB CARD</Text>
+            <Text style={s.docTitle}>{asInvoice ? 'INVOICE' : 'JOB CARD'}</Text>
             <Text style={s.docNum}>{jobCard.job_number}</Text>
             <Text style={[s.statusBadge, { color: statusColor, marginTop: 5 }]}>
               {jobCard.status.replace('_', ' ').toUpperCase()}
@@ -205,7 +209,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64 }: Props
         {/* Materials */}
         {materials.length > 0 && (
           <View style={{ marginBottom: 14 }}>
-            <Text style={s.secLabel}>Materials Used</Text>
+            <Text style={s.secLabel}>{asInvoice ? 'Invoice Items' : 'Materials Used'}</Text>
             <View style={s.tableHead}>
               <Text style={[s.tableHdTxt, { flex: 3 }]}>Description</Text>
               <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Qty</Text>
@@ -220,10 +224,27 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64 }: Props
                 <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(m.unit_price != null ? m.qty * m.unit_price : null)}</Text>
               </View>
             ))}
-            <View style={s.totalRow}>
-              <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 8 }]}>Total Materials</Text>
-              <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 8, color: DARK }]}>{fmtCurrency(totalMaterials)}</Text>
-            </View>
+            {asInvoice ? (
+              <View>
+                <View style={[s.totalRow, { marginTop: 2 }]}>
+                  <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>Subtotal (excl. VAT)</Text>
+                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(totalExclVat)}</Text>
+                </View>
+                <View style={[s.totalRow, { marginTop: 1 }]}>
+                  <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>VAT ({vatRate}%)</Text>
+                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontSize: 8, color: MUTED }]}>{fmtCurrency(vatAmt)}</Text>
+                </View>
+                <View style={[s.totalRow, { marginTop: 1, backgroundColor: ACCENT }]}>
+                  <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>TOTAL (incl. VAT)</Text>
+                  <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>{fmtCurrency(totalInclVat)}</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={s.totalRow}>
+                <Text style={[s.tableCell, { flex: 5, fontFamily: 'Helvetica-Bold', fontSize: 8 }]}>Total Materials</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 8, color: DARK }]}>{fmtCurrency(totalExclVat)}</Text>
+              </View>
+            )}
           </View>
         )}
 

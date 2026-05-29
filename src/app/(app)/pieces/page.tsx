@@ -10,35 +10,21 @@ export default async function PiecesPage() {
   if (!user) redirect('/login')
 
   const { data: orgId } = await supabase.rpc('get_current_org_id')
-  if (orgId) {
-    const { data: org } = await supabaseAdmin
-      .from('organizations')
-      .select('plan')
-      .eq('id', orgId)
-      .single()
-    if (org?.plan === 'solo') redirect('/projects')
-  }
 
+  // Fire org plan check and data queries in parallel — redirect after if solo
   const [
+    { data: org },
     { data: pieces },
     { data: suppliers },
     { data: projects },
   ] = await Promise.all([
-    supabase
-      .from('pieces')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('suppliers')
-      .select('id, supplier_name')
-      .order('supplier_name'),
-    supabase
-      .from('projects')
-      .select('id, project_name')
-      .is('archived_at', null)
-      .order('created_at', { ascending: false })
-      .limit(100),
+    orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null, error: null }),
+    supabase.from('pieces').select('*').order('created_at', { ascending: false }),
+    supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
+    supabase.from('projects').select('id, project_name').is('archived_at', null).order('created_at', { ascending: false }).limit(100),
   ])
+
+  if (org?.plan === 'solo') redirect('/projects')
 
   return (
     <div className="p-6 lg:p-8">

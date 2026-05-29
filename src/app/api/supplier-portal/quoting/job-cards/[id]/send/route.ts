@@ -65,6 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         companyName: account.company_name ?? '',
         settings: settings as ElecSettings | null,
         logoBase64,
+        asInvoice: as_invoice ?? false,
       }) as any
     )
 

@@ -9,22 +9,23 @@ import { Plus } from 'lucide-react'
 export default async function ProjectsPage() {
   const supabase = await createClient()
   const [{ data: projects }, { data: orgIdResult }] = await Promise.all([
-    supabase.from('projects').select('*, client:clients(client_name, company), line_items(*)').order('created_at', { ascending: false }).order('archived_at', { ascending: false, nullsFirst: true }),
+    supabase.from('projects')
+      .select('*, client:clients(client_name, company), line_items(id, row_type, cost_price, markup_percentage, quantity, sale_price_override)')
+      .order('created_at', { ascending: false })
+      .order('archived_at', { ascending: false, nullsFirst: true }),
     supabase.rpc('get_current_org_id'),
   ])
 
-  const { data: members } = await supabaseAdmin
-    .from('org_members')
-    .select('user_id, invited_email, full_name')
-    .eq('org_id', orgIdResult)
-    .eq('status', 'active')
+  // Fetch members and current user in parallel — both depend on orgIdResult being ready
+  const [{ data: members }, { data: { user } }] = await Promise.all([
+    supabaseAdmin.from('org_members').select('user_id, invited_email, full_name').eq('org_id', orgIdResult).eq('status', 'active'),
+    supabase.auth.getUser(),
+  ])
 
   const userEmailMap: Record<string, string> = {}
   for (const m of members ?? []) {
     if (m.user_id) userEmailMap[m.user_id] = m.full_name ?? m.invited_email.split('@')[0]
   }
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   return (
     <div className="flex flex-col h-full">

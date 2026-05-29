@@ -8,13 +8,15 @@ const GRACE_DAYS = 3
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+
+  // Accept invite and get user in parallel — both only need the session cookie
+  const [{ data: { user } }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.rpc('accept_org_invite'),
+  ])
   if (!user) redirect('/login')
 
-  // Try to accept any pending invite first (security definer bypasses RLS)
-  await supabase.rpc('accept_org_invite')
-
-  // Check org membership via RPC (security definer — bypasses RLS circular dependency)
+  // get_current_org_id must run after accept_org_invite completes
   const { data: orgId } = await supabase.rpc('get_current_org_id')
 
   if (!orgId) {
@@ -61,10 +63,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
       ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000))
       : null
 
-  const [{ data: membership }, { data: settings }, { data: member }, { data: sourcingBadgeData }] = await Promise.all([
-    supabaseAdmin.from('org_members').select('role').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
+  const [{ data: membership }, { data: settings }, { data: sourcingBadgeData }] = await Promise.all([
+    supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
     supabase.from('settings').select('business_name').maybeSingle(),
-    supabaseAdmin.from('org_members').select('full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
     orgId
       ? supabaseAdmin.rpc('get_sourcing_badge_count', { p_org_id: orgId })
       : Promise.resolve({ data: 0, error: null }),
@@ -80,7 +81,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       sourcingEnabled={true}
       sourcingBadge={sourcingBadge}
       userEmail={user.email ?? ''}
-      userName={member?.full_name ?? ''}
+      userName={membership?.full_name ?? ''}
       plan={org?.plan ?? 'trial'}
       subscriptionStatus={org?.subscription_status ?? 'trialing'}
       trialDaysLeft={trialDaysLeft}

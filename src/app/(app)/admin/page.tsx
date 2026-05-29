@@ -52,15 +52,14 @@ export default async function AdminPage() {
     )
   }
 
-  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: allProjects }, { data: allLineItems }] = await Promise.all([
-    supabaseAdmin.from('org_members').select('*').eq('org_id', orgId).order('invited_at'),
-    supabaseAdmin.from('audit_logs').select('*').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(200),
+  const [{ data: members }, { data: auditLogs }, { data: settings }, { data: allProjects }] = await Promise.all([
+    supabaseAdmin.from('org_members').select('id, user_id, invited_email, full_name, role, status, invited_at, joined_at').eq('org_id', orgId).order('invited_at'),
+    supabaseAdmin.from('audit_logs').select('id, user_email, action, table_name, record_id, old_data, new_data, created_at').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(200),
     supabase.from('settings').select('*').maybeSingle(),
     supabase.from('projects')
       .select('id, project_name, project_number, status, date, design_fee, vat_rate, client:clients(client_name), stages:project_stages(final_invoice_paid)')
       .is('archived_at', null)
       .order('date', { ascending: false }),
-    supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type'),
   ])
 
   const paidProjects = (allProjects ?? []).filter(p => {
@@ -74,8 +73,16 @@ export default async function AdminPage() {
   })
 
   const paidIds = new Set(paidProjects.map(p => p.id))
+  const pipelineIds = new Set(pipelineProjects.map(p => p.id))
+  const relevantProjectIds = [...new Set([...paidIds, ...pipelineIds])]
+
+  // Fetch line_items only for the projects we actually need — not the entire org's history
+  const { data: allLineItems } = relevantProjectIds.length > 0
+    ? await supabase.from('line_items').select('project_id, cost_price, markup_percentage, quantity, row_type').in('project_id', relevantProjectIds)
+    : { data: [] }
+
   const completedLineItems = (allLineItems ?? []).filter(li => paidIds.has(li.project_id))
-  const pipelineLineItems = (allLineItems ?? []).filter(li => !paidIds.has(li.project_id))
+  const pipelineLineItems = (allLineItems ?? []).filter(li => pipelineIds.has(li.project_id))
 
   return (
     <div>
