@@ -2,31 +2,8 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import type { ElecQuoteStatus } from '@/lib/elec-types'
-
-function fmtR(n: number) {
-  return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-}
-
-function fmtMonth(yyyyMM01: string) {
-  return new Date(yyyyMM01 + 'T12:00:00').toLocaleDateString('en-ZA', { month: 'short', year: 'numeric' })
-}
-
-const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
-  text: '#18181B', muted: '#71717A', border: '#E4E4E7',
-  danger: '#DC2626', green: '#16A34A',
-}
-
-const STATUS_CFG: Partial<Record<ElecQuoteStatus, { label: string; bg: string; color: string }>> = {
-  draft:       { label: 'Draft',       bg: '#F4F4F5', color: '#71717A' },
-  quoted:      { label: 'Quoted',      bg: '#EFF6FF', color: '#1D4ED8' },
-  approved:    { label: 'Approved',    bg: '#FEF9EC', color: '#92600A' },
-  in_progress: { label: 'In Progress', bg: '#ECFDF5', color: '#15803D' },
-  completed:   { label: 'Completed',   bg: '#F0FDF4', color: '#16A34A' },
-  cancelled:   { label: 'Cancelled',   bg: '#FEF2F2', color: '#DC2626' },
-}
+import { QuotingDashboardClient } from './QuotingDashboardClient'
 
 type QuoteRow = {
   id: string
@@ -38,18 +15,28 @@ type QuoteRow = {
   client_name: string | null
   contract_value: number
   approved_vo_value: number
-  as_built_value: number
+  claimed: number
+  invoiced: number
+  paid: number
 }
 
-type ClaimRow = {
-  quote_id: string
-  period_month: string
-  claim_type: string
-  total_claimed: number
-  total_certified: number
-  total_invoiced: number
-  total_paid: number
+type ReconEntry = {
+  claimed: number
+  certified: number
+  invoiced: number
+  paid: number
+}
+
+type JobCardRow = {
+  id: string
+  job_number: string
+  title: string
   status: string
+  job_type: string
+  client_name: string | null
+  scheduled_at: string | null
+  completed_at: string | null
+  materials_value: number
 }
 
 export default async function QuotingDashboardPage() {
@@ -64,7 +51,7 @@ export default async function QuotingDashboardPage() {
     .single()
   if (!account) redirect('/supplier-portal/login')
 
-  const [{ data: quotesRaw }, { data: claimsRaw }] = await Promise.all([
+  const [{ data: quotesRaw }, { data: claimsRaw }, { data: jobCardsRaw }] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
       .select('id, quote_number, project_name, status, contract_type, expected_completion_date, client:elec_clients(client_name), line_items:elec_quote_line_items(quoted_quantity, quoted_unit_rate, as_built_quantity, as_built_unit_rate), variation_orders:elec_variation_orders(status, value)')
@@ -75,19 +62,47 @@ export default async function QuotingDashboardPage() {
       .from('elec_claims')
       .select('quote_id, period_month, claim_type, total_claimed, total_certified, total_invoiced, total_paid, status')
       .eq('portal_account_id', account.id),
+    supabaseAdmin
+      .from('elec_job_cards')
+      .select('id, job_number, title, status, job_type, client_name, scheduled_at, completed_at, materials:elec_job_card_materials(qty, unit_price)')
+      .eq('portal_account_id', account.id)
+      .neq('status', 'cancelled')
+      .order('created_at', { ascending: false })
+      .limit(100),
   ])
 
+  // ── Claims rollup ─────────────────────────────────────────────────────────
+  const claimsByQuote: Record<string, { claimed: number; invoiced: number; paid: number }> = {}
+  const reconMap: Record<string, ReconEntry> = {}
+
+  for (const c of claimsRaw ?? []) {
+    if ((c as any).status === 'draft' || (c as any).claim_type === 'retention') continue
+    const qid = (c as any).quote_id as string
+    if (!claimsByQuote[qid]) claimsByQuote[qid] = { claimed: 0, invoiced: 0, paid: 0 }
+    claimsByQuote[qid].claimed  += (c as any).total_claimed  ?? 0
+    claimsByQuote[qid].invoiced += (c as any).total_invoiced ?? 0
+    claimsByQuote[qid].paid     += (c as any).total_paid     ?? 0
+
+    const month = (c as any).period_month as string
+    if (month) {
+      if (!reconMap[month]) reconMap[month] = { claimed: 0, certified: 0, invoiced: 0, paid: 0 }
+      reconMap[month].claimed   += (c as any).total_claimed   ?? 0
+      reconMap[month].certified += (c as any).total_certified ?? 0
+      reconMap[month].invoiced  += (c as any).total_invoiced  ?? 0
+      reconMap[month].paid      += (c as any).total_paid      ?? 0
+    }
+  }
+
+  const reconMonths = Object.keys(reconMap).sort((a, b) => b.localeCompare(a)).slice(0, 12)
+
+  // ── Quotes ────────────────────────────────────────────────────────────────
   const quotes: QuoteRow[] = (quotesRaw ?? []).map((q: any) => {
     const client = Array.isArray(q.client) ? q.client[0] : q.client
     const lis: any[] = Array.isArray(q.line_items) ? q.line_items : []
     const vos: any[] = Array.isArray(q.variation_orders) ? q.variation_orders : []
     const contract_value = lis.reduce((s: number, li: any) => s + (li.quoted_quantity ?? 0) * (li.quoted_unit_rate ?? 0), 0)
     const approved_vo_value = vos.filter((v: any) => v.status === 'approved').reduce((s: number, v: any) => s + (v.value ?? 0), 0)
-    const as_built_value = lis.reduce((s: number, li: any) => {
-      const qty  = li.as_built_quantity  ?? li.quoted_quantity  ?? 0
-      const rate = li.as_built_unit_rate ?? li.quoted_unit_rate ?? 0
-      return s + qty * rate
-    }, 0)
+    const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
     return {
       id: q.id,
       quote_number: q.quote_number,
@@ -98,289 +113,58 @@ export default async function QuotingDashboardPage() {
       client_name: client?.client_name ?? null,
       contract_value,
       approved_vo_value,
-      as_built_value,
+      claimed:  ct.claimed,
+      invoiced: ct.invoiced,
+      paid:     ct.paid,
     }
   })
 
-  const claims: ClaimRow[] = (claimsRaw ?? []).map((c: any) => ({
-    quote_id:        c.quote_id,
-    period_month:    c.period_month,
-    claim_type:      c.claim_type      ?? 'invoice',
-    total_claimed:   c.total_claimed   ?? 0,
-    total_certified: c.total_certified ?? 0,
-    total_invoiced:  c.total_invoiced  ?? 0,
-    total_paid:      c.total_paid      ?? 0,
-    status:          c.status,
-  }))
+  const pipeline  = quotes.filter(q => ['draft', 'quoted', 'approved'].includes(q.status))
+  const active    = quotes.filter(q => q.status === 'in_progress')
+  const completed = quotes.filter(q => q.status === 'completed')
 
-  // Per-quote claim totals (non-draft, progress claims only — exclude retention)
-  const claimsByQuote: Record<string, { claimed: number; invoiced: number; paid: number }> = {}
-  for (const c of claims) {
-    if (c.status === 'draft' || c.claim_type === 'retention') continue
-    if (!claimsByQuote[c.quote_id]) claimsByQuote[c.quote_id] = { claimed: 0, invoiced: 0, paid: 0 }
-    claimsByQuote[c.quote_id].claimed  += c.total_claimed
-    claimsByQuote[c.quote_id].invoiced += c.total_invoiced
-    claimsByQuote[c.quote_id].paid     += c.total_paid
-  }
-
-  const pipeline      = quotes.filter(q => ['draft', 'quoted', 'approved'].includes(q.status))
-  const active        = quotes.filter(q => q.status === 'in_progress')
-  const completed     = quotes.filter(q => q.status === 'completed')
-  const pipelineValue = pipeline.reduce((s, q) => s + q.contract_value, 0)
-  const activeValue   = active.reduce((s, q) => s + q.contract_value + q.approved_vo_value, 0)
+  const pipelineValue  = pipeline.reduce((s, q) => s + q.contract_value, 0)
+  const activeValue    = active.reduce((s, q) => s + q.contract_value + q.approved_vo_value, 0)
   const completedValue = completed.reduce((s, q) => s + q.contract_value + q.approved_vo_value, 0)
 
-  const year    = new Date().getFullYear().toString()
-  const ytd     = claims.filter(c => c.status !== 'draft' && c.period_month.startsWith(year))
-  const paidYTD = ytd.reduce((s, c) => s + c.total_paid, 0)
-
-  // Outstanding = total claimed (sent to client) minus total paid, across all non-draft claims
-  const nonDraft    = claims.filter(c => c.status !== 'draft')
-  const totalSent   = nonDraft.reduce((s, c) => s + c.total_claimed, 0)
-  const totalPaid   = nonDraft.reduce((s, c) => s + c.total_paid,    0)
+  const year        = new Date().getFullYear().toString()
+  const allClaims   = (claimsRaw ?? []) as any[]
+  const paidYTD     = allClaims.filter(c => c.status !== 'draft' && (c.period_month as string)?.startsWith(year)).reduce((s, c) => s + (c.total_paid ?? 0), 0)
+  const nonDraft    = allClaims.filter(c => c.status !== 'draft')
+  const totalSent   = nonDraft.reduce((s, c) => s + (c.total_claimed ?? 0), 0)
+  const totalPaid   = nonDraft.reduce((s, c) => s + (c.total_paid ?? 0), 0)
   const outstanding = totalSent - totalPaid
 
-  // Monthly RECON — non-draft, most recent 12
-  const reconMap: Record<string, { claimed: number; certified: number; invoiced: number; paid: number }> = {}
-  for (const c of claims) {
-    if (c.status === 'draft') continue
-    if (!reconMap[c.period_month]) reconMap[c.period_month] = { claimed: 0, certified: 0, invoiced: 0, paid: 0 }
-    reconMap[c.period_month].claimed   += c.total_claimed
-    reconMap[c.period_month].certified += c.total_certified
-    reconMap[c.period_month].invoiced  += c.total_invoiced
-    reconMap[c.period_month].paid      += c.total_paid
-  }
-  const reconMonths = Object.keys(reconMap).sort((a, b) => b.localeCompare(a)).slice(0, 12)
-
-  const statCards = [
-    { label: 'Pipeline',    value: fmtR(pipelineValue),  sub: `${pipeline.length} quote${pipeline.length !== 1 ? 's' : ''}`,       color: S.accent },
-    { label: 'Active Jobs', value: fmtR(activeValue),    sub: `${active.length} job${active.length !== 1 ? 's' : ''}`,             color: S.green  },
-    { label: 'Completed',   value: fmtR(completedValue), sub: `${completed.length} job${completed.length !== 1 ? 's' : ''}`,       color: '#166534' },
-    { label: 'Outstanding', value: fmtR(outstanding),    sub: 'Invoiced but not yet paid',                                          color: outstanding > 0 ? S.gold : S.muted },
-    { label: 'Paid YTD',   value: fmtR(paidYTD),        sub: year,                                                                 color: S.green  },
-  ]
+  // ── Job cards ─────────────────────────────────────────────────────────────
+  const jobCards: JobCardRow[] = (jobCardsRaw ?? []).map((jc: any) => {
+    const materials: any[] = Array.isArray(jc.materials) ? jc.materials : []
+    const materials_value = materials.reduce((s: number, m: any) => s + (m.qty ?? 0) * (m.unit_price ?? 0), 0)
+    return {
+      id: jc.id,
+      job_number: jc.job_number,
+      title: jc.title,
+      status: jc.status,
+      job_type: jc.job_type,
+      client_name: jc.client_name ?? null,
+      scheduled_at: jc.scheduled_at ?? null,
+      completed_at: jc.completed_at ?? null,
+      materials_value,
+    }
+  })
 
   return (
-    <div className="space-y-6">
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: S.text }}>Quoting Dashboard</h1>
-          <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-            {active.length} active · {pipeline.length} in pipeline · {completed.length} completed
-          </p>
-        </div>
-        <Link
-          href="/supplier-portal/quoting/quotes"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-          style={{ background: S.accent, color: '#fff' }}
-        >
-          All Quotes
-        </Link>
-      </div>
-
-      {/* Summary stat cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {statCards.map(card => (
-          <div key={card.label} className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{card.label}</p>
-            <p className="text-lg font-bold" style={{ color: card.color }}>{card.value}</p>
-            <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>{card.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Monthly RECON */}
-      {reconMonths.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.04)' }}>
-            <p className="text-sm font-semibold" style={{ color: S.text }}>Monthly RECON</p>
-            <p className="text-[10px]" style={{ color: S.muted }}>Cash flow by claim period · last 12 months</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${S.border}` }}>
-                  {['Month', 'Claimed', 'Certified', 'Invoiced', 'Paid', 'Outstanding'].map((h, hi) => (
-                    <th key={h}
-                      className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider"
-                      style={{ color: S.muted, textAlign: hi === 0 ? 'left' : 'right' }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {reconMonths.map((month, i) => {
-                  const r = reconMap[month]
-                  const outstanding = r.invoiced - r.paid
-                  return (
-                    <tr key={month} style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                      <td className="px-4 py-2.5 text-xs font-medium" style={{ color: S.text }}>{fmtMonth(month)}</td>
-                      <td className="px-4 py-2.5 text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(r.claimed)}</td>
-                      <td className="px-4 py-2.5 text-xs text-right font-mono" style={{ color: S.muted }}>{fmtR(r.certified)}</td>
-                      <td className="px-4 py-2.5 text-xs text-right font-mono" style={{ color: S.accent }}>{fmtR(r.invoiced)}</td>
-                      <td className="px-4 py-2.5 text-xs text-right font-mono" style={{ color: S.green }}>{fmtR(r.paid)}</td>
-                      <td className="px-4 py-2.5 text-xs text-right font-mono font-semibold"
-                        style={{ color: outstanding > 0.01 ? S.gold : S.muted }}>
-                        {fmtR(outstanding)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Pipeline */}
-      {pipeline.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.04)' }}>
-            <p className="text-sm font-semibold" style={{ color: S.text }}>Pipeline</p>
-            <p className="text-[10px]" style={{ color: S.muted }}>Quotes not yet in progress</p>
-          </div>
-          {pipeline.map((q, i) => {
-            const cfg = STATUS_CFG[q.status]
-            return (
-              <Link
-                key={q.id}
-                href={`/supplier-portal/quoting/quotes/${q.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#F9FAFB]"
-                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
-                    {cfg && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
-                        style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                    )}
-                  </div>
-                  {q.client_name && (
-                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client_name}</p>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(q.contract_value)}</p>
-                  {q.expected_completion_date && (
-                    <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>
-                      Due {new Date(q.expected_completion_date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  )}
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Active Jobs */}
-      {active.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.04)' }}>
-            <p className="text-sm font-semibold" style={{ color: S.text }}>Active Jobs</p>
-          </div>
-          {active.map((q, i) => {
-            const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
-            const adjustedContract = q.contract_value + q.approved_vo_value
-            const balance = adjustedContract - ct.claimed
-            const completionPct = adjustedContract > 0
-              ? Math.min(100, Math.round((ct.claimed / adjustedContract) * 100))
-              : 0
-            return (
-              <Link
-                key={q.id}
-                href={`/supplier-portal/quoting/quotes/${q.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#F9FAFB]"
-                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
-                      style={{ background: '#ECFDF5', color: '#15803D' }}>{q.quote_number}</span>
-                  </div>
-                  {q.client_name && (
-                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client_name}</p>
-                  )}
-                  <div className="mt-2">
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: S.bg, width: '100px' }}>
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(completionPct, 100)}%`, background: S.accent }} />
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] mb-0.5" style={{ color: S.muted }}>Contract</p>
-                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(adjustedContract)}</p>
-                  <p className="text-[10px] mt-0.5 font-semibold"
-                    style={{ color: balance > 0.01 ? S.gold : S.green }}>
-                    {balance > 0.01 ? `To claim: ${fmtR(balance)}` : 'Fully claimed'}
-                  </p>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Completed Jobs */}
-      {completed.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(22,101,52,0.04)' }}>
-            <p className="text-sm font-semibold" style={{ color: S.text }}>Completed Jobs</p>
-            <p className="text-[10px]" style={{ color: S.muted }}>{completed.length} project{completed.length !== 1 ? 's' : ''} · {fmtR(completedValue)} total contract value</p>
-          </div>
-          {completed.map((q, i) => {
-            const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
-            const adjustedContract = q.contract_value + q.approved_vo_value
-            return (
-              <Link
-                key={q.id}
-                href={`/supplier-portal/quoting/quotes/${q.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[#F9FAFB]"
-                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
-                      style={{ background: '#F0FDF4', color: '#166534' }}>{q.quote_number}</span>
-                  </div>
-                  {q.client_name && (
-                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.client_name}</p>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-[10px] mb-0.5" style={{ color: S.muted }}>Contract</p>
-                  <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(adjustedContract)}</p>
-                  <p className="text-[10px] mt-0.5 font-semibold"
-                    style={{ color: ct.paid >= adjustedContract * 0.99 ? S.green : S.gold }}>
-                    {ct.paid >= adjustedContract * 0.99 ? 'Fully paid' : `Outstanding: ${fmtR(adjustedContract - ct.paid)}`}
-                  </p>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {quotes.length === 0 && (
-        <div className="rounded-2xl py-14 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: S.text }}>No quotes yet</p>
-          <p className="text-xs mb-4" style={{ color: S.muted }}>Create your first quote to get started</p>
-          <Link
-            href="/supplier-portal/quoting/quotes"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-            style={{ background: S.accent, color: '#fff' }}
-          >
-            Create Quote
-          </Link>
-        </div>
-      )}
-    </div>
+    <QuotingDashboardClient
+      financial={{ pipelineValue, activeValue, completedValue, outstanding, paidYTD }}
+      pipeline={pipeline}
+      active={active}
+      completed={completed}
+      reconMonths={reconMonths}
+      reconMap={reconMap}
+      jobCards={{
+        pending:     jobCards.filter(jc => jc.status === 'pending'),
+        in_progress: jobCards.filter(jc => jc.status === 'in_progress'),
+        completed:   jobCards.filter(jc => jc.status === 'completed').slice(0, 10),
+      }}
+    />
   )
 }
