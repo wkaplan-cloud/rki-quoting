@@ -23,7 +23,7 @@ const NAV_ITEMS = [
 const QUOTING_NAV_ITEMS = [
   { href: '/supplier-portal/quoting',              label: 'Dashboard', icon: LayoutDashboard, exact: true,  badge: null           },
   { href: '/supplier-portal/quoting/quotes',       label: 'Quotes',    icon: FileText,        exact: false, badge: 'Long term'    },
-  { href: '/supplier-portal/quoting/job-cards',    label: 'Job Cards', icon: ClipboardList,   exact: false, badge: null           },
+  { href: '/supplier-portal/quoting/job-cards',    label: 'Job Cards', icon: ClipboardList,   exact: false, badge: 'Daily'        },
   { href: '/supplier-portal/quoting/clients',      label: 'Clients',   icon: Users,           exact: false, badge: null           },
 ]
 
@@ -170,7 +170,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
 
               <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
               <NavLink href="/supplier-portal/quoting/quotes"    label="Quotes"    icon={FileText}        badge="Long term" />
-              <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   />
+              <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />
               <NavLink href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users}           />
 
               <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
