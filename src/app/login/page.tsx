@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Mail } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
+  const [magicSending, setMagicSending] = useState(false)
+  const [magicSent, setMagicSent] = useState(false)
   const [hashRedirecting, setHashRedirecting] = useState(() =>
     typeof window !== 'undefined' && window.location.hash.includes('access_token=')
   )
@@ -31,14 +33,10 @@ export default function LoginPage() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const params = new URLSearchParams(window.location.search)
       if (!session) {
-        // No session — if coming from /platform, drop straight to the admin login form
-        if (params.get('from') === 'platform') {
-          setPlatformMode(true)
-        }
+        if (params.get('from') === 'platform') setPlatformMode(true)
         setCheckingSession(false)
         return
       }
-      // Signed in but coming from /platform as a non-admin: show sign-out notice
       if (params.get('from') === 'platform') {
         setPlatformSignoutEmail(session.user.email ?? null)
         setCheckingSession(false)
@@ -54,11 +52,7 @@ export default function LoginPage() {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Supabase implicit flow: email confirmation links redirect to /login with tokens
-  // in the URL hash (#access_token=...&type=signup).
-  // We parse the tokens directly and call setSession() — this is the only race-free
-  // approach. onAuthStateChange can miss the event if it fires before the listener
-  // is registered. getSession() races with hash processing and returns null.
+  // Handle email confirmation / magic link hash tokens
   useEffect(() => {
     const hash = window.location.hash
     if (!hash.includes('access_token=')) return
@@ -69,23 +63,22 @@ export default function LoginPage() {
     const type = params.get('type')
 
     if (!access_token || !refresh_token) return
-
     setHashRedirecting(true)
 
     supabase.auth.setSession({ access_token, refresh_token }).then(({ data: { session }, error }) => {
-      if (error || !session) {
-        // Something went wrong — drop back to login
-        setHashRedirecting(false)
-        return
-      }
-      // Mark this as a session-only login so SessionGuard doesn't sign the user out
-      // (email-confirmed users never go through the login form's remember-me logic)
-      sessionStorage.setItem('rki_session_only', '1')
+      if (error || !session) { setHashRedirecting(false); return }
+
       if (type === 'signup') {
+        sessionStorage.setItem('rki_session_only', '1')
         router.replace('/welcome')
       } else if (type === 'invite') {
+        sessionStorage.setItem('rki_session_only', '1')
         supabase.rpc('accept_org_invite').then(() => router.replace('/set-password'))
       } else {
+        // magiclink, recovery, etc — treat as remember-me login
+        const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000
+        localStorage.setItem('rki_remember_until', String(expiry))
+        sessionStorage.removeItem('rki_session_only')
         router.replace('/dashboard')
       }
     })
@@ -124,12 +117,21 @@ export default function LoginPage() {
         localStorage.removeItem('rki_remember_until')
         sessionStorage.setItem('rki_session_only', '1')
       }
-      if (platformMode) {
-        router.push('/platform')
-        return
-      }
+      if (platformMode) { router.push('/platform'); return }
       router.push('/dashboard')
     }
+  }
+
+  async function handleMagicLink() {
+    if (!email.trim()) { setError('Enter your email address above first'); return }
+    setMagicSending(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: { emailRedirectTo: window.location.origin + '/login' },
+    })
+    setMagicSending(false)
+    if (error) { setError(error.message) } else { setMagicSent(true) }
   }
 
   const cardShadow = { boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }
@@ -187,72 +189,119 @@ export default function LoginPage() {
         {/* Login form */}
         {!platformSignoutEmail && (
           <div className="w-full max-w-sm bg-white rounded-3xl p-9" style={cardShadow}>
-            <div className="mb-8">
-              <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">{platformMode ? 'Platform admin sign in' : 'Welcome back'}</h1>
-              <p className="text-sm text-[#8A877F] mt-1.5">{platformMode ? 'Sign in with your admin credentials' : 'Sign in to your studio account'}</p>
-            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white pr-10 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C4BFB5] hover:text-[#8A877F] transition-colors cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+            {/* Magic link sent state */}
+            {magicSent ? (
+              <div className="text-center py-4">
+                <div className="w-14 h-14 rounded-2xl bg-[#F5F2EC] flex items-center justify-center mx-auto mb-5">
+                  <Mail size={24} className="text-[#9A7B4F]" />
                 </div>
+                <h1 className="font-serif text-2xl text-[#1A1A18] tracking-tight mb-2">Check your email</h1>
+                <p className="text-sm text-[#8A877F] leading-relaxed mb-1">
+                  We sent a login link to
+                </p>
+                <p className="text-sm font-medium text-[#2C2C2A] mb-6">{email}</p>
+                <p className="text-xs text-[#B0AA9F] leading-relaxed mb-6">
+                  Click the link in the email to sign in instantly. The link expires in 60 minutes.
+                </p>
+                <button
+                  onClick={() => setMagicSent(false)}
+                  className="text-sm text-[#9A7B4F] hover:underline"
+                >
+                  ← Use password instead
+                </button>
               </div>
+            ) : (
+              <>
+                <div className="mb-8">
+                  <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">{platformMode ? 'Platform admin sign in' : 'Welcome back'}</h1>
+                  <p className="text-sm text-[#8A877F] mt-1.5">{platformMode ? 'Sign in with your admin credentials' : 'Sign in to your studio account'}</p>
+                </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-[#8A877F] cursor-pointer select-none">
-                  <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="rounded border-[#D8D3C8] accent-[#9A7B4F]" />
-                  Remember me
-                </label>
-                <Link href="/forgot-password" className="text-sm text-[#9A7B4F] hover:underline">Forgot password?</Link>
-              </div>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white placeholder:text-[#C4BFB5] transition-colors"
+                    />
+                  </div>
 
-              {error && (
-                <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-              )}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Password</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        required
+                        className="w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white pr-10 transition-colors"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C4BFB5] hover:text-[#8A877F] transition-colors cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer mt-1"
-              >
-                {loading ? 'Signing in…' : 'Sign In'}
-              </button>
-            </form>
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-sm text-[#8A877F] cursor-pointer select-none">
+                      <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="rounded border-[#D8D3C8] accent-[#9A7B4F]" />
+                      Remember me
+                    </label>
+                    <Link href="/forgot-password" className="text-sm text-[#9A7B4F] hover:underline">Forgot password?</Link>
+                  </div>
 
-            <p className="text-center text-sm text-[#8A877F] mt-6">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-[#9A7B4F] hover:underline">Sign up</Link>
-            </p>
-            <p className="text-center text-xs text-[#B0AA9F] mt-3">
-              Are you a supplier?{' '}
-              <Link href="/supplier-portal/login" className="text-[#9A7B4F] hover:underline">Sign in here</Link>
-            </p>
+                  {error && (
+                    <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer mt-1"
+                  >
+                    {loading ? 'Signing in…' : 'Sign In'}
+                  </button>
+                </form>
+
+                {!platformMode && (
+                  <>
+                    <div className="flex items-center gap-3 my-5">
+                      <div className="flex-1 h-px bg-[#EDE9E1]" />
+                      <span className="text-xs text-[#C4BFB5]">or</span>
+                      <div className="flex-1 h-px bg-[#EDE9E1]" />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleMagicLink()}
+                      disabled={magicSending}
+                      className="w-full py-3 border border-[#D8D3C8] text-[#2C2C2A] text-sm font-medium rounded-lg hover:bg-[#F5F2EC] hover:border-[#C4BFB5] transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Mail size={14} className="text-[#9A7B4F]" />
+                      {magicSending ? 'Sending…' : 'Email me a login link'}
+                    </button>
+                  </>
+                )}
+
+                <p className="text-center text-sm text-[#8A877F] mt-6">
+                  Don&apos;t have an account?{' '}
+                  <Link href="/signup" className="text-[#9A7B4F] hover:underline">Sign up</Link>
+                </p>
+                <p className="text-center text-xs text-[#B0AA9F] mt-3">
+                  Are you a supplier?{' '}
+                  <Link href="/supplier-portal/login" className="text-[#9A7B4F] hover:underline">Sign in here</Link>
+                </p>
+              </>
+            )}
+
           </div>
         )}
 
