@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
     }
     const next = searchParams.get('next') || '/dashboard'
     const mode = searchParams.get('mode')
-    // Only accept org invite for invite flows, not password recovery
-    if (mode !== 'recovery') {
+    // Only run accept_org_invite for designer flows, not supplier-portal staff magic links
+    if (mode !== 'recovery' && !next.startsWith('/supplier-portal/')) {
       await supabase.rpc('accept_org_invite')
     }
     const modeParam = mode ? `?mode=${mode}` : ''

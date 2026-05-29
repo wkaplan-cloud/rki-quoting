@@ -64,13 +64,14 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', staff.id)
 
-    // Generate a one-time magic sign-in link so the client can establish a session
-    // without relying on signInWithPassword (which can fail with email confirmation issues)
+    // Generate a one-time magic sign-in link.
+    // redirectTo points to the auth callback which exchanges the code for a session,
+    // then the `next` param forwards the user to staff-home.
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
     const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: staff.email,
-      options: { redirectTo: `${baseUrl}/supplier-portal/staff-home` },
+      options: { redirectTo: `${baseUrl}/auth/callback?next=/supplier-portal/staff-home` },
     })
 
     return NextResponse.json({ ok: true, signInUrl: linkData?.properties?.action_link ?? null })
