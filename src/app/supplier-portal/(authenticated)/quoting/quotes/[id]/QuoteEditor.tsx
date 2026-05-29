@@ -455,6 +455,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         notes: q.notes, quoted_date: q.quoted_date, expected_completion_date: q.expected_completion_date,
       }).eq('id', q.id)
 
+      // Sync project address back to the client record
+      if (q.client_id && q.project_address?.trim()) {
+        supabase.from('elec_clients').update({ address: q.project_address.trim() }).eq('id', q.client_id)
+      }
+
       await Promise.all([
         deletedSectionIds.length > 0 ? supabase.from('elec_quote_sections').delete().in('id', deletedSectionIds) : Promise.resolve(),
         deletedItemIds.length > 0    ? supabase.from('elec_quote_line_items').delete().in('id', deletedItemIds)   : Promise.resolve(),

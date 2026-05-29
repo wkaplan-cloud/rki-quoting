@@ -71,6 +71,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const total = subtotal * (1 + quoteRaw.vat_rate / 100)
     const subject = `Quote ${quoteRaw.quote_number} – ${quoteRaw.project_name}`
 
+    // Sync email + project address to the client record
+    if (quoteRaw.client_id) {
+      const clientPatch: Record<string, string> = { email }
+      if (quoteRaw.project_address?.trim()) clientPatch.address = quoteRaw.project_address.trim()
+      await supabaseAdmin.from('elec_clients').update(clientPatch).eq('id', quoteRaw.client_id)
+    }
+
     await resend.emails.send({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
