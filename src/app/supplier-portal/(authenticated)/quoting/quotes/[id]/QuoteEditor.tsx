@@ -455,9 +455,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         notes: q.notes, quoted_date: q.quoted_date, expected_completion_date: q.expected_completion_date,
       }).eq('id', q.id)
 
-      // Sync project address back to the client record
+      // Sync project address to the client record via server route (supabaseAdmin bypasses RLS)
       if (q.client_id && q.project_address?.trim()) {
-        supabase.from('elec_clients').update({ address: q.project_address.trim() }).eq('id', q.client_id)
+        fetch(`/api/supplier-portal/quoting/clients/${q.client_id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: q.project_address.trim() }),
+        })
       }
 
       await Promise.all([
