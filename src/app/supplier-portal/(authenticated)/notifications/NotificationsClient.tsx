@@ -85,19 +85,19 @@ export function NotificationsClient({ portalAccountId: _portalAccountId, initial
               style={{ background: S.accent }}>{unreadCount}</span>
           )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={async () => {
-              const now = new Date().toISOString()
-              // Use server route so supabaseAdmin bypasses RLS
-              await fetch('/api/supplier-portal/notifications/mark-read', { method: 'POST' })
-              setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: now }))
-            }}
-            className="text-xs px-3 py-1.5 rounded-lg"
-            style={{ color: S.muted, background: S.bg, border: `1px solid ${S.border}` }}>
-            Mark all read
-          </button>
-        )}
+        <button
+          disabled={unreadCount === 0}
+          onClick={async () => {
+            const now = new Date().toISOString()
+            await fetch('/api/supplier-portal/notifications/mark-read', { method: 'POST' })
+            setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: now }))
+          }}
+          className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors"
+          style={unreadCount > 0
+            ? { color: '#fff', background: S.accent, border: `1px solid ${S.accent}` }
+            : { color: S.muted, background: S.bg, border: `1px solid ${S.border}`, opacity: 0.5 }}>
+          Mark all read
+        </button>
       </div>
 
       {notifications.length === 0 && (
