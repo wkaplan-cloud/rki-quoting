@@ -179,7 +179,7 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
   const clockBusy = clockStatus === 'locating' || clockStatus === 'punching'
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: S.bg }}>
+    <div className="staff-portal min-h-screen flex flex-col" style={{ background: S.bg }}>
 
       {/* Top bar */}
       <div className="flex-shrink-0 px-4 pt-10 pb-4 flex items-center gap-3" style={{ background: S.sidebar }}>
@@ -450,8 +450,8 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
                   onChange={e => setNewTitle(e.target.value)}
                   placeholder="e.g. DB board replacement"
                   autoFocus
-                  className="w-full px-3.5 py-3 text-sm rounded-xl outline-none"
-                  style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text }}
+                  className="w-full px-3.5 py-3 rounded-xl outline-none"
+                  style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
                 />
               </div>
               <div>
@@ -476,8 +476,8 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
                   value={newLocation}
                   onChange={e => setNewLocation(e.target.value)}
                   placeholder="e.g. 12 Oak Ave, Sandton"
-                  className="w-full px-3.5 py-3 text-sm rounded-xl outline-none"
-                  style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text }}
+                  className="w-full px-3.5 py-3 rounded-xl outline-none"
+                  style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
                 />
               </div>
               {createError && (

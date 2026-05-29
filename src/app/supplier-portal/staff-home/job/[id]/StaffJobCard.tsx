@@ -236,7 +236,7 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
   ]
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: S.bg }}>
+    <div className="staff-portal min-h-screen pb-24" style={{ background: S.bg }}>
       {/* Header */}
       <div style={{ background: '#1E2A38' }} className="px-4 pt-10 pb-5">
         <button onClick={() => router.push('/supplier-portal/staff-home')}

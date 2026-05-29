@@ -35,6 +35,9 @@ body {
 /* Focus ring */
 :focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
 
+/* Prevent iOS auto-zoom on input focus in the staff portal */
+.staff-portal input, .staff-portal textarea, .staff-portal select { font-size: 16px !important; }
+
 /* Table sticky header */
 .table-sticky thead th { position: sticky; top: 0; z-index: 10; }
 
