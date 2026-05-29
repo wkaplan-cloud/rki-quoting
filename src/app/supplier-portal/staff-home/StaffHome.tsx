@@ -114,13 +114,13 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ punch_type: punchType, latitude, longitude }),
       })
-      const data = await res.json() as { ok?: boolean; punch?: ElecTimePunch; error?: string }
+      const data = await res.json() as { ok?: boolean; punch?: ElecTimePunch; address?: string | null; error?: string }
       if (!res.ok || !data.ok) { setClockStatus('error'); setClockMsg(data.error ?? 'Failed'); return }
       setIsClockedIn(punchType === 'clock_in')
       if (data.punch) setPunches(prev => [data.punch!, ...prev])
       setClockStatus('done')
-      const gpsTag = latitude ? ' · GPS ✓' : ' · no GPS'
-      setClockMsg((punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓') + gpsTag)
+      const locationTag = data.address ? ` · ${data.address}` : latitude ? ' · GPS ✓' : ' · no GPS'
+      setClockMsg((punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓') + locationTag)
       setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     } catch {
       setClockStatus('error')

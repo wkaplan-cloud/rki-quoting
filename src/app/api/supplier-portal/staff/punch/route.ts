@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       metadata: { staff_id: staff.id, punch_id: punch.id, latitude: latitude ?? null, longitude: longitude ?? null, address: address ?? null },
     })
 
-    return NextResponse.json({ ok: true, punch })
+    return NextResponse.json({ ok: true, punch, address: address ?? null })
   } catch (e) {
     return apiError(e)
   }
