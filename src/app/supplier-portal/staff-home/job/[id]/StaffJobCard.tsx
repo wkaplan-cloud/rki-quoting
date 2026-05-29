@@ -1,9 +1,9 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Save, Camera, Plus, X, Pen, CheckCircle2,
-  Loader2, MapPin, Clock, Briefcase
+  ArrowLeft, Camera, Plus, X, Pen, CheckCircle2,
+  Loader2, MapPin, Clock, Briefcase, Send, Mail,
 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto } from '@/lib/elec-types'
 
@@ -28,62 +28,112 @@ interface Props {
 }
 
 type Tab = 'report' | 'materials' | 'photos' | 'signature'
+type SignMode = 'draw' | 'send'
+type SendStatus = 'idle' | 'sending' | 'sent' | 'error'
 
 export function StaffJobCard({ jobCard: initial, staffName }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [tab, setTab] = useState<Tab>('report')
-  const [saving, setSaving] = useState(false)
-  const [saveMsg, setSaveMsg] = useState('')
+  const prevTab = useRef<Tab>('report')
+  const [autoSaving, setAutoSaving] = useState(false)
+
+  // Photo upload
   const [photoUploading, setPhotoUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Signature draw
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [sigCaption, setSigCaption] = useState('')
   const [sigSaving, setSigSaving] = useState(false)
   const isDrawing = useRef(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
+  const [signMode, setSignMode] = useState<SignMode>('draw')
 
-  async function save(patch: Partial<ElecJobCard>) {
-    setSaving(true); setSaveMsg('')
+  // Send for signature
+  const client = !Array.isArray(card.client) ? card.client : null
+  const [sigEmail, setSigEmail] = useState(card.client_email ?? client?.email ?? '')
+  const [sigName, setSigName] = useState(card.client_name ?? client?.client_name ?? '')
+  const [sendStatus, setSendStatus] = useState<SendStatus>(card.sent_at ? 'sent' : 'idle')
+
+  // Mark complete
+  const [completing, setCompleting] = useState(false)
+  const [completeMsg, setCompleteMsg] = useState('')
+
+  // Materials inline form
+  const [showAddMaterial, setShowAddMaterial] = useState(false)
+  const [matDesc, setMatDesc] = useState('')
+  const [matQty, setMatQty] = useState('1')
+  const [matPrice, setMatPrice] = useState('')
+  const [matSaving, setMatSaving] = useState(false)
+
+  // Auto-save report when navigating away from it
+  useEffect(() => {
+    if (prevTab.current === 'report' && tab !== 'report') {
+      void autoSaveReport()
+    }
+    prevTab.current = tab
+  }, [tab]) // eslint-disable-line
+
+  async function autoSaveReport() {
+    setAutoSaving(true)
     try {
-      const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+      await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          work_found: card.work_found,
+          work_done: card.work_done,
+          resolution: card.resolution,
+          notes: card.notes,
+          status: card.status === 'pending' ? 'in_progress' : card.status,
+        }),
       })
-      if (!res.ok) throw new Error()
-      setCard(c => ({ ...c, ...patch }))
-      setSaveMsg('Saved ✓')
-      setTimeout(() => setSaveMsg(''), 2000)
-    } catch { setSaveMsg('Error saving') }
-    finally { setSaving(false) }
-  }
-
-  async function handleSaveReport() {
-    await save({
-      work_found: card.work_found,
-      work_done: card.work_done,
-      resolution: card.resolution,
-      notes: card.notes,
-      status: card.status === 'pending' ? 'in_progress' : card.status,
-    })
+      if (card.status === 'pending') setCard(c => ({ ...c, status: 'in_progress' }))
+    } catch {}
+    setAutoSaving(false)
   }
 
   async function handleMarkComplete() {
-    await save({ status: 'completed', completed_at: new Date().toISOString() })
+    setCompleting(true)
+    try {
+      // Save report fields first, then mark complete
+      await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          work_found: card.work_found,
+          work_done: card.work_done,
+          resolution: card.resolution,
+          notes: card.notes,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        }),
+      })
+      setCard(c => ({ ...c, status: 'completed', completed_at: new Date().toISOString() }))
+      setCompleteMsg('Job marked as complete ✓')
+    } catch { setCompleteMsg('Error — try again') }
+    setCompleting(false)
   }
 
   async function addMaterial() {
-    const desc = prompt('Material description:')
-    if (!desc?.trim()) return
-    const qty = parseFloat(prompt('Quantity:') ?? '1') || 1
-    const price = parseFloat(prompt('Unit price (leave blank if unknown):') ?? '') || null
+    if (!matDesc.trim() || matSaving) return
+    setMatSaving(true)
     const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/materials`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description: desc.trim(), qty, unit_price: price }),
+      body: JSON.stringify({
+        description: matDesc.trim(),
+        qty: parseFloat(matQty) || 1,
+        unit_price: matPrice ? parseFloat(matPrice) : null,
+      }),
     })
     if (res.ok) {
       const m = await res.json() as ElecJobCardMaterial
       setCard(c => ({ ...c, materials: [...(c.materials ?? []), m] }))
+      setMatDesc(''); setMatQty('1'); setMatPrice('')
+      setShowAddMaterial(false)
     }
+    setMatSaving(false)
   }
 
   async function deleteMaterial(matId: string) {
@@ -148,24 +198,44 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
     const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos`, { method: 'POST', body: fd })
     if (res.ok) {
       const p = await res.json() as ElecJobCardPhoto
-      await save({ client_signature_url: p.url })
+      const res2 = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_signature_url: p.url }),
+      })
+      if (res2.ok) setCard(c => ({ ...c, client_signature_url: p.url }))
     }
     setSigSaving(false)
   }
 
+  async function sendSignatureRequest() {
+    if (!sigEmail || sendStatus === 'sending') return
+    setSendStatus('sending')
+    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/signature-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sigEmail, name: sigName }),
+    })
+    if (res.ok) {
+      setSendStatus('sent')
+      setCard(c => ({ ...c, sent_at: new Date().toISOString(), sent_to_email: sigEmail }))
+    } else {
+      setSendStatus('error')
+      setTimeout(() => setSendStatus('idle'), 3000)
+    }
+  }
+
   const materials = card.materials ?? []
   const photos = card.photos ?? []
-  const client = !Array.isArray(card.client) ? card.client : null
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'report',    label: 'Report' },
-    { key: 'materials', label: `Materials${materials.length > 0 ? ` (${materials.length})` : ''}` },
-    { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}` },
-    { key: 'signature', label: 'Sign' },
+  const STEPS: { key: Tab; label: string; done: boolean }[] = [
+    { key: 'report',    label: 'Report',    done: !!(card.work_found || card.work_done) },
+    { key: 'materials', label: 'Materials', done: materials.length > 0 },
+    { key: 'photos',    label: 'Photos',    done: photos.length > 0 },
+    { key: 'signature', label: 'Sign',      done: !!(card.client_signature_url || card.sent_at) },
   ]
 
   return (
-    <div className="min-h-screen" style={{ background: S.bg }}>
+    <div className="min-h-screen pb-6" style={{ background: S.bg }}>
       {/* Header */}
       <div style={{ background: '#1E2A38' }} className="px-4 pt-10 pb-5">
         <button onClick={() => router.push('/supplier-portal/staff-home')}
@@ -173,7 +243,7 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
           <ArrowLeft size={15} /> My Jobs
         </button>
         <div className="flex items-start justify-between gap-2">
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-[10px] font-mono mb-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{card.job_number}</p>
             <h1 className="text-base font-bold text-white leading-snug">{card.title}</h1>
             <div className="flex items-center gap-3 mt-1 flex-wrap text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
@@ -189,88 +259,88 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
             </div>
           )}
         </div>
-        {card.work_description && (
-          <p className="text-xs mt-3 leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>{card.work_description}</p>
-        )}
         {client && (
           <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Client: {client.client_name}</p>
         )}
       </div>
 
-      <div className="px-4 py-4 space-y-4 pb-8">
-        {/* Tabs */}
-        <div className="flex gap-1 overflow-x-auto pb-1">
-          {tabs.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+      <div className="px-4 pt-4 space-y-4">
+        {/* Step tabs */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {STEPS.map((s, i) => (
+            <button key={s.key}
+              onClick={() => setTab(s.key)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0"
               style={{
-                background: tab === t.key ? S.accent : S.card,
-                color: tab === t.key ? '#fff' : S.muted,
-                border: `1px solid ${tab === t.key ? S.accent : S.border}`,
+                background: tab === s.key ? S.accent : S.card,
+                color: tab === s.key ? '#fff' : s.done ? S.green : S.muted,
+                border: `1px solid ${tab === s.key ? S.accent : s.done ? 'rgba(22,163,74,0.3)' : S.border}`,
               }}>
-              {t.label}
+              {s.done && tab !== s.key ? <CheckCircle2 size={11} style={{ color: S.green }} /> : (
+                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
+                  style={{ background: tab === s.key ? 'rgba(255,255,255,0.2)' : S.bg }}>
+                  {i + 1}
+                </span>
+              )}
+              {s.label}
             </button>
           ))}
         </div>
 
-        {/* Report tab */}
+        {/* Auto-save indicator */}
+        {autoSaving && (
+          <p className="text-xs flex items-center gap-1.5" style={{ color: S.muted }}>
+            <Loader2 size={11} className="animate-spin" /> Saving…
+          </p>
+        )}
+
+        {/* ── REPORT TAB ── */}
         {tab === 'report' && (
           <div className="rounded-2xl p-4 space-y-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <p className="text-xs" style={{ color: S.muted }}>Your report saves automatically when you move to the next step.</p>
             <div>
               <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>What Did You Find?</label>
               <textarea value={card.work_found ?? ''} onChange={e => setCard(c => ({ ...c, work_found: e.target.value || null }))}
                 placeholder="Describe what you found on site…" rows={4}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
             </div>
             <div>
               <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Work Completed</label>
               <textarea value={card.work_done ?? ''} onChange={e => setCard(c => ({ ...c, work_done: e.target.value || null }))}
                 placeholder="Describe what you did…" rows={4}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
             </div>
             <div>
               <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Resolution</label>
               <textarea value={card.resolution ?? ''} onChange={e => setCard(c => ({ ...c, resolution: e.target.value || null }))}
                 placeholder="How was it resolved?" rows={3}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
             </div>
             <div>
               <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Notes</label>
               <textarea value={card.notes ?? ''} onChange={e => setCard(c => ({ ...c, notes: e.target.value || null }))}
                 placeholder="Any other notes…" rows={2}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
             </div>
-
-            {saveMsg && <p className="text-xs" style={{ color: saveMsg.includes('Error') ? S.danger : S.green }}>{saveMsg}</p>}
-
-            <div className="flex gap-2">
-              <button onClick={() => void handleSaveReport()} disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
-                style={{ border: `1px solid ${S.border}`, color: S.muted }}>
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save
-              </button>
-              {card.status !== 'completed' && (
-                <button onClick={() => void handleMarkComplete()} disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white"
-                  style={{ background: S.green }}>
-                  <CheckCircle2 size={14} /> Mark Complete
-                </button>
-              )}
-            </div>
+            <button onClick={() => setTab('materials')}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white"
+              style={{ background: S.accent }}>
+              Next: Materials →
+            </button>
           </div>
         )}
 
-        {/* Materials tab */}
+        {/* ── MATERIALS TAB ── */}
         {tab === 'materials' && (
-          <div>
-            <div className="rounded-2xl overflow-hidden mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              {materials.length === 0 && (
+          <div className="space-y-3">
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              {materials.length === 0 && !showAddMaterial && (
                 <div className="py-8 flex flex-col items-center gap-2">
-                  <p className="text-sm" style={{ color: S.muted }}>No materials added</p>
+                  <p className="text-sm" style={{ color: S.muted }}>No materials added yet</p>
                 </div>
               )}
               {materials.map((m, i) => (
@@ -280,28 +350,69 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
                     <p className="text-sm font-medium" style={{ color: S.text }}>{m.description}</p>
                     <p className="text-xs" style={{ color: S.muted }}>Qty: {m.qty}{m.unit_price != null ? ` · R${m.unit_price.toFixed(2)}` : ''}</p>
                   </div>
-                  <p className="text-sm font-semibold" style={{ color: S.text }}>
+                  <p className="text-sm font-semibold flex-shrink-0" style={{ color: S.text }}>
                     {m.unit_price != null ? `R${(m.qty * m.unit_price).toFixed(2)}` : '—'}
                   </p>
-                  <button onClick={() => void deleteMaterial(m.id)} style={{ color: S.muted }}><X size={14} /></button>
+                  <button onClick={() => void deleteMaterial(m.id)} style={{ color: S.muted }}>
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
+
+              {/* Inline add form */}
+              {showAddMaterial && (
+                <div className="px-4 py-3 space-y-2" style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined }}>
+                  <input value={matDesc} onChange={e => setMatDesc(e.target.value)}
+                    placeholder="Material description"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <div className="flex gap-2">
+                    <input value={matQty} onChange={e => setMatQty(e.target.value)}
+                      placeholder="Qty" type="number" min="0.01" step="0.01"
+                      className="w-1/3 px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                    <input value={matPrice} onChange={e => setMatPrice(e.target.value)}
+                      placeholder="Unit price (optional)" type="number" min="0"
+                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowAddMaterial(false); setMatDesc(''); setMatQty('1'); setMatPrice('') }}
+                      className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => void addMaterial()} disabled={!matDesc.trim() || matSaving}
+                      className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ background: S.accent }}>
+                      {matSaving ? <Loader2 size={13} className="animate-spin inline" /> : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <button onClick={addMaterial}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ border: `1px solid ${S.border}`, color: S.accent }}>
-              <Plus size={14} /> Add Material
+
+            {!showAddMaterial && (
+              <button onClick={() => setShowAddMaterial(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ border: `1px solid ${S.border}`, color: S.accent, background: S.card }}>
+                <Plus size={14} /> Add Material
+              </button>
+            )}
+            <button onClick={() => setTab('photos')}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white"
+              style={{ background: S.accent }}>
+              Next: Photos →
             </button>
           </div>
         )}
 
-        {/* Photos tab */}
+        {/* ── PHOTOS TAB ── */}
         {tab === 'photos' && (
-          <div>
+          <div className="space-y-3">
             {photos.length > 0 && (
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-2 gap-3">
                 {photos.map(p => (
-                  <div key={p.id} className="relative rounded-xl overflow-hidden group" style={{ aspectRatio: '4/3' }}>
+                  <div key={p.id} className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '4/3' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.url} alt={p.caption ?? 'Photo'} className="w-full h-full object-cover" />
                     <button onClick={() => void deletePhoto(p.id)}
@@ -325,42 +436,147 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
                 {photoUploading ? 'Uploading…' : 'Add Photos'}
               </button>
             </div>
+            <button onClick={() => setTab('signature')}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white"
+              style={{ background: S.accent }}>
+              Next: Sign →
+            </button>
           </div>
         )}
 
-        {/* Signature tab */}
+        {/* ── SIGNATURE TAB ── */}
         {tab === 'signature' && (
-          <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <div className="space-y-4">
+
+            {/* Already signed */}
             {card.client_signature_url ? (
-              <div className="flex flex-col items-center gap-4">
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Signature Captured</p>
+              <div className="rounded-2xl p-5 flex flex-col items-center gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <CheckCircle2 size={28} style={{ color: S.green }} />
+                <p className="text-sm font-semibold" style={{ color: S.text }}>Signature captured</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={card.client_signature_url} alt="Signature" className="max-h-32 w-auto rounded-xl" style={{ border: `1px solid ${S.border}` }} />
-                <CheckCircle2 size={20} style={{ color: S.green }} />
+                <img src={card.client_signature_url} alt="Signature" className="max-h-28 w-auto rounded-xl" style={{ border: `1px solid ${S.border}` }} />
               </div>
             ) : (
-              <div>
-                <p className="text-xs font-semibold mb-2" style={{ color: S.muted }}>Client Signature</p>
-                <p className="text-xs mb-3" style={{ color: S.muted }}>Hand the device to the client to sign.</p>
-                <div className="rounded-xl overflow-hidden mb-3" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA', touchAction: 'none' }}>
-                  <canvas ref={canvasRef} width={600} height={200} className="w-full" style={{ cursor: 'crosshair', display: 'block' }}
-                    onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
-                    onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+              <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                {/* Mode toggle */}
+                <div className="flex" style={{ borderBottom: `1px solid ${S.border}` }}>
+                  {([['draw', 'Sign here', Pen], ['send', 'Send to client', Mail]] as const).map(([mode, label, Icon]) => (
+                    <button key={mode} onClick={() => setSignMode(mode as SignMode)}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold"
+                      style={{
+                        color: signMode === mode ? S.accent : S.muted,
+                        borderBottom: signMode === mode ? `2px solid ${S.accent}` : '2px solid transparent',
+                        marginBottom: '-1px',
+                      }}>
+                      <Icon size={14} />{label}
+                    </button>
+                  ))}
                 </div>
-                <input value={sigCaption} onChange={e => setSigCaption(e.target.value)}
-                  placeholder="Client name" className="w-full px-3 py-2 rounded-xl text-sm outline-none mb-3"
-                  style={{ border: `1px solid ${S.border}`, color: S.text }} />
-                <div className="flex gap-2">
-                  <button onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200) }}
-                    className="px-4 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
-                    Clear
-                  </button>
-                  <button onClick={() => void saveSignature()} disabled={sigSaving}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+
+                {/* Draw mode */}
+                {signMode === 'draw' && (
+                  <div className="p-4 space-y-3">
+                    <p className="text-xs" style={{ color: S.muted }}>Hand the device to the client to sign below.</p>
+                    <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA', touchAction: 'none' }}>
+                      <canvas ref={canvasRef} width={600} height={200} className="w-full" style={{ cursor: 'crosshair', display: 'block' }}
+                        onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+                        onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+                    </div>
+                    <input value={sigCaption} onChange={e => setSigCaption(e.target.value)}
+                      placeholder="Client name (optional)"
+                      className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                    <div className="flex gap-2">
+                      <button onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200) }}
+                        className="px-4 py-2.5 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                        Clear
+                      </button>
+                      <button onClick={() => void saveSignature()} disabled={sigSaving}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                        style={{ background: S.green }}>
+                        {sigSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                        Save Signature
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Send mode */}
+                {signMode === 'send' && (
+                  <div className="p-4 space-y-3">
+                    {sendStatus === 'sent' ? (
+                      <div className="flex flex-col items-center py-4 gap-3 text-center">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(22,163,74,0.1)' }}>
+                          <CheckCircle2 size={24} style={{ color: S.green }} />
+                        </div>
+                        <p className="text-sm font-semibold" style={{ color: S.text }}>Request sent</p>
+                        <p className="text-xs" style={{ color: S.muted }}>
+                          A signing link was emailed to <strong>{card.sent_to_email ?? sigEmail}</strong>
+                        </p>
+                        <button onClick={() => setSendStatus('idle')}
+                          className="text-xs px-3 py-1.5 rounded-lg"
+                          style={{ color: S.accent, border: `1px solid ${S.border}` }}>
+                          Resend
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs" style={{ color: S.muted }}>
+                          Client not present? Send them a link to sign from their own device.
+                        </p>
+                        <input value={sigName} onChange={e => setSigName(e.target.value)}
+                          placeholder="Client name"
+                          className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                          style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                        <input value={sigEmail} onChange={e => setSigEmail(e.target.value)}
+                          placeholder="Client email address" type="email"
+                          className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                          style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                        {sendStatus === 'error' && (
+                          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>
+                            Failed to send — check the email and try again.
+                          </p>
+                        )}
+                        <button onClick={() => void sendSignatureRequest()} disabled={!sigEmail || sendStatus === 'sending'}
+                          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                          style={{ background: S.accent }}>
+                          {sendStatus === 'sending' ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                          {sendStatus === 'sending' ? 'Sending…' : 'Send Signing Link'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mark as Complete — always available on Sign tab */}
+            {card.status !== 'completed' && (
+              <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <p className="text-xs mb-3" style={{ color: S.muted }}>
+                  {card.client_signature_url || card.sent_at
+                    ? 'All done — mark this job as complete.'
+                    : 'You can still mark complete without a signature.'}
+                </p>
+                {completeMsg ? (
+                  <p className="text-sm font-semibold text-center py-2" style={{ color: S.green }}>{completeMsg}</p>
+                ) : (
+                  <button onClick={() => void handleMarkComplete()} disabled={completing}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
                     style={{ background: S.green }}>
-                    {sigSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                    Save Signature
+                    {completing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                    {completing ? 'Saving…' : 'Mark Job as Complete'}
                   </button>
+                )}
+              </div>
+            )}
+
+            {card.status === 'completed' && (
+              <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
+                <CheckCircle2 size={20} style={{ color: S.green }} />
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: S.green }}>Job completed</p>
+                  {card.completed_at && <p className="text-xs" style={{ color: S.muted }}>{fmtDate(card.completed_at)}</p>}
                 </div>
               </div>
             )}

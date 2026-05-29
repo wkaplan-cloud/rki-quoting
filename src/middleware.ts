@@ -95,7 +95,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/vo/') ||
     pathname.startsWith('/api/vo/') ||
     pathname.startsWith('/approve/') ||
-    pathname.startsWith('/api/approve/')
+    pathname.startsWith('/api/approve/') ||
+    pathname.startsWith('/job-sign/') ||
+    pathname.startsWith('/api/job-sign/')
 
   if (!user && !isPublic) {
     // Supplier portal routes go to supplier login, not designer login
