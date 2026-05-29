@@ -1,11 +1,17 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MapPin, Clock, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ClipboardList, ChevronRight, Calendar } from 'lucide-react'
-import type { ElecStaff, ElecTimePunch, ElecJobCard } from '@/lib/elec-types'
+import { createClient } from '@/lib/supabase/client'
+import {
+  MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
+  ClipboardList, ChevronRight, Calendar, Home, Briefcase,
+  Plus, Menu, Clock, X, LogOut as SignOutIcon,
+} from 'lucide-react'
+import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType } from '@/lib/elec-types'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  bg: '#F0F2F5', card: '#FFFFFF', sidebar: '#1E2A38',
+  accent: '#3A7CA5', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
@@ -30,9 +36,14 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
   cancelled:   { bg: 'rgba(113,113,122,0.1)', color: '#71717A', label: 'Cancelled' },
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout',
-}
+const JOB_TYPES: { value: ElecJobCardType; label: string }[] = [
+  { value: 'callout',     label: 'Callout' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'repair',      label: 'Repair' },
+  { value: 'once_off',    label: 'Once-Off' },
+]
+
+type Tab = 'home' | 'jobs' | 'more'
 
 interface Props {
   staff: Pick<ElecStaff, 'id' | 'name' | 'role' | 'color'>
@@ -42,34 +53,45 @@ interface Props {
   assignedJobCards: ElecJobCard[]
 }
 
-export function StaffHome({ staff, companyName, initialPunches, isClockedIn: initClockedIn, assignedJobCards }: Props) {
+export function StaffHome({ staff, companyName, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards }: Props) {
   const router = useRouter()
+  const supabase = createClient()
+
+  const [tab, setTab] = useState<Tab>('home')
   const [punches, setPunches] = useState<ElecTimePunch[]>(initialPunches)
   const [isClockedIn, setIsClockedIn] = useState(initClockedIn)
-  const [status, setStatus] = useState<'idle' | 'locating' | 'punching' | 'done' | 'error'>('idle')
-  const [statusMsg, setStatusMsg] = useState('')
-  const [showHistory, setShowHistory] = useState(false)
+  const [clockStatus, setClockStatus] = useState<'idle' | 'locating' | 'punching' | 'done' | 'error'>('idle')
+  const [clockMsg, setClockMsg] = useState('')
+
+  // New job modal
+  const [showNewJob, setShowNewJob] = useState(false)
+  const [jobCards, setJobCards] = useState<ElecJobCard[]>(initJobCards)
+  const [newTitle, setNewTitle] = useState('')
+  const [newType, setNewType] = useState<ElecJobCardType>('callout')
+  const [newLocation, setNewLocation] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
+
+  // Sign out
+  const [signingOut, setSigningOut] = useState(false)
 
   async function handlePunch() {
     const punchType = isClockedIn ? 'clock_out' : 'clock_in'
-    setStatus('locating')
-    setStatusMsg('Getting your location…')
+    setClockStatus('locating')
+    setClockMsg('Getting your location…')
 
     let latitude: number | undefined
     let longitude: number | undefined
-
     try {
       const pos = await new Promise<GeolocationPosition>((res, rej) =>
         navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000, maximumAge: 30000 })
       )
       latitude = pos.coords.latitude
       longitude = pos.coords.longitude
-    } catch {
-      // GPS not available — continue without it
-    }
+    } catch { /* GPS unavailable — proceed without */ }
 
-    setStatus('punching')
-    setStatusMsg(punchType === 'clock_in' ? 'Clocking in…' : 'Clocking out…')
+    setClockStatus('punching')
+    setClockMsg(punchType === 'clock_in' ? 'Clocking in…' : 'Clocking out…')
 
     try {
       const res = await fetch('/api/supplier-portal/staff/punch', {
@@ -78,21 +100,43 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
         body: JSON.stringify({ punch_type: punchType, latitude, longitude }),
       })
       const data = await res.json() as { ok?: boolean; punch?: ElecTimePunch; error?: string }
-      if (!res.ok || !data.ok) { setStatus('error'); setStatusMsg(data.error ?? 'Failed'); return }
-
+      if (!res.ok || !data.ok) { setClockStatus('error'); setClockMsg(data.error ?? 'Failed'); return }
       setIsClockedIn(punchType === 'clock_in')
       if (data.punch) setPunches(prev => [data.punch!, ...prev])
-      setStatus('done')
-      setStatusMsg(punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓')
-      setTimeout(() => { setStatus('idle'); setStatusMsg('') }, 3000)
+      setClockStatus('done')
+      setClockMsg(punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓')
+      setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     } catch {
-      setStatus('error')
-      setStatusMsg('Network error — try again')
-      setTimeout(() => { setStatus('idle'); setStatusMsg('') }, 3000)
+      setClockStatus('error')
+      setClockMsg('Network error — try again')
+      setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     }
   }
 
-  // Group punches into day pairs for timesheet
+  async function handleCreateJob() {
+    if (!newTitle.trim() || creating) return
+    setCreating(true); setCreateError('')
+    const res = await fetch('/api/supplier-portal/quoting/job-cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle.trim(), job_type: newType, location: newLocation.trim() || null }),
+    })
+    const data = await res.json() as ElecJobCard & { error?: string }
+    if (!res.ok || data.error) { setCreateError(data.error ?? 'Failed to create'); setCreating(false); return }
+    setJobCards(prev => [data, ...prev])
+    setShowNewJob(false)
+    setNewTitle(''); setNewType('callout'); setNewLocation('')
+    setCreating(false)
+    router.push(`/supplier-portal/staff-home/job/${data.id}`)
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    await supabase.auth.signOut()
+    router.push('/supplier-portal/login')
+  }
+
+  // Timesheet data
   const dayMap: Record<string, ElecTimePunch[]> = {}
   for (const p of punches) {
     const day = p.punched_at.slice(0, 10)
@@ -100,202 +144,336 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
     dayMap[day].push(p)
   }
   const days = Object.entries(dayMap).sort((a, b) => b[0].localeCompare(a[0]))
+  const today = new Date().toISOString().slice(0, 10)
+  const todayPunches = dayMap[today] ?? []
+  const todayIns  = todayPunches.filter(p => p.punch_type === 'clock_in')
+  const todayOuts = todayPunches.filter(p => p.punch_type === 'clock_out')
 
-  const clockButtonDisabled = status === 'locating' || status === 'punching'
+  const clockBusy = clockStatus === 'locating' || clockStatus === 'punching'
 
   return (
-    <div className="min-h-screen" style={{ background: S.bg }}>
-      {/* Header */}
-      <div style={{ background: '#1E2A38' }} className="px-4 pt-10 pb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-            style={{ background: staff.color ?? S.accent }}>
-            {staff.name.slice(0, 2).toUpperCase()}
-          </div>
-          <div>
-            <p className="text-white font-bold">{staff.name}</p>
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>{companyName}</p>
-          </div>
+    <div className="min-h-screen flex flex-col" style={{ background: S.bg }}>
+
+      {/* Top bar */}
+      <div className="flex-shrink-0 px-4 pt-10 pb-4 flex items-center gap-3" style={{ background: S.sidebar }}>
+        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+          style={{ background: staff.color ?? S.accent }}>
+          {staff.name.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-bold truncate">{staff.name}</p>
+          <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{companyName}</p>
+        </div>
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full flex-shrink-0"
+          style={{ background: isClockedIn ? 'rgba(22,163,74,0.25)' : 'rgba(255,255,255,0.08)' }}>
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: isClockedIn ? S.green : 'rgba(255,255,255,0.3)' }} />
+          <span className="text-[11px] font-semibold" style={{ color: isClockedIn ? '#4ADE80' : 'rgba(255,255,255,0.4)' }}>
+            {isClockedIn ? 'On site' : 'Off site'}
+          </span>
         </div>
       </div>
 
-      <div className="px-4 -mt-4 space-y-4 pb-8">
-        {/* Clock In/Out card */}
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
-          <div className="px-5 pt-5 pb-2">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: isClockedIn ? S.green : S.muted }} />
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: isClockedIn ? S.green : S.muted }}>
-                {isClockedIn ? 'Currently Clocked In' : 'Currently Clocked Out'}
-              </span>
-            </div>
-            {punches[0] && (
-              <p className="text-xs" style={{ color: S.muted }}>
-                Last punch: {fmtTime(punches[0].punched_at)} · {fmtDate(punches[0].punched_at)}
-                {punches[0].latitude && <span> · <MapPin size={9} className="inline" /> GPS</span>}
-              </p>
-            )}
-          </div>
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto pb-24">
 
-          <div className="px-5 pb-5 pt-3">
-            <button
-              onClick={() => void handlePunch()}
-              disabled={clockButtonDisabled}
-              className="w-full py-4 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-3 disabled:opacity-60"
-              style={{ background: isClockedIn ? S.danger : S.green, transition: 'opacity 0.2s' }}>
-              {status === 'locating' || status === 'punching' ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : status === 'done' ? (
-                <CheckCircle2 size={20} />
-              ) : status === 'error' ? (
-                <AlertCircle size={20} />
-              ) : isClockedIn ? (
-                <LogOut size={20} />
-              ) : (
-                <LogIn size={20} />
-              )}
-              {status === 'idle'
-                ? (isClockedIn ? 'Clock Out' : 'Clock In')
-                : statusMsg || (isClockedIn ? 'Clocking out…' : 'Clocking in…')}
-            </button>
+        {/* ── HOME TAB ── */}
+        {tab === 'home' && (
+          <div className="px-4 pt-4 space-y-4">
 
-            {status === 'idle' && (
-              <p className="text-center text-xs mt-2" style={{ color: S.muted }}>
-                <MapPin size={10} className="inline mr-0.5" />Your GPS location will be captured
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Today's summary */}
-        {days.length > 0 && (() => {
-          const today = new Date().toISOString().slice(0, 10)
-          const todayPunches = dayMap[today] ?? []
-          if (todayPunches.length === 0) return null
-          const ins = todayPunches.filter(p => p.punch_type === 'clock_in')
-          const outs = todayPunches.filter(p => p.punch_type === 'clock_out')
-          return (
-            <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: S.muted }}>Today</p>
-              <div className="grid grid-cols-2 gap-3">
-                {ins.map((punch, i) => (
-                  <div key={punch.id} className="rounded-xl p-3" style={{ background: 'rgba(22,163,74,0.06)', border: `1px solid rgba(22,163,74,0.2)` }}>
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <LogIn size={11} style={{ color: S.green }} />
-                      <span className="text-[10px] font-semibold uppercase" style={{ color: S.green }}>In</span>
-                    </div>
-                    <p className="text-lg font-bold" style={{ color: S.text }}>{fmtTime(punch.punched_at)}</p>
-                    {punch.latitude && <p className="text-[10px] mt-0.5" style={{ color: S.muted }}><MapPin size={9} className="inline" /> GPS</p>}
-                  </div>
-                ))}
-                {outs.map((punch, i) => (
-                  <div key={punch.id} className="rounded-xl p-3" style={{ background: 'rgba(220,38,38,0.06)', border: `1px solid rgba(220,38,38,0.2)` }}>
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <LogOut size={11} style={{ color: S.danger }} />
-                      <span className="text-[10px] font-semibold uppercase" style={{ color: S.danger }}>Out</span>
-                    </div>
-                    <p className="text-lg font-bold" style={{ color: S.text }}>{fmtTime(punch.punched_at)}</p>
-                    {punch.latitude && <p className="text-[10px] mt-0.5" style={{ color: S.muted }}><MapPin size={9} className="inline" /> GPS</p>}
-                  </div>
-                ))}
+            {/* Clock in/out */}
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+              <div className="px-5 pt-5 pb-2">
+                {punches[0] && (
+                  <p className="text-xs mb-1" style={{ color: S.muted }}>
+                    Last: {punches[0].punch_type === 'clock_in' ? 'Clocked in' : 'Clocked out'} at {fmtTime(punches[0].punched_at)}
+                    {punches[0].latitude && <span> · <MapPin size={9} className="inline" /> GPS</span>}
+                  </p>
+                )}
               </div>
-              {ins.length > 0 && outs.length > 0 && (() => {
-                const firstIn = ins[ins.length - 1]
-                const lastOut = outs[0]
-                return (
-                  <div className="mt-2 px-3 py-2 rounded-xl flex items-center gap-2"
-                    style={{ background: 'rgba(58,124,165,0.06)', border: `1px solid rgba(58,124,165,0.15)` }}>
-                    <Clock size={11} style={{ color: S.accent }} />
-                    <span className="text-xs" style={{ color: S.accent }}>
-                      Total today: <strong>{fmtDuration(firstIn.punched_at, lastOut.punched_at)}</strong>
-                    </span>
-                  </div>
-                )
-              })()}
+              <div className="px-5 pb-5">
+                <button
+                  onClick={() => void handlePunch()}
+                  disabled={clockBusy}
+                  className="w-full py-5 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 disabled:opacity-60"
+                  style={{ background: isClockedIn ? S.danger : S.green, transition: 'opacity 0.2s' }}>
+                  {clockStatus === 'locating' || clockStatus === 'punching' ? <Loader2 size={22} className="animate-spin" />
+                    : clockStatus === 'done' ? <CheckCircle2 size={22} />
+                    : clockStatus === 'error' ? <AlertCircle size={22} />
+                    : isClockedIn ? <LogOut size={22} /> : <LogIn size={22} />}
+                  {clockStatus === 'idle'
+                    ? (isClockedIn ? 'Clock Out' : 'Clock In')
+                    : clockMsg}
+                </button>
+                {clockStatus === 'idle' && (
+                  <p className="text-center text-xs mt-2" style={{ color: S.muted }}>
+                    <MapPin size={10} className="inline mr-0.5" />GPS location will be captured
+                  </p>
+                )}
+              </div>
             </div>
-          )
-        })()}
 
-        {/* Assigned Job Cards */}
-        {assignedJobCards.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
-              <ClipboardList size={11} className="inline mr-1" />My Jobs ({assignedJobCards.length})
-            </p>
-            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              {assignedJobCards.map((j, i) => {
-                const ss = STATUS_STYLE[j.status] ?? STATUS_STYLE.pending
-                const client = !Array.isArray(j.client) ? j.client : null
-                return (
-                  <button key={j.id}
-                    onClick={() => router.push(`/supplier-portal/staff-home/job/${j.id}`)}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
-                    style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: ss.bg }}>
-                      <ClipboardList size={15} style={{ color: ss.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
+            {/* Today summary */}
+            {todayPunches.length > 0 && (
+              <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: S.muted }}>Today</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {todayIns.map(punch => (
+                    <div key={punch.id} className="rounded-xl p-3" style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)' }}>
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[10px] font-mono" style={{ color: S.muted }}>{j.job_number}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: ss.bg, color: ss.color }}>{ss.label}</span>
-                        <span className="text-[10px]" style={{ color: S.muted }}>{TYPE_LABEL[j.job_type]}</span>
+                        <LogIn size={11} style={{ color: S.green }} />
+                        <span className="text-[10px] font-semibold uppercase" style={{ color: S.green }}>In</span>
                       </div>
-                      <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{j.title}</p>
-                      <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap" style={{ color: S.muted }}>
-                        {j.location && <span className="flex items-center gap-0.5"><MapPin size={9} />{j.location}</span>}
-                        {j.scheduled_at && <span className="flex items-center gap-0.5"><Calendar size={9} />{new Date(j.scheduled_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}
-                        {client && <span>{client.client_name}</span>}
-                      </div>
+                      <p className="text-xl font-bold" style={{ color: S.text }}>{fmtTime(punch.punched_at)}</p>
+                      {punch.latitude && <p className="text-[10px] mt-0.5" style={{ color: S.muted }}><MapPin size={9} className="inline" /> GPS</p>}
                     </div>
-                    <ChevronRight size={15} style={{ color: S.muted }} />
-                  </button>
-                )
-              })}
-            </div>
+                  ))}
+                  {todayOuts.map(punch => (
+                    <div key={punch.id} className="rounded-xl p-3" style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <LogOut size={11} style={{ color: S.danger }} />
+                        <span className="text-[10px] font-semibold uppercase" style={{ color: S.danger }}>Out</span>
+                      </div>
+                      <p className="text-xl font-bold" style={{ color: S.text }}>{fmtTime(punch.punched_at)}</p>
+                      {punch.latitude && <p className="text-[10px] mt-0.5" style={{ color: S.muted }}><MapPin size={9} className="inline" /> GPS</p>}
+                    </div>
+                  ))}
+                </div>
+                {todayIns.length > 0 && todayOuts.length > 0 && (() => {
+                  const firstIn = todayIns[todayIns.length - 1]
+                  const lastOut = todayOuts[0]
+                  return (
+                    <div className="mt-2 px-3 py-2 rounded-xl flex items-center gap-2"
+                      style={{ background: 'rgba(58,124,165,0.06)', border: '1px solid rgba(58,124,165,0.15)' }}>
+                      <Clock size={11} style={{ color: S.accent }} />
+                      <span className="text-xs" style={{ color: S.accent }}>
+                        Total today: <strong>{fmtDuration(firstIn.punched_at, lastOut.punched_at)}</strong>
+                      </span>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Punch history */}
-        {days.length > 0 && (
-          <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <button
-              onClick={() => setShowHistory(v => !v)}
-              className="w-full flex items-center justify-between px-4 py-3"
-              style={{ borderBottom: showHistory ? `1px solid ${S.border}` : undefined }}>
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Punch History (30 days)</p>
-              {showHistory ? <ChevronUp size={14} style={{ color: S.muted }} /> : <ChevronDown size={14} style={{ color: S.muted }} />}
-            </button>
-            {showHistory && days.map(([day, dayPunches]) => (
-              <div key={day} style={{ borderBottom: `1px solid ${S.border}` }}>
-                <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, background: S.bg }}>
-                  {fmtDate(day + 'T12:00:00')}
-                </p>
-                {dayPunches.map(punch => (
-                  <div key={punch.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderTop: `1px solid ${S.border}` }}>
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center"
-                      style={{ background: punch.punch_type === 'clock_in' ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)' }}>
-                      {punch.punch_type === 'clock_in'
-                        ? <LogIn size={11} style={{ color: S.green }} />
-                        : <LogOut size={11} style={{ color: S.danger }} />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold" style={{ color: S.text }}>
-                        {punch.punch_type === 'clock_in' ? 'Clocked In' : 'Clocked Out'} · {fmtTime(punch.punched_at)}
-                      </p>
-                      {punch.latitude && (
-                        <p className="text-[10px]" style={{ color: S.muted }}>
-                          <MapPin size={9} className="inline" /> {punch.latitude.toFixed(4)}, {punch.longitude?.toFixed(4)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+        {/* ── JOBS TAB ── */}
+        {tab === 'jobs' && (
+          <div className="px-4 pt-4">
+            {jobCards.length === 0 ? (
+              <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <ClipboardList size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
+                <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No jobs assigned</p>
+                <p className="text-xs" style={{ color: S.muted }}>Tap + to create a new job card</p>
               </div>
-            ))}
+            ) : (
+              <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                {jobCards.map((j, i) => {
+                  const ss = STATUS_STYLE[j.status] ?? STATUS_STYLE.pending
+                  const client = !Array.isArray(j.client) ? j.client : null
+                  return (
+                    <button key={j.id}
+                      onClick={() => router.push(`/supplier-portal/staff-home/job/${j.id}`)}
+                      className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
+                      style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: ss.bg }}>
+                        <ClipboardList size={16} style={{ color: ss.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                          <span className="text-[10px] font-mono" style={{ color: S.muted }}>{j.job_number}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: ss.bg, color: ss.color }}>{ss.label}</span>
+                        </div>
+                        <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{j.title}</p>
+                        <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap" style={{ color: S.muted }}>
+                          {j.location && <span className="flex items-center gap-0.5"><MapPin size={9} />{j.location}</span>}
+                          {j.scheduled_at && <span className="flex items-center gap-0.5"><Calendar size={9} />{new Date(j.scheduled_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>}
+                          {client && <span>{client.client_name}</span>}
+                        </div>
+                      </div>
+                      <ChevronRight size={15} style={{ color: S.muted }} />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── MORE TAB ── */}
+        {tab === 'more' && (
+          <div className="px-4 pt-4 space-y-4">
+
+            {/* Sign out */}
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <button
+                onClick={() => void handleSignOut()}
+                disabled={signingOut}
+                className="w-full flex items-center gap-3 px-4 py-4 text-left"
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(220,38,38,0.08)' }}>
+                  {signingOut
+                    ? <Loader2 size={18} className="animate-spin" style={{ color: S.danger }} />
+                    : <SignOutIcon size={18} style={{ color: S.danger }} />}
+                </div>
+                <span className="text-sm font-semibold" style={{ color: S.danger }}>
+                  {signingOut ? 'Signing out…' : 'Sign out'}
+                </span>
+              </button>
+            </div>
+
+            {/* Punch history */}
+            {days.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+                  Punch History (30 days)
+                </p>
+                <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  {days.map(([day, dayPunches]) => (
+                    <div key={day} style={{ borderBottom: `1px solid ${S.border}` }}>
+                      <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, background: S.bg }}>
+                        {fmtDate(day + 'T12:00:00')}
+                      </p>
+                      {dayPunches.map(punch => (
+                        <div key={punch.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderTop: `1px solid ${S.border}` }}>
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                            style={{ background: punch.punch_type === 'clock_in' ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)' }}>
+                            {punch.punch_type === 'clock_in'
+                              ? <LogIn size={12} style={{ color: S.green }} />
+                              : <LogOut size={12} style={{ color: S.danger }} />}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold" style={{ color: S.text }}>
+                              {punch.punch_type === 'clock_in' ? 'Clocked In' : 'Clocked Out'} · {fmtTime(punch.punched_at)}
+                            </p>
+                            {punch.latitude && (
+                              <p className="text-[10px]" style={{ color: S.muted }}>
+                                <MapPin size={9} className="inline" /> {punch.latitude.toFixed(4)}, {punch.longitude?.toFixed(4)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Bottom navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center"
+        style={{ background: S.card, borderTop: `1px solid ${S.border}`, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+
+        {/* Home */}
+        <button onClick={() => setTab('home')}
+          className="flex-1 flex flex-col items-center gap-1 py-3"
+          style={{ color: tab === 'home' ? S.accent : S.muted }}>
+          <Home size={20} />
+          <span className="text-[10px] font-semibold">Home</span>
+        </button>
+
+        {/* Jobs */}
+        <button onClick={() => setTab('jobs')}
+          className="flex-1 flex flex-col items-center gap-1 py-3 relative"
+          style={{ color: tab === 'jobs' ? S.accent : S.muted }}>
+          <Briefcase size={20} />
+          <span className="text-[10px] font-semibold">Jobs</span>
+          {jobCards.length > 0 && (
+            <span className="absolute top-2 right-[calc(50%-14px)] w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
+              style={{ background: S.accent }}>
+              {jobCards.length}
+            </span>
+          )}
+        </button>
+
+        {/* New Job — centre action button */}
+        <div className="flex-1 flex items-center justify-center">
+          <button
+            onClick={() => setShowNewJob(true)}
+            className="w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg -mt-5"
+            style={{ background: S.accent, boxShadow: '0 4px 16px rgba(58,124,165,0.45)' }}>
+            <Plus size={26} />
+          </button>
+        </div>
+
+        {/* More */}
+        <button onClick={() => setTab('more')}
+          className="flex-1 flex flex-col items-center gap-1 py-3"
+          style={{ color: tab === 'more' ? S.accent : S.muted }}>
+          <Menu size={20} />
+          <span className="text-[10px] font-semibold">More</span>
+        </button>
+
+        {/* Spacer to balance the centre button */}
+        <div className="flex-1" />
+      </div>
+
+      {/* New Job modal */}
+      {showNewJob && (
+        <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowNewJob(false) }}>
+          <div className="w-full rounded-t-3xl overflow-hidden" style={{ background: S.card, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <h2 className="font-bold text-base" style={{ color: S.text }}>New Job Card</h2>
+              <button onClick={() => setShowNewJob(false)} style={{ color: S.muted }}><X size={18} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Job Title *</label>
+                <input
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  placeholder="e.g. DB board replacement"
+                  autoFocus
+                  className="w-full px-3.5 py-3 text-sm rounded-xl outline-none"
+                  style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text }}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {JOB_TYPES.map(t => (
+                    <button key={t.value} onClick={() => setNewType(t.value)}
+                      className="py-2.5 rounded-xl text-sm font-semibold"
+                      style={{
+                        background: newType === t.value ? S.accent : S.bg,
+                        color: newType === t.value ? '#fff' : S.muted,
+                        border: `1.5px solid ${newType === t.value ? S.accent : S.border}`,
+                      }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Location (optional)</label>
+                <input
+                  value={newLocation}
+                  onChange={e => setNewLocation(e.target.value)}
+                  placeholder="e.g. 12 Oak Ave, Sandton"
+                  className="w-full px-3.5 py-3 text-sm rounded-xl outline-none"
+                  style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text }}
+                />
+              </div>
+              {createError && (
+                <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>{createError}</p>
+              )}
+              <button
+                onClick={() => void handleCreateJob()}
+                disabled={!newTitle.trim() || creating}
+                className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: S.accent }}>
+                {creating ? <Loader2 size={16} className="animate-spin inline mr-2" /> : null}
+                {creating ? 'Creating…' : 'Create Job Card'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
