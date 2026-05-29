@@ -397,7 +397,18 @@ export function StaffManager({ initialStaff, punches }: Props) {
                           <span className="text-xs font-semibold" style={{ color: p.punch_type === 'clock_in' ? S.green : S.danger }}>
                             {fmtTime(p.punched_at)}
                           </span>
-                          {p.latitude && <MapPin size={9} style={{ color: S.muted }} />}
+                          {p.latitude && p.longitude && (
+                            <a
+                              href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                              target="_blank" rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="flex items-center gap-0.5"
+                              style={{ color: S.accent, textDecoration: 'none' }}
+                              title={`${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`}>
+                              <MapPin size={9} />
+                              <span className="text-[9px] font-medium">GPS</span>
+                            </a>
+                          )}
                         </div>
                       ))}
                     </div>

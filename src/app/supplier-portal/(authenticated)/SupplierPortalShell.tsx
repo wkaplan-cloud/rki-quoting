@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { SupplierPortalNav } from './SupplierPortalNav'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
 interface Props {
   children: React.ReactNode
@@ -14,8 +15,8 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
-  const portalAccountIdRef = useRef<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('supplier-sidebar-expanded')
@@ -29,33 +30,69 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
       .catch(() => {})
   }, [])
 
+  // Pre-unlock audio on first user interaction so autoplay works when notifications arrive
   useEffect(() => {
-    fetch('/api/supplier-portal/notification-count')
-      .then(r => r.json())
-      .then((d: { count: number; portalAccountId: string | null }) => {
-        setNotificationCount(d.count ?? 0)
-        portalAccountIdRef.current = d.portalAccountId
+    const unlock = () => {
+      const audio = audioRef.current
+      if (!audio) return
+      audio.play()
+        .then(() => { audio.pause(); audio.currentTime = 0 })
+        .catch(() => {})
+    }
+    document.addEventListener('click', unlock, { once: true })
+    document.addEventListener('touchstart', unlock, { once: true })
+    return () => {
+      document.removeEventListener('click', unlock)
+      document.removeEventListener('touchstart', unlock)
+    }
+  }, [])
 
-        if (!d.portalAccountId) return
+  useEffect(() => {
+    let alive = true
 
-        // Subscribe to new notifications via Realtime
-        const channel = supabase
-          .channel(`shell-notifications:${d.portalAccountId}`)
-          .on('postgres_changes', {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'elec_notifications',
-            filter: `portal_account_id=eq.${d.portalAccountId}`,
-          }, () => {
-            setNotificationCount(c => c + 1)
-            // Play ring sound
-            try { audioRef.current?.play().catch(() => {}) } catch {}
-          })
-          .subscribe()
+    function fetchCount() {
+      return fetch('/api/supplier-portal/notification-count')
+        .then(r => r.json())
+        .then((d: { count: number; portalAccountId: string | null }) => d)
+        .catch(() => ({ count: 0, portalAccountId: null }))
+    }
 
-        return () => { void supabase.removeChannel(channel) }
-      })
-      .catch(() => {})
+    fetchCount().then(d => {
+      if (!alive) return
+      setNotificationCount(d.count ?? 0)
+      if (!d.portalAccountId) return
+
+      const channel = supabase
+        .channel(`shell-notifications:${d.portalAccountId}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'elec_notifications',
+          filter: `portal_account_id=eq.${d.portalAccountId}`,
+        }, () => {
+          if (!alive) return
+          setNotificationCount(c => c + 1)
+          try { audioRef.current?.play().catch(() => {}) } catch {}
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'elec_notifications',
+          filter: `portal_account_id=eq.${d.portalAccountId}`,
+        }, () => {
+          // Refetch authoritative count whenever a notification is updated (e.g. marked read)
+          if (!alive) return
+          fetchCount().then(d2 => { if (alive) setNotificationCount(d2.count ?? 0) })
+        })
+        .subscribe()
+
+      channelRef.current = channel
+    })
+
+    return () => {
+      alive = false
+      if (channelRef.current) void supabase.removeChannel(channelRef.current)
+    }
   }, []) // eslint-disable-line
 
   return (
