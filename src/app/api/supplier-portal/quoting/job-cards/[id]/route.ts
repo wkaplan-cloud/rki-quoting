@@ -71,6 +71,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .select()
       .single()
     if (error) throw error
+
+    // Sync email and address back to the client record when present
+    const clientId = typeof body.client_id === 'string' ? body.client_id : data.client_id
+    if (clientId) {
+      const clientPatch: Record<string, string> = {}
+      if (typeof body.client_email === 'string' && body.client_email.trim())
+        clientPatch.email = body.client_email.trim()
+      if (typeof body.location === 'string' && body.location.trim())
+        clientPatch.address = body.location.trim()
+      if (Object.keys(clientPatch).length > 0)
+        await supabaseAdmin.from('elec_clients').update(clientPatch).eq('id', clientId)
+    }
+
     return NextResponse.json(data)
   } catch (e) { return apiError(e) }
 }
