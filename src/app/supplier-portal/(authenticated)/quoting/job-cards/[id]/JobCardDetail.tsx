@@ -365,7 +365,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         {/* Created by / sent info */}
         <div className="mt-3 pt-3 flex items-center gap-4 text-xs flex-wrap" style={{ borderTop: `1px solid ${S.border}`, color: S.muted }}>
           <span className="flex items-center gap-1"><Clock size={10} />Created {fmtDate(card.created_at)}</span>
-          {staffMember && <span className="flex items-center gap-1"><User size={10} />Created by {staffMember.name}</span>}
+          {(card.created_by_name ?? staffMember?.name) && (
+            <span className="flex items-center gap-1"><User size={10} />Created by {card.created_by_name ?? staffMember?.name}</span>
+          )}
           {card.sent_at && (
             <span className="flex items-center gap-1">
               <Send size={10} />Sent to {card.sent_to_name ?? card.sent_to_email} on {fmtDate(card.sent_at)}

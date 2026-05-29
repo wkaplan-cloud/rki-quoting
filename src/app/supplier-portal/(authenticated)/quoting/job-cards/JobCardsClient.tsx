@@ -180,9 +180,9 @@ export function JobCardsClient({ initialJobCards, staff, clients }: Props) {
                         <MapPin size={10} />{j.location}
                       </span>
                     )}
-                    {staffMember && (
+                    {(j.created_by_name ?? staffMember?.name) && (
                       <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}>
-                        <User size={10} />{staffMember.name}
+                        <User size={10} />{j.created_by_name ?? staffMember?.name}
                       </span>
                     )}
                     {client && (

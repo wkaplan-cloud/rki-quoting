@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { resolveCreatorName } from '@/lib/resolve-creator'
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,6 +45,8 @@ export async function POST(req: NextRequest) {
     const num = String((count ?? 0) + 1).padStart(3, '0')
     const quoteNumber = companyCode ? `${companyCode}-${prefix}-${year}-${num}` : `${prefix}-${year}-${num}`
 
+    const createdByName = await resolveCreatorName(user.id)
+
     const { data: quote, error: err } = await supabaseAdmin
       .from('elec_quotes')
       .insert({
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
         retention_percentage:          settings?.default_retention_percentage ?? 0,
         payment_terms_days:            settings?.default_payment_terms_days ?? 30,
         defects_liability_period_days: settings?.default_defects_liability_days ?? 90,
+        created_by_name:               createdByName,
       })
       .select()
       .single()

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { resolveCreatorName } from '@/lib/resolve-creator'
 
 async function resolveAccount(userId: string): Promise<{ accountId: string; staffId: string | null } | null> {
   // owner
@@ -61,11 +62,14 @@ export async function POST(req: NextRequest) {
     const num = String((count ?? 0) + 1).padStart(4, '0')
     const jobNumber = `JC-${num}`
 
+    const createdByName = await resolveCreatorName(user.id)
+
     // Auto-assign staff_id when request comes from a staff member
     const insertData = {
       ...body,
       portal_account_id: accountId,
       job_number: jobNumber,
+      created_by_name: createdByName,
       ...(staffId && !body.staff_id ? { staff_id: staffId } : {}),
     }
 

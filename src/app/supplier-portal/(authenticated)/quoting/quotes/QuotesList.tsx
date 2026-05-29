@@ -345,6 +345,7 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
                     )}
                     <span className="text-xs flex items-center gap-1" style={{ color: S.muted }}>
                       Created {new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {q.created_by_name && ` by ${q.created_by_name}`}
                     </span>
                   </div>
                 </div>

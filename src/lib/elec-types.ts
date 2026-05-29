@@ -121,6 +121,7 @@ export interface ElecQuote {
   archived_at: string | null
   share_token: string | null
   share_token_created_at: string | null
+  created_by_name: string | null
   created_at: string
   // Joined
   client?: ElecClient
@@ -511,6 +512,7 @@ export interface ElecJobCard {
   sent_to_email: string | null
   sent_at: string | null
   share_token: string | null
+  created_by_name: string | null
   created_at: string
   // Joined
   staff?: ElecStaff | null
