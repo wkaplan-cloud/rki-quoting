@@ -321,7 +321,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const ss = STATUS_STYLE[card.status] ?? STATUS_STYLE.pending
   const StatusIcon = ss.icon
   const materials = card.materials ?? []
-  const photos = card.photos ?? []
+  const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
   const staffMember = !Array.isArray(card.staff) ? card.staff : null
   const totalMaterials = materials.reduce((a, m) => a + m.qty * (m.unit_price ?? 0), 0)
 
