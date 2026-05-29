@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Save, Trash2, Send, Plus, X, Camera, Pen,
   CheckCircle2, Clock, Play, XCircle, Loader2, Download,
-  MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon
+  MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
+  ChevronDown, Upload
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
@@ -69,11 +70,12 @@ interface Props {
   clients: ElecClient[]
   portalAccountId: string
   companyName: string
+  sageConnected?: boolean
 }
 
 type Tab = 'details' | 'report' | 'materials' | 'photos' | 'signature'
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, sageConnected = false }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company'>[]>(initialClients)
@@ -82,11 +84,21 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [saveMsg, setSaveMsg] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [showSend, setShowSend] = useState(false)
+  const [showSendMenu, setShowSendMenu] = useState(false)
+  const [sendMode, setSendMode] = useState<'jobcard' | 'invoice'>('jobcard')
   const [sendEmail, setSendEmail] = useState(card.client_email ?? card.client?.email ?? '')
   const [sendName, setSendName] = useState(card.client_name ?? card.client?.client_name ?? '')
   const [sendMsg, setSendMsg] = useState('')
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState<'success' | 'error' | ''>('')
+  // Sage push state
+  const [showSagePush, setShowSagePush] = useState(false)
+  const [sageCustomers, setSageCustomers] = useState<{ id: string; name: string }[]>([])
+  const [sageCustomersLoaded, setSageCustomersLoaded] = useState(false)
+  const [sageSelectedCustomer, setSageSelectedCustomer] = useState<{ id: string; name: string } | null>(null)
+  const [sagePushing, setSagePushing] = useState(false)
+  const [sageError, setSageError] = useState('')
+  const [sagePushResult, setSagePushResult] = useState<{ ok: boolean; total_incl_vat?: number } | null>(null)
   const [photoUploading, setPhotoUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -271,12 +283,39 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     try {
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null }),
+        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: sendMode === 'invoice' }),
       })
       setSendResult(res.ok ? 'success' : 'error')
       if (res.ok) setCard(c => ({ ...c, sent_to_email: sendEmail, sent_to_name: sendName || null, sent_at: new Date().toISOString() }))
     } catch { setSendResult('error') }
     finally { setSending(false) }
+  }
+
+  // ── sage push ────────────────────────────────────────────────────────────────
+
+  async function openSagePush() {
+    setSageError(''); setSageSelectedCustomer(null); setSagePushResult(null)
+    setShowSagePush(true)
+    if (!sageCustomersLoaded) {
+      const res = await fetch('/api/supplier-portal/quoting/sage/customers')
+      const data = await res.json()
+      if (res.ok) { setSageCustomers(data.customers ?? []); setSageCustomersLoaded(true) }
+      else setSageError(data.error ?? 'Failed to load customers')
+    }
+  }
+
+  async function handleSagePush() {
+    if (!sageSelectedCustomer) { setSageError('Select a Sage customer'); return }
+    setSagePushing(true); setSageError('')
+    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/push-sage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sageCustomerId: sageSelectedCustomer.id, sageCustomerName: sageSelectedCustomer.name }),
+    })
+    const data = await res.json()
+    setSagePushing(false)
+    if (!res.ok) { setSageError(data.error ?? 'Push failed'); return }
+    setSagePushResult({ ok: true, total_incl_vat: data.total_incl_vat })
+    setCard(c => ({ ...c, sage_invoice_id: String(data.sage_invoice_id), sage_invoice_status: String(data.sage_invoice_status), sage_customer_name: sageSelectedCustomer.name }))
   }
 
   const ss = STATUS_STYLE[card.status] ?? STATUS_STYLE.pending
@@ -309,11 +348,50 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             style={{ border: `1px solid ${S.border}`, color: S.muted }}>
             {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save
           </button>
-          <button onClick={() => setShowSend(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
-            style={{ background: S.accent }}>
-            <Send size={13} /> Send to Client
-          </button>
+          <div className="relative">
+            <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.accent}` }}>
+              <button
+                onClick={() => { setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white"
+                style={{ background: S.accent }}>
+                <Send size={13} /> Send
+              </button>
+              <button
+                onClick={() => setShowSendMenu(m => !m)}
+                className="flex items-center px-1.5 py-1.5 text-xs font-semibold text-white"
+                style={{ background: S.accent, borderLeft: '1px solid rgba(255,255,255,0.3)' }}>
+                <ChevronDown size={13} />
+              </button>
+            </div>
+            {showSendMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowSendMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[168px]"
+                  style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  <button
+                    onClick={() => { setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
+                    style={{ color: S.text }}>
+                    <FileText size={14} /> Send Job Card
+                  </button>
+                  <button
+                    onClick={() => { setSendMode('invoice'); setShowSend(true); setShowSendMenu(false) }}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
+                    style={{ color: S.text }}>
+                    <Send size={14} /> Send as Invoice
+                  </button>
+                  {sageConnected && (
+                    <button
+                      onClick={() => { setShowSendMenu(false); void openSagePush() }}
+                      className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
+                      style={{ color: S.text }}>
+                      <Upload size={14} /> Push to Sage
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={handleDelete} disabled={deleting}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
             style={{ border: `1px solid S.border`, color: S.danger }}>
@@ -601,19 +679,82 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </div>
       )}
 
+      {/* Sage push modal */}
+      {showSagePush && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSagePush(false) }}>
+          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: S.card }}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold" style={{ color: S.text }}>Push to Sage</h2>
+              <button onClick={() => setShowSagePush(false)} style={{ color: S.muted }}><X size={18} /></button>
+            </div>
+            {sagePushResult?.ok ? (
+              <div className="py-8 flex flex-col items-center gap-3">
+                <CheckCircle2 size={36} style={{ color: S.green }} />
+                <p className="text-sm font-semibold" style={{ color: S.text }}>Invoice pushed to Sage!</p>
+                {sagePushResult.total_incl_vat != null && (
+                  <p className="text-xs" style={{ color: S.muted }}>Total: R{sagePushResult.total_incl_vat.toFixed(2)} incl. VAT</p>
+                )}
+                <button onClick={() => setShowSagePush(false)}
+                  className="mt-2 px-6 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm" style={{ color: S.muted }}>Select the Sage customer this invoice should be raised against.</p>
+                {!sageCustomersLoaded && !sageError && (
+                  <p className="text-sm flex items-center gap-2" style={{ color: S.muted }}>
+                    <Loader2 size={14} className="animate-spin" /> Loading customers…
+                  </p>
+                )}
+                {sageCustomers.length > 0 && (
+                  <div>
+                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Sage Customer</label>
+                    <select value={sageSelectedCustomer?.id ?? ''}
+                      onChange={e => setSageSelectedCustomer(sageCustomers.find(c => c.id === e.target.value) ?? null)}
+                      className="w-full px-3 py-2 rounded-xl text-sm"
+                      style={{ border: `1px solid ${S.border}`, color: S.text }}>
+                      <option value="">— Select customer —</option>
+                      {sageCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                {sageError && (
+                  <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>{sageError}</p>
+                )}
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setShowSagePush(false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                    style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                    Cancel
+                  </button>
+                  <button onClick={() => void handleSagePush()} disabled={sagePushing || !sageSelectedCustomer}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                    style={{ background: S.accent }}>
+                    {sagePushing && <Loader2 size={14} className="animate-spin" />}
+                    {sagePushing ? 'Pushing…' : 'Push to Sage'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Send modal */}
       {showSend && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md rounded-2xl p-6" style={{ background: S.card }}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold" style={{ color: S.text }}>Send Job Card</h2>
+              <h2 className="text-base font-bold" style={{ color: S.text }}>{sendMode === 'invoice' ? 'Send as Invoice' : 'Send Job Card'}</h2>
               <button onClick={() => { setShowSend(false); setSendResult('') }} style={{ color: S.muted }}><X size={18} /></button>
             </div>
             {sendResult === 'success' ? (
               <div className="py-8 flex flex-col items-center gap-3">
                 <CheckCircle2 size={36} style={{ color: S.green }} />
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Sent successfully!</p>
-                <p className="text-xs" style={{ color: S.muted }}>Job card PDF sent to {sendEmail}</p>
+                <p className="text-xs" style={{ color: S.muted }}>{sendMode === 'invoice' ? 'Invoice' : 'Job card'} PDF sent to {sendEmail}</p>
                 <button onClick={() => { setShowSend(false); setSendResult('') }}
                   className="mt-2 px-6 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>
                   Done

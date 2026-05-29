@@ -31,7 +31,7 @@ async function resolveAccount(userId: string) {
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const { email, name, message } = await req.json() as { email: string; name?: string; message?: string }
+    const { email, name, message, as_invoice } = await req.json() as { email: string; name?: string; message?: string; as_invoice?: boolean }
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
     const supabase = await createClient()
@@ -74,12 +74,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .update({ sent_to_name: name ?? null, sent_to_email: email, sent_at: now })
       .eq('id', id)
 
+    const cardMaterials: { qty: number; unit_price: number | null }[] = card.materials ?? []
+    const totalExclVat = cardMaterials.reduce((s: number, m: { qty: number; unit_price: number | null }) =>
+      s + m.qty * (m.unit_price ?? 0), 0
+    )
+    const vatRate = (settings as ElecSettings | null)?.default_vat_rate ?? 15
+    const totalInclVat = totalExclVat * (1 + vatRate / 100)
+
+    const label = as_invoice ? 'Invoice' : 'Job Card'
+    const subject = as_invoice
+      ? `Invoice ${jobCard.job_number} — ${jobCard.title}`
+      : `Job Card ${jobCard.job_number} — ${jobCard.title}`
+    const totalLine = as_invoice && totalInclVat > 0
+      ? `<p style="margin:0 0 16px;font-size:18px;font-weight:700;color:#18181B;">Total: R${totalInclVat.toFixed(2)} <span style="font-size:12px;color:#71717A;">(incl. VAT)</span></p>`
+      : ''
+
     const companyName = account.company_name ?? 'Your contractor'
     await resend.emails.send({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,
-      subject: `Job Card ${jobCard.job_number} — ${jobCard.title}`,
+      subject,
       attachments: [{ filename: `${jobCard.job_number}.pdf`, content: pdfBuffer }],
       html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F0F2F5;font-family:Arial,sans-serif;">
@@ -88,13 +103,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     <table width="100%" style="max-width:520px;">
       <tr><td style="background:#1E2A38;padding:28px 36px;border-radius:8px 8px 0 0;">
         <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">${companyName}</p>
-        <p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.08em;">Job Card</p>
+        <p style="margin:4px 0 0;font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:.08em;">${label}</p>
       </td></tr>
       <tr><td style="background:#fff;padding:36px;border-left:1px solid #E4E4E7;border-right:1px solid #E4E4E7;">
         <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#18181B;">${jobCard.job_number}</p>
-        <p style="margin:0 0 20px;font-size:15px;color:#71717A;">${jobCard.title}</p>
+        <p style="margin:0 0 16px;font-size:15px;color:#71717A;">${jobCard.title}</p>
+        ${totalLine}
         ${message ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">${message}</p>` : ''}
-        <p style="margin:0;font-size:13px;color:#71717A;">Please find the job card attached as a PDF.</p>
+        <p style="margin:0;font-size:13px;color:#71717A;">Please find the ${label.toLowerCase()} attached as a PDF.</p>
       </td></tr>
       <tr><td style="background:#F0F2F5;border:1px solid #E4E4E7;border-top:none;border-radius:0 0 8px 8px;padding:16px 36px;">
         <p style="margin:0;font-size:11px;color:#71717A;">Sent via <a href="https://quotinghub.co.za" style="color:#3A7CA5;">QuotingHub</a></p>
@@ -103,7 +119,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   </td></tr>
 </table>
 </body></html>`,
-      text: `Job Card ${jobCard.job_number} — ${jobCard.title}\n\n${message ?? ''}\n\nPlease find the job card attached.`,
+      text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${as_invoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${message ?? ''}\n\nPlease find the ${label.toLowerCase()} attached.`,
     })
 
     return NextResponse.json({ ok: true })
