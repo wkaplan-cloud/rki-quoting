@@ -78,7 +78,11 @@ type Tab = 'details' | 'report' | 'materials' | 'photos' | 'signature'
 export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, sageConnected = false }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
-  const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company'>[]>(initialClients)
+  const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'qs_name' | 'qs_email'>[]>(initialClients)
+  const initClient = initialClients.find(c => c.id === initial.client_id)
+  const [clientCompany, setClientCompany] = useState(initClient?.company ?? '')
+  const [clientQsName, setClientQsName] = useState(initClient?.qs_name ?? '')
+  const [clientQsEmail, setClientQsEmail] = useState(initClient?.qs_email ?? '')
   const [tab, setTab] = useState<Tab>('details')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
@@ -153,6 +157,20 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       resolution: card.resolution,
       notes: card.notes,
     })
+    // Sync company/QS details to the client record
+    if (card.client_id) {
+      const patch: Record<string, string> = {}
+      if (clientCompany.trim()) patch.company = clientCompany.trim()
+      if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
+      if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
+      if (Object.keys(patch).length > 0) {
+        fetch(`/api/supplier-portal/quoting/clients/${card.client_id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        })
+      }
+    }
   }
 
   async function handleDelete() {
@@ -354,7 +372,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           <div className="relative">
             <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.accent}` }}>
               <button
-                onClick={() => { setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
+                onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white"
                 style={{ background: S.accent }}>
                 <Send size={13} /> Send
@@ -372,13 +390,13 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[168px]"
                   style={{ background: S.card, border: `1px solid ${S.border}` }}>
                   <button
-                    onClick={() => { setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
+                    onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
                     className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
                     style={{ color: S.text }}>
                     <FileText size={14} /> Send Job Card
                   </button>
                   <button
-                    onClick={() => { setSendMode('invoice'); setShowSend(true); setShowSendMenu(false) }}
+                    onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMode('invoice'); setShowSend(true); setShowSendMenu(false) }}
                     className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
                     style={{ color: S.text }}>
                     <Send size={14} /> Send as Invoice
@@ -510,13 +528,36 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     ...prev,
                     client_id: id,
                     client_name: name || null,
-                    client_email: (existing as ElecClient | undefined)?.email ?? prev.client_email,
+                    client_email: existing?.email ?? prev.client_email,
                   }))
+                  setClientCompany(existing?.company ?? '')
+                  setClientQsName(existing?.qs_name ?? '')
+                  setClientQsEmail(existing?.qs_email ?? '')
                 }}
-                onNewClient={c => setClients(prev => [...prev, c])}
+                onNewClient={c => setClients(prev => [...prev, { ...c, email: null, qs_name: null, qs_email: null }])}
               />
             </Field>
             <Inp label="Client Email (for sending)" val={card.client_email} cb={v => setField('client_email', v || null)} placeholder="client@example.com" />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <Field label="Company Name">
+              <input value={clientCompany} onChange={e => setClientCompany(e.target.value)}
+                placeholder="Client company"
+                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+            </Field>
+            <Field label="QS Name">
+              <input value={clientQsName} onChange={e => setClientQsName(e.target.value)}
+                placeholder="Quantity surveyor"
+                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+            </Field>
+            <Field label="QS Email">
+              <input type="email" value={clientQsEmail} onChange={e => setClientQsEmail(e.target.value)}
+                placeholder="qs@example.com"
+                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+            </Field>
           </div>
           <Inp label="Location / Address" val={card.location} cb={v => setField('location', v || null)} placeholder="Site address" />
           <div className="grid grid-cols-2 gap-4">

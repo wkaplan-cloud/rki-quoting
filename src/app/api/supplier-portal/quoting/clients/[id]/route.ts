@@ -43,6 +43,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const patch: Record<string, string> = {}
     if (typeof body.email === 'string' && body.email.trim()) patch.email = body.email.trim()
     if (typeof body.address === 'string' && body.address.trim()) patch.address = body.address.trim()
+    if (typeof body.company === 'string' && body.company.trim()) patch.company = body.company.trim()
+    if (typeof body.qs_name === 'string' && body.qs_name.trim()) patch.qs_name = body.qs_name.trim()
+    if (typeof body.qs_email === 'string' && body.qs_email.trim()) patch.qs_email = body.qs_email.trim()
     if (Object.keys(patch).length === 0) return NextResponse.json({ ok: true })
 
     await supabaseAdmin.from('elec_clients').update(patch).eq('id', clientId)

@@ -369,6 +369,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const [q, setQ] = useState(initialQuote)
   const [clientDisplay, setClientDisplay] = useState(initialQuote.client?.client_name ?? '')
+  const [clientCompany, setClientCompany] = useState(initialQuote.client?.company ?? '')
+  const [clientQsName, setClientQsName] = useState(initialQuote.client?.qs_name ?? '')
+  const [clientQsEmail, setClientQsEmail] = useState(initialQuote.client?.qs_email ?? '')
   const [clients, setClients] = useState(initialClients)
   const [voCreatedClaims, setVOCreatedClaims] = useState<(ElecClaim & { line_items: ElecClaimLineItem[] })[]>([])
   const [liveVOs, setLiveVOs] = useState(variations)
@@ -439,11 +442,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const retention = subtotal * ((q.retention_percentage ?? 0) / 100)
 
   // ── Save function (stable ref so auto-save always calls latest) ─────────────
-  const saveDataRef = useRef({ q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems })
-  useEffect(() => { saveDataRef.current = { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems } }, [q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems])
+  const saveDataRef = useRef({ q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail })
+  useEffect(() => { saveDataRef.current = { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail } }, [q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail])
 
   const handleSave = useCallback(async () => {
-    const { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems } = saveDataRef.current
+    const { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail } = saveDataRef.current
     setSaveStatus('saving'); setSaveError('')
     try {
       await supabase.from('elec_quotes').update({
@@ -455,13 +458,20 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         notes: q.notes, quoted_date: q.quoted_date, expected_completion_date: q.expected_completion_date,
       }).eq('id', q.id)
 
-      // Sync project address to the client record via server route (supabaseAdmin bypasses RLS)
-      if (q.client_id && q.project_address?.trim()) {
-        fetch(`/api/supplier-portal/quoting/clients/${q.client_id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: q.project_address.trim() }),
-        })
+      // Sync client fields via server route (supabaseAdmin bypasses RLS)
+      if (q.client_id) {
+        const patch: Record<string, string> = {}
+        if (q.project_address?.trim()) patch.address = q.project_address.trim()
+        if (clientCompany.trim()) patch.company = clientCompany.trim()
+        if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
+        if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
+        if (Object.keys(patch).length > 0) {
+          fetch(`/api/supplier-portal/quoting/clients/${q.client_id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch),
+          })
+        }
       }
 
       await Promise.all([
@@ -527,7 +537,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => void handleSave(), 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [q, sections, freeItems]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [q, sections, freeItems, clientCompany, clientQsName, clientQsEmail]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Status transitions ───────────────────────────────────────────────────────
   async function transition(newStatus: ElecQuoteStatus, extra?: Partial<typeof q>) {
@@ -759,6 +769,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                   {[q.client.email, q.client.contact_number].filter(Boolean).join(' · ')}
                 </p>
               )}
+              {(q.client.qs_name || q.client.qs_email) && (
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                  QS: {[q.client.qs_name, q.client.qs_email].filter(Boolean).join(' · ')}
+                </p>
+              )}
             </div>
           )}
           {/* Project & contract details */}
@@ -802,6 +817,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               onChange={(id, name) => {
                 setQ(p => ({ ...p, client_id: id }))
                 setClientDisplay(name)
+                const found = id ? clients.find(c => c.id === id) : null
+                setClientCompany(found?.company ?? '')
+                setClientQsName(found?.qs_name ?? '')
+                setClientQsEmail(found?.qs_email ?? '')
                 if (id && !clients.find(c => c.id === id)) {
                   setClients(cs => [...cs, { id, client_name: name, company: null, email: null, qs_name: null, qs_email: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))
                 }
@@ -814,6 +833,31 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Project Address</label>
             <input value={q.project_address ?? ''} onChange={e => setQ(p => ({ ...p, project_address: e.target.value || null }))}
               placeholder="Site address"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+
+          {/* Company name */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Company Name</label>
+            <input value={clientCompany} onChange={e => setClientCompany(e.target.value)}
+              placeholder="Client company"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+
+          {/* QS Name + QS Email */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>QS Name</label>
+            <input value={clientQsName} onChange={e => setClientQsName(e.target.value)}
+              placeholder="Quantity surveyor"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>QS Email</label>
+            <input type="email" value={clientQsEmail} onChange={e => setClientQsEmail(e.target.value)}
+              placeholder="qs@example.com"
               className="w-full px-3 py-2 text-sm rounded-lg outline-none"
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
