@@ -81,11 +81,14 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/supplier-portal/paystack/callback') ||
     pathname.startsWith('/supplier-portal/login') ||
     pathname.startsWith('/supplier-portal/register') ||
+    pathname.startsWith('/supplier-portal/accept-staff-invite') ||
+    pathname.startsWith('/supplier-portal/accept-admin-invite') ||
     pathname === '/supplier-portal' ||
     pathname.startsWith('/supplier-portal/not-a-supplier') ||
     pathname.startsWith('/supplier-portal/privacy') ||
     pathname.startsWith('/supplier-portal/terms') ||
     pathname.startsWith('/api/supplier-portal/auth') ||
+    pathname.startsWith('/api/supplier-portal/staff/accept-invite') ||
     pathname.startsWith('/meta-callback') ||
     pathname.startsWith('/q/') ||
     pathname.startsWith('/api/q/') ||
