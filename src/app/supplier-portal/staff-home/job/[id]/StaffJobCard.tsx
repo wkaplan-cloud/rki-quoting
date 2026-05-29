@@ -6,6 +6,7 @@ import {
   Loader2, MapPin, Clock, Briefcase, Send, Mail,
 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto } from '@/lib/elec-types'
+import { StaffBottomNav } from '../../StaffBottomNav'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -97,7 +98,6 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
   async function handleMarkComplete() {
     setCompleting(true)
     try {
-      // Save report fields first, then mark complete
       await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -111,7 +111,8 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
         }),
       })
       setCard(c => ({ ...c, status: 'completed', completed_at: new Date().toISOString() }))
-      setCompleteMsg('Job marked as complete ✓')
+      setCompleteMsg('Job complete ✓ — returning home…')
+      setTimeout(() => router.push('/supplier-portal/staff-home'), 1500)
     } catch { setCompleteMsg('Error — try again') }
     setCompleting(false)
   }
@@ -235,11 +236,12 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
   ]
 
   return (
-    <div className="min-h-screen pb-6" style={{ background: S.bg }}>
+    <div className="min-h-screen pb-24" style={{ background: S.bg }}>
       {/* Header */}
       <div style={{ background: '#1E2A38' }} className="px-4 pt-10 pb-5">
         <button onClick={() => router.push('/supplier-portal/staff-home')}
-          className="flex items-center gap-2 text-sm mb-4" style={{ color: 'rgba(255,255,255,0.6)' }}>
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold mb-4"
+          style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)' }}>
           <ArrowLeft size={15} /> My Jobs
         </button>
         <div className="flex items-start justify-between gap-2">
@@ -583,6 +585,8 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
           </div>
         )}
       </div>
+
+      <StaffBottomNav activeTab="jobs" />
     </div>
   )
 }
