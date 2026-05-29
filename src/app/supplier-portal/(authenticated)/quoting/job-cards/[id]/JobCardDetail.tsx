@@ -289,7 +289,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: sendMode === 'invoice' }),
       })
       setSendResult(res.ok ? 'success' : 'error')
-      if (res.ok) setCard(c => ({ ...c, sent_to_email: sendEmail, sent_to_name: sendName || null, sent_at: new Date().toISOString() }))
+      if (res.ok) setCard(c => ({ ...c, sent_to_email: sendEmail, sent_to_name: sendName || null, sent_at: new Date().toISOString(), client_email: sendEmail }))
     } catch { setSendResult('error') }
     finally { setSending(false) }
   }

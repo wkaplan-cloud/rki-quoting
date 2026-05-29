@@ -89,8 +89,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const now = new Date().toISOString()
     await supabaseAdmin
       .from('elec_job_cards')
-      .update({ sent_to_name: name ?? null, sent_to_email: email, sent_at: now })
+      .update({ sent_to_name: name ?? null, sent_to_email: email, sent_at: now, client_email: email })
       .eq('id', id)
+
+    // Sync email to the client record so the clients tab stays up to date
+    if (jobCard.client_id) {
+      await supabaseAdmin.from('elec_clients').update({ email }).eq('id', jobCard.client_id)
+    }
 
     const cardMaterials: { qty: number; unit_price: number | null }[] = card.materials ?? []
     const totalExclVat = cardMaterials.reduce((s: number, m: { qty: number; unit_price: number | null }) =>
