@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { reverseGeocode } from '@/lib/reverse-geocode'
 import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
   ClipboardList, ChevronRight, Calendar, Home, Briefcase,
@@ -63,6 +64,15 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
   const [clockStatus, setClockStatus] = useState<'idle' | 'locating' | 'punching' | 'done' | 'error'>('idle')
   const [clockMsg, setClockMsg] = useState('')
   const [gpsBlocked, setGpsBlocked] = useState(false)
+  const [lastPunchAddress, setLastPunchAddress] = useState<string | null>(null)
+
+  // Geocode the most recent punch's location on load
+  useEffect(() => {
+    const p = initialPunches[0]
+    if (p?.latitude && p.longitude) {
+      void reverseGeocode(p.latitude, p.longitude).then(addr => { if (addr) setLastPunchAddress(addr) })
+    }
+  }, []) // eslint-disable-line
 
   // New job modal
   const [showNewJob, setShowNewJob] = useState(false)
@@ -118,6 +128,7 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
       if (!res.ok || !data.ok) { setClockStatus('error'); setClockMsg(data.error ?? 'Failed'); return }
       setIsClockedIn(punchType === 'clock_in')
       if (data.punch) setPunches(prev => [data.punch!, ...prev])
+      if (data.address) setLastPunchAddress(data.address)
       setClockStatus('done')
       const locationTag = data.address ? ` · ${data.address}` : latitude ? ' · GPS ✓' : ' · no GPS'
       setClockMsg((punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓') + locationTag)
@@ -214,10 +225,16 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
             <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
               <div className="px-5 pt-5 pb-2">
                 {punches[0] && (
-                  <p className="text-xs mb-1" style={{ color: S.muted }}>
-                    Last: {punches[0].punch_type === 'clock_in' ? 'Clocked in' : 'Clocked out'} at {fmtTime(punches[0].punched_at)}
-                    {punches[0].latitude && <span> · <MapPin size={9} className="inline" /> GPS</span>}
-                  </p>
+                  <div className="mb-1">
+                    <p className="text-xs" style={{ color: S.muted }}>
+                      Last: {punches[0].punch_type === 'clock_in' ? 'Clocked in' : 'Clocked out'} at {fmtTime(punches[0].punched_at)}
+                    </p>
+                    {lastPunchAddress && (
+                      <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: S.accent }}>
+                        <MapPin size={10} className="flex-shrink-0" />{lastPunchAddress}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
               <div className="px-5 pb-5">
