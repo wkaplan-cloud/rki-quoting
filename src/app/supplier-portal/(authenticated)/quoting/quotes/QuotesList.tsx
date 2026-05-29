@@ -237,7 +237,7 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
   const [quotes] = useState(initialQuotes)
   const [archivedQuotes, setArchivedQuotes] = useState(initialArchivedQuotes)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ElecQuoteStatus | ''>('')
+  const [statusFilter, setStatusFilter] = useState<ElecQuoteStatus | 'all'>('all')
   const [showNewModal, setShowNewModal] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [unarchiving, setUnarchiving] = useState<string | null>(null)
@@ -254,57 +254,69 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
       q.project_name.toLowerCase().includes(search.toLowerCase()) ||
       q.quote_number.toLowerCase().includes(search.toLowerCase()) ||
       (q.client?.client_name ?? '').toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = !statusFilter || q.status === statusFilter
+    const matchesStatus = statusFilter === 'all' || q.status === statusFilter
     return matchesSearch && matchesStatus
   })
 
+  const counts: Record<string, number> = { all: quotes.length }
+  quotes.forEach(q => { counts[q.status] = (counts[q.status] ?? 0) + 1 })
+
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold" style={{ color: S.text }}>Quotes</h1>
-          <p className="text-sm mt-0.5" style={{ color: S.muted }}>{quotes.length} quote{quotes.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs mt-0.5" style={{ color: S.muted }}>{quotes.length} total</p>
         </div>
         <button onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold"
-          style={{ background: S.accent }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold"
+          style={{ background: S.accent }}>
           <Plus size={15} /> New Quote
         </button>
       </div>
 
-      {/* Filters */}
-      {quotes.length > 0 && (
-        <div className="flex gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: S.muted }} />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search quotes…"
-              className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none"
-              style={{ background: S.card, border: `1px solid ${S.border}`, color: S.text }} />
-          </div>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as ElecQuoteStatus | '')}
-            className="px-3.5 py-2 text-sm rounded-xl outline-none"
-            style={{ background: S.card, border: `1px solid ${S.border}`, color: statusFilter ? S.text : S.muted }}>
-            <option value="">All statuses</option>
-            {Object.entries(STATUS_CONFIG).map(([v, c]) => <option key={v} value={v}>{c.label}</option>)}
-          </select>
+      {/* Status tabs */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+        {(['all', 'draft', 'quoted', 'approved', 'in_progress', 'completed'] as const).map(s => {
+          const cfg = s === 'all' ? null : STATUS_CONFIG[s]
+          const active = statusFilter === s
+          return (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+              style={{
+                background: active ? S.accent : S.card,
+                color: active ? '#fff' : S.muted,
+                border: `1px solid ${active ? S.accent : S.border}`,
+              }}>
+              {s === 'all' ? 'All' : cfg!.label}
+              <span className="text-[10px] opacity-70">{counts[s] ?? 0}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Search */}
+      <div className="mb-5">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: S.muted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search quotes…"
+            className="w-full pl-9 pr-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: S.card, border: `1px solid ${S.border}`, color: S.text }} />
         </div>
-      )}
+      </div>
 
       {/* Empty state */}
       {quotes.length === 0 && (
-        <div className="rounded-2xl py-20 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <FileText size={36} className="mx-auto mb-3" style={{ color: S.border }} />
-          <p className="font-semibold mb-1" style={{ color: S.text }}>No quotes yet</p>
-          <p className="text-sm mb-5" style={{ color: S.muted }}>Create your first quote to get started</p>
-          <button onClick={() => setShowNewModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold"
-            style={{ background: S.accent }}>
-            <Plus size={14} /> New Quote
-          </button>
+        <div className="rounded-2xl py-16 flex flex-col items-center gap-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <FileText size={32} style={{ color: S.border }} />
+          <p className="text-sm" style={{ color: S.muted }}>No quotes yet</p>
+          <p className="text-xs" style={{ color: S.muted }}>Create your first quote to get started.</p>
         </div>
       )}
 
@@ -315,41 +327,44 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
             const st = STATUS_CONFIG[q.status]
             return (
               <button key={q.id} onClick={() => router.push(`/supplier-portal/quoting/quotes/${q.id}`)}
-                className="w-full flex items-center gap-4 px-5 py-4 text-left transition-colors"
-                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
-                onMouseEnter={e => e.currentTarget.style.background = S.bg}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                 {/* Icon */}
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(58,124,165,0.08)' }}>
-                  <FileText size={16} style={{ color: S.accent }} />
+                  style={{ background: st.bg }}>
+                  <FileText size={15} style={{ color: st.color }} />
                 </div>
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <p className="font-semibold text-sm truncate" style={{ color: S.text }}>{q.project_name}</p>
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                    <span className="text-xs font-mono" style={{ color: S.muted }}>{q.quote_number}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
                       style={{ background: st.bg, color: st.color }}>{st.label}</span>
                   </div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-xs font-mono" style={{ color: S.muted }}>{q.quote_number}</span>
+                  <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                     {q.client && (
-                      <span className="text-xs flex items-center gap-1" style={{ color: S.muted }}>
+                      <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}>
                         <User size={10} />{q.client.client_name}
                       </span>
                     )}
-                    {q.quoted_date && (
-                      <span className="text-xs flex items-center gap-1" style={{ color: S.muted }}>
-                        <Calendar size={10} />{q.quoted_date}
-                      </span>
+                    {q.created_by_name && (
+                      <span className="text-xs" style={{ color: S.muted }}>by {q.created_by_name}</span>
                     )}
-                    <span className="text-xs flex items-center gap-1" style={{ color: S.muted }}>
-                      Created {new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      {q.created_by_name && ` by ${q.created_by_name}`}
-                    </span>
                   </div>
                 </div>
-                <ChevronRight size={16} style={{ color: S.border, flexShrink: 0 }} />
+                {/* Date + arrow */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-xs" style={{ color: S.muted }}>
+                      {q.quoted_date ? fmtDate(q.quoted_date) : fmtDate(q.created_at)}
+                    </p>
+                    <p className="text-[10px] flex items-center justify-end gap-1 mt-0.5" style={{ color: S.muted }}>
+                      <Calendar size={9} />{q.quoted_date ? 'Quoted' : 'Created'}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} style={{ color: S.muted }} />
+                </div>
               </button>
             )
           })}
