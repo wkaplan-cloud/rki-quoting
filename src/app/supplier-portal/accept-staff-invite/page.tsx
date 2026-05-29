@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -12,10 +13,12 @@ const S = {
 function AcceptInviteContent() {
   const params = useSearchParams()
   const router = useRouter()
+  const supabase = createClient()
   const token = params.get('token') ?? ''
 
   const [status, setStatus] = useState<'loading' | 'form' | 'submitting' | 'done' | 'error'>('loading')
   const [staffName, setStaffName] = useState('')
+  const [staffEmail, setStaffEmail] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -25,9 +28,10 @@ function AcceptInviteContent() {
     if (!token) { setStatus('error'); setError('Invalid invite link'); return }
     void fetch(`/api/supplier-portal/staff/accept-invite/validate?token=${token}`)
       .then(r => r.json())
-      .then((data: { name?: string; company?: string; error?: string }) => {
+      .then((data: { name?: string; email?: string; company?: string; error?: string }) => {
         if (data.error) { setStatus('error'); setError(data.error); return }
         setStaffName(data.name ?? '')
+        setStaffEmail(data.email ?? '')
         setCompanyName(data.company ?? '')
         setStatus('form')
       })
@@ -38,6 +42,8 @@ function AcceptInviteContent() {
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     if (password !== confirm) { setError('Passwords do not match'); return }
     setStatus('submitting'); setError('')
+
+    // Create / update the auth account
     const res = await fetch('/api/supplier-portal/staff/accept-invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,8 +51,21 @@ function AcceptInviteContent() {
     })
     const data = await res.json() as { ok?: boolean; error?: string }
     if (!res.ok || !data.ok) { setStatus('form'); setError(data.error ?? 'Failed'); return }
+
+    // Sign in immediately so there's an active session before redirecting
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: staffEmail,
+      password,
+    })
+    if (signInError) {
+      // Account was created but sign-in failed — send them to login with a hint
+      setStatus('done')
+      setTimeout(() => router.push('/supplier-portal/login'), 2000)
+      return
+    }
+
     setStatus('done')
-    setTimeout(() => router.push('/supplier-portal/staff-home'), 2000)
+    setTimeout(() => router.push('/supplier-portal/staff-home'), 1500)
   }
 
   return (

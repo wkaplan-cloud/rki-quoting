@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
 
   const { data: staff } = await supabaseAdmin
     .from('elec_staff')
-    .select('id, name, invite_token, invite_sent_at, portal_account_id')
+    .select('id, name, email, invite_token, invite_sent_at, portal_account_id')
     .eq('invite_token', token)
     .single()
 
@@ -28,5 +28,5 @@ export async function GET(req: NextRequest) {
     .eq('id', staff.portal_account_id)
     .single()
 
-  return NextResponse.json({ name: staff.name, company: account?.company_name ?? '' })
+  return NextResponse.json({ name: staff.name, email: staff.email ?? '', company: account?.company_name ?? '' })
 }
