@@ -80,7 +80,6 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
           table: 'elec_notifications',
           filter: `portal_account_id=eq.${d.portalAccountId}`,
         }, () => {
-          // Refetch authoritative count whenever a notification is updated (e.g. marked read)
           if (!alive) return
           fetchCount().then(d2 => { if (alive) setNotificationCount(d2.count ?? 0) })
         })
@@ -89,8 +88,14 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
       channelRef.current = channel
     })
 
+    // Poll every 60 s as a fallback — corrects any count drift if Realtime events are missed
+    const poll = setInterval(() => {
+      if (alive) fetchCount().then(d => { if (alive) setNotificationCount(d.count ?? 0) })
+    }, 60_000)
+
     return () => {
       alive = false
+      clearInterval(poll)
       if (channelRef.current) void supabase.removeChannel(channelRef.current)
     }
   }, []) // eslint-disable-line

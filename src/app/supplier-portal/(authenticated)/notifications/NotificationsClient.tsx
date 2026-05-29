@@ -85,11 +85,8 @@ export function NotificationsClient({ portalAccountId, initialNotifications }: P
           <button
             onClick={async () => {
               const now = new Date().toISOString()
-              await supabase
-                .from('elec_notifications')
-                .update({ read_at: now })
-                .eq('portal_account_id', portalAccountId)
-                .is('read_at', null)
+              // Use server route so supabaseAdmin bypasses RLS
+              await fetch('/api/supplier-portal/notifications/mark-read', { method: 'POST' })
               setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: now }))
             }}
             className="text-xs px-3 py-1.5 rounded-lg"
