@@ -50,20 +50,6 @@ export function NotificationsClient({ portalAccountId, initialNotifications }: P
   const supabase = createClient()
   const [notifications, setNotifications] = useState<ElecNotification[]>(initialNotifications)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const isFirstRender = useRef(true)
-
-  // Mark all as read on mount
-  useEffect(() => {
-    const unread = initialNotifications.filter(n => !n.read_at)
-    if (unread.length > 0) {
-      void supabase
-        .from('elec_notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('portal_account_id', portalAccountId)
-        .is('read_at', null)
-    }
-    setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: new Date().toISOString() }))
-  }, []) // eslint-disable-line
 
   // Realtime subscription
   useEffect(() => {
