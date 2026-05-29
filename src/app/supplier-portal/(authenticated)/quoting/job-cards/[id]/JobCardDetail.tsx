@@ -78,7 +78,7 @@ type Tab = 'details' | 'report' | 'materials' | 'photos' | 'signature'
 export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, sageConnected = false }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
-  const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'qs_name' | 'qs_email'>[]>(initialClients)
+  const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'qs_name' | 'qs_email'>[]>(initialClients)
   const initClient = initialClients.find(c => c.id === initial.client_id)
   const [clientCompany, setClientCompany] = useState(initClient?.company ?? '')
   const [clientQsName, setClientQsName] = useState(initClient?.qs_name ?? '')
@@ -550,12 +550,13 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     client_id: id,
                     client_name: name || null,
                     client_email: existing?.email ?? prev.client_email,
+                    location: prev.location || existing?.address || prev.location,
                   }))
                   setClientCompany(existing?.company ?? '')
                   setClientQsName(existing?.qs_name ?? '')
                   setClientQsEmail(existing?.qs_email ?? '')
                 }}
-                onNewClient={c => setClients(prev => [...prev, { ...c, email: null, qs_name: null, qs_email: null }])}
+                onNewClient={c => setClients(prev => [...prev, { ...c, email: null, address: null, qs_name: null, qs_email: null }])}
               />
             </Field>
             <Inp label="Client Email (for sending)" val={card.client_email} cb={v => setField('client_email', v || null)} placeholder="client@example.com" />

@@ -349,7 +349,7 @@ interface Props {
   quote: ElecQuote & { client: ElecClient | null }
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
-  clients: Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'qs_name' | 'qs_email'>[]
+  clients: Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'qs_name' | 'qs_email'>[]
   variations: ElecVariationOrder[]
   snags: ElecSnagItem[]
   coc: ElecCOC | null
@@ -821,14 +821,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               portalAccountId={portalAccountId}
               disabled={false}
               onChange={(id, name) => {
-                setQ(p => ({ ...p, client_id: id }))
-                setClientDisplay(name)
                 const found = id ? clients.find(c => c.id === id) : null
+                setQ(p => ({ ...p, client_id: id, project_address: p.project_address || found?.address || p.project_address }))
+                setClientDisplay(name)
                 setClientCompany(found?.company ?? '')
                 setClientQsName(found?.qs_name ?? '')
                 setClientQsEmail(found?.qs_email ?? '')
                 if (id && !clients.find(c => c.id === id)) {
-                  setClients(cs => [...cs, { id, client_name: name, company: null, email: null, qs_name: null, qs_email: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))
+                  setClients(cs => [...cs, { id, client_name: name, company: null, email: null, address: null, qs_name: null, qs_email: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))
                 }
               }}
             />
