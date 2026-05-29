@@ -13,6 +13,30 @@ export const maxDuration = 60
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+// For public Supabase photos, use the CDN render endpoint (800px wide, 60% quality)
+// instead of the admin storage API — ~95% smaller, far faster to download.
+// Falls back to fetchLogoBase64 if the render endpoint is unavailable.
+async function fetchPhotoForPDF(url: string): Promise<string | null> {
+  const m = url.match(/^(https:\/\/[^/]+)\/storage\/v1\/object\/public\/(.+?)(\?.*)?$/)
+  if (m) {
+    const renderUrl = `${m[1]}/storage/v1/render/image/public/${m[2]}?width=800&quality=60`
+    try {
+      const ctrl = new AbortController()
+      const t = setTimeout(() => ctrl.abort(), 12000)
+      const res = await fetch(renderUrl, { signal: ctrl.signal })
+      clearTimeout(t)
+      if (res.ok) {
+        const ct = (res.headers.get('content-type') ?? 'image/jpeg').split(';')[0]
+        if (!ct.includes('svg')) {
+          const buf = await res.arrayBuffer()
+          return `data:${ct};base64,${Buffer.from(buf).toString('base64')}`
+        }
+      }
+    } catch { /* fall through to full-size fetch */ }
+  }
+  return fetchLogoBase64(url)
+}
+
 async function resolveAccount(userId: string) {
   const { data: own } = await supabaseAdmin
     .from('supplier_portal_accounts').select('id, company_name, email, logo_url')
@@ -59,12 +83,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ])
     if (!jobCard) return NextResponse.json({ error: 'Job card not found' }, { status: 404 })
 
-    const rawPhotos = (photosData ?? []).filter(p => p.url !== jobCard.client_signature_url)
+    // Only fetch the photos the PDF will actually render (9 max)
+    const rawPhotos = (photosData ?? []).filter(p => p.url !== jobCard.client_signature_url).slice(0, 9)
 
-    // Pre-fetch all images concurrently so renderToBuffer gets data URIs and makes zero network calls
+    // Pre-fetch all images concurrently. Photos use the CDN render endpoint for small JPEGs;
+    // the signature uses the full fetchLogoBase64 path (may be a private signed URL).
     const [photosWithBase64, signatureBase64] = await Promise.all([
       Promise.all(rawPhotos.map(p =>
-        fetchLogoBase64(p.url).then(b64 => ({ ...p, url: b64 ?? p.url }))
+        fetchPhotoForPDF(p.url).then(b64 => ({ ...p, url: b64 ?? p.url }))
       )),
       jobCard.client_signature_url ? fetchLogoBase64(jobCard.client_signature_url) : Promise.resolve(null),
     ])
