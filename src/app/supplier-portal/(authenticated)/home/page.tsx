@@ -27,6 +27,7 @@ export default async function SupplierHomePage() {
     .select('id, status, sent_at, token, session:sourcing_sessions(id, title, status, org_id, request_number, project:projects(project_name))')
     .or(`portal_account_id.eq.${account.id},email.eq.${account.email}`)
     .order('created_at', { ascending: false })
+    .limit(200)
 
   const allRows = ssRows ?? []
   const ssIds = allRows.map((r: any) => r.id)

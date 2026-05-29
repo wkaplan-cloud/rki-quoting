@@ -16,10 +16,11 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
+    const [{ data: project }, { data: lineItems }, { data: settings }, { data: stages }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(client_name)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
       supabase.from('settings').select('vat_rate, accounts_email, business_name').maybeSingle(),
+      supabase.from('project_stages').select('*').eq('project_id', projectId).maybeSingle(),
     ])
 
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -90,10 +91,22 @@ export async function POST(req: NextRequest) {
     const saved = result.Invoices?.[0]
     const xeroInvoiceId = saved?.InvoiceID
 
-    await supabase.from('projects').update({
-      xero_invoice_id: xeroInvoiceId,
-      xero_pushed_at: new Date().toISOString(),
-    }).eq('id', projectId)
+    const pushedAt = new Date().toISOString()
+    const { statusFromStages } = await import('@/lib/types')
+    const mergedStages = { ...(stages ?? { project_id: projectId }), final_invoice_sent: true }
+    const newProjectStatus = statusFromStages(mergedStages as Parameters<typeof statusFromStages>[0])
+
+    await Promise.all([
+      supabase.from('projects').update({
+        xero_invoice_id: xeroInvoiceId,
+        xero_pushed_at: pushedAt,
+        status: newProjectStatus,
+      }).eq('id', projectId),
+      supabase.from('project_stages').upsert(
+        { project_id: projectId, final_invoice_sent: true, final_invoice_sent_at: pushedAt },
+        { onConflict: 'project_id' }
+      ),
+    ])
 
     await sendAccountingNotification({
       platform: 'xero',

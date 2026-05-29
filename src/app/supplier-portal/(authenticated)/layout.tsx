@@ -13,31 +13,31 @@ export default async function SupplierPortalLayout({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  // Primary owner lookup
-  let account = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id, company_name, email, plan, subscription_status, trial_ends_at, supplier_category')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
-    .then(r => r.data)
-
-  // Additional admin: look up via portal_org_members
-  if (!account) {
-    const { data: membership } = await supabaseAdmin
+  // Fire owner + org_member lookups in parallel
+  const [{ data: ownerAccount }, { data: membership }] = await Promise.all([
+    supabaseAdmin
+      .from('supplier_portal_accounts')
+      .select('id, company_name, email, plan, subscription_status, trial_ends_at, supplier_category')
+      .eq('auth_user_id', user.id)
+      .maybeSingle(),
+    supabaseAdmin
       .from('portal_org_members')
       .select('portal_account_id')
       .eq('auth_user_id', user.id)
       .not('accepted_at', 'is', null)
-      .maybeSingle()
+      .maybeSingle(),
+  ])
 
-    if (membership) {
-      account = await supabaseAdmin
-        .from('supplier_portal_accounts')
-        .select('id, company_name, email, plan, subscription_status, trial_ends_at, supplier_category')
-        .eq('id', membership.portal_account_id)
-        .maybeSingle()
-        .then(r => r.data)
-    }
+  let account = ownerAccount
+
+  // Additional admin: resolve account via org membership
+  if (!account && membership) {
+    account = await supabaseAdmin
+      .from('supplier_portal_accounts')
+      .select('id, company_name, email, plan, subscription_status, trial_ends_at, supplier_category')
+      .eq('id', membership.portal_account_id)
+      .maybeSingle()
+      .then(r => r.data)
   }
 
   // Staff member: redirect to staff view
