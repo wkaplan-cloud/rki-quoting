@@ -119,6 +119,7 @@ function PieceModal({
       newFiles.forEach(f => formData.append('files', f))
       const res = await fetch(`/api/pieces/${pieceId}/images`, { method: 'POST', body: formData })
       const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Image upload failed')
       return json.all_urls ?? imageUrls
     } finally {
       setUploadingImages(false)

@@ -158,7 +158,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   async function handleDelete() {
     if (!confirm('Delete this job card? This cannot be undone.')) return
     setDeleting(true)
-    await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, { method: 'DELETE' })
+    if (!res.ok) { const d = await res.json(); alert(d.error ?? 'Delete failed'); setDeleting(false); return }
     router.push('/supplier-portal/quoting/job-cards')
   }
 
@@ -180,7 +181,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   }
 
   async function deleteMaterial(matId: string) {
-    await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/materials/${matId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/materials/${matId}`, { method: 'DELETE' })
+    if (!res.ok) { alert('Failed to delete material'); return }
     setCard(c => ({ ...c, materials: (c.materials ?? []).filter(m => m.id !== matId) }))
   }
 
@@ -206,7 +208,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   }
 
   async function deletePhoto(photoId: string) {
-    await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos/${photoId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos/${photoId}`, { method: 'DELETE' })
+    if (!res.ok) { alert('Failed to delete photo'); return }
     setCard(c => ({ ...c, photos: (c.photos ?? []).filter(p => p.id !== photoId) }))
   }
 

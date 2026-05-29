@@ -244,7 +244,8 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
 
   async function unarchive(id: string) {
     setUnarchiving(id)
-    await supabase.from('elec_quotes').update({ archived_at: null }).eq('id', id)
+    const { error } = await supabase.from('elec_quotes').update({ archived_at: null }).eq('id', id)
+    if (error) { alert(error.message); setUnarchiving(null); return }
     setArchivedQuotes(prev => prev.filter(q => q.id !== id))
     setUnarchiving(null)
   }

@@ -385,6 +385,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError]   = useState('')
   const [activeTab, setActiveTab]   = useState<QuoteTab>('quote')
+  const [transitioning, setTransitioning] = useState(false)
 
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
   const showTabs = ['in_progress', 'completed'].includes(q.status)
@@ -454,34 +455,37 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         notes: q.notes, quoted_date: q.quoted_date, expected_completion_date: q.expected_completion_date,
       }).eq('id', q.id)
 
-      if (deletedSectionIds.length > 0) await supabase.from('elec_quote_sections').delete().in('id', deletedSectionIds)
-      if (deletedItemIds.length > 0)    await supabase.from('elec_quote_line_items').delete().in('id', deletedItemIds)
+      await Promise.all([
+        deletedSectionIds.length > 0 ? supabase.from('elec_quote_sections').delete().in('id', deletedSectionIds) : Promise.resolve(),
+        deletedItemIds.length > 0    ? supabase.from('elec_quote_line_items').delete().in('id', deletedItemIds)   : Promise.resolve(),
+      ])
 
-      for (let si = 0; si < sections.length; si++) {
-        const s = sections[si]
-        await supabase.from('elec_quote_sections').upsert({ id: s.id, quote_id: q.id, title: s.title, sort_order: si })
-        for (let ii = 0; ii < s.items.length; ii++) {
-          const item = s.items[ii]
-          await supabase.from('elec_quote_line_items').upsert({
-            id: item.id, quote_id: q.id, section_id: s.id, description: item.description,
-            unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
-            subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
-            quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
-            material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
-            markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
-          })
-        }
+      if (sections.length > 0) {
+        await supabase.from('elec_quote_sections').upsert(
+          sections.map((s, si) => ({ id: s.id, quote_id: q.id, title: s.title, sort_order: si }))
+        )
       }
-      for (let ii = 0; ii < freeItems.length; ii++) {
-        const item = freeItems[ii]
-        await supabase.from('elec_quote_line_items').upsert({
+
+      const allItemRows = [
+        ...sections.flatMap((s) => s.items.map((item, ii) => ({
+          id: item.id, quote_id: q.id, section_id: s.id, description: item.description,
+          unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
+          subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
+          quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
+          material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
+          markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
+        }))),
+        ...freeItems.map((item, ii) => ({
           id: item.id, quote_id: q.id, section_id: null, description: item.description,
           unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
           subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
           quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
           material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
           markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
-        })
+        })),
+      ]
+      if (allItemRows.length > 0) {
+        await supabase.from('elec_quote_line_items').upsert(allItemRows)
       }
 
       // Sync item library in background
@@ -518,14 +522,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   // ── Status transitions ───────────────────────────────────────────────────────
   async function transition(newStatus: ElecQuoteStatus, extra?: Partial<typeof q>) {
+    setTransitioning(true)
     const update = { status: newStatus, ...extra }
-    await supabase.from('elec_quotes').update(update).eq('id', q.id)
+    const { error } = await supabase.from('elec_quotes').update(update).eq('id', q.id)
+    setTransitioning(false)
+    if (error) { alert(error.message); return }
     setQ(prev => ({ ...prev, ...update }))
   }
 
   async function archiveQuote() {
     if (!confirm('Archive this draft? It will be hidden from your quotes list. You can contact support to recover it within 60 days.')) return
-    await supabase.from('elec_quotes').update({ archived_at: new Date().toISOString() }).eq('id', q.id)
+    const { error } = await supabase.from('elec_quotes').update({ archived_at: new Date().toISOString() }).eq('id', q.id)
+    if (error) { alert(error.message); return }
     router.push('/supplier-portal/quoting/quotes')
   }
 
@@ -601,9 +609,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </a>
         <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
         {q.status === 'in_progress' ? (
-          <button
-            onClick={() => { if (confirm('Mark this project as completed?')) transition('completed') }}
-            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full transition-opacity hover:opacity-75"
+          <button disabled={transitioning}
+            onClick={() => { if (confirm('Mark this project as completed?')) void transition('completed') }}
+            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full transition-opacity hover:opacity-75 disabled:opacity-50"
             style={{ background: st.bg, color: st.color }}>
             {st.label} <span style={{ fontSize: 10 }}>▾</span>
           </button>
@@ -965,8 +973,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         <span className="text-sm font-medium flex-1" style={{ color: S.muted }}>Status</span>
         {q.status === 'draft' && (
           <>
-            <button onClick={() => void archiveQuote()}
-              className="px-4 py-2 rounded-lg text-sm font-semibold"
+            <button onClick={() => void archiveQuote()} disabled={transitioning}
+              className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
               style={{ background: '#FEF2F2', color: S.danger }}>
               Archive
             </button>
@@ -983,8 +991,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </>
         )}
         {q.status === 'quoted' && <>
-          <button onClick={() => transition('draft')}
-            className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: S.bg, color: S.muted }}>
+          <button onClick={() => void transition('draft')} disabled={transitioning}
+            className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50" style={{ background: S.bg, color: S.muted }}>
             ← Back to Draft
           </button>
           <button onClick={openSendModal}
@@ -992,14 +1000,15 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             style={{ background: 'rgba(58,124,165,0.1)', color: S.accent, border: `1px solid rgba(58,124,165,0.25)` }}>
             <Send size={13} /> Send Again
           </button>
-          <button onClick={() => transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: S.green }}>
+          <button onClick={() => void transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
+            disabled={transitioning}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: S.green }}>
             Mark Approved →
           </button>
         </>}
         {q.status === 'approved' && (
-          <button onClick={() => transition('in_progress')}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: S.gold }}>
+          <button onClick={() => void transition('in_progress')} disabled={transitioning}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: S.gold }}>
             Start Project →
           </button>
         )}
@@ -1008,23 +1017,23 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <span className="text-sm flex-1" style={{ color: S.muted }}>
               Project in progress — use the Claims tab to invoice
             </span>
-            <button
-              onClick={() => { if (confirm('Cancel this project? This cannot be undone.')) transition('cancelled') }}
-              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
+            <button disabled={transitioning}
+              onClick={() => { if (confirm('Cancel this project? This cannot be undone.')) void transition('cancelled') }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap disabled:opacity-50"
               style={{ background: '#FEF2F2', color: S.danger }}>
               Cancel Project
             </button>
-            <button
-              onClick={() => { if (confirm('Mark this project as completed?')) transition('completed') }}
-              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap"
+            <button disabled={transitioning}
+              onClick={() => { if (confirm('Mark this project as completed?')) void transition('completed') }}
+              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap disabled:opacity-50"
               style={{ background: 'rgba(22,101,52,0.1)', color: '#166534', border: '1px solid rgba(22,101,52,0.2)' }}>
               Mark Complete ✓
             </button>
           </div>
         )}
         {(q.status === 'quoted' || q.status === 'approved') && (
-          <button onClick={() => { if (confirm('Cancel this quote?')) transition('cancelled') }}
-            className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: '#FEF2F2', color: S.danger }}>
+          <button disabled={transitioning} onClick={() => { if (confirm('Cancel this quote?')) void transition('cancelled') }}
+            className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50" style={{ background: '#FEF2F2', color: S.danger }}>
             Cancel
           </button>
         )}

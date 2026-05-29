@@ -31,6 +31,7 @@ export function SnagTab({ quoteId, initialSnags }: Props) {
   const [formNotes, setFormNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [advancing, setAdvancing] = useState<Set<string>>(new Set())
 
   async function handleCreate() {
     if (!formDesc.trim()) { setError('Description required'); return }
@@ -56,9 +57,12 @@ export function SnagTab({ quoteId, initialSnags }: Props) {
   async function advance(snag: ElecSnagItem) {
     const st = SNAG_STATUS[snag.status]
     if (!st.next) return
+    setAdvancing(prev => new Set(prev).add(snag.id))
     const patch: Partial<ElecSnagItem> = { status: st.next }
     if (st.next === 'resolved') patch.resolved_date = new Date().toISOString().split('T')[0]
-    await supabase.from('elec_snag_items').update(patch).eq('id', snag.id)
+    const { error: err } = await supabase.from('elec_snag_items').update(patch).eq('id', snag.id)
+    setAdvancing(prev => { const s = new Set(prev); s.delete(snag.id); return s })
+    if (err) { setError(err.message); return }
     setSnags(prev => prev.map(s => s.id === snag.id ? { ...s, ...patch } : s))
   }
 
@@ -182,10 +186,10 @@ export function SnagTab({ quoteId, initialSnags }: Props) {
                   {snag.notes && <p className="text-xs mt-1 italic" style={{ color: S.muted }}>{snag.notes}</p>}
                 </div>
                 {st.next && (
-                  <button onClick={() => advance(snag)}
-                    className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+                  <button onClick={() => void advance(snag)} disabled={advancing.has(snag.id)}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
                     style={{ background: st.nextColor }}>
-                    {st.nextLabel}
+                    {advancing.has(snag.id) ? '…' : st.nextLabel}
                   </button>
                 )}
               </div>

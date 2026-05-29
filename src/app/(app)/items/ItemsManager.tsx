@@ -14,8 +14,10 @@ export function ItemsManager({ items: initial }: { items: Item[] }) {
 
   async function add() {
     if (!newName.trim()) return
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: orgId } = await supabase.rpc('get_current_org_id')
+    const [{ data: { user } }, { data: orgId }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.rpc('get_current_org_id'),
+    ])
     const { data, error } = await supabase.from('items').insert({ item_name: newName.trim(), user_id: user!.id, org_id: orgId }).select().single()
     if (error) { toast.error(error.code === '23505' ? 'An item with this name already exists' : error.message); return }
     setItems(i => [...i, data].sort((a, b) => a.item_name.localeCompare(b.item_name)))
@@ -25,7 +27,8 @@ export function ItemsManager({ items: initial }: { items: Item[] }) {
 
   async function save(id: string) {
     if (!editName.trim()) return
-    await supabase.from('items').update({ item_name: editName.trim() }).eq('id', id)
+    const { error } = await supabase.from('items').update({ item_name: editName.trim() }).eq('id', id)
+    if (error) { toast.error(error.message); return }
     setItems(i => i.map(item => item.id === id ? { ...item, item_name: editName.trim() } : item))
     setEditId(null)
     toast.success('Item updated')
@@ -33,7 +36,8 @@ export function ItemsManager({ items: initial }: { items: Item[] }) {
 
   async function remove(id: string) {
     if (!confirm('Delete this item?')) return
-    await supabase.from('items').delete().eq('id', id)
+    const { error } = await supabase.from('items').delete().eq('id', id)
+    if (error) { toast.error(error.message); return }
     setItems(i => i.filter(item => item.id !== id))
     toast.success('Item deleted')
   }
