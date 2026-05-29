@@ -88,7 +88,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       quote={quote as ElecQuote & { client: ElecClient | null }}
       sections={(sections ?? []) as ElecQuoteSection[]}
       items={(items ?? []) as ElecQuoteLineItem[]}
-      clients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'qs_name' | 'qs_email'>[]}
+      clients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'qs_name' | 'qs_email'>[]}
       variations={(variations ?? []) as ElecVariationOrder[]}
       snags={(snags ?? []) as ElecSnagItem[]}
       coc={(coc ?? null) as ElecCOC | null}
