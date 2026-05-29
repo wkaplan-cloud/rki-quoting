@@ -66,10 +66,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .single()
 
     if (project) {
-      const [{ data: settings }, { data: authUser }] = await Promise.all([
+      const [{ data: settings }, { data: authUser }, { data: membership }] = await Promise.all([
         supabaseAdmin.from('settings').select('business_name, email_from').eq('user_id', project.user_id).maybeSingle(),
         supabaseAdmin.auth.admin.getUserById(project.user_id),
+        supabaseAdmin.from('org_members').select('org_id').eq('user_id', project.user_id).eq('status', 'active').maybeSingle(),
       ])
+
+      // Insert in-app notification for quote approval/decline
+      if (membership?.org_id) {
+        const clientLabel = client_name?.trim() || 'Client'
+        await supabaseAdmin.from('org_notifications').insert({
+          org_id: membership.org_id,
+          type: decision === 'approved' ? 'quote_approved' : 'quote_declined',
+          title: `${clientLabel} ${decision} ${project.project_number}`,
+          body: `${clientLabel} ${decision} the quote for ${project.project_name}${comment?.trim() ? ` — "${comment.trim()}"` : ''}`,
+          metadata: { project_id: approval.project_id, project_number: project.project_number, decision },
+        })
+      }
 
       const notifyEmail = settings?.email_from?.trim() || authUser?.user?.email
       const studioName = settings?.business_name ?? 'Your studio'

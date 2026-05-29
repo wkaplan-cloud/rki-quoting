@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sageGet } from '@/lib/sage'
 
 export async function POST(req: NextRequest) {
@@ -10,6 +11,8 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const { data: orgId } = await supabase.rpc('get_current_org_id')
 
     const [{ data: project }, { data: stages }] = await Promise.all([
       supabase.from('projects').select('sage_invoice_id').eq('id', projectId).single(),
@@ -41,6 +44,16 @@ export async function POST(req: NextRequest) {
           { onConflict: 'project_id' }
         )
         depositReceivedAuto = true
+
+        if (orgId) {
+          await supabaseAdmin.from('org_notifications').insert({
+            org_id: orgId,
+            type: 'payment_deposit',
+            title: 'Deposit payment received',
+            body: `R${actualPaid.toFixed(2)} deposit detected on the Sage invoice`,
+            metadata: { project_id: projectId, amount: actualPaid },
+          })
+        }
       }
     }
 
@@ -52,6 +65,16 @@ export async function POST(req: NextRequest) {
           final_invoice_paid: true,
           final_invoice_paid_at: new Date().toISOString(),
         }).eq('project_id', projectId)
+
+        if (orgId) {
+          await supabaseAdmin.from('org_notifications').insert({
+            org_id: orgId,
+            type: 'payment_paid',
+            title: 'Invoice paid in full',
+            body: 'The Sage invoice has been marked as fully paid',
+            metadata: { project_id: projectId, sage_status: status },
+          })
+        }
       }
 
       // Derive and write new project status so the badge reflects payment

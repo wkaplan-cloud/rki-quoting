@@ -6,6 +6,7 @@ import { useState } from 'react'
 import {
   LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose,
 } from 'lucide-react'
+import { NotificationBell } from '@/components/NotificationBell'
 
 const mainLinks = [
   { href: '/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
@@ -106,6 +107,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                 {businessName}
               </span>
             )}
+            <NotificationBell />
           </div>
         </div>
 

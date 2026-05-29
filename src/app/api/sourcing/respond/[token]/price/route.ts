@@ -120,7 +120,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .eq('session_supplier_id', ss.id)
       .eq('status', 'pending')
 
-    if (!pending?.length) {
+    const supplierJustCompleted = !pending?.length && ss.status !== 'completed'
+    if (supplierJustCompleted) {
       await supabaseAdmin
         .from('sourcing_session_suppliers')
         .update({ status: 'completed' })
@@ -146,6 +147,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           .from('sourcing_sessions')
           .update({ status: 'in_progress' })
           .eq('id', sessionSS.session_id)
+      }
+
+      // Notify org when supplier completes all items (first time only)
+      if (sessionRow && supplierJustCompleted) {
+        await supabaseAdmin.from('org_notifications').insert({
+          org_id: sessionRow.org_id,
+          type: 'price_request_responded',
+          title: `${ss.supplier_name} completed price request`,
+          body: `${ss.supplier_name} has submitted prices for all requested items`,
+          metadata: { session_id: sessionRow.id, project_id: sessionRow.project_id ?? null },
+        })
       }
 
       // Audit log — supplier submitted a price
