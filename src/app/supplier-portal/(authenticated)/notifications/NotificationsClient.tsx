@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign } from 'lucide-react'
+import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin } from 'lucide-react'
 import type { ElecNotification } from '@/lib/elec-types'
 
 const S = {
@@ -106,11 +106,16 @@ export function NotificationsClient({ portalAccountId, initialNotifications }: P
               style={{ background: S.accent }}>{unreadCount}</span>
           )}
         </div>
-        {notifications.length > 0 && (
+        {unreadCount > 0 && (
           <button
             onClick={async () => {
-              await supabase.from('elec_notifications').update({ read_at: new Date().toISOString() }).eq('portal_account_id', portalAccountId).is('read_at', null)
-              setNotifications(prev => prev.map(n => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })))
+              const now = new Date().toISOString()
+              await supabase
+                .from('elec_notifications')
+                .update({ read_at: now })
+                .eq('portal_account_id', portalAccountId)
+                .is('read_at', null)
+              setNotifications(prev => prev.map(n => n.read_at ? n : { ...n, read_at: now }))
             }}
             className="text-xs px-3 py-1.5 rounded-lg"
             style={{ color: S.muted, background: S.bg, border: `1px solid ${S.border}` }}>
@@ -146,6 +151,20 @@ export function NotificationsClient({ portalAccountId, initialNotifications }: P
                     <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: S.muted }}>{fmtRelative(n.created_at)}</span>
                   </div>
                   {n.body && <p className="text-xs mt-0.5" style={{ color: S.muted }}>{n.body}</p>}
+                  {(() => {
+                    const lat = n.metadata?.latitude as number | undefined
+                    const lng = n.metadata?.longitude as number | undefined
+                    if (!lat || !lng) return null
+                    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`
+                    return (
+                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs mt-1"
+                        style={{ color: S.accent }}>
+                        <MapPin size={10} />
+                        {lat.toFixed(5)}, {lng.toFixed(5)}
+                      </a>
+                    )
+                  })()}
                 </div>
                 {isUnread && (
                   <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ background: S.accent }} />

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     // Resolve staff member from auth user
     const { data: staff } = await supabaseAdmin
       .from('elec_staff')
-      .select('id, portal_account_id, is_active')
+      .select('id, name, portal_account_id, is_active')
       .eq('auth_user_id', user.id)
       .single()
 
@@ -47,12 +47,13 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     // Create notification for admin
+    const gpsNote = latitude ? ` · GPS captured` : ''
     await supabaseAdmin.from('elec_notifications').insert({
       portal_account_id: staff.portal_account_id,
       type: punch_type,
-      title: punch_type === 'clock_in' ? 'Staff clocked in' : 'Staff clocked out',
-      body: `${punch_type === 'clock_in' ? 'Clocked in' : 'Clocked out'}${latitude ? ` · GPS captured` : ''}`,
-      metadata: { staff_id: staff.id, punch_id: punch.id, latitude, longitude },
+      title: `${staff.name} ${punch_type === 'clock_in' ? 'clocked in' : 'clocked out'}`,
+      body: `${punch_type === 'clock_in' ? 'Clocked in' : 'Clocked out'}${gpsNote}`,
+      metadata: { staff_id: staff.id, punch_id: punch.id, latitude: latitude ?? null, longitude: longitude ?? null },
     })
 
     return NextResponse.json({ ok: true, punch })

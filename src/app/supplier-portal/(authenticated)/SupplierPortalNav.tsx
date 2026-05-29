@@ -202,14 +202,6 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
                     <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
                       Notifications
                     </span>
-                    {notificationCount > 0 && (
-                      <span className={`${labelCls} ml-auto`}>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block text-white"
-                          style={{ background: '#DC2626' }}>
-                          {notificationCount > 99 ? '99+' : notificationCount}
-                        </span>
-                      </span>
-                    )}
                   </Link>
                 )
               })()}
