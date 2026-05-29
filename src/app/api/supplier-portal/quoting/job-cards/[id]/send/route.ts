@@ -41,23 +41,40 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const account = await resolveAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
-    const { data: jobCard } = await supabaseAdmin
-      .from('elec_job_cards')
-      .select(`*, staff:elec_staff(id,name,role,phone,email), client:elec_clients(id,client_name,email,contact_number)`)
-      .eq('id', id)
-      .eq('portal_account_id', account.id)
-      .single()
+    const [
+      { data: jobCard },
+      { data: materialsData },
+      { data: photosData },
+      { data: settings },
+      logoBase64,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('elec_job_cards')
+        .select(`*, staff:elec_staff(id,name,role,phone,email), client:elec_clients(id,client_name,email,contact_number)`)
+        .eq('id', id).eq('portal_account_id', account.id).single(),
+      supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
+      supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
+      supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle(),
+      account.logo_url ? fetchLogoBase64(account.logo_url) : Promise.resolve(null),
+    ])
     if (!jobCard) return NextResponse.json({ error: 'Job card not found' }, { status: 404 })
 
-    const { data: materials } = await supabaseAdmin
-      .from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at')
-    const { data: photos } = await supabaseAdmin
-      .from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at')
-    const { data: settings } = await supabaseAdmin
-      .from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle()
+    const rawPhotos = (photosData ?? []).filter(p => p.url !== jobCard.client_signature_url)
 
-    const card: ElecJobCard = { ...jobCard, materials: materials ?? [], photos: photos ?? [] }
-    const logoBase64 = account.logo_url ? await fetchLogoBase64(account.logo_url) : null
+    // Pre-fetch all images concurrently so renderToBuffer gets data URIs and makes zero network calls
+    const [photosWithBase64, signatureBase64] = await Promise.all([
+      Promise.all(rawPhotos.map(p =>
+        fetchLogoBase64(p.url).then(b64 => ({ ...p, url: b64 ?? p.url }))
+      )),
+      jobCard.client_signature_url ? fetchLogoBase64(jobCard.client_signature_url) : Promise.resolve(null),
+    ])
+
+    const card: ElecJobCard = {
+      ...jobCard,
+      materials: materialsData ?? [],
+      photos: photosWithBase64,
+      client_signature_url: signatureBase64 ?? jobCard.client_signature_url ?? null,
+    }
 
     const pdfBuffer = await renderToBuffer(
       createElement(JobCardPDF, {
