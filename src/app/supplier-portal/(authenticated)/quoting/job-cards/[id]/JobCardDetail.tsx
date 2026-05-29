@@ -304,7 +304,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     try {
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: sendMode === 'invoice' }),
+        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: sendMode === 'invoice', client_company: clientCompany.trim() || null, client_qs_name: clientQsName.trim() || null, client_qs_email: clientQsEmail.trim() || null }),
       })
       setSendResult(res.ok ? 'success' : 'error')
       if (res.ok) setCard(c => ({ ...c, sent_to_email: sendEmail, sent_to_name: sendName || null, sent_at: new Date().toISOString(), client_email: sendEmail }))

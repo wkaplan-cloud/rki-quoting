@@ -417,7 +417,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
+        body: JSON.stringify({
+          email: sendEmail.trim(),
+          message: sendMessage.trim() || undefined,
+          company: clientCompany.trim() || undefined,
+          qs_name: clientQsName.trim() || undefined,
+          qs_email: clientQsEmail.trim() || undefined,
+        }),
       })
       const json = await res.json() as { ok?: boolean; error?: string }
       if (json.ok) {

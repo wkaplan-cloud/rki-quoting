@@ -20,7 +20,7 @@ function fmtR(n: number) {
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: quoteId } = await params
-    const { email, message } = await req.json() as { email: string; message?: string }
+    const { email, message, company, qs_name, qs_email } = await req.json() as { email: string; message?: string; company?: string; qs_name?: string; qs_email?: string }
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
     const supabase = await createClient()
@@ -71,10 +71,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const total = subtotal * (1 + quoteRaw.vat_rate / 100)
     const subject = `Quote ${quoteRaw.quote_number} – ${quoteRaw.project_name}`
 
-    // Sync email + project address to the client record
+    // Sync client details back to the client record
     if (quoteRaw.client_id) {
       const clientPatch: Record<string, string> = { email }
       if (quoteRaw.project_address?.trim()) clientPatch.address = quoteRaw.project_address.trim()
+      if (company?.trim()) clientPatch.company = company.trim()
+      if (qs_name?.trim()) clientPatch.qs_name = qs_name.trim()
+      if (qs_email?.trim()) clientPatch.qs_email = qs_email.trim()
       await supabaseAdmin.from('elec_clients').update(clientPatch).eq('id', quoteRaw.client_id)
     }
 

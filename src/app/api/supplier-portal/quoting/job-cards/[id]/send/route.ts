@@ -31,7 +31,7 @@ async function resolveAccount(userId: string) {
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const { email, name, message, as_invoice } = await req.json() as { email: string; name?: string; message?: string; as_invoice?: boolean }
+    const { email, name, message, as_invoice, client_company, client_qs_name, client_qs_email } = await req.json() as { email: string; name?: string; message?: string; as_invoice?: boolean; client_company?: string | null; client_qs_name?: string | null; client_qs_email?: string | null }
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
     const supabase = await createClient()
@@ -92,10 +92,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .update({ sent_to_name: name ?? null, sent_to_email: email, sent_at: now, client_email: email })
       .eq('id', id)
 
-    // Sync email and address to the client record so the clients tab stays up to date
+    // Sync all client details back to the client record
     if (jobCard.client_id) {
       const clientPatch: Record<string, string> = { email }
       if (jobCard.location?.trim()) clientPatch.address = jobCard.location.trim()
+      if (client_company?.trim()) clientPatch.company = client_company.trim()
+      if (client_qs_name?.trim()) clientPatch.qs_name = client_qs_name.trim()
+      if (client_qs_email?.trim()) clientPatch.qs_email = client_qs_email.trim()
       await supabaseAdmin.from('elec_clients').update(clientPatch).eq('id', jobCard.client_id)
     }
 
