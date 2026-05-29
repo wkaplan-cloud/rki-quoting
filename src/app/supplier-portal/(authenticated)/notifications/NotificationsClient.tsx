@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin } from 'lucide-react'
 import type { ElecNotification } from '@/lib/elec-types'
@@ -49,24 +49,19 @@ interface Props {
 export function NotificationsClient({ portalAccountId, initialNotifications }: Props) {
   const supabase = createClient()
   const [notifications, setNotifications] = useState<ElecNotification[]>(initialNotifications)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Realtime subscription
+  // Realtime: new notifications appear in the list instantly.
+  // Sound is handled by SupplierPortalShell which has an unlocked audio element.
   useEffect(() => {
     const channel = supabase
-      .channel(`notifications:${portalAccountId}`)
+      .channel(`notifications-page:${portalAccountId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'elec_notifications',
         filter: `portal_account_id=eq.${portalAccountId}`,
       }, (payload) => {
-        const newNotif = payload.new as ElecNotification
-        setNotifications(prev => [newNotif, ...prev])
-        // Play ring sound
-        try {
-          audioRef.current?.play().catch(() => {})
-        } catch {}
+        setNotifications(prev => [payload.new as ElecNotification, ...prev])
       })
       .subscribe()
 
@@ -77,12 +72,6 @@ export function NotificationsClient({ portalAccountId, initialNotifications }: P
 
   return (
     <div>
-      {/* Hidden audio element for notification sound */}
-      {/* eslint-disable-next-line */}
-      <audio ref={audioRef} preload="auto">
-        <source src="/notification.wav" type="audio/wav" />
-      </audio>
-
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Bell size={18} style={{ color: S.accent }} />
