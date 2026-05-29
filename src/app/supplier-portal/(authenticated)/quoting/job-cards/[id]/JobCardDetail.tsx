@@ -10,6 +10,7 @@ import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
   ElecJobCardStatus, ElecJobCardType, ElecStaff, ElecClient
 } from '@/lib/elec-types'
+import { ClientCombobox } from '../../ClientCombobox'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -66,14 +67,16 @@ interface Props {
   jobCard: ElecJobCard
   staff: ElecStaff[]
   clients: ElecClient[]
+  portalAccountId: string
   companyName: string
 }
 
 type Tab = 'details' | 'report' | 'materials' | 'photos' | 'signature'
 
-export function JobCardDetail({ jobCard: initial, staff, clients, companyName }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
+  const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company'>[]>(initialClients)
   const [tab, setTab] = useState<Tab>('details')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
@@ -409,15 +412,22 @@ export function JobCardDetail({ jobCard: initial, staff, clients, companyName }:
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Client">
-              <select value={card.client_id ?? ''} onChange={e => {
-                const c = clients.find(cl => cl.id === e.target.value)
-                setCard(prev => ({ ...prev, client_id: e.target.value || null, client_name: c?.client_name ?? null, client_email: c?.email ?? null }))
-              }}
-                className="w-full px-3 py-2 rounded-xl text-sm"
-                style={{ border: `1px solid ${S.border}`, color: S.text }}>
-                <option value="">No client</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}</option>)}
-              </select>
+              <ClientCombobox
+                clientId={card.client_id ?? null}
+                displayName={card.client_name ?? card.client?.client_name ?? ''}
+                clients={clients}
+                portalAccountId={portalAccountId}
+                onChange={(id, name) => {
+                  const existing = clients.find(c => c.id === id)
+                  setCard(prev => ({
+                    ...prev,
+                    client_id: id,
+                    client_name: name || null,
+                    client_email: (existing as ElecClient | undefined)?.email ?? prev.client_email,
+                  }))
+                }}
+                onNewClient={c => setClients(prev => [...prev, c])}
+              />
             </Field>
             <Inp label="Client Email (for sending)" val={card.client_email} cb={v => setField('client_email', v || null)} placeholder="client@example.com" />
           </div>

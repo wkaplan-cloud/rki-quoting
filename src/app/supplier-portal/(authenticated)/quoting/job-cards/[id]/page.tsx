@@ -37,7 +37,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     supabaseAdmin.from('elec_staff').select('id,name,color,role').eq('portal_account_id', accountId!).eq('is_active', true).order('name'),
-    supabaseAdmin.from('elec_clients').select('id,client_name,email').eq('portal_account_id', accountId!).order('client_name'),
+    supabaseAdmin.from('elec_clients').select('id,client_name,company,email').eq('portal_account_id', accountId!).order('client_name'),
   ])
 
   const jobCard: ElecJobCard = { ...card, materials: materials ?? [], photos: photos ?? [] }
@@ -47,6 +47,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       jobCard={jobCard}
       staff={(staff ?? []) as ElecStaff[]}
       clients={(clients ?? []) as ElecClient[]}
+      portalAccountId={accountId!}
       companyName={own?.company_name ?? ''}
     />
   )
