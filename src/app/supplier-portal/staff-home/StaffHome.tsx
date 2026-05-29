@@ -62,6 +62,7 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
   const [isClockedIn, setIsClockedIn] = useState(initClockedIn)
   const [clockStatus, setClockStatus] = useState<'idle' | 'locating' | 'punching' | 'done' | 'error'>('idle')
   const [clockMsg, setClockMsg] = useState('')
+  const [gpsBlocked, setGpsBlocked] = useState(false)
 
   // New job modal
   const [showNewJob, setShowNewJob] = useState(false)
@@ -82,13 +83,27 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
 
     let latitude: number | undefined
     let longitude: number | undefined
-    try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000, maximumAge: 30000 })
-      )
-      latitude = pos.coords.latitude
-      longitude = pos.coords.longitude
-    } catch { /* GPS unavailable — proceed without */ }
+
+    if (!navigator.geolocation) {
+      setGpsBlocked(true)
+    } else {
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, {
+            timeout: 10000,
+            maximumAge: 0,
+            enableHighAccuracy: true,
+          })
+        )
+        latitude = pos.coords.latitude
+        longitude = pos.coords.longitude
+        setGpsBlocked(false)
+      } catch (err) {
+        const code = (err as GeolocationPositionError).code
+        // code 1 = PERMISSION_DENIED — user blocked location
+        setGpsBlocked(code === 1)
+      }
+    }
 
     setClockStatus('punching')
     setClockMsg(punchType === 'clock_in' ? 'Clocking in…' : 'Clocking out…')
@@ -104,7 +119,8 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
       setIsClockedIn(punchType === 'clock_in')
       if (data.punch) setPunches(prev => [data.punch!, ...prev])
       setClockStatus('done')
-      setClockMsg(punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓')
+      const gpsTag = latitude ? ' · GPS ✓' : ' · no GPS'
+      setClockMsg((punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓') + gpsTag)
       setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     } catch {
       setClockStatus('error')
@@ -179,6 +195,20 @@ export function StaffHome({ staff, companyName, initialPunches, isClockedIn: ini
         {/* ── HOME TAB ── */}
         {tab === 'home' && (
           <div className="px-4 pt-4 space-y-4">
+
+            {/* GPS permission banner */}
+            {gpsBlocked && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
+                <MapPin size={16} className="flex-shrink-0 mt-0.5" style={{ color: S.danger }} />
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: S.danger }}>Location access blocked</p>
+                  <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                    Open your browser settings, find &quot;Site permissions&quot; or &quot;Location&quot;, and allow access for this site. Then clock in again.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Clock in/out */}
             <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
