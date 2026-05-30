@@ -69,8 +69,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       replyTo: account.email,
       to: email,
       subject: `Certificate of Compliance – ${quoteRaw.project_name}`,
-      html: buildCOCEmail({ companyName, clientName, coc: coc as ElecCOC, quote: quoteRaw as ElecQuote, message }),
-      text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please find your Certificate of Compliance (${coc.coc_number}) attached for ${quoteRaw.project_name}.\n\n${companyName}`,
+      html: buildCOCEmail({ companyName, companyEmail: account.email, clientName, coc: coc as ElecCOC, quote: quoteRaw as ElecQuote, message }),
+      text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please find your Certificate of Compliance (${coc.coc_number}) attached for ${quoteRaw.project_name}.\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
       attachments: [{
         filename: `${coc.coc_number}-COC.pdf`,
         content: Buffer.from(buffer).toString('base64'),
@@ -83,13 +83,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-function buildCOCEmail({ companyName, clientName, coc, quote, message }: {
-  companyName: string; clientName: string
+function buildCOCEmail({ companyName, companyEmail, clientName, coc, quote, message }: {
+  companyName: string; companyEmail: string; clientName: string
   coc: { coc_number: string; issue_date: string }
   quote: { project_name: string; project_address: string | null }
   message?: string
 }) {
   const issueDate = new Date(coc.issue_date + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
+  const bodyText = message
+    ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>`
+    : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Please find your Certificate of Compliance attached for the electrical installation at <strong>${quote.project_name}</strong>.</p>`
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><title>Certificate of Compliance</title></head>
@@ -106,9 +109,7 @@ function buildCOCEmail({ companyName, clientName, coc, quote, message }: {
         <tr>
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #E4E4E7;border-right:1px solid #E4E4E7;">
             ${clientName ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Hi ${clientName},</p>` : ''}
-            ${message
-              ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>`
-              : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Please find your Certificate of Compliance attached for the electrical installation at ${quote.project_name}.</p>`}
+            ${bodyText}
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E4E4E7;border-radius:8px;margin-bottom:28px;">
               <tr>
                 <td style="padding:16px 20px;border-bottom:1px solid #E4E4E7;">
@@ -128,7 +129,13 @@ function buildCOCEmail({ companyName, clientName, coc, quote, message }: {
                 </td>
               </tr>
             </table>
-            <p style="margin:0;font-size:13px;color:#71717A;line-height:1.7;">This COC is issued in terms of the Occupational Health &amp; Safety Act, Act 85 of 1993, and the Electrical Installation Regulations of 2009.</p>
+            <p style="margin:0 0 24px;font-size:13px;color:#71717A;line-height:1.7;">This COC is issued in terms of the Occupational Health &amp; Safety Act, Act 85 of 1993, and the Electrical Installation Regulations of 2009.</p>
+            <p style="margin:0 0 16px;font-size:13px;line-height:1.7;color:#71717A;">If you have any questions, reply to this email and we'll get back to you.</p>
+            <p style="margin:0;font-size:14px;line-height:1.7;color:#18181B;">
+              Kind regards,<br>
+              <strong>${companyName}</strong><br>
+              <a href="mailto:${companyEmail}" style="color:#3A7CA5;text-decoration:none;">${companyEmail}</a>
+            </p>
           </td>
         </tr>
         <tr>

@@ -87,8 +87,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           style="display:inline-block;padding:14px 28px;background:#3A7CA5;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">
           Sign Now
         </a>
-        <p style="margin:20px 0 0;font-size:12px;color:#71717A;">
+        <p style="margin:20px 0 0;font-size:12px;color:#A1A1AA;">
           Or copy this link: <a href="${signUrl}" style="color:#3A7CA5;">${signUrl}</a>
+        </p>
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#18181B;">
+          Kind regards,<br>
+          <strong>${companyName}</strong>
         </p>
       </td></tr>
       <tr><td style="background:#F0F2F5;border:1px solid #E4E4E7;border-top:none;border-radius:0 0 8px 8px;padding:16px 36px;">
@@ -98,7 +102,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   </td></tr>
 </table>
 </body></html>`,
-      text: `${greeting}\n\nWork has been completed on job ${card.job_number} — ${card.title}.\nPlease sign to acknowledge: ${signUrl}`,
+      text: `${greeting}\n\nWork has been completed on job ${card.job_number} — ${card.title}.\nPlease sign to acknowledge: ${signUrl}\n\nKind regards,\n${companyName}`,
     })
 
     return NextResponse.json({ ok: true })

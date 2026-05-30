@@ -64,7 +64,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const fmtR = (n: number) => 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
     await resend.emails.send({
-      from: 'QuotingHub Notifications <noreply@quotinghub.co.za>',
+      from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
+      replyTo: account.email,
       to: body.email.trim(),
       subject: `Variation Order for approval — ${vo.vo_number} · ${quote.project_name}`,
       html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   </div>
   <div style="padding:28px 32px;">
     <p style="margin:0 0 16px;font-size:14px;color:#3F3F46;">
-      <strong>${companyName}</strong> has submitted a Variation Order requiring your approval.
+      <strong>${companyName}</strong> has submitted a Variation Order for <strong>${quote.project_name}</strong> that requires your approval.
     </p>
     ${messageHtml}
     <div style="background:#F4F4F5;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
@@ -100,13 +101,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       style="display:inline-block;background:#3A7CA5;color:#fff;text-decoration:none;padding:13px 28px;border-radius:10px;font-size:14px;font-weight:700;">
       Review &amp; Respond →
     </a>
+    <p style="margin:20px 0 0;font-size:13px;line-height:1.7;color:#71717A;">
+      If you have any questions, reply to this email and we'll get back to you.
+    </p>
+    <p style="margin:16px 0 0;font-size:14px;line-height:1.7;color:#18181B;">
+      Kind regards,<br>
+      <strong>${companyName}</strong><br>
+      <a href="mailto:${account.email}" style="color:#3A7CA5;text-decoration:none;">${account.email}</a>
+    </p>
   </div>
   <div style="padding:16px 32px;border-top:1px solid #E4E4E7;">
     <p style="margin:0;font-size:11px;color:#A1A1AA;">Sent via <a href="https://quotinghub.co.za" style="color:#3A7CA5;text-decoration:none;">QuotingHub</a></p>
   </div>
 </div>
 </body></html>`,
-      text: `${companyName} has submitted Variation Order ${vo.vo_number} for ${quote.project_name}.\n\n${vo.description}\n\nValue (ex VAT): ${fmtR(vo.value)}\nTotal incl. VAT: ${fmtR(totalIncVat)}\n\nReview and respond: ${approvalUrl}`,
+      text: `${companyName} has submitted Variation Order ${vo.vo_number} for ${quote.project_name}.\n\n${vo.description}\n\nValue (ex VAT): ${fmtR(vo.value)}\nTotal incl. VAT: ${fmtR(totalIncVat)}\n\nReview and respond: ${approvalUrl}\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
     })
 
     await supabaseAdmin

@@ -71,8 +71,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       replyTo: account.email,
       to: email,
       subject: `As-Built Statement – ${quoteRaw.project_name} (${quoteRaw.quote_number})`,
-      html: buildEmail({ companyName, clientName, quote: quoteRaw, totalInclVat, message }),
-      text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please find the as-built statement attached for ${quoteRaw.project_name}.\n\nTotal (incl. VAT): ${fmtR(totalInclVat)}\n\n${companyName}`,
+      html: buildEmail({ companyName, companyEmail: account.email, clientName, quote: quoteRaw, totalInclVat, message }),
+      text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please find the as-built statement for ${quoteRaw.project_name} attached.\n\nTotal (incl. VAT): ${fmtR(totalInclVat)}\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
       attachments: [{
         filename: `${quoteRaw.quote_number}-as-built.pdf`,
         content: Buffer.from(buffer).toString('base64'),
@@ -85,13 +85,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-function buildEmail({ companyName, clientName, quote, totalInclVat, message }: {
+function buildEmail({ companyName, companyEmail, clientName, quote, totalInclVat, message }: {
   companyName: string
+  companyEmail: string
   clientName: string
   quote: { quote_number: string; project_name: string; project_address: string | null }
   totalInclVat: number
   message?: string
 }) {
+  const bodyText = message
+    ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>`
+    : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Please find the as-built statement for <strong>${quote.project_name}</strong> attached for your records.</p>`
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>As-Built Statement</title></head>
@@ -110,7 +114,7 @@ function buildEmail({ companyName, clientName, quote, totalInclVat, message }: {
         <tr>
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #E4E4E7;border-right:1px solid #E4E4E7;">
             ${clientName ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Hi ${clientName},</p>` : ''}
-            ${message ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>` : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Please find the as-built statement attached for your records.</p>`}
+            ${bodyText}
 
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E4E4E7;border-radius:8px;margin-bottom:28px;">
               <tr>
@@ -132,8 +136,11 @@ function buildEmail({ companyName, clientName, quote, totalInclVat, message }: {
               </tr>
             </table>
 
-            <p style="margin:0;font-size:14px;color:#71717A;">
-              The as-built statement is attached as a PDF. Please don't hesitate to get in touch if you have any questions.
+            <p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#71717A;">If you have any questions, reply to this email and we'll get back to you.</p>
+            <p style="margin:0;font-size:14px;line-height:1.7;color:#18181B;">
+              Kind regards,<br>
+              <strong>${companyName}</strong><br>
+              <a href="mailto:${companyEmail}" style="color:#3A7CA5;text-decoration:none;">${companyEmail}</a>
             </p>
           </td>
         </tr>

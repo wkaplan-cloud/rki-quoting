@@ -164,7 +164,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         <p style="margin:0 0 16px;font-size:15px;color:#71717A;">${jobCard.title}</p>
         ${totalLine}
         ${message ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">${message}</p>` : ''}
-        <p style="margin:0;font-size:13px;color:#71717A;">Please find the ${label.toLowerCase()} attached as a PDF.</p>
+        <p style="margin:0 0 24px;font-size:13px;color:#71717A;">Please find the ${label.toLowerCase()} attached as a PDF. If you have any questions, reply to this email and we'll get back to you.</p>
+        <p style="margin:0;font-size:14px;line-height:1.7;color:#18181B;">
+          Kind regards,<br>
+          <strong>${companyName}</strong><br>
+          <a href="mailto:${account.email}" style="color:#3A7CA5;text-decoration:none;">${account.email}</a>
+        </p>
       </td></tr>
       <tr><td style="background:#F0F2F5;border:1px solid #E4E4E7;border-top:none;border-radius:0 0 8px 8px;padding:16px 36px;">
         <p style="margin:0;font-size:11px;color:#71717A;">Sent via <a href="https://quotinghub.co.za" style="color:#3A7CA5;">QuotingHub</a></p>
@@ -173,7 +178,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   </td></tr>
 </table>
 </body></html>`,
-      text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${as_invoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${message ?? ''}\n\nPlease find the ${label.toLowerCase()} attached.`,
+      text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${as_invoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${message ? message + '\n\n' : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
     })
 
     return NextResponse.json({ ok: true })

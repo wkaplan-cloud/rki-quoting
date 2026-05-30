@@ -126,8 +126,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       replyTo: account.email,
       to: email,
       subject,
-      html: buildPdfEmail({ companyName, clientName, claim, quote: quoteRaw, titleWord, periodLabel, message }),
-      text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please find your ${titleWord.toLowerCase()} ${claim.claim_number} attached.\n\nAmount: ${fmtR(claim.total_claimed)}\nPeriod: ${periodLabel}\n\n${companyName}`,
+      html: buildPdfEmail({ companyName, companyEmail: account.email, clientName, claim, quote: quoteRaw, titleWord, periodLabel, message }),
+      text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please find your ${titleWord.toLowerCase()} ${claim.claim_number} attached for ${quoteRaw.project_name}.\n\nAmount: ${fmtR(claim.total_claimed)}\nPeriod: ${periodLabel}\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
       attachments: [{
         filename: `${claim.claim_number}-${titleWord.replace(' ', '-')}.pdf`,
         content: Buffer.from(buffer).toString('base64'),
@@ -140,12 +140,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-function buildPdfEmail({ companyName, clientName, claim, quote, titleWord, periodLabel, message }: {
-  companyName: string; clientName: string
+function buildPdfEmail({ companyName, companyEmail, clientName, claim, quote, titleWord, periodLabel, message }: {
+  companyName: string; companyEmail: string; clientName: string
   claim: { claim_number: string; total_claimed: number }
   quote: { project_name: string; project_address: string | null }
   titleWord: string; periodLabel: string; message?: string
 }) {
+  const bodyText = message
+    ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>`
+    : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Please find your ${titleWord.toLowerCase()} for <strong>${quote.project_name}</strong> attached for ${periodLabel}.</p>`
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titleWord} ${claim.claim_number}</title></head>
@@ -164,7 +167,7 @@ function buildPdfEmail({ companyName, clientName, claim, quote, titleWord, perio
         <tr>
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #E4E4E7;border-right:1px solid #E4E4E7;">
             ${clientName ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Hi ${clientName},</p>` : ''}
-            ${message ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>` : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Please find your ${titleWord.toLowerCase()} attached for ${periodLabel}.</p>`}
+            ${bodyText}
 
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E4E4E7;border-radius:8px;margin-bottom:28px;">
               <tr>
@@ -190,7 +193,12 @@ function buildPdfEmail({ companyName, clientName, claim, quote, titleWord, perio
               </tr>
             </table>
 
-            <p style="margin:0;font-size:14px;color:#71717A;">The ${titleWord.toLowerCase()} is attached as a PDF. Please don't hesitate to get in touch if you have any questions.</p>
+            <p style="margin:0 0 24px;font-size:13px;line-height:1.7;color:#71717A;">If you have any questions, reply to this email and we'll get back to you.</p>
+            <p style="margin:0;font-size:14px;line-height:1.7;color:#18181B;">
+              Kind regards,<br>
+              <strong>${companyName}</strong><br>
+              <a href="mailto:${companyEmail}" style="color:#3A7CA5;text-decoration:none;">${companyEmail}</a>
+            </p>
           </td>
         </tr>
 
