@@ -84,8 +84,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       replyTo: account.email,
       to: email,
       subject,
-      html: buildLinkEmail({ companyName, clientName, quote: quoteRaw, total, approvalUrl, message }),
-      text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please review and approve your quote for ${quoteRaw.project_name}.\n\nQuote: ${quoteRaw.quote_number}\nTotal (incl. VAT): ${fmtR(total)}\n\nApprove here: ${approvalUrl}\n\n${companyName}`,
+      html: buildLinkEmail({ companyName, companyEmail: account.email, clientName, quote: quoteRaw, total, approvalUrl, message }),
+      text: `Hi ${clientName},\n\nThank you for the opportunity — your quote for ${quoteRaw.project_name} is ready for your review.\n\n${message ? message + '\n\n' : ''}Quote: ${quoteRaw.quote_number}\nTotal (incl. VAT): ${fmtR(total)}\n\nReview and approve here: ${approvalUrl}\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}`,
     })
 
     return NextResponse.json({ ok: true })
@@ -94,14 +94,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-function buildLinkEmail({ companyName, clientName, quote, total, approvalUrl, message }: {
+function buildLinkEmail({ companyName, companyEmail, clientName, quote, total, approvalUrl, message }: {
   companyName: string
+  companyEmail: string
   clientName: string
   quote: { quote_number: string; project_name: string; project_address: string | null; quoted_date: string | null; payment_terms_days: number }
   total: number
   approvalUrl: string
   message?: string
 }) {
+  const bodyText = message
+    ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>`
+    : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Thank you for the opportunity — your quote for <strong>${quote.project_name}</strong> is ready for your review.</p>`
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quote ${quote.quote_number}</title></head>
@@ -120,7 +125,7 @@ function buildLinkEmail({ companyName, clientName, quote, total, approvalUrl, me
         <tr>
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #E4E4E7;border-right:1px solid #E4E4E7;">
             ${clientName ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Hi ${clientName},</p>` : ''}
-            ${message ? `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">${message}</p>` : `<p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#18181B;">Please find your quote ready for review.</p>`}
+            ${bodyText}
 
             <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E4E4E7;border-radius:8px;margin-bottom:28px;">
               <tr>
@@ -153,7 +158,17 @@ function buildLinkEmail({ companyName, clientName, quote, total, approvalUrl, me
               </tr>
             </table>
 
-            <p style="margin:24px 0 0;font-size:12px;color:#71717A;">
+            <p style="margin:24px 0 0;font-size:13px;line-height:1.7;color:#71717A;">
+              If you have any questions, simply reply to this email and we'll get back to you.
+            </p>
+
+            <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#18181B;">
+              Kind regards,<br>
+              <strong>${companyName}</strong><br>
+              <a href="mailto:${companyEmail}" style="color:#3A7CA5;text-decoration:none;">${companyEmail}</a>
+            </p>
+
+            <p style="margin:24px 0 0;font-size:11px;color:#A1A1AA;">
               Or copy this link: <a href="${approvalUrl}" style="color:#3A7CA5;word-break:break-all;">${approvalUrl}</a>
             </p>
           </td>
