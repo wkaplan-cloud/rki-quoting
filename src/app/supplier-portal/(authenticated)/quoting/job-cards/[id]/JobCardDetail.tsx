@@ -497,22 +497,51 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 overflow-x-auto pb-1">
-        {tabs.map(t => {
-          const Icon = t.icon
-          const active = tab === t.key
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
-              style={{
-                background: active ? S.accent : S.card,
-                color: active ? '#fff' : S.muted,
-                border: `1px solid ${active ? S.accent : S.border}`,
-              }}>
-              <Icon size={13} />{t.label}
-            </button>
-          )
-        })}
+      <div className="flex items-end justify-between gap-2 mb-5">
+
+        {/* Setup group — left */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[9px] font-semibold uppercase tracking-widest px-1" style={{ color: '#C4C9D4' }}>Setup</p>
+          {(() => {
+            const t = tabs[0]
+            const Icon = t.icon
+            const active = tab === t.key
+            return (
+              <button onClick={() => setTab(t.key)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+                style={{
+                  background: active ? S.accent : S.card,
+                  color: active ? '#fff' : S.muted,
+                  border: `1px solid ${active ? S.accent : S.border}`,
+                }}>
+                <Icon size={13} />{t.label}
+              </button>
+            )
+          })()}
+        </div>
+
+        {/* Field Report group — right */}
+        <div className="flex flex-col gap-1.5 items-end">
+          <p className="text-[9px] font-semibold uppercase tracking-widest px-1" style={{ color: '#C4C9D4' }}>Field Report</p>
+          <div className="flex gap-1 overflow-x-auto">
+            {tabs.slice(1).map(t => {
+              const Icon = t.icon
+              const active = tab === t.key
+              return (
+                <button key={t.key} onClick={() => setTab(t.key)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+                  style={{
+                    background: active ? S.gold : S.card,
+                    color: active ? '#fff' : S.muted,
+                    border: `1px solid ${active ? S.gold : S.border}`,
+                  }}>
+                  <Icon size={13} />{t.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
       </div>
 
       {/* Tab: Details */}
