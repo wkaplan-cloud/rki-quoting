@@ -728,7 +728,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
                     {/* Action buttons */}
                     <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-                      {!isEditing && (
+                      {!isEditing && vo.status !== 'approved' && (
                         <button onClick={() => { setInvoicingVoId(null); startEditVO(vo) }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                           style={{ color: S.muted, background: S.bg, border: `1px solid ${S.border}` }}>
