@@ -2,98 +2,116 @@ import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecCOC, ElecQuote, ElecClient, ElecSettings } from '@/lib/elec-types'
 
-const ACCENT  = '#3A7CA5'
-const DARK    = '#18181B'
-const MUTED   = '#71717A'
-const BORDER  = '#E4E4E7'
-const SURF    = '#F9FAFB'
-const GREEN   = '#16A34A'
-const DANGER  = '#DC2626'
-const GOLD    = '#D9A441'
-
-const s = StyleSheet.create({
-  page:        { fontFamily: 'Helvetica', fontSize: 9, color: DARK, padding: 44, paddingBottom: 64 },
-  header:      { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18, alignItems: 'flex-start' },
-  company:     { fontSize: 13, fontFamily: 'Helvetica-Bold', color: DARK, marginBottom: 2 },
-  companyMeta: { fontSize: 7, color: MUTED, lineHeight: 1.5 },
-  docTitle:    { fontSize: 16, fontFamily: 'Helvetica-Bold', color: GREEN, textAlign: 'right' },
-  docNum:      { fontSize: 9, color: MUTED, textAlign: 'right', marginTop: 3 },
-  docMeta:     { fontSize: 7.5, color: MUTED, textAlign: 'right', marginTop: 2 },
-  actNote:     { fontSize: 6.5, color: MUTED, textAlign: 'right', marginTop: 5, fontStyle: 'italic' },
-
-  secWrap:     { marginBottom: 12 },
-  secTitle:    { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  secLetter:   { width: 16, height: 16, backgroundColor: ACCENT, borderRadius: 2, marginRight: 6, justifyContent: 'center', alignItems: 'center' },
-  secLetterTx: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: '#fff' },
-  secLabel:    { fontSize: 8, fontFamily: 'Helvetica-Bold', color: DARK, letterSpacing: 0.5, textTransform: 'uppercase' },
-
-  infoGrid:    { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  infoBox:     { flex: 1, padding: 9, borderWidth: 0.5, borderColor: BORDER, borderRadius: 3 },
-  infoBoxHd:   { fontSize: 6, color: ACCENT, fontFamily: 'Helvetica-Bold', letterSpacing: 0.4, borderBottomWidth: 0.5, borderBottomColor: BORDER, paddingBottom: 3, marginBottom: 4 },
-  infoBold:    { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: DARK, marginBottom: 1.5 },
-  infoRow:     { fontSize: 7.5, color: MUTED, marginBottom: 1.5 },
-
-  row2:        { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  fieldCell:   { flex: 1 },
-  fieldLabel:  { fontSize: 6, color: MUTED, letterSpacing: 0.3, marginBottom: 1.5 },
-  fieldVal:    { fontSize: 8.5, color: DARK, fontFamily: 'Helvetica-Bold' },
-
-  descBox:     { padding: 9, borderWidth: 0.5, borderColor: BORDER, borderRadius: 3, backgroundColor: SURF, marginBottom: 10 },
-  descText:    { fontSize: 8, color: DARK, lineHeight: 1.6 },
-
-  testGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 10 },
-  testCell:    { width: '48%', padding: 7, borderWidth: 0.5, borderColor: BORDER, borderRadius: 3, backgroundColor: SURF, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  testLabel:   { fontSize: 7.5, color: DARK, flex: 1, marginRight: 8 },
-  testBadge:   { fontSize: 7, fontFamily: 'Helvetica-Bold', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 10 },
-
-  certBox:     { padding: 10, borderWidth: 1, borderColor: GREEN, borderRadius: 4, backgroundColor: '#F0FDF4', marginBottom: 10 },
-  certTitle:   { fontSize: 8, fontFamily: 'Helvetica-Bold', color: GREEN, marginBottom: 4 },
-  certText:    { fontSize: 7.5, color: '#166534', lineHeight: 1.6 },
-
-  sigRow:      { flexDirection: 'row', gap: 16, marginTop: 14 },
-  sigBox:      { flex: 1, borderTopWidth: 0.5, borderTopColor: DARK, paddingTop: 4 },
-  sigLabel:    { fontSize: 7, color: MUTED },
-
-  notesBox:    { padding: 9, borderWidth: 0.5, borderColor: BORDER, borderRadius: 3, backgroundColor: SURF },
-  notesText:   { fontSize: 7.5, color: MUTED, lineHeight: 1.5 },
-
-  footer:      { position: 'absolute', bottom: 22, left: 44, right: 44, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 5, flexDirection: 'row', justifyContent: 'space-between' },
-  footerText:  { fontSize: 6.5, color: MUTED },
-})
-
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return '—'
   return new Date(iso.length === 10 ? iso + 'T12:00:00' : iso)
     .toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function SecHead({ letter, title }: { letter: string; title: string }) {
+const B = '#000000'
+const G = '#C8C8C8'
+
+const s = StyleSheet.create({
+  page: { fontFamily: 'Helvetica', fontSize: 8, color: '#000', padding: 28, paddingBottom: 50 },
+
+  // Header box
+  headerBox: { borderWidth: 1.5, borderColor: B, flexDirection: 'row', alignItems: 'flex-start', padding: 10 },
+  headerLeft: { flex: 1, paddingRight: 14 },
+  logoImg: { maxWidth: 150, maxHeight: 40, marginBottom: 3 },
+  coName: { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
+  coMeta: { fontSize: 6, color: '#555', lineHeight: 1.5 },
+  headerRight: { alignItems: 'flex-end' },
+  docTitle: { fontSize: 13, fontFamily: 'Helvetica-Bold', textAlign: 'right', letterSpacing: 0.4 },
+  docAct: { fontSize: 5.5, color: '#555', textAlign: 'right', marginTop: 3, lineHeight: 1.6 },
+  cocNumBox: { marginTop: 6, borderTopWidth: 0.75, borderColor: '#000', paddingTop: 4, alignItems: 'flex-end' },
+  cocNum: { fontSize: 8, fontFamily: 'Helvetica-Bold', textAlign: 'right' },
+  cocDate: { fontSize: 7, textAlign: 'right', marginTop: 1.5 },
+
+  // Section wrapper — full border, sections separated by marginTop
+  sec: { borderWidth: 0.75, borderColor: B, marginTop: 5 },
+
+  // Gray header strip inside a section
+  strip: {
+    backgroundColor: G,
+    padding: '3.5 7',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 6.5,
+    letterSpacing: 0.5,
+  },
+
+  // Row inside a section (top border separates from strip above or previous row)
+  row: { flexDirection: 'row', borderTopWidth: 0.75, borderColor: B },
+
+  // Standard cells
+  cell: { flex: 1, padding: '4 7', borderRightWidth: 0.75, borderColor: B },
+  cellL: { flex: 1, padding: '4 7' },  // last in row — no right border
+  cell2: { flex: 2, padding: '4 7', borderRightWidth: 0.75, borderColor: B },
+  cell3: { flex: 3, padding: '4 7', borderRightWidth: 0.75, borderColor: B },
+  cellFull: { flex: 1, padding: '5 7', minHeight: 30 },
+
+  // Field label / value
+  fl: { fontSize: 5.5, fontFamily: 'Helvetica-Bold', color: '#666', letterSpacing: 0.3, marginBottom: 1.5 },
+  fv: { fontSize: 8.5 },
+
+  // Test results table
+  testHRow: { flexDirection: 'row', backgroundColor: G, borderTopWidth: 0.75, borderColor: B },
+  testRow: { flexDirection: 'row', borderTopWidth: 0.75, borderColor: B },
+  testName: { flex: 5, padding: '4 7', borderRightWidth: 0.75, borderColor: B },
+  testNameH: { flex: 5, padding: '3 7', fontFamily: 'Helvetica-Bold', fontSize: 6.5, borderRightWidth: 0.75, borderColor: B },
+  testC: { flex: 1, padding: '4 4', alignItems: 'center', justifyContent: 'center', borderRightWidth: 0.75, borderColor: B },
+  testCL: { flex: 1, padding: '4 4', alignItems: 'center', justifyContent: 'center' },
+  testCH: { flex: 1, padding: '3 4', alignItems: 'center', fontFamily: 'Helvetica-Bold', fontSize: 6.5, borderRightWidth: 0.75, borderColor: B },
+  testCHL: { flex: 1, padding: '3 4', alignItems: 'center', fontFamily: 'Helvetica-Bold', fontSize: 6.5 },
+
+  // Checkbox
+  cbOut: { width: 11, height: 11, borderWidth: 1, borderColor: B },
+  cbIn: { flex: 1, margin: 1.5, backgroundColor: B },
+
+  // Declaration
+  declPad: { padding: '6 8' },
+  declTitle: { fontFamily: 'Helvetica-Bold', fontSize: 6.5, letterSpacing: 0.5, marginBottom: 3 },
+  declText: { fontSize: 7.5, lineHeight: 1.65 },
+
+  // Signatures
+  sigRow: { flexDirection: 'row', borderTopWidth: 0.75, borderColor: B },
+  sigCell: { flex: 1, padding: '6 8', minHeight: 54, borderRightWidth: 0.75, borderColor: B },
+  sigCellL: { flex: 1, padding: '6 8', minHeight: 54 },
+  sigHd: { fontFamily: 'Helvetica-Bold', fontSize: 6.5, letterSpacing: 0.3, marginBottom: 2 },
+  sigLine: { borderBottomWidth: 0.5, borderColor: B, marginTop: 22, marginBottom: 3 },
+  sigFld: { fontSize: 6.5, color: '#222', marginTop: 2 },
+
+  // Notes
+  notesPad: { padding: '5 8' },
+  notesTx: { fontSize: 7.5, lineHeight: 1.5 },
+
+  // Footer
+  footer: {
+    position: 'absolute', bottom: 16, left: 28, right: 28,
+    borderTopWidth: 0.5, borderColor: '#aaa',
+    paddingTop: 4, flexDirection: 'row', justifyContent: 'space-between',
+  },
+  footerTx: { fontSize: 6, color: '#888' },
+})
+
+function CB({ val, match }: { val: string | null | undefined; match: 'pass' | 'fail' | 'n/a' }) {
+  const checked = (val ?? 'pass') === match
   return (
-    <View style={s.secTitle}>
-      <View style={s.secLetter}><Text style={s.secLetterTx}>{letter}</Text></View>
-      <Text style={s.secLabel}>{title}</Text>
+    <View style={s.cbOut}>
+      {checked && <View style={s.cbIn} />}
     </View>
   )
 }
 
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={s.fieldCell}>
-      <Text style={s.fieldLabel}>{label.toUpperCase()}</Text>
-      <Text style={s.fieldVal}>{value || '—'}</Text>
-    </View>
-  )
+const WORK_LABEL: Record<string, string> = {
+  new: 'New Installation',
+  addition: 'Addition to Existing',
+  alteration: 'Alteration / Rewire',
 }
-
-function TestBadge({ result }: { result: string | null | undefined }) {
-  const v = result ?? 'pass'
-  const color   = v === 'pass' ? GREEN : v === 'fail' ? DANGER : MUTED
-  const bgColor = v === 'pass' ? '#F0FDF4' : v === 'fail' ? '#FEF2F2' : '#F4F4F5'
-  return (
-    <Text style={[s.testBadge, { color, backgroundColor: bgColor }]}>
-      {v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : 'N/A'}
-    </Text>
-  )
+const INST_LABEL: Record<string, string> = {
+  residential: 'Residential',
+  commercial: 'Commercial',
+  industrial: 'Industrial',
+  agricultural: 'Agricultural',
 }
 
 interface Props {
@@ -106,159 +124,224 @@ interface Props {
 }
 
 export function ElecCOCPDF({ coc, quote, client, settings, companyName, logoUrl }: Props) {
-  const workTypeLabel: Record<string, string> = {
-    new: 'New Installation', addition: 'Addition to Existing', alteration: 'Alteration / Rewire',
-  }
-  const instTypeLabel: Record<string, string> = {
-    residential: 'Residential', commercial: 'Commercial', industrial: 'Industrial', agricultural: 'Agricultural',
-  }
+  const tests = [
+    { key: 'earth_continuity',       label: 'Earth Continuity' },
+    { key: 'insulation_resistance',  label: 'Insulation Resistance (500 V d.c.)' },
+    { key: 'polarity',               label: 'Polarity Correct' },
+    { key: 'earth_leakage',          label: 'Earth Leakage Protection (RCD)' },
+    { key: 'overcurrent_protection', label: 'Overcurrent Protection (Breakers / Fuses)' },
+    { key: 'phase_rotation',         label: 'Phase Rotation (three-phase installations only)' },
+  ]
 
   return (
     <Document>
       <Page size="A4" style={s.page}>
 
-        {/* Header */}
-        <View style={s.header}>
-          <View style={{ flex: 1, paddingRight: 16 }}>
+        {/* ── Header ────────────────────────────────────────────── */}
+        <View style={s.headerBox}>
+          <View style={s.headerLeft}>
             {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 160, alignSelf: 'flex-start', marginBottom: 4 }} />
-              : <Text style={s.company}>{companyName}</Text>
+              ? <Image src={logoUrl} style={s.logoImg} />
+              : null
             }
-            {settings?.vat_registration_number && <Text style={s.companyMeta}>VAT Reg: {settings.vat_registration_number}</Text>}
-            {settings?.company_registration_number && <Text style={s.companyMeta}>Reg No: {settings.company_registration_number}</Text>}
-            {settings?.cidb_registration_number && <Text style={s.companyMeta}>CIDB: {settings.cidb_registration_number}</Text>}
-          </View>
-          <View>
-            <Text style={s.docTitle}>CERTIFICATE OF{'\n'}COMPLIANCE</Text>
-            <Text style={s.docNum}>{coc.coc_number}</Text>
-            <Text style={s.docMeta}>Issue Date: {fmtDate(coc.issue_date)}</Text>
-            {coc.valid_until && <Text style={s.docMeta}>Valid Until: {fmtDate(coc.valid_until)}</Text>}
-            <Text style={s.actNote}>SANS 10142-1 · OHS Act 85 of 1993 · EIR 2009</Text>
-          </View>
-        </View>
-
-        {/* Info grid */}
-        <View style={s.infoGrid}>
-          <View style={s.infoBox}>
-            <Text style={s.infoBoxHd}>ELECTRICAL CONTRACTOR</Text>
-            <Text style={s.infoBold}>{companyName}</Text>
-            {settings?.cidb_registration_number && <Text style={s.infoRow}>CIDB: {settings.cidb_registration_number}</Text>}
-            {settings?.vat_registration_number && <Text style={s.infoRow}>VAT: {settings.vat_registration_number}</Text>}
-          </View>
-          <View style={s.infoBox}>
-            <Text style={s.infoBoxHd}>OWNER / OCCUPIER</Text>
-            {coc.owner_name
-              ? <Text style={s.infoBold}>{coc.owner_name}</Text>
-              : client
-              ? <Text style={s.infoBold}>{client.client_name}</Text>
-              : <Text style={s.infoRow}>—</Text>
-            }
-            {client?.company && <Text style={s.infoRow}>{client.company}</Text>}
-            {client?.email && <Text style={s.infoRow}>{client.email}</Text>}
-          </View>
-          <View style={s.infoBox}>
-            <Text style={s.infoBoxHd}>PROJECT</Text>
-            <Text style={s.infoBold}>{quote.project_name}</Text>
-            {(coc.installation_address ?? quote.project_address) && (
-              <Text style={s.infoRow}>{coc.installation_address ?? quote.project_address}</Text>
+            <Text style={s.coName}>{companyName}</Text>
+            {settings?.vat_registration_number && (
+              <Text style={s.coMeta}>VAT Reg No: {settings.vat_registration_number}</Text>
             )}
-            {quote.quote_number && <Text style={s.infoRow}>Ref: {quote.quote_number}</Text>}
+            {settings?.company_registration_number && (
+              <Text style={s.coMeta}>Company Reg No: {settings.company_registration_number}</Text>
+            )}
+            {settings?.cidb_registration_number && (
+              <Text style={s.coMeta}>CIDB Reg No: {settings.cidb_registration_number}</Text>
+            )}
+          </View>
+          <View style={s.headerRight}>
+            <Text style={s.docTitle}>CERTIFICATE OF{'\n'}COMPLIANCE</Text>
+            <Text style={s.docAct}>
+              In terms of the Electrical Installation Regulations, 2009{'\n'}
+              Promulgated under the Occupational Health and Safety Act, 1993 (Act 85 of 1993){'\n'}
+              Read in conjunction with SANS 10142-1
+            </Text>
+            <View style={s.cocNumBox}>
+              <Text style={s.cocNum}>COC No: {coc.coc_number || '—'}</Text>
+              <Text style={s.cocDate}>Issue Date: {fmtDate(coc.issue_date)}</Text>
+              {coc.valid_until && (
+                <Text style={s.cocDate}>Valid Until: {fmtDate(coc.valid_until)}</Text>
+              )}
+            </View>
           </View>
         </View>
 
-        {/* Section A — Installation Details */}
-        <View style={s.secWrap}>
-          <SecHead letter="A" title="Installation Details" />
-          <View style={s.row2}>
-            <Field label="Work Type" value={workTypeLabel[coc.work_type ?? 'new'] ?? coc.work_type ?? '—'} />
-            <Field label="Installation Type" value={instTypeLabel[coc.installation_type ?? 'residential'] ?? coc.installation_type ?? '—'} />
+        {/* ── 1. Installation Details ────────────────────────────── */}
+        <View style={s.sec}>
+          <Text style={s.strip}>1.  DETAILS OF THE ELECTRICAL INSTALLATION</Text>
+          <View style={s.row}>
+            <View style={s.cell2}>
+              <Text style={s.fl}>INSTALLATION ADDRESS</Text>
+              <Text style={s.fv}>{coc.installation_address ?? quote.project_address ?? '—'}</Text>
+            </View>
+            <View style={s.cell}>
+              <Text style={s.fl}>TYPE OF WORK</Text>
+              <Text style={s.fv}>{WORK_LABEL[coc.work_type ?? 'new'] ?? coc.work_type ?? '—'}</Text>
+            </View>
+            <View style={s.cellL}>
+              <Text style={s.fl}>INSTALLATION CATEGORY</Text>
+              <Text style={s.fv}>{INST_LABEL[coc.installation_type ?? 'residential'] ?? coc.installation_type ?? '—'}</Text>
+            </View>
           </View>
-          <View style={s.descBox}>
-            <Text style={s.descText}>{coc.installation_description || 'No description provided.'}</Text>
+          <View style={s.row}>
+            <View style={s.cellFull}>
+              <Text style={s.fl}>DESCRIPTION OF INSTALLATION / WORK DONE</Text>
+              <Text style={s.fv}>{coc.installation_description || '—'}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Section B — Supply Details */}
-        <View style={s.secWrap}>
-          <SecHead letter="B" title="Supply Details" />
-          <View style={s.row2}>
-            <Field label="Supply Authority" value={coc.supply_authority ?? '—'} />
-            <Field label="Nominal Voltage" value={coc.supply_voltage ?? '230/400V'} />
-            <Field label="Phases" value={coc.supply_phases === 'single' ? 'Single Phase' : 'Three Phase'} />
-            <Field label="Earthing System" value={coc.supply_earthing ?? 'TN-C-S'} />
-            {coc.main_breaker_amps && <Field label="Main Breaker" value={`${coc.main_breaker_amps}A`} />}
+        {/* ── 2. Registered Person (Contractor) ─────────────────── */}
+        <View style={s.sec}>
+          <Text style={s.strip}>2.  DETAILS OF REGISTERED PERSON / ELECTRICAL CONTRACTOR</Text>
+          <View style={s.row}>
+            <View style={s.cell2}>
+              <Text style={s.fl}>NAME OF REGISTERED PERSON</Text>
+              <Text style={s.fv}>{coc.tester_name || '—'}</Text>
+            </View>
+            <View style={s.cellL}>
+              <Text style={s.fl}>REGISTRATION NUMBER</Text>
+              <Text style={s.fv}>{coc.tester_registration_number ?? '—'}</Text>
+            </View>
+          </View>
+          <View style={s.row}>
+            <View style={s.cellFull}>
+              <Text style={s.fl}>NAME OF ELECTRICAL CONTRACTOR / COMPANY</Text>
+              <Text style={s.fv}>{companyName}</Text>
+            </View>
           </View>
         </View>
 
-        {/* Section C — Test Results */}
-        <View style={s.secWrap}>
-          <SecHead letter="C" title="Test Results (SANS 10142-1)" />
-          <View style={s.testGrid}>
-            {[
-              { key: 'earth_continuity',       label: 'Earth Continuity' },
-              { key: 'insulation_resistance',  label: 'Insulation Resistance (500V DC)' },
-              { key: 'polarity',               label: 'Polarity Correct' },
-              { key: 'earth_leakage',          label: 'Earth Leakage Protection' },
-              { key: 'overcurrent_protection', label: 'Overcurrent Protection' },
-              { key: 'phase_rotation',         label: 'Phase Rotation (3-phase)' },
-            ].map(({ key, label }) => (
-              <View key={key} style={s.testCell}>
-                <Text style={s.testLabel}>{label}</Text>
-                <TestBadge result={(coc as unknown as Record<string, unknown>)[key] as string | null} />
+        {/* ── 3. Owner / Occupier ────────────────────────────────── */}
+        <View style={s.sec}>
+          <Text style={s.strip}>3.  DETAILS OF OWNER / OCCUPIER</Text>
+          <View style={s.row}>
+            <View style={s.cell2}>
+              <Text style={s.fl}>NAME OF OWNER / OCCUPIER</Text>
+              <Text style={s.fv}>{coc.owner_name ?? client?.client_name ?? '—'}</Text>
+            </View>
+            <View style={s.cellL}>
+              <Text style={s.fl}>PROJECT REFERENCE</Text>
+              <Text style={s.fv}>{quote.project_name}{quote.quote_number ? ` (${quote.quote_number})` : ''}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 4. Supply Details ──────────────────────────────────── */}
+        <View style={s.sec}>
+          <Text style={s.strip}>4.  SUPPLY DETAILS</Text>
+          <View style={s.row}>
+            <View style={s.cell}>
+              <Text style={s.fl}>SUPPLY AUTHORITY</Text>
+              <Text style={s.fv}>{coc.supply_authority ?? '—'}</Text>
+            </View>
+            <View style={s.cell}>
+              <Text style={s.fl}>NOMINAL VOLTAGE</Text>
+              <Text style={s.fv}>{coc.supply_voltage ?? '230/400V'}</Text>
+            </View>
+            <View style={s.cell}>
+              <Text style={s.fl}>NO. OF PHASES</Text>
+              <Text style={s.fv}>{coc.supply_phases === 'single' ? 'Single Phase' : 'Three Phase'}</Text>
+            </View>
+            <View style={s.cell}>
+              <Text style={s.fl}>EARTHING SYSTEM</Text>
+              <Text style={s.fv}>{coc.supply_earthing ?? 'TN-C-S'}</Text>
+            </View>
+            <View style={s.cellL}>
+              <Text style={s.fl}>MAIN BREAKER / FUSE</Text>
+              <Text style={s.fv}>{coc.main_breaker_amps ? `${coc.main_breaker_amps} A` : '—'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 5. Test Results ────────────────────────────────────── */}
+        <View style={s.sec}>
+          <Text style={s.strip}>5.  TEST RESULTS — IN ACCORDANCE WITH SANS 10142-1</Text>
+          <View style={s.testHRow}>
+            <View style={s.testNameH}><Text>TEST</Text></View>
+            <View style={s.testCH}><Text>PASS</Text></View>
+            <View style={s.testCH}><Text>FAIL</Text></View>
+            <View style={s.testCHL}><Text>N/A</Text></View>
+          </View>
+          {tests.map(({ key, label }) => (
+            <View key={key} style={s.testRow}>
+              <View style={s.testName}><Text>{label}</Text></View>
+              <View style={s.testC}>
+                <CB val={(coc as unknown as Record<string, unknown>)[key] as string} match="pass" />
               </View>
-            ))}
-          </View>
+              <View style={s.testC}>
+                <CB val={(coc as unknown as Record<string, unknown>)[key] as string} match="fail" />
+              </View>
+              <View style={s.testCL}>
+                <CB val={(coc as unknown as Record<string, unknown>)[key] as string} match="n/a" />
+              </View>
+            </View>
+          ))}
         </View>
 
-        {/* Section D — Tester Details */}
-        <View style={s.secWrap}>
-          <SecHead letter="D" title="Tester / Inspector Details" />
-          <View style={s.row2}>
-            <Field label="Tester Name" value={coc.tester_name || '—'} />
-            <Field label="Registration Number" value={coc.tester_registration_number ?? '—'} />
-            <Field label="Issue Date" value={fmtDate(coc.issue_date)} />
-            <Field label="Valid Until" value={coc.valid_until ? fmtDate(coc.valid_until) : 'No expiry'} />
-          </View>
-        </View>
-
-        {/* Declaration */}
-        <View style={s.certBox}>
-          <Text style={s.certTitle}>DECLARATION</Text>
-          <Text style={s.certText}>
-            I, {coc.tester_name || '[Tester Name]'}{coc.tester_registration_number ? ` (Reg. No. ${coc.tester_registration_number})` : ''}, hereby certify that the electrical installation described above has been inspected and tested in accordance with SANS 10142-1 and complies with the requirements of the Occupational Health and Safety Act, Act 85 of 1993, and the Electrical Installation Regulations of 2009.
-          </Text>
-        </View>
-
-        {/* Notes */}
+        {/* ── Notes (conditional) ────────────────────────────────── */}
         {coc.notes && (
-          <View style={[s.secWrap, { marginBottom: 8 }]}>
-            <SecHead letter="N" title="Notes / Restrictions" />
-            <View style={s.notesBox}>
-              <Text style={s.notesText}>{coc.notes}</Text>
+          <View style={s.sec}>
+            <Text style={s.strip}>NOTES / RESTRICTIONS / EXCLUSIONS</Text>
+            <View style={[s.row, s.notesPad]}>
+              <Text style={s.notesTx}>{coc.notes}</Text>
             </View>
           </View>
         )}
 
-        {/* Signature row */}
-        <View style={s.sigRow}>
-          <View style={s.sigBox}>
-            <Text style={s.sigLabel}>Tester Signature &amp; Date</Text>
-          </View>
-          <View style={s.sigBox}>
-            <Text style={s.sigLabel}>Client / Owner Signature &amp; Date</Text>
-          </View>
-          <View style={s.sigBox}>
-            <Text style={s.sigLabel}>Witness Signature &amp; Date</Text>
+        {/* ── Declaration ───────────────────────────────────────── */}
+        <View style={s.sec}>
+          <Text style={s.strip}>DECLARATION</Text>
+          <View style={s.declPad}>
+            <Text style={s.declTitle}>CERTIFICATE OF COMPLIANCE DECLARATION</Text>
+            <Text style={s.declText}>
+              {'I/We, '}
+              {coc.tester_name || '______________________________'}
+              {coc.tester_registration_number ? ` (Reg. No. ${coc.tester_registration_number})` : ''}
+              {', hereby certify that the electrical installation described above has been inspected and tested in accordance with SANS 10142-1 and, subject to the test results recorded herein, complies with the requirements of the National Building Regulations and Building Standards Act, 1977 (Act 103 of 1977), the Occupational Health and Safety Act, 1993 (Act 85 of 1993), and the Electrical Installation Regulations, 2009, at the date of issue of this certificate.'}
+            </Text>
           </View>
         </View>
 
-        {/* Footer */}
+        {/* ── Signatures ────────────────────────────────────────── */}
+        <View style={s.sec}>
+          <Text style={s.strip}>SIGNATURES</Text>
+          <View style={s.sigRow}>
+            <View style={s.sigCell}>
+              <Text style={s.sigHd}>REGISTERED PERSON / ELECTRICAL CONTRACTOR</Text>
+              <View style={s.sigLine} />
+              <Text style={s.sigFld}>Signature &amp; Company Stamp</Text>
+              <Text style={s.sigFld}>{'Name: '}{coc.tester_name || '________________________________'}</Text>
+              <Text style={s.sigFld}>{'Reg No: '}{coc.tester_registration_number ?? '________________________________'}</Text>
+              <Text style={s.sigFld}>{'Date: '}{fmtDate(coc.issue_date)}</Text>
+            </View>
+            <View style={s.sigCell}>
+              <Text style={s.sigHd}>OWNER / OCCUPIER</Text>
+              <View style={s.sigLine} />
+              <Text style={s.sigFld}>Signature</Text>
+              <Text style={s.sigFld}>{'Name: '}{coc.owner_name ?? client?.client_name ?? '________________________________'}</Text>
+              <Text style={s.sigFld}>Date: ________________________________</Text>
+            </View>
+            <View style={s.sigCellL}>
+              <Text style={s.sigHd}>WITNESS</Text>
+              <View style={s.sigLine} />
+              <Text style={s.sigFld}>Signature</Text>
+              <Text style={s.sigFld}>Name: ________________________________</Text>
+              <Text style={s.sigFld}>Date: ________________________________</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Footer ───────────────────────────────────────────── */}
         <View style={s.footer} fixed>
-          {settings?.email_footer_text
-            ? <Text style={s.footerText}>{settings.email_footer_text}</Text>
-            : <Text style={s.footerText}>{companyName}</Text>
-          }
-          <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          <Text style={s.footerTx}>{companyName} — Electrical Installation Certificate of Compliance — EIR 2009 / SANS 10142-1</Text>
+          <Text style={s.footerTx} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
 
       </Page>
