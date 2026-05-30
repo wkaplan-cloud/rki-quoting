@@ -7,6 +7,8 @@ import {
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
   MoreHorizontal, Archive, Lock,
 } from 'lucide-react'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import type { DropResult, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 import { AsBuiltTab } from './AsBuiltTab'
 import { VariationsTab } from './VariationsTab'
@@ -146,9 +148,10 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
 }
 
 // ─── Line item row ────────────────────────────────────────────────────────────
-function LineItemRow({ item, onChange, onDelete, portalAccountId, locked }: {
+function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHandleProps }: {
   item: ItemState; onChange: (u: ItemState) => void
   onDelete: () => void; portalAccountId: string; locked?: boolean
+  dragHandleProps?: DraggableProvidedDragHandleProps | null
 }) {
   const exp = item._expanded ?? false
   function set(patch: Partial<ItemState>) { onChange({ ...item, ...patch }) }
@@ -163,7 +166,9 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked }: {
   return (
     <div className="rounded-xl mb-1.5" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
       <div className="flex items-center gap-2 p-2">
-        <GripVertical size={14} style={{ color: S.border, flexShrink: 0 }} />
+        <div {...(dragHandleProps ?? {})} style={{ flexShrink: 0, display: 'flex', cursor: locked ? 'default' : 'grab' }}>
+          <GripVertical size={14} style={{ color: S.border }} />
+        </div>
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
           onSelect={s => set({ description: s.description, unit: s.unit ?? item.unit, item_type: (s.item_type as ElecItemType) ?? item.item_type, quoted_unit_rate: s.default_unit_rate ?? item.quoted_unit_rate, labour_rate: s.default_labour_rate ?? item.labour_rate, material_rate: s.default_material_rate ?? item.material_rate })}
           portalAccountId={portalAccountId} locked={locked} />
@@ -285,10 +290,11 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked }: {
 }
 
 // ─── Section block ────────────────────────────────────────────────────────────
-function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, portalAccountId, locked }: {
+function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, portalAccountId, locked, dragHandleProps }: {
   section: SectionState; onChange: (s: SectionState) => void
   onDelete: () => void; onAddItem: () => void
   onDeleteItem: (id: string) => void; portalAccountId: string; locked?: boolean
+  dragHandleProps?: DraggableProvidedDragHandleProps | null
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const subtotal = section.items.reduce((s, i) => s + itemTotal(i), 0)
@@ -302,6 +308,9 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
   return (
     <div className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
       <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(58,124,165,0.04)', borderBottom: collapsed ? 'none' : `1px solid ${S.border}` }}>
+        <div {...(dragHandleProps ?? {})} style={{ flexShrink: 0, display: 'flex', cursor: locked ? 'default' : 'grab' }}>
+          <GripVertical size={14} style={{ color: S.border }} />
+        </div>
         <button onClick={() => setCollapsed(c => !c)} style={{ color: S.muted, flexShrink: 0 }}>
           {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
         </button>
@@ -337,12 +346,26 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
               <div style={{ width: 52 }} />
             </div>
           )}
-          {section.items.map(item => (
-            <LineItemRow key={item.id} item={item}
-              onChange={u => onChange({ ...section, items: section.items.map(i => i.id === u.id ? u : i) })}
-              onDelete={() => onDeleteItem(item.id)}
-              portalAccountId={portalAccountId} locked={locked} />
-          ))}
+          <Droppable droppableId={section.id} type="ITEM">
+            {(dropProvided) => (
+              <div ref={dropProvided.innerRef} {...dropProvided.droppableProps}>
+                {section.items.map((item, idx) => (
+                  <Draggable key={item.id} draggableId={item.id} index={idx} isDragDisabled={!!locked}>
+                    {(dragProvided) => (
+                      <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
+                        <LineItemRow item={item}
+                          onChange={u => onChange({ ...section, items: section.items.map(i => i.id === u.id ? u : i) })}
+                          onDelete={() => onDeleteItem(item.id)}
+                          portalAccountId={portalAccountId} locked={locked}
+                          dragHandleProps={dragProvided.dragHandleProps} />
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {dropProvided.placeholder}
+              </div>
+            )}
+          </Droppable>
           {!locked && (
             <button onClick={onAddItem}
               className="flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
@@ -608,6 +631,70 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   function deleteFreeItem(itemId: string) {
     setDeletedItemIds(ids => [...ids, itemId])
     setFreeItems(items => items.filter(i => i.id !== itemId))
+  }
+
+  function onDragEnd(result: DropResult) {
+    const { source, destination, type } = result
+    if (!destination) return
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return
+
+    if (type === 'SECTION') {
+      setSections(ss => {
+        const next = [...ss]
+        const [removed] = next.splice(source.index, 1)
+        next.splice(destination.index, 0, removed)
+        return next
+      })
+    } else {
+      const srcId = source.droppableId
+      const dstId = destination.droppableId
+      if (srcId === dstId) {
+        if (srcId === 'free') {
+          setFreeItems(items => {
+            const next = [...items]
+            const [removed] = next.splice(source.index, 1)
+            next.splice(destination.index, 0, removed)
+            return next
+          })
+        } else {
+          setSections(ss => ss.map(s => {
+            if (s.id !== srcId) return s
+            const next = [...s.items]
+            const [removed] = next.splice(source.index, 1)
+            next.splice(destination.index, 0, removed)
+            return { ...s, items: next }
+          }))
+        }
+      } else {
+        // Move item between sections (or free ↔ section)
+        let srcItems: ItemState[]
+        let dstItems: ItemState[]
+        if (srcId === 'free') {
+          srcItems = [...freeItems]
+          dstItems = [...(sections.find(s => s.id === dstId)?.items ?? [])]
+        } else if (dstId === 'free') {
+          srcItems = [...(sections.find(s => s.id === srcId)?.items ?? [])]
+          dstItems = [...freeItems]
+        } else {
+          srcItems = [...(sections.find(s => s.id === srcId)?.items ?? [])]
+          dstItems = [...(sections.find(s => s.id === dstId)?.items ?? [])]
+        }
+        const [moved] = srcItems.splice(source.index, 1)
+        const updatedItem = { ...moved, section_id: dstId === 'free' ? null : dstId }
+        dstItems.splice(destination.index, 0, updatedItem)
+
+        if (srcId === 'free') {
+          setFreeItems(srcItems)
+        } else {
+          setSections(ss => ss.map(s => s.id === srcId ? { ...s, items: srcItems } : s))
+        }
+        if (dstId === 'free') {
+          setFreeItems(dstItems)
+        } else {
+          setSections(ss => ss.map(s => s.id === dstId ? { ...s, items: dstItems } : s))
+        }
+      }
+    }
   }
 
   const st = STATUS_CONFIG[q.status]
@@ -1123,35 +1210,65 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           )}
         </div>
 
-        {freeItems.length > 0 && (
-          <div className="rounded-2xl p-3 mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <div className="flex items-center gap-2 px-2 mb-1.5">
-              <div style={{ width: 14 }} />
-              <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 72, textAlign: 'center' }}>Unit</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 90, textAlign: 'right' }}>Qty</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 90, textAlign: 'right' }}>Rate</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 100, textAlign: 'right' }}>Total</div>
-              <div style={{ width: 52 }} />
+        <DragDropContext onDragEnd={onDragEnd}>
+          {freeItems.length > 0 && (
+            <div className="rounded-2xl p-3 mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="flex items-center gap-2 px-2 mb-1.5">
+                <div style={{ width: 28 }} />
+                <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 72, textAlign: 'center' }}>Unit</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 90, textAlign: 'right' }}>Qty</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 90, textAlign: 'right' }}>Rate</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 100, textAlign: 'right' }}>Total</div>
+                <div style={{ width: 52 }} />
+              </div>
+              <Droppable droppableId="free" type="ITEM">
+                {(dropProvided) => (
+                  <div ref={dropProvided.innerRef} {...dropProvided.droppableProps}>
+                    {freeItems.map((item, idx) => (
+                      <Draggable key={item.id} draggableId={item.id} index={idx} isDragDisabled={!!locked}>
+                        {(dragProvided) => (
+                          <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
+                            <LineItemRow item={item}
+                              onChange={u => setFreeItems(items => items.map(i => i.id === u.id ? u : i))}
+                              onDelete={() => deleteFreeItem(item.id)}
+                              portalAccountId={portalAccountId} locked={locked}
+                              dragHandleProps={dragProvided.dragHandleProps} />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {dropProvided.placeholder}
+                  </div>
+                )}
+              </Droppable>
             </div>
-            {freeItems.map(item => (
-              <LineItemRow key={item.id} item={item}
-                onChange={u => setFreeItems(items => items.map(i => i.id === u.id ? u : i))}
-                onDelete={() => deleteFreeItem(item.id)}
-                portalAccountId={portalAccountId} locked={locked} />
-            ))}
-          </div>
-        )}
+          )}
 
-        {sections.map(section => (
-          <SectionBlock key={section.id} section={section}
-            onChange={u => setSections(ss => ss.map(s => s.id === u.id ? u : s))}
-            onDelete={() => deleteSection(section.id)}
-            onAddItem={() => setSections(ss => ss.map(s => s.id === section.id
-              ? { ...s, items: [...s.items, newItem(q.id, s.id, s.items.length)] } : s))}
-            onDeleteItem={itemId => deleteSectionItem(section.id, itemId)}
-            portalAccountId={portalAccountId} locked={locked} />
-        ))}
+          <Droppable droppableId="sections" type="SECTION">
+            {(dropProvided) => (
+              <div ref={dropProvided.innerRef} {...dropProvided.droppableProps}>
+                {sections.map((section, idx) => (
+                  <Draggable key={section.id} draggableId={section.id} index={idx} isDragDisabled={!!locked}>
+                    {(dragProvided) => (
+                      <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}>
+                        <SectionBlock section={section}
+                          onChange={u => setSections(ss => ss.map(s => s.id === u.id ? u : s))}
+                          onDelete={() => deleteSection(section.id)}
+                          onAddItem={() => setSections(ss => ss.map(s => s.id === section.id
+                            ? { ...s, items: [...s.items, newItem(q.id, s.id, s.items.length)] } : s))}
+                          onDeleteItem={itemId => deleteSectionItem(section.id, itemId)}
+                          portalAccountId={portalAccountId} locked={locked}
+                          dragHandleProps={dragProvided.dragHandleProps} />
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {dropProvided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
 
         {allItems.length === 0 && !locked && (
           <div className="rounded-2xl py-10 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
