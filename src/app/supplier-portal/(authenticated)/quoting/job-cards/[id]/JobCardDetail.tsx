@@ -1,8 +1,8 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Save, Send, Plus, X, Camera, Pen,
+  ArrowLeft, Send, Plus, X, Camera, Pen,
   CheckCircle2, Clock, Play, XCircle, Loader2,
   MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
@@ -177,7 +177,12 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     setShowStatusMenu(false)
   }
 
-  async function handleSave() {
+  // Use a ref so the auto-save timer always calls with the latest data
+  const autoSaveDataRef = useRef({ card, clientCompany, clientQsName, clientQsEmail })
+  useEffect(() => { autoSaveDataRef.current = { card, clientCompany, clientQsName, clientQsEmail } }, [card, clientCompany, clientQsName, clientQsEmail])
+
+  const handleSave = useCallback(async () => {
+    const { card, clientCompany, clientQsName, clientQsEmail } = autoSaveDataRef.current
     await save({
       title: card.title,
       job_type: card.job_type,
@@ -206,7 +211,22 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         })
       }
     }
-  }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save: 1.5s debounce after any editable field changes
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const isMountRef = useRef(true)
+  useEffect(() => {
+    if (isMountRef.current) { isMountRef.current = false; return }
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => void handleSave(), 1500)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [ // eslint-disable-line react-hooks/exhaustive-deps
+    card.title, card.job_type, card.staff_id, card.client_id, card.client_name,
+    card.client_email, card.location, card.scheduled_at, card.work_description,
+    card.work_found, card.work_done, card.resolution, card.notes,
+    clientCompany, clientQsName, clientQsEmail,
+  ])
 
   async function handleDelete() {
     if (!confirm('Delete this job card? This cannot be undone.')) return
@@ -444,14 +464,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </button>
 
         <div className="flex items-center gap-2">
-          {saveMsg && <span className="text-xs" style={{ color: saveMsg === 'Saved' ? S.green : S.danger }}>{saveMsg}</span>}
-
-          {/* Save */}
-          <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ border: `1px solid ${S.border}`, color: S.muted }}>
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save
-          </button>
+          {saving && <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}><Loader2 size={11} className="animate-spin" />Saving…</span>}
+          {!saving && saveMsg && <span className="text-xs" style={{ color: saveMsg === 'Saved' ? S.green : S.danger }}>{saveMsg}</span>}
 
           {/* Finish Job */}
           {canFinish && (
