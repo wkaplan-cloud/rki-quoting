@@ -383,8 +383,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
           {/* VO heading */}
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Description *</label>
-              <input value={formDesc} onChange={e => setFormDesc(e.target.value)} autoFocus
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>VO Title *</label>
+              <input value={formDesc} onChange={e => setFormDesc(e.target.value)} autoFocus placeholder="e.g. Additional DB board in kitchen"
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none"
                 style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
             </div>
