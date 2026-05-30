@@ -413,6 +413,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [clients, setClients] = useState(initialClients)
   const [voCreatedClaims, setVOCreatedClaims] = useState<(ElecClaim & { line_items: ElecClaimLineItem[] })[]>([])
   const [liveVOs, setLiveVOs] = useState(variations)
+  // VO items created/edited in this session (not in initItems) — needed so ClaimsTab sees them without reload
+  const [sessionVOItems, setSessionVOItems] = useState<ElecQuoteLineItem[]>([])
+  const [replacedVOIds, setReplacedVOIds] = useState<string[]>([])
+  function handleVOItemsCreated(voId: string, items: ElecQuoteLineItem[]) {
+    setSessionVOItems(prev => [...prev.filter(i => i.variation_order_id !== voId), ...items])
+    setReplacedVOIds(prev => prev.includes(voId) ? prev : [...prev, voId])
+  }
 
   const [sections, setSections] = useState<SectionState[]>(() =>
     initSections.map(s => ({ ...s, items: initItems.filter(i => i.section_id === s.id).map(i => ({ ...i, _expanded: false })) }))
@@ -489,6 +496,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     }
   }
   const allItems = [...freeItems, ...sections.flatMap(s => s.items)]
+  // Merge session VO items into what child tabs see, replacing any stale initItems copies
+  const itemsForChildTabs = [
+    ...allItems.filter(i => !(i.is_variation && i.variation_order_id && replacedVOIds.includes(i.variation_order_id))),
+    ...sessionVOItems,
+  ] as ElecQuoteLineItem[]
   const subtotal  = allItems.reduce((s, i) => s + itemTotal(i), 0)
   const vatAmt    = subtotal * ((q.vat_rate ?? 15) / 100)
   const total     = subtotal + vatAmt
@@ -913,7 +925,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             portalAccountId={portalAccountId}
             initialClaims={claims}
             extraClaims={voCreatedClaims}
-            items={allItems as ElecQuoteLineItem[]}
+            items={itemsForChildTabs}
             sections={sections as unknown as ElecQuoteSection[]}
             contractTotal={contractTotal}
             approvedVOTotal={approvedVOTotal}
@@ -934,10 +946,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             voPrefix={voPrefix}
             companyCode={companyCode}
             sections={sections as unknown as ElecQuoteSection[]}
-            items={allItems as ElecQuoteLineItem[]}
+            items={itemsForChildTabs}
             client={clients.find(c => c.id === q.client_id) ?? null}
             onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
             onVOsChanged={setLiveVOs}
+            onVOItemsCreated={handleVOItemsCreated}
           />
         </div>
       )}

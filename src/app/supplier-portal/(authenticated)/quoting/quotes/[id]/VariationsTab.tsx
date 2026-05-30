@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail, Loader2, CheckCircle, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail, Loader2, CheckCircle, ChevronDown, ChevronUp, Trash2, Pencil } from 'lucide-react'
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem, ElecQuoteSection, ElecQuoteLineItem, ElecClient } from '@/lib/elec-types'
 
 const S = {
@@ -44,13 +44,14 @@ interface Props {
   client?: VOClient | null
   onClaimCreated: (claim: ElecClaim & { line_items: ElecClaimLineItem[] }) => void
   onVOsChanged?: (vos: ElecVariationOrder[]) => void
+  onVOItemsCreated?: (voId: string, items: ElecQuoteLineItem[]) => void
 }
 
 function newFormItem(): FormLineItem {
   return { _id: Math.random().toString(36).slice(2), description: '', unit: '', qty: '', rate: '' }
 }
 
-export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, sections, items, client = null, onClaimCreated, onVOsChanged }: Props) {
+export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, sections, items, client = null, onClaimCreated, onVOsChanged, onVOItemsCreated }: Props) {
   const supabase = createClient()
   const [vos, setVOs] = useState(initialVOs)
   const [voClaims, setVOClaims] = useState<VOClaim[]>(initialClaims.filter(c => c.variation_order_id != null))
@@ -78,6 +79,18 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   // Inline cost editing
   const [editingCostId, setEditingCostId] = useState<string | null>(null)
   const [editingCostVal, setEditingCostVal] = useState('')
+
+  // VO edit mode
+  const [editingVOId, setEditingVOId] = useState<string | null>(null)
+  const [editDesc, setEditDesc] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editRequestedBy, setEditRequestedBy] = useState('')
+  const [editLineItems, setEditLineItems] = useState<FormLineItem[]>([newFormItem()])
+  const [editCost, setEditCost] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+  // Local override of VO line items after create/edit in this session
+  const [voItemOverrides, setVoItemOverrides] = useState<Record<string, ElecQuoteLineItem[]>>({})
 
   // Sync contact fields when client changes on the quote
   useEffect(() => {
@@ -110,6 +123,93 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     const r = parseFloat(li.rate) || 0
     return s + q * r
   }, 0)
+
+  // ── Edit mode helpers ─────────────────────────────────────────────────────
+
+  function getVOItems(voId: string): ElecQuoteLineItem[] {
+    return voId in voItemOverrides
+      ? voItemOverrides[voId]
+      : voLineItems.filter(li => li.variation_order_id === voId)
+  }
+
+  function updateEditItem(id: string, patch: Partial<FormLineItem>) {
+    setEditLineItems(prev => prev.map(li => li._id === id ? { ...li, ...patch } : li))
+  }
+
+  function removeEditItem(id: string) {
+    setEditLineItems(prev => prev.length > 1 ? prev.filter(li => li._id !== id) : prev)
+  }
+
+  const editVOValue = editLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * (parseFloat(li.rate) || 0), 0)
+
+  function startEditVO(vo: ElecVariationOrder) {
+    const currentItems = getVOItems(vo.id)
+    setEditingVOId(vo.id)
+    setEditDesc(vo.description)
+    setEditNotes(vo.notes ?? '')
+    setEditRequestedBy(vo.requested_by ?? '')
+    setEditCost(vo.cost_value != null ? String(vo.cost_value) : '')
+    setEditError('')
+    setEditLineItems(currentItems.length > 0
+      ? currentItems.map(li => ({
+          _id: Math.random().toString(36).slice(2),
+          description: li.description,
+          unit: li.unit ?? '',
+          qty: String(li.quoted_quantity),
+          rate: String(li.quoted_unit_rate),
+        }))
+      : [newFormItem()])
+  }
+
+  async function handleEditSave() {
+    if (!editingVOId || !editDesc.trim()) { setEditError('Description required'); return }
+    const validItems = editLineItems.filter(li => li.description.trim())
+    const value = editVOValue
+    const costVal = editCost.trim() ? (parseFloat(editCost) || null) : null
+    setEditLoading(true); setEditError('')
+
+    const { error: voErr } = await supabase.from('elec_variation_orders').update({
+      description: editDesc.trim(),
+      notes: editNotes.trim() || null,
+      requested_by: editRequestedBy.trim() || null,
+      cost_value: costVal,
+      value,
+    }).eq('id', editingVOId)
+    if (voErr) { setEditError(voErr.message); setEditLoading(false); return }
+
+    await supabase.from('elec_quote_line_items').delete().eq('variation_order_id', editingVOId).eq('is_variation', true)
+
+    let newItems: ElecQuoteLineItem[] = []
+    if (validItems.length > 0) {
+      const { data } = await supabase.from('elec_quote_line_items').insert(
+        validItems.map((li, idx) => ({
+          quote_id: quoteId, section_id: null,
+          description: li.description.trim(), unit: li.unit.trim() || null,
+          item_type: 'both' as const,
+          quoted_quantity: parseFloat(li.qty) || 0,
+          quoted_unit_rate: parseFloat(li.rate) || 0,
+          is_variation: true, variation_order_id: editingVOId, sort_order: idx,
+        }))
+      ).select()
+      newItems = (data ?? []) as ElecQuoteLineItem[]
+    }
+
+    const voId = editingVOId
+    setVOs(prev => {
+      const next = prev.map(v => v.id === voId ? {
+        ...v, description: editDesc.trim(),
+        notes: editNotes.trim() || null,
+        requested_by: editRequestedBy.trim() || null,
+        cost_value: costVal, value,
+      } : v)
+      onVOsChanged?.(next)
+      return next
+    })
+    setVoItemOverrides(prev => ({ ...prev, [voId]: newItems }))
+    onVOItemsCreated?.(voId, newItems)
+    setEditingVOId(null)
+    setEditLoading(false)
+  }
 
   // ── Cost editing ──────────────────────────────────────────────────────────
 
@@ -177,8 +277,9 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     if (voErr) { setError(voErr.message); setLoading(false); return }
 
     // Insert variation line items
+    let createdItems: ElecQuoteLineItem[] = []
     if (validItems.length > 0) {
-      await supabase.from('elec_quote_line_items').insert(
+      const { data: itemsData } = await supabase.from('elec_quote_line_items').insert(
         validItems.map((li, idx) => ({
           quote_id: quoteId,
           section_id: null,
@@ -191,9 +292,12 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
           variation_order_id: voData.id,
           sort_order: idx,
         }))
-      )
+      ).select()
+      createdItems = (itemsData ?? []) as ElecQuoteLineItem[]
     }
 
+    setVoItemOverrides(prev => ({ ...prev, [voData.id]: createdItems }))
+    onVOItemsCreated?.(voData.id, createdItems)
     setVOs(prev => [voData as ElecVariationOrder, ...prev])
     setFormDesc(''); setFormLineItems([newFormItem()]); setFormCost(''); setFormNotes(''); setFormRequestedBy('')
     setShowAdd(false); setLoading(false)
@@ -529,7 +633,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             const st = VO_STATUS[vo.status]
             const linkedClaim = voClaims.find(c => c.variation_order_id === vo.id)
             const isInvoicing = invoicingVoId === vo.id
-            const voItems = voLineItems.filter(li => li.variation_order_id === vo.id)
+            const isEditing = editingVOId === vo.id
+            const voItems = getVOItems(vo.id)
             return (
               <div key={vo.id} style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                 <div className="px-5 py-4">
@@ -623,7 +728,14 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
                     {/* Action buttons */}
                     <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-                      {vo.status === 'pending' && (
+                      {!isEditing && !isInvoicing && (
+                        <button onClick={() => startEditVO(vo)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                          style={{ color: S.muted, background: S.bg, border: `1px solid ${S.border}` }}>
+                          <Pencil size={11} /> Edit
+                        </button>
+                      )}
+                      {vo.status === 'pending' && !isEditing && (
                         <>
                           <button onClick={() => { setSendModalVO(vo); setSendEmail(vo.sent_to_email || client?.email || ''); setSendDone(false) }}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
@@ -642,7 +754,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                           </button>
                         </>
                       )}
-                      {vo.status === 'approved' && !linkedClaim && !isInvoicing && (
+                      {vo.status === 'approved' && !linkedClaim && !isInvoicing && !isEditing && (
                         <button onClick={() => { setInvoicingVoId(vo.id); setVOError('') }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                           style={{ background: 'rgba(58,124,165,0.08)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}>
@@ -707,6 +819,99 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         className="px-5 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
                         style={{ background: S.accent }}>
                         {voLoading ? 'Sending…' : 'Send to Client'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              {/* Inline edit form */}
+                {isEditing && (
+                  <div className="mx-5 mb-4 rounded-xl p-4" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold" style={{ color: S.text }}>Edit {vo.vo_number}</p>
+                      <button onClick={() => setEditingVOId(null)} className="text-xs" style={{ color: S.muted }}>Cancel</button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>VO Title *</label>
+                        <input value={editDesc} onChange={e => setEditDesc(e.target.value)} autoFocus
+                          className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                          style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Requested By</label>
+                        <input value={editRequestedBy} onChange={e => setEditRequestedBy(e.target.value)}
+                          className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                          style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
+                        <input value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                          className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                          style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                      </div>
+                    </div>
+
+                    {/* Line items */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Line Items</label>
+                        <button onClick={() => setEditLineItems(prev => [...prev, newFormItem()])}
+                          className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded"
+                          style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}>
+                          <Plus size={11} /> Add Item
+                        </button>
+                      </div>
+                      <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
+                        style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px', color: S.muted }}>
+                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Rate (R)</span><span />
+                      </div>
+                      {editLineItems.map(li => (
+                        <div key={li._id} className="grid mb-1.5 items-center"
+                          style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px' }}>
+                          <input value={li.description} onChange={e => updateEditItem(li._id, { description: e.target.value })} placeholder="Description"
+                            className="px-2 py-1.5 text-sm rounded-lg outline-none"
+                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <input value={li.unit} onChange={e => updateEditItem(li._id, { unit: e.target.value })} placeholder="m / nr"
+                            className="px-2 py-1.5 text-sm rounded-lg outline-none text-center"
+                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <input type="number" value={li.qty} onChange={e => updateEditItem(li._id, { qty: e.target.value })}
+                            className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <input type="number" value={li.rate} onChange={e => updateEditItem(li._id, { rate: e.target.value })}
+                            className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <button onClick={() => removeEditItem(li._id)} className="flex items-center justify-center rounded" style={{ color: S.muted }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                      {editVOValue > 0 && (
+                        <div className="flex justify-end mt-2 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
+                          <span className="text-sm font-bold" style={{ color: S.accent }}>Total: {fmtR(editVOValue)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Your Cost (R)</label>
+                      <input type="number" value={editCost} onChange={e => setEditCost(e.target.value)}
+                        className="w-32 px-3 py-2 text-sm rounded-lg outline-none text-right"
+                        style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                    </div>
+
+                    {editError && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded mb-3 text-sm"
+                        style={{ background: '#FEF2F2', color: S.danger, border: '1px solid #FECACA' }}>
+                        <AlertCircle size={13} />{editError}
+                      </div>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setEditingVOId(null)} className="px-4 py-2 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
+                      <button onClick={() => void handleEditSave()} disabled={editLoading || !editDesc.trim()}
+                        className="px-5 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
+                        style={{ background: S.accent }}>
+                        {editLoading ? 'Saving…' : 'Save Changes'}
                       </button>
                     </div>
                   </div>
