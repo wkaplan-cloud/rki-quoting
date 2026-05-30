@@ -97,7 +97,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
       <View style={styles.header}>
         <View style={{ flex: 1, paddingRight: 16 }}>
           {logoUrl
-            ? <Image src={logoUrl} style={{ maxWidth: 300, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 8 }} />
+            ? <Image src={logoUrl} style={{ maxWidth: 300, maxHeight: 72, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 8 }} />
             : <Text style={[styles.brandName, { marginBottom: 8 }]}>{businessName || 'R Kaplan Interiors'}</Text>
           }
           {businessAddress ? (

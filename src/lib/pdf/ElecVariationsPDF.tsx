@@ -86,7 +86,7 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, co
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
             {logoUrl
-              ? <Image src={logoUrl} style={{ maxWidth: 180, alignSelf: 'flex-start', marginBottom: metaParts ? 4 : 0 }} />
+              ? <Image src={logoUrl} style={{ maxWidth: 180, maxHeight: 48, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: metaParts ? 4 : 0 }} />
               : <Text style={s.company}>{companyName}</Text>
             }
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
