@@ -78,17 +78,20 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
   const saveDataRef = useRef(coc)
   useEffect(() => { saveDataRef.current = coc }, [coc])
 
-  const handleSave = useCallback(async () => {
-    if (!hasEditedRef.current) return
+  const handleSave = useCallback(async (force = false): Promise<boolean> => {
+    if (!hasEditedRef.current && !force) return true
     const current = saveDataRef.current
     setSaveStatus('saving'); setSaveError('')
     try {
-      await supabase.from('elec_coc').upsert({ ...current, quote_id: quoteId })
+      const { error } = await supabase.from('elec_coc').upsert({ ...current, quote_id: quoteId })
+      if (error) throw error
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2500)
+      return true
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : 'Save failed')
       setSaveStatus('error')
+      return false
     }
   }, [quoteId]) // eslint-disable-line
 
@@ -104,22 +107,37 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
   async function handleDownload() {
     setDownloading(true)
     clearTimeout(autoSaveTimer.current)
-    await handleSave()
-    window.open(`/api/supplier-portal/quoting/coc/${coc.id}/pdf`, '_blank')
+    // Open the window synchronously (inside user gesture) to avoid popup blockers,
+    // then navigate it after the save completes.
+    const win = window.open('', '_blank')
+    hasEditedRef.current = true
+    const ok = await handleSave(true)
+    if (ok && win) {
+      win.location.href = `/api/supplier-portal/quoting/coc/${coc.id}/pdf`
+    } else if (win) {
+      win.close()
+    }
     setDownloading(false)
   }
 
   async function handlePrint() {
     clearTimeout(autoSaveTimer.current)
-    await handleSave()
-    window.open(`/api/supplier-portal/quoting/coc/${coc.id}/pdf?inline=1`, '_blank')
+    const win = window.open('', '_blank')
+    hasEditedRef.current = true
+    const ok = await handleSave(true)
+    if (ok && win) {
+      win.location.href = `/api/supplier-portal/quoting/coc/${coc.id}/pdf?inline=1`
+    } else if (win) {
+      win.close()
+    }
   }
 
   async function handleSend() {
     if (!sendEmail.trim() || sendStatus === 'sending') return
     setSendStatus('sending'); setSendError('')
     clearTimeout(autoSaveTimer.current)
-    await handleSave()
+    hasEditedRef.current = true
+    await handleSave(true)
     try {
       const res = await fetch(`/api/supplier-portal/quoting/coc/${coc.id}/send`, {
         method: 'POST',
