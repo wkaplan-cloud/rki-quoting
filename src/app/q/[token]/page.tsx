@@ -323,25 +323,28 @@ export default function QuoteApprovalPage() {
 }
 
 function LineItemsTable({ items }: { items: { description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number }[] }) {
+  const cols = '1fr 52px 64px 120px 120px'
   return (
-    <div className="divide-y" style={{ borderColor: S.border }}>
-      <div className="grid px-4 py-2" style={{ gridTemplateColumns: '1fr 56px 88px 88px 96px' }}>
-        {['Description', 'Unit', 'Qty', 'Rate', 'Total'].map(h => (
-          <span key={h} className="text-[10px] font-semibold uppercase tracking-wider text-right first:text-left" style={{ color: S.muted }}>{h}</span>
-        ))}
+    <div style={{ overflowX: 'auto' }}>
+      <div style={{ minWidth: 480 }}>
+        <div className="grid px-4 py-2" style={{ gridTemplateColumns: cols }}>
+          {['Description', 'Unit', 'Qty', 'Rate', 'Total'].map(h => (
+            <span key={h} className="text-[10px] font-semibold uppercase tracking-wider text-right first:text-left" style={{ color: S.muted }}>{h}</span>
+          ))}
+        </div>
+        {items.map((item, i) => {
+          const lineTotal = item.quoted_quantity * item.quoted_unit_rate
+          return (
+            <div key={i} className="grid px-4 py-3 items-center" style={{ gridTemplateColumns: cols, borderTop: `1px solid ${S.border}`, background: i % 2 === 0 ? 'transparent' : S.bg }}>
+              <span className="text-sm pr-4" style={{ color: S.text }}>{item.description}</span>
+              <span className="text-xs text-right" style={{ color: S.muted }}>{item.unit ?? '—'}</span>
+              <span className="text-sm text-right" style={{ color: S.text }}>{item.quoted_quantity}</span>
+              <span className="text-sm text-right" style={{ color: S.text }}>{fmtR(item.quoted_unit_rate)}</span>
+              <span className="text-sm text-right font-medium" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
+            </div>
+          )
+        })}
       </div>
-      {items.map((item, i) => {
-        const lineTotal = item.quoted_quantity * item.quoted_unit_rate
-        return (
-          <div key={i} className="grid px-4 py-3 items-center" style={{ gridTemplateColumns: '1fr 56px 88px 88px 96px', background: i % 2 === 0 ? 'transparent' : S.bg }}>
-            <span className="text-sm pr-4" style={{ color: S.text }}>{item.description}</span>
-            <span className="text-xs text-right" style={{ color: S.muted }}>{item.unit ?? '—'}</span>
-            <span className="text-sm text-right" style={{ color: S.text }}>{item.quoted_quantity}</span>
-            <span className="text-sm text-right" style={{ color: S.text }}>{fmtR(item.quoted_unit_rate)}</span>
-            <span className="text-sm text-right font-medium" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
-          </div>
-        )
-      })}
     </div>
   )
 }
