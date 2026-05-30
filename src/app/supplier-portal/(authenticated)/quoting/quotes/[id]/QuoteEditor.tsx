@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
+  MoreHorizontal, Archive, Lock,
 } from 'lucide-react'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 import { AsBuiltTab } from './AsBuiltTab'
@@ -28,6 +29,20 @@ const STATUS_CONFIG: Record<ElecQuoteStatus, { label: string; color: string; bg:
   completed:   { label: 'Completed',   color: '#166534', bg: 'rgba(22,101,52,0.1)' },
   cancelled:   { label: 'Cancelled',   color: '#DC2626', bg: '#FEF2F2' },
 }
+
+const LIFECYCLE_STEPS: { status: ElecQuoteStatus; label: string }[] = [
+  { status: 'draft',       label: 'Draft' },
+  { status: 'quoted',      label: 'Quoted' },
+  { status: 'approved',    label: 'Approved' },
+  { status: 'in_progress', label: 'In Progress' },
+  { status: 'completed',   label: 'Completed' },
+]
+
+const CONTRACT_TYPES = [
+  { value: 'lump_sum',       label: 'Lump Sum' },
+  { value: 're_measurement', label: 'Re-measurement' },
+  { value: 'cost_plus',      label: 'Cost Plus' },
+]
 
 const UNITS = ['nr', 'm', 'm²', 'm³', 'kg', 'l', 'hr', 'lot', 'allow', 'item']
 const ITEM_TYPES: { value: ElecItemType; label: string }[] = [
@@ -389,9 +404,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [saveError, setSaveError]   = useState('')
   const [activeTab, setActiveTab]   = useState<QuoteTab>('quote')
   const [transitioning, setTransitioning] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
 
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
-  const showTabs = ['in_progress', 'completed'].includes(q.status)
+  const showTabs = true
+  const tabAccessible: Record<QuoteTab, boolean> = {
+    quote:      true,
+    variations: ['approved', 'in_progress', 'completed'].includes(q.status),
+    claims:     ['in_progress', 'completed'].includes(q.status),
+    snag:       ['in_progress', 'completed'].includes(q.status),
+    coc:        ['in_progress', 'completed'].includes(q.status),
+    as_built:   ['in_progress', 'completed'].includes(q.status),
+  }
 
   const [showSendModal, setShowSendModal] = useState(false)
   const [sendEmail, setSendEmail] = useState('')
@@ -458,6 +482,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       await supabase.from('elec_quotes').update({
         project_name: q.project_name, project_address: q.project_address,
         client_id: q.client_id, project_type: q.project_type,
+        contract_type: q.contract_type,
         vat_rate: q.vat_rate, retention_percentage: q.retention_percentage,
         payment_terms_days: q.payment_terms_days, liquidated_damages_per_day: q.liquidated_damages_per_day,
         defects_liability_period_days: q.defects_liability_period_days,
@@ -545,6 +570,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     return () => clearTimeout(autoSaveTimer.current)
   }, [q, sections, freeItems, clientCompany, clientQsName, clientQsEmail]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset active tab to quote if it becomes inaccessible after status change
+  useEffect(() => {
+    if (!tabAccessible[activeTab]) setActiveTab('quote')
+  }, [q.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Status transitions ───────────────────────────────────────────────────────
   async function transition(newStatus: ElecQuoteStatus, extra?: Partial<typeof q>) {
     setTransitioning(true)
@@ -605,13 +635,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   return (
     <div className="max-w-4xl mx-auto pb-16">
       {/* Top bar */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <button onClick={() => router.push('/supplier-portal/quoting/quotes')}
           className="flex items-center gap-1.5 text-sm font-medium" style={{ color: S.muted }}
           onMouseEnter={e => e.currentTarget.style.color = S.text}
           onMouseLeave={e => e.currentTarget.style.color = S.muted}>
           <ChevronLeft size={16} /> Quotes
         </button>
+        <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
         <div className="flex-1" />
         {/* Save status */}
         <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
@@ -619,7 +650,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
           {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
         </div>
-        {/* Manual save fallback */}
         {!locked && (
           <button onClick={() => void handleSave()} disabled={saveStatus === 'saving'}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
@@ -629,47 +659,133 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         )}
         <a href={`/api/supplier-portal/quoting/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ background: S.accent, color: '#fff' }}>
+          style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
           <Download size={12} /> PDF
         </a>
-        <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
-        {q.status === 'in_progress' ? (
+        {/* More menu */}
+        <div className="relative">
+          <button onClick={() => setShowMoreMenu(m => !m)}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
+            style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}
+            onMouseEnter={e => e.currentTarget.style.color = S.text}
+            onMouseLeave={e => e.currentTarget.style.color = S.muted}>
+            <MoreHorizontal size={14} />
+          </button>
+          {showMoreMenu && (
+            <div className="absolute right-0 top-full mt-1 z-30 rounded-xl overflow-hidden w-44"
+              style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+              onMouseLeave={() => setShowMoreMenu(false)}>
+              {['draft', 'quoted'].includes(q.status) && (
+                <button onClick={() => { setShowMoreMenu(false); void archiveQuote() }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left"
+                  style={{ color: S.danger }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <Archive size={13} /> Archive quote
+                </button>
+              )}
+              {['quoted', 'approved', 'in_progress'].includes(q.status) && (
+                <button onClick={() => { setShowMoreMenu(false); if (confirm('Cancel this quote / project?')) void transition('cancelled') }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left"
+                  style={{ color: S.danger }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <X size={13} /> Cancel
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {/* Primary CTA */}
+        {q.status === 'draft' && (
+          <button onClick={openSendModal}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold"
+            style={{ background: S.accent, color: '#fff' }}>
+            <Send size={13} /> Send to Client
+          </button>
+        )}
+        {q.status === 'quoted' && (
+          <button onClick={() => void transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
+            disabled={transitioning}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
+            style={{ background: S.green, color: '#fff' }}>
+            <Check size={13} /> Mark Approved
+          </button>
+        )}
+        {q.status === 'approved' && (
+          <button onClick={() => void transition('in_progress')} disabled={transitioning}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
+            style={{ background: S.gold, color: '#fff' }}>
+            Start Project →
+          </button>
+        )}
+        {q.status === 'in_progress' && (
           <button disabled={transitioning}
             onClick={() => { if (confirm('Mark this project as completed?')) void transition('completed') }}
-            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full transition-opacity hover:opacity-75 disabled:opacity-50"
-            style={{ background: st.bg, color: st.color }}>
-            {st.label} <span style={{ fontSize: 10 }}>▾</span>
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
+            style={{ background: 'rgba(22,101,52,0.12)', color: '#166534', border: '1px solid rgba(22,101,52,0.25)' }}>
+            <Check size={13} /> Mark Complete
           </button>
-        ) : (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: st.bg, color: st.color }}>{st.label}</span>
         )}
       </div>
 
-      {/* Tab nav (only in_progress / completed) */}
-      {showTabs && (
-        <div className="flex items-center gap-1 mb-6 p-1 rounded-xl" style={{ background: S.bg }}>
-          {TABS.flatMap(tab => {
-            const btn = (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
-                style={{
-                  background: activeTab === tab.id ? S.card : 'transparent',
-                  color:      activeTab === tab.id ? S.text : S.muted,
-                  boxShadow:  activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                }}>
-                {tab.label}
-              </button>
+      {/* Lifecycle stepper */}
+      {q.status !== 'cancelled' ? (
+        <div className="flex items-center mb-5 px-1">
+          {LIFECYCLE_STEPS.map((step, i) => {
+            const currentIdx = LIFECYCLE_STEPS.findIndex(s => s.status === q.status)
+            const isPast    = i < currentIdx
+            const isCurrent = i === currentIdx
+            return (
+              <div key={step.status} className="flex items-center" style={{ flex: i < LIFECYCLE_STEPS.length - 1 ? 1 : undefined }}>
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{
+                      background: isCurrent ? S.accent : isPast ? S.accent : 'transparent',
+                      border: `2px solid ${isCurrent ? S.accent : isPast ? S.accent : S.border}`,
+                    }}>
+                    {isPast    && <Check size={9} color="#fff" strokeWidth={3} />}
+                    {isCurrent && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+                  </div>
+                  <p className="text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap"
+                    style={{ color: isCurrent ? S.accent : isPast ? S.accent : S.muted }}>
+                    {step.label}
+                  </p>
+                </div>
+                {i < LIFECYCLE_STEPS.length - 1 && (
+                  <div className="flex-1 h-px mx-2 mb-3.5" style={{ background: isPast ? S.accent : S.border }} />
+                )}
+              </div>
             )
-            if (tab.id === 'claims' || tab.id === 'snag') {
-              return [
-                <div key={`div-${tab.id}`} style={{ width: 1, height: 20, background: S.muted, flexShrink: 0, margin: '0 4px', opacity: 0.35 }} />,
-                btn,
-              ]
-            }
-            return [btn]
           })}
         </div>
+      ) : (
+        <div className="flex items-center gap-2 mb-5 px-1">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#FEF2F2', color: S.danger }}>Cancelled</span>
+        </div>
       )}
+
+      {/* Tab nav — always visible, locked tabs greyed out */}
+      <div className="flex items-center gap-1 mb-5 p-1 rounded-xl" style={{ background: S.bg }}>
+        {TABS.map(tab => {
+          const accessible = tabAccessible[tab.id]
+          const isActive   = activeTab === tab.id
+          return (
+            <button key={tab.id}
+              onClick={() => accessible && setActiveTab(tab.id)}
+              className="flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+              style={{
+                background: isActive ? S.card : 'transparent',
+                color:      isActive ? S.text : accessible ? S.muted : S.border,
+                boxShadow:  isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                cursor:     accessible ? 'pointer' : 'default',
+              }}>
+              {tab.label}
+              {!accessible && <Lock size={9} style={{ color: S.border }} />}
+            </button>
+          )
+        })}
+      </div>
 
       {/* Project profit strip — always visible when in progress / completed */}
       {showTabs && (() => {
@@ -698,63 +814,69 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         )
       })()}
 
-      {/* Non-quote tabs — always mounted to preserve state; hidden when inactive */}
-      {showTabs && (
-        <>
-          <div style={{ display: activeTab === 'as_built' ? undefined : 'none' }}>
-            <AsBuiltTab
-              quoteId={q.id}
-              sections={sections as unknown as ElecQuoteSection[]}
-              items={allItems as ElecQuoteLineItem[]}
-              contractTotal={contractTotal}
-              clientEmail={q.client?.email ?? null}
-            />
-          </div>
-          <div style={{ display: activeTab === 'claims' ? undefined : 'none' }}>
-            <ClaimsTab
-              quoteId={q.id}
-              portalAccountId={portalAccountId}
-              initialClaims={claims}
-              extraClaims={voCreatedClaims}
-              items={allItems as ElecQuoteLineItem[]}
-              sections={sections as unknown as ElecQuoteSection[]}
-              contractTotal={contractTotal}
-              approvedVOTotal={approvedVOTotal}
-              contractType={q.contract_type}
-              retentionPct={q.retention_percentage}
-              client={clients.find(c => c.id === q.client_id) ?? null}
-              sageConnected={sageConnected}
-            />
-          </div>
-          <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>
-            <VariationsTab
-              quoteId={q.id}
-              portalAccountId={portalAccountId}
-              initialVOs={variations}
-              initialClaims={claims}
-              voPrefix={voPrefix}
-              companyCode={companyCode}
-              sections={sections as unknown as ElecQuoteSection[]}
-              items={allItems as ElecQuoteLineItem[]}
-              client={clients.find(c => c.id === q.client_id) ?? null}
-              onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
-              onVOsChanged={setLiveVOs}
-            />
-          </div>
-          <div style={{ display: activeTab === 'snag' ? undefined : 'none' }}>
-            <SnagTab quoteId={q.id} initialSnags={snags} />
-          </div>
-          <div style={{ display: activeTab === 'coc' ? undefined : 'none' }}>
-            <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} companyCode={companyCode}
-              projectAddress={q.project_address ?? null}
-              clientName={q.client?.client_name ?? null}
-              clientEmail={q.client?.email ?? null} />
-          </div>
-        </>
+      {/* Non-quote tabs — mounted only when tab is accessible; hidden when not active */}
+      {tabAccessible.as_built && (
+        <div style={{ display: activeTab === 'as_built' ? undefined : 'none' }}>
+          <AsBuiltTab
+            quoteId={q.id}
+            sections={sections as unknown as ElecQuoteSection[]}
+            items={allItems as ElecQuoteLineItem[]}
+            contractTotal={contractTotal}
+            clientEmail={q.client?.email ?? null}
+          />
+        </div>
+      )}
+      {tabAccessible.claims && (
+        <div style={{ display: activeTab === 'claims' ? undefined : 'none' }}>
+          <ClaimsTab
+            quoteId={q.id}
+            portalAccountId={portalAccountId}
+            initialClaims={claims}
+            extraClaims={voCreatedClaims}
+            items={allItems as ElecQuoteLineItem[]}
+            sections={sections as unknown as ElecQuoteSection[]}
+            contractTotal={contractTotal}
+            approvedVOTotal={approvedVOTotal}
+            contractType={q.contract_type}
+            retentionPct={q.retention_percentage}
+            client={clients.find(c => c.id === q.client_id) ?? null}
+            sageConnected={sageConnected}
+          />
+        </div>
+      )}
+      {tabAccessible.variations && (
+        <div style={{ display: activeTab === 'variations' ? undefined : 'none' }}>
+          <VariationsTab
+            quoteId={q.id}
+            portalAccountId={portalAccountId}
+            initialVOs={variations}
+            initialClaims={claims}
+            voPrefix={voPrefix}
+            companyCode={companyCode}
+            sections={sections as unknown as ElecQuoteSection[]}
+            items={allItems as ElecQuoteLineItem[]}
+            client={clients.find(c => c.id === q.client_id) ?? null}
+            onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
+            onVOsChanged={setLiveVOs}
+          />
+        </div>
+      )}
+      {tabAccessible.snag && (
+        <div style={{ display: activeTab === 'snag' ? undefined : 'none' }}>
+          <SnagTab quoteId={q.id} initialSnags={snags} />
+        </div>
+      )}
+      {tabAccessible.coc && (
+        <div style={{ display: activeTab === 'coc' ? undefined : 'none' }}>
+          <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} companyCode={companyCode}
+            projectAddress={q.project_address ?? null}
+            clientName={q.client?.client_name ?? null}
+            clientEmail={q.client?.email ?? null} />
+        </div>
       )}
 
       {/* Quote tab content */}
-      <div style={{ display: !showTabs || activeTab === 'quote' ? undefined : 'none' }}>
+      <div style={{ display: activeTab === 'quote' ? undefined : 'none' }}>
 
       {/* Project name */}
       <input value={q.project_name} onChange={e => setQ(p => ({ ...p, project_name: e.target.value }))}
@@ -765,6 +887,27 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       {/* Header card — condensed summary when locked, form when editable */}
       {locked ? (
         <div className="rounded-2xl p-5 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          {/* Contract value banner */}
+          <div className="flex items-start justify-between pb-4 mb-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Contract Value</p>
+              <p className="text-2xl font-bold" style={{ color: S.accent }}>{fmtR(contractTotal)}</p>
+              {approvedVOTotal !== 0 && (
+                <p className="text-xs mt-0.5 font-medium" style={{ color: S.green }}>
+                  +{fmtR(approvedVOTotal)} approved VOs → {fmtR(revisedTotal)} revised
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Contract Type</p>
+              <p className="text-sm font-semibold" style={{ color: S.text }}>
+                {CONTRACT_TYPES.find(ct => ct.value === q.contract_type)?.label ?? 'Lump Sum'}
+              </p>
+              {q.payment_terms_days != null && (
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>{q.payment_terms_days}-day payment terms</p>
+              )}
+            </div>
+          </div>
           {/* Client block */}
           {q.client && (
             <div className="pb-4 mb-4" style={{ borderBottom: `1px solid ${S.border}` }}>
@@ -791,13 +934,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               </div>
             )}
             {[
-              { label: 'Project Type',    value: q.project_type ? q.project_type.charAt(0).toUpperCase() + q.project_type.slice(1) : null },
-              { label: 'Quote Date',      value: q.quoted_date ?? null },
-              { label: 'Est. Completion', value: q.expected_completion_date ?? null },
-              { label: 'Retention',       value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
-              { label: 'Payment Terms',   value: q.payment_terms_days ? `${q.payment_terms_days} days` : null },
+              { label: 'Project Type',      value: q.project_type ? q.project_type.charAt(0).toUpperCase() + q.project_type.slice(1) : null },
+              { label: 'Quote Date',        value: q.quoted_date ?? null },
+              { label: 'Est. Completion',   value: q.expected_completion_date ?? null },
+              { label: 'VAT Rate',          value: q.vat_rate != null ? `${q.vat_rate}%` : null },
+              { label: 'Retention',         value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
               { label: 'Defects Liability', value: q.defects_liability_period_days ? `${q.defects_liability_period_days} days` : null },
-              { label: 'Created',         value: new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) + (q.created_by_name ? ` by ${q.created_by_name}` : '') },
+              { label: 'Liquidated Damages',value: q.liquidated_damages_per_day ? `${fmtR(q.liquidated_damages_per_day)}/day` : null },
+              { label: 'Created',           value: new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) + (q.created_by_name ? ` by ${q.created_by_name}` : '') },
             ].filter(f => f.value).map(f => (
               <div key={f.label}>
                 <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{f.label}</p>
@@ -893,9 +1037,56 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
 
+          {/* Contract type */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Contract Type</label>
+            <select value={q.contract_type ?? 'lump_sum'} onChange={e => setQ(p => ({ ...p, contract_type: e.target.value as ElecQuote['contract_type'] }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+              {CONTRACT_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
+            </select>
+          </div>
+
+          {/* Payment terms */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Payment Terms (days)</label>
+            <input type="number" value={q.payment_terms_days || ''} placeholder="e.g. 30"
+              onChange={e => setQ(p => ({ ...p, payment_terms_days: parseInt(e.target.value) || 0 }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+
+          {/* VAT rate */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>VAT Rate (%)</label>
+            <input type="number" value={q.vat_rate ?? 15} placeholder="15"
+              onChange={e => setQ(p => ({ ...p, vat_rate: parseFloat(e.target.value) || 15 }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+
+          {/* Retention */}
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Retention (%)</label>
             <input type="number" value={q.retention_percentage ?? 0} onChange={e => setQ(p => ({ ...p, retention_percentage: parseFloat(e.target.value) || 0 }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+
+          {/* Defects liability */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Defects Liability (days)</label>
+            <input type="number" value={q.defects_liability_period_days || ''} placeholder="e.g. 365"
+              onChange={e => setQ(p => ({ ...p, defects_liability_period_days: parseInt(e.target.value) || 0 }))}
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+
+          {/* Liquidated damages */}
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Liquidated Damages (R/day)</label>
+            <input type="number" value={q.liquidated_damages_per_day ?? ''} placeholder="e.g. 5000"
+              onChange={e => setQ(p => ({ ...p, liquidated_damages_per_day: e.target.value ? parseFloat(e.target.value) : null }))}
               className="w-full px-3 py-2 text-sm rounded-lg outline-none"
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
@@ -981,7 +1172,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
       {/* Totals */}
       <div className="rounded-2xl p-5 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-        <div className="space-y-2 max-w-sm ml-auto">
+        <div className="space-y-2">
           {hasCostData && (
             <>
               <div className="flex justify-between text-sm">
@@ -1027,31 +1218,12 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </div>
       </div>
 
-      {/* Status actions */}
-      <div className="rounded-2xl p-4 flex items-center gap-3 flex-wrap" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-        <span className="text-sm font-medium flex-1" style={{ color: S.muted }}>Status</span>
-        {q.status === 'draft' && (
-          <>
-            <button onClick={() => void archiveQuote()} disabled={transitioning}
-              className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
-              style={{ background: '#FEF2F2', color: S.danger }}>
-              Archive
-            </button>
-            <button onClick={() => void handleSave()} disabled={saveStatus === 'saving'}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-              style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
-              <Save size={13} /> Save Draft
-            </button>
-            <button onClick={openSendModal}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-              style={{ background: S.accent }}>
-              <Send size={13} /> Send to Client →
-            </button>
-          </>
-        )}
-        {q.status === 'quoted' && <>
+      {/* Secondary actions strip */}
+      {q.status === 'quoted' && (
+        <div className="flex items-center gap-3 flex-wrap">
           <button onClick={() => void transition('draft')} disabled={transitioning}
-            className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50" style={{ background: S.bg, color: S.muted }}>
+            className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
             ← Back to Draft
           </button>
           <button onClick={openSendModal}
@@ -1059,44 +1231,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             style={{ background: 'rgba(58,124,165,0.1)', color: S.accent, border: `1px solid rgba(58,124,165,0.25)` }}>
             <Send size={13} /> Send Again
           </button>
-          <button onClick={() => void transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
-            disabled={transitioning}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: S.green }}>
-            Mark Approved →
-          </button>
-        </>}
-        {q.status === 'approved' && (
-          <button onClick={() => void transition('in_progress')} disabled={transitioning}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: S.gold }}>
-            Start Project →
-          </button>
-        )}
-        {q.status === 'in_progress' && (
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm flex-1" style={{ color: S.muted }}>
-              Project in progress — use the Claims tab to invoice
-            </span>
-            <button disabled={transitioning}
-              onClick={() => { if (confirm('Cancel this project? This cannot be undone.')) void transition('cancelled') }}
-              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap disabled:opacity-50"
-              style={{ background: '#FEF2F2', color: S.danger }}>
-              Cancel Project
-            </button>
-            <button disabled={transitioning}
-              onClick={() => { if (confirm('Mark this project as completed?')) void transition('completed') }}
-              className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap disabled:opacity-50"
-              style={{ background: 'rgba(22,101,52,0.1)', color: '#166534', border: '1px solid rgba(22,101,52,0.2)' }}>
-              Mark Complete ✓
-            </button>
-          </div>
-        )}
-        {(q.status === 'quoted' || q.status === 'approved') && (
-          <button disabled={transitioning} onClick={() => { if (confirm('Cancel this quote?')) void transition('cancelled') }}
-            className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50" style={{ background: '#FEF2F2', color: S.danger }}>
-            Cancel
-          </button>
-        )}
-      </div>
+        </div>
+      )}
+      {q.status === 'in_progress' && (
+        <p className="text-xs" style={{ color: S.muted }}>
+          Project in progress — use the Claims tab to submit invoices.
+        </p>
+      )}
 
       </div>{/* end quote tab */}
 
