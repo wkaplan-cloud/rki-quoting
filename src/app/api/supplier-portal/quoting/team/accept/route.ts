@@ -3,25 +3,29 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get('token')
-  if (!token) return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+  try {
+    const token = req.nextUrl.searchParams.get('token')
+    if (!token) return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
 
-  const { data: member } = await supabaseAdmin
-    .from('portal_org_members')
-    .select('id, email, name, portal_account_id')
-    .eq('invite_token', token)
-    .is('accepted_at', null)
-    .single()
+    const { data: member } = await supabaseAdmin
+      .from('portal_org_members')
+      .select('id, email, name, portal_account_id')
+      .eq('invite_token', token)
+      .is('accepted_at', null)
+      .single()
 
-  if (!member) return NextResponse.json({ error: 'Invalid or already-used invite link' }, { status: 404 })
+    if (!member) return NextResponse.json({ error: 'Invalid or already-used invite link' }, { status: 404 })
 
-  const { data: account } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('company_name')
-    .eq('id', member.portal_account_id)
-    .single()
+    const { data: account } = await supabaseAdmin
+      .from('supplier_portal_accounts')
+      .select('company_name')
+      .eq('id', member.portal_account_id)
+      .single()
 
-  return NextResponse.json({ email: member.email, name: member.name, company: account?.company_name ?? '' })
+    return NextResponse.json({ email: member.email, name: member.name, company: account?.company_name ?? '' })
+  } catch (e) {
+    return apiError(e)
+  }
 }
 
 export async function POST(req: NextRequest) {

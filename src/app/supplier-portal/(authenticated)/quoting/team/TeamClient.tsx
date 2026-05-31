@@ -30,9 +30,10 @@ interface Props {
   orgMembers: PortalOrgMember[]
   staff: ElecStaff[]
   punches: ElecTimePunch[]
+  ownerEmail: string
 }
 
-export function TeamClient({ orgMembers: initMembers, staff, punches }: Props) {
+export function TeamClient({ orgMembers: initMembers, staff, punches, ownerEmail }: Props) {
   const [tab, setTab] = useState<Tab>('timesheet')
   const [members, setMembers] = useState(initMembers)
   const [showInvite, setShowInvite] = useState(false)
@@ -204,34 +205,47 @@ export function TeamClient({ orgMembers: initMembers, staff, punches }: Props) {
             </button>
           </div>
 
-          {members.length === 0 && (
-            <div className="rounded-2xl py-10 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              <p className="text-sm" style={{ color: S.muted }}>No additional admins yet</p>
-              <p className="text-xs mt-1" style={{ color: S.muted }}>Invite someone to give them full admin access to this organisation.</p>
+          <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            {/* Account owner — always shown first */}
+            <div className="flex items-center gap-3 px-4 py-3.5">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                style={{ background: S.accent }}>
+                {ownerEmail.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs" style={{ color: S.muted }}>{ownerEmail}</p>
+              </div>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>Active</span>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>Owner</span>
             </div>
-          )}
 
-          {members.length > 0 && (
-            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              {members.map((m, i) => (
-                <div key={m.id} className="flex items-center gap-3 px-4 py-3.5"
-                  style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{ background: m.accepted_at ? S.accent : S.muted }}>
-                    {(m.name ?? m.email).slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {m.name && <p className="text-sm font-semibold" style={{ color: S.text }}>{m.name}</p>}
-                    <p className="text-xs" style={{ color: S.muted }}>{m.email}</p>
-                  </div>
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
-                    style={{ background: m.accepted_at ? 'rgba(22,163,74,0.1)' : 'rgba(217,164,65,0.1)', color: m.accepted_at ? S.green : S.gold }}>
-                    {m.accepted_at ? 'Active' : 'Pending'}
-                  </span>
+            {/* Invited admins */}
+            {members.map(m => (
+              <div key={m.id} className="flex items-center gap-3 px-4 py-3.5"
+                style={{ borderTop: `1px solid ${S.border}` }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                  style={{ background: m.accepted_at ? S.accent : S.muted }}>
+                  {(m.name ?? m.email).slice(0, 2).toUpperCase()}
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="flex-1 min-w-0">
+                  {m.name && <p className="text-sm font-semibold" style={{ color: S.text }}>{m.name}</p>}
+                  <p className="text-xs" style={{ color: S.muted }}>{m.email}</p>
+                </div>
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                  style={{ background: m.accepted_at ? 'rgba(22,163,74,0.1)' : 'rgba(217,164,65,0.1)', color: m.accepted_at ? S.green : S.gold }}>
+                  {m.accepted_at ? 'Active' : 'Pending'}
+                </span>
+              </div>
+            ))}
+
+            {members.length === 0 && (
+              <div className="px-4 py-3.5 border-t" style={{ borderColor: S.border }}>
+                <p className="text-xs text-center" style={{ color: S.muted }}>No additional admins invited yet</p>
+              </div>
+            )}
+          </div>
 
           {/* Invite modal */}
           {showInvite && (

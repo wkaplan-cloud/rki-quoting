@@ -12,11 +12,30 @@ export default async function TeamPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  const { data: account } = await supabaseAdmin
+  // Owner check first; fall back to invited-admin membership
+  let account = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, plan, subscription_status, trial_ends_at')
+    .select('id, email, plan, subscription_status, trial_ends_at')
     .eq('auth_user_id', user.id)
-    .single()
+    .maybeSingle()
+    .then(r => r.data)
+
+  if (!account) {
+    const { data: membership } = await supabaseAdmin
+      .from('portal_org_members')
+      .select('portal_account_id')
+      .eq('auth_user_id', user.id)
+      .not('accepted_at', 'is', null)
+      .maybeSingle()
+    if (membership) {
+      account = await supabaseAdmin
+        .from('supplier_portal_accounts')
+        .select('id, email, plan, subscription_status, trial_ends_at')
+        .eq('id', membership.portal_account_id)
+        .maybeSingle()
+        .then(r => r.data)
+    }
+  }
 
   const isTrialing = account?.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
   if (!account || !(account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing))) {
@@ -24,6 +43,13 @@ export default async function TeamPage() {
   }
 
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  // Fetch owner info to display in admin list (owner is not in portal_org_members)
+  const { data: ownerAccount } = await supabaseAdmin
+    .from('supplier_portal_accounts')
+    .select('email, auth_user_id')
+    .eq('id', account.id)
+    .single()
 
   const [{ data: members }, { data: staff }, { data: punches }] = await Promise.all([
     supabaseAdmin
@@ -49,6 +75,7 @@ export default async function TeamPage() {
       orgMembers={(members ?? []) as PortalOrgMember[]}
       staff={(staff ?? []) as ElecStaff[]}
       punches={(punches ?? []) as ElecTimePunch[]}
+      ownerEmail={ownerAccount?.email ?? account.email ?? ''}
     />
   )
 }

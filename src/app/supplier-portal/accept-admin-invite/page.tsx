@@ -23,11 +23,12 @@ function AcceptAdminContent() {
   useEffect(() => {
     if (!token) { setStatus('error'); setError('Invalid invite link'); return }
     void fetch(`/api/supplier-portal/quoting/team/accept?token=${token}`)
-      .then(r => r.json())
-      .then((data: typeof info & { error?: string }) => {
-        if (data.error) { setStatus('error'); setError(data.error); return }
+      .then(async r => {
+        const data = await r.json() as typeof info & { error?: string }
+        if (!r.ok || data.error) { setStatus('error'); setError(data.error ?? 'Invalid invite link'); return }
         setInfo(data); setStatus('form')
       })
+      .catch(() => { setStatus('error'); setError('Something went wrong. Please request a new invite link.') })
   }, [token])
 
   async function handleSubmit(e: React.FormEvent) {
