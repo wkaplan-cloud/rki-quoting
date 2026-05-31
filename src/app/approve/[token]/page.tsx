@@ -22,17 +22,15 @@ export default async function ApprovePage({ params, searchParams }: {
 
   const { data: project } = await supabaseAdmin
     .from('projects')
-    .select('project_name, project_number, user_id, client:clients(client_name)')
+    .select('project_name, project_number, user_id, org_id, client:clients(client_name)')
     .eq('id', approval.project_id)
     .single()
 
   if (!project) notFound()
 
-  const { data: settings } = await supabaseAdmin
-    .from('settings')
-    .select('business_name, logo_url')
-    .eq('user_id', project.user_id)
-    .maybeSingle()
+  const { data: settings } = project.org_id
+    ? await supabaseAdmin.from('settings').select('business_name, logo_url').eq('org_id', project.org_id).maybeSingle()
+    : { data: null }
 
   const client = Array.isArray(project.client) ? project.client[0] : project.client
   const clientName = (client as { client_name?: string } | null)?.client_name ?? null

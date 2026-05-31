@@ -16,15 +16,14 @@ export async function POST(req: NextRequest) {
     const { url, filename } = await req.json() as { url: string; filename: string }
     if (!url || !filename) return NextResponse.json({ error: 'url and filename are required' }, { status: 400 })
 
-    // Save letterhead_url to this studio's settings row
-    const { data: settings } = await supabaseAdmin
+    // Save letterhead_url to this studio's settings row (RLS-filtered by org)
+    const { data: settings } = await supabase
       .from('settings')
       .select('id, business_name, email_from')
-      .eq('user_id', user.id)
       .maybeSingle()
 
     if (settings?.id) {
-      await supabaseAdmin
+      await supabase
         .from('settings')
         .update({ letterhead_url: url, letterhead_filename: filename })
         .eq('id', settings.id)

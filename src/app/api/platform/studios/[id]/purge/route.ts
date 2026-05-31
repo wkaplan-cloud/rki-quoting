@@ -38,55 +38,51 @@ export async function DELETE(
 
   const userIds = (members ?? []).map(m => m.user_id).filter(Boolean) as string[]
 
-  // Delete in dependency order to avoid FK violations
-  if (userIds.length > 0) {
-    // line_items belong to projects which belong to users
-    const { data: projectIds } = await supabaseAdmin
-      .from('projects')
-      .select('id')
-      .in('user_id', userIds)
+  // Delete in dependency order to avoid FK violations — use org_id throughout
+  const { data: projectIds } = await supabaseAdmin
+    .from('projects')
+    .select('id')
+    .eq('org_id', orgId)
 
-    if (projectIds?.length) {
-      const pids = projectIds.map(p => p.id)
-      await supabaseAdmin.from('line_items').delete().in('project_id', pids)
-      await supabaseAdmin.from('project_stages').delete().in('project_id', pids)
-      await supabaseAdmin.from('email_logs').delete().in('project_id', pids)
-      await supabaseAdmin.from('audit_logs').delete().in('project_id', pids)
-    }
-
-    await supabaseAdmin.from('projects').delete().in('user_id', userIds)
-    await supabaseAdmin.from('clients').delete().in('user_id', userIds)
-    await supabaseAdmin.from('items').delete().in('user_id', userIds)
-    await supabaseAdmin.from('settings').delete().eq('org_id', orgId)
-    await supabaseAdmin.from('branding').delete().in('user_id', userIds)
-
-    // Price lists owned by this org's users
-    const { data: priceLists } = await supabaseAdmin
-      .from('price_lists')
-      .select('id')
-      .in('user_id', userIds)
-
-    if (priceLists?.length) {
-      const plids = priceLists.map(pl => pl.id)
-      await supabaseAdmin.from('price_list_items').delete().in('price_list_id', plids)
-      await supabaseAdmin.from('price_list_access').delete().in('price_list_id', plids)
-    }
-
-    await supabaseAdmin.from('price_lists').delete().in('user_id', userIds)
-
-    // Suppliers owned by this org's users
-    const { data: supplierIds } = await supabaseAdmin
-      .from('suppliers')
-      .select('id')
-      .in('user_id', userIds)
-
-    if (supplierIds?.length) {
-      const sids = supplierIds.map(s => s.id)
-      await supabaseAdmin.from('platform_supplier_contacts').delete().in('supplier_id', sids)
-    }
-
-    await supabaseAdmin.from('suppliers').delete().in('user_id', userIds)
+  if (projectIds?.length) {
+    const pids = projectIds.map(p => p.id)
+    await supabaseAdmin.from('line_items').delete().in('project_id', pids)
+    await supabaseAdmin.from('project_stages').delete().in('project_id', pids)
+    await supabaseAdmin.from('email_logs').delete().in('project_id', pids)
+    await supabaseAdmin.from('audit_logs').delete().in('project_id', pids)
   }
+
+  await supabaseAdmin.from('projects').delete().eq('org_id', orgId)
+  await supabaseAdmin.from('clients').delete().eq('org_id', orgId)
+  await supabaseAdmin.from('items').delete().eq('org_id', orgId)
+  await supabaseAdmin.from('settings').delete().eq('org_id', orgId)
+
+  // Price lists owned by this org
+  const { data: priceLists } = await supabaseAdmin
+    .from('price_lists')
+    .select('id')
+    .eq('org_id', orgId)
+
+  if (priceLists?.length) {
+    const plids = priceLists.map(pl => pl.id)
+    await supabaseAdmin.from('price_list_items').delete().in('price_list_id', plids)
+    await supabaseAdmin.from('price_list_access').delete().in('price_list_id', plids)
+  }
+
+  await supabaseAdmin.from('price_lists').delete().eq('org_id', orgId)
+
+  // Suppliers owned by this org
+  const { data: supplierIds } = await supabaseAdmin
+    .from('suppliers')
+    .select('id')
+    .eq('org_id', orgId)
+
+  if (supplierIds?.length) {
+    const sids = supplierIds.map(s => s.id)
+    await supabaseAdmin.from('platform_supplier_contacts').delete().in('supplier_id', sids)
+  }
+
+  await supabaseAdmin.from('suppliers').delete().eq('org_id', orgId)
 
   // Remove any price list access grants this org received from other orgs
   await supabaseAdmin.from('price_list_access').delete().eq('org_id', orgId)
