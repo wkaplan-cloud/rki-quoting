@@ -7,7 +7,8 @@ const MAX_DIM = 2400   // Max px on longest side before downscaling
 // - Compresses JPEG/PNG/WebP by re-encoding to JPEG at QUALITY
 // - Converts SVG to PNG (react-pdf cannot render SVG directly)
 // - Returns the file unchanged for PDF and other non-image types
-export async function compressImage(file: File): Promise<File> {
+// Pass maxDim to override the default 2400px cap (e.g. 800 for logos)
+export async function compressImage(file: File, maxDim = MAX_DIM): Promise<File> {
   if (file.size > MAX_MB * 1024 * 1024) {
     throw new Error(`File is too large — please keep uploads under ${MAX_MB}MB`)
   }
@@ -26,8 +27,8 @@ export async function compressImage(file: File): Promise<File> {
       // SVGs often report 0 intrinsic dimensions — default to a sensible logo size
       let width  = img.naturalWidth  || 800
       let height = img.naturalHeight || 200
-      if (width > MAX_DIM || height > MAX_DIM) {
-        const ratio = Math.min(MAX_DIM / width, MAX_DIM / height)
+      if (width > maxDim || height > maxDim) {
+        const ratio = Math.min(maxDim / width, maxDim / height)
         width  = Math.round(width  * ratio)
         height = Math.round(height * ratio)
       }

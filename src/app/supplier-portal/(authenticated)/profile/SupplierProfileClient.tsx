@@ -129,7 +129,7 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
     if (!file.type.startsWith('image/')) { setError('Please upload an image file'); return }
     setUploading(true); setError('')
     let compressed: File
-    try { compressed = await compressImage(file) } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed'); setUploading(false); return }
+    try { compressed = await compressImage(file, 800) } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed'); setUploading(false); return }
     const ext = compressed.name.split('.').pop() ?? 'jpg'
     const storagePath = `supplier-portal/${portalAccountId}/logo.${ext}`
     const { error: uploadError } = await supabase.storage
@@ -250,7 +250,7 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
           {/* Logo upload */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#71717A' }}>Company Logo</label>
-            <p className="text-xs mb-3" style={{ color: '#A1A1AA' }}>Appears on the top-left of all PDFs in place of your company name text. Ideal size: <strong style={{ color: '#52525B' }}>400 × 120 px</strong> (landscape). PNG or SVG gives the sharpest result.</p>
+            <p className="text-xs mb-3" style={{ color: '#A1A1AA' }}>Appears on the top-left of all PDFs and job cards. Best results: <strong style={{ color: '#52525B' }}>landscape PNG or SVG</strong> with a transparent background. Larger images are automatically resized — no need to resize before uploading.</p>
             <div className="flex items-center gap-4">
               {logoUrl ? (
                 <div className="relative group">
@@ -289,7 +289,7 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
                   {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                   {uploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
                 </button>
-                <p className="text-[10px] mt-1.5" style={{ color: '#A1A1AA' }}>Max 5 MB · PNG, SVG, or JPG</p>
+                <p className="text-[10px] mt-1.5" style={{ color: '#A1A1AA' }}>PNG, SVG, or JPG · max 5 MB · auto-resized if larger than 800 px</p>
               </div>
             </div>
           </div>
