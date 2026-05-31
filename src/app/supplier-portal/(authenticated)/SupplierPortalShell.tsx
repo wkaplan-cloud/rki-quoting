@@ -13,7 +13,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const prevCountRef = useRef(0)
+  const prevCountRef = useRef(-1) // -1 = not yet initialised; skip sound on first poll
 
   useEffect(() => {
     const saved = localStorage.getItem('supplier-sidebar-expanded')
@@ -54,8 +54,8 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
         const d = await res.json() as { count: number }
         if (!alive) return
         const newCount = d.count ?? 0
-        if (newCount > prevCountRef.current) {
-          // New notification(s) arrived — play sound
+        if (prevCountRef.current >= 0 && newCount > prevCountRef.current) {
+          // New notification(s) arrived after initial load — play sound
           try { audioRef.current?.play().catch(() => {}) } catch {}
         }
         prevCountRef.current = newCount

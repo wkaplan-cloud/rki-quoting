@@ -25,7 +25,7 @@ export default async function DashboardPage() {
       .select('id')
       .eq('auth_user_id', user?.id ?? '')
       .maybeSingle()
-    if (portalAccount) redirect('/supplier-portal/dashboard')
+    if (portalAccount) redirect('/supplier-portal/price-requests')
     else redirect('/supplier-portal/register?notice=no-portal-account')
   }
   const currentUserId = user?.id ?? ''

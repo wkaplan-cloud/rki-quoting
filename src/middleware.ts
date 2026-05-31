@@ -122,13 +122,13 @@ export async function middleware(request: NextRequest) {
       .select('id')
       .eq('auth_user_id', user.id)
       .maybeSingle()
-    const dest = supplierAccount ? '/supplier-portal/dashboard' : '/dashboard'
+    const dest = supplierAccount ? '/supplier-portal/price-requests' : '/dashboard'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
   if (user && pathname === '/supplier-portal/login') {
     const redirectTo = request.nextUrl.searchParams.get('redirect')
-    const dest = redirectTo?.startsWith('/supplier-portal/') ? redirectTo : '/supplier-portal/dashboard'
+    const dest = redirectTo?.startsWith('/supplier-portal/') ? redirectTo : '/supplier-portal/price-requests'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 

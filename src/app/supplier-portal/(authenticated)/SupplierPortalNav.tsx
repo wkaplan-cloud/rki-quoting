@@ -16,7 +16,7 @@ interface Props {
 
 const NAV_ITEMS = [
   { href: '/supplier-portal/home',       label: 'Home',           icon: Home,  showBadge: false },
-  { href: '/supplier-portal/dashboard',  label: 'Price Requests', icon: Inbox, showBadge: true  },
+  { href: '/supplier-portal/price-requests', label: 'Price Requests', icon: Inbox, showBadge: true  },
   { href: '/supplier-portal/price-list', label: 'My Price List',  icon: Tag,   showBadge: false },
 ]
 
