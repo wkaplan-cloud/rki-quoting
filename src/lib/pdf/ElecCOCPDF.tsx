@@ -17,7 +17,8 @@ const s = StyleSheet.create({
   // Header box
   headerBox: { borderWidth: 1.5, borderColor: B, flexDirection: 'row', alignItems: 'flex-start', padding: 10 },
   headerLeft: { flex: 1, paddingRight: 14 },
-  logoImg: { maxWidth: 150, maxHeight: 40, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 3 },
+  logoImg: { maxWidth: 150, maxHeight: 40, objectFit: 'contain' },
+  logoWrap: { alignItems: 'flex-start', marginBottom: 3 },
   coName: { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 2 },
   coMeta: { fontSize: 6, color: '#555', lineHeight: 1.5 },
   headerRight: { alignItems: 'flex-end' },
@@ -141,7 +142,7 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName, logoUrl 
         <View style={s.headerBox}>
           <View style={s.headerLeft}>
             {logoUrl
-              ? <Image src={logoUrl} style={s.logoImg} />
+              ? <View style={s.logoWrap}><Image src={logoUrl} style={s.logoImg} /></View>
               : null
             }
             <Text style={s.coName}>{companyName}</Text>
