@@ -69,6 +69,7 @@ export interface ElecItemLibrary {
   unit: string | null
   item_type: ElecItemType
   default_unit_rate: number | null
+  default_cost_rate: number | null
   default_labour_rate: number | null
   default_material_rate: number | null
   category: string | null

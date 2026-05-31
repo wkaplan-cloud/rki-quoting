@@ -52,7 +52,7 @@ function newFormItem(): FormLineItem {
 }
 
 // ─── Item library autocomplete for VO line items ──────────────────────────────
-interface VOSuggestion { description: string; unit: string | null; default_unit_rate: number | null; category: string | null }
+interface VOSuggestion { description: string; unit: string | null; default_unit_rate: number | null; default_cost_rate: number | null; category: string | null }
 
 function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S.input }: {
   value: string; onChange: (v: string) => void
@@ -69,7 +69,7 @@ function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from('elec_item_library')
-        .select('description, unit, default_unit_rate, category')
+        .select('description, unit, default_unit_rate, default_cost_rate, category')
         .eq('portal_account_id', portalAccountId)
         .ilike('description', `%${value}%`)
         .order('usage_count', { ascending: false })

@@ -80,7 +80,7 @@ function fmtR(n: number) {
 }
 
 // ─── Description autocomplete ─────────────────────────────────────────────────
-interface Suggestion { description: string; unit: string | null; item_type: string; default_unit_rate: number | null; default_labour_rate: number | null; default_material_rate: number | null; category: string | null }
+interface Suggestion { description: string; unit: string | null; item_type: string; default_unit_rate: number | null; default_cost_rate: number | null; default_labour_rate: number | null; default_material_rate: number | null; category: string | null }
 
 function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }: {
   value: string; onChange: (v: string) => void
@@ -97,7 +97,7 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from('elec_item_library')
-        .select('description, unit, item_type, default_unit_rate, default_labour_rate, default_material_rate, category')
+        .select('description, unit, item_type, default_unit_rate, default_cost_rate, default_labour_rate, default_material_rate, category')
         .eq('portal_account_id', portalAccountId)
         .ilike('description', `%${value}%`)
         .order('usage_count', { ascending: false })
@@ -187,7 +187,14 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
           <GripVertical size={14} style={{ color: S.border }} />
         </div>
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
-          onSelect={s => set({ description: s.description, unit: s.unit ?? item.unit, item_type: (s.item_type as ElecItemType) ?? item.item_type, quoted_unit_rate: s.default_unit_rate ?? item.quoted_unit_rate, labour_rate: s.default_labour_rate ?? item.labour_rate, material_rate: s.default_material_rate ?? item.material_rate })}
+          onSelect={s => {
+            const sell = s.default_unit_rate ?? item.quoted_unit_rate
+            const cost = s.default_cost_rate ?? item.cost_unit_rate
+            const markup = (cost != null && cost > 0 && sell != null && sell > 0)
+              ? Math.round(((sell - cost) / cost) * 1000) / 10
+              : item.markup_percentage
+            set({ description: s.description, unit: s.unit ?? item.unit, item_type: (s.item_type as ElecItemType) ?? item.item_type, quoted_unit_rate: sell, cost_unit_rate: cost, markup_percentage: markup, labour_rate: s.default_labour_rate ?? item.labour_rate, material_rate: s.default_material_rate ?? item.material_rate })
+          }}
           portalAccountId={portalAccountId} locked={locked} />
         <select value={item.unit ?? 'nr'} onChange={e => set({ unit: e.target.value })} disabled={locked}
           className="px-2 py-1.5 text-sm rounded-lg outline-none"
