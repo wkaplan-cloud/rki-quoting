@@ -115,9 +115,10 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
         <View style={s.header}>
           <View style={{ flex: 1 }}>
             {logoBase64 ? (
-              <Image src={logoBase64} style={{ maxWidth: 180, maxHeight: 48, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 6 }} />
-            ) : null}
-            <Text style={s.company}>{companyName}</Text>
+              <Image src={logoBase64} style={{ maxWidth: 220, maxHeight: 72, objectFit: 'contain', alignSelf: 'flex-start', marginBottom: 8 }} />
+            ) : (
+              <Text style={s.company}>{companyName}</Text>
+            )}
             {settings?.cidb_registration_number && (
               <Text style={s.companyMeta}>CIDB: {settings.cidb_registration_number}</Text>
             )}
