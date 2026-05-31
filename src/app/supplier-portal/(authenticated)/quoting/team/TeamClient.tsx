@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Plus, X, AlertCircle, CheckCircle2, Loader2, MapPin, LogIn, LogOut, Users, Clock } from 'lucide-react'
+import { Plus, X, AlertCircle, CheckCircle2, Loader2, MapPin, LogIn, LogOut, Users, Clock, RotateCcw, Trash2 } from 'lucide-react'
 import type { PortalOrgMember, ElecStaff, ElecTimePunch } from '@/lib/elec-types'
 
 const S = {
@@ -42,6 +42,9 @@ export function TeamClient({ orgMembers: initMembers, staff, punches, ownerEmail
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [inviteDone, setInviteDone] = useState(false)
+  const [resending, setResending] = useState<string | null>(null)
+  const [resentId, setResentId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   // Timesheet — group punches by staff and date
   const staffMap = Object.fromEntries(staff.map(s => [s.id, s]))
@@ -60,6 +63,32 @@ export function TeamClient({ orgMembers: initMembers, staff, punches, ownerEmail
     if (!lastPunchPerStaff[p.staff_id]) lastPunchPerStaff[p.staff_id] = p
   }
   const onSiteStaff = Object.values(lastPunchPerStaff).filter(p => p.punch_type === 'clock_in')
+
+  async function handleResend(memberId: string, memberEmail: string, memberName: string | null) {
+    setResending(memberId)
+    const res = await fetch('/api/supplier-portal/quoting/team/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: memberEmail, name: memberName ?? undefined }),
+    })
+    setResending(null)
+    if (res.ok) {
+      setResentId(memberId)
+      setTimeout(() => setResentId(null), 3000)
+    }
+  }
+
+  async function handleDelete(memberId: string) {
+    if (!confirm('Remove this admin? If they have already accepted the invite, their account will be deleted.')) return
+    setDeleting(memberId)
+    const res = await fetch('/api/supplier-portal/quoting/team/remove', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId }),
+    })
+    setDeleting(null)
+    if (res.ok) setMembers(prev => prev.filter(m => m.id !== memberId))
+  }
 
   async function handleInvite() {
     if (!email.trim()) return
@@ -225,7 +254,7 @@ export function TeamClient({ orgMembers: initMembers, staff, punches, ownerEmail
             {members.map(m => (
               <div key={m.id} className="flex items-center gap-3 px-4 py-3.5"
                 style={{ borderTop: `1px solid ${S.border}` }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                   style={{ background: m.accepted_at ? S.accent : S.muted }}>
                   {(m.name ?? m.email).slice(0, 2).toUpperCase()}
                 </div>
@@ -233,10 +262,36 @@ export function TeamClient({ orgMembers: initMembers, staff, punches, ownerEmail
                   {m.name && <p className="text-sm font-semibold" style={{ color: S.text }}>{m.name}</p>}
                   <p className="text-xs" style={{ color: S.muted }}>{m.email}</p>
                 </div>
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0"
                   style={{ background: m.accepted_at ? 'rgba(22,163,74,0.1)' : 'rgba(217,164,65,0.1)', color: m.accepted_at ? S.green : S.gold }}>
                   {m.accepted_at ? 'Active' : 'Pending'}
                 </span>
+                {/* Resend — pending only */}
+                {!m.accepted_at && (
+                  <button
+                    onClick={() => void handleResend(m.id, m.email, m.name)}
+                    disabled={resending === m.id}
+                    title="Resend invite"
+                    className="flex-shrink-0 p-1.5 rounded-lg disabled:opacity-50"
+                    style={{ color: resentId === m.id ? S.green : S.muted, background: 'transparent' }}
+                  >
+                    {resending === m.id
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : resentId === m.id
+                        ? <CheckCircle2 size={14} />
+                        : <RotateCcw size={14} />}
+                  </button>
+                )}
+                {/* Delete */}
+                <button
+                  onClick={() => void handleDelete(m.id)}
+                  disabled={deleting === m.id}
+                  title="Remove admin"
+                  className="flex-shrink-0 p-1.5 rounded-lg disabled:opacity-50"
+                  style={{ color: S.muted, background: 'transparent' }}
+                >
+                  {deleting === m.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
               </div>
             ))}
 
