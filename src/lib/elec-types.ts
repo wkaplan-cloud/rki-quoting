@@ -520,6 +520,10 @@ export interface ElecJobCard {
   sage_customer_id: string | null
   sage_customer_name: string | null
   created_by_name: string | null
+  // Charges
+  callout_fee: number | null
+  labour_hours: number | null
+  labour_rate: number | null
   created_at: string
   // Joined
   staff?: ElecStaff | null

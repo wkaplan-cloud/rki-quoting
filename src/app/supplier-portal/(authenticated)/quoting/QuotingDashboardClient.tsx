@@ -40,6 +40,7 @@ type JobCardRow = {
   scheduled_at: string | null
   completed_at: string | null
   materials_value: number
+  total_charge: number
 }
 
 interface Props {
@@ -59,6 +60,12 @@ interface Props {
     pending: JobCardRow[]
     in_progress: JobCardRow[]
     completed: JobCardRow[]
+  }
+  jobCardSummary: {
+    pendingCount: number
+    inProgressCount: number
+    completedCount: number
+    totalRevenue: number
   }
 }
 
@@ -127,6 +134,38 @@ function FinancialStrip({ financial }: { financial: Props['financial'] }) {
           <p className="text-[10px]" style={{ color: S.muted }}>{sub}</p>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Job Card Strip ────────────────────────────────────────────────────────────
+
+function JobCardStrip({ summary }: { summary: Props['jobCardSummary'] }) {
+  const { pendingCount, inProgressCount, completedCount, totalRevenue } = summary
+  const cards = [
+    { label: 'Pending',     value: pendingCount,    sub: 'Awaiting action',    color: S.gold,   iconBg: 'rgba(217,164,65,0.08)',  fmt: 'count' },
+    { label: 'Active',      value: inProgressCount, sub: 'Currently on site',  color: S.accent, iconBg: 'rgba(58,124,165,0.08)',  fmt: 'count' },
+    { label: 'Completed',   value: completedCount,  sub: 'Total job cards',    color: S.green,  iconBg: 'rgba(22,163,74,0.08)',   fmt: 'count' },
+    { label: 'Total Revenue', value: totalRevenue,  sub: 'From completed jobs', color: S.green, iconBg: 'rgba(22,163,74,0.08)',   fmt: 'money' },
+  ] as const
+
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Job Cards</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {cards.map(({ label, value, sub, color, iconBg, fmt }) => (
+          <div key={label} className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-3" style={{ background: iconBg }}>
+              <Wrench size={14} style={{ color }} />
+            </div>
+            <p className="text-lg font-bold font-mono leading-none mb-1" style={{ color }}>
+              {fmt === 'money' ? fmtR(value as number) : value}
+            </p>
+            <p className="text-[11px] font-semibold mb-0.5" style={{ color: S.text }}>{label}</p>
+            <p className="text-[10px]" style={{ color: S.muted }}>{sub}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -401,8 +440,8 @@ function JobCardRow({ jc, i }: { jc: JobCardRow; i: number }) {
         </div>
       </div>
       <div className="text-right shrink-0">
-        {jc.materials_value > 0 && (
-          <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(jc.materials_value)}</p>
+        {jc.total_charge > 0 && (
+          <p className="text-sm font-bold font-mono" style={{ color: S.text }}>{fmtR(jc.total_charge)}</p>
         )}
         <p className="text-[10px]" style={{ color: S.muted }}>{jc.job_number}</p>
       </div>
@@ -432,7 +471,7 @@ function SectionCard({ title, sub, accentColor, children }: {
 
 // ── Root component ────────────────────────────────────────────────────────────
 
-export function QuotingDashboardClient({ financial, pipeline, active, completed, reconMonths, reconMap, jobCards }: Props) {
+export function QuotingDashboardClient({ financial, pipeline, active, completed, reconMonths, reconMap, jobCards, jobCardSummary }: Props) {
   const [activeTab, setActiveTab] = useState<'quotes' | 'job_cards'>('quotes')
 
   const totalQuotes = pipeline.length + active.length + completed.length
@@ -458,8 +497,14 @@ export function QuotingDashboardClient({ financial, pipeline, active, completed,
         </Link>
       </div>
 
-      {/* Financial strip — always visible */}
-      <FinancialStrip financial={financial} />
+      {/* Quotes financial strip */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Quotes</p>
+        <FinancialStrip financial={financial} />
+      </div>
+
+      {/* Job cards strip */}
+      <JobCardStrip summary={jobCardSummary} />
 
       {/* Tabs */}
       <div>

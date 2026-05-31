@@ -37,6 +37,7 @@ type JobCardRow = {
   scheduled_at: string | null
   completed_at: string | null
   materials_value: number
+  total_charge: number
 }
 
 export default async function QuotingDashboardPage() {
@@ -64,7 +65,7 @@ export default async function QuotingDashboardPage() {
       .eq('portal_account_id', account.id),
     supabaseAdmin
       .from('elec_job_cards')
-      .select('id, job_number, title, status, job_type, client_name, scheduled_at, completed_at, materials:elec_job_card_materials(qty, unit_price)')
+      .select('id, job_number, title, status, job_type, client_name, scheduled_at, completed_at, callout_fee, labour_hours, labour_rate, materials:elec_job_card_materials(qty, unit_price)')
       .eq('portal_account_id', account.id)
       .neq('status', 'cancelled')
       .order('created_at', { ascending: false })
@@ -139,6 +140,8 @@ export default async function QuotingDashboardPage() {
   const jobCards: JobCardRow[] = (jobCardsRaw ?? []).map((jc: any) => {
     const materials: any[] = Array.isArray(jc.materials) ? jc.materials : []
     const materials_value = materials.reduce((s: number, m: any) => s + (m.qty ?? 0) * (m.unit_price ?? 0), 0)
+    const labour_charge = (jc.labour_hours ?? 0) * (jc.labour_rate ?? 0)
+    const total_charge = (jc.callout_fee ?? 0) + labour_charge + materials_value
     return {
       id: jc.id,
       job_number: jc.job_number,
@@ -149,8 +152,14 @@ export default async function QuotingDashboardPage() {
       scheduled_at: jc.scheduled_at ?? null,
       completed_at: jc.completed_at ?? null,
       materials_value,
+      total_charge,
     }
   })
+
+  const jcPending    = jobCards.filter(jc => jc.status === 'pending')
+  const jcInProgress = jobCards.filter(jc => jc.status === 'in_progress')
+  const jcCompleted  = jobCards.filter(jc => jc.status === 'completed')
+  const jcRevenue    = jcCompleted.reduce((s, jc) => s + jc.total_charge, 0)
 
   return (
     <QuotingDashboardClient
@@ -161,9 +170,15 @@ export default async function QuotingDashboardPage() {
       reconMonths={reconMonths}
       reconMap={reconMap}
       jobCards={{
-        pending:     jobCards.filter(jc => jc.status === 'pending'),
-        in_progress: jobCards.filter(jc => jc.status === 'in_progress'),
-        completed:   jobCards.filter(jc => jc.status === 'completed').slice(0, 10),
+        pending:     jcPending,
+        in_progress: jcInProgress,
+        completed:   jcCompleted.slice(0, 10),
+      }}
+      jobCardSummary={{
+        pendingCount:     jcPending.length,
+        inProgressCount:  jcInProgress.length,
+        completedCount:   jcCompleted.length,
+        totalRevenue:     jcRevenue,
       }}
     />
   )

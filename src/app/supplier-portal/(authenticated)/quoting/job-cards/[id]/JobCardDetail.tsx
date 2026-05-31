@@ -197,6 +197,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       work_done: card.work_done,
       resolution: card.resolution,
       notes: card.notes,
+      callout_fee: card.callout_fee,
+      labour_hours: card.labour_hours,
+      labour_rate: card.labour_rate,
     })
     if (card.client_id) {
       const patch: Record<string, string> = {}
@@ -225,6 +228,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     card.title, card.job_type, card.staff_id, card.client_id, card.client_name,
     card.client_email, card.location, card.scheduled_at, card.work_description,
     card.work_found, card.work_done, card.resolution, card.notes,
+    card.callout_fee, card.labour_hours, card.labour_rate,
     clientCompany, clientQsName, clientQsEmail,
   ])
 
@@ -432,6 +436,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
   const staffMember = !Array.isArray(card.staff) ? card.staff : null
   const totalMaterials = materials.reduce((a, m) => a + m.qty * (m.unit_price ?? 0), 0)
+  const labourCharge = (card.labour_hours ?? 0) * (card.labour_rate ?? 0)
+  const totalCharge = (card.callout_fee ?? 0) + labourCharge + totalMaterials
   const canFinish = card.status !== 'completed' && card.status !== 'cancelled'
 
   // Finish job checklist
@@ -861,23 +867,90 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               </div>
             )}
 
-            {/* Total */}
+            {/* Materials subtotal */}
             {materials.length > 0 && (
               <div className="flex items-center justify-between px-5 py-3"
                 style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Total Materials</p>
-                <p className="text-sm font-bold" style={{ color: S.text }}>R{totalMaterials.toFixed(2)}</p>
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Materials Subtotal</p>
+                <p className="text-sm font-semibold font-mono" style={{ color: S.muted }}>R{totalMaterials.toFixed(2)}</p>
               </div>
             )}
           </div>
 
           {newMat === null && (
             <button onClick={() => setNewMat({ desc: '', qty: '1', price: '' })}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold mt-3"
               style={{ border: `1px solid ${S.border}`, color: S.accent }}>
               <Plus size={14} /> Add Material
             </button>
           )}
+
+          {/* ── Charges section ─────────────────────────────────────────── */}
+          <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+              <p className="text-sm font-semibold" style={{ color: S.text }}>Charges</p>
+              <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Call-out fee and labour — filled in after the job</p>
+            </div>
+
+            {/* Call-out fee */}
+            <div className="flex items-center gap-4 px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <div className="flex-1">
+                <p className="text-sm font-medium" style={{ color: S.text }}>Call-out Fee</p>
+                <p className="text-xs" style={{ color: S.muted }}>Flat fee for attending site</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold" style={{ color: S.muted }}>R</span>
+                <input
+                  type="number" min="0" step="0.01"
+                  value={card.callout_fee ?? ''}
+                  onChange={e => setField('callout_fee', e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="0.00"
+                  className="w-28 px-2.5 py-1.5 rounded-lg text-sm outline-none text-right"
+                  style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+              </div>
+            </div>
+
+            {/* Labour */}
+            <div className="flex items-center gap-4 px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <div className="flex-1">
+                <p className="text-sm font-medium" style={{ color: S.text }}>Labour</p>
+                <p className="text-xs" style={{ color: S.muted }}>Hours worked × hourly rate</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" min="0" step="0.25"
+                  value={card.labour_hours ?? ''}
+                  onChange={e => setField('labour_hours', e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="Hrs"
+                  className="w-20 px-2.5 py-1.5 rounded-lg text-sm outline-none text-right"
+                  style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+                <span className="text-xs" style={{ color: S.muted }}>×</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-semibold" style={{ color: S.muted }}>R</span>
+                  <input
+                    type="number" min="0" step="1"
+                    value={card.labour_rate ?? ''}
+                    onChange={e => setField('labour_rate', e.target.value ? parseFloat(e.target.value) : null)}
+                    placeholder="Rate/hr"
+                    className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none text-right"
+                    style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+                </div>
+                {labourCharge > 0 && (
+                  <span className="text-sm font-semibold font-mono w-24 text-right shrink-0" style={{ color: S.text }}>
+                    R{labourCharge.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Grand total */}
+            <div className="flex items-center justify-between px-5 py-3" style={{ background: S.bg }}>
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: S.text }}>Total Charge</p>
+              <p className="text-base font-bold font-mono" style={{ color: totalCharge > 0 ? S.accent : S.muted }}>
+                R{totalCharge.toFixed(2)}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
