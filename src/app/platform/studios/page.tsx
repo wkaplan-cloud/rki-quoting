@@ -118,20 +118,17 @@ export default async function StudiosPage() {
     }
   }
 
-  // One bulk settings fetch for all admin user_ids
-  const adminUserIds = [...new Set(
-    [...adminByOrg.values()].map(a => a.user_id).filter((id): id is string => !!id)
-  )]
-  const { data: allSettings } = adminUserIds.length > 0
-    ? await supabaseAdmin.from('settings').select('user_id, business_name').in('user_id', adminUserIds)
-    : { data: [] as { user_id: string; business_name: string | null }[] }
-  const businessNameByUserId = new Map((allSettings ?? []).map(s => [s.user_id, s.business_name]))
+  // One bulk settings fetch keyed by org_id (settings are org-scoped, not user-scoped)
+  const { data: allSettings } = orgIds.length > 0
+    ? await supabaseAdmin.from('settings').select('org_id, business_name').in('org_id', orgIds)
+    : { data: [] as { org_id: string; business_name: string | null }[] }
+  const businessNameByOrgId = new Map((allSettings ?? []).map(s => [s.org_id, s.business_name]))
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000)
 
   const enriched = (orgs ?? []).map(org => {
     const admin = adminByOrg.get(org.id)
-    const businessName = (admin?.user_id && businessNameByUserId.get(admin.user_id)) || org.name
+    const businessName = businessNameByOrgId.get(org.id) || org.name
     const lastActive = lastActiveByOrg.get(org.id) ?? null
     const isPaid = org.subscription_status === 'active'
     const isInternal = (org as any).is_internal ?? false
