@@ -24,10 +24,3 @@ These tables are **user-scoped** (correct to filter by `user_id`):
 
 The RLS-filtered `supabase` client (from `createClient()`) is safe to use without explicit org filters inside authenticated routes — RLS handles scoping automatically.
 
-## How to catch regressions
-
-Run before any deploy:
-```bash
-grep -rn "\.eq('user_id'" src/app/api src/app/platform --include="*.ts" --include="*.tsx"
-```
-Any match on an org-scoped table (settings, projects, clients, suppliers, items, price_lists) is a bug.
