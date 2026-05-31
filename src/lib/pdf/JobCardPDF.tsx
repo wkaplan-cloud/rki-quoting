@@ -115,9 +115,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
         <View style={s.header}>
           <View style={{ flex: 1 }}>
             {logoBase64 ? (
-              <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-                <Image src={logoBase64} style={{ width: 200 }} />
-              </View>
+              <Image src={logoBase64} style={{ width: 200, marginBottom: 8 }} />
             ) : null}
             <Text style={s.company}>{companyName}</Text>
             {settings?.cidb_registration_number && (
