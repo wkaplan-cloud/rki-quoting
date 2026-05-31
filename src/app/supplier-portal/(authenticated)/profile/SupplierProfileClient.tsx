@@ -3,7 +3,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
-import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users } from 'lucide-react'
+import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2 } from 'lucide-react'
 import type { PortalOrgMember } from '@/lib/elec-types'
 
 interface Props {
@@ -91,6 +91,35 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [inviteDone, setInviteDone] = useState(false)
+  const [resending, setResending] = useState<string | null>(null)
+  const [resentId, setResentId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  async function handleResend(memberId: string, memberEmail: string, memberName: string | null) {
+    setResending(memberId)
+    const res = await fetch('/api/supplier-portal/quoting/team/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: memberEmail, name: memberName ?? undefined }),
+    })
+    setResending(null)
+    if (res.ok) {
+      setResentId(memberId)
+      setTimeout(() => setResentId(null), 3000)
+    }
+  }
+
+  async function handleDelete(memberId: string) {
+    if (!confirm('Remove this admin? If they have already accepted the invite, their account will be deleted.')) return
+    setDeleting(memberId)
+    const res = await fetch('/api/supplier-portal/quoting/team/remove', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId }),
+    })
+    setDeleting(null)
+    if (res.ok) setMembers(prev => prev.filter(m => m.id !== memberId))
+  }
 
   async function handleInviteAdmin() {
     if (!inviteEmail.trim()) return
@@ -466,6 +495,34 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
                     style={{ background: m.accepted_at ? 'rgba(22,163,74,0.1)' : 'rgba(217,164,65,0.1)', color: m.accepted_at ? '#16A34A' : '#D9A441' }}>
                     {m.accepted_at ? 'Active' : 'Pending'}
                   </span>
+                  {/* Resend — pending only */}
+                  {!m.accepted_at && (
+                    <button
+                      type="button"
+                      onClick={() => void handleResend(m.id, m.email, m.name)}
+                      disabled={resending === m.id}
+                      title="Resend invite"
+                      className="flex-shrink-0 p-1.5 rounded-lg disabled:opacity-50 transition-colors"
+                      style={{ color: resentId === m.id ? '#16A34A' : '#A1A1AA', background: 'transparent' }}
+                    >
+                      {resending === m.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : resentId === m.id
+                          ? <CheckCircle2 size={14} />
+                          : <RotateCcw size={14} />}
+                    </button>
+                  )}
+                  {/* Delete */}
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(m.id)}
+                    disabled={deleting === m.id}
+                    title="Remove admin"
+                    className="flex-shrink-0 p-1.5 rounded-lg disabled:opacity-50 transition-colors"
+                    style={{ color: '#A1A1AA', background: 'transparent' }}
+                  >
+                    {deleting === m.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </button>
                 </div>
               ))}
             </div>
