@@ -21,7 +21,7 @@ const NAV_ITEMS = [
 ]
 
 const QUOTING_NAV_ITEMS = [
-  { href: '/supplier-portal/quoting',              label: 'Dashboard', icon: LayoutDashboard, exact: true,  badge: null           },
+  { href: '/supplier-portal/quoting',              label: 'Quoting',   icon: LayoutDashboard, exact: true,  badge: null           },
   { href: '/supplier-portal/quoting/quotes',       label: 'Quotes',    icon: FileText,        exact: false, badge: 'Long term'    },
   { href: '/supplier-portal/quoting/job-cards',    label: 'Job Cards', icon: ClipboardList,   exact: false, badge: 'Daily'        },
   { href: '/supplier-portal/quoting/clients',      label: 'Clients',   icon: Users,           exact: false, badge: null           },
