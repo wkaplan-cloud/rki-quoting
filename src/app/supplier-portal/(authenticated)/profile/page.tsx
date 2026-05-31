@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { SupplierProfileClient } from './SupplierProfileClient'
 import type { PortalOrgMember } from '@/lib/elec-types'
 
@@ -17,11 +18,15 @@ export default async function SupplierProfilePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
+  const base = await resolvePortalAccount(user.id)
+  if (!base) redirect('/supplier-portal/login')
+
+  // Fetch full profile fields by account ID (resolvePortalAccount omits contact/address/etc.)
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
     .select('id, email, company_name, contact_name, phone, address, categories, description, website, logo_url, plan, subscription_status, trial_ends_at')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
+    .eq('id', base.id)
+    .single()
 
   if (!account) redirect('/supplier-portal/login')
 

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { QuoteEditor } from './QuoteEditor'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
 
@@ -11,11 +12,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  const { data: account } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id, company_name')
-    .eq('auth_user_id', user.id)
-    .single()
+  const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/not-a-supplier')
 
   const [

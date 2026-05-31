@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { redirect } from 'next/navigation'
 import { ClientsClient } from './ClientsClient'
 import type { ElecClient } from '@/lib/elec-types'

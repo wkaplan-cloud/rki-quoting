@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { SupplierPortalShell } from './SupplierPortalShell'
 
 export default async function SupplierPortalLayout({
@@ -13,27 +14,7 @@ export default async function SupplierPortalLayout({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  // Fire owner lookup + admin-member-with-account join in parallel — eliminates the
-  // previous sequential third query that admin members incurred
-  const [{ data: ownerAccount }, { data: membership }] = await Promise.all([
-    supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id, company_name, email, plan, subscription_status, trial_ends_at, supplier_category')
-      .eq('auth_user_id', user.id)
-      .maybeSingle(),
-    supabaseAdmin
-      .from('portal_org_members')
-      .select('portal_account_id, account:supplier_portal_accounts(id, company_name, email, plan, subscription_status, trial_ends_at, supplier_category)')
-      .eq('auth_user_id', user.id)
-      .not('accepted_at', 'is', null)
-      .maybeSingle(),
-  ])
-
-  const memberAccount = membership
-    ? (Array.isArray((membership as any).account) ? (membership as any).account[0] : (membership as any).account)
-    : null
-
-  let account = ownerAccount ?? memberAccount
+  let account = await resolvePortalAccount(user.id)
 
   // Staff member: redirect to staff view
   if (!account) {

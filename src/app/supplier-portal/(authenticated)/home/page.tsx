@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { HomeClient } from './HomeClient'
 
 export default async function SupplierHomePage() {
@@ -9,12 +10,7 @@ export default async function SupplierHomePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  const { data: account } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id, company_name, email, plan, subscription_status, trial_ends_at')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
-
+  const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/login')
 
   const companyName = account.company_name ?? account.email

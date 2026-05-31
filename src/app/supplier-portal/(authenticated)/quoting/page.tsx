@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import type { ElecQuoteStatus } from '@/lib/elec-types'
 import { QuotingDashboardClient } from './QuotingDashboardClient'
 
@@ -45,11 +46,7 @@ export default async function QuotingDashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  const { data: account } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id')
-    .eq('auth_user_id', user.id)
-    .single()
+  const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/login')
 
   const [{ data: quotesRaw }, { data: claimsRaw }, { data: jobCardsRaw }] = await Promise.all([

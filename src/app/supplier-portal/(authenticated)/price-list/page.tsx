@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { PriceListManager } from './PriceListManager'
 import type { SupplierPriceListItem } from '@/lib/types'
 
@@ -10,12 +11,7 @@ export default async function PriceListPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  const { data: portalAccount } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
-
+  const portalAccount = await resolvePortalAccount(user.id)
   if (!portalAccount) redirect('/supplier-portal/login')
 
   const { data: items } = await supabaseAdmin
