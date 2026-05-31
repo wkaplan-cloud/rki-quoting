@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail, Loader2, CheckCircle, ChevronDown, ChevronUp, Trash2, Pencil } from 'lucide-react'
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem, ElecQuoteSection, ElecQuoteLineItem, ElecClient } from '@/lib/elec-types'
@@ -49,6 +49,74 @@ interface Props {
 
 function newFormItem(): FormLineItem {
   return { _id: Math.random().toString(36).slice(2), description: '', unit: '', qty: '', rate: '' }
+}
+
+// ─── Item library autocomplete for VO line items ──────────────────────────────
+interface VOSuggestion { description: string; unit: string | null; default_unit_rate: number | null; category: string | null }
+
+function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S.input }: {
+  value: string; onChange: (v: string) => void
+  onSelect: (s: VOSuggestion) => void; portalAccountId: string; bg?: string
+}) {
+  const supabase = createClient()
+  const [suggestions, setSuggestions] = useState<VOSuggestion[]>([])
+  const [open, setOpen] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (value.length < 2) { setSuggestions([]); setOpen(false); return }
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from('elec_item_library')
+        .select('description, unit, default_unit_rate, category')
+        .eq('portal_account_id', portalAccountId)
+        .ilike('description', `%${value}%`)
+        .order('usage_count', { ascending: false })
+        .limit(8)
+      const results = (data ?? []) as VOSuggestion[]
+      setSuggestions(results)
+      if (focused) setOpen(results.length > 0)
+    }, 200)
+    return () => clearTimeout(t)
+  }, [value, portalAccountId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <input value={value} onChange={e => onChange(e.target.value)}
+        placeholder="Description"
+        className="w-full px-2 py-1.5 text-sm rounded-lg outline-none"
+        style={{ background: bg, border: `1px solid ${S.border}`, color: S.text }}
+        onFocus={() => { setFocused(true); if (suggestions.length > 0) setOpen(true) }}
+        onBlur={() => setFocused(false)}
+      />
+      {open && (
+        <div className="absolute top-full left-0 z-30 rounded-xl overflow-hidden mt-1"
+          style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 240, maxWidth: 360 }}>
+          {suggestions.map(s => (
+            <button key={s.description}
+              onMouseDown={e => { e.preventDefault(); onSelect(s); setOpen(false) }}
+              className="w-full flex items-center justify-between px-3 py-2 text-left text-sm transition-colors"
+              onMouseEnter={e => e.currentTarget.style.background = S.bg}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <span className="truncate mr-2" style={{ color: S.text }}>{s.description}</span>
+              {s.default_unit_rate != null && (
+                <span className="text-xs flex-shrink-0" style={{ color: S.muted }}>
+                  R {s.default_unit_rate.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}{s.unit ? `/${s.unit}` : ''}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, sections, items, client = null, onClaimCreated, onVOsChanged, onVOItemsCreated }: Props) {
@@ -530,10 +598,11 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             {formLineItems.map(li => (
               <div key={li._id} className="grid mb-1.5 items-center"
                 style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px' }}>
-                <input value={li.description} onChange={e => updateFormItem(li._id, { description: e.target.value })}
-                  placeholder="Description"
-                  className="px-2 py-1.5 text-sm rounded-lg outline-none"
-                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <VODescriptionInput
+                  value={li.description}
+                  onChange={v => updateFormItem(li._id, { description: v })}
+                  onSelect={s => updateFormItem(li._id, { description: s.description, unit: s.unit ?? li.unit, rate: s.default_unit_rate != null ? String(s.default_unit_rate) : li.rate })}
+                  portalAccountId={portalAccountId} />
                 <input value={li.unit} onChange={e => updateFormItem(li._id, { unit: e.target.value })}
                   placeholder="m / nr"
                   className="px-2 py-1.5 text-sm rounded-lg outline-none text-center"
@@ -869,9 +938,11 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       {editLineItems.map(li => (
                         <div key={li._id} className="grid mb-1.5 items-center"
                           style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px' }}>
-                          <input value={li.description} onChange={e => updateEditItem(li._id, { description: e.target.value })} placeholder="Description"
-                            className="px-2 py-1.5 text-sm rounded-lg outline-none"
-                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <VODescriptionInput
+                            value={li.description}
+                            onChange={v => updateEditItem(li._id, { description: v })}
+                            onSelect={s => updateEditItem(li._id, { description: s.description, unit: s.unit ?? li.unit, rate: s.default_unit_rate != null ? String(s.default_unit_rate) : li.rate })}
+                            portalAccountId={portalAccountId} bg="#fff" />
                           <input value={li.unit} onChange={e => updateEditItem(li._id, { unit: e.target.value })} placeholder="m / nr"
                             className="px-2 py-1.5 text-sm rounded-lg outline-none text-center"
                             style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />

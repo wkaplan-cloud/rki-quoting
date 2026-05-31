@@ -80,7 +80,7 @@ function fmtR(n: number) {
 }
 
 // ─── Description autocomplete ─────────────────────────────────────────────────
-interface Suggestion { description: string; unit: string | null; item_type: string; default_unit_rate: number | null; default_labour_rate: number | null; default_material_rate: number | null }
+interface Suggestion { description: string; unit: string | null; item_type: string; default_unit_rate: number | null; default_labour_rate: number | null; default_material_rate: number | null; category: string | null }
 
 function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }: {
   value: string; onChange: (v: string) => void
@@ -97,11 +97,11 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from('elec_item_library')
-        .select('description, unit, item_type, default_unit_rate, default_labour_rate, default_material_rate')
+        .select('description, unit, item_type, default_unit_rate, default_labour_rate, default_material_rate, category')
         .eq('portal_account_id', portalAccountId)
-        .ilike('description', `${value}%`)
+        .ilike('description', `%${value}%`)
         .order('usage_count', { ascending: false })
-        .limit(8)
+        .limit(10)
       const results = (data ?? []) as Suggestion[]
       setSuggestions(results)
       if (focused) setOpen(results.length > 0)
@@ -115,6 +115,14 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
     return () => document.removeEventListener('mousedown', h)
   }, [])
 
+  // Group suggestions by category for display
+  const grouped: { category: string | null; items: Suggestion[] }[] = []
+  for (const s of suggestions) {
+    const last = grouped[grouped.length - 1]
+    if (last && last.category === s.category) { last.items.push(s) }
+    else { grouped.push({ category: s.category, items: [s] }) }
+  }
+
   return (
     <div ref={ref} className="relative flex-1">
       <input value={value} onChange={e => onChange(e.target.value)} disabled={locked}
@@ -126,20 +134,29 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
       />
       {open && (
         <div className="absolute top-full left-0 right-0 z-20 rounded-xl overflow-hidden mt-1"
-          style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
-          {suggestions.map(s => (
-            <button key={s.description}
-              onMouseDown={e => { e.preventDefault(); onSelect(s); setOpen(false) }}
-              className="w-full flex items-center justify-between px-3 py-2 text-left text-sm transition-colors"
-              onMouseEnter={e => e.currentTarget.style.background = S.bg}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-              <span style={{ color: S.text }}>{s.description}</span>
-              {s.default_unit_rate != null && (
-                <span className="text-xs ml-2 flex-shrink-0" style={{ color: S.muted }}>
-                  {fmtR(s.default_unit_rate)}{s.unit ? `/${s.unit}` : ''}
-                </span>
+          style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 280 }}>
+          {grouped.map(group => (
+            <div key={group.category ?? '__none__'}>
+              {group.category && (
+                <div className="px-3 pt-2 pb-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ color: S.muted }}>
+                  {group.category}
+                </div>
               )}
-            </button>
+              {group.items.map(s => (
+                <button key={s.description}
+                  onMouseDown={e => { e.preventDefault(); onSelect(s); setOpen(false) }}
+                  className="w-full flex items-center justify-between px-3 py-2 text-left text-sm transition-colors"
+                  onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <span style={{ color: S.text }}>{s.description}</span>
+                  {s.default_unit_rate != null && (
+                    <span className="text-xs ml-2 flex-shrink-0" style={{ color: S.muted }}>
+                      {fmtR(s.default_unit_rate)}{s.unit ? `/${s.unit}` : ''}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}

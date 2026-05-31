@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -171,7 +171,8 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
               <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
               <NavLink href="/supplier-portal/quoting/quotes"    label="Quotes"    icon={FileText}        badge="Long term" />
               <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />
-              <NavLink href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users}           />
+              <NavLink href="/supplier-portal/quoting/clients"    label="Clients"     icon={Users}      />
+              <NavLink href="/supplier-portal/quoting/price-book" label="Price Book" icon={BookOpen}   />
 
               <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
 

@@ -71,6 +71,7 @@ export interface ElecItemLibrary {
   default_unit_rate: number | null
   default_labour_rate: number | null
   default_material_rate: number | null
+  category: string | null
   usage_count: number
   created_at: string
   updated_at: string
