@@ -23,9 +23,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
   const adminMember = members?.find(m => m.role === 'admin' && m.status === 'active')
 
   const [{ data: settings }, { data: projects }, { data: sourcingSessions }, { data: lastProjectRow }] = await Promise.all([
-    adminMember?.user_id
-      ? supabaseAdmin.from('settings').select('*').eq('user_id', adminMember.user_id).maybeSingle()
-      : Promise.resolve({ data: null }),
+    supabaseAdmin.from('settings').select('*').eq('org_id', id).maybeSingle(),
     supabaseAdmin.from('projects').select('id, project_name, project_number, status, created_at').eq('org_id', id).order('created_at', { ascending: false }).limit(20),
     supabaseAdmin.from('sourcing_sessions').select('id, title, status, created_at').eq('org_id', id).order('created_at', { ascending: false }).limit(20),
     supabaseAdmin.from('projects').select('created_at').eq('org_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle(),

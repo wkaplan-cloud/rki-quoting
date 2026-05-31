@@ -18,20 +18,20 @@ const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
 export default async function PlatformQuotesPage() {
   const { data: projects } = await supabaseAdmin
     .from('projects')
-    .select('id, project_name, project_number, status, created_at, user_id')
+    .select('id, project_name, project_number, status, created_at, org_id')
     .order('created_at', { ascending: false })
     .limit(500)
 
-  const userIds = [...new Set((projects ?? []).map((p: any) => p.user_id).filter(Boolean))]
+  const orgIds = [...new Set((projects ?? []).map((p: any) => p.org_id).filter(Boolean))]
 
   const studioMap: Record<string, string> = {}
-  if (userIds.length > 0) {
+  if (orgIds.length > 0) {
     const { data: settingsRows } = await supabaseAdmin
       .from('settings')
-      .select('user_id, business_name')
-      .in('user_id', userIds)
+      .select('org_id, business_name')
+      .in('org_id', orgIds)
     for (const s of settingsRows ?? []) {
-      if (s.user_id) studioMap[s.user_id] = s.business_name ?? 'Studio'
+      if (s.org_id) studioMap[s.org_id] = s.business_name ?? '—'
     }
   }
 
@@ -41,7 +41,7 @@ export default async function PlatformQuotesPage() {
     project_number: p.project_number,
     status: p.status as string,
     created_at: p.created_at,
-    studio: studioMap[p.user_id] ?? 'Studio',
+    studio: studioMap[p.org_id] ?? '—',
   }))
 
   const byStatus = rows.reduce<Record<string, number>>((acc, r) => {
