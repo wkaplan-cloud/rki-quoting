@@ -110,7 +110,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
           <Menu size={20} />
         </button>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="QuotingHub" className="h-6 object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.6 }} />
+        <img src="/logo.png" alt="QuotingHub" className="h-10 w-auto object-contain" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
         <div className="flex-1" />
         <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: S.textMuted }}>Supplier</span>
       </div>
