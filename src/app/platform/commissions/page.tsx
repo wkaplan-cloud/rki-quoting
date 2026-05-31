@@ -13,23 +13,13 @@ export default async function CommissionsPage() {
 
   const enriched: OrgRow[] = await Promise.all(
     (orgs ?? []).map(async org => {
-      const { data: adminMember } = await supabaseAdmin
-        .from('org_members')
-        .select('user_id')
+      const { data: settings } = await supabaseAdmin
+        .from('settings')
+        .select('business_name')
         .eq('org_id', org.id)
-        .eq('role', 'admin')
-        .eq('status', 'active')
         .maybeSingle()
 
-      let businessName = org.name
-      if (adminMember?.user_id) {
-        const { data: settings } = await supabaseAdmin
-          .from('settings')
-          .select('business_name')
-          .eq('user_id', adminMember.user_id)
-          .maybeSingle()
-        if (settings?.business_name) businessName = settings.business_name
-      }
+      const businessName = settings?.business_name || org.name
 
       return {
         id: org.id,

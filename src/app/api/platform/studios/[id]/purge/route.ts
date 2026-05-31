@@ -57,7 +57,7 @@ export async function DELETE(
     await supabaseAdmin.from('projects').delete().in('user_id', userIds)
     await supabaseAdmin.from('clients').delete().in('user_id', userIds)
     await supabaseAdmin.from('items').delete().in('user_id', userIds)
-    await supabaseAdmin.from('settings').delete().in('user_id', userIds)
+    await supabaseAdmin.from('settings').delete().eq('org_id', orgId)
     await supabaseAdmin.from('branding').delete().in('user_id', userIds)
 
     // Price lists owned by this org's users

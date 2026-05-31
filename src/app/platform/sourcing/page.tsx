@@ -59,7 +59,7 @@ export default async function PlatformSourcingPage() {
     .select(`
       id, accepted_at, fee_collected_at,
       response:sourcing_item_responses(unit_price, lead_time_weeks),
-      item:sourcing_session_items(title, session:sourcing_sessions(id, title, user_id, project_id, project:projects(project_name, status))),
+      item:sourcing_session_items(title, session:sourcing_sessions(id, title, org_id, project_id, project:projects(project_name, status))),
       supplier:sourcing_session_suppliers(supplier_name, email)
     `)
     .eq('status', 'accepted')
@@ -67,13 +67,13 @@ export default async function PlatformSourcingPage() {
 
   const { data: sessions } = await supabaseAdmin
     .from('sourcing_sessions')
-    .select('id, title, status, created_at, user_id, project:projects(project_name, status)')
+    .select('id, title, status, created_at, org_id, project:projects(project_name, status)')
     .order('created_at', { ascending: false })
     .limit(200)
 
   const { data: staleSuppliers } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('id, supplier_name, email, sent_at, status, session:sourcing_sessions(id, title, user_id)')
+    .select('id, supplier_name, email, sent_at, status, session:sourcing_sessions(id, title, org_id)')
     .eq('status', 'pending')
     .not('sent_at', 'is', null)
     .lt('sent_at', sevenDaysAgo)
@@ -82,37 +82,37 @@ export default async function PlatformSourcingPage() {
 
   const { data: recentSends } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('id, supplier_name, email, sent_at, status, session:sourcing_sessions(id, title, user_id)')
+    .select('id, supplier_name, email, sent_at, status, session:sourcing_sessions(id, title, org_id)')
     .not('sent_at', 'is', null)
     .order('sent_at', { ascending: false })
     .limit(80)
 
-  // Studio name lookup
-  const userIds = [...new Set([
+  // Studio name lookup keyed by org_id
+  const orgIds = [...new Set([
     ...(assignments ?? []).map((a: any) => {
       const item = Array.isArray(a.item) ? a.item[0] : a.item
       const session = Array.isArray(item?.session) ? item?.session[0] : item?.session
-      return session?.user_id
+      return session?.org_id
     }),
-    ...(sessions ?? []).map((s: any) => s.user_id),
+    ...(sessions ?? []).map((s: any) => s.org_id),
     ...(staleSuppliers ?? []).map((s: any) => {
       const session = Array.isArray(s.session) ? s.session[0] : s.session
-      return session?.user_id
+      return session?.org_id
     }),
     ...(recentSends ?? []).map((s: any) => {
       const session = Array.isArray(s.session) ? s.session[0] : s.session
-      return session?.user_id
+      return session?.org_id
     }),
   ].filter(Boolean))]
 
   const studioMap: Record<string, string> = {}
-  if (userIds.length > 0) {
+  if (orgIds.length > 0) {
     const { data: settingsRows } = await supabaseAdmin
       .from('settings')
-      .select('user_id, business_name')
-      .in('user_id', userIds)
+      .select('org_id, business_name')
+      .in('org_id', orgIds)
     for (const s of settingsRows ?? []) {
-      if (s.user_id) studioMap[s.user_id] = s.business_name ?? 'Studio'
+      if (s.org_id) studioMap[s.org_id] = s.business_name ?? '—'
     }
   }
 
@@ -139,7 +139,7 @@ export default async function PlatformSourcingPage() {
       project_name: project?.project_name ?? null,
       project_status: project?.status ?? null,
       fee_status: feeStatus,
-      studio: studioMap[session?.user_id] ?? 'Studio',
+      studio: studioMap[session?.org_id] ?? '—',
     }
   })
 
@@ -153,7 +153,7 @@ export default async function PlatformSourcingPage() {
       sent_at: s.sent_at,
       session_title: session?.title ?? '—',
       session_id: session?.id ?? null,
-      studio: studioMap[session?.user_id] ?? 'Studio',
+      studio: studioMap[session?.org_id] ?? '—',
     }
   })
 
@@ -168,7 +168,7 @@ export default async function PlatformSourcingPage() {
       status: s.status as string,
       session_title: session?.title ?? '—',
       session_id: session?.id ?? null,
-      studio: studioMap[session?.user_id] ?? 'Studio',
+      studio: studioMap[session?.org_id] ?? '—',
     }
   })
 

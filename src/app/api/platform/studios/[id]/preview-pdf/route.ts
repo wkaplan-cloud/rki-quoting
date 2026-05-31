@@ -72,23 +72,10 @@ export async function GET(
 
     const { id: orgId } = await params
 
-    // Look up the admin member's user_id for this org
-    const { data: adminMember } = await supabaseAdmin
-      .from('org_members')
-      .select('user_id')
-      .eq('org_id', orgId)
-      .eq('role', 'admin')
-      .eq('status', 'active')
-      .maybeSingle()
-
-    if (!adminMember?.user_id) {
-      return NextResponse.json({ error: 'No admin member found' }, { status: 404 })
-    }
-
     const { data: settings } = await supabaseAdmin
       .from('settings')
       .select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, vat_rate, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme')
-      .eq('user_id', adminMember.user_id)
+      .eq('org_id', orgId)
       .maybeSingle()
 
     // Allow ?template= and ?theme= overrides from the picker

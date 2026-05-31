@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
 // PATCH /api/platform/studios/[id]/settings
-// [id] is the user_id (admin member of the org) whose settings row we update
+// [id] is the org_id whose settings row we update
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,7 +17,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { id: userId } = await params
+  const { id: orgId } = await params
   const body = await req.json()
 
   const allowed = ['sourcing_enabled', 'pdf_template', 'pdf_color_theme']
@@ -33,7 +33,7 @@ export async function PATCH(
   const { error } = await supabaseAdmin
     .from('settings')
     .update(updates)
-    .eq('user_id', userId)
+    .eq('org_id', orgId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

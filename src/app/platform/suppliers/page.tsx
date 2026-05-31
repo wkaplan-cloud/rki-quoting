@@ -19,7 +19,7 @@ export default async function PlatformSuppliersPage() {
   // All session-supplier rows for analytics
   const { data: sessionSuppliers } = await supabaseAdmin
     .from('sourcing_session_suppliers')
-    .select('email, status, supplier_name, session:sourcing_sessions(user_id)')
+    .select('email, status, supplier_name, session:sourcing_sessions(org_id)')
 
   // Build per-email analytics
   const supplierStats: Record<string, {
@@ -29,7 +29,7 @@ export default async function PlatformSuppliersPage() {
     studioIds: Set<string>
   }> = {}
 
-  const userIds = new Set<string>()
+  const orgIds = new Set<string>()
   for (const ss of sessionSuppliers ?? []) {
     const email = (ss.email ?? '').toLowerCase()
     if (!supplierStats[email]) {
@@ -40,9 +40,9 @@ export default async function PlatformSuppliersPage() {
       supplierStats[email].respondedCount++
     }
     const session = Array.isArray(ss.session) ? ss.session[0] : ss.session
-    if (session?.user_id) {
-      supplierStats[email].studioIds.add(session.user_id)
-      userIds.add(session.user_id)
+    if (session?.org_id) {
+      supplierStats[email].studioIds.add(session.org_id)
+      orgIds.add(session.org_id)
     }
   }
 
@@ -62,13 +62,13 @@ export default async function PlatformSuppliersPage() {
 
   // Studio name map
   const studioMap: Record<string, string> = {}
-  if (userIds.size > 0) {
+  if (orgIds.size > 0) {
     const { data: settingsRows } = await supabaseAdmin
       .from('settings')
-      .select('user_id, business_name')
-      .in('user_id', [...userIds])
+      .select('org_id, business_name')
+      .in('org_id', [...orgIds])
     for (const s of settingsRows ?? []) {
-      if (s.user_id) studioMap[s.user_id] = s.business_name ?? 'Studio'
+      if (s.org_id) studioMap[s.org_id] = s.business_name ?? '—'
     }
   }
 

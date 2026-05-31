@@ -58,16 +58,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       submitted_at: now,
     })
 
-    // Fetch project to get user_id, then settings + auth email in parallel
+    // Fetch project, then settings + auth email in parallel
     const { data: project } = await supabaseAdmin
       .from('projects')
-      .select('project_name, project_number, user_id')
+      .select('project_name, project_number, user_id, org_id')
       .eq('id', approval.project_id)
       .single()
 
     if (project) {
       const [{ data: settings }, { data: authUser }, { data: membership }] = await Promise.all([
-        supabaseAdmin.from('settings').select('business_name, email_from').eq('user_id', project.user_id).maybeSingle(),
+        project.org_id
+          ? supabaseAdmin.from('settings').select('business_name, email_from').eq('org_id', project.org_id).maybeSingle()
+          : Promise.resolve({ data: null }),
         supabaseAdmin.auth.admin.getUserById(project.user_id),
         supabaseAdmin.from('org_members').select('org_id').eq('user_id', project.user_id).eq('status', 'active').maybeSingle(),
       ])
@@ -161,14 +163,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
     if (!approval) return NextResponse.json({ error: 'Invalid link' }, { status: 404 })
 
-    const [{ data: project }, { data: settings }] = await Promise.all([
-      supabaseAdmin.from('projects').select('project_name, project_number, user_id, client:clients(client_name)').eq('id', approval.project_id).single(),
-      supabaseAdmin.from('settings').select('business_name, logo_url').eq('user_id',
-        (await supabaseAdmin.from('projects').select('user_id').eq('id', approval.project_id).single()).data?.user_id ?? ''
-      ).maybeSingle(),
-    ])
+    const { data: project } = await supabaseAdmin
+      .from('projects')
+      .select('project_name, project_number, user_id, org_id, client:clients(client_name)')
+      .eq('id', approval.project_id)
+      .single()
 
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+
+    const { data: settings } = project.org_id
+      ? await supabaseAdmin.from('settings').select('business_name, logo_url').eq('org_id', project.org_id).maybeSingle()
+      : { data: null }
 
     const client = Array.isArray(project.client) ? project.client[0] : project.client
 
