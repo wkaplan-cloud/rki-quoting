@@ -99,10 +99,14 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
   const clientEmail = jobCard.client_email ?? ((jobCard.client && !Array.isArray(jobCard.client)) ? jobCard.client.email : null)
   const materials = jobCard.materials ?? []
   const photos = (jobCard.photos ?? []).filter(p => p.url !== jobCard.client_signature_url)
-  const totalExclVat = materials.reduce((acc, m) => acc + m.qty * (m.unit_price ?? 0), 0)
+  const materialsSubtotal = materials.reduce((acc, m) => acc + m.qty * (m.unit_price ?? 0), 0)
+  const labourCharge = (jobCard.labour_hours ?? 0) * (jobCard.labour_rate ?? 0)
+  const calloutFee = jobCard.callout_fee ?? 0
+  const totalExclVat = calloutFee + labourCharge + materialsSubtotal
   const vatRate = settings?.default_vat_rate ?? 15
   const vatAmt = totalExclVat * vatRate / 100
   const totalInclVat = totalExclVat + vatAmt
+  const hasCharges = calloutFee > 0 || labourCharge > 0
 
   return (
     <Document>
@@ -206,16 +210,39 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
           </View>
         )}
 
-        {/* Materials */}
-        {materials.length > 0 && (
+        {/* Materials + Charges */}
+        {(materials.length > 0 || hasCharges) && (
           <View style={{ marginBottom: 14 }}>
-            <Text style={s.secLabel}>{asInvoice ? 'Invoice Items' : 'Materials Used'}</Text>
+            <Text style={s.secLabel}>{asInvoice ? 'Invoice Items' : 'Materials & Charges'}</Text>
             <View style={s.tableHead}>
               <Text style={[s.tableHdTxt, { flex: 3 }]}>Description</Text>
               <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Qty</Text>
               <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Unit Price</Text>
               <Text style={[s.tableHdTxt, { flex: 1, textAlign: 'right' }]}>Amount</Text>
             </View>
+            {/* Call-out fee */}
+            {calloutFee > 0 && (
+              <View style={s.tableRow}>
+                <Text style={[s.tableCell, { flex: 3 }]}>Call-out Fee</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>1</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(calloutFee)}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(calloutFee)}</Text>
+              </View>
+            )}
+            {/* Labour */}
+            {labourCharge > 0 && (
+              <View style={s.tableRow}>
+                <Text style={[s.tableCell, { flex: 3 }]}>
+                  Labour{jobCard.labour_hours != null && jobCard.labour_rate != null
+                    ? ` (${jobCard.labour_hours}h × R${jobCard.labour_rate}/hr)`
+                    : ''}
+                </Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{jobCard.labour_hours ?? 1}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(jobCard.labour_rate)}</Text>
+                <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(labourCharge)}</Text>
+              </View>
+            )}
+            {/* Materials */}
             {materials.map(m => (
               <View key={m.id} style={s.tableRow}>
                 <Text style={[s.tableCell, { flex: 3 }]}>{m.description}</Text>

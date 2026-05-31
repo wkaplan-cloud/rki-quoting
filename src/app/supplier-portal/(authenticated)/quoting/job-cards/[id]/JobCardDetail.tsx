@@ -6,6 +6,7 @@ import {
   CheckCircle2, Clock, Play, XCircle, Loader2,
   MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
+  Download, Printer,
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
@@ -111,6 +112,21 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showFinishFlow, setShowFinishFlow] = useState(false)
+
+  // Download / print
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    setDownloading(true)
+    const win = window.open('', '_blank')
+    if (win) win.location.href = `/api/supplier-portal/quoting/job-cards/${card.id}/pdf`
+    setDownloading(false)
+  }
+
+  async function handlePrint() {
+    const win = window.open(`/api/supplier-portal/quoting/job-cards/${card.id}/pdf?inline=1`, '_blank')
+    if (win) win.focus()
+  }
 
   // Send state
   const [showSend, setShowSend] = useState(false)
@@ -472,6 +488,23 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div className="flex items-center gap-2">
           {saving && <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}><Loader2 size={11} className="animate-spin" />Saving…</span>}
           {!saving && saveMsg && <span className="text-xs" style={{ color: saveMsg === 'Saved' ? S.green : S.danger }}>{saveMsg}</span>}
+
+          {/* Download + Print */}
+          <button
+            onClick={() => void handleDownload()}
+            disabled={downloading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+            style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
+            <Download size={13} />
+            PDF
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+            style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
+            <Printer size={13} />
+            Print
+          </button>
 
           {/* Finish Job */}
           {canFinish && (
