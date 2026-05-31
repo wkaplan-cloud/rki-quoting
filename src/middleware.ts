@@ -89,6 +89,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/supplier-portal/terms') ||
     pathname.startsWith('/api/supplier-portal/auth') ||
     pathname.startsWith('/api/supplier-portal/staff/accept-invite') ||
+    pathname.startsWith('/api/supplier-portal/quoting/team/accept') ||
     pathname.startsWith('/meta-callback') ||
     pathname.startsWith('/q/') ||
     pathname.startsWith('/api/q/') ||
