@@ -46,13 +46,17 @@ async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
 
   const ids = confirmed.map(u => u.id)
 
-  const [{ data: members }, { data: suppliers }] = await Promise.all([
+  const [{ data: members }, { data: suppliers }, { data: portalMembers }, { data: elecStaff }] = await Promise.all([
     supabaseAdmin.from('org_members').select('user_id').in('user_id', ids),
     supabaseAdmin.from('supplier_portal_accounts').select('auth_user_id').in('auth_user_id', ids),
+    supabaseAdmin.from('portal_org_members').select('auth_user_id').in('auth_user_id', ids),
+    supabaseAdmin.from('elec_staff').select('auth_user_id').in('auth_user_id', ids),
   ])
 
   const hasOrg = new Set((members ?? []).map((m: { user_id: string }) => m.user_id))
   const isSupplier = new Set((suppliers ?? []).map((s: { auth_user_id: string }) => s.auth_user_id))
+  const isPortalMember = new Set((portalMembers ?? []).map((m: { auth_user_id: string }) => m.auth_user_id))
+  const isElecStaff = new Set((elecStaff ?? []).map((s: { auth_user_id: string }) => s.auth_user_id))
 
   const { data: nudges } = await supabaseAdmin
     .from('onboarding_nudges')
@@ -62,7 +66,7 @@ async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
   const nudgeMap = new Map((nudges ?? []).map((n: { user_id: string; sent_at: string }) => [n.user_id, n.sent_at]))
 
   return confirmed
-    .filter(u => !hasOrg.has(u.id) && !isSupplier.has(u.id))
+    .filter(u => !hasOrg.has(u.id) && !isSupplier.has(u.id) && !isPortalMember.has(u.id) && !isElecStaff.has(u.id))
     .map(u => ({
       user_id: u.id,
       email: u.email!,
