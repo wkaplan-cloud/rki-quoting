@@ -604,19 +604,22 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
             {/* Column headers */}
             <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px', color: S.muted }}>
+              style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px', color: S.muted }}>
               <span>Description</span>
               <span>Unit</span>
               <span className="text-right">Qty</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Mkup%</span>
               <span className="text-right">Labour</span>
+              <span className="text-right">Total</span>
               <span />
             </div>
 
-            {formLineItems.map(li => (
+            {formLineItems.map(li => {
+              const lineTotal = (parseFloat(li.qty) || 0) * computeVOSell(li.cost, li.markup, li.labour)
+              return (
               <div key={li._id} className="grid mb-1.5 items-center"
-                style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px' }}>
+                style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px' }}>
                 <VODescriptionInput
                   value={li.description}
                   onChange={v => updateFormItem(li._id, { description: v })}
@@ -640,13 +643,17 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                 <input type="number" value={li.labour} onChange={e => updateFormItem(li._id, { labour: e.target.value })}
                   placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <div className="text-sm font-semibold text-right" style={{ color: lineTotal > 0 ? S.text : S.muted }}>
+                  {lineTotal > 0 ? fmtR(lineTotal) : '—'}
+                </div>
                 <button onClick={() => removeFormItem(li._id)}
                   className="flex items-center justify-center rounded"
                   style={{ color: S.muted }}>
                   <Trash2 size={13} />
                 </button>
               </div>
-            ))}
+              )
+            })}
 
             {formVOValue > 0 && (
               <div className="flex justify-end mt-2 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
@@ -939,12 +946,14 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         </button>
                       </div>
                       <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-                        style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px', color: S.muted }}>
-                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">Labour</span><span />
+                        style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px', color: S.muted }}>
+                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">Labour</span><span className="text-right">Total</span><span />
                       </div>
-                      {editLineItems.map(li => (
+                      {editLineItems.map(li => {
+                        const lineTotal = (parseFloat(li.qty) || 0) * computeVOSell(li.cost, li.markup, li.labour)
+                        return (
                         <div key={li._id} className="grid mb-1.5 items-center"
-                          style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px' }}>
+                          style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px' }}>
                           <VODescriptionInput
                             value={li.description}
                             onChange={v => updateEditItem(li._id, { description: v })}
@@ -968,11 +977,15 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                           <input type="number" value={li.labour} onChange={e => updateEditItem(li._id, { labour: e.target.value })}
                             placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                             style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <div className="text-sm font-semibold text-right" style={{ color: lineTotal > 0 ? S.text : S.muted }}>
+                            {lineTotal > 0 ? fmtR(lineTotal) : '—'}
+                          </div>
                           <button onClick={() => removeEditItem(li._id)} className="flex items-center justify-center rounded" style={{ color: S.muted }}>
                             <Trash2 size={13} />
                           </button>
                         </div>
-                      ))}
+                        )
+                      })}
                       {editVOValue > 0 && (
                         <div className="flex justify-end mt-2 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
                           <span className="text-sm font-bold" style={{ color: S.accent }}>Total: {fmtR(editVOValue)}</span>
