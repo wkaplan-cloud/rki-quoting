@@ -129,7 +129,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && pathname === '/supplier-portal/login') {
     const redirectTo = request.nextUrl.searchParams.get('redirect')
-    const dest = redirectTo?.startsWith('/supplier-portal/') ? redirectTo : '/supplier-portal/price-requests'
+    const dest = redirectTo?.startsWith('/supplier-portal/') ? redirectTo : '/supplier-portal/home'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
