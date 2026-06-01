@@ -130,8 +130,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   // Send state
   const [showSend, setShowSend] = useState(false)
-  const [showSendMenu, setShowSendMenu] = useState(false)
-  const [sendMode, setSendMode] = useState<'jobcard' | 'invoice'>('jobcard')
   const [sendEmail, setSendEmail] = useState(card.client_email ?? card.client?.email ?? '')
   const [sendName, setSendName] = useState(card.client_name ?? card.client?.client_name ?? '')
   const [sendMsg, setSendMsg] = useState('')
@@ -146,6 +144,15 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [sagePushing, setSagePushing] = useState(false)
   const [sageError, setSageError] = useState('')
   const [sagePushResult, setSagePushResult] = useState<{ ok: boolean; total_incl_vat?: number } | null>(null)
+
+  // Staff time for this job
+  const [jobPunches, setJobPunches] = useState<{ id: string; staff_id: string; punch_type: string; punched_at: string; staff: { id: string; name: string; color: string } | null }[]>([])
+  useEffect(() => {
+    fetch(`/api/supplier-portal/quoting/job-cards/${initial.id}/time`)
+      .then(r => r.json())
+      .then((d: unknown) => Array.isArray(d) ? setJobPunches(d) : null)
+      .catch(() => {})
+  }, [initial.id])
 
   // Materials — inline form
   const [newMat, setNewMat] = useState<{ desc: string; qty: string; price: string } | null>(null)
@@ -266,7 +273,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       body: JSON.stringify({
         description: newMat.desc.trim(),
         qty: parseFloat(newMat.qty) || 1,
-        unit_price: newMat.price ? parseFloat(newMat.price) : null,
+        unit_price: newMat.price !== '' ? parseFloat(newMat.price) : null,
       }),
     })
     if (res.ok) {
@@ -290,7 +297,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       body: JSON.stringify({
         description: editingMat.desc.trim(),
         qty: parseFloat(editingMat.qty) || 1,
-        unit_price: editingMat.price ? parseFloat(editingMat.price) : null,
+        unit_price: editingMat.price !== '' ? parseFloat(editingMat.price) : null,
       }),
     })
     if (res.ok) {
@@ -412,7 +419,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     try {
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: sendMode === 'invoice', client_company: clientCompany.trim() || null, client_qs_name: clientQsName.trim() || null, client_qs_email: clientQsEmail.trim() || null }),
+        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: false, client_company: clientCompany.trim() || null, client_qs_name: clientQsName.trim() || null, client_qs_email: clientQsEmail.trim() || null }),
       })
       setSendResult(res.ok ? 'success' : 'error')
       if (res.ok) setCard(c => ({ ...c, sent_to_email: sendEmail, sent_to_name: sendName || null, sent_at: new Date().toISOString(), client_email: sendEmail }))
@@ -521,50 +528,23 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </button>
           )}
 
-          {/* Send */}
-          <div className="relative">
-            <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.accent}` }}>
-              <button
-                onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white"
-                style={{ background: S.accent }}>
-                <Send size={13} /> Send
-              </button>
-              <button onClick={() => setShowSendMenu(m => !m)}
-                className="flex items-center px-1.5 py-1.5 text-xs text-white"
-                style={{ background: S.accent, borderLeft: '1px solid rgba(255,255,255,0.3)' }}>
-                <ChevronDown size={13} />
-              </button>
-            </div>
-            {showSendMenu && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowSendMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[168px]"
-                  style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                  <button
-                    onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMode('jobcard'); setShowSend(true); setShowSendMenu(false) }}
-                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
-                    style={{ color: S.text }}>
-                    <FileText size={14} /> Send Job Card
-                  </button>
-                  <button
-                    onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMode('invoice'); setShowSend(true); setShowSendMenu(false) }}
-                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
-                    style={{ color: S.text }}>
-                    <Send size={14} /> Send as Invoice
-                  </button>
-                  {sageConnected && (
-                    <button
-                      onClick={() => { setShowSendMenu(false); void openSagePush() }}
-                      className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50"
-                      style={{ color: S.text }}>
-                      <Upload size={14} /> Push to Sage
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
+          {/* Send Job Card */}
+          <button
+            onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setShowSend(true) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+            style={{ background: S.accent }}>
+            <Send size={13} /> Send Job Card
+          </button>
+
+          {/* Push to Sage */}
+          {sageConnected && (
+            <button
+              onClick={() => void openSagePush()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
+              <Upload size={13} /> Push to Sage
+            </button>
+          )}
 
           {/* More (⋯) — contains Delete */}
           <div className="relative">
@@ -704,7 +684,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div className="rounded-2xl p-5 space-y-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
           <SectionHeader label="Job Info" />
-          <Inp label="Title" val={card.title} cb={v => setField('title', v)} />
           <div className="grid grid-cols-2 gap-4">
             <Field label="Job Type">
               <select value={card.job_type} onChange={e => setField('job_type', e.target.value as ElecJobCardType)}
@@ -738,6 +717,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     ...prev,
                     client_id: id,
                     client_name: name || null,
+                    title: name || prev.title,
                     client_email: existing?.email ?? prev.client_email,
                     location: prev.location || existing?.address || prev.location,
                   }))
@@ -784,9 +764,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       {/* ── Tab: Report ──────────────────────────────────────────────────── */}
       {tab === 'report' && (
         <div className="rounded-2xl p-5 space-y-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <Txt label="What Was Found" val={card.work_found} cb={v => setField('work_found', v || null)} placeholder="Describe what the technician found on site…" rows={4} />
-          <Txt label="Work Completed" val={card.work_done} cb={v => setField('work_done', v || null)} placeholder="Describe the work that was carried out…" rows={4} />
-          <Txt label="Resolution" val={card.resolution} cb={v => setField('resolution', v || null)} placeholder="How was the issue resolved?" rows={3} />
+          <Txt label="What Was Found" val={card.work_found} cb={v => setField('work_found', v || null)} placeholder="Describe what the technician found on site…" rows={5} />
+          <Txt label="Resolution" val={card.resolution} cb={v => setField('resolution', v || null)} placeholder="How was the issue resolved?" rows={5} />
         </div>
       )}
 
@@ -984,6 +963,64 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               </p>
             </div>
           </div>
+
+          {/* ── Staff time for this job ──────────────────────────────────── */}
+          {jobPunches.length > 0 && (() => {
+            // Pair clock_in / clock_out per staff member
+            const byStaff: Record<string, { name: string; color: string; sessions: { in: Date; out: Date | null }[] }> = {}
+            const openSessions: Record<string, Date> = {}
+            for (const p of jobPunches) {
+              const staffObj = !Array.isArray(p.staff) ? p.staff : null
+              const name = staffObj?.name ?? 'Unknown'
+              const color = staffObj?.color ?? S.accent
+              if (!byStaff[p.staff_id]) byStaff[p.staff_id] = { name, color, sessions: [] }
+              if (p.punch_type === 'clock_in') {
+                openSessions[p.staff_id] = new Date(p.punched_at)
+              } else if (p.punch_type === 'clock_out' && openSessions[p.staff_id]) {
+                byStaff[p.staff_id].sessions.push({ in: openSessions[p.staff_id], out: new Date(p.punched_at) })
+                delete openSessions[p.staff_id]
+              }
+            }
+            // Add still-open sessions
+            for (const [staffId, inTime] of Object.entries(openSessions)) {
+              byStaff[staffId]?.sessions.push({ in: inTime, out: null })
+            }
+            function fmtDur(ms: number) {
+              const h = Math.floor(ms / 3600000)
+              const m = Math.floor((ms % 3600000) / 60000)
+              return h > 0 ? `${h}h ${m}m` : `${m}m`
+            }
+            return (
+              <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+                  <p className="text-sm font-semibold" style={{ color: S.text }}>Staff Time on Job</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Clocked in/out via the job card on mobile</p>
+                </div>
+                {Object.values(byStaff).map(({ name, color, sessions }) => {
+                  const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
+                  return (
+                    <div key={name} className="px-5 py-3 flex items-center justify-between gap-4"
+                      style={{ borderTop: `1px solid ${S.border}` }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                          style={{ background: color }}>
+                          {name.slice(0, 1).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: S.text }}>{name}</p>
+                          <p className="text-[10px]" style={{ color: S.muted }}>
+                            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                            {sessions.some(s => !s.out) ? ' · currently on site' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm font-bold font-mono" style={{ color: S.accent }}>{fmtDur(totalMs)}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1129,7 +1166,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <button
                 onClick={() => {
                   setSendEmail(card.client_email ?? card.client?.email ?? '')
-                  setSendMode('jobcard')
                   setShowFinishFlow(false)
                   setShowSend(true)
                 }}
@@ -1210,14 +1246,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md rounded-2xl p-6" style={{ background: S.card }}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold" style={{ color: S.text }}>{sendMode === 'invoice' ? 'Send as Invoice' : 'Send Job Card'}</h2>
+              <h2 className="text-base font-bold" style={{ color: S.text }}>Send Job Card</h2>
               <button onClick={() => { setShowSend(false); setSendResult('') }} style={{ color: S.muted }}><X size={18} /></button>
             </div>
             {sendResult === 'success' ? (
               <div className="py-8 flex flex-col items-center gap-3">
                 <CheckCircle2 size={36} style={{ color: S.green }} />
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Sent successfully!</p>
-                <p className="text-xs" style={{ color: S.muted }}>{sendMode === 'invoice' ? 'Invoice' : 'Job card'} PDF sent to {sendEmail}</p>
+                <p className="text-xs" style={{ color: S.muted }}>Job card PDF sent to {sendEmail}</p>
                 <button onClick={() => { setShowSend(false); setSendResult('') }}
                   className="mt-2 px-6 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>
                   Done
