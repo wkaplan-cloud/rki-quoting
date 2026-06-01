@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { FileText, Receipt, ShoppingCart, Users, Zap, Download, Check, ArrowRight, ChevronRight, MapPin } from 'lucide-react'
+import { PublicLayout } from '@/components/layout/PublicLayout'
 
 interface CityConfig {
   city: string
@@ -14,29 +15,10 @@ export function CityLandingPage({ config }: { config: CityConfig }) {
   const { city, province, neighborhoods, blurb, heroSubtitle } = config
 
   return (
-    <div className="min-h-screen bg-[#F5F2EC] font-sans">
-
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
-        <div className="max-w-6xl mx-auto px-6 h-32 flex items-center justify-between">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-28 w-auto object-contain" />
-          <div className="flex items-center gap-3">
-            <Link href="/blog" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Blog</Link>
-            <Link href="/pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
-            <Link href="/faq" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">FAQ</Link>
-            <Link href="/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
-            <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
-            <Link href="/supplier-portal" className="hidden sm:block px-3 py-2 text-sm font-medium rounded-lg border border-[#D8D3C8] text-[#9A7B4F] hover:bg-[#9A7B4F]/10 transition-colors">Supplier Portal</Link>
-            <Link href="/signup" className="px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
-              Get started free
-            </Link>
-          </div>
-        </div>
-      </nav>
+    <PublicLayout>
 
       {/* Hero */}
-      <section className="pt-48 pb-16 px-6">
+      <section className="pt-8 sm:pt-16 pb-16 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
             <div className="flex-1 text-center lg:text-left">
@@ -193,22 +175,6 @@ export function CityLandingPage({ config }: { config: CityConfig }) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-[#D8D3C8] py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="QuotingHub" className="h-20 w-auto object-contain" />
-          <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
-          <div className="flex items-center gap-5">
-            <Link href="/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Log in</Link>
-            <Link href="/signup" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Sign up</Link>
-            <Link href="/" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Home</Link>
-            <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
-            <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
-          </div>
-        </div>
-      </footer>
-
-    </div>
+    </PublicLayout>
   )
 }
