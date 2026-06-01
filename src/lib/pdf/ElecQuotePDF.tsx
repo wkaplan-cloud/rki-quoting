@@ -156,6 +156,9 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
             {quote.expected_completion_date && (
               <Text style={s.infoRow}>Est. completion: {fmtDate(quote.expected_completion_date)}</Text>
             )}
+            {quote.drawing_reference && (
+              <Text style={s.infoRow}>Drawing REF: {quote.drawing_reference}</Text>
+            )}
           </View>
         </View>
 
@@ -201,6 +204,15 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
               <Text style={s.tBigLabel}>TOTAL</Text>
               <Text style={s.tBigVal}>{fmtR(grandTotal)}</Text>
             </View>
+            {(quote.retention_percentage ?? 0) > 0 && (
+              <>
+                <View style={s.tDivider} />
+                <View style={s.tRow}>
+                  <Text style={s.tLabel}>Retention ({quote.retention_percentage}%)</Text>
+                  <Text style={s.tVal}>{fmtR(contractTotal * (quote.retention_percentage / 100))}</Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 

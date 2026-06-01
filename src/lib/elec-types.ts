@@ -117,6 +117,7 @@ export interface ElecQuote {
   liquidated_damages_per_day: number | null
   defects_liability_period_days: number
   notes: string | null
+  drawing_reference: string | null
   quoted_date: string | null
   approved_date: string | null
   expected_completion_date: string | null

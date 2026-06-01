@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const autoCode   = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
     const companyCode = (settings?.company_code ?? '').trim() || autoCode
-    const prefix = settings?.quote_prefix ?? 'EQ'
+    const prefix = settings?.quote_prefix ?? 'QU'
     const year   = new Date().getFullYear()
 
     // Count all quotes for this account to generate next number

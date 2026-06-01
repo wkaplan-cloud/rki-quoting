@@ -90,7 +90,7 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
 
   // Company code + prefixes
   const [companyCodeVal, setCompanyCodeVal] = useState(settings?.company_code ?? '')
-  const [quotePrefix, setQuotePrefix]   = useState(settings?.quote_prefix ?? 'EQ')
+  const [quotePrefix, setQuotePrefix]   = useState(settings?.quote_prefix ?? 'QU')
   const [claimPrefix, setClaimPrefix]   = useState(settings?.claim_prefix ?? 'CLM')
   const [voPrefix, setVoPrefix]         = useState(settings?.vo_prefix ?? 'VO')
   const [cocPrefix, setCocPrefix]       = useState(settings?.coc_prefix ?? 'COC')
@@ -159,7 +159,7 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
       default_retention_percentage:   parseFloat(retention) || 0,
       default_payment_terms_days:     parseInt(paymentTerms) || 30,
       default_defects_liability_days: parseInt(defectsLiability) || 90,
-      quote_prefix:                   quotePrefix.trim() || 'EQ',
+      quote_prefix:                   quotePrefix.trim() || 'QU',
       claim_prefix:                   claimPrefix.trim() || 'CLM',
       vo_prefix:                      voPrefix.trim() || 'VO',
       coc_prefix:                     cocPrefix.trim() || 'COC',
@@ -242,7 +242,7 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
                   <div className="shrink-0 pb-0.5 text-right">
                     <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: S.muted }}>Quote example</p>
                     <p className="text-xs font-mono font-semibold" style={{ color: S.text }}>
-                      {effectiveCode ? `${effectiveCode}-${quotePrefix || 'EQ'}-${year}-001` : `${quotePrefix || 'EQ'}-${year}-001`}
+                      {effectiveCode ? `${effectiveCode}-${quotePrefix || 'QU'}-${year}-001` : `${quotePrefix || 'QU'}-${year}-001`}
                     </p>
                   </div>
                 </div>

@@ -27,7 +27,9 @@ interface FormLineItem {
   description: string
   unit: string
   qty: string
-  rate: string
+  cost: string
+  markup: string
+  labour: string
 }
 
 type VOClient = Pick<ElecClient, 'id' | 'client_name' | 'email' | 'qs_name' | 'qs_email'>
@@ -48,11 +50,18 @@ interface Props {
 }
 
 function newFormItem(): FormLineItem {
-  return { _id: Math.random().toString(36).slice(2), description: '', unit: '', qty: '', rate: '' }
+  return { _id: Math.random().toString(36).slice(2), description: '', unit: 'nr', qty: '', cost: '', markup: '', labour: '' }
+}
+
+function computeVOSell(cost: string, markup: string, labour: string): number {
+  const c = parseFloat(cost) || 0
+  const m = parseFloat(markup) || 0
+  const l = parseFloat(labour) || 0
+  return c * (1 + m / 100) + l
 }
 
 // ─── Item library autocomplete for VO line items ──────────────────────────────
-interface VOSuggestion { description: string; unit: string | null; default_unit_rate: number | null; default_cost_rate: number | null; category: string | null }
+interface VOSuggestion { description: string; unit: string | null; default_markup_percent: number | null; category: string | null }
 
 function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S.input }: {
   value: string; onChange: (v: string) => void
@@ -69,7 +78,7 @@ function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from('elec_item_library')
-        .select('description, unit, default_unit_rate, default_cost_rate, category')
+        .select('description, unit, default_markup_percent, category')
         .eq('portal_account_id', portalAccountId)
         .ilike('description', `%${value}%`)
         .order('usage_count', { ascending: false })
@@ -106,9 +115,9 @@ function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S
               onMouseEnter={e => e.currentTarget.style.background = S.bg}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <span className="truncate mr-2" style={{ color: S.text }}>{s.description}</span>
-              {s.default_unit_rate != null && (
+              {(s.unit || s.default_markup_percent != null) && (
                 <span className="text-xs flex-shrink-0" style={{ color: S.muted }}>
-                  R {s.default_unit_rate.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}{s.unit ? `/${s.unit}` : ''}
+                  {s.unit ?? ''}{s.default_markup_percent != null ? ` · ${s.default_markup_percent}%` : ''}
                 </span>
               )}
             </button>
@@ -188,8 +197,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
   const formVOValue = formLineItems.reduce((s, li) => {
     const q = parseFloat(li.qty) || 0
-    const r = parseFloat(li.rate) || 0
-    return s + q * r
+    const sell = computeVOSell(li.cost, li.markup, li.labour)
+    return s + q * sell
   }, 0)
 
   // ── Edit mode helpers ─────────────────────────────────────────────────────
@@ -208,7 +217,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     setEditLineItems(prev => prev.length > 1 ? prev.filter(li => li._id !== id) : prev)
   }
 
-  const editVOValue = editLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * (parseFloat(li.rate) || 0), 0)
+  const editVOValue = editLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * computeVOSell(li.cost, li.markup, li.labour), 0)
 
   function startEditVO(vo: ElecVariationOrder) {
     const currentItems = getVOItems(vo.id)
@@ -222,9 +231,11 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       ? currentItems.map(li => ({
           _id: Math.random().toString(36).slice(2),
           description: li.description,
-          unit: li.unit ?? '',
+          unit: li.unit ?? 'nr',
           qty: String(li.quoted_quantity),
-          rate: String(li.quoted_unit_rate),
+          cost: li.cost_unit_rate != null ? String(li.cost_unit_rate) : '',
+          markup: li.markup_percentage != null ? String(li.markup_percentage) : '',
+          labour: li.labour_rate != null ? String(li.labour_rate) : '',
         }))
       : [newFormItem()])
   }
@@ -252,10 +263,13 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       const { data } = await supabase.from('elec_quote_line_items').insert(
         validItems.map((li, idx) => ({
           quote_id: quoteId, section_id: null,
-          description: li.description.trim(), unit: li.unit.trim() || null,
+          description: li.description.trim(), unit: li.unit || null,
           item_type: 'both' as const,
           quoted_quantity: parseFloat(li.qty) || 0,
-          quoted_unit_rate: parseFloat(li.rate) || 0,
+          quoted_unit_rate: Math.round(computeVOSell(li.cost, li.markup, li.labour) * 100) / 100,
+          cost_unit_rate: parseFloat(li.cost) || null,
+          markup_percentage: parseFloat(li.markup) || null,
+          labour_rate: parseFloat(li.labour) || null,
           is_variation: true, variation_order_id: editingVOId, sort_order: idx,
         }))
       ).select()
@@ -352,10 +366,13 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
           quote_id: quoteId,
           section_id: null,
           description: li.description.trim(),
-          unit: li.unit.trim() || null,
+          unit: li.unit || null,
           item_type: 'both' as const,
           quoted_quantity: parseFloat(li.qty) || 0,
-          quoted_unit_rate: parseFloat(li.rate) || 0,
+          quoted_unit_rate: Math.round(computeVOSell(li.cost, li.markup, li.labour) * 100) / 100,
+          cost_unit_rate: parseFloat(li.cost) || null,
+          markup_percentage: parseFloat(li.markup) || null,
+          labour_rate: parseFloat(li.labour) || null,
           is_variation: true,
           variation_order_id: voData.id,
           sort_order: idx,
@@ -587,31 +604,41 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
             {/* Column headers */}
             <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px', color: S.muted }}>
+              style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px', color: S.muted }}>
               <span>Description</span>
               <span>Unit</span>
               <span className="text-right">Qty</span>
-              <span className="text-right">Rate (R)</span>
+              <span className="text-right">Cost</span>
+              <span className="text-right">Mkup%</span>
+              <span className="text-right">Labour</span>
               <span />
             </div>
 
             {formLineItems.map(li => (
               <div key={li._id} className="grid mb-1.5 items-center"
-                style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px' }}>
+                style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px' }}>
                 <VODescriptionInput
                   value={li.description}
                   onChange={v => updateFormItem(li._id, { description: v })}
-                  onSelect={s => updateFormItem(li._id, { description: s.description, unit: s.unit ?? li.unit, rate: s.default_unit_rate != null ? String(s.default_unit_rate) : li.rate })}
+                  onSelect={s => updateFormItem(li._id, { description: s.description, unit: s.unit ?? li.unit, markup: s.default_markup_percent != null ? String(s.default_markup_percent) : li.markup })}
                   portalAccountId={portalAccountId} />
-                <input value={li.unit} onChange={e => updateFormItem(li._id, { unit: e.target.value })}
-                  placeholder="m / nr"
-                  className="px-2 py-1.5 text-sm rounded-lg outline-none text-center"
-                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <select value={li.unit} onChange={e => updateFormItem(li._id, { unit: e.target.value })}
+                  className="px-1 py-1.5 text-sm rounded-lg outline-none"
+                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+                  <option value="nr">nr</option>
+                  <option value="m">m</option>
+                </select>
                 <input type="number" value={li.qty} onChange={e => updateFormItem(li._id, { qty: e.target.value })}
                   className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                <input type="number" value={li.rate} onChange={e => updateFormItem(li._id, { rate: e.target.value })}
-                  className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                <input type="number" value={li.cost} onChange={e => updateFormItem(li._id, { cost: e.target.value })}
+                  placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <input type="number" value={li.markup} onChange={e => updateFormItem(li._id, { markup: e.target.value })}
+                  placeholder="%" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <input type="number" value={li.labour} onChange={e => updateFormItem(li._id, { labour: e.target.value })}
+                  placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 <button onClick={() => removeFormItem(li._id)}
                   className="flex items-center justify-center rounded"
@@ -932,25 +959,34 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         </button>
                       </div>
                       <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-                        style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px', color: S.muted }}>
-                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Rate (R)</span><span />
+                        style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px', color: S.muted }}>
+                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">Labour</span><span />
                       </div>
                       {editLineItems.map(li => (
                         <div key={li._id} className="grid mb-1.5 items-center"
-                          style={{ gridTemplateColumns: '1fr 55px 70px 80px 24px', gap: '6px' }}>
+                          style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px' }}>
                           <VODescriptionInput
                             value={li.description}
                             onChange={v => updateEditItem(li._id, { description: v })}
-                            onSelect={s => updateEditItem(li._id, { description: s.description, unit: s.unit ?? li.unit, rate: s.default_unit_rate != null ? String(s.default_unit_rate) : li.rate })}
+                            onSelect={s => updateEditItem(li._id, { description: s.description, unit: s.unit ?? li.unit, markup: s.default_markup_percent != null ? String(s.default_markup_percent) : li.markup })}
                             portalAccountId={portalAccountId} bg="#fff" />
-                          <input value={li.unit} onChange={e => updateEditItem(li._id, { unit: e.target.value })} placeholder="m / nr"
-                            className="px-2 py-1.5 text-sm rounded-lg outline-none text-center"
-                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <select value={li.unit} onChange={e => updateEditItem(li._id, { unit: e.target.value })}
+                            className="px-1 py-1.5 text-sm rounded-lg outline-none"
+                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }}>
+                            <option value="nr">nr</option>
+                            <option value="m">m</option>
+                          </select>
                           <input type="number" value={li.qty} onChange={e => updateEditItem(li._id, { qty: e.target.value })}
                             className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                             style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
-                          <input type="number" value={li.rate} onChange={e => updateEditItem(li._id, { rate: e.target.value })}
-                            className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                          <input type="number" value={li.cost} onChange={e => updateEditItem(li._id, { cost: e.target.value })}
+                            placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <input type="number" value={li.markup} onChange={e => updateEditItem(li._id, { markup: e.target.value })}
+                            placeholder="%" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                            style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
+                          <input type="number" value={li.labour} onChange={e => updateEditItem(li._id, { labour: e.target.value })}
+                            placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                             style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
                           <button onClick={() => removeEditItem(li._id)} className="flex items-center justify-center rounded" style={{ color: S.muted }}>
                             <Trash2 size={13} />

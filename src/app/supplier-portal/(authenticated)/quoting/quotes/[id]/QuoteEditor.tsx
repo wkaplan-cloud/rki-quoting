@@ -461,8 +461,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         client_id: q.client_id, project_type: q.project_type,
         contract_type: q.contract_type,
         vat_rate: q.vat_rate, retention_percentage: q.retention_percentage,
-        payment_terms_days: q.payment_terms_days, liquidated_damages_per_day: q.liquidated_damages_per_day,
+        payment_terms_days: q.payment_terms_days,
         defects_liability_period_days: q.defects_liability_period_days,
+        drawing_reference: q.drawing_reference,
         notes: q.notes, quoted_date: q.quoted_date, expected_completion_date: q.expected_completion_date,
       }).eq('id', q.id)
 
@@ -976,7 +977,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               { label: 'VAT Rate',          value: q.vat_rate != null ? `${q.vat_rate}%` : null },
               { label: 'Retention',         value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
               { label: 'Defects Liability', value: q.defects_liability_period_days ? `${q.defects_liability_period_days} days` : null },
-              { label: 'Liquidated Damages',value: q.liquidated_damages_per_day ? `${fmtR(q.liquidated_damages_per_day)}/day` : null },
+              { label: 'Drawing REF',       value: q.drawing_reference ?? null },
               { label: 'Created',           value: new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) + (q.created_by_name ? ` by ${q.created_by_name}` : '') },
             ].filter(f => f.value).map(f => (
               <div key={f.label}>
@@ -1118,11 +1119,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
 
-          {/* Liquidated damages */}
+          {/* Drawing REF */}
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Liquidated Damages (R/day)</label>
-            <input type="number" value={q.liquidated_damages_per_day ?? ''} placeholder="e.g. 5000"
-              onChange={e => setQ(p => ({ ...p, liquidated_damages_per_day: e.target.value ? parseFloat(e.target.value) : null }))}
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Drawing REF <span style={{ fontWeight: 400 }}>(optional)</span></label>
+            <input value={q.drawing_reference ?? ''} placeholder="e.g. E-03 Rev 2"
+              onChange={e => setQ(p => ({ ...p, drawing_reference: e.target.value || null }))}
               className="w-full px-3 py-2 text-sm rounded-lg outline-none"
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
