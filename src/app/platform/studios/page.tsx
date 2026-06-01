@@ -140,6 +140,7 @@ export default async function StudiosPage() {
       memberCount: memberCountByOrg.get(org.id) ?? 0,
       projectCount: projectCountByOrg.get(org.id) ?? 0,
       adminName: admin?.full_name || admin?.invited_email || '—',
+      adminEmail: admin?.invited_email ?? null,
       lastActive,
       isChurnRisk,
       isInternal,
@@ -251,7 +252,20 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
                     )}
                   </div>
                 </td>
-                <td className="px-5 py-3.5 text-white/60">{studio.adminName}</td>
+                <td className="px-5 py-3.5">
+                  {studio.adminEmail ? (
+                    studio.adminName === studio.adminEmail ? (
+                      <a href={`mailto:${studio.adminEmail}`} className="text-[#C4A46B] hover:underline text-sm">{studio.adminEmail}</a>
+                    ) : (
+                      <div>
+                        <p className="text-white/60">{studio.adminName}</p>
+                        <a href={`mailto:${studio.adminEmail}`} className="text-xs text-[#C4A46B] hover:underline">{studio.adminEmail}</a>
+                      </div>
+                    )
+                  ) : (
+                    <span className="text-white/60">{studio.adminName}</span>
+                  )}
+                </td>
                 <td className="px-5 py-3.5">
                   <AssignRepCell orgId={studio.id} initial={studio.assigned_rep ?? null} />
                 </td>
