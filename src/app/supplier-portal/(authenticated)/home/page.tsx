@@ -17,6 +17,8 @@ export default async function SupplierHomePage() {
   const isTrialing = account.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
   const hasQuoting = account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing)
 
+  if (hasQuoting) redirect('/supplier-portal/quoting')
+
   // Fetch all session-supplier rows for this account
   const { data: ssRows } = await supabaseAdmin
     .from('sourcing_session_suppliers')

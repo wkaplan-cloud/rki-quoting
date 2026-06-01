@@ -158,10 +158,14 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
         {/* Nav */}
         <nav className="flex-1 pt-3 pb-2 overflow-y-auto overflow-x-hidden space-y-0.5">
 
-          {/* Marketplace */}
-          <NavLink href="/supplier-portal/home"       label="Home"           icon={Home}  />
-          <NavLink href="/supplier-portal/dashboard"  label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
-          <NavLink href="/supplier-portal/price-list" label="My Price List"  icon={Tag}   />
+          {/* Marketplace — hidden for electrician/quoting accounts */}
+          {!hasQuoting && (
+            <>
+              <NavLink href="/supplier-portal/home"       label="Home"           icon={Home}  />
+              <NavLink href="/supplier-portal/dashboard"  label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
+              <NavLink href="/supplier-portal/price-list" label="My Price List"  icon={Tag}   />
+            </>
+          )}
 
           {/* Business tools */}
           {hasQuoting ? (
