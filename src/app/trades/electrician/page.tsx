@@ -176,7 +176,7 @@ export default function ElectricianLandingPage() {
             </div>
 
             {/* Electrician illustration */}
-            <div className="flex-shrink-0 w-full lg:w-[420px] flex items-center justify-center">
+            <div className="flex-shrink-0 w-full lg:w-[420px] flex items-center justify-center bg-[#F5F2EC]">
               <Image
                 src="/electrician-hero.png"
                 alt="Electrician with tools and toolbox"
