@@ -182,7 +182,7 @@ export default function ElectricianLandingPage() {
                 alt="Electrician with tools and toolbox"
                 width={420}
                 height={520}
-                className="w-full max-w-[420px] object-contain drop-shadow-xl"
+                className="w-full max-w-[420px] object-contain mix-blend-multiply"
                 priority
               />
             </div>
