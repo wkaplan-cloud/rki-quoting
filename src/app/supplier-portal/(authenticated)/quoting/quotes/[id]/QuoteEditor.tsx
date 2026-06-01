@@ -148,11 +148,11 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
                   onMouseEnter={e => e.currentTarget.style.background = S.bg}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <span style={{ color: S.text }}>{s.description}</span>
-                  <span className="text-xs ml-2 flex-shrink-0" style={{ color: S.muted }}>
-                    {s.default_cost_rate != null ? fmtR(s.default_cost_rate) : ''}
-                    {s.default_markup_percent != null ? ` · ${s.default_markup_percent}%` : ''}
-                    {s.unit ? `/${s.unit}` : ''}
-                  </span>
+                  {(s.default_markup_percent != null || s.unit) && (
+                    <span className="text-xs ml-2 flex-shrink-0" style={{ color: S.muted }}>
+                      {s.unit ?? ''}{s.default_markup_percent != null ? ` · ${s.default_markup_percent}%` : ''}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -186,11 +186,11 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
         </div>
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
           onSelect={s => {
-            const cost = s.default_cost_rate ?? item.cost_unit_rate
-            const markup = s.default_markup_percent ?? item.markup_percentage
-            const labour = s.default_labour_rate ?? item.labour_rate
-            const sell = cost != null ? cost * (1 + (markup ?? 0) / 100) + (labour ?? 0) : (s.default_unit_rate ?? item.quoted_unit_rate)
-            set({ description: s.description, unit: s.unit ?? item.unit, item_type: (s.item_type as ElecItemType) ?? item.item_type, cost_unit_rate: cost, markup_percentage: markup, labour_rate: labour, quoted_unit_rate: sell ?? 0, material_rate: s.default_material_rate ?? item.material_rate })
+            set({
+              description: s.description,
+              unit: s.unit ?? item.unit,
+              markup_percentage: s.default_markup_percent ?? item.markup_percentage,
+            })
           }}
           portalAccountId={portalAccountId} locked={locked} />
         <select value={item.unit ?? 'nr'} onChange={e => set({ unit: e.target.value })} disabled={locked}
@@ -513,25 +513,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       ]
       if (allItemRows.length > 0) {
         await supabase.from('elec_quote_line_items').upsert(allItemRows)
-      }
-
-      // Sync item library in background (fire-and-forget)
-      const libraryItems = allItems.filter(i => i.description.trim()).map(i => ({
-        description: i.description.trim(),
-        unit: i.unit,
-        item_type: i.item_type,
-        default_unit_rate: i.quoted_unit_rate,
-        default_cost_rate: i.cost_unit_rate,
-        default_markup_percent: i.markup_percentage,
-        default_labour_rate: i.labour_rate,
-        default_material_rate: i.material_rate,
-      }))
-      if (libraryItems.length > 0) {
-        fetch('/api/supplier-portal/quoting/item-library', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: libraryItems }),
-        }).catch(() => {})
       }
 
       setDeletedSectionIds([]); setDeletedItemIds([])
