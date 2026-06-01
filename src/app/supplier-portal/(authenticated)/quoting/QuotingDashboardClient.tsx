@@ -115,7 +115,7 @@ const JC_TYPE_LABEL: Record<string, string> = {
 function FinancialStrip({ financial }: { financial: Props['financial'] }) {
   const { pipelineValue, activeValue, completedValue, outstanding, paidYTD } = financial
   const cards = [
-    { label: 'Pipeline',    value: fmtR(pipelineValue),  sub: 'Quotes pending',          icon: TrendingUp,   color: S.accent,                                          iconBg: 'rgba(58,124,165,0.08)'  },
+    { label: 'Pipeline',    value: fmtR(pipelineValue),  sub: 'Projects pending',          icon: TrendingUp,   color: S.accent,                                          iconBg: 'rgba(58,124,165,0.08)'  },
     { label: 'Active Jobs', value: fmtR(activeValue),    sub: 'Contract value',           icon: Briefcase,    color: S.green,                                           iconBg: 'rgba(22,163,74,0.08)'   },
     { label: 'Completed',   value: fmtR(completedValue), sub: 'Total contract value',     icon: CheckCircle2, color: '#166534',                                         iconBg: 'rgba(22,101,52,0.08)'   },
     { label: 'Outstanding', value: fmtR(outstanding),    sub: 'Invoiced, not yet paid',   icon: AlertCircle,  color: outstanding > 0 ? S.gold : S.muted,                iconBg: outstanding > 0 ? 'rgba(217,164,65,0.08)' : 'rgba(113,113,122,0.06)' },
@@ -493,13 +493,13 @@ export function QuotingDashboardClient({ financial, pipeline, active, completed,
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
           style={{ background: S.accent, color: '#fff' }}
         >
-          All Quotes
+          All Projects
         </Link>
       </div>
 
-      {/* Quotes financial strip */}
+      {/* Projects financial strip */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Quotes</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Projects</p>
         <FinancialStrip financial={financial} />
       </div>
 
@@ -510,7 +510,7 @@ export function QuotingDashboardClient({ financial, pipeline, active, completed,
       <div>
         <div className="flex items-center gap-1 mb-5" style={{ borderBottom: `1px solid ${S.border}` }}>
           {([
-            { id: 'quotes'    as const, label: 'Quotes',    Icon: FileText, count: totalQuotes    },
+            { id: 'quotes'    as const, label: 'Projects',  Icon: FileText, count: totalQuotes    },
             { id: 'job_cards' as const, label: 'Job Cards', Icon: Wrench,   count: totalJobCards  },
           ]).map(({ id, label, Icon, count }) => {
             const isActive = activeTab === id

@@ -163,8 +163,8 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
               <BookOpen size={18} style={{ color: S.accent }} />
             </div>
             <div>
-              <h1 className="text-xl font-bold" style={{ color: S.text }}>Price Book</h1>
-              <p className="text-xs" style={{ color: S.muted }}>{items.length} item{items.length !== 1 ? 's' : ''} · select when adding line items to quotes &amp; VOs</p>
+              <h1 className="text-xl font-bold" style={{ color: S.text }}>Line Items</h1>
+              <p className="text-xs" style={{ color: S.muted }}>{items.length} item{items.length !== 1 ? 's' : ''} · select when adding line items to projects &amp; VOs</p>
             </div>
           </div>
           <button onClick={openAdd}
@@ -205,10 +205,10 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
           <div className="rounded-2xl p-12 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <BookOpen size={32} className="mx-auto mb-3" style={{ color: S.border }} />
             <p className="text-sm font-medium mb-1" style={{ color: S.text }}>
-              {search || catFilter !== 'All' ? 'No items match your filter' : 'Your price book is empty'}
+              {search || catFilter !== 'All' ? 'No items match your filter' : 'Your line items list is empty'}
             </p>
             <p className="text-xs" style={{ color: S.muted }}>
-              {search || catFilter !== 'All' ? 'Try a different search or category' : 'Add items to build your standard catalog — electricians will search these when writing quotes.'}
+              {search || catFilter !== 'All' ? 'Try a different search or category' : 'Add items to build your standard catalog — these are suggested when writing projects.'}
             </p>
             {!search && catFilter === 'All' && (
               <button onClick={openAdd}

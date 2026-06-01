@@ -271,7 +271,7 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: S.text }}>Quotes</h1>
+          <h1 className="text-xl font-bold" style={{ color: S.text }}>Projects</h1>
           <p className="text-xs mt-0.5" style={{ color: S.muted }}>{quotes.length} total</p>
         </div>
         <button onClick={() => setShowNewModal(true)}

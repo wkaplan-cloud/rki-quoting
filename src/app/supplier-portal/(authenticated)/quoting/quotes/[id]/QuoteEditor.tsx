@@ -682,7 +682,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           className="flex items-center gap-1.5 text-sm font-medium" style={{ color: S.muted }}
           onMouseEnter={e => e.currentTarget.style.color = S.text}
           onMouseLeave={e => e.currentTarget.style.color = S.muted}>
-          <ChevronLeft size={16} /> Quotes
+          <ChevronLeft size={16} /> Projects
         </button>
         <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
         <div className="flex-1" />
