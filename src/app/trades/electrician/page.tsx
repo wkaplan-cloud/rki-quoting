@@ -184,6 +184,7 @@ export default function ElectricianLandingPage() {
                 height={520}
                 className="w-full max-w-[420px] object-contain drop-shadow-xl"
                 priority
+                unoptimized
               />
             </div>
 
