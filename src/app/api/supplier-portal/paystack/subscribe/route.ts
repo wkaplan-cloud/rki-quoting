@@ -3,10 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
-// R499/month — update PAYSTACK_PLAN_SUPPLIER_ELECTRICIAN in .env with your Paystack plan code
+// R1999/month — update PAYSTACK_PLAN_SUPPLIER_ELECTRICIAN in .env with your Paystack plan code
 const SUPPLIER_PLANS: Record<string, { price: number; planCode: string; label: string }> = {
   electrician: {
-    price:    499,
+    price:    1999,
     planCode: process.env.PAYSTACK_PLAN_SUPPLIER_ELECTRICIAN ?? '',
     label:    'Electrician Quoting',
   },

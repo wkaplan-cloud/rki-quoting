@@ -20,7 +20,7 @@ const TRADES = [
     id:       'electrician',
     label:    'Electrician',
     icon:     Bolt,
-    price:    499,
+    price:    1999,
     features: [
       'Full quote builder with sections & line items',
       'As-built quantity editing',
@@ -97,7 +97,7 @@ function UpgradeContent() {
           </div>
           <h1 className="text-2xl font-bold mb-2" style={{ color: S.text }}>Unlock the Quoting Module</h1>
           <p className="text-sm" style={{ color: S.muted }}>
-            A complete project &amp; billing system built for your trade. R499/month, cancel anytime.
+            A complete project &amp; billing system built for your trade. R1,999/month, cancel anytime.
           </p>
         </div>
 
