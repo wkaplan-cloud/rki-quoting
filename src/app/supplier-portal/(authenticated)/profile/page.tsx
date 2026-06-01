@@ -51,6 +51,7 @@ export default async function SupplierProfilePage() {
   return (
     <SupplierProfileClient
       portalAccountId={account.id}
+      hasQuoting={hasQuoting}
       account={{
         email: account.email,
         company_name: account.company_name ?? '',

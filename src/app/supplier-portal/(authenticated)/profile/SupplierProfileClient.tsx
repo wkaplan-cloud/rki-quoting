@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
 import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2 } from 'lucide-react'
@@ -8,6 +9,7 @@ import type { PortalOrgMember } from '@/lib/elec-types'
 
 interface Props {
   portalAccountId: string
+  hasQuoting: boolean
   account: {
     email: string
     company_name: string
@@ -48,7 +50,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, account, elecSettings, categoryOptions, orgMembers }: Props) {
+export function SupplierProfileClient({ portalAccountId, hasQuoting, account, elecSettings, categoryOptions, orgMembers }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -261,7 +263,19 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
     <div className="space-y-7">
       <div>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>Profile</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>Your supplier account details</p>
+        <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>Your business account details</p>
+        {hasQuoting && (
+          <div className="flex gap-1 mt-3 p-1 rounded-xl w-fit" style={{ background: '#F1F5F9' }}>
+            <span className="px-4 py-1.5 rounded-lg text-sm font-semibold" style={{ background: '#FFFFFF', color: '#18181B', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>
+              Profile
+            </span>
+            <Link href="/supplier-portal/quoting/settings"
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+              style={{ color: '#6B7280' }}>
+              Settings
+            </Link>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSave} className="space-y-5">
@@ -415,27 +429,29 @@ export function SupplierProfileClient({ portalAccountId, account, elecSettings, 
           </div>
         </div>
 
-        {/* What do you supply? */}
-        <div className="p-5 rounded-xl space-y-4" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#71717A' }}>What do you supply?</p>
-          <div className="flex flex-wrap gap-2">
-            {categoryOptions.map(cat => {
-              const active = categories.includes(cat)
-              return (
-                <button key={cat} type="button" onClick={() => toggleCategory(cat)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-                  style={{
-                    background: active ? '#34495E' : '#F4F4F5',
-                    color: active ? '#FFFFFF' : '#71717A',
-                    border: active ? '1px solid #34495E' : '1px solid #E4E4E7',
-                  }}>
-                  {active && <span className="mr-1">✓</span>}
-                  {cat}
-                </button>
-              )
-            })}
+        {/* What do you supply? — marketplace suppliers only */}
+        {!hasQuoting && (
+          <div className="p-5 rounded-xl space-y-4" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#71717A' }}>What do you supply?</p>
+            <div className="flex flex-wrap gap-2">
+              {categoryOptions.map(cat => {
+                const active = categories.includes(cat)
+                return (
+                  <button key={cat} type="button" onClick={() => toggleCategory(cat)}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                    style={{
+                      background: active ? '#34495E' : '#F4F4F5',
+                      color: active ? '#FFFFFF' : '#71717A',
+                      border: active ? '1px solid #34495E' : '1px solid #E4E4E7',
+                    }}>
+                    {active && <span className="mr-1">✓</span>}
+                    {cat}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {error && (
           <p className="text-sm px-3 py-2 rounded-lg" style={{ background: '#1A1020', color: '#F87171', border: '1px solid #3B1F1F' }}>{error}</p>

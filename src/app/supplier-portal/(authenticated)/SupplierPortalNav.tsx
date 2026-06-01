@@ -230,50 +230,31 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
           )}
         </nav>
 
-        {/* Settings */}
-        {hasQuoting && (() => {
-          const active = pathname.startsWith('/supplier-portal/quoting/settings')
-          return (
-            <div className="pb-1" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
-              <Link
-                href="/supplier-portal/quoting/settings"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center h-9 mx-2 mt-1 rounded-lg transition-colors duration-150"
-                style={{
-                  background: active ? S.activeBg : 'transparent',
-                  borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
-                }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-              >
-                <span className="flex items-center justify-center w-9 flex-shrink-0">
-                  <Settings size={15} style={{ color: active ? S.textLight : S.textMuted }} />
-                </span>
-                <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
-                  Settings
-                </span>
-              </Link>
-            </div>
-          )
-        })()}
-
         {/* Footer */}
         <div className="flex-shrink-0 py-2 space-y-0.5" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
           <Link
             href="/supplier-portal/profile"
             onClick={() => setMobileOpen(false)}
             className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
-            onMouseEnter={e => { e.currentTarget.style.background = S.hoverBg }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            style={{
+              background: pathname.startsWith('/supplier-portal/profile') ? S.activeBg : 'transparent',
+              borderLeft: pathname.startsWith('/supplier-portal/profile') ? `3px solid ${S.activeAccent}` : '3px solid transparent',
+            }}
+            onMouseEnter={e => { if (!pathname.startsWith('/supplier-portal/profile')) e.currentTarget.style.background = S.hoverBg }}
+            onMouseLeave={e => { if (!pathname.startsWith('/supplier-portal/profile')) e.currentTarget.style.background = 'transparent' }}
           >
             <span className="flex items-center justify-center w-9 flex-shrink-0">
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: S.activeAccent, color: '#fff' }}>
                 {companyName.charAt(0).toUpperCase()}
               </div>
             </span>
-            <span className={`${labelCls} flex-1 truncate`} style={{ color: S.textMuted }}>{companyName}</span>
+            <span className={`${labelCls} flex-1 truncate`} style={{ color: pathname.startsWith('/supplier-portal/profile') ? S.textLight : S.textMuted }}>{companyName}</span>
             <User size={11} className={`${labelCls} shrink-0 !pr-2`} style={{ color: S.textMuted }} />
           </Link>
+
+          {hasQuoting && (
+            <NavLink href="/supplier-portal/quoting/settings" label="Settings" icon={Settings} />
+          )}
 
           <button
             onClick={handleSignOut}
