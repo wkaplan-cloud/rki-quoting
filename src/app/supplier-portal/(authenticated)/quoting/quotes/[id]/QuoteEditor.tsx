@@ -68,11 +68,16 @@ function newSection(quoteId: string, sortOrder: number): SectionState {
 
 function computeSellRate(item: ItemState): number {
   if (item.cost_unit_rate != null) {
-    return (item.cost_unit_rate * (1 + (item.markup_percentage ?? 0) / 100)) + (item.labour_rate ?? 0)
+    return item.cost_unit_rate * (1 + (item.markup_percentage ?? 0) / 100)
   }
   return item.quoted_unit_rate ?? 0
 }
-function itemTotal(item: ItemState) { return (item.quoted_quantity ?? 0) * computeSellRate(item) }
+function itemTotal(item: ItemState): number {
+  if (item.cost_unit_rate != null) {
+    return (item.quoted_quantity ?? 0) * computeSellRate(item) + (item.labour_rate ?? 0)
+  }
+  return (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0)
+}
 
 function fmtR(n: number) {
   return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -211,8 +216,7 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
           set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, '%', 65)}
         {numInput(item.labour_rate, v => {
-          const sell = (item.cost_unit_rate ?? 0) * (1 + (item.markup_percentage ?? 0) / 100) + v
-          set({ labour_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
+          set({ labour_rate: v })
         }, 'Labour', 82)}
         <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 92 }}>
           {fmtR(itemTotal(item))}

@@ -53,11 +53,12 @@ function newFormItem(): FormLineItem {
   return { _id: Math.random().toString(36).slice(2), description: '', unit: 'nr', qty: '', cost: '', markup: '', labour: '' }
 }
 
-function computeVOSell(cost: string, markup: string, labour: string): number {
+function computeVOLineTotal(qty: string, cost: string, markup: string, labour: string): number {
+  const q = parseFloat(qty) || 0
   const c = parseFloat(cost) || 0
   const m = parseFloat(markup) || 0
   const l = parseFloat(labour) || 0
-  return c * (1 + m / 100) + l
+  return q * c * (1 + m / 100) + l
 }
 
 // ─── Item library autocomplete for VO line items ──────────────────────────────
@@ -195,11 +196,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     setFormLineItems(prev => prev.length > 1 ? prev.filter(li => li._id !== id) : prev)
   }
 
-  const formVOValue = formLineItems.reduce((s, li) => {
-    const q = parseFloat(li.qty) || 0
-    const sell = computeVOSell(li.cost, li.markup, li.labour)
-    return s + q * sell
-  }, 0)
+  const formVOValue = formLineItems.reduce((s, li) => s + computeVOLineTotal(li.qty, li.cost, li.markup, li.labour), 0)
 
   // ── Edit mode helpers ─────────────────────────────────────────────────────
 
@@ -217,7 +214,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     setEditLineItems(prev => prev.length > 1 ? prev.filter(li => li._id !== id) : prev)
   }
 
-  const editVOValue = editLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * computeVOSell(li.cost, li.markup, li.labour), 0)
+  const editVOValue = editLineItems.reduce((s, li) => s + computeVOLineTotal(li.qty, li.cost, li.markup, li.labour), 0)
 
   function startEditVO(vo: ElecVariationOrder) {
     const currentItems = getVOItems(vo.id)
@@ -266,7 +263,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
           description: li.description.trim(), unit: li.unit || null,
           item_type: 'both' as const,
           quoted_quantity: parseFloat(li.qty) || 0,
-          quoted_unit_rate: Math.round(computeVOSell(li.cost, li.markup, li.labour) * 100) / 100,
+          quoted_unit_rate: Math.round((parseFloat(li.cost) || 0) * (1 + (parseFloat(li.markup) || 0) / 100) * 100) / 100,
           cost_unit_rate: parseFloat(li.cost) || null,
           markup_percentage: parseFloat(li.markup) || null,
           labour_rate: parseFloat(li.labour) || null,
@@ -369,7 +366,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
           unit: li.unit || null,
           item_type: 'both' as const,
           quoted_quantity: parseFloat(li.qty) || 0,
-          quoted_unit_rate: Math.round(computeVOSell(li.cost, li.markup, li.labour) * 100) / 100,
+          quoted_unit_rate: Math.round((parseFloat(li.cost) || 0) * (1 + (parseFloat(li.markup) || 0) / 100) * 100) / 100,
           cost_unit_rate: parseFloat(li.cost) || null,
           markup_percentage: parseFloat(li.markup) || null,
           labour_rate: parseFloat(li.labour) || null,
@@ -616,7 +613,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             </div>
 
             {formLineItems.map(li => {
-              const lineTotal = (parseFloat(li.qty) || 0) * computeVOSell(li.cost, li.markup, li.labour)
+              const lineTotal = computeVOLineTotal(li.qty, li.cost, li.markup, li.labour)
               return (
               <div key={li._id} className="grid mb-1.5 items-center"
                 style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px' }}>
@@ -950,7 +947,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">Labour</span><span className="text-right">Total</span><span />
                       </div>
                       {editLineItems.map(li => {
-                        const lineTotal = (parseFloat(li.qty) || 0) * computeVOSell(li.cost, li.markup, li.labour)
+                        const lineTotal = computeVOLineTotal(li.qty, li.cost, li.markup, li.labour)
                         return (
                         <div key={li._id} className="grid mb-1.5 items-center"
                           style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px' }}>
