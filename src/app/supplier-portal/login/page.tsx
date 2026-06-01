@@ -81,10 +81,9 @@ function SupplierLoginForm() {
         signal: controller.signal,
       })
       clearTimeout(timeout)
-      const data = await res.json() as { access_token?: string; refresh_token?: string; error?: string }
-      if (!res.ok || !data.access_token) { setStaffError(data.error ?? 'Invalid username or PIN'); setStaffLoading(false); return }
-      await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token! })
-      router.push('/supplier-portal/staff-home')
+      const data = await res.json() as { signInUrl?: string; error?: string }
+      if (!res.ok || !data.signInUrl) { setStaffError(data.error ?? 'Invalid username or PIN'); setStaffLoading(false); return }
+      window.location.href = data.signInUrl
     } catch {
       setStaffError('Connection error — please try again')
       setStaffLoading(false)

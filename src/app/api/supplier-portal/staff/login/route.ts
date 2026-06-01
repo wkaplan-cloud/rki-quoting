@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { hashStaffPin, staffAuthEmail, staffAuthPassword } from '@/lib/staff-auth'
+import { hashStaffPin, staffAuthEmail } from '@/lib/staff-auth'
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,11 +18,10 @@ export async function POST(req: NextRequest) {
 
     const { data: staff } = await supabaseAdmin
       .from('elec_staff')
-      .select('id, pin_hash, auth_user_id, is_active, name')
+      .select('id, pin_hash, auth_user_id, is_active')
       .eq('username', usernameClean)
       .maybeSingle()
 
-    // Return same error for both not-found and wrong PIN to prevent username enumeration
     if (!staff || hashStaffPin(String(pin)) !== staff.pin_hash) {
       return NextResponse.json({ error: 'Invalid username or PIN' }, { status: 401 })
     }
@@ -31,25 +29,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This account has been deactivated' }, { status: 401 })
     }
 
-    // Sign in via Supabase using the staff's synthetic credentials
-    const supabaseAnon = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
-    const { data: sessionData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
       email: staffAuthEmail(usernameClean),
-      password: staffAuthPassword(String(pin)),
+      options: { redirectTo: `${baseUrl}/auth/callback?next=/supplier-portal/staff-home` },
     })
 
-    if (signInError || !sessionData.session) {
-      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
+    if (linkError || !linkData?.properties?.action_link) {
+      return NextResponse.json({ error: 'Failed to generate session' }, { status: 500 })
     }
 
-    return NextResponse.json({
-      access_token: sessionData.session.access_token,
-      refresh_token: sessionData.session.refresh_token,
-    })
+    return NextResponse.json({ signInUrl: linkData.properties.action_link })
   } catch (e) {
     return apiError(e)
   }
