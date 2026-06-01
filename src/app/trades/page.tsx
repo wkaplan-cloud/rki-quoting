@@ -70,7 +70,7 @@ export default function TradesHubPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#F5F2EC]/90 backdrop-blur-sm border-b border-[#D8D3C8]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
           <Link href="/">
-            <Image src="/logo.png" alt="QuotingHub" width={160} height={160} className="h-12 w-auto object-contain" />
+            <Image src="/logo.png" alt="QuotingHub" width={220} height={220} className="h-16 sm:h-28 w-auto max-w-[160px] sm:max-w-[220px] object-contain" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
