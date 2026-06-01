@@ -68,6 +68,7 @@ export async function middleware(request: NextRequest) {
     pathname.endsWith('.xml') ||
     pathname.endsWith('.html') ||
     pathname.startsWith('/interior-design-software-') ||
+    pathname.startsWith('/trades') ||
     pathname.startsWith('/blog') ||
     pathname.startsWith('/faq') ||
     pathname.startsWith('/terms') ||
