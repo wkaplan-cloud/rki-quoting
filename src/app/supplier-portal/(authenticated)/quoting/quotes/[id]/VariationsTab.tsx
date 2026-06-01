@@ -729,96 +729,26 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             return (
               <div key={vo.id} style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                 <div className="px-5 py-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      {/* VO header badges */}
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs font-mono" style={{ color: S.muted }}>{vo.vo_number}</span>
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
-                          style={{ background: st.bg, color: st.color }}>{st.label}</span>
-                        {vo.sent_at && (
-                          <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
-                            <Mail size={10} /> Sent to {vo.sent_to_email}
-                          </span>
-                        )}
-                        {linkedClaim && (
-                          <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(22,163,74,0.08)', color: S.green }}>
-                            <FileText size={10} /> {linkedClaim.claim_number}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-sm font-medium" style={{ color: S.text }}>{vo.description}</p>
-                      <p className="text-sm font-bold mt-0.5" style={{ color: S.accent }}>{fmtR(vo.value)}</p>
-
-                      {/* VO line items */}
-                      {voItems.length > 0 && (
-                        <div className="mt-2 rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-                          <div className="grid px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
-                            style={{ gridTemplateColumns: '1fr 45px 65px 75px 80px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)' }}>
-                            <span>Item</span>
-                            <span className="text-center">Unit</span>
-                            <span className="text-right">Qty</span>
-                            <span className="text-right">Rate</span>
-                            <span className="text-right">Value</span>
-                          </div>
-                          {voItems.map(li => {
-                            const val = li.quoted_quantity * li.quoted_unit_rate
-                            return (
-                              <div key={li.id} className="grid px-3 py-1.5 text-xs"
-                                style={{ gridTemplateColumns: '1fr 45px 65px 75px 80px', gap: '6px', borderTop: `1px solid ${S.border}` }}>
-                                <span className="truncate" style={{ color: S.text }}>{li.description}</span>
-                                <span className="text-center" style={{ color: S.muted }}>{li.unit ?? '—'}</span>
-                                <span className="text-right font-mono" style={{ color: S.muted }}>{li.quoted_quantity}</span>
-                                <span className="text-right font-mono" style={{ color: S.muted }}>{fmtR(li.quoted_unit_rate)}</span>
-                                <span className="text-right font-mono font-semibold" style={{ color: S.text }}>{fmtR(val)}</span>
-                              </div>
-                            )
-                          })}
-                        </div>
+                  {/* Top row: badges + action buttons */}
+                  <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono" style={{ color: S.muted }}>{vo.vo_number}</span>
+                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                        style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                      {vo.sent_at && (
+                        <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+                          <Mail size={10} /> Sent to {vo.sent_to_email}
+                        </span>
                       )}
-
-                      {vo.requested_by && <p className="text-xs mt-1.5" style={{ color: S.muted }}>Requested by: {vo.requested_by}</p>}
-                      {vo.notes && <p className="text-xs mt-0.5 italic" style={{ color: S.muted }}>{vo.notes}</p>}
-                      {vo.approved_date && <p className="text-xs mt-0.5" style={{ color: S.green }}>Approved {vo.approved_date}</p>}
-                      {vo.rejection_notes && <p className="text-xs mt-0.5 italic" style={{ color: S.danger }}>Reason: {vo.rejection_notes}</p>}
-
-                      {/* Cost / margin */}
-                      {editingCostId === vo.id ? (
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Cost (R)</span>
-                          <input type="number" autoFocus value={editingCostVal}
-                            onChange={e => setEditingCostVal(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') void saveCost(vo.id); if (e.key === 'Escape') setEditingCostId(null) }}
-                            className="px-2 py-0.5 text-xs rounded outline-none text-right w-28"
-                            style={{ background: S.input, border: `1px solid ${S.accent}`, color: S.text }} />
-                          <button onClick={() => void saveCost(vo.id)}
-                            className="text-[10px] font-semibold px-2 py-0.5 rounded"
-                            style={{ background: S.accent, color: '#fff' }}>Save</button>
-                          <button onClick={() => setEditingCostId(null)} className="text-[10px]" style={{ color: S.muted }}>Cancel</button>
-                        </div>
-                      ) : vo.cost_value != null ? (() => {
-                        const margin = vo.value > 0 ? Math.round((vo.value - vo.cost_value) / vo.value * 1000) / 10 : 0
-                        return (
-                          <button onClick={() => { setEditingCostId(vo.id); setEditingCostVal(String(vo.cost_value)) }}
-                            className="text-xs mt-0.5 text-left hover:opacity-75"
-                            style={{ color: margin >= 0 ? S.green : S.danger }}>
-                            Cost: {fmtR(vo.cost_value)} · Margin: {margin}% ✎
-                          </button>
-                        )
-                      })() : (
-                        <button onClick={() => { setEditingCostId(vo.id); setEditingCostVal('') }}
-                          className="text-xs mt-0.5 text-left hover:opacity-75"
-                          style={{ color: S.gold }}>
-                          ⚠ No cost entered — profit may be overstated. Add cost →
-                        </button>
+                      {linkedClaim && (
+                        <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(22,163,74,0.08)', color: S.green }}>
+                          <FileText size={10} /> {linkedClaim.claim_number}
+                        </span>
                       )}
                     </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                    <div className="flex gap-2 flex-wrap">
                       {!isEditing && vo.status !== 'approved' && (
                         <button onClick={() => { setInvoicingVoId(null); startEditVO(vo) }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
@@ -859,6 +789,52 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       )}
                     </div>
                   </div>
+
+                  {/* Content — full width */}
+                  <p className="text-sm font-medium" style={{ color: S.text }}>{vo.description}</p>
+                  <p className="text-sm font-bold mt-0.5" style={{ color: S.accent }}>{fmtR(vo.value)}</p>
+
+                  {voItems.length > 0 && (
+                    <div className="mt-2 rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+                      <div className="grid px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
+                        style={{ gridTemplateColumns: '1fr 45px 55px 90px 90px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)' }}>
+                        <span>Item</span>
+                        <span className="text-center">Unit</span>
+                        <span className="text-right">Qty</span>
+                        <span className="text-right">Rate</span>
+                        <span className="text-right">Total</span>
+                      </div>
+                      {voItems.map(li => {
+                        const lineTotal = li.quoted_quantity * li.quoted_unit_rate + (li.labour_rate ?? 0)
+                        return (
+                          <div key={li.id} className="grid px-3 py-1.5 text-xs"
+                            style={{ gridTemplateColumns: '1fr 45px 55px 90px 90px', gap: '6px', borderTop: `1px solid ${S.border}` }}>
+                            <span className="truncate" style={{ color: S.text }}>{li.description}</span>
+                            <span className="text-center" style={{ color: S.muted }}>{li.unit ?? '—'}</span>
+                            <span className="text-right font-mono" style={{ color: S.muted }}>{li.quoted_quantity}</span>
+                            <span className="text-right font-mono" style={{ color: S.muted }}>{fmtR(li.quoted_unit_rate)}</span>
+                            <span className="text-right font-mono font-semibold" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {vo.requested_by && <p className="text-xs mt-1.5" style={{ color: S.muted }}>Requested by: {vo.requested_by}</p>}
+                  {vo.notes && <p className="text-xs mt-0.5 italic" style={{ color: S.muted }}>{vo.notes}</p>}
+                  {vo.approved_date && <p className="text-xs mt-0.5" style={{ color: S.green }}>Approved {vo.approved_date}</p>}
+                  {vo.rejection_notes && <p className="text-xs mt-0.5 italic" style={{ color: S.danger }}>Reason: {vo.rejection_notes}</p>}
+
+                  {vo.cost_value != null && vo.cost_value > 0 && (() => {
+                    const profit = vo.value - vo.cost_value
+                    const margin = vo.value > 0 ? Math.round(profit / vo.value * 1000) / 10 : 0
+                    const color = profit >= 0 ? S.green : S.danger
+                    return (
+                      <p className="text-xs mt-1" style={{ color }}>
+                        Cost: {fmtR(vo.cost_value)} · Profit: {fmtR(profit)} · Margin: {margin}%
+                      </p>
+                    )
+                  })()}
                 </div>
 
                 {/* Inline invoice form */}
