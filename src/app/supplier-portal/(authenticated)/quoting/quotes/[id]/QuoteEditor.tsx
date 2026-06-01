@@ -368,10 +368,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   }
 
   const [sections, setSections] = useState<SectionState[]>(() =>
-    initSections.map(s => ({ ...s, items: initItems.filter(i => i.section_id === s.id).map(i => ({ ...i, _expanded: false })) }))
+    initSections.map(s => ({ ...s, items: initItems.filter(i => i.section_id === s.id && !i.is_variation).map(i => ({ ...i, _expanded: false })) }))
   )
   const [freeItems, setFreeItems] = useState<ItemState[]>(() =>
-    initItems.filter(i => i.section_id === null).map(i => ({ ...i, _expanded: false }))
+    initItems.filter(i => i.section_id === null && !i.is_variation).map(i => ({ ...i, _expanded: false }))
   )
 
   const [deletedSectionIds, setDeletedSectionIds] = useState<string[]>([])
@@ -444,7 +444,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const allItems = [...freeItems, ...sections.flatMap(s => s.items)]
   // Merge session VO items into what child tabs see, replacing any stale initItems copies
   const itemsForChildTabs = [
-    ...allItems.filter(i => !(i.is_variation && i.variation_order_id && replacedVOIds.includes(i.variation_order_id))),
+    ...initItems.filter(i => !(i.is_variation && i.variation_order_id && replacedVOIds.includes(i.variation_order_id))),
     ...sessionVOItems,
   ] as ElecQuoteLineItem[]
   const subtotal  = allItems.reduce((s, i) => s + itemTotal(i), 0)
