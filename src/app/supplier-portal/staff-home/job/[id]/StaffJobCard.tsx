@@ -1,12 +1,20 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Camera, Plus, X, Pen, CheckCircle2,
-  Loader2, MapPin, Clock, Briefcase, Send, Mail,
+  Loader2, MapPin, Clock, Briefcase, Send, Mail, Play, Square,
 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto } from '@/lib/elec-types'
 import { StaffBottomNav } from '../../StaffBottomNav'
+
+function fmtElapsed(seconds: number) {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -56,6 +64,70 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
   const [sigEmail, setSigEmail] = useState(card.client_email ?? client?.email ?? '')
   const [sigName, setSigName] = useState(card.client_name ?? client?.client_name ?? '')
   const [sendStatus, setSendStatus] = useState<SendStatus>(card.sent_at ? 'sent' : 'idle')
+
+  // Job clock in/out
+  const [isClockedIn, setIsClockedIn] = useState(false)
+  const [clockedInAt, setClockedInAt] = useState<Date | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [clockLoading, setClockLoading] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startTimer = useCallback((since: Date) => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    setElapsedSeconds(Math.floor((Date.now() - since.getTime()) / 1000))
+    timerRef.current = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - since.getTime()) / 1000))
+    }, 1000)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/supplier-portal/staff/punch')
+      .then(r => r.json())
+      .then((d: { isClockedIn: boolean; lastPunch: { punch_type: string; job_id: string | null; punched_at: string } | null }) => {
+        if (d.isClockedIn && d.lastPunch?.job_id === card.id) {
+          setIsClockedIn(true)
+          const since = new Date(d.lastPunch.punched_at)
+          setClockedInAt(since)
+          startTimer(since)
+        }
+      })
+      .catch(() => {})
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [card.id, startTimer])
+
+  async function handleClockToggle() {
+    if (clockLoading) return
+    setClockLoading(true)
+    const punch_type = isClockedIn ? 'clock_out' : 'clock_in'
+    let latitude: number | undefined
+    let longitude: number | undefined
+    try {
+      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+      )
+      latitude = pos.coords.latitude
+      longitude = pos.coords.longitude
+    } catch {}
+    const res = await fetch('/api/supplier-portal/staff/punch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ punch_type, latitude, longitude, job_id: card.id }),
+    })
+    if (res.ok) {
+      if (punch_type === 'clock_in') {
+        const since = new Date()
+        setIsClockedIn(true)
+        setClockedInAt(since)
+        startTimer(since)
+      } else {
+        setIsClockedIn(false)
+        setClockedInAt(null)
+        if (timerRef.current) clearInterval(timerRef.current)
+        setElapsedSeconds(0)
+      }
+    }
+    setClockLoading(false)
+  }
 
   // Mark complete
   const [completing, setCompleting] = useState(false)
@@ -254,12 +326,35 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
               <span><Briefcase size={10} className="inline mr-0.5" />{TYPE_LABEL[card.job_type]}</span>
             </div>
           </div>
-          {card.status === 'completed' && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0"
-              style={{ background: 'rgba(22,163,74,0.2)', color: '#4ade80' }}>
-              <CheckCircle2 size={11} /> Done
-            </div>
-          )}
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            {card.status === 'completed' ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                style={{ background: 'rgba(22,163,74,0.2)', color: '#4ade80' }}>
+                <CheckCircle2 size={11} /> Done
+              </div>
+            ) : (
+              <button
+                onClick={() => void handleClockToggle()}
+                disabled={clockLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-50"
+                style={{
+                  background: isClockedIn ? 'rgba(220,38,38,0.85)' : 'rgba(22,163,74,0.85)',
+                  color: '#fff',
+                  border: `1px solid ${isClockedIn ? 'rgba(220,38,38,0.5)' : 'rgba(22,163,74,0.5)'}`,
+                }}>
+                {clockLoading
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : isClockedIn ? <Square size={12} /> : <Play size={12} />}
+                {clockLoading ? '…' : isClockedIn ? 'Clock Out' : 'Clock In'}
+              </button>
+            )}
+            {isClockedIn && (
+              <span className="font-mono text-[11px] font-semibold tabular-nums"
+                style={{ color: 'rgba(74,222,128,0.9)' }}>
+                {fmtElapsed(elapsedSeconds)}
+              </span>
+            )}
+          </div>
         </div>
         {client && (
           <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Client: {client.client_name}</p>
