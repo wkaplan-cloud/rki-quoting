@@ -2,23 +2,18 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Zap, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   companyName: string
   pendingCount: number
   hasQuoting: boolean
+  supplierCategory?: string
   notificationCount?: number
   desktopExpanded: boolean
   onDesktopToggle: () => void
 }
-
-const NAV_ITEMS = [
-  { href: '/supplier-portal/home',       label: 'Home',           icon: Home,  showBadge: false },
-  { href: '/supplier-portal/price-requests', label: 'Price Requests', icon: Inbox, showBadge: true  },
-  { href: '/supplier-portal/price-list', label: 'My Price List',  icon: Tag,   showBadge: false },
-]
 
 const QUOTING_NAV_ITEMS = [
   { href: '/supplier-portal/quoting/dashboard',     label: 'Dashboard', icon: LayoutDashboard, exact: true,  badge: null           },
@@ -42,7 +37,8 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
-export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notificationCount = 0, desktopExpanded, onDesktopToggle }: Props) {
+export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, supplierCategory = 'manufacturer', notificationCount = 0, desktopExpanded, onDesktopToggle }: Props) {
+  const isTrades = supplierCategory === 'trades'
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -158,17 +154,17 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
         {/* Nav */}
         <nav className="flex-1 pt-3 pb-2 overflow-y-auto overflow-x-hidden space-y-0.5">
 
-          {/* Marketplace — hidden for electrician/quoting accounts */}
-          {!hasQuoting && (
+          {/* Manufacturer nav */}
+          {!isTrades && (
             <>
-              <NavLink href="/supplier-portal/home"       label="Home"           icon={Home}  />
-              <NavLink href="/supplier-portal/dashboard"  label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
-              <NavLink href="/supplier-portal/price-list" label="My Price List"  icon={Tag}   />
+              <NavLink href="/supplier-portal/home"          label="Home"           icon={Home}  />
+              <NavLink href="/supplier-portal/price-requests" label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
+              <NavLink href="/supplier-portal/price-list"    label="My Price List"  icon={Tag}   />
             </>
           )}
 
-          {/* Business tools */}
-          {hasQuoting ? (
+          {/* Trades/electrician nav */}
+          {isTrades ? (
             <>
               <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
               <NavLink href="/supplier-portal/quoting/quotes"    label="Quotes"    icon={FileText}        badge="Long term" />
@@ -209,25 +205,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
                 )
               })()}
             </>
-          ) : (
-            <>
-              <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
-              <Link
-                href="/supplier-portal/upgrade"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
-                onMouseEnter={e => { e.currentTarget.style.background = S.hoverBg }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-              >
-                <span className="flex items-center justify-center w-9 flex-shrink-0">
-                  <Zap size={14} style={{ color: '#D9A441' }} />
-                </span>
-                <span className={`${labelCls} font-semibold flex-1`} style={{ color: '#D9A441' }}>
-                  Electrician Quoting
-                </span>
-              </Link>
-            </>
-          )}
+          ) : null}
         </nav>
 
         {/* Footer */}

@@ -41,7 +41,7 @@ export default async function SupplierPortalLayout({
   }
 
   return (
-    <SupplierPortalShell companyName={displayName} hasQuoting={hasQuoting}>
+    <SupplierPortalShell companyName={displayName} hasQuoting={hasQuoting} supplierCategory={account.supplier_category ?? 'manufacturer'}>
       {children}
     </SupplierPortalShell>
   )

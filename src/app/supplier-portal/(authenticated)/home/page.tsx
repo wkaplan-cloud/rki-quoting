@@ -14,10 +14,8 @@ export default async function SupplierHomePage() {
   if (!account) redirect('/supplier-portal/login')
 
   const companyName = account.company_name ?? account.email
-  const isTrialing = account.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  const hasQuoting = account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing)
 
-  if (hasQuoting) redirect('/supplier-portal/quoting')
+  if (account.supplier_category === 'trades') redirect('/supplier-portal/quoting/dashboard')
 
   // Fetch all session-supplier rows for this account
   const { data: ssRows } = await supabaseAdmin
@@ -119,7 +117,7 @@ export default async function SupplierHomePage() {
   return (
     <HomeClient
       companyName={companyName}
-      hasQuoting={hasQuoting}
+      hasQuoting={false}
       stats={{ activeRequests, itemsToPrice, studiosConnected, acceptedQuotes }}
       needsAttention={needsAttention}
       recentRequests={recentRequests}

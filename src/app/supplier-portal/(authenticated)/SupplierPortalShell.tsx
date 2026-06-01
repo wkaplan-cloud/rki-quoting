@@ -6,9 +6,10 @@ interface Props {
   children: React.ReactNode
   companyName: string
   hasQuoting?: boolean
+  supplierCategory?: string
 }
 
-export function SupplierPortalShell({ children, companyName, hasQuoting = false }: Props) {
+export function SupplierPortalShell({ children, companyName, hasQuoting = false, supplierCategory = 'manufacturer' }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
@@ -81,6 +82,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false 
         companyName={companyName}
         pendingCount={pendingCount}
         hasQuoting={hasQuoting}
+        supplierCategory={supplierCategory}
         notificationCount={notificationCount}
         desktopExpanded={desktopExpanded}
         onDesktopToggle={() => setDesktopExpanded(e => {
