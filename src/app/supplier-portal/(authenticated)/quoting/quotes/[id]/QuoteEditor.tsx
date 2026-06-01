@@ -515,17 +515,23 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         await supabase.from('elec_quote_line_items').upsert(allItemRows)
       }
 
-      // Sync item library in background
-      for (const item of allItems) {
-        if (!item.description.trim()) continue
-        supabase.rpc('upsert_elec_item_library', {
-          p_portal_account_id: portalAccountId, p_description: item.description.trim(),
-          p_unit: item.unit, p_item_type: item.item_type,
-          p_default_unit_rate: item.quoted_unit_rate,
-          p_default_cost_rate: item.cost_unit_rate,
-          p_default_markup_percent: item.markup_percentage,
-          p_default_labour_rate: item.labour_rate, p_default_material_rate: item.material_rate,
-        })
+      // Sync item library in background (fire-and-forget)
+      const libraryItems = allItems.filter(i => i.description.trim()).map(i => ({
+        description: i.description.trim(),
+        unit: i.unit,
+        item_type: i.item_type,
+        default_unit_rate: i.quoted_unit_rate,
+        default_cost_rate: i.cost_unit_rate,
+        default_markup_percent: i.markup_percentage,
+        default_labour_rate: i.labour_rate,
+        default_material_rate: i.material_rate,
+      }))
+      if (libraryItems.length > 0) {
+        fetch('/api/supplier-portal/quoting/item-library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: libraryItems }),
+        }).catch(() => {})
       }
 
       setDeletedSectionIds([]); setDeletedItemIds([])
