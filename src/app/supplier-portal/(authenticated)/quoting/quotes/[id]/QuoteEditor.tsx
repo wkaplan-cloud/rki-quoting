@@ -896,6 +896,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             sections={sections as unknown as ElecQuoteSection[]}
             items={itemsForChildTabs}
             client={clients.find(c => c.id === q.client_id) ?? null}
+            vatRate={q.vat_rate ?? 15}
             onClaimCreated={c => setVOCreatedClaims(prev => [c, ...prev])}
             onVOsChanged={setLiveVOs}
             onVOItemsCreated={handleVOItemsCreated}

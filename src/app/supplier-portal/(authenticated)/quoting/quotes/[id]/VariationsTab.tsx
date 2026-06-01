@@ -44,6 +44,7 @@ interface Props {
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
   client?: VOClient | null
+  vatRate?: number
   onClaimCreated: (claim: ElecClaim & { line_items: ElecClaimLineItem[] }) => void
   onVOsChanged?: (vos: ElecVariationOrder[]) => void
   onVOItemsCreated?: (voId: string, items: ElecQuoteLineItem[]) => void
@@ -129,7 +130,7 @@ function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S
   )
 }
 
-export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, sections, items, client = null, onClaimCreated, onVOsChanged, onVOItemsCreated }: Props) {
+export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialClaims, voPrefix, companyCode, sections, items, client = null, vatRate = 15, onClaimCreated, onVOsChanged, onVOItemsCreated }: Props) {
   const supabase = createClient()
   const [vos, setVOs] = useState(initialVOs)
   const [voClaims, setVOClaims] = useState<VOClaim[]>(initialClaims.filter(c => c.variation_order_id != null))
@@ -653,8 +654,18 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             })}
 
             {formVOValue > 0 && (
-              <div className="flex justify-end mt-2 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
-                <span className="text-sm font-bold" style={{ color: S.accent }}>Total: {fmtR(formVOValue)}</span>
+              <div className="flex justify-end mt-3 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
+                <div className="space-y-1 text-right min-w-[180px]">
+                  <div className="flex justify-between gap-8 text-xs" style={{ color: S.muted }}>
+                    <span>Subtotal (ex VAT)</span><span>{fmtR(formVOValue)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 text-xs" style={{ color: S.muted }}>
+                    <span>VAT ({vatRate}%)</span><span>{fmtR(formVOValue * vatRate / 100)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 text-sm font-bold pt-1" style={{ borderTop: `1px solid ${S.border}`, color: S.accent }}>
+                    <span>Total incl. VAT</span><span>{fmtR(formVOValue * (1 + vatRate / 100))}</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -984,8 +995,18 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         )
                       })}
                       {editVOValue > 0 && (
-                        <div className="flex justify-end mt-2 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
-                          <span className="text-sm font-bold" style={{ color: S.accent }}>Total: {fmtR(editVOValue)}</span>
+                        <div className="flex justify-end mt-3 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
+                          <div className="space-y-1 text-right min-w-[180px]">
+                            <div className="flex justify-between gap-8 text-xs" style={{ color: S.muted }}>
+                              <span>Subtotal (ex VAT)</span><span>{fmtR(editVOValue)}</span>
+                            </div>
+                            <div className="flex justify-between gap-8 text-xs" style={{ color: S.muted }}>
+                              <span>VAT ({vatRate}%)</span><span>{fmtR(editVOValue * vatRate / 100)}</span>
+                            </div>
+                            <div className="flex justify-between gap-8 text-sm font-bold pt-1" style={{ borderTop: `1px solid ${S.border}`, color: S.accent }}>
+                              <span>Total incl. VAT</span><span>{fmtR(editVOValue * (1 + vatRate / 100))}</span>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
