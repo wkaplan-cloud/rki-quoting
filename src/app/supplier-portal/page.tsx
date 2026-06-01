@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Package, MessageSquare, List, ArrowRight, CheckCircle, Bolt, Droplets, Factory } from 'lucide-react'
+import { Package, MessageSquare, List, ArrowRight, CheckCircle, Bolt, Droplets } from 'lucide-react'
 
 export default function SupplierPortalLandingPage() {
   const features = [
@@ -118,15 +118,15 @@ export default function SupplierPortalLandingPage() {
         </div>
       </section>
 
-      {/* Modules */}
+      {/* Trade quoting modules */}
       <section className="max-w-5xl mx-auto px-6 pb-16">
         <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold mb-2" style={{ color: '#18181B' }}>Choose your module</h2>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: '#18181B' }}>Trade quoting modules</h2>
           <p className="text-sm max-w-lg mx-auto leading-relaxed" style={{ color: '#71717A' }}>
-            QuotingHub is expanding beyond interior design. Pick the module built for your trade.
+            Are you a contractor? Add a full quoting and billing system on top of your free supplier account.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-2xl mx-auto">
 
           {/* Electrician — live */}
           <div className="bg-white rounded-2xl p-7 relative" style={{ border: '2px solid #3A7CA5', boxShadow: '0 4px 20px rgba(58,124,165,0.12)' }}>
@@ -138,7 +138,7 @@ export default function SupplierPortalLandingPage() {
             </div>
             <h3 className="text-base font-bold mb-1" style={{ color: '#18181B' }}>Electrician</h3>
             <p className="text-xs mb-4 leading-relaxed" style={{ color: '#71717A' }}>
-              A complete quoting and billing system — quotes, progress claims, variation orders, COC tracker, snag lists and monthly RECON.
+              Quotes, progress claims, variation orders, COC tracker, snag lists and monthly RECON — all in one place.
             </p>
             <div className="flex items-baseline gap-1 mb-5">
               <span className="text-2xl font-bold" style={{ color: '#18181B' }}>R1,999</span>
@@ -154,7 +154,7 @@ export default function SupplierPortalLandingPage() {
           </div>
 
           {/* Plumber — coming soon */}
-          <div className="bg-white rounded-2xl p-7 relative opacity-70" style={{ border: '1px solid #E4E4E7', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div className="bg-white rounded-2xl p-7 relative opacity-60" style={{ border: '1px solid #E4E4E7', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
             <span className="absolute top-5 right-5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider" style={{ background: 'rgba(234,179,8,0.1)', color: '#CA8A04' }}>
               Coming soon
             </span>
@@ -163,22 +163,7 @@ export default function SupplierPortalLandingPage() {
             </div>
             <h3 className="text-base font-bold mb-1" style={{ color: '#18181B' }}>Plumber</h3>
             <p className="text-xs mb-4 leading-relaxed" style={{ color: '#71717A' }}>
-              The same powerful quoting and billing module — tailored for plumbing contractors. Progress claims, COC and more.
-            </p>
-            <p className="text-sm font-medium" style={{ color: '#A1A1AA' }}>In development</p>
-          </div>
-
-          {/* Manufacturer — coming soon */}
-          <div className="bg-white rounded-2xl p-7 relative opacity-70" style={{ border: '1px solid #E4E4E7', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-            <span className="absolute top-5 right-5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider" style={{ background: 'rgba(234,179,8,0.1)', color: '#CA8A04' }}>
-              Coming soon
-            </span>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(58,124,165,0.06)' }}>
-              <Factory size={20} style={{ color: '#94A3B8' }} />
-            </div>
-            <h3 className="text-base font-bold mb-1" style={{ color: '#18181B' }}>Manufacturer</h3>
-            <p className="text-xs mb-4 leading-relaxed" style={{ color: '#71717A' }}>
-              Free to join. Receive price requests from interior design studios, respond to specs, and publish your catalogue — no monthly fee. A simple 1% commission applies only on orders confirmed through the platform.
+              The same powerful quoting and billing system — tailored for plumbing contractors.
             </p>
             <p className="text-sm font-medium" style={{ color: '#A1A1AA' }}>In development</p>
           </div>
