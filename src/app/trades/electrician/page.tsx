@@ -131,7 +131,7 @@ export default function ElectricianLandingPage() {
             <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
             <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
             <Link href="/supplier-portal/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
-            <Link href="/supplier-portal/login"
+            <Link href="/supplier-portal/register?type=trades"
               className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Start free trial
             </Link>
@@ -160,7 +160,7 @@ export default function ElectricianLandingPage() {
               Stop quoting from Excel. Stop losing job cards. Stop chasing timesheets. QuotingHub gives you a professional, digital operation from day one.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/supplier-portal/login"
+              <Link href="/supplier-portal/register?type=trades"
                 className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
                 Start your free trial <ArrowRight size={15} />
               </Link>
@@ -169,7 +169,7 @@ export default function ElectricianLandingPage() {
                 Log in to your account
               </Link>
             </div>
-            <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · No credit card required</p>
+            <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · then R1,999/month excl. VAT · Cancel any time</p>
           </div>
         </div>
       </section>
@@ -250,7 +250,7 @@ export default function ElectricianLandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/supplier-portal/login"
+                <Link href="/supplier-portal/register?type=trades"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-[#9A7B4F] text-white text-sm font-medium rounded-lg hover:bg-[#B8956A] transition-colors">
                   Start free trial <ArrowRight size={14} />
                 </Link>
@@ -271,9 +271,14 @@ export default function ElectricianLandingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">What you get</p>
-            <h2 className="font-serif text-3xl md:text-4xl text-[#1A1A18] tracking-tight">
+            <h2 className="font-serif text-3xl md:text-4xl text-[#1A1A18] tracking-tight mb-4">
               Everything included from day one.
             </h2>
+            <div className="inline-flex items-baseline gap-1.5">
+              <span className="text-4xl font-bold text-[#1A1A18]">R1,999</span>
+              <span className="text-base text-[#8A877F]">/month excl. VAT</span>
+            </div>
+            <p className="text-sm text-[#C4BFB5] mt-1">30-day free trial · No credit card required</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
             {INCLUDE_ITEMS.map(item => (
@@ -316,7 +321,7 @@ export default function ElectricianLandingPage() {
             Start your free trial today. No credit card, no commitment — just a better way to work.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/supplier-portal/login"
+            <Link href="/supplier-portal/register?type=trades"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1A1A18] text-[#F5F2EC] font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Start free trial <ChevronRight size={16} />
             </Link>

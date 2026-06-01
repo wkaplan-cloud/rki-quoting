@@ -431,7 +431,11 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
 
 // ── Root component ─────────────────────────────────────────────────────────────
 function RegisterFlow() {
-  const [category, setCategory] = useState<Category | null>(null)
+  const searchParams = useSearchParams()
+  const typeParam = searchParams.get('type') as Category | null
+  const [category, setCategory] = useState<Category | null>(
+    typeParam === 'trades' || typeParam === 'manufacturer' ? typeParam : null
+  )
 
   if (!category) return <TypeSelector onSelect={setCategory} />
   return <RegisterForm category={category} onBack={() => setCategory(null)} />

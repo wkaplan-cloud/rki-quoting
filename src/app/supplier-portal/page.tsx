@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Package, MessageSquare, List, ArrowRight, CheckCircle, Bolt, Droplets } from 'lucide-react'
+import { Package, MessageSquare, List, ArrowRight, CheckCircle } from 'lucide-react'
 
 export default function SupplierPortalLandingPage() {
   const features = [
@@ -41,7 +41,7 @@ export default function SupplierPortalLandingPage() {
               Sign in
             </Link>
             <Link
-              href="/supplier-portal/register"
+              href="/supplier-portal/register?type=manufacturer"
               className="px-4 py-2 text-sm font-semibold rounded-lg transition-opacity"
               style={{ background: '#3A7CA5', color: '#FFFFFF' }}
             >
@@ -69,7 +69,7 @@ export default function SupplierPortalLandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/supplier-portal/register"
+              href="/supplier-portal/register?type=manufacturer"
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm font-semibold rounded-xl transition-opacity"
               style={{ background: '#3A7CA5', color: '#FFFFFF' }}
             >
@@ -118,59 +118,6 @@ export default function SupplierPortalLandingPage() {
         </div>
       </section>
 
-      {/* Trade quoting modules */}
-      <section className="max-w-5xl mx-auto px-6 pb-16">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold mb-2" style={{ color: '#18181B' }}>Trade quoting modules</h2>
-          <p className="text-sm max-w-lg mx-auto leading-relaxed" style={{ color: '#71717A' }}>
-            Are you a contractor? Add a full quoting and billing system on top of your free supplier account.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-2xl mx-auto">
-
-          {/* Electrician — live */}
-          <div className="bg-white rounded-2xl p-7 relative" style={{ border: '2px solid #3A7CA5', boxShadow: '0 4px 20px rgba(58,124,165,0.12)' }}>
-            <span className="absolute top-5 right-5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider" style={{ background: 'rgba(34,197,94,0.1)', color: '#16A34A' }}>
-              Live
-            </span>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(58,124,165,0.08)' }}>
-              <Bolt size={20} style={{ color: '#3A7CA5' }} />
-            </div>
-            <h3 className="text-base font-bold mb-1" style={{ color: '#18181B' }}>Electrician</h3>
-            <p className="text-xs mb-4 leading-relaxed" style={{ color: '#71717A' }}>
-              Quotes, progress claims, variation orders, COC tracker, snag lists and monthly RECON — all in one place.
-            </p>
-            <div className="flex items-baseline gap-1 mb-5">
-              <span className="text-2xl font-bold" style={{ color: '#18181B' }}>R1,999</span>
-              <span className="text-xs" style={{ color: '#71717A' }}>/month excl. VAT</span>
-            </div>
-            <Link
-              href="/supplier-portal/register"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold transition-opacity"
-              style={{ color: '#3A7CA5' }}
-            >
-              Get started <ArrowRight size={13} />
-            </Link>
-          </div>
-
-          {/* Plumber — coming soon */}
-          <div className="bg-white rounded-2xl p-7 relative opacity-60" style={{ border: '1px solid #E4E4E7', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-            <span className="absolute top-5 right-5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider" style={{ background: 'rgba(234,179,8,0.1)', color: '#CA8A04' }}>
-              Coming soon
-            </span>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(58,124,165,0.06)' }}>
-              <Droplets size={20} style={{ color: '#94A3B8' }} />
-            </div>
-            <h3 className="text-base font-bold mb-1" style={{ color: '#18181B' }}>Plumber</h3>
-            <p className="text-xs mb-4 leading-relaxed" style={{ color: '#71717A' }}>
-              The same powerful quoting and billing system — tailored for plumbing contractors.
-            </p>
-            <p className="text-sm font-medium" style={{ color: '#A1A1AA' }}>In development</p>
-          </div>
-
-        </div>
-      </section>
-
       {/* CTA strip */}
       <section style={{ background: '#1E2A38', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -179,7 +126,7 @@ export default function SupplierPortalLandingPage() {
             <p className="text-sm mt-0.5" style={{ color: '#64748B' }}>It takes less than a minute to create your account.</p>
           </div>
           <Link
-            href="/supplier-portal/register"
+            href="/supplier-portal/register?type=manufacturer"
             className="flex-shrink-0 inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl transition-opacity"
             style={{ background: '#3A7CA5', color: '#FFFFFF' }}
           >

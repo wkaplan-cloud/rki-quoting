@@ -75,7 +75,7 @@ export default function TradesHubPage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
             <Link href="/supplier-portal/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
-            <Link href="/supplier-portal/login" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
+            <Link href="/supplier-portal/register?type=trades" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Get started free
             </Link>
             <NavMobile />
@@ -201,9 +201,9 @@ export default function TradesHubPage() {
             Start with a free trial — no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/trades/electrician"
+            <Link href="/supplier-portal/register?type=trades"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1A1A18] text-[#F5F2EC] font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
-              Electrician quoting system <ChevronRight size={16} />
+              Start free trial <ChevronRight size={16} />
             </Link>
             <Link href="/"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-[#D8D3C8] text-[#2C2C2A] font-medium rounded-lg hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors bg-white">
