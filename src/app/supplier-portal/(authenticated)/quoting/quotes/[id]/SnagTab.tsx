@@ -1,202 +1,121 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Download, Printer } from 'lucide-react'
-import type { ElecSnagItem, ElecSnagStatus } from '@/lib/elec-types'
+import { Upload, FileText, Loader2, X, Download } from 'lucide-react'
 
 const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
-  text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
+  text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
 }
 
-const SNAG_STATUS: Record<ElecSnagStatus, { label: string; color: string; bg: string; next: ElecSnagStatus | null; nextLabel: string; nextColor: string }> = {
-  open:        { label: 'Open',        color: '#DC2626', bg: '#FEF2F2',               next: 'in_progress', nextLabel: 'Start',   nextColor: '#D9A441' },
-  in_progress: { label: 'In Progress', color: '#D9A441', bg: 'rgba(217,164,65,0.1)', next: 'resolved',    nextLabel: 'Resolve', nextColor: '#16A34A' },
-  resolved:    { label: 'Resolved',    color: '#16A34A', bg: 'rgba(22,163,74,0.1)',  next: null,          nextLabel: '',        nextColor: '' },
-}
+interface SnagDoc { id: string; name: string; url: string; created_at: string }
 
 interface Props {
   quoteId: string
-  initialSnags: ElecSnagItem[]
+  portalAccountId: string
 }
 
-export function SnagTab({ quoteId, initialSnags }: Props) {
+export function SnagTab({ quoteId, portalAccountId }: Props) {
   const supabase = createClient()
-  const [snags, setSnags] = useState(initialSnags)
-  const [filter, setFilter] = useState<ElecSnagStatus | ''>('')
-  const [showAdd, setShowAdd] = useState(false)
-  const [formDesc, setFormDesc] = useState('')
-  const [formRaisedBy, setFormRaisedBy] = useState('')
-  const [formNotes, setFormNotes] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [docs, setDocs] = useState<SnagDoc[]>([])
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  const [advancing, setAdvancing] = useState<Set<string>>(new Set())
+  const [loaded, setLoaded] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  async function handleCreate() {
-    if (!formDesc.trim()) { setError('Description required'); return }
-    setLoading(true); setError('')
-    const { data, error: err } = await supabase
-      .from('elec_snag_items')
-      .insert({
-        quote_id: quoteId,
-        description: formDesc.trim(),
-        raised_by: formRaisedBy.trim() || null,
-        notes: formNotes.trim() || null,
-        status: 'open',
-        raised_date: new Date().toISOString().split('T')[0],
-      })
-      .select()
-      .single()
-    if (err) { setError(err.message); setLoading(false); return }
-    setSnags(prev => [data as ElecSnagItem, ...prev])
-    setFormDesc(''); setFormRaisedBy(''); setFormNotes('')
-    setShowAdd(false); setLoading(false)
+  async function loadDocs() {
+    if (loaded) return
+    const { data } = await supabase
+      .from('elec_snag_documents')
+      .select('id, name, url, created_at')
+      .eq('quote_id', quoteId)
+      .order('created_at')
+    setDocs((data ?? []) as SnagDoc[])
+    setLoaded(true)
   }
 
-  async function advance(snag: ElecSnagItem) {
-    const st = SNAG_STATUS[snag.status]
-    if (!st.next) return
-    setAdvancing(prev => new Set(prev).add(snag.id))
-    const patch: Partial<ElecSnagItem> = { status: st.next }
-    if (st.next === 'resolved') patch.resolved_date = new Date().toISOString().split('T')[0]
-    const { error: err } = await supabase.from('elec_snag_items').update(patch).eq('id', snag.id)
-    setAdvancing(prev => { const s = new Set(prev); s.delete(snag.id); return s })
-    if (err) { setError(err.message); return }
-    setSnags(prev => prev.map(s => s.id === snag.id ? { ...s, ...patch } : s))
+  // Load on first render
+  if (!loaded) void loadDocs()
+
+  async function handleUpload(files: FileList | null) {
+    if (!files || files.length === 0) return
+    setUploading(true); setError('')
+    for (const file of Array.from(files)) {
+      const path = `snag-docs/${portalAccountId}/${quoteId}/${Date.now()}-${file.name}`
+      const { error: uploadErr } = await supabase.storage
+        .from('job-card-photos')
+        .upload(path, file, { contentType: file.type, upsert: false })
+      if (uploadErr) { setError(uploadErr.message); continue }
+      const { data: { publicUrl } } = supabase.storage.from('job-card-photos').getPublicUrl(path)
+      const { data: doc } = await supabase
+        .from('elec_snag_documents')
+        .insert({ quote_id: quoteId, portal_account_id: portalAccountId, name: file.name, url: publicUrl })
+        .select()
+        .single()
+      if (doc) setDocs(prev => [...prev, doc as SnagDoc])
+    }
+    setUploading(false)
   }
 
-  const counts = {
-    open:        snags.filter(s => s.status === 'open').length,
-    in_progress: snags.filter(s => s.status === 'in_progress').length,
-    resolved:    snags.filter(s => s.status === 'resolved').length,
+  async function handleDelete(docId: string) {
+    await supabase.from('elec_snag_documents').delete().eq('id', docId)
+    setDocs(prev => prev.filter(d => d.id !== docId))
   }
-  const filtered = filter ? snags.filter(s => s.status === filter) : snags
-
-  const filterBtn = (val: ElecSnagStatus | '', label: string) => (
-    <button key={val} onClick={() => setFilter(val)}
-      className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-      style={{
-        background: filter === val ? S.accent : S.card,
-        color:      filter === val ? '#fff' : S.muted,
-        border:     `1px solid ${filter === val ? S.accent : S.border}`,
-      }}>
-      {label}
-    </button>
-  )
 
   return (
-    <div>
-      {/* Filter + action bar */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {filterBtn('', `All (${snags.length})`)}
-        {filterBtn('open',        `Open (${counts.open})`)}
-        {filterBtn('in_progress', `In Progress (${counts.in_progress})`)}
-        {filterBtn('resolved',    `Resolved (${counts.resolved})`)}
-        <div className="flex-1" />
-        <button onClick={() => window.open(`/api/supplier-portal/quoting/quotes/${quoteId}/snag-pdf?inline=1`, '_blank')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-          style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
-          onMouseEnter={e => (e.currentTarget.style.background = S.border)}
-          onMouseLeave={e => (e.currentTarget.style.background = S.input)}>
-          <Printer size={11} /> Print
-        </button>
-        <a href={`/api/supplier-portal/quoting/quotes/${quoteId}/snag-pdf`} target="_blank" rel="noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-          style={{ color: S.accent, background: 'rgba(58,124,165,0.08)', border: '1px solid rgba(58,124,165,0.2)', textDecoration: 'none' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.15)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'rgba(58,124,165,0.08)')}>
-          <Download size={11} /> Download PDF
-        </a>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-          style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
-          <Plus size={12} /> Add Snag
+    <div className="space-y-4">
+      <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+        <p className="text-sm font-semibold mb-1" style={{ color: S.text }}>Snag List Documents</p>
+        <p className="text-xs mb-4" style={{ color: S.muted }}>Upload snag list documents (PDF, Word, Excel, images)</p>
+
+        {docs.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {docs.map(doc => (
+              <div key={doc.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+                <FileText size={16} style={{ color: S.accent, flexShrink: 0 }} />
+                <span className="flex-1 text-sm truncate" style={{ color: S.text }}>{doc.name}</span>
+                <span className="text-[10px] flex-shrink-0" style={{ color: S.muted }}>
+                  {new Date(doc.created_at).toLocaleDateString('en-ZA')}
+                </span>
+                <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg flex-shrink-0"
+                  style={{ color: S.accent }}>
+                  <Download size={14} />
+                </a>
+                <button onClick={() => void handleDelete(doc.id)}
+                  className="p-1.5 rounded-lg flex-shrink-0"
+                  style={{ color: S.muted }}
+                  onMouseEnter={e => e.currentTarget.style.color = S.danger}
+                  onMouseLeave={e => e.currentTarget.style.color = S.muted}>
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {docs.length === 0 && !uploading && (
+          <div className="rounded-xl py-8 flex flex-col items-center gap-2 mb-4"
+            style={{ border: `2px dashed ${S.border}` }}>
+            <FileText size={28} style={{ color: S.border }} />
+            <p className="text-sm" style={{ color: S.muted }}>No documents uploaded yet</p>
+          </div>
+        )}
+
+        {error && <p className="text-xs mb-3 px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>{error}</p>}
+
+        <input ref={fileRef} type="file" multiple className="hidden"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+          onChange={e => void handleUpload(e.target.files)} />
+        <button onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+          style={{ background: S.accent }}>
+          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+          {uploading ? 'Uploading…' : 'Upload Document'}
         </button>
       </div>
-
-      {/* Add form */}
-      {showAdd && (
-        <div className="rounded-2xl p-4 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-sm" style={{ color: S.text }}>New Snag Item</h3>
-            <button onClick={() => { setShowAdd(false); setError('') }} style={{ color: S.muted }}><X size={14} /></button>
-          </div>
-          <div className="space-y-3 mb-3">
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Description *</label>
-              <input value={formDesc} onChange={e => setFormDesc(e.target.value)} autoFocus
-                placeholder="Describe the defect or outstanding item"
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Raised By</label>
-              <input value={formRaisedBy} onChange={e => setFormRaisedBy(e.target.value)} placeholder="Name (optional)"
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes</label>
-              <textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} rows={2}
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-          </div>
-          {error && <p className="text-sm px-3 py-2 rounded mb-3" style={{ background: '#FEF2F2', color: S.danger, border: '1px solid #FECACA' }}>{error}</p>}
-          <div className="flex justify-end gap-2">
-            <button onClick={() => { setShowAdd(false); setError('') }}
-              className="px-4 py-2 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
-            <button onClick={handleCreate} disabled={loading || !formDesc.trim()}
-              className="px-5 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50"
-              style={{ background: S.accent }}>{loading ? 'Adding…' : 'Add Snag'}</button>
-          </div>
-        </div>
-      )}
-
-      {/* List */}
-      {filtered.length === 0 && (
-        <div className="rounded-2xl py-10 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <p className="text-sm" style={{ color: S.muted }}>
-            {snags.length === 0 ? 'No snag items yet' : 'No items match this filter'}
-          </p>
-        </div>
-      )}
-
-      {filtered.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          {filtered.map((snag, i) => {
-            const st = SNAG_STATUS[snag.status]
-            return (
-              <div key={snag.id} className="px-5 py-4 flex items-start gap-3"
-                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full"
-                      style={{ background: st.bg, color: st.color }}>{st.label}</span>
-                    <span className="text-xs" style={{ color: S.muted }}>{snag.raised_date}</span>
-                    {snag.resolved_date && (
-                      <span className="text-xs" style={{ color: S.green }}>Resolved {snag.resolved_date}</span>
-                    )}
-                  </div>
-                  <p className="text-sm" style={{ color: S.text }}>{snag.description}</p>
-                  {snag.raised_by && <p className="text-xs mt-0.5" style={{ color: S.muted }}>Raised by: {snag.raised_by}</p>}
-                  {snag.notes && <p className="text-xs mt-1 italic" style={{ color: S.muted }}>{snag.notes}</p>}
-                </div>
-                {st.next && (
-                  <button onClick={() => void advance(snag)} disabled={advancing.has(snag.id)}
-                    className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-                    style={{ background: st.nextColor }}>
-                    {advancing.has(snag.id) ? '…' : st.nextLabel}
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }

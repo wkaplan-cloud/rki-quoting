@@ -152,7 +152,7 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName, logoUrl 
               <Text style={s.coMeta}>Company Reg No: {settings.company_registration_number}</Text>
             )}
             {settings?.cidb_registration_number && (
-              <Text style={s.coMeta}>CIDB Reg No: {settings.cidb_registration_number}</Text>
+              <Text style={s.coMeta}>License No: {settings.cidb_registration_number}</Text>
             )}
           </View>
           <View style={s.headerRight}>

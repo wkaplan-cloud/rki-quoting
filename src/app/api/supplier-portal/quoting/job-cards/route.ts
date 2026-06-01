@@ -80,6 +80,18 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error
+
+    if (staffId) {
+      const staffName = !Array.isArray(data.staff) ? data.staff?.name : null
+      supabaseAdmin.from('elec_notifications').insert({
+        portal_account_id: accountId,
+        type: 'job_card_created',
+        title: `Job card created by ${staffName ?? 'staff'}`,
+        body: data.title ? `"${data.title}"` : data.job_number,
+        metadata: { job_card_id: data.id, staff_id: staffId },
+      })
+    }
+
     return NextResponse.json(data)
   } catch (e) { return apiError(e) }
 }

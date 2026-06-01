@@ -16,12 +16,12 @@ async function resolveAccount(userId: string) {
 // Also allow staff to access their own job cards
 async function resolveAccountOrStaff(userId: string) {
   const adminId = await resolveAccount(userId)
-  if (adminId) return { accountId: adminId, staffId: null }
+  if (adminId) return { accountId: adminId, staffId: null as string | null, staffName: null as string | null }
   const { data: staff } = await supabaseAdmin
-    .from('elec_staff').select('id, portal_account_id')
+    .from('elec_staff').select('id, name, portal_account_id')
     .eq('auth_user_id', userId).eq('is_active', true).maybeSingle()
-  if (staff) return { accountId: staff.portal_account_id, staffId: staff.id }
-  return { accountId: null, staffId: null }
+  if (staff) return { accountId: staff.portal_account_id, staffId: staff.id, staffName: staff.name }
+  return { accountId: null, staffId: null as string | null, staffName: null as string | null }
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { accountId } = await resolveAccountOrStaff(user.id)
+    const { accountId, staffId, staffName } = await resolveAccountOrStaff(user.id)
     if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
     const body = await req.json() as Record<string, unknown>
@@ -71,6 +71,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .select()
       .single()
     if (error) throw error
+
+    // Notify admin when staff updates status
+    if (staffId && body.status) {
+      supabaseAdmin.from('elec_notifications').insert({
+        portal_account_id: accountId,
+        type: 'job_card_updated',
+        title: `Job card updated by ${staffName ?? 'staff'}`,
+        body: `Status changed to "${body.status}"${data.title ? ` on "${data.title}"` : ''}`,
+        metadata: { job_card_id: id, staff_id: staffId, status: body.status },
+      })
+    }
 
     // Sync email and address back to the client record when present
     const clientId = typeof body.client_id === 'string' ? body.client_id : data.client_id

@@ -395,7 +395,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, initialTab,
             <p className="text-xs mt-1" style={{ color: '#A1A1AA' }}>Registration numbers and banking details appear on your quotes and invoice PDFs.</p>
           </div>
 
-          <Field label="CIDB Registration Number">
+          <Field label="License Number">
             <input type="text" value={cidb} onChange={e => setCidb(e.target.value)}
               placeholder="e.g. 123456" className={inputCls} style={INPUT_STYLE} {...focusHandlers} />
           </Field>

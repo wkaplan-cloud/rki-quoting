@@ -119,7 +119,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
             ) : null}
             <Text style={s.company}>{companyName}</Text>
             {settings?.cidb_registration_number && (
-              <Text style={s.companyMeta}>CIDB: {settings.cidb_registration_number}</Text>
+              <Text style={s.companyMeta}>License: {settings.cidb_registration_number}</Text>
             )}
             {settings?.vat_registration_number && (
               <Text style={s.companyMeta}>VAT: {settings.vat_registration_number}</Text>

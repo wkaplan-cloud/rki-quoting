@@ -106,7 +106,7 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
   const metaParts = [
     settings?.vat_registration_number  ? `VAT: ${settings.vat_registration_number}`   : null,
     settings?.company_registration_number ? `Reg: ${settings.company_registration_number}` : null,
-    settings?.cidb_registration_number ? `CIDB: ${settings.cidb_registration_number}` : null,
+    settings?.cidb_registration_number ? `Lic: ${settings.cidb_registration_number}` : null,
   ].filter(Boolean).join('  ·  ')
 
   return (

@@ -104,6 +104,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
   const [copied, setCopied] = useState(false)
 
   // Timesheet helpers
+  const [timesheetView, setTimesheetView] = useState<'daily' | 'weekly'>('daily')
   const staffMap = Object.fromEntries(staff.map(s => [s.id, s]))
   const dayMap: Record<string, Record<string, ElecTimePunch[]>> = {}
   for (const p of punches) {
@@ -113,6 +114,29 @@ export function StaffManager({ initialStaff, punches }: Props) {
     dayMap[day][p.staff_id].push(p)
   }
   const sortedDays = Object.keys(dayMap).sort((a, b) => b.localeCompare(a))
+
+  // Weekly grouping: Thu–Wed
+  function getWeekStart(dateStr: string): string {
+    const d = new Date(dateStr + 'T12:00:00')
+    const day = d.getDay() // 0=Sun,1=Mon,...,4=Thu,5=Fri,6=Sat
+    const daysToThursday = (day - 4 + 7) % 7 // days since last Thursday
+    d.setDate(d.getDate() - daysToThursday)
+    return d.toISOString().slice(0, 10)
+  }
+  const weekMap: Record<string, { staffHours: Record<string, number> }> = {}
+  for (const p of punches) {
+    const wk = getWeekStart(p.punched_at.slice(0, 10))
+    if (!weekMap[wk]) weekMap[wk] = { staffHours: {} }
+  }
+  // Pair ins/outs per staff per week
+  const staffWeekPunches: Record<string, Record<string, ElecTimePunch[]>> = {}
+  for (const p of punches) {
+    const wk = getWeekStart(p.punched_at.slice(0, 10))
+    if (!staffWeekPunches[wk]) staffWeekPunches[wk] = {}
+    if (!staffWeekPunches[wk][p.staff_id]) staffWeekPunches[wk][p.staff_id] = []
+    staffWeekPunches[wk][p.staff_id].push(p)
+  }
+  const sortedWeeks = Object.keys(staffWeekPunches).sort((a, b) => b.localeCompare(a))
 
   const lastPunchPerStaff: Record<string, ElecTimePunch> = {}
   for (const p of punches) {
@@ -451,13 +475,71 @@ export function StaffManager({ initialStaff, punches }: Props) {
       {/* ── Timesheet tab ── */}
       {tab === 'timesheet' && (
         <div className="space-y-4">
-          {sortedDays.length === 0 && (
+          {/* View toggle */}
+          <div className="flex items-center gap-1 rounded-xl p-1 self-start" style={{ background: S.bg, border: `1px solid ${S.border}`, display: 'inline-flex' }}>
+            {(['daily', 'weekly'] as const).map(v => (
+              <button key={v} onClick={() => setTimesheetView(v)}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold capitalize"
+                style={{ background: timesheetView === v ? S.card : 'transparent', color: timesheetView === v ? S.text : S.muted, boxShadow: timesheetView === v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+                {v === 'weekly' ? 'Weekly (Thu–Wed)' : 'Daily'}
+              </button>
+            ))}
+          </div>
+
+          {/* Weekly view */}
+          {timesheetView === 'weekly' && (
+            sortedWeeks.length === 0 ? (
+              <div className="rounded-2xl py-12 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <p className="text-sm" style={{ color: S.muted }}>No data yet.</p>
+              </div>
+            ) : sortedWeeks.map(wk => {
+              const wkEnd = new Date(wk + 'T12:00:00'); wkEnd.setDate(wkEnd.getDate() + 6)
+              const weekLabel = `${new Date(wk + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} – ${wkEnd.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`
+              return (
+                <div key={wk} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  <div className="px-4 py-2.5" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Week: {weekLabel}</p>
+                  </div>
+                  {Object.entries(staffWeekPunches[wk]).map(([staffId, staffPunches]) => {
+                    const member = staffMap[staffId]
+                    const ins = staffPunches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+                    const outs = staffPunches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+                    let totalMs = 0
+                    ins.forEach((inP, idx) => {
+                      const outP = outs[idx]
+                      if (outP) totalMs += new Date(outP.punched_at).getTime() - new Date(inP.punched_at).getTime()
+                    })
+                    const hours = Math.floor(totalMs / 3600000)
+                    const mins = Math.floor((totalMs % 3600000) / 60000)
+                    return (
+                      <div key={staffId} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: `1px solid ${S.border}` }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                          style={{ background: member?.color ?? S.accent }}>
+                          {member?.name?.slice(0, 2).toUpperCase() ?? '??'}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold" style={{ color: S.text }}>{member?.name ?? 'Unknown'}</p>
+                          <p className="text-xs" style={{ color: S.muted }}>{ins.length} session{ins.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <p className="text-sm font-bold font-mono" style={{ color: totalMs > 0 ? S.accent : S.muted }}>
+                          {totalMs > 0 ? `${hours}h ${mins}m` : '—'}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })
+          )}
+
+          {/* Daily view */}
+          {timesheetView === 'daily' && sortedDays.length === 0 && (
             <div className="rounded-2xl py-12 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <p className="text-sm" style={{ color: S.muted }}>No clock-in activity in the last 30 days.</p>
               <p className="text-xs mt-1" style={{ color: S.muted }}>Staff members need to log in on their phones to clock in/out.</p>
             </div>
           )}
-          {sortedDays.map(day => (
+          {timesheetView === 'daily' && sortedDays.map(day => (
             <div key={day} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <div className="px-4 py-2.5" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
                 <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>{fmtDate(day + 'T12:00:00')}</p>

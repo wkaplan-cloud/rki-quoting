@@ -14,6 +14,7 @@ import { AsBuiltTab } from './AsBuiltTab'
 import { VariationsTab } from './VariationsTab'
 import { SnagTab } from './SnagTab'
 import { COCTab } from './COCTab'
+import { ReportingTab } from './ReportingTab'
 import { ClaimsTab } from './ClaimsTab'
 import { ClientCombobox } from '../../ClientCombobox'
 
@@ -336,7 +337,7 @@ interface Props {
   clients: Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'qs_name' | 'qs_email'>[]
   staff?: Pick<ElecStaff, 'id' | 'name' | 'color' | 'role'>[]
   variations: ElecVariationOrder[]
-  snags: ElecSnagItem[]
+  snags?: ElecSnagItem[]
   coc: ElecCOC | null
   claims: (ElecClaim & { line_items: ElecClaimLineItem[] })[]
   voPrefix: string
@@ -346,7 +347,7 @@ interface Props {
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'snag' | 'coc'
+type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'snag' | 'coc' | 'reporting'
 
 export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
   const router = useRouter()
@@ -392,6 +393,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     snag:       ['in_progress', 'completed'].includes(q.status),
     coc:        ['in_progress', 'completed'].includes(q.status),
     as_built:   ['in_progress', 'completed'].includes(q.status),
+    reporting:  ['in_progress', 'completed'].includes(q.status),
   }
 
   const [showSendModal, setShowSendModal] = useState(false)
@@ -668,6 +670,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     { id: 'snag',       label: 'Snag List' },
     { id: 'coc',        label: 'COC' },
     { id: 'as_built',   label: 'As-Built' },
+    { id: 'reporting',  label: 'Reporting' },
   ]
 
   const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
@@ -703,6 +706,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
           style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
           <Download size={12} /> PDF
+        </a>
+        <a href={`/api/supplier-portal/quoting/quotes/${q.id}/recon-pdf`} target="_blank" rel="noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+          style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
+          <FileText size={12} /> Recon Sheet
         </a>
         {/* More menu */}
         <div className="relative">
@@ -862,7 +870,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           <AsBuiltTab
             quoteId={q.id}
             sections={sections as unknown as ElecQuoteSection[]}
-            items={allItems as ElecQuoteLineItem[]}
+            items={itemsForChildTabs}
             contractTotal={contractTotal}
             clientEmail={q.client?.email ?? null}
           />
@@ -907,7 +915,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       )}
       {tabAccessible.snag && (
         <div style={{ display: activeTab === 'snag' ? undefined : 'none' }}>
-          <SnagTab quoteId={q.id} initialSnags={snags} />
+          <SnagTab quoteId={q.id} portalAccountId={portalAccountId} />
         </div>
       )}
       {tabAccessible.coc && (
@@ -916,6 +924,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             projectAddress={q.project_address ?? null}
             clientName={q.client?.client_name ?? null}
             clientEmail={q.client?.email ?? null} />
+        </div>
+      )}
+      {tabAccessible.reporting && (
+        <div style={{ display: activeTab === 'reporting' ? undefined : 'none' }}>
+          <ReportingTab quoteId={q.id} portalAccountId={portalAccountId} />
         </div>
       )}
 
