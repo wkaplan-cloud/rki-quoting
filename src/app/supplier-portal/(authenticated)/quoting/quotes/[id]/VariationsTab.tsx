@@ -244,7 +244,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     if (!editingVOId || !editDesc.trim()) { setEditError('Description required'); return }
     const validItems = editLineItems.filter(li => li.description.trim())
     const value = editVOValue
-    const costVal = editCost.trim() ? (parseFloat(editCost) || null) : null
+    const costVal = editLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * (parseFloat(li.cost) || 0), 0) || null
     setEditLoading(true); setEditError('')
 
     const { error: voErr } = await supabase.from('elec_variation_orders').update({
@@ -349,7 +349,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
         vo_number: voNumber,
         description: formDesc.trim(),
         value,
-        cost_value: formCost.trim() ? (parseFloat(formCost) || null) : null,
+        cost_value: formLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * (parseFloat(li.cost) || 0), 0) || null,
         requested_by: formRequestedBy.trim() || null,
         notes: formNotes.trim() || null,
         status: 'pending',
@@ -604,7 +604,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
             {/* Column headers */}
             <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px', color: S.muted }}>
+              style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px', color: S.muted }}>
               <span>Description</span>
               <span>Unit</span>
               <span className="text-right">Qty</span>
@@ -616,7 +616,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
             {formLineItems.map(li => (
               <div key={li._id} className="grid mb-1.5 items-center"
-                style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px' }}>
+                style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px' }}>
                 <VODescriptionInput
                   value={li.description}
                   onChange={v => updateFormItem(li._id, { description: v })}
@@ -655,27 +655,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             )}
           </div>
 
-          {/* Cost field */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
-                Your Cost (R)
-                {(() => {
-                  const c = parseFloat(formCost) || 0
-                  if (formVOValue > 0 && c > 0) {
-                    const margin = Math.round((formVOValue - c) / formVOValue * 1000) / 10
-                    return <span className="ml-2 normal-case font-normal" style={{ color: margin >= 0 ? S.green : S.danger }}>{margin}% margin</span>
-                  }
-                  return null
-                })()}
-              </label>
-              <input type="number" value={formCost} onChange={e => setFormCost(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none text-right"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-          </div>
-
-          {error && <p className="text-sm px-3 py-2 rounded mb-3" style={{ background: '#FEF2F2', color: S.danger, border: '1px solid #FECACA' }}>{error}</p>}
+          {error &&<p className="text-sm px-3 py-2 rounded mb-3" style={{ background: '#FEF2F2', color: S.danger, border: '1px solid #FECACA' }}>{error}</p>}
           <div className="flex justify-end gap-2">
             <button onClick={() => { setShowAdd(false); setError(''); setFormLineItems([newFormItem()]) }}
               className="px-4 py-2 text-sm rounded-lg" style={{ color: S.muted }}>Cancel</button>
@@ -959,12 +939,12 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                         </button>
                       </div>
                       <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-                        style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px', color: S.muted }}>
+                        style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px', color: S.muted }}>
                         <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">Labour</span><span />
                       </div>
                       {editLineItems.map(li => (
                         <div key={li._id} className="grid mb-1.5 items-center"
-                          style={{ gridTemplateColumns: '1fr 50px 55px 65px 60px 60px 24px', gap: '4px' }}>
+                          style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 24px', gap: '4px' }}>
                           <VODescriptionInput
                             value={li.description}
                             onChange={v => updateEditItem(li._id, { description: v })}
@@ -998,13 +978,6 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                           <span className="text-sm font-bold" style={{ color: S.accent }}>Total: {fmtR(editVOValue)}</span>
                         </div>
                       )}
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Your Cost (R)</label>
-                      <input type="number" value={editCost} onChange={e => setEditCost(e.target.value)}
-                        className="w-32 px-3 py-2 text-sm rounded-lg outline-none text-right"
-                        style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text }} />
                     </div>
 
                     {editError && (
