@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import type { DropResult, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecItemType, ElecQuoteStatus, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem, ElecStaff } from '@/lib/elec-types'
 import { AsBuiltTab } from './AsBuiltTab'
 import { VariationsTab } from './VariationsTab'
 import { SnagTab } from './SnagTab'
@@ -334,6 +334,7 @@ interface Props {
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
   clients: Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'qs_name' | 'qs_email'>[]
+  staff?: Pick<ElecStaff, 'id' | 'name' | 'color' | 'role'>[]
   variations: ElecVariationOrder[]
   snags: ElecSnagItem[]
   coc: ElecCOC | null
@@ -347,7 +348,7 @@ interface Props {
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'snag' | 'coc'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -464,6 +465,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         project_name: q.project_name, project_address: q.project_address,
         client_id: q.client_id, project_type: q.project_type,
         contract_type: q.contract_type,
+        staff_id: q.staff_id,
         vat_rate: q.vat_rate, retention_percentage: q.retention_percentage,
         payment_terms_days: q.payment_terms_days,
         defects_liability_period_days: q.defects_liability_period_days,
@@ -983,6 +985,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               { label: 'Retention',         value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
               { label: 'Defects Liability', value: q.defects_liability_period_days ? `${q.defects_liability_period_days} days` : null },
               { label: 'Drawing REF',       value: q.drawing_reference ?? null },
+              { label: 'Technician',        value: q.staff_id ? (staff.find(s => s.id === q.staff_id)?.name ?? null) : null },
               { label: 'Created',           value: new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) + (q.created_by_name ? ` by ${q.created_by_name}` : '') },
             ].filter(f => f.value).map(f => (
               <div key={f.label}>
@@ -1019,6 +1022,19 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               }}
             />
           </div>
+
+          {/* Assign Technician */}
+          {staff.length > 0 && (
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Assign Technician</label>
+              <select value={q.staff_id ?? ''} onChange={e => setQ(p => ({ ...p, staff_id: e.target.value || null }))}
+                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                style={{ background: S.input, border: `1px solid ${S.border}`, color: q.staff_id ? S.text : S.muted }}>
+                <option value="">Unassigned</option>
+                {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Project address */}
           <div>

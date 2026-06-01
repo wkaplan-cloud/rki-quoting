@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { QuoteEditor } from './QuoteEditor'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecVariationOrder, ElecSnagItem, ElecCOC, ElecClaim, ElecClaimLineItem, ElecStaff } from '@/lib/elec-types'
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -25,6 +25,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
     { data: coc },
     { data: claims },
     { data: settings },
+    { data: staff },
   ] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
@@ -72,6 +73,12 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .select('company_code, vo_prefix, coc_prefix, claim_prefix, sage_company_id')
       .eq('portal_account_id', account.id)
       .maybeSingle(),
+    supabaseAdmin
+      .from('elec_staff')
+      .select('id, name, color, role')
+      .eq('portal_account_id', account.id)
+      .eq('is_active', true)
+      .order('name'),
   ])
 
   const autoCode = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
@@ -90,6 +97,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       snags={(snags ?? []) as ElecSnagItem[]}
       coc={(coc ?? null) as ElecCOC | null}
       claims={(claims ?? []) as (ElecClaim & { line_items: ElecClaimLineItem[] })[]}
+      staff={(staff ?? []) as Pick<ElecStaff, 'id' | 'name' | 'color' | 'role'>[]}
       voPrefix={settings?.vo_prefix ?? 'VO'}
       cocPrefix={settings?.coc_prefix ?? 'COC'}
       companyCode={companyCode}
