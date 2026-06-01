@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { hashStaffPin, staffAuthEmail, staffAuthPassword } from '../route'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,9 +19,46 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
     const body = await req.json()
+    const { pin, username, ...rest } = body
+
+    const dbUpdate: Record<string, unknown> = { ...rest }
+
+    if (username !== undefined) {
+      const usernameClean = username.toLowerCase().trim()
+      // Check uniqueness (exclude this staff member)
+      const { data: existing } = await supabaseAdmin
+        .from('elec_staff')
+        .select('id')
+        .eq('username', usernameClean)
+        .neq('id', id)
+        .maybeSingle()
+      if (existing) return NextResponse.json({ error: 'Username is already taken' }, { status: 400 })
+      dbUpdate.username = usernameClean
+    }
+
+    if (pin !== undefined && pin !== '') {
+      if (!/^\d{4}$/.test(String(pin))) return NextResponse.json({ error: 'PIN must be 4 digits' }, { status: 400 })
+      dbUpdate.pin_hash = hashStaffPin(String(pin))
+
+      // Update Supabase auth password if staff has an auth user
+      const { data: staff } = await supabaseAdmin
+        .from('elec_staff')
+        .select('auth_user_id, username')
+        .eq('id', id)
+        .single()
+
+      if (staff?.auth_user_id) {
+        const effectiveUsername = (username ?? staff.username) as string
+        await supabaseAdmin.auth.admin.updateUserById(staff.auth_user_id, {
+          email: staffAuthEmail(effectiveUsername),
+          password: staffAuthPassword(String(pin)),
+        })
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('elec_staff')
-      .update(body)
+      .update(dbUpdate)
       .eq('id', id)
       .eq('portal_account_id', account.id)
       .select()
@@ -46,6 +84,17 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       .eq('auth_user_id', user.id)
       .single()
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
+
+    // Also delete the Supabase auth user
+    const { data: staff } = await supabaseAdmin
+      .from('elec_staff')
+      .select('auth_user_id')
+      .eq('id', id)
+      .single()
+
+    if (staff?.auth_user_id) {
+      await supabaseAdmin.auth.admin.deleteUser(staff.auth_user_id)
+    }
 
     await supabaseAdmin
       .from('elec_staff')

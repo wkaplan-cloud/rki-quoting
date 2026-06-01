@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import crypto from 'crypto'
+
+const STAFF_SALT = process.env.STAFF_PIN_SALT ?? 'qh_staff_pin_default_salt_2024'
+export function hashStaffPin(pin: string) {
+  return crypto.createHmac('sha256', STAFF_SALT).update(pin).digest('hex')
+}
+export function staffAuthEmail(username: string) {
+  return `staff_${username.toLowerCase()}@staff.quotinghub`
+}
+export function staffAuthPassword(pin: string) {
+  return `${pin}${STAFF_SALT}`
+}
 
 export async function GET(_req: NextRequest) {
   try {
@@ -42,14 +54,59 @@ export async function POST(req: NextRequest) {
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
     const body = await req.json()
-    const { data, error } = await supabaseAdmin
+    const { name, role, phone, color, username, pin } = body
+
+    if (!username?.trim()) return NextResponse.json({ error: 'Username is required' }, { status: 400 })
+    if (!pin || !/^\d{4}$/.test(String(pin))) return NextResponse.json({ error: 'PIN must be 4 digits' }, { status: 400 })
+
+    const usernameClean = username.toLowerCase().trim()
+
+    // Enforce globally unique usernames across all staff
+    const { data: existing } = await supabaseAdmin
       .from('elec_staff')
-      .insert({ ...body, portal_account_id: account.id })
+      .select('id')
+      .eq('username', usernameClean)
+      .maybeSingle()
+    if (existing) return NextResponse.json({ error: 'Username is already taken' }, { status: 400 })
+
+    // Insert staff record first
+    const { data: staff, error: insertError } = await supabaseAdmin
+      .from('elec_staff')
+      .insert({
+        portal_account_id: account.id,
+        name,
+        role,
+        phone: phone || null,
+        color,
+        username: usernameClean,
+        pin_hash: hashStaffPin(String(pin)),
+      })
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    return NextResponse.json(data)
+    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 400 })
+
+    // Create Supabase auth user for this staff member
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: staffAuthEmail(usernameClean),
+      password: staffAuthPassword(String(pin)),
+      email_confirm: true,
+    })
+
+    if (authError || !authData.user) {
+      await supabaseAdmin.from('elec_staff').delete().eq('id', staff.id)
+      return NextResponse.json({ error: authError?.message ?? 'Failed to create auth account' }, { status: 400 })
+    }
+
+    // Link auth user
+    const { data: updated } = await supabaseAdmin
+      .from('elec_staff')
+      .update({ auth_user_id: authData.user.id })
+      .eq('id', staff.id)
+      .select()
+      .single()
+
+    return NextResponse.json(updated)
   } catch (e) {
     return apiError(e)
   }

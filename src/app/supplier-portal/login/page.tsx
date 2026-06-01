@@ -1,14 +1,17 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Mail } from 'lucide-react'
+import { Eye, EyeOff, Mail, KeyRound } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+
+type LoginTab = 'supplier' | 'staff'
 
 function SupplierLoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
+  const [tab, setTab] = useState<LoginTab>('supplier')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -16,6 +19,12 @@ function SupplierLoginForm() {
   const [error, setError] = useState('')
   const [magicSending, setMagicSending] = useState(false)
   const [magicSent, setMagicSent] = useState(false)
+  // Staff login
+  const [staffUsername, setStaffUsername] = useState('')
+  const [staffPin, setStaffPin] = useState(['', '', '', ''])
+  const pinRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
+  const [staffLoading, setStaffLoading] = useState(false)
+  const [staffError, setStaffError] = useState('')
   const [hashRedirecting, setHashRedirecting] = useState(() =>
     typeof window !== 'undefined' && window.location.hash.includes('access_token=')
   )
@@ -55,6 +64,31 @@ function SupplierLoginForm() {
     const redirectTo = searchParams.get('redirect')
     const dest = redirectTo?.startsWith('/supplier-portal/') ? redirectTo : '/supplier-portal/home'
     router.push(dest)
+  }
+
+  async function handleStaffLogin(e: React.FormEvent) {
+    e.preventDefault()
+    const pin = staffPin.join('')
+    if (!staffUsername.trim() || pin.length !== 4) { setStaffError('Enter your username and 4-digit PIN'); return }
+    setStaffLoading(true); setStaffError('')
+    const res = await fetch('/api/supplier-portal/staff/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: staffUsername.trim(), pin }),
+    })
+    const data = await res.json() as { access_token?: string; refresh_token?: string; error?: string }
+    if (!res.ok || !data.access_token) { setStaffError(data.error ?? 'Invalid username or PIN'); setStaffLoading(false); return }
+    await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token! })
+    router.push('/supplier-portal/staff-home')
+  }
+
+  function handlePinDigit(index: number, value: string) {
+    const digit = value.replace(/\D/g, '').slice(-1)
+    const next = [...staffPin]
+    next[index] = digit
+    setStaffPin(next)
+    if (digit && index < 3) pinRefs[index + 1].current?.focus()
+    if (!digit && index > 0) pinRefs[index - 1].current?.focus()
   }
 
   async function handleMagicLink() {
@@ -99,7 +133,70 @@ function SupplierLoginForm() {
           </div>
 
           {/* Magic link sent state */}
-          {magicSent ? (
+          {/* Tab switcher */}
+          <div className="flex rounded-xl p-1 mb-6" style={{ background: '#F4F4F5' }}>
+            <button onClick={() => { setTab('supplier'); setError(''); setStaffError('') }}
+              className="flex-1 py-2 text-sm font-semibold rounded-lg transition-colors"
+              style={{ background: tab === 'supplier' ? '#FFFFFF' : 'transparent', color: tab === 'supplier' ? '#18181B' : '#71717A', boxShadow: tab === 'supplier' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+              Supplier
+            </button>
+            <button onClick={() => { setTab('staff'); setError(''); setStaffError('') }}
+              className="flex-1 py-2 text-sm font-semibold rounded-lg transition-colors"
+              style={{ background: tab === 'staff' ? '#FFFFFF' : 'transparent', color: tab === 'staff' ? '#18181B' : '#71717A', boxShadow: tab === 'staff' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+              Staff
+            </button>
+          </div>
+
+          {/* Staff login */}
+          {tab === 'staff' && (
+            <form onSubmit={e => void handleStaffLogin(e)} className="space-y-5">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Username</label>
+                <input
+                  type="text"
+                  value={staffUsername}
+                  onChange={e => setStaffUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
+                  required autoFocus autoComplete="username"
+                  placeholder="e.g. john123"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none font-mono"
+                  style={{ background: '#F4F4F5', border: '1.5px solid #E4E4E7', color: '#18181B' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = '#E4E4E7'; e.currentTarget.style.background = '#F4F4F5' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>PIN</label>
+                <div className="flex gap-3 justify-center">
+                  {staffPin.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={pinRefs[i]}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={e => handlePinDigit(i, e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Backspace' && !digit && i > 0) pinRefs[i - 1].current?.focus() }}
+                      className="w-14 h-14 text-center text-xl font-bold rounded-xl outline-none"
+                      style={{ background: '#F4F4F5', border: `2px solid ${digit ? '#3A7CA5' : '#E4E4E7'}`, color: '#18181B' }}
+                      onFocus={e => e.currentTarget.style.borderColor = '#3A7CA5'}
+                      onBlur={e => { if (!digit) e.currentTarget.style.borderColor = '#E4E4E7' }}
+                    />
+                  ))}
+                </div>
+              </div>
+              {staffError && (
+                <p className="text-sm px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{staffError}</p>
+              )}
+              <button type="submit" disabled={staffLoading}
+                className="w-full py-3 text-sm font-semibold rounded-lg disabled:opacity-50"
+                style={{ background: '#3A7CA5', color: '#FFFFFF' }}>
+                {staffLoading ? 'Signing in…' : 'Sign In'}
+              </button>
+            </form>
+          )}
+
+          {tab === 'supplier' && (magicSent ? (
             <div className="text-center py-4">
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: 'rgba(58,124,165,0.1)' }}>
                 <Mail size={24} style={{ color: '#3A7CA5' }} />
@@ -131,7 +228,6 @@ function SupplierLoginForm() {
                     onChange={e => setEmail(e.target.value)}
                     required
                     autoComplete="email"
-                    autoFocus
                     className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
                     style={{ background: '#F4F4F5', border: '1.5px solid #E4E4E7', color: '#18181B', transition: 'border-color 0.15s, background 0.15s' }}
                     onFocus={e => { e.currentTarget.style.borderColor = '#3A7CA5'; e.currentTarget.style.background = '#FFFFFF' }}
@@ -210,7 +306,7 @@ function SupplierLoginForm() {
                 </p>
               </div>
             </>
-          )}
+          ))}
         </div>
       </div>
     </div>

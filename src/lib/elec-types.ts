@@ -407,6 +407,8 @@ export interface ElecStaff {
   color: string
   is_active: boolean
   auth_user_id: string | null
+  username: string | null
+  pin_hash: string | null
   invite_token: string | null
   invite_sent_at: string | null
   invite_accepted_at: string | null

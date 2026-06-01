@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Mail, Power, Send, CheckCircle2, Clock, MapPin, LogIn, LogOut } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 
@@ -60,11 +60,12 @@ interface FormState {
   name: string
   role: ElecStaffRole
   phone: string
-  email: string
   color: string
+  username: string
+  pin: string
 }
 
-const EMPTY_FORM: FormState = { name: '', role: 'electrician', phone: '', email: '', color: '#3A7CA5' }
+const EMPTY_FORM: FormState = { name: '', role: 'electrician', phone: '', color: '#3A7CA5', username: '', pin: '' }
 
 type Tab = 'staff' | 'timesheet'
 
@@ -99,6 +100,8 @@ export function StaffManager({ initialStaff, punches }: Props) {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [newCredentials, setNewCredentials] = useState<{ username: string; pin: string } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // Timesheet helpers
   const staffMap = Object.fromEntries(staff.map(s => [s.id, s]))
@@ -125,20 +128,29 @@ export function StaffManager({ initialStaff, punches }: Props) {
 
   function openEdit(s: ElecStaff) {
     setEditingId(s.id)
-    setForm({ name: s.name, role: s.role, phone: s.phone ?? '', email: s.email ?? '', color: s.color })
+    setForm({ name: s.name, role: s.role, phone: s.phone ?? '', color: s.color, username: s.username ?? '', pin: '' })
     setShowForm(true)
+    setNewCredentials(null)
   }
 
   function closeForm() {
     setShowForm(false)
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setNewCredentials(null)
   }
 
   async function handleSave() {
     if (!form.name.trim() || saving) return
+    if (!editingId && (!form.username.trim() || !form.pin)) { alert('Username and PIN are required'); return }
+    if (form.pin && !/^\d{4}$/.test(form.pin)) { alert('PIN must be exactly 4 digits'); return }
     setSaving(true)
-    const payload = { name: form.name.trim(), role: form.role, phone: form.phone.trim() || null, email: form.email.trim() || null, color: form.color }
+
+    const payload: Record<string, unknown> = {
+      name: form.name.trim(), role: form.role, phone: form.phone.trim() || null, color: form.color,
+    }
+    if (form.username.trim()) payload.username = form.username.trim()
+    if (form.pin) payload.pin = form.pin
 
     if (editingId) {
       const res = await fetch(`/api/supplier-portal/quoting/staff/${editingId}`, {
@@ -147,6 +159,8 @@ export function StaffManager({ initialStaff, punches }: Props) {
       const d = await res.json()
       if (!res.ok) { alert(d.error ?? 'Failed to save'); setSaving(false); return }
       setStaff(ss => ss.map(s => s.id === editingId ? d as ElecStaff : s))
+      setSaving(false)
+      closeForm()
     } else {
       const res = await fetch('/api/supplier-portal/quoting/staff', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
@@ -154,9 +168,12 @@ export function StaffManager({ initialStaff, punches }: Props) {
       const d = await res.json()
       if (!res.ok) { alert(d.error ?? 'Failed to save'); setSaving(false); return }
       setStaff(ss => [...ss, d as ElecStaff])
+      setNewCredentials({ username: form.username.trim(), pin: form.pin })
+      setSaving(false)
+      setShowForm(false)
+      setEditingId(null)
+      setForm(EMPTY_FORM)
     }
-    setSaving(false)
-    closeForm()
   }
 
   async function handleDelete(id: string) {
@@ -236,6 +253,50 @@ export function StaffManager({ initialStaff, punches }: Props) {
       {/* ── Staff tab ── */}
       {tab === 'staff' && (
         <>
+          {/* Credentials box shown after creating a new staff member */}
+          {newCredentials && (
+            <div className="rounded-2xl p-5 mb-5" style={{ background: 'rgba(22,163,74,0.05)', border: `1.5px solid rgba(22,163,74,0.3)` }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} style={{ color: S.green }} />
+                  <span className="font-semibold text-sm" style={{ color: S.green }}>Staff member added</span>
+                </div>
+                <button onClick={() => setNewCredentials(null)} className="p-1.5 rounded-lg" style={{ color: S.muted }}
+                  onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <X size={14} />
+                </button>
+              </div>
+              <p className="text-xs mb-3" style={{ color: S.muted }}>Share these login credentials with the staff member. The PIN cannot be retrieved again.</p>
+              <div className="rounded-xl p-3 flex items-center justify-between gap-3" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider w-16" style={{ color: S.muted }}>Username</span>
+                    <span className="font-mono font-bold" style={{ color: S.text }}>{newCredentials.username}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider w-16" style={{ color: S.muted }}>PIN</span>
+                    <span className="font-mono font-bold" style={{ color: S.text }}>{newCredentials.pin}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    void navigator.clipboard.writeText(`Username: ${newCredentials.username}\nPIN: ${newCredentials.pin}`)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
+                  style={{ background: S.card, border: `1px solid ${S.border}`, color: copied ? S.green : S.accent }}>
+                  {copied ? <CheckCircle2 size={12} /> : <Copy size={12} />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <p className="text-[10px] mt-2" style={{ color: S.muted }}>
+                Staff log in at <span className="font-mono">quotinghub.co.za/supplier-portal/login</span> → Staff tab
+              </p>
+            </div>
+          )}
+
           {/* Add / Edit form */}
           {showForm && (
             <div className="rounded-2xl p-5 mb-5" style={{ background: S.card, border: `1.5px solid ${S.accent}` }}>
@@ -276,12 +337,32 @@ export function StaffManager({ initialStaff, punches }: Props) {
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 </div>
 
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Email</label>
-                  <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                    placeholder="e.g. john@example.com"
-                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                    Username *
+                  </label>
+                  <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, '') }))}
+                    placeholder="e.g. john123"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none font-mono"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                    PIN {editingId ? '(leave blank to keep)' : '*'}
+                  </label>
+                  <div className="relative">
+                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: S.muted }} />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={form.pin}
+                      onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                      placeholder="4 digits"
+                      className="w-full pl-8 pr-3 py-2.5 text-sm rounded-xl outline-none font-mono tracking-widest"
+                      style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                  </div>
                 </div>
 
                 <div className="col-span-2">
@@ -454,23 +535,9 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
   deleting: boolean
   toggling: boolean
 }) {
-  const [inviting, setInviting] = useState(false)
-  const [inviteSent, setInviteSent] = useState(false)
-
   const roleLabel = ROLES.find(r => r.value === s.role)?.label ?? s.role
   const inactive = !s.is_active
-  const hasAccount = !!s.invite_accepted_at || !!s.auth_user_id
-  const invitePending = !!s.invite_sent_at && !hasAccount
-
-  async function handleInvite() {
-    if (!s.email || inviting) return
-    setInviting(true)
-    const res = await fetch(`/api/supplier-portal/quoting/staff/${s.id}/invite`, { method: 'POST' })
-    setInviting(false)
-    if (!res.ok) { const d = await res.json().catch(() => ({})); alert(d.error ?? 'Failed to send invite'); return }
-    setInviteSent(true)
-    setTimeout(() => setInviteSent(false), 4000)
-  }
+  const hasCredentials = !!s.username && !!s.auth_user_id
 
   return (
     <div className="rounded-2xl p-4 flex items-center gap-4"
@@ -488,46 +555,28 @@ function StaffCard({ staff: s, onEdit, onDelete, onToggle, deleting, toggling }:
             style={{ background: roleBg(s.role), color: roleColor(s.role) }}>
             {roleLabel}
           </span>
-          {hasAccount && (
+          {hasCredentials && (
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
               style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
-              ✓ Has account
-            </span>
-          )}
-          {invitePending && !inviteSent && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-              style={{ background: 'rgba(217,164,65,0.1)', color: S.gold }}>
-              Invite pending
+              ✓ Active
             </span>
           )}
         </div>
         <div className="flex items-center gap-3 mt-1 flex-wrap">
+          {s.username && (
+            <span className="flex items-center gap-1 text-xs font-mono" style={{ color: S.muted }}>
+              <KeyRound size={10} /> {s.username}
+            </span>
+          )}
           {s.phone && (
             <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}>
               <Phone size={10} /> {s.phone}
             </span>
           )}
-          {s.email && (
-            <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}>
-              <Mail size={10} /> {s.email}
-            </span>
-          )}
-          {!s.phone && !s.email && (
-            <span className="text-xs" style={{ color: S.muted }}>No contact details</span>
-          )}
         </div>
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0">
-        {s.email && !hasAccount && (
-          <button onClick={() => void handleInvite()} disabled={inviting}
-            title={inviteSent ? 'Invite sent!' : invitePending ? 'Resend invite' : 'Invite to portal'}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
-            style={{ background: inviteSent ? 'rgba(22,163,74,0.1)' : 'rgba(58,124,165,0.08)', color: inviteSent ? S.green : S.accent, border: `1px solid ${inviteSent ? 'rgba(22,163,74,0.3)' : 'rgba(58,124,165,0.2)'}` }}>
-            {inviting ? <Loader2 size={11} className="animate-spin" /> : inviteSent ? <CheckCircle2 size={11} /> : <Send size={11} />}
-            {inviteSent ? 'Sent!' : 'Invite'}
-          </button>
-        )}
         <button onClick={onToggle} disabled={toggling} title={s.is_active ? 'Deactivate' : 'Activate'}
           className="p-2 rounded-lg disabled:opacity-50 transition-colors"
           style={{ color: s.is_active ? S.muted : S.green }}
