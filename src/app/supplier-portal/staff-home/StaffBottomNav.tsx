@@ -1,10 +1,10 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { Home, Briefcase, Plus, Clock, Menu } from 'lucide-react'
+import { Home, Briefcase, Plus, FolderOpen, Menu } from 'lucide-react'
 
 const S = { card: '#FFFFFF', accent: '#3A7CA5', muted: '#71717A', border: '#E4E4E7' }
 
-export type NavTab = 'home' | 'jobs' | 'history' | 'more'
+export type NavTab = 'home' | 'jobs' | 'projects' | 'history' | 'more'
 
 interface Props {
   activeTab?: NavTab
@@ -58,11 +58,11 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge }: 
         </button>
       </div>
 
-      <button onClick={() => go('history')}
+      <button onClick={() => go('projects')}
         className="flex-1 flex flex-col items-center gap-1.5 py-3"
-        style={{ color: activeTab === 'history' ? S.accent : S.muted }}>
-        <Clock size={24} />
-        <span className="text-xs font-semibold">History</span>
+        style={{ color: activeTab === 'projects' ? S.accent : S.muted }}>
+        <FolderOpen size={24} />
+        <span className="text-xs font-semibold">Projects</span>
       </button>
 
       <button onClick={() => go('more')}

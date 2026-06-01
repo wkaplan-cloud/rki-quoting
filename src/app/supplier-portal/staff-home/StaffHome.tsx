@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus,
+  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen,
 } from 'lucide-react'
 import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
@@ -44,7 +44,7 @@ const JOB_TYPES: { value: ElecJobCardType; label: string }[] = [
   { value: 'once_off',    label: 'Once-Off' },
 ]
 
-type Tab = 'home' | 'jobs' | 'history' | 'more'
+type Tab = 'home' | 'jobs' | 'projects' | 'history' | 'more'
 
 type ClientItem = Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>
 
@@ -56,9 +56,10 @@ interface Props {
   isClockedIn: boolean
   assignedJobCards: ElecJobCard[]
   initialClients: ClientItem[]
+  assignedProjects: { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]
 }
 
-export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients }: Props) {
+export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -389,6 +390,45 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                           {j.location && <span className="flex items-center gap-0.5"><MapPin size={9} />{j.location}</span>}
                           {j.scheduled_at && <span className="flex items-center gap-0.5"><Calendar size={9} />{new Date(j.scheduled_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</span>}
                           {client && <span>{client.client_name}</span>}
+                        </div>
+                      </div>
+                      <ChevronRight size={15} style={{ color: S.muted }} />
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PROJECTS TAB ── */}
+        {tab === 'projects' && (
+          <div className="px-4 pt-4">
+            {assignedProjects.length === 0 ? (
+              <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <FolderOpen size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
+                <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No projects assigned</p>
+                <p className="text-xs" style={{ color: S.muted }}>Projects assigned to you will appear here</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                {assignedProjects.map((p, i) => {
+                  const client = !Array.isArray(p.client) ? p.client : null
+                  return (
+                    <button key={p.id}
+                      onClick={() => router.push(`/supplier-portal/staff-home/project/${p.id}`)}
+                      className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
+                      style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(58,124,165,0.1)' }}>
+                        <FolderOpen size={16} style={{ color: S.accent }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-mono mb-0.5" style={{ color: S.muted }}>{p.quote_number}</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{p.project_name}</p>
+                        <div className="flex items-center gap-3 text-xs mt-0.5" style={{ color: S.muted }}>
+                          {client && <span>{client.client_name}</span>}
+                          {p.project_address && <span className="flex items-center gap-0.5"><MapPin size={9} />{p.project_address}</span>}
                         </div>
                       </div>
                       <ChevronRight size={15} style={{ color: S.muted }} />

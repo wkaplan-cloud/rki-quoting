@@ -26,7 +26,7 @@ export default async function StaffHomePage() {
 
   // Last 30 days punches + assigned job cards + clients
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-  const [{ data: punches }, { data: jobCards }, { data: clients }] = await Promise.all([
+  const [{ data: punches }, { data: jobCards }, { data: clients }, { data: projects }] = await Promise.all([
     supabaseAdmin
       .from('elec_time_punches')
       .select('*')
@@ -45,6 +45,13 @@ export default async function StaffHomePage() {
       .select('id, client_name, company, email')
       .eq('portal_account_id', staff.portal_account_id)
       .order('client_name', { ascending: true }),
+    supabaseAdmin
+      .from('elec_quotes')
+      .select('id, quote_number, project_name, project_address, status, client:elec_clients(id, client_name)')
+      .eq('portal_account_id', staff.portal_account_id)
+      .eq('staff_id', staff.id)
+      .not('status', 'in', '("cancelled","completed")')
+      .order('created_at', { ascending: false }),
   ])
 
   const lastPunch = (punches ?? [])[0] ?? null
@@ -59,6 +66,7 @@ export default async function StaffHomePage() {
       isClockedIn={isClockedIn}
       assignedJobCards={(jobCards ?? []) as ElecJobCard[]}
       initialClients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>[]}
+      assignedProjects={(projects ?? []) as unknown as { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]}
     />
   )
 }

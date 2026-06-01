@@ -321,7 +321,15 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
             <p className="text-[10px] font-mono mb-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{card.job_number}</p>
             <h1 className="text-base font-bold text-white leading-snug">{card.title}</h1>
             <div className="flex items-center gap-3 mt-1 flex-wrap text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
-              {card.location && <span className="flex items-center gap-1"><MapPin size={10} />{card.location}</span>}
+              {card.location && (
+                <a href={`https://www.google.com/maps/search/${encodeURIComponent(card.location)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1"
+                  style={{ color: 'rgba(96,165,250,0.9)' }}
+                  onClick={e => e.stopPropagation()}>
+                  <MapPin size={10} />{card.location}
+                </a>
+              )}
               {card.scheduled_at && <span className="flex items-center gap-1"><Clock size={10} />{fmtDate(card.scheduled_at)}</span>}
               <span><Briefcase size={10} className="inline mr-0.5" />{TYPE_LABEL[card.job_type]}</span>
             </div>
