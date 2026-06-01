@@ -6,12 +6,7 @@ import { apiError } from '@/lib/api-error'
 interface SyncItem {
   description: string
   unit: string | null
-  item_type: string
-  default_unit_rate: number | null
-  default_cost_rate: number | null
   default_markup_percent: number | null
-  default_labour_rate: number | null
-  default_material_rate: number | null
 }
 
 export async function POST(req: NextRequest) {
@@ -36,12 +31,7 @@ export async function POST(req: NextRequest) {
         portal_account_id: account.id,
         description: i.description.trim(),
         unit: i.unit,
-        item_type: i.item_type ?? 'both',
-        default_unit_rate: i.default_unit_rate,
-        default_cost_rate: i.default_cost_rate,
         default_markup_percent: i.default_markup_percent,
-        default_labour_rate: i.default_labour_rate,
-        default_material_rate: i.default_material_rate,
         updated_at: new Date().toISOString(),
       }))
 

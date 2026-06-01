@@ -515,6 +515,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         await supabase.from('elec_quote_line_items').upsert(allItemRows)
       }
 
+      // Auto-add new items to library (description + unit + markup % only, fire-and-forget)
+      const libraryItems = allItems
+        .filter(i => i.description.trim())
+        .map(i => ({ description: i.description.trim(), unit: i.unit, default_markup_percent: i.markup_percentage }))
+      if (libraryItems.length > 0) {
+        fetch('/api/supplier-portal/quoting/item-library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: libraryItems }),
+        }).catch(() => {})
+      }
+
       setDeletedSectionIds([]); setDeletedItemIds([])
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2500)
