@@ -177,14 +177,11 @@ export default function ElectricianLandingPage() {
 
             {/* Electrician illustration */}
             <div className="flex-shrink-0 w-full lg:w-[420px] flex items-center justify-center">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/electrician-hero.webp"
                 alt="Electrician with tools and toolbox"
-                width={420}
-                height={520}
                 className="w-full max-w-[420px] object-contain mix-blend-multiply"
-                priority
-                unoptimized
               />
             </div>
 
