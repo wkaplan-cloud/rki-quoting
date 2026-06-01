@@ -46,14 +46,7 @@ const CONTRACT_TYPES = [
   { value: 'cost_plus',      label: 'Cost Plus' },
 ]
 
-const UNITS = ['nr', 'm', 'm²', 'm³', 'kg', 'l', 'hr', 'lot', 'allow', 'item']
-const ITEM_TYPES: { value: ElecItemType; label: string }[] = [
-  { value: 'both',        label: 'Labour & Material' },
-  { value: 'labour',      label: 'Labour only' },
-  { value: 'material',    label: 'Material only' },
-  { value: 'preliminary', label: 'Preliminary' },
-  { value: 'subcontract', label: 'Subcontract' },
-]
+const UNITS = ['nr', 'm']
 
 type ItemState  = Omit<ElecQuoteLineItem, 'created_at'> & { _expanded?: boolean }
 type SectionState = Omit<ElecQuoteSection, 'created_at' | 'line_items'> & { items: ItemState[] }
@@ -73,14 +66,20 @@ function newSection(quoteId: string, sortOrder: number): SectionState {
   return { id: crypto.randomUUID(), quote_id: quoteId, title: '', sort_order: sortOrder, items: [] }
 }
 
-function itemTotal(item: ItemState) { return (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) }
+function computeSellRate(item: ItemState): number {
+  if (item.cost_unit_rate != null) {
+    return (item.cost_unit_rate * (1 + (item.markup_percentage ?? 0) / 100)) + (item.labour_rate ?? 0)
+  }
+  return item.quoted_unit_rate ?? 0
+}
+function itemTotal(item: ItemState) { return (item.quoted_quantity ?? 0) * computeSellRate(item) }
 
 function fmtR(n: number) {
   return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // ─── Description autocomplete ─────────────────────────────────────────────────
-interface Suggestion { description: string; unit: string | null; item_type: string; default_unit_rate: number | null; default_cost_rate: number | null; default_labour_rate: number | null; default_material_rate: number | null; category: string | null }
+interface Suggestion { description: string; unit: string | null; item_type: string; default_unit_rate: number | null; default_cost_rate: number | null; default_labour_rate: number | null; default_material_rate: number | null; category: string | null; default_markup_percent: number | null }
 
 function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }: {
   value: string; onChange: (v: string) => void
@@ -97,7 +96,7 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from('elec_item_library')
-        .select('description, unit, item_type, default_unit_rate, default_cost_rate, default_labour_rate, default_material_rate, category')
+        .select('description, unit, item_type, default_unit_rate, default_cost_rate, default_labour_rate, default_material_rate, category, default_markup_percent')
         .eq('portal_account_id', portalAccountId)
         .ilike('description', `%${value}%`)
         .order('usage_count', { ascending: false })
@@ -149,11 +148,11 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
                   onMouseEnter={e => e.currentTarget.style.background = S.bg}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <span style={{ color: S.text }}>{s.description}</span>
-                  {s.default_unit_rate != null && (
-                    <span className="text-xs ml-2 flex-shrink-0" style={{ color: S.muted }}>
-                      {fmtR(s.default_unit_rate)}{s.unit ? `/${s.unit}` : ''}
-                    </span>
-                  )}
+                  <span className="text-xs ml-2 flex-shrink-0" style={{ color: S.muted }}>
+                    {s.default_cost_rate != null ? fmtR(s.default_cost_rate) : ''}
+                    {s.default_markup_percent != null ? ` · ${s.default_markup_percent}%` : ''}
+                    {s.unit ? `/${s.unit}` : ''}
+                  </span>
                 </button>
               ))}
             </div>
@@ -170,7 +169,6 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
   onDelete: () => void; portalAccountId: string; locked?: boolean
   dragHandleProps?: DraggableProvidedDragHandleProps | null
 }) {
-  const exp = item._expanded ?? false
   function set(patch: Partial<ItemState>) { onChange({ ...item, ...patch }) }
 
   const numInput = (val: number | null, cb: (n: number) => void, placeholder = '0', w = 90) => (
@@ -188,35 +186,37 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
         </div>
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
           onSelect={s => {
-            const sell = s.default_unit_rate ?? item.quoted_unit_rate
             const cost = s.default_cost_rate ?? item.cost_unit_rate
-            const markup = (cost != null && cost > 0 && sell != null && sell > 0)
-              ? Math.round(((sell - cost) / cost) * 1000) / 10
-              : item.markup_percentage
-            set({ description: s.description, unit: s.unit ?? item.unit, item_type: (s.item_type as ElecItemType) ?? item.item_type, quoted_unit_rate: sell, cost_unit_rate: cost, markup_percentage: markup, labour_rate: s.default_labour_rate ?? item.labour_rate, material_rate: s.default_material_rate ?? item.material_rate })
+            const markup = s.default_markup_percent ?? item.markup_percentage
+            const labour = s.default_labour_rate ?? item.labour_rate
+            const sell = cost != null ? cost * (1 + (markup ?? 0) / 100) + (labour ?? 0) : (s.default_unit_rate ?? item.quoted_unit_rate)
+            set({ description: s.description, unit: s.unit ?? item.unit, item_type: (s.item_type as ElecItemType) ?? item.item_type, cost_unit_rate: cost, markup_percentage: markup, labour_rate: labour, quoted_unit_rate: sell ?? 0, material_rate: s.default_material_rate ?? item.material_rate })
           }}
           portalAccountId={portalAccountId} locked={locked} />
         <select value={item.unit ?? 'nr'} onChange={e => set({ unit: e.target.value })} disabled={locked}
           className="px-2 py-1.5 text-sm rounded-lg outline-none"
-          style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, width: 72 }}>
+          style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, width: 60 }}>
           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
-        {numInput(item.quoted_quantity, v => set({ quoted_quantity: v }), 'Qty')}
-        {numInput(item.quoted_unit_rate, v => {
-          const patch: Partial<ItemState> = { quoted_unit_rate: v }
-          if (item.cost_unit_rate != null && item.cost_unit_rate > 0) {
-            patch.markup_percentage = Math.round(((v - item.cost_unit_rate) / item.cost_unit_rate) * 1000) / 10
-          }
-          set(patch)
-        }, 'Rate')}
-        <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 100 }}>
+        {numInput(item.quoted_quantity, v => {
+          const sell = computeSellRate({ ...item, quoted_quantity: v })
+          set({ quoted_quantity: v, quoted_unit_rate: sell })
+        }, 'Qty', 72)}
+        {numInput(item.cost_unit_rate, v => {
+          const sell = v * (1 + (item.markup_percentage ?? 0) / 100) + (item.labour_rate ?? 0)
+          set({ cost_unit_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
+        }, 'Cost', 82)}
+        {numInput(item.markup_percentage, v => {
+          const sell = (item.cost_unit_rate ?? 0) * (1 + v / 100) + (item.labour_rate ?? 0)
+          set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
+        }, '%', 65)}
+        {numInput(item.labour_rate, v => {
+          const sell = (item.cost_unit_rate ?? 0) * (1 + (item.markup_percentage ?? 0) / 100) + v
+          set({ labour_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
+        }, 'Labour', 82)}
+        <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 92 }}>
           {fmtR(itemTotal(item))}
         </div>
-        <button onClick={() => set({ _expanded: !exp })} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
-          onMouseEnter={e => e.currentTarget.style.background = S.border}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-          {exp ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        </button>
         {!locked && (
           <button onClick={onDelete} className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
             onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
@@ -225,90 +225,6 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
           </button>
         )}
       </div>
-      {exp && (
-        <div className="px-3 pb-3 pt-1 grid grid-cols-2 gap-3" style={{ borderTop: `1px solid ${S.border}` }}>
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Item Type</label>
-            <select value={item.item_type} onChange={e => set({ item_type: e.target.value as ElecItemType })} disabled={locked}
-              className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none"
-              style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }}>
-              {ITEM_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Drawing Ref</label>
-            <input value={item.drawing_reference ?? ''} onChange={e => set({ drawing_reference: e.target.value || null })}
-              disabled={locked} placeholder="e.g. E-03 Rev 2"
-              className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none"
-              style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
-          </div>
-          {item.item_type === 'subcontract' && (
-            <div className="col-span-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Subcontractor</label>
-              <input value={item.subcontractor_name ?? ''} onChange={e => set({ subcontractor_name: e.target.value || null })}
-                disabled={locked} placeholder="Company name"
-                className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none"
-                style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
-            </div>
-          )}
-          {/* Costing — internal only */}
-          <div className="col-span-2 pt-3 mt-1" style={{ borderTop: `1px dashed ${S.border}` }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-2.5" style={{ color: S.muted }}>Cost &amp; Margin (internal)</p>
-            <div className="grid grid-cols-4 gap-3">
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Cost Rate</label>
-                <input type="number" value={item.cost_unit_rate ?? ''}
-                  onChange={e => {
-                    const cost = e.target.value === '' ? null : parseFloat(e.target.value)
-                    const patch: Partial<ItemState> = { cost_unit_rate: cost }
-                    if (cost != null && cost > 0 && item.markup_percentage != null) {
-                      patch.quoted_unit_rate = Math.round(cost * (1 + item.markup_percentage / 100) * 100) / 100
-                    }
-                    set(patch)
-                  }}
-                  disabled={locked} placeholder="0.00"
-                  className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
-                  style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Markup %</label>
-                <input type="number" value={item.markup_percentage ?? ''}
-                  onChange={e => {
-                    const markup = e.target.value === '' ? null : parseFloat(e.target.value)
-                    const patch: Partial<ItemState> = { markup_percentage: markup }
-                    if (markup != null && item.cost_unit_rate != null && item.cost_unit_rate > 0) {
-                      patch.quoted_unit_rate = Math.round(item.cost_unit_rate * (1 + markup / 100) * 100) / 100
-                    }
-                    set(patch)
-                  }}
-                  disabled={locked} placeholder="0"
-                  className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
-                  style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text }} />
-              </div>
-              {item.cost_unit_rate != null && (
-                <>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Profit / Unit</label>
-                    <div className="px-2.5 py-1.5 text-sm rounded-lg text-right font-medium"
-                      style={{ background: S.bg, border: `1px solid ${S.border}`, color: ((item.quoted_unit_rate ?? 0) - item.cost_unit_rate) >= 0 ? S.green : S.danger }}>
-                      {fmtR((item.quoted_unit_rate ?? 0) - item.cost_unit_rate)}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Margin %</label>
-                    <div className="px-2.5 py-1.5 text-sm rounded-lg text-right font-medium"
-                      style={{ background: S.bg, border: `1px solid ${S.border}`, color: (item.quoted_unit_rate ?? 0) > 0 ? (((item.quoted_unit_rate ?? 0) - item.cost_unit_rate) >= 0 ? S.green : S.danger) : S.muted }}>
-                      {(item.quoted_unit_rate ?? 0) > 0
-                        ? `${Math.round(((item.quoted_unit_rate - item.cost_unit_rate) / item.quoted_unit_rate) * 1000) / 10}%`
-                        : '—'}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -362,12 +278,14 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
           {section.items.length > 0 && (
             <div className="flex items-center gap-2 px-2 mb-1.5">
               <div style={{ width: 14 }} />
-              <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
-              {colHdr('Unit', 72, 'center')}
-              {colHdr('Qty', 90, 'right')}
-              {colHdr('Rate', 90, 'right')}
-              {colHdr('Total', 100, 'right')}
-              <div style={{ width: 52 }} />
+              <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 160 }}>Description</div>
+              {colHdr('Unit', 60, 'center')}
+              {colHdr('Qty', 72, 'right')}
+              {colHdr('Cost', 82, 'right')}
+              {colHdr('Mkup', 65, 'right')}
+              {colHdr('Labour', 82, 'right')}
+              {colHdr('Total', 92, 'right')}
+              <div style={{ width: 28 }} />
             </div>
           )}
           <Droppable droppableId={section.id} type="ITEM">
@@ -604,6 +522,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           p_portal_account_id: portalAccountId, p_description: item.description.trim(),
           p_unit: item.unit, p_item_type: item.item_type,
           p_default_unit_rate: item.quoted_unit_rate,
+          p_default_cost_rate: item.cost_unit_rate,
+          p_default_markup_percent: item.markup_percentage,
           p_default_labour_rate: item.labour_rate, p_default_material_rate: item.material_rate,
         })
       }
@@ -1245,12 +1165,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <div className="rounded-2xl p-3 mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <div className="flex items-center gap-2 px-2 mb-1.5">
                 <div style={{ width: 28 }} />
-                <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 180 }}>Description</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 72, textAlign: 'center' }}>Unit</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 90, textAlign: 'right' }}>Qty</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 90, textAlign: 'right' }}>Rate</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: 100, textAlign: 'right' }}>Total</div>
-                <div style={{ width: 52 }} />
+                <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 160 }}>Description</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-center" style={{ color: S.muted, width: 60 }}>Unit</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Qty</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Cost</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 65 }}>Mkup</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Labour</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 92 }}>Total</div>
+                <div style={{ width: 28 }} />
               </div>
               <Droppable droppableId="free" type="ITEM">
                 {(dropProvided) => (

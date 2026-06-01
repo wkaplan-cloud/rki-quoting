@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Search, Pencil, Trash2, X, Check, AlertCircle, BookOpen } from 'lucide-react'
-import type { ElecItemLibrary, ElecItemType } from '@/lib/elec-types'
+import type { ElecItemLibrary } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -22,15 +22,7 @@ export const PRICE_BOOK_CATEGORIES = [
   'Other',
 ]
 
-const UNITS = ['nr', 'm', 'm²', 'm³', 'kg', 'l', 'hr', 'lot', 'allow', 'item']
-
-const ITEM_TYPES: { value: ElecItemType; label: string }[] = [
-  { value: 'material',    label: 'Material' },
-  { value: 'labour',      label: 'Labour' },
-  { value: 'both',        label: 'Material + Labour' },
-  { value: 'preliminary', label: 'Preliminary' },
-  { value: 'subcontract', label: 'Subcontract' },
-]
+const UNITS = ['nr', 'm']
 
 function fmtR(n: number | null | undefined) {
   if (n == null) return '—'
@@ -38,13 +30,7 @@ function fmtR(n: number | null | undefined) {
 }
 
 function emptyForm() {
-  return { description: '', category: '', unit: 'nr', item_type: 'material' as ElecItemType, default_unit_rate: '', default_cost_rate: '' }
-}
-
-function calcMargin(sell: string, cost: string): string | null {
-  const s = parseFloat(sell), c = parseFloat(cost)
-  if (!isFinite(s) || !isFinite(c) || s <= 0) return null
-  return ((s - c) / s * 100).toFixed(1) + '%'
+  return { description: '', category: '', unit: 'nr', default_cost_rate: '', default_markup_percent: '', default_labour_rate: '' }
 }
 
 interface Props {
@@ -111,9 +97,9 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
       description: item.description,
       category: item.category ?? '',
       unit: item.unit ?? 'nr',
-      item_type: item.item_type,
-      default_unit_rate: item.default_unit_rate != null ? String(item.default_unit_rate) : '',
       default_cost_rate: item.default_cost_rate != null ? String(item.default_cost_rate) : '',
+      default_markup_percent: item.default_markup_percent != null ? String(item.default_markup_percent) : '',
+      default_labour_rate: item.default_labour_rate != null ? String(item.default_labour_rate) : '',
     })
     setSaveError('')
     setShowModal(true)
@@ -133,9 +119,9 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
       description: form.description.trim(),
       category: form.category || null,
       unit: form.unit || null,
-      item_type: form.item_type,
-      default_unit_rate: form.default_unit_rate ? parseFloat(form.default_unit_rate) : null,
       default_cost_rate: form.default_cost_rate ? parseFloat(form.default_cost_rate) : null,
+      default_markup_percent: form.default_markup_percent ? parseFloat(form.default_markup_percent) : null,
+      default_labour_rate: form.default_labour_rate ? parseFloat(form.default_labour_rate) : null,
     }
     try {
       if (editingItem) {
@@ -248,12 +234,12 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
 
                 {/* Column headers */}
                 <div className="grid px-5 py-2 text-[10px] font-semibold uppercase tracking-wider"
-                  style={{ gridTemplateColumns: '1fr 60px 80px 110px 110px 72px', color: S.muted, borderBottom: `1px solid ${S.border}` }}>
+                  style={{ gridTemplateColumns: '1fr 60px 110px 80px 110px 72px', color: S.muted, borderBottom: `1px solid ${S.border}` }}>
                   <span>Description</span>
                   <span>Unit</span>
-                  <span>Type</span>
                   <span className="text-right">Cost</span>
-                  <span className="text-right">Sell Rate</span>
+                  <span className="text-right">Markup</span>
+                  <span className="text-right">Labour</span>
                   <span />
                 </div>
 
@@ -262,19 +248,19 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
                   <div key={item.id}
                     className="grid items-center px-5 py-3"
                     style={{
-                      gridTemplateColumns: '1fr 60px 80px 110px 110px 72px',
+                      gridTemplateColumns: '1fr 60px 110px 80px 110px 72px',
                       borderTop: idx > 0 ? `1px solid ${S.border}` : undefined,
                     }}>
                     <span className="text-sm font-medium pr-4" style={{ color: S.text }}>{item.description}</span>
                     <span className="text-sm" style={{ color: S.muted }}>{item.unit ?? '—'}</span>
-                    <span className="text-xs" style={{ color: S.muted }}>
-                      {ITEM_TYPES.find(t => t.value === item.item_type)?.label ?? item.item_type}
-                    </span>
                     <span className="text-sm text-right" style={{ color: item.default_cost_rate != null ? S.muted : S.border }}>
                       {fmtR(item.default_cost_rate)}
                     </span>
-                    <span className="text-sm text-right font-medium" style={{ color: item.default_unit_rate != null ? S.text : S.muted }}>
-                      {fmtR(item.default_unit_rate)}
+                    <span className="text-sm text-right font-medium" style={{ color: item.default_markup_percent != null ? S.text : S.border }}>
+                      {item.default_markup_percent != null ? `${item.default_markup_percent}%` : '—'}
+                    </span>
+                    <span className="text-sm text-right" style={{ color: item.default_labour_rate != null ? S.muted : S.border }}>
+                      {fmtR(item.default_labour_rate)}
                     </span>
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(item)}
@@ -339,26 +325,24 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Type</label>
-                <select value={form.item_type} onChange={e => setForm(f => ({ ...f, item_type: e.target.value as ElecItemType }))}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
-                  {ITEM_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Cost Rate (R)</label>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Cost (R)</label>
                   <input type="number" value={form.default_cost_rate} onChange={e => setForm(f => ({ ...f, default_cost_rate: e.target.value }))}
                     placeholder="0.00" min="0" step="0.01"
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none text-right"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Sell Rate (R)</label>
-                  <input type="number" value={form.default_unit_rate} onChange={e => setForm(f => ({ ...f, default_unit_rate: e.target.value }))}
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Markup %</label>
+                  <input type="number" value={form.default_markup_percent} onChange={e => setForm(f => ({ ...f, default_markup_percent: e.target.value }))}
+                    placeholder="0" min="0" step="0.1"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none text-right"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Labour (R)</label>
+                  <input type="number" value={form.default_labour_rate} onChange={e => setForm(f => ({ ...f, default_labour_rate: e.target.value }))}
                     placeholder="0.00" min="0" step="0.01"
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none text-right"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
@@ -366,15 +350,16 @@ export function PriceBookClient({ portalAccountId, initialItems }: Props) {
               </div>
 
               {(() => {
-                const margin = calcMargin(form.default_unit_rate, form.default_cost_rate)
-                if (!margin) return null
-                const m = parseFloat(margin)
-                const color = m >= 20 ? S.green : m >= 0 ? '#D97706' : S.danger
+                const cost = parseFloat(form.default_cost_rate)
+                const markup = parseFloat(form.default_markup_percent)
+                const labour = parseFloat(form.default_labour_rate)
+                if (!isFinite(cost) || cost <= 0) return null
+                const sell = cost * (1 + (isFinite(markup) ? markup : 0) / 100) + (isFinite(labour) ? labour : 0)
                 return (
                   <div className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium"
                     style={{ background: S.input, border: `1px solid ${S.border}` }}>
-                    <span style={{ color: S.muted }}>Margin</span>
-                    <span style={{ color }}>{margin}</span>
+                    <span style={{ color: S.muted }}>Sell rate</span>
+                    <span style={{ color: S.accent }}>{fmtR(sell)}</span>
                   </div>
                 )
               })()}
