@@ -252,10 +252,6 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
             <User size={11} className={`${labelCls} shrink-0 !pr-2`} style={{ color: S.textMuted }} />
           </Link>
 
-          {hasQuoting && (
-            <NavLink href="/supplier-portal/quoting/settings" label="Settings" icon={Settings} />
-          )}
-
           <button
             onClick={handleSignOut}
             className="flex items-center h-8 mx-2 rounded-lg w-[calc(100%-16px)] transition-colors duration-150"

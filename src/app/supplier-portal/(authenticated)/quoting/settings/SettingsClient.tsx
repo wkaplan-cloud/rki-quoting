@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Zap, Link2, Link2Off, RefreshCw, ArrowUpRight } from 'lucide-react'
 import type { ElecSettings } from '@/lib/elec-types'
@@ -192,8 +191,7 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
   }
 
   return (
-    <div className="min-h-screen py-8 px-4" style={{ background: S.bg }}>
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
 
         {/* Upgrade success banner */}
         {justUpgraded && (
@@ -205,21 +203,6 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
             </div>
           </div>
         )}
-
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: S.text }}>Settings</h1>
-          <p className="text-sm mt-1" style={{ color: S.muted }}>Default values and numbering for your quotes. Company documents and banking details live in your Profile.</p>
-          <div className="flex gap-1 mt-3 p-1 rounded-xl w-fit" style={{ background: '#F1F5F9' }}>
-            <Link href="/supplier-portal/profile"
-              className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors"
-              style={{ color: '#6B7280' }}>
-              Profile
-            </Link>
-            <span className="px-4 py-1.5 rounded-lg text-sm font-semibold" style={{ background: '#FFFFFF', color: '#18181B', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>
-              Settings
-            </span>
-          </div>
-        </div>
 
         {/* Quote Defaults */}
         <Section title="Quote Defaults">
@@ -372,8 +355,6 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
           >
             {saving ? 'Saving…' : 'Save Settings'}
           </button>
-        </div>
-      </div>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { SupplierProfileClient } from './SupplierProfileClient'
 import type { PortalOrgMember } from '@/lib/elec-types'
+import type { ElecSettings } from '@/lib/elec-types'
 
 const CATEGORY_OPTIONS = [
   'Upholstery', 'Curtains & Soft Furnishings', 'Furniture Manufacturing',
@@ -13,7 +14,10 @@ const CATEGORY_OPTIONS = [
   'Outdoor Furniture', 'Fabrics & Textiles', 'Accessories & Decor', 'Other',
 ]
 
-export default async function SupplierProfilePage() {
+export default async function SupplierProfilePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const params = await searchParams
+  const initialTab: 'profile' | 'settings' = params.tab === 'settings' ? 'settings' : 'profile'
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
@@ -21,7 +25,6 @@ export default async function SupplierProfilePage() {
   const base = await resolvePortalAccount(user.id)
   if (!base) redirect('/supplier-portal/login')
 
-  // Fetch full profile fields by account ID (resolvePortalAccount omits contact/address/etc.)
   const { data: account } = await supabaseAdmin
     .from('supplier_portal_accounts')
     .select('id, email, company_name, contact_name, phone, address, categories, description, website, logo_url, plan, subscription_status, trial_ends_at')
@@ -36,7 +39,7 @@ export default async function SupplierProfilePage() {
   const [{ data: elecSettings }, { data: orgMembers }] = await Promise.all([
     supabaseAdmin
       .from('elec_settings')
-      .select('cidb_registration_number, company_registration_number, vat_registration_number, bank_name, bank_account_number, bank_branch_code, bank_account_type')
+      .select('*')
       .eq('portal_account_id', account.id)
       .maybeSingle(),
     hasQuoting
@@ -52,6 +55,7 @@ export default async function SupplierProfilePage() {
     <SupplierProfileClient
       portalAccountId={account.id}
       hasQuoting={hasQuoting}
+      initialTab={initialTab}
       account={{
         email: account.email,
         company_name: account.company_name ?? '',
@@ -63,7 +67,7 @@ export default async function SupplierProfilePage() {
         website: account.website ?? '',
         logo_url: (account as any).logo_url ?? null,
       }}
-      elecSettings={elecSettings ?? null}
+      elecSettings={(elecSettings as ElecSettings | null) ?? null}
       categoryOptions={CATEGORY_OPTIONS}
       orgMembers={hasQuoting ? ((orgMembers ?? []) as PortalOrgMember[]) : null}
     />

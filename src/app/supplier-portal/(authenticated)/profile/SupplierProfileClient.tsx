@@ -1,15 +1,16 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
 import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2 } from 'lucide-react'
-import type { PortalOrgMember } from '@/lib/elec-types'
+import type { PortalOrgMember, ElecSettings } from '@/lib/elec-types'
+import { SettingsClient } from '../quoting/settings/SettingsClient'
 
 interface Props {
   portalAccountId: string
   hasQuoting: boolean
+  initialTab: 'profile' | 'settings'
   account: {
     email: string
     company_name: string
@@ -21,15 +22,7 @@ interface Props {
     website: string
     logo_url: string | null
   }
-  elecSettings: {
-    cidb_registration_number: string | null
-    company_registration_number: string | null
-    vat_registration_number: string | null
-    bank_name: string | null
-    bank_account_number: string | null
-    bank_branch_code: string | null
-    bank_account_type: string | null
-  } | null
+  elecSettings: ElecSettings | null
   categoryOptions: string[]
   orgMembers: PortalOrgMember[] | null
 }
@@ -50,9 +43,15 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, hasQuoting, account, elecSettings, categoryOptions, orgMembers }: Props) {
+export function SupplierProfileClient({ portalAccountId, hasQuoting, initialTab, account, elecSettings, categoryOptions, orgMembers }: Props) {
   const router = useRouter()
   const supabase = createClient()
+  const [tab, setTab] = useState<'profile' | 'settings'>(initialTab)
+
+  function switchTab(t: 'profile' | 'settings') {
+    setTab(t)
+    router.replace(`/supplier-portal/profile${t === 'settings' ? '?tab=settings' : ''}`, { scroll: false })
+  }
 
   // Business details
   const [companyName, setCompanyName] = useState(account.company_name)
@@ -262,21 +261,36 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, account, el
   return (
     <div className="space-y-7">
       <div>
-        <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>Profile</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>Your business account details</p>
+        <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>
+          {tab === 'settings' ? 'Settings' : 'Profile'}
+        </h1>
+        <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>
+          {tab === 'settings' ? 'Default values and configuration for your quoting.' : 'Your business account details'}
+        </p>
         {hasQuoting && (
           <div className="flex gap-1 mt-3 p-1 rounded-xl w-fit" style={{ background: '#F1F5F9' }}>
-            <span className="px-4 py-1.5 rounded-lg text-sm font-semibold" style={{ background: '#FFFFFF', color: '#18181B', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>
-              Profile
-            </span>
-            <Link href="/supplier-portal/quoting/settings"
+            <button
+              onClick={() => switchTab('profile')}
               className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors"
-              style={{ color: '#6B7280' }}>
+              style={tab === 'profile' ? { background: '#FFFFFF', color: '#18181B', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: '#6B7280' }}
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => switchTab('settings')}
+              className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+              style={tab === 'settings' ? { background: '#FFFFFF', color: '#18181B', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: '#6B7280' }}
+            >
               Settings
-            </Link>
+            </button>
           </div>
         )}
       </div>
+
+      {tab === 'settings' ? (
+        <SettingsClient portalAccountId={portalAccountId} companyName={account.company_name} settings={elecSettings} />
+      ) : (
+      <>
 
       <form onSubmit={handleSave} className="space-y-5">
         {/* Read-only email */}
@@ -625,6 +639,9 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, account, el
           </div>
         )}
       </div>
+
+      </>
+      )}
     </div>
   )
 }
