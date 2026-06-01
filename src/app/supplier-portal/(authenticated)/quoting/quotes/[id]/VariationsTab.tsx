@@ -794,47 +794,89 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                   <p className="text-sm font-medium" style={{ color: S.text }}>{vo.description}</p>
                   <p className="text-sm font-bold mt-0.5" style={{ color: S.accent }}>{fmtR(vo.value)}</p>
 
-                  {voItems.length > 0 && (
-                    <div className="mt-2 rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-                      <div className="grid px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
-                        style={{ gridTemplateColumns: '1fr 45px 55px 90px 90px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)' }}>
-                        <span>Item</span>
-                        <span className="text-center">Unit</span>
-                        <span className="text-right">Qty</span>
-                        <span className="text-right">Rate</span>
-                        <span className="text-right">Total</span>
-                      </div>
-                      {voItems.map(li => {
-                        const lineTotal = li.quoted_quantity * li.quoted_unit_rate + (li.labour_rate ?? 0)
-                        return (
-                          <div key={li.id} className="grid px-3 py-1.5 text-xs"
-                            style={{ gridTemplateColumns: '1fr 45px 55px 90px 90px', gap: '6px', borderTop: `1px solid ${S.border}` }}>
-                            <span className="truncate" style={{ color: S.text }}>{li.description}</span>
-                            <span className="text-center" style={{ color: S.muted }}>{li.unit ?? '—'}</span>
-                            <span className="text-right font-mono" style={{ color: S.muted }}>{li.quoted_quantity}</span>
-                            <span className="text-right font-mono" style={{ color: S.muted }}>{fmtR(li.quoted_unit_rate)}</span>
-                            <span className="text-right font-mono font-semibold" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
+                  {voItems.length > 0 && (() => {
+                    const hasCost = voItems.some(li => li.cost_unit_rate != null)
+                    let totalSell = 0, totalCost = 0
+                    return (
+                      <div className="mt-3 rounded-xl overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+                        {/* Header */}
+                        <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
+                          style={{ gridTemplateColumns: `1fr 40px 45px${hasCost ? ' 75px 52px 75px' : ''} 85px${hasCost ? ' 75px' : ''}`, gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.05)', borderBottom: `1px solid ${S.border}` }}>
+                          <span>Item</span>
+                          <span className="text-center">Unit</span>
+                          <span className="text-right">Qty</span>
+                          {hasCost && <><span className="text-right">Cost</span><span className="text-right">Mkup</span><span className="text-right">Labour</span></>}
+                          <span className="text-right">Total</span>
+                          {hasCost && <span className="text-right" style={{ color: S.green }}>Profit</span>}
+                        </div>
+                        {/* Rows */}
+                        {voItems.map((li, idx) => {
+                          const lineTotal = li.quoted_quantity * li.quoted_unit_rate + (li.labour_rate ?? 0)
+                          const lineCost = li.cost_unit_rate != null ? li.quoted_quantity * li.cost_unit_rate + (li.labour_rate ?? 0) : null
+                          const lineProfit = lineCost != null ? lineTotal - lineCost : null
+                          totalSell += lineTotal
+                          if (lineCost != null) totalCost += lineCost
+                          return (
+                            <div key={li.id} className="grid px-3 py-2 text-xs items-center"
+                              style={{ gridTemplateColumns: `1fr 40px 45px${hasCost ? ' 75px 52px 75px' : ''} 85px${hasCost ? ' 75px' : ''}`, gap: '6px', borderTop: idx > 0 ? `1px solid ${S.border}` : undefined }}>
+                              <span className="font-medium truncate" style={{ color: S.text }}>{li.description}</span>
+                              <span className="text-center" style={{ color: S.muted }}>{li.unit ?? '—'}</span>
+                              <span className="text-right tabular-nums" style={{ color: S.muted }}>{li.quoted_quantity}</span>
+                              {hasCost && (
+                                <>
+                                  <span className="text-right tabular-nums text-[11px]" style={{ color: S.muted }}>
+                                    {li.cost_unit_rate != null ? fmtR(li.cost_unit_rate) : '—'}
+                                  </span>
+                                  <span className="text-right tabular-nums text-[11px]" style={{ color: S.muted }}>
+                                    {li.markup_percentage != null ? `${li.markup_percentage}%` : '—'}
+                                  </span>
+                                  <span className="text-right tabular-nums text-[11px]" style={{ color: S.muted }}>
+                                    {li.labour_rate ? fmtR(li.labour_rate) : '—'}
+                                  </span>
+                                </>
+                              )}
+                              <span className="text-right tabular-nums font-semibold" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
+                              {hasCost && (
+                                <span className="text-right tabular-nums font-semibold text-[11px]"
+                                  style={{ color: lineProfit != null ? (lineProfit >= 0 ? S.green : S.danger) : S.muted }}>
+                                  {lineProfit != null ? fmtR(lineProfit) : '—'}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                        {/* Summary row */}
+                        {hasCost && (
+                          <div className="px-3 py-2.5 flex items-center justify-between flex-wrap gap-3"
+                            style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+                            <div className="flex items-center gap-4 text-xs flex-wrap">
+                              <span style={{ color: S.muted }}>Cost <strong style={{ color: S.text }}>{fmtR(totalCost)}</strong></span>
+                              <span style={{ color: S.muted }}>Profit <strong style={{ color: totalSell - totalCost >= 0 ? S.green : S.danger }}>{fmtR(totalSell - totalCost)}</strong></span>
+                              <span style={{ color: S.muted }}>Margin <strong style={{ color: totalSell - totalCost >= 0 ? S.green : S.danger }}>{totalSell > 0 ? `${Math.round((totalSell - totalCost) / totalSell * 1000) / 10}%` : '—'}</strong></span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs">
+                              <span style={{ color: S.muted }}>ex VAT <strong style={{ color: S.text }}>{fmtR(totalSell)}</strong></span>
+                              <span style={{ color: S.muted }}>VAT <strong style={{ color: S.text }}>{fmtR(totalSell * vatRate / 100)}</strong></span>
+                              <span className="text-sm font-bold" style={{ color: S.accent }}>Total {fmtR(totalSell * (1 + vatRate / 100))}</span>
+                            </div>
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                        )}
+                        {!hasCost && (
+                          <div className="px-3 py-2.5 flex justify-end gap-4 text-xs"
+                            style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+                            <span style={{ color: S.muted }}>ex VAT <strong style={{ color: S.text }}>{fmtR(totalSell)}</strong></span>
+                            <span style={{ color: S.muted }}>VAT <strong style={{ color: S.text }}>{fmtR(totalSell * vatRate / 100)}</strong></span>
+                            <span className="text-sm font-bold" style={{ color: S.accent }}>Total {fmtR(totalSell * (1 + vatRate / 100))}</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
 
-                  {vo.requested_by && <p className="text-xs mt-1.5" style={{ color: S.muted }}>Requested by: {vo.requested_by}</p>}
+                  {vo.requested_by && <p className="text-xs mt-2" style={{ color: S.muted }}>Requested by: {vo.requested_by}</p>}
                   {vo.notes && <p className="text-xs mt-0.5 italic" style={{ color: S.muted }}>{vo.notes}</p>}
                   {vo.approved_date && <p className="text-xs mt-0.5" style={{ color: S.green }}>Approved {vo.approved_date}</p>}
                   {vo.rejection_notes && <p className="text-xs mt-0.5 italic" style={{ color: S.danger }}>Reason: {vo.rejection_notes}</p>}
-
-                  {vo.cost_value != null && vo.cost_value > 0 && (() => {
-                    const profit = vo.value - vo.cost_value
-                    const margin = vo.value > 0 ? Math.round(profit / vo.value * 1000) / 10 : 0
-                    const color = profit >= 0 ? S.green : S.danger
-                    return (
-                      <p className="text-xs mt-1" style={{ color }}>
-                        Cost: {fmtR(vo.cost_value)} · Profit: {fmtR(profit)} · Margin: {margin}%
-                      </p>
-                    )
-                  })()}
                 </div>
 
                 {/* Inline invoice form */}
