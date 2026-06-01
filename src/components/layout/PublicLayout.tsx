@@ -14,6 +14,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             <Link href="/pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
             <Link href="/faq" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">FAQ</Link>
             <Link href="/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
+            <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
             <Link href="/supplier-portal" className="hidden sm:block px-3 py-2 text-sm font-medium rounded-lg border border-[#D8D3C8] text-[#9A7B4F] hover:bg-[#9A7B4F]/10 transition-colors">
               Supplier Portal
             </Link>
@@ -36,6 +37,8 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
           <div className="flex items-center gap-5">
             <Link href="/faq" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">FAQ</Link>
+            <Link href="/trades" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Trades</Link>
+            <Link href="/supplier-portal" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Supplier Portal</Link>
             <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
             <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
           </div>
