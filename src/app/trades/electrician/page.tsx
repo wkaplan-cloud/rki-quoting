@@ -176,13 +176,12 @@ export default function ElectricianLandingPage() {
             </div>
 
             {/* Electrician illustration */}
-            <div className="flex-shrink-0 w-full lg:w-[420px] flex items-center justify-center rounded-2xl" style={{ background: '#F5F2EC' }}>
+            <div className="flex-shrink-0 w-full lg:w-[420px] flex items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/electrician-v2.webp"
+                src="/electrician-v3.webp"
                 alt="Electrician with tools and toolbox"
                 className="w-full max-w-[420px] object-contain"
-                style={{ mixBlendMode: 'multiply' }}
               />
             </div>
 
