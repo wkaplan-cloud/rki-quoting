@@ -17,6 +17,7 @@ const CATEGORY_OPTIONS = [
 export default async function SupplierProfilePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const params = await searchParams
   const initialTab: 'profile' | 'settings' = params.tab === 'settings' ? 'settings' : 'profile'
+  const justUpgraded = params.upgraded === '1'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -56,6 +57,7 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
       portalAccountId={account.id}
       hasQuoting={hasQuoting}
       initialTab={initialTab}
+      justUpgraded={justUpgraded}
       account={{
         email: account.email,
         company_name: account.company_name ?? '',

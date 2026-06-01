@@ -11,6 +11,7 @@ interface Props {
   portalAccountId: string
   hasQuoting: boolean
   initialTab: 'profile' | 'settings'
+  justUpgraded: boolean
   account: {
     email: string
     company_name: string
@@ -43,7 +44,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, hasQuoting, initialTab, account, elecSettings, categoryOptions, orgMembers }: Props) {
+export function SupplierProfileClient({ portalAccountId, hasQuoting, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'settings'>(initialTab)
@@ -288,7 +289,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, initialTab,
       </div>
 
       {tab === 'settings' ? (
-        <SettingsClient portalAccountId={portalAccountId} companyName={account.company_name} settings={elecSettings} />
+        <SettingsClient portalAccountId={portalAccountId} companyName={account.company_name} settings={elecSettings} justUpgraded={justUpgraded} />
       ) : (
       <>
 

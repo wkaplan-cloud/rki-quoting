@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Zap, Link2, Link2Off, RefreshCw, ArrowUpRight } from 'lucide-react'
 import type { ElecSettings } from '@/lib/elec-types'
@@ -23,6 +22,7 @@ interface Props {
   portalAccountId: string
   companyName: string
   settings: ElecSettings | null
+  justUpgraded?: boolean
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -79,9 +79,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export function SettingsClient({ portalAccountId, companyName, settings }: Props) {
-  const searchParams = useSearchParams()
-  const justUpgraded = searchParams.get('upgraded') === '1'
+export function SettingsClient({ portalAccountId, companyName, settings, justUpgraded = false }: Props) {
   const supabase = createClient()
 
   // Defaults
@@ -355,6 +353,7 @@ export function SettingsClient({ portalAccountId, companyName, settings }: Props
           >
             {saving ? 'Saving…' : 'Save Settings'}
           </button>
+        </div>
     </div>
   )
 }
