@@ -113,7 +113,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, suppl
 
       {/* Sidebar */}
       <aside
-        className={`group flex flex-col h-screen fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
+        className={`group flex flex-col h-[100dvh] fixed left-0 top-0 z-50 overflow-hidden md:transition-[width] md:duration-200
           w-52 ${desktopExpanded ? 'md:w-52' : 'md:w-12 md:hover:w-52'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
         style={{ background: S.sidebar, borderRight: `1px solid ${S.sidebarBorder}` }}
