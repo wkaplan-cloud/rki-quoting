@@ -362,6 +362,7 @@ export interface ElecTimePunch {
   created_at: string
   // Joined
   staff?: ElecStaff
+  job?: { id: string; job_number: string; title: string } | null
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────

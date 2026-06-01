@@ -28,7 +28,7 @@ export default async function StaffPage() {
       .order('created_at'),
     supabaseAdmin
       .from('elec_time_punches')
-      .select('*, staff:elec_staff(id, name, color, role)')
+      .select('*, staff:elec_staff(id, name, color, role), job:elec_job_cards(id, job_number, title)')
       .eq('portal_account_id', account.id)
       .gte('punched_at', since)
       .order('punched_at', { ascending: false }),

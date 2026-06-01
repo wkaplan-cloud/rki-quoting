@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 
@@ -490,31 +490,43 @@ export function StaffManager({ initialStaff, punches }: Props) {
                       )}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {staffPunches.sort((a, b) => a.punched_at.localeCompare(b.punched_at)).map(p => (
-                        <div key={p.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                      {staffPunches.sort((a, b) => a.punched_at.localeCompare(b.punched_at)).map(p => {
+                        const job = !Array.isArray(p.job) ? p.job : null
+                        return (
+                        <div key={p.id} className="flex flex-col gap-1 px-2.5 py-1.5 rounded-lg"
                           style={{ background: p.punch_type === 'clock_in' ? 'rgba(22,163,74,0.06)' : 'rgba(220,38,38,0.06)', border: `1px solid ${p.punch_type === 'clock_in' ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.2)'}` }}>
-                          {p.punch_type === 'clock_in'
-                            ? <LogIn size={10} style={{ color: S.green }} />
-                            : <LogOut size={10} style={{ color: S.danger }} />}
-                          <span className="text-xs font-semibold" style={{ color: p.punch_type === 'clock_in' ? S.green : S.danger }}>
-                            {fmtTime(p.punched_at)}
-                          </span>
-                          {p.latitude && p.longitude && (
-                            <a
-                              href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
-                              target="_blank" rel="noopener noreferrer"
-                              onClick={e => e.stopPropagation()}
-                              className="flex items-center gap-0.5"
-                              style={{ color: S.accent, textDecoration: 'none' }}
-                              title={`${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`}>
-                              <MapPin size={9} />
-                              <span className="text-[9px] font-medium">
-                                {geoAddresses[`${p.latitude},${p.longitude}`] ?? 'GPS'}
-                              </span>
-                            </a>
+                          <div className="flex items-center gap-1.5">
+                            {p.punch_type === 'clock_in'
+                              ? <LogIn size={10} style={{ color: S.green }} />
+                              : <LogOut size={10} style={{ color: S.danger }} />}
+                            <span className="text-xs font-semibold" style={{ color: p.punch_type === 'clock_in' ? S.green : S.danger }}>
+                              {fmtTime(p.punched_at)}
+                            </span>
+                            {p.latitude && p.longitude && (
+                              <a
+                                href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                                target="_blank" rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="flex items-center gap-0.5"
+                                style={{ color: S.accent, textDecoration: 'none' }}
+                                title={`${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`}>
+                                <MapPin size={9} />
+                                <span className="text-[9px] font-medium">
+                                  {geoAddresses[`${p.latitude},${p.longitude}`] ?? 'GPS'}
+                                </span>
+                              </a>
+                            )}
+                          </div>
+                          {job && (
+                            <div className="flex items-center gap-1" style={{ color: S.muted }}>
+                              <Briefcase size={9} />
+                              <span className="text-[9px] font-medium font-mono">{job.job_number}</span>
+                              <span className="text-[9px] truncate max-w-[120px]">{job.title}</span>
+                            </div>
                           )}
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )
