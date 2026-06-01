@@ -170,8 +170,6 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, notif
           {/* Business tools */}
           {hasQuoting ? (
             <>
-              <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
-
               <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
               <NavLink href="/supplier-portal/quoting/quotes"    label="Quotes"    icon={FileText}        badge="Long term" />
               <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />
