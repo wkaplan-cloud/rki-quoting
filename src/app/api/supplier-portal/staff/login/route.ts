@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { hashStaffPin, staffAuthEmail, staffAuthPassword } from '../../quoting/staff/route'
+import { hashStaffPin, staffAuthEmail, staffAuthPassword } from '@/lib/staff-auth'
 
 export async function POST(req: NextRequest) {
   try {

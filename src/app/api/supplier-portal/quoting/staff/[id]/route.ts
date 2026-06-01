@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { hashStaffPin, staffAuthEmail, staffAuthPassword } from '../route'
+import { hashStaffPin, staffAuthEmail, staffAuthPassword } from '@/lib/staff-auth'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
