@@ -14,6 +14,9 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             <Link href="/pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
             <Link href="/faq" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">FAQ</Link>
             <Link href="/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
+            <Link href="/supplier-portal" className="hidden sm:block px-3 py-2 text-sm font-medium rounded-lg border border-[#D8D3C8] text-[#9A7B4F] hover:bg-[#9A7B4F]/10 transition-colors">
+              Supplier Portal
+            </Link>
             <Link href="/signup" className="px-3 py-2 sm:px-4 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Get started free
             </Link>

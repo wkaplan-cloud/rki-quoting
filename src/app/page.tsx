@@ -186,7 +186,7 @@ export default function LandingPage() {
               </ul>
               <Link
                 href="/supplier-portal"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#9A7B4F] hover:text-[#C4A46B] transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#1A1A18] text-[#F5F2EC] hover:bg-[#9A7B4F] transition-colors"
               >
                 Access Supplier Portal <ChevronRight size={14} />
               </Link>
