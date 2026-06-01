@@ -14,7 +14,7 @@ const CATEGORY_OPTIONS = [
   'Outdoor Furniture', 'Fabrics & Textiles', 'Accessories & Decor', 'Other',
 ]
 
-export default async function SupplierProfilePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function SupplierProfilePage({ searchParams }: { searchParams: Promise<{ tab?: string; upgraded?: string }> }) {
   const params = await searchParams
   const initialTab: 'profile' | 'settings' = params.tab === 'settings' ? 'settings' : 'profile'
   const justUpgraded = params.upgraded === '1'
