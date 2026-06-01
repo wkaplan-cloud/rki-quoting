@@ -178,7 +178,7 @@ export default function SupplierPortalLandingPage() {
             </div>
             <h3 className="text-base font-bold mb-1" style={{ color: '#18181B' }}>Manufacturer</h3>
             <p className="text-xs mb-4 leading-relaxed" style={{ color: '#71717A' }}>
-              Connect directly with interior design studios on QuotingHub. Receive price requests, respond to specs, and publish your catalogue — with a simple 1% commission on confirmed orders placed through the platform.
+              Free to join. Receive price requests from interior design studios, respond to specs, and publish your catalogue — no monthly fee. A simple 1% commission applies only on orders confirmed through the platform.
             </p>
             <p className="text-sm font-medium" style={{ color: '#A1A1AA' }}>In development</p>
           </div>
