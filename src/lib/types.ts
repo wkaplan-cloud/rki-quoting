@@ -78,6 +78,7 @@ export interface LineItem {
   row_type: 'item' | 'section'
   indent_level: number
   received: boolean
+  highlight_color: string | null
   fabric_image_url: string | null
   unit: string | null
   lead_time_weeks: number | null

@@ -297,10 +297,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     setNewlyAddedId(data.id)
   }, [projectId, lineItems, onChange, supabase])
 
-  const toggleReceived = useCallback(async (id: string, current: boolean) => {
-    const received = !current
-    onChange(lineItems.map(item => item.id === id ? { ...item, received } : item))
-    await supabase.from('line_items').update({ received }).eq('id', id)
+  const cycleHighlight = useCallback(async (id: string, current: string | null) => {
+    const next = current === null ? 'blue' : current === 'blue' ? 'green' : null
+    const received = next !== null
+    onChange(lineItems.map(item => item.id === id ? { ...item, highlight_color: next, received } : item))
+    await supabase.from('line_items').update({ highlight_color: next, received }).eq('id', id)
   }, [lineItems, onChange, supabase])
 
   const handleFabricSelect = useCallback(async (lineItemId: string, fabric: {
@@ -490,10 +491,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   onDragEnter={!locked ? () => { dragOver.current = index } : undefined}
                   onDragEnd={!locked ? handleDragEnd : undefined}
                   onDragOver={!locked ? e => e.preventDefault() : undefined}
-                  className={`border-b border-[#F2EFE9] last:border-0 group transition-colors ${item.received ? 'bg-blue-50 hover:bg-blue-50' : 'hover:bg-[#FDFCF9]'}`}
+                  className={`border-b border-[#F2EFE9] last:border-0 group transition-colors ${item.highlight_color === 'blue' ? 'bg-blue-50 hover:bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50 hover:bg-green-50' : 'hover:bg-[#FDFCF9]'}`}
                 >
                   {/* Drag handle */}
-                  <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
+                  <td className={`px-1.5 py-1 sticky left-0 z-10 text-[#D8D3C8] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'} ${isLinked ? 'border-l-[3px] border-[#9A7B4F]' : isParent ? 'border-l-[3px] border-[#9A7B4F]/40' : 'border-l-[3px] border-transparent'} ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
                     {!locked && (
                       <div className="relative flex items-center justify-center w-[14px] h-[14px]">
                         <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
@@ -509,17 +510,19 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Received checkbox */}
-                  <td className={`px-1.5 py-1 sticky left-6 z-10 ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
+                  <td className={`px-1.5 py-1 sticky left-6 z-10 ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'}`}>
                     <button
-                      onClick={() => toggleReceived(item.id, item.received)}
-                      title={item.received ? 'Mark as not received' : 'Mark as received'}
+                      onClick={() => cycleHighlight(item.id, item.highlight_color)}
+                      title={item.highlight_color === 'blue' ? 'Mark as not received' : 'Mark as received'}
                       className={`w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer flex-shrink-0
-                        ${item.received
+                        ${item.highlight_color === 'blue'
                           ? 'bg-blue-500 border-blue-500 text-white'
+                          : item.highlight_color === 'green'
+                          ? 'bg-green-500 border-green-500 text-white'
                           : 'border-[#D8D3C8] hover:border-blue-400 opacity-0 group-hover:opacity-100'
                         }`}
                     >
-                      {item.received && (
+                      {item.highlight_color && (
                         <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
                           <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
@@ -528,7 +531,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Item name — with link toggle + dimensions/colour */}
-                  <td className={COL + ` w-[200px] min-w-[200px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.received ? 'bg-blue-50' : 'bg-[#FDFCFB]'}`}>
+                  <td className={COL + ` w-[200px] min-w-[200px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'}`}>
                     <div className={isLinked ? 'pl-4' : ''}>
                       <div className="flex items-center gap-1">
                         {isLinked && (

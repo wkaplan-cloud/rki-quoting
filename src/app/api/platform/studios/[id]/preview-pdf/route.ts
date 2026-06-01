@@ -49,6 +49,7 @@ const NULL_EXTRAS = {
   fabric_image_url: null, unit: null, lead_time_weeks: null, lead_time_days: null,
   dimensions: null, colour_finish: null, twinbru_product_id: null, twinbru_cost_price: null,
   fabric_width_cm: null, parent_item_id: null, created_at: new Date().toISOString(),
+  highlight_color: null,
 }
 
 const MOCK_LINE_ITEMS: LineItem[] = [

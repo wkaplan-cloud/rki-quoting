@@ -818,7 +818,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               }
               const c = computed.find(x => x.id === item.id)
               return (
-                <div key={item.id} className={`bg-white border rounded-lg px-4 py-3 ${item.received ? 'border-blue-200 bg-blue-50' : 'border-[#D8D3C8]'}`}>
+                <div key={item.id} className={`bg-white border rounded-lg px-4 py-3 ${item.highlight_color === 'blue' ? 'border-blue-200 bg-blue-50' : item.highlight_color === 'green' ? 'border-green-200 bg-green-50' : 'border-[#D8D3C8]'}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[#2C2C2A] truncate">{item.item_name || '—'}</p>
@@ -826,8 +826,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                       {item.supplier_name && <p className="text-[10px] text-[#C4A46B] mt-1 truncate">{item.supplier_name}</p>}
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      {item.received && (
+                      {item.highlight_color === 'blue' && (
                         <span className="text-[10px] font-medium text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">Received</span>
+                      )}
+                      {item.highlight_color === 'green' && (
+                        <span className="text-[10px] font-medium text-green-600 bg-green-100 px-1.5 py-0.5 rounded">Received</span>
                       )}
                       <p className="text-sm font-semibold text-[#2C2C2A]">{formatZAR(c?.total_price ?? 0)}</p>
                       <p className="text-[10px] text-[#8A877F]">qty {item.quantity ?? 1}</p>
