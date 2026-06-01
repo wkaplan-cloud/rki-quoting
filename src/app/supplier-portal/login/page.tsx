@@ -71,15 +71,24 @@ function SupplierLoginForm() {
     const pin = staffPin.join('')
     if (!staffUsername.trim() || pin.length !== 4) { setStaffError('Enter your username and 4-digit PIN'); return }
     setStaffLoading(true); setStaffError('')
-    const res = await fetch('/api/supplier-portal/staff/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: staffUsername.trim(), pin }),
-    })
-    const data = await res.json() as { access_token?: string; refresh_token?: string; error?: string }
-    if (!res.ok || !data.access_token) { setStaffError(data.error ?? 'Invalid username or PIN'); setStaffLoading(false); return }
-    await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token! })
-    router.push('/supplier-portal/staff-home')
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+      const res = await fetch('/api/supplier-portal/staff/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: staffUsername.trim(), pin }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      const data = await res.json() as { access_token?: string; refresh_token?: string; error?: string }
+      if (!res.ok || !data.access_token) { setStaffError(data.error ?? 'Invalid username or PIN'); setStaffLoading(false); return }
+      await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token! })
+      router.push('/supplier-portal/staff-home')
+    } catch {
+      setStaffError('Connection error — please try again')
+      setStaffLoading(false)
+    }
   }
 
   function handlePinDigit(index: number, value: string) {
