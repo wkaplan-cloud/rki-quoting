@@ -20,7 +20,7 @@ export default async function StaffPage() {
 
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  const [{ data: staff }, { data: punches }] = await Promise.all([
+  const [{ data: staff }, { data: rawPunches }] = await Promise.all([
     supabaseAdmin
       .from('elec_staff')
       .select('*')
@@ -28,16 +28,28 @@ export default async function StaffPage() {
       .order('created_at'),
     supabaseAdmin
       .from('elec_time_punches')
-      .select('*, staff:elec_staff(id, name, color, role), job:elec_job_cards(id, job_number, title)')
+      .select('*')
       .eq('portal_account_id', account.id)
       .gte('punched_at', since)
       .order('punched_at', { ascending: false }),
   ])
 
+  // Separately fetch job cards referenced by punches (avoids needing a FK relationship)
+  const jobIds = [...new Set((rawPunches ?? []).map(p => p.job_id).filter(Boolean))] as string[]
+  const { data: jobCards } = jobIds.length > 0
+    ? await supabaseAdmin.from('elec_job_cards').select('id, job_number, title').in('id', jobIds).eq('portal_account_id', account.id)
+    : { data: [] }
+  const jobMap = Object.fromEntries((jobCards ?? []).map(j => [j.id, j]))
+
+  const punches: ElecTimePunch[] = (rawPunches ?? []).map(p => ({
+    ...p,
+    job: p.job_id ? (jobMap[p.job_id] ?? null) : null,
+  }))
+
   return (
     <StaffManager
       initialStaff={(staff ?? []) as ElecStaff[]}
-      punches={(punches ?? []) as ElecTimePunch[]}
+      punches={punches}
     />
   )
 }
