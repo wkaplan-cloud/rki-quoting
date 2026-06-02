@@ -31,6 +31,20 @@ function SignPage() {
   const isDrawing = useRef(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
 
+  // Samsung/Android Chrome fires pointercancel when the browser tries to take over
+  // the touch gesture. Without non-passive touch listeners, scrolling interrupts drawing.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const prevent = (e: TouchEvent) => e.preventDefault()
+    canvas.addEventListener('touchstart', prevent, { passive: false })
+    canvas.addEventListener('touchmove', prevent, { passive: false })
+    return () => {
+      canvas.removeEventListener('touchstart', prevent)
+      canvas.removeEventListener('touchmove', prevent)
+    }
+  }, [status])
+
   useEffect(() => {
     void fetch(`/api/job-sign/${token}`)
       .then(r => r.json())
@@ -157,7 +171,7 @@ function SignPage() {
               <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA' }}>
                 <canvas ref={canvasRef} width={600} height={200} className="w-full"
                   style={{ cursor: 'crosshair', display: 'block', touchAction: 'none' }}
-                  onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} />
+                  onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} onPointerCancel={endDraw} />
               </div>
 
               <input value={signerName} onChange={e => setSignerName(e.target.value)}
