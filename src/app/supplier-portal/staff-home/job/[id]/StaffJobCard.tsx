@@ -281,23 +281,19 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     setCard(c => ({ ...c, photos: (c.photos ?? []).filter(p => p.id !== photoId) }))
   }
 
-  function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+  function getCanvasPos(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
-    if ('touches' in e) {
-      const t = e.touches[0]
-      return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY }
-    }
-    return { x: ((e as React.MouseEvent).clientX - rect.left) * scaleX, y: ((e as React.MouseEvent).clientY - rect.top) * scaleY }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }
   }
 
-  function startDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    e.preventDefault(); isDrawing.current = true; lastPos.current = getCanvasPos(e)
+  function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    isDrawing.current = true; lastPos.current = getCanvasPos(e)
   }
-  function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    e.preventDefault()
+  function draw(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!isDrawing.current || !lastPos.current) return
     const ctx = canvasRef.current!.getContext('2d')!
     const pos = getCanvasPos(e)
@@ -696,10 +692,9 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                 {signMode === 'draw' && (
                   <div className="p-4 space-y-3">
                     <p className="text-xs" style={{ color: S.muted }}>Hand the device to the client to sign below.</p>
-                    <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA', touchAction: 'none' }}>
-                      <canvas ref={canvasRef} width={600} height={200} className="w-full" style={{ cursor: 'crosshair', display: 'block' }}
-                        onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
-                        onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+                    <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA' }}>
+                      <canvas ref={canvasRef} width={600} height={200} className="w-full" style={{ cursor: 'crosshair', display: 'block', touchAction: 'none' }}
+                        onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} />
                     </div>
                     <input value={sigCaption} onChange={e => setSigCaption(e.target.value)}
                       placeholder="Client name (optional)"

@@ -43,23 +43,19 @@ function SignPage() {
       .catch(() => { setErrorMsg('Failed to load — please try again.'); setStatus('error') })
   }, [token])
 
-  function getPos(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+  function getPos(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
-    if ('touches' in e) {
-      const t = e.touches[0]
-      return { x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY }
-    }
-    return { x: ((e as React.MouseEvent).clientX - rect.left) * scaleX, y: ((e as React.MouseEvent).clientY - rect.top) * scaleY }
+    return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }
   }
 
-  function startDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    e.preventDefault(); isDrawing.current = true; lastPos.current = getPos(e)
+  function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    isDrawing.current = true; lastPos.current = getPos(e)
   }
-  function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    e.preventDefault()
+  function draw(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!isDrawing.current || !lastPos.current) return
     const ctx = canvasRef.current!.getContext('2d')!
     const pos = getPos(e)
@@ -158,11 +154,10 @@ function SignPage() {
               <p className="text-sm font-semibold" style={{ color: S.text }}>Your signature</p>
               <p className="text-xs" style={{ color: S.muted }}>By signing below you confirm the work described above has been completed to your satisfaction.</p>
 
-              <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA', touchAction: 'none' }}>
+              <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA' }}>
                 <canvas ref={canvasRef} width={600} height={200} className="w-full"
-                  style={{ cursor: 'crosshair', display: 'block' }}
-                  onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
-                  onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+                  style={{ cursor: 'crosshair', display: 'block', touchAction: 'none' }}
+                  onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} />
               </div>
 
               <input value={signerName} onChange={e => setSignerName(e.target.value)}
