@@ -304,15 +304,15 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
     }))
   }
 
-  async function handleActivate(accountId: string) {
+  async function setStatus(accountId: string, status: 'active' | 'cancelled') {
     setActivating(accountId)
     const res = await fetch(`/api/platform/elec-accounts/${accountId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription_status: 'active', trial_ends_at: null }),
+      body: JSON.stringify({ subscription_status: status }),
     })
     if (res.ok) {
-      setRows(prev => prev.map(r => r.id === accountId ? { ...r, subscription_status: 'active' } : r))
+      setRows(prev => prev.map(r => r.id === accountId ? { ...r, subscription_status: status } : r))
     }
     setActivating(null)
   }
@@ -410,22 +410,27 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
                 </span>
               </button>
 
-              {/* Joined + activate */}
+              {/* Joined + activate/pause */}
               <div className="text-right space-y-1">
                 <p className="text-white/40 text-[10px]">{fmtDate(a.created_at)}</p>
-                {a.subscription_status !== 'active' ? (
+                {activating === a.id ? (
+                  <span className="text-[10px] text-white/30 flex items-center gap-1 justify-end">
+                    <Loader2 size={9} className="animate-spin" /> Saving…
+                  </span>
+                ) : a.subscription_status !== 'active' ? (
                   <button
-                    onClick={e => { e.stopPropagation(); void handleActivate(a.id) }}
-                    disabled={activating === a.id}
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 ml-auto"
+                    onClick={e => { e.stopPropagation(); void setStatus(a.id, 'active') }}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1 ml-auto"
                   >
-                    {activating === a.id ? <Loader2 size={9} className="animate-spin" /> : <CheckCircle size={9} />}
-                    {activating === a.id ? 'Saving…' : 'Set Active'}
+                    <CheckCircle size={9} /> Activate
                   </button>
                 ) : (
-                  <span className="text-[10px] text-emerald-400/50 flex items-center gap-1 justify-end">
-                    <CheckCircle size={9} /> Active
-                  </span>
+                  <button
+                    onClick={e => { e.stopPropagation(); void setStatus(a.id, 'cancelled') }}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/30 hover:bg-red-500/15 hover:text-red-400 transition-colors cursor-pointer flex items-center gap-1 ml-auto"
+                  >
+                    <CheckCircle size={9} /> Pause
+                  </button>
                 )}
               </div>
             </div>
