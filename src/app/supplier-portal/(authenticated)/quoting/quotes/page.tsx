@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { isActivePlan, planRank } from '@/lib/plan-features'
 import { QuotesList } from './QuotesList'
 import type { ElecQuote, ElecClient } from '@/lib/elec-types'
 
@@ -13,6 +14,11 @@ export default async function QuotesPage() {
 
   const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/not-a-supplier')
+
+  // Business only
+  if (planRank(account.plan) < 3 || !isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)) {
+    redirect('/supplier-portal/upgrade')
+  }
 
   const [{ data: allQuotes }, { data: clients }] = await Promise.all([
     supabaseAdmin

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { isActivePlan, planRank } from '@/lib/plan-features'
 import { redirect } from 'next/navigation'
 import { ClientsClient } from './ClientsClient'
 import type { ElecClient } from '@/lib/elec-types'
@@ -11,13 +12,13 @@ export default async function ClientsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  const { data: account } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id')
-    .eq('auth_user_id', user.id)
-    .single()
-
+  const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/not-a-supplier')
+
+  // Professional+ only
+  if (planRank(account.plan) < 2 || !isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)) {
+    redirect('/supplier-portal/upgrade')
+  }
 
   const { data: clients } = await supabaseAdmin
     .from('elec_clients')
@@ -26,4 +27,5 @@ export default async function ClientsPage() {
     .order('client_name')
 
   return <ClientsClient portalAccountId={account.id} initialClients={(clients ?? []) as ElecClient[]} />
+
 }
