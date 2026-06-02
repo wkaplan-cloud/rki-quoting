@@ -1,2 +1,2 @@
 import { LoadingScreen } from '@/components/LoadingScreen'
-export default function Loading() { return <LoadingScreen /> }
+export default function Loading() { return <LoadingScreen variant="elec" /> }
