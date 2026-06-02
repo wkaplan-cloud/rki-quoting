@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardType, ElecStaff, ElecClient } from '@/lib/elec-types'
 import { ClientCombobox } from '../ClientCombobox'
+import { StaffMultiSelect } from '../StaffMultiSelect'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -34,7 +35,7 @@ interface Props {
 }
 
 const EMPTY_FORM = {
-  title: '', job_type: 'callout' as ElecJobCardType, staff_id: '', client_id: '',
+  title: '', job_type: 'callout' as ElecJobCardType, staff_id: '', staff_ids: [] as string[], client_id: '',
   client_display_name: '',
   location: '', scheduled_at: '', work_description: '',
 }
@@ -65,7 +66,8 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
       const body: Record<string, unknown> = {
         title: form.title.trim(),
         job_type: form.job_type,
-        staff_id: form.staff_id || null,
+        staff_id: form.staff_ids[0] ?? null,
+        additional_staff_ids: form.staff_ids.slice(1),
         client_id: form.client_id || null,
         location: form.location || null,
         scheduled_at: form.scheduled_at || null,
@@ -243,13 +245,12 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Assign Technician</label>
-                  <select value={form.staff_id} onChange={e => setForm(f => ({ ...f, staff_id: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm"
-                    style={{ border: `1px solid ${S.border}`, color: S.text }}>
-                    <option value="">Unassigned</option>
-                    {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
+                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Technicians</label>
+                  <StaffMultiSelect
+                    selectedIds={form.staff_ids}
+                    staff={staff}
+                    onChange={ids => setForm(f => ({ ...f, staff_ids: ids }))}
+                  />
                 </div>
               </div>
 

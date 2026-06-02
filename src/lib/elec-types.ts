@@ -117,6 +117,7 @@ export interface ElecQuote {
   liquidated_damages_per_day: number | null
   defects_liability_period_days: number
   staff_id: string | null
+  additional_staff_ids: string[] | null
   notes: string | null
   drawing_reference: string | null
   quoted_date: string | null
@@ -499,6 +500,7 @@ export interface ElecJobCard {
   portal_account_id: string
   quote_id: string | null
   staff_id: string | null
+  additional_staff_ids: string[] | null
   client_id: string | null
   job_number: string
   job_type: ElecJobCardType

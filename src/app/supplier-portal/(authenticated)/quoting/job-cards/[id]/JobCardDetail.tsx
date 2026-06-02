@@ -14,6 +14,7 @@ import type {
   ElecMaterialRequest, ElecMaterialRequestStatus,
 } from '@/lib/elec-types'
 import { ClientCombobox } from '../../ClientCombobox'
+import { StaffMultiSelect } from '../../StaffMultiSelect'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -242,6 +243,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       title: card.title,
       job_type: card.job_type,
       staff_id: card.staff_id,
+      additional_staff_ids: card.additional_staff_ids ?? [],
       client_id: card.client_id,
       client_name: card.client_name,
       client_email: card.client_email,
@@ -741,13 +743,19 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 {Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </Field>
-            <Field label="Assign Technician">
-              <select value={card.staff_id ?? ''} onChange={e => setField('staff_id', e.target.value || null)}
-                className="w-full px-3 py-2 rounded-xl text-sm"
-                style={{ border: `1px solid ${S.border}`, color: S.text }}>
-                <option value="">Unassigned</option>
-                {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+            <Field label="Technicians">
+              <StaffMultiSelect
+                selectedIds={[
+                  ...(card.staff_id ? [card.staff_id] : []),
+                  ...(card.additional_staff_ids ?? []),
+                ]}
+                staff={staff}
+                onChange={ids => setCard(c => ({
+                  ...c,
+                  staff_id: ids[0] ?? null,
+                  additional_staff_ids: ids.slice(1),
+                }))}
+              />
             </Field>
           </div>
           <Txt label="Work Description" val={card.work_description} cb={v => setField('work_description', v || null)} placeholder="Describe the work required…" rows={3} />

@@ -18,6 +18,7 @@ import { ReportingTab } from './ReportingTab'
 import { ClaimsTab } from './ClaimsTab'
 import { MaterialsTab } from './MaterialsTab'
 import { ClientCombobox } from '../../ClientCombobox'
+import { StaffMultiSelect } from '../../StaffMultiSelect'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -470,6 +471,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         client_id: q.client_id, project_type: q.project_type,
         contract_type: q.contract_type,
         staff_id: q.staff_id,
+        additional_staff_ids: q.additional_staff_ids ?? [],
         vat_rate: q.vat_rate, retention_percentage: q.retention_percentage,
         payment_terms_days: q.payment_terms_days,
         defects_liability_period_days: q.defects_liability_period_days,
@@ -1004,7 +1006,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               { label: 'Retention',         value: q.retention_percentage > 0 ? `${q.retention_percentage}%` : null },
               { label: 'Defects Liability', value: q.defects_liability_period_days ? `${q.defects_liability_period_days} days` : null },
               { label: 'Drawing REF',       value: q.drawing_reference ?? null },
-              { label: 'Technician',        value: q.staff_id ? (staff.find(s => s.id === q.staff_id)?.name ?? null) : null },
+              { label: 'Technicians',       value: (() => { const ids = [...(q.staff_id ? [q.staff_id] : []), ...(q.additional_staff_ids ?? [])]; const names = ids.map(id => staff.find(s => s.id === id)?.name).filter(Boolean); return names.length > 0 ? names.join(', ') : null })() },
               { label: 'Created',           value: new Date(q.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) + (q.created_by_name ? ` by ${q.created_by_name}` : '') },
             ].filter(f => f.value).map(f => (
               <div key={f.label}>
@@ -1042,16 +1044,22 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             />
           </div>
 
-          {/* Assign Technician */}
+          {/* Assign Technicians */}
           {staff.length > 0 && (
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Assign Technician</label>
-              <select value={q.staff_id ?? ''} onChange={e => setQ(p => ({ ...p, staff_id: e.target.value || null }))}
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: q.staff_id ? S.text : S.muted }}>
-                <option value="">Unassigned</option>
-                {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Technicians</label>
+              <StaffMultiSelect
+                selectedIds={[
+                  ...(q.staff_id ? [q.staff_id] : []),
+                  ...(q.additional_staff_ids ?? []),
+                ]}
+                staff={staff}
+                onChange={ids => setQ(p => ({
+                  ...p,
+                  staff_id: ids[0] ?? null,
+                  additional_staff_ids: ids.slice(1),
+                }))}
+              />
             </div>
           )}
 
