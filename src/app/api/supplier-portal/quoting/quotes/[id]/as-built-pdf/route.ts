@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ElecAsBuiltPDF } from '@/lib/pdf/ElecAsBuiltPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 
 export const maxDuration = 60
@@ -18,11 +19,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id, company_name, email, logo_url')
-      .eq('auth_user_id', user.id)
-      .single()
+    const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
     const [{ data: quoteRaw }, { data: sections }, { data: items }, { data: settings }] = await Promise.all([
@@ -55,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const quote       = quoteRaw as ElecQuote
     const companyName = account.company_name ?? account.email ?? 'Company'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const logoUrl     = await fetchLogoBase64((account as any).logo_url)
+    const logoUrl     = await fetchLogoBase64(account.logo_url)
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

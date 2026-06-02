@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import crypto from 'crypto'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -14,11 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id, company_name, email')
-      .eq('auth_user_id', user.id)
-      .single()
+    const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
     const { data: staff } = await supabaseAdmin

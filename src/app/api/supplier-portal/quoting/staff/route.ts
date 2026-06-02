@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { hashStaffPin, staffAuthEmail, staffAuthPassword } from '@/lib/staff-auth'
+import { resolvePortalAccount } from '@/lib/portal-account'
 export { hashStaffPin, staffAuthEmail, staffAuthPassword }
 
 export async function GET(_req: NextRequest) {
@@ -11,11 +12,7 @@ export async function GET(_req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
+    const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
     const { data } = await supabaseAdmin
@@ -36,11 +33,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
+    const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
     const body = await req.json()

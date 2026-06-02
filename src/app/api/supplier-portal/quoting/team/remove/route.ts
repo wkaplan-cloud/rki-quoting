@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { resolvePortalAccount } from '@/lib/portal-account'
 
 export async function DELETE(req: NextRequest) {
   try {
@@ -9,12 +10,8 @@ export async function DELETE(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Resolve the account this user owns
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .single()
+    // Resolve the account this user owns (or is an admin member of)
+    const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
     const { memberId } = await req.json() as { memberId: string }
