@@ -204,7 +204,6 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
       const m = await res.json() as ElecJobCardMaterial
       setCard(c => ({ ...c, materials: [...(c.materials ?? []), m] }))
       setMatDesc(''); setMatQty('1'); setMatPrice('')
-      setShowAddMaterial(false)
     }
     setMatSaving(false)
   }
@@ -298,7 +297,7 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
   }
 
   const materials = card.materials ?? []
-  const photos = card.photos ?? []
+  const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
 
   const STEPS: { key: Tab; label: string; done: boolean }[] = [
     { key: 'report',    label: 'Report',    done: !!(card.work_found || card.work_done) },
