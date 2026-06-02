@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { Plus, X, Camera, Loader2, CheckCircle2, ChevronDown } from 'lucide-react'
+import { compressImage } from '@/lib/compressImage'
 
 interface Hotel {
   id: string
@@ -61,12 +62,16 @@ export default function CapitalPortalPage() {
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  async function handleImageSelect(itemId: string, file: File) {
-    // Show preview immediately
-    const preview = URL.createObjectURL(file)
-    updateItem(itemId, { imageFile: file, imagePreview: preview, uploading: true, uploadedUrl: null })
+  async function handleImageSelect(itemId: string, rawFile: File) {
+    // Show preview immediately from raw file
+    const preview = URL.createObjectURL(rawFile)
+    updateItem(itemId, { imageFile: rawFile, imagePreview: preview, uploading: true, uploadedUrl: null })
 
     try {
+      // Compress before upload — falls back to raw file if compression fails (e.g. HEIC)
+      let file = rawFile
+      try { file = await compressImage(rawFile) } catch { /* use raw */ }
+
       const form = new FormData()
       form.append('file', file)
       const res = await fetch('/api/capital-portal/upload', { method: 'POST', body: form })

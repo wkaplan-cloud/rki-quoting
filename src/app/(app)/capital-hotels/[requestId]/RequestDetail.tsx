@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   ArrowLeft, Hotel, Clock, Settings2, CheckCircle2,
-  X, Search, Plus, Loader2, ExternalLink, Camera
+  X, Search, Plus, Loader2, ExternalLink, Camera, Download
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -503,9 +503,24 @@ export function RequestDetail({ request, initialItems, pieces: initialPieces, su
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightboxUrl} alt="" className="max-h-[90vh] max-w-[90vw] object-contain rounded-xl" />
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors">
-            <X size={24} />
-          </button>
+          <div className="absolute top-4 right-4 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <a
+              href={lightboxUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white/70 hover:text-white transition-colors"
+              title="Download image"
+            >
+              <Download size={18} />
+            </a>
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white/70 hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
       )}
     </div>
