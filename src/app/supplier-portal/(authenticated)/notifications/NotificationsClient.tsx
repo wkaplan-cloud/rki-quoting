@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin } from 'lucide-react'
+import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin, ShoppingCart, PenLine, GitPullRequest, AlertTriangle } from 'lucide-react'
 import type { ElecNotification } from '@/lib/elec-types'
 
 const S = {
@@ -11,22 +11,31 @@ const S = {
 
 function typeIcon(type: string) {
   switch (type) {
-    case 'clock_in':   return <LogIn size={14} style={{ color: S.green }} />
-    case 'clock_out':  return <LogOut size={14} style={{ color: S.danger }} />
-    case 'claim':      return <FileText size={14} style={{ color: S.accent }} />
-    case 'payment':    return <DollarSign size={14} style={{ color: S.gold }} />
-    case 'approved':   return <CheckCircle2 size={14} style={{ color: S.green }} />
-    default:           return <Info size={14} style={{ color: S.muted }} />
+    case 'clock_in':          return <LogIn size={14} style={{ color: S.green }} />
+    case 'clock_out':         return <LogOut size={14} style={{ color: S.danger }} />
+    case 'job_completed':     return <CheckCircle2 size={14} style={{ color: S.green }} />
+    case 'signature_captured':return <PenLine size={14} style={{ color: S.green }} />
+    case 'vo_submitted':      return <GitPullRequest size={14} style={{ color: S.accent }} />
+    case 'material_request':  return <ShoppingCart size={14} style={{ color: S.gold }} />
+    case 'report_submitted':  return <AlertTriangle size={14} style={{ color: S.danger }} />
+    case 'job_card_photo':    return <Info size={14} style={{ color: S.accent }} />
+    case 'claim':             return <FileText size={14} style={{ color: S.accent }} />
+    case 'payment':           return <DollarSign size={14} style={{ color: S.gold }} />
+    case 'approved':          return <CheckCircle2 size={14} style={{ color: S.green }} />
+    default:                  return <Info size={14} style={{ color: S.muted }} />
   }
 }
 
 function typeColor(type: string) {
   switch (type) {
-    case 'clock_in':  return { bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.2)' }
-    case 'clock_out': return { bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.2)' }
-    case 'claim':     return { bg: 'rgba(58,124,165,0.08)', border: 'rgba(58,124,165,0.2)' }
-    case 'payment':   return { bg: 'rgba(217,164,65,0.08)', border: 'rgba(217,164,65,0.2)' }
-    default:          return { bg: S.bg, border: S.border }
+    case 'clock_in':           return { bg: 'rgba(22,163,74,0.08)',   border: 'rgba(22,163,74,0.2)'   }
+    case 'clock_out':          return { bg: 'rgba(220,38,38,0.08)',   border: 'rgba(220,38,38,0.2)'   }
+    case 'job_completed':      return { bg: 'rgba(22,163,74,0.08)',   border: 'rgba(22,163,74,0.2)'   }
+    case 'signature_captured': return { bg: 'rgba(22,163,74,0.06)',   border: 'rgba(22,163,74,0.15)'  }
+    case 'vo_submitted':       return { bg: 'rgba(58,124,165,0.08)',  border: 'rgba(58,124,165,0.2)'  }
+    case 'material_request':   return { bg: 'rgba(217,164,65,0.08)',  border: 'rgba(217,164,65,0.2)'  }
+    case 'report_submitted':   return { bg: 'rgba(220,38,38,0.06)',   border: 'rgba(220,38,38,0.2)'   }
+    default:                   return { bg: S.bg, border: S.border }
   }
 }
 

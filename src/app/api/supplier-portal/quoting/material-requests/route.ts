@@ -121,6 +121,18 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) throw error
+    // Notify admin when staff submits a material request
+    if (staffId) {
+      const sourceLabel = body.source_type === 'job_card' ? 'job card' : 'project'
+      await supabaseAdmin.from('elec_notifications').insert({
+        portal_account_id: portalAccountId,
+        type: 'material_request',
+        title: `Material needed — ${staffName ?? 'Staff'}`,
+        body: `${body.description.trim()} (qty ${body.qty ?? 1}${body.unit ? ' ' + body.unit : ''}) on ${sourceLabel}`,
+        metadata: { material_request_id: data.id, staff_id: staffId, source_type: body.source_type },
+      })
+    }
+
     return NextResponse.json(data, { status: 201 })
   } catch (e) { return apiError(e) }
 }

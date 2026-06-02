@@ -74,6 +74,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       )
     }
 
+    // Notify admin
+    const { data: quoteInfo } = await supabaseAdmin
+      .from('elec_quotes').select('project_name').eq('id', id).maybeSingle()
+    await supabaseAdmin.from('elec_notifications').insert({
+      portal_account_id: staff.portal_account_id,
+      type: 'vo_submitted',
+      title: `VO submitted by ${staff.name}`,
+      body: `"${description.trim()}"${quoteInfo?.project_name ? ` on ${quoteInfo.project_name}` : ''}`,
+      metadata: { vo_id: vo.id, quote_id: id, staff_id: staff.id },
+    })
+
     return NextResponse.json({ ok: true, vo })
   } catch (e) {
     return apiError(e)

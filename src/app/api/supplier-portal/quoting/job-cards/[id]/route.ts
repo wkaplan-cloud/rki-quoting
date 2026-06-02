@@ -74,12 +74,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Notify admin when staff updates status
     if (staffId && body.status) {
+      const isComplete = body.status === 'completed'
       supabaseAdmin.from('elec_notifications').insert({
         portal_account_id: accountId,
-        type: 'job_card_updated',
-        title: `Job card updated by ${staffName ?? 'staff'}`,
-        body: `Status changed to "${body.status}"${data.title ? ` on "${data.title}"` : ''}`,
+        type: isComplete ? 'job_completed' : 'job_card_updated',
+        title: isComplete
+          ? `Job completed — ${staffName ?? 'staff'}`
+          : `Job card updated by ${staffName ?? 'staff'}`,
+        body: isComplete
+          ? (data.title ? `"${data.title}" marked as complete` : 'Job marked as complete')
+          : `Status changed to "${body.status}"${data.title ? ` on "${data.title}"` : ''}`,
         metadata: { job_card_id: id, staff_id: staffId, status: body.status },
+      })
+    }
+
+    // Notify admin when signature is captured
+    if (staffId && body.client_signature_url) {
+      supabaseAdmin.from('elec_notifications').insert({
+        portal_account_id: accountId,
+        type: 'signature_captured',
+        title: `Signature captured — ${staffName ?? 'staff'}`,
+        body: data.title ? `Client signed off on "${data.title}"` : 'Client signature captured',
+        metadata: { job_card_id: id, staff_id: staffId },
       })
     }
 

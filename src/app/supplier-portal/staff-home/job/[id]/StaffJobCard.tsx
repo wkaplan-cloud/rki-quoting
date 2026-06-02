@@ -135,11 +135,10 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const [completing, setCompleting] = useState(false)
   const [completeMsg, setCompleteMsg] = useState('')
 
-  // Materials inline form (Used/Charged)
+  // Materials inline form (Used — no pricing on staff side)
   const [showAddMaterial, setShowAddMaterial] = useState(false)
   const [matDesc, setMatDesc] = useState('')
   const [matQty, setMatQty] = useState('1')
-  const [matPrice, setMatPrice] = useState('')
   const [matSaving, setMatSaving] = useState(false)
 
   // Material order requests (Need to Order)
@@ -247,13 +246,12 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
       body: JSON.stringify({
         description: matDesc.trim(),
         qty: parseFloat(matQty) || 1,
-        unit_price: matPrice ? parseFloat(matPrice) : null,
       }),
     })
     if (res.ok) {
       const m = await res.json() as ElecJobCardMaterial
       setCard(c => ({ ...c, materials: [...(c.materials ?? []), m] }))
-      setMatDesc(''); setMatQty('1'); setMatPrice('')
+      setMatDesc(''); setMatQty('1')
     }
     setMatSaving(false)
   }
@@ -578,11 +576,8 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                   style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium" style={{ color: S.text }}>{m.description}</p>
-                    <p className="text-xs" style={{ color: S.muted }}>Qty: {m.qty}{m.unit_price != null ? ` · R${m.unit_price.toFixed(2)}` : ''}</p>
+                    <p className="text-xs" style={{ color: S.muted }}>Qty: {m.qty}</p>
                   </div>
-                  <p className="text-sm font-semibold flex-shrink-0" style={{ color: S.text }}>
-                    {m.unit_price != null ? `R${(m.qty * m.unit_price).toFixed(2)}` : '—'}
-                  </p>
                   <button onClick={() => void deleteMaterial(m.id)} style={{ color: S.muted }}>
                     <X size={14} />
                   </button>
@@ -594,18 +589,12 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                     placeholder="Material description"
                     className="w-full px-3 py-2 rounded-xl text-sm outline-none"
                     style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <input value={matQty} onChange={e => setMatQty(e.target.value)}
+                    placeholder="Qty" type="number" min="0.01" step="0.01"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
                   <div className="flex gap-2">
-                    <input value={matQty} onChange={e => setMatQty(e.target.value)}
-                      placeholder="Qty" type="number" min="0.01" step="0.01"
-                      className="w-1/3 px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                    <input value={matPrice} onChange={e => setMatPrice(e.target.value)}
-                      placeholder="Unit price (optional)" type="number" min="0"
-                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => { setShowAddMaterial(false); setMatDesc(''); setMatQty('1'); setMatPrice('') }}
+                    <button onClick={() => { setShowAddMaterial(false); setMatDesc(''); setMatQty('1') }}
                       className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                       Cancel
                     </button>

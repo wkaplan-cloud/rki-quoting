@@ -165,20 +165,19 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
   async function handleReportSave() {
     if (!rDesc.trim() || rSaving) return
     setRSaving(true); setRError('')
-    const { data, error: err } = await supabase
-      .from('elec_project_reports')
-      .insert({
-        quote_id: quote.id,
-        portal_account_id: portalAccountId,
+    const res = await fetch(`/api/supplier-portal/staff/projects/${quote.id}/reports`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         report_type: rType,
         description: rDesc.trim(),
         amount: rAmount ? parseFloat(rAmount) : null,
         notes: rNotes.trim() || null,
         photo_url: rPhotoUrl,
-      })
-      .select()
-      .single()
-    if (err) { setRError(err.message); setRSaving(false); return }
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setRError(data.error ?? 'Failed to save'); setRSaving(false); return }
     setReports(prev => [data as Report, ...prev])
     setRDesc(''); setRAmount(''); setRNotes(''); setRPhotoUrl(null); setShowAddReport(false)
     setRSaving(false)
