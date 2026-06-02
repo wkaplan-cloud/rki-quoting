@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { WeekCalendar } from './WeekCalendar'
 import type { ElecJob, ElecStaff } from '@/lib/elec-types'
+import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
 
 export const metadata = { title: 'Schedule — QuotingHub' }
 
@@ -33,8 +34,9 @@ export default async function SchedulePage() {
   }
 
   const { start, end } = getWeekBounds()
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
 
-  const [{ data: jobs }, { data: staff }, { data: quotes }] = await Promise.all([
+  const [{ data: jobs }, { data: staff }, { data: quotes }, { data: punches }, { data: jobCards }, { data: projects }] = await Promise.all([
     supabaseAdmin
       .from('elec_jobs')
       .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name)')
@@ -55,7 +57,48 @@ export default async function SchedulePage() {
       .in('status', ['quoted', 'approved', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(50),
+    supabaseAdmin
+      .from('elec_time_punches')
+      .select('staff_id, punch_type, punched_at, latitude, longitude')
+      .eq('portal_account_id', account.id)
+      .gte('punched_at', todayStart.toISOString())
+      .order('punched_at', { ascending: false }),
+    supabaseAdmin
+      .from('elec_job_cards')
+      .select('id, title, location, staff_id')
+      .eq('portal_account_id', account.id)
+      .eq('status', 'in_progress')
+      .not('staff_id', 'is', null),
+    supabaseAdmin
+      .from('elec_quotes')
+      .select('id, project_name, staff_id')
+      .eq('portal_account_id', account.id)
+      .eq('status', 'in_progress')
+      .not('staff_id', 'is', null),
   ])
+
+  // Build initial live statuses server-side
+  const latestPunch = new Map<string, { punch_type: string; punched_at: string; latitude: number | null; longitude: number | null }>()
+  for (const p of (punches ?? [])) {
+    if (!latestPunch.has(p.staff_id)) latestPunch.set(p.staff_id, p)
+  }
+  const initialLiveStatuses: StaffLiveStatus[] = (staff ?? []).map(s => {
+    const punch = latestPunch.get(s.id)
+    const isClockedIn = punch?.punch_type === 'clock_in'
+    const jobCard = (jobCards ?? []).find(j => j.staff_id === s.id)
+    const project = (projects ?? []).find(p => p.staff_id === s.id)
+    return {
+      staffId: s.id,
+      isClockedIn,
+      clockedInAt: isClockedIn ? (punch?.punched_at ?? null) : null,
+      latitude: isClockedIn ? (punch?.latitude ?? null) : null,
+      longitude: isClockedIn ? (punch?.longitude ?? null) : null,
+      currentJobCardTitle: jobCard?.title ?? null,
+      currentJobCardId: jobCard?.id ?? null,
+      currentProjectName: (project as { project_name: string } | undefined)?.project_name ?? null,
+      currentProjectId: project?.id ?? null,
+    }
+  })
 
   return (
     <div className="flex flex-col h-full">
@@ -64,6 +107,7 @@ export default async function SchedulePage() {
         staff={(staff ?? []) as ElecStaff[]}
         quotes={(quotes ?? []) as { id: string; quote_number: string; project_name: string; project_address: string | null }[]}
         companyName={account.company_name ?? account.email ?? 'Schedule'}
+        initialLiveStatuses={initialLiveStatuses}
       />
     </div>
   )

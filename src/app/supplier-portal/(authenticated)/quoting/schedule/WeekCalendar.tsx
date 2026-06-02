@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image, Camera } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image, Camera, MapPin, RefreshCw } from 'lucide-react'
 import type { ElecJob, ElecJobStatus, ElecJobPhoto, ElecStaff } from '@/lib/elec-types'
+import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -64,6 +65,27 @@ function jobHeight(start: string, end: string): number {
   return Math.max(((toMins(end) - toMins(start)) / 60) * HOUR_HEIGHT, 28)
 }
 
+function fmtElapsed(fromIso: string, to: Date): string {
+  const ms = to.getTime() - new Date(fromIso).getTime()
+  if (ms <= 0) return '0m'
+  const h = Math.floor(ms / 3600000)
+  const m = Math.floor((ms % 3600000) / 60000)
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+function getLocalMins(isoTimestamp: string): number {
+  const d = new Date(isoTimestamp)
+  return d.getHours() * 60 + d.getMinutes()
+}
+
+function initials(name: string): string {
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function fmtRefreshed(d: Date): string {
+  return d.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface QuoteOption { id: string; quote_number: string; project_name: string; project_address: string | null }
 
@@ -97,11 +119,13 @@ export function WeekCalendar({
   staff,
   quotes,
   companyName,
+  initialLiveStatuses = [],
 }: {
   initialJobs: ElecJob[]
   staff: ElecStaff[]
   quotes: QuoteOption[]
   companyName: string
+  initialLiveStatuses?: StaffLiveStatus[]
 }) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()))
   const [jobs, setJobs]           = useState<ElecJob[]>(initialJobs)
@@ -127,12 +151,46 @@ export function WeekCalendar({
   } | null>(null)
   const justDraggedRef = useRef(false)
 
+  // Live status state
+  const [liveStatuses, setLiveStatuses] = useState<StaffLiveStatus[]>(initialLiveStatuses)
+  const [liveRefreshing, setLiveRefreshing] = useState(false)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+  const [now, setNow] = useState(new Date())
+
   const weekDays  = getWeekDays(weekStart)
   const weekEnd   = weekDays[6]
   const todayStr  = toDateStr(new Date())
 
   // Keep weekDays ref in sync for drag handlers
   useEffect(() => { weekDaysRef.current = weekDays }, [weekDays])
+
+  // Tick every minute so live block heights stay current
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(t)
+  }, [])
+
+  const isCurrentWeek = toDateStr(weekStart) === toDateStr(getWeekStart(new Date()))
+
+  async function fetchLiveStatus() {
+    setLiveRefreshing(true)
+    try {
+      const res = await fetch('/api/supplier-portal/quoting/staff-live')
+      if (res.ok) {
+        setLiveStatuses(await res.json() as StaffLiveStatus[])
+        setLastRefreshed(new Date())
+      }
+    } catch {}
+    setLiveRefreshing(false)
+  }
+
+  // Poll every 60s when on the current week
+  useEffect(() => {
+    if (!isCurrentWeek) return
+    setLastRefreshed(new Date())
+    const t = setInterval(() => { void fetchLiveStatus() }, 60000)
+    return () => clearInterval(t)
+  }, [isCurrentWeek]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Attach drag listeners to window
   useEffect(() => {
@@ -485,6 +543,109 @@ export function WeekCalendar({
         </button>
       </div>
 
+      {/* ── Live Now bar ─────────────────────────────────────────────── */}
+      {isCurrentWeek && (() => {
+        const onSite  = liveStatuses.filter(ls => ls.isClockedIn)
+        const offSite = liveStatuses.filter(ls => !ls.isClockedIn)
+        if (liveStatuses.length === 0) return null
+        return (
+          <div className="rounded-2xl mb-4 overflow-hidden" style={{ border: `1px solid ${S.border}`, background: S.card }}>
+            {/* Header */}
+            <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: `1px solid ${S.border}`, background: '#F8FAFB' }}>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: onSite.length > 0 ? S.green : S.muted }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: onSite.length > 0 ? S.green : S.muted }}>
+                  Live Now
+                </span>
+              </span>
+              <span className="text-[10px]" style={{ color: S.muted }}>
+                {onSite.length} on site · {offSite.length} off site
+              </span>
+              <div className="flex-1" />
+              {lastRefreshed && (
+                <span className="text-[10px]" style={{ color: S.muted }}>
+                  Updated {fmtRefreshed(lastRefreshed)}
+                </span>
+              )}
+              <button
+                onClick={() => void fetchLiveStatus()}
+                disabled={liveRefreshing}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium disabled:opacity-50"
+                style={{ color: S.muted, border: `1px solid ${S.border}` }}
+              >
+                <RefreshCw size={10} className={liveRefreshing ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
+
+            {/* Staff rows */}
+            <div className="divide-y" style={{ ['--tw-divide-opacity' as string]: 1 }}>
+              {/* On-site staff */}
+              {onSite.map(ls => {
+                const s = staff.find(m => m.id === ls.staffId)
+                if (!s) return null
+                const activity = ls.currentJobCardTitle ?? ls.currentProjectName
+                return (
+                  <div key={ls.staffId} className="flex items-center gap-3 px-4 py-3">
+                    {/* Avatar */}
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                      style={{ background: s.color ?? S.accent }}>
+                      {initials(s.name)}
+                    </div>
+                    {/* Name + status */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold" style={{ color: S.text }}>{s.name}</span>
+                        <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(22,163,74,0.08)', color: S.green }}>
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: S.green }} />
+                          On site · {ls.clockedInAt ? fmtElapsed(ls.clockedInAt, now) : '—'}
+                        </span>
+                      </div>
+                      {activity && (
+                        <p className="text-xs mt-0.5 truncate" style={{ color: S.muted }}>{activity}</p>
+                      )}
+                    </div>
+                    {/* GPS */}
+                    {ls.latitude && ls.longitude && (
+                      <a
+                        href={`https://www.google.com/maps?q=${ls.latitude},${ls.longitude}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium flex-shrink-0"
+                        style={{ background: 'rgba(58,124,165,0.06)', color: S.accent, border: `1px solid rgba(58,124,165,0.2)` }}
+                        title="View last GPS location"
+                      >
+                        <MapPin size={11} /> Map
+                      </a>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Off-site staff — compact row */}
+              {offSite.length > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2.5 flex-wrap">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: S.muted }}>
+                    Off site
+                  </span>
+                  {offSite.map(ls => {
+                    const s = staff.find(m => m.id === ls.staffId)
+                    if (!s) return null
+                    return (
+                      <span key={ls.staffId} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+                        style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: S.muted }} />
+                        {s.name.split(' ')[0]}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Calendar grid ───────────────────────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden flex flex-col flex-1" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
@@ -551,6 +712,47 @@ export function WeekCalendar({
                       pointerEvents: 'none',
                     }} />
                   ))}
+
+                  {/* Live punch blocks — only on today */}
+                  {isToday && (() => {
+                    const onSiteNow = liveStatuses.filter(ls => ls.isClockedIn && ls.clockedInAt)
+                    if (onSiteNow.length === 0) return null
+                    const count = onSiteNow.length
+                    return onSiteNow.map((ls, idx) => {
+                      const s = staff.find(m => m.id === ls.staffId)
+                      const color = s?.color ?? S.green
+                      const clockInMins = getLocalMins(ls.clockedInAt!)
+                      const nowMins = now.getHours() * 60 + now.getMinutes()
+                      const blockStart = Math.max(START_HOUR * 60, clockInMins)
+                      const blockEnd   = Math.min(END_HOUR * 60, nowMins)
+                      if (blockStart >= blockEnd) return null
+                      const top    = ((blockStart - START_HOUR * 60) / 60) * HOUR_HEIGHT
+                      const height = Math.max(((blockEnd - blockStart) / 60) * HOUR_HEIGHT, 6)
+                      const leftPct  = (idx / count) * 100
+                      const widthPct = (1 / count) * 100
+                      return (
+                        <div
+                          key={ls.staffId}
+                          className="absolute overflow-hidden pointer-events-none"
+                          style={{
+                            top, height, zIndex: 5,
+                            left: `${leftPct}%`, width: `${widthPct}%`,
+                            background: `${color}0D`,
+                            borderLeft: `2px solid ${color}`,
+                          }}
+                        >
+                          <div className="flex items-center gap-1 px-1 pt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                            <span className="text-[9px] font-semibold truncate" style={{ color }}>
+                              {s?.name.split(' ')[0]}
+                              {(ls.currentJobCardTitle ?? ls.currentProjectName) &&
+                                ` · ${(ls.currentJobCardTitle ?? ls.currentProjectName)!.slice(0, 18)}`}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  })()}
 
                   {/* Job blocks */}
                   {dayJobs.map(job => {
