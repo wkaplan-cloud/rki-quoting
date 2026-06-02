@@ -337,8 +337,7 @@ export function RequestDetail({ request, initialItems, pieces: initialPieces, su
 
   const [quoteProjectId, setQuoteProjectId] = useState(request.quote_project_id)
   const allMatched = items.length > 0 && items.every(i => i.capital_piece_id)
-  // Allow re-sending if project was deleted (quote_project_id becomes null after ON DELETE SET NULL)
-  const canSendQuote = allMatched && (status !== 'quoted' || !quoteProjectId)
+  const canSendQuote = allMatched
 
   async function updateStatus(newStatus: string) {
     const res = await fetch(`/api/capital-hotels/${request.id}/status`, {
@@ -528,18 +527,20 @@ export function RequestDetail({ request, initialItems, pieces: initialPieces, su
           {canSendQuote ? (
             <div className="text-center">
               <p className="text-sm text-[#1A1A18] font-medium mb-1">All items matched ✓</p>
-              <p className="text-xs text-[#8A877F] mb-4">Create a QuotingHub quote with all {items.length} line items — fabric, dimensions and supplier already filled in.</p>
+              {quoteProjectId && (
+                <div className="flex items-center justify-center gap-2 mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <span>A quote already exists for this request.</span>
+                  <Link href={`/projects/${quoteProjectId}`} className="font-semibold hover:underline inline-flex items-center gap-1">
+                    View it <ExternalLink size={10} />
+                  </Link>
+                </div>
+              )}
+              <p className="text-xs text-[#8A877F] mb-4">
+                {quoteProjectId ? 'Create a new quote anyway.' : `Create a QuotingHub quote with all ${items.length} line items — fabric, dimensions and supplier already filled in.`}
+              </p>
               <button onClick={sendQuote} disabled={sendingQuote} className="px-8 py-3 bg-[#1B4F8A] text-white font-semibold rounded-xl hover:bg-[#163d6e] disabled:opacity-60 transition-colors flex items-center gap-2 mx-auto">
-                {sendingQuote ? <><Loader2 size={16} className="animate-spin" /> Creating Quote…</> : 'Send Quote →'}
+                {sendingQuote ? <><Loader2 size={16} className="animate-spin" /> Creating Quote…</> : quoteProjectId ? 'Create New Quote →' : 'Send Quote →'}
               </button>
-            </div>
-          ) : status === 'quoted' && quoteProjectId ? (
-            <div className="text-center">
-              <CheckCircle2 size={24} className="text-emerald-500 mx-auto mb-2" />
-              <p className="text-sm font-medium text-[#1A1A18]">Quote already created</p>
-              <Link href={`/projects/${quoteProjectId}`} className="text-xs text-[#1B4F8A] hover:underline mt-1 inline-flex items-center gap-1">
-                Open in Projects <ExternalLink size={11} />
-              </Link>
             </div>
           ) : (
             <div className="text-center">
