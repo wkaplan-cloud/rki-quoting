@@ -303,17 +303,28 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
         const currentPlan = PLANS.find(p => p.id === plan) ?? (plan === 'quoting' ? PLANS[2] : null)
         const nextPlans = PLANS.filter(p => planRank(p.id) > currentRank)
         const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt != null && new Date(trialEndsAt) > new Date()
+        const isActive = subscriptionStatus === 'active'
         const trialDaysLeft = trialEndsAt ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000)) : 0
         const TIER_COLOR: Record<string, string> = { starter: '#3A7CA5', professional: '#D9A441', business: '#166534', quoting: '#166534' }
         const color = TIER_COLOR[plan ?? ''] ?? '#71717A'
 
+        // Trial users are exploring — they need a Subscribe button regardless of which plan they're trialing
+        const showSubscribeBtn = isTrialing
+        const showUpgradeBtn   = isActive && nextPlans.length > 0
+        const showHighestPlan  = isActive && nextPlans.length === 0
+
         return (
-          <div className="p-5 rounded-xl space-y-4" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+          <div className="p-5 rounded-xl space-y-4" style={{ background: isTrialing ? 'rgba(217,164,65,0.04)' : '#FFFFFF', border: `1px solid ${isTrialing ? 'rgba(217,164,65,0.3)' : '#E4E4E7'}` }}>
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Your Plan</p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  {currentPlan ? (
+                  {isTrialing ? (
+                    // Trial — don't show the plan name, show trial status prominently
+                    <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: 'rgba(217,164,65,0.15)', color: '#D9A441' }}>
+                      Free Trial
+                    </span>
+                  ) : currentPlan ? (
                     <span className="text-sm font-bold px-3 py-1 rounded-full"
                       style={{ background: `${color}15`, color }}>
                       {currentPlan.label}
@@ -325,37 +336,74 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
                   )}
                   {isTrialing && (
                     <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: 'rgba(217,164,65,0.1)', color: '#D9A441' }}>
-                      Trial · {trialDaysLeft}d left
+                      {trialDaysLeft}d remaining
                     </span>
                   )}
-                  {subscriptionStatus === 'active' && (
+                  {isActive && (
                     <span className="text-xs flex items-center gap-1" style={{ color: '#16A34A' }}>
                       <CheckCircle2 size={12} /> Active
                     </span>
                   )}
                 </div>
-                {currentPlan && (
+                {isTrialing ? (
+                  <p className="text-xs mt-1" style={{ color: '#92400E' }}>
+                    You have full access during your trial. Subscribe before it expires to keep access.
+                  </p>
+                ) : currentPlan ? (
                   <p className="text-xs mt-1" style={{ color: '#71717A' }}>
                     R{currentPlan.price.toLocaleString()}/month · {currentPlan.tagline}
                   </p>
-                )}
+                ) : null}
               </div>
-              {nextPlans.length > 0 && (
-                <a href={`/supplier-portal/upgrade${plan ? `?current=${plan}` : ''}`}
+
+              {showSubscribeBtn && (
+                <a href="/supplier-portal/upgrade"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold text-white flex-shrink-0"
+                  style={{ background: '#D9A441' }}>
+                  Subscribe Now <ChevronRight size={14} />
+                </a>
+              )}
+              {showUpgradeBtn && (
+                <a href={`/supplier-portal/upgrade?current=${plan}`}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0"
                   style={{ background: '#3A7CA5' }}>
                   Upgrade Plan <ChevronRight size={14} />
                 </a>
               )}
-              {nextPlans.length === 0 && currentPlan && (
+              {showHighestPlan && (
                 <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
                   <Zap size={11} /> Highest plan
                 </div>
               )}
             </div>
 
-            {/* What they have + what's next */}
-            {nextPlans.length > 0 && (
+            {/* Trial: show all 3 plans to compare */}
+            {isTrialing && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                {PLANS.map(p => {
+                  const c = TIER_COLOR[p.id] ?? '#71717A'
+                  return (
+                    <div key={p.id} className="rounded-xl p-3 space-y-2" style={{ background: '#F9FAFB', border: '1px solid #E4E4E7' }}>
+                      <div>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${c}15`, color: c }}>{p.label}</span>
+                        <p className="text-xs font-bold mt-1.5" style={{ color: '#18181B' }}>R{p.price.toLocaleString()}/mo</p>
+                      </div>
+                      <div className="space-y-1">
+                        {p.features.slice(0, 4).map(f => (
+                          <div key={f} className="flex items-start gap-1.5">
+                            <Check size={10} className="mt-0.5 flex-shrink-0" style={{ color: c }} />
+                            <p className="text-[11px] leading-snug" style={{ color: '#52525B' }}>{f}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Active: what they have + what's next */}
+            {isActive && nextPlans.length > 0 && (
               <div>
                 <p className="text-xs font-semibold mb-2" style={{ color: '#71717A' }}>Included in your plan:</p>
                 <div className="space-y-1 mb-3">
