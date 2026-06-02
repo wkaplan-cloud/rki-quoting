@@ -31,17 +31,53 @@ function SignPage() {
   const isDrawing = useRef(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
 
-  // Samsung/Android Chrome fires pointercancel when the browser tries to take over
-  // the touch gesture. Without non-passive touch listeners, scrolling interrupts drawing.
+  // Native touch event handlers for mobile (Samsung/Android Chrome suppresses pointer
+  // events when touch events fire, so drawing must live here with passive:false).
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const prevent = (e: TouchEvent) => e.preventDefault()
-    canvas.addEventListener('touchstart', prevent, { passive: false })
-    canvas.addEventListener('touchmove', prevent, { passive: false })
+
+    function touchPos(t: Touch) {
+      const rect = canvas!.getBoundingClientRect()
+      return {
+        x: (t.clientX - rect.left) * (canvas!.width / rect.width),
+        y: (t.clientY - rect.top) * (canvas!.height / rect.height),
+      }
+    }
+
+    function strokeLine(from: { x: number; y: number }, to: { x: number; y: number }) {
+      const ctx = canvas!.getContext('2d')!
+      ctx.strokeStyle = '#18181B'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke()
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      e.preventDefault()
+      const p = touchPos(e.touches[0])
+      isDrawing.current = true
+      lastPos.current = p
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault()
+      if (!isDrawing.current || !lastPos.current) return
+      const p = touchPos(e.touches[0])
+      strokeLine(lastPos.current, p)
+      lastPos.current = p
+    }
+
+    function onTouchEnd() { isDrawing.current = false; lastPos.current = null }
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false })
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false })
+    canvas.addEventListener('touchend', onTouchEnd)
+    canvas.addEventListener('touchcancel', onTouchEnd)
+
     return () => {
-      canvas.removeEventListener('touchstart', prevent)
-      canvas.removeEventListener('touchmove', prevent)
+      canvas.removeEventListener('touchstart', onTouchStart)
+      canvas.removeEventListener('touchmove', onTouchMove)
+      canvas.removeEventListener('touchend', onTouchEnd)
+      canvas.removeEventListener('touchcancel', onTouchEnd)
     }
   }, [status])
 
@@ -66,10 +102,12 @@ function SignPage() {
   }
 
   function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (e.pointerType === 'touch') return  // touch handled by native listeners above
     e.currentTarget.setPointerCapture(e.pointerId)
     isDrawing.current = true; lastPos.current = getPos(e)
   }
   function draw(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (e.pointerType === 'touch') return  // touch handled by native listeners above
     if (!isDrawing.current || !lastPos.current) return
     const ctx = canvasRef.current!.getContext('2d')!
     const pos = getPos(e)
@@ -77,7 +115,10 @@ function SignPage() {
     ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke()
     lastPos.current = pos
   }
-  function endDraw() { isDrawing.current = false; lastPos.current = null }
+  function endDraw(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (e.pointerType === 'touch') return
+    isDrawing.current = false; lastPos.current = null
+  }
 
   async function handleSubmit() {
     const canvas = canvasRef.current!
