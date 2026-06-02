@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
   hasQuoting: boolean
   supplierCategory?: string
   notificationCount?: number
+  pendingMaterialsCount?: number
   desktopExpanded: boolean
   onDesktopToggle: () => void
 }
@@ -37,7 +38,7 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
-export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, supplierCategory = 'manufacturer', notificationCount = 0, desktopExpanded, onDesktopToggle }: Props) {
+export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle }: Props) {
   const isTrades = supplierCategory === 'trades'
   const pathname = usePathname()
   const router = useRouter()
@@ -169,6 +170,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, suppl
               <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
               <NavLink href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />
               <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />
+              <NavLink href="/supplier-portal/quoting/materials" label="Materials"  icon={ShoppingCart} pendingBadge={pendingMaterialsCount} />
               <NavLink href="/supplier-portal/quoting/clients"    label="Clients"     icon={Users}      />
               <NavLink href="/supplier-portal/quoting/price-book" label="Line Items" icon={BookOpen}   />
 

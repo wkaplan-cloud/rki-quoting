@@ -555,3 +555,32 @@ export interface ElecJobCardPhoto {
   caption: string | null
   uploaded_at: string
 }
+
+// ─── Material Requests ────────────────────────────────────────────────────────
+
+export type ElecMaterialRequestStatus = 'pending' | 'ordered' | 'received' | 'cancelled'
+
+export interface ElecMaterialRequest {
+  id: string
+  portal_account_id: string
+  source_type: 'job_card' | 'project'
+  job_card_id: string | null
+  quote_id: string | null
+  line_item_id: string | null
+  is_variation: boolean
+  description: string
+  qty: number
+  unit: string | null
+  notes: string | null
+  requested_by_staff_id: string | null
+  requested_by_name: string | null
+  status: ElecMaterialRequestStatus
+  supplier: string | null
+  ordered_at: string | null
+  received_at: string | null
+  created_at: string
+  // Joined
+  job_card?: { id: string; job_number: string; title: string } | null
+  quote?: { id: string; quote_number: string; project_name: string } | null
+  line_item?: { id: string; description: string } | null
+}

@@ -3,9 +3,9 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Camera, Plus, X, Pen, CheckCircle2,
-  Loader2, MapPin, Clock, Briefcase, Send, Mail, Play, Square,
+  Loader2, MapPin, Clock, Briefcase, Send, Mail, Play, Square, ShoppingCart,
 } from 'lucide-react'
-import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto } from '@/lib/elec-types'
+import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto, ElecMaterialRequest } from '@/lib/elec-types'
 import { StaffBottomNav } from '../../StaffBottomNav'
 
 function fmtElapsed(seconds: number) {
@@ -135,12 +135,60 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const [completing, setCompleting] = useState(false)
   const [completeMsg, setCompleteMsg] = useState('')
 
-  // Materials inline form
+  // Materials inline form (Used/Charged)
   const [showAddMaterial, setShowAddMaterial] = useState(false)
   const [matDesc, setMatDesc] = useState('')
   const [matQty, setMatQty] = useState('1')
   const [matPrice, setMatPrice] = useState('')
   const [matSaving, setMatSaving] = useState(false)
+
+  // Material order requests (Need to Order)
+  const [matOrders, setMatOrders] = useState<ElecMaterialRequest[]>([])
+  const [matOrdersLoaded, setMatOrdersLoaded] = useState(false)
+  const [showAddOrder, setShowAddOrder] = useState(false)
+  const [orderDesc, setOrderDesc] = useState('')
+  const [orderQty, setOrderQty] = useState('1')
+  const [orderUnit, setOrderUnit] = useState('')
+  const [orderNotes, setOrderNotes] = useState('')
+  const [orderSaving, setOrderSaving] = useState(false)
+
+  useEffect(() => {
+    if (tab === 'materials' && !matOrdersLoaded) {
+      fetch(`/api/supplier-portal/quoting/material-requests?job_card_id=${card.id}`)
+        .then(r => r.json())
+        .then((d: ElecMaterialRequest[]) => { setMatOrders(d); setMatOrdersLoaded(true) })
+        .catch(() => setMatOrdersLoaded(true))
+    }
+  }, [tab, card.id, matOrdersLoaded])
+
+  async function addOrder() {
+    if (!orderDesc.trim() || orderSaving) return
+    setOrderSaving(true)
+    const res = await fetch('/api/supplier-portal/quoting/material-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_type: 'job_card',
+        job_card_id: card.id,
+        description: orderDesc.trim(),
+        qty: parseFloat(orderQty) || 1,
+        unit: orderUnit.trim() || null,
+        notes: orderNotes.trim() || null,
+      }),
+    })
+    if (res.ok) {
+      const m = await res.json() as ElecMaterialRequest
+      setMatOrders(prev => [...prev, m])
+      setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('')
+      setShowAddOrder(false)
+    }
+    setOrderSaving(false)
+  }
+
+  async function deleteOrder(orderId: string) {
+    await fetch(`/api/supplier-portal/quoting/material-requests/${orderId}`, { method: 'DELETE' })
+    setMatOrders(prev => prev.filter(o => o.id !== orderId))
+  }
 
   // Auto-save report when navigating away from it
   useEffect(() => {
@@ -428,11 +476,101 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
 
         {/* ── MATERIALS TAB ── */}
         {tab === 'materials' && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+
+            {/* ── Need to Order ── */}
             <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}` }}>
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={14} style={{ color: S.accent }} />
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.accent }}>Need to Order</span>
+                  {matOrders.length > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(58,124,165,0.12)', color: S.accent }}>{matOrders.length}</span>
+                  )}
+                </div>
+                {!showAddOrder && (
+                  <button onClick={() => setShowAddOrder(true)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                    style={{ color: S.accent, border: `1px solid rgba(58,124,165,0.3)` }}>
+                    <Plus size={11} /> Request
+                  </button>
+                )}
+              </div>
+
+              {matOrders.length === 0 && !showAddOrder && (
+                <div className="py-6 flex flex-col items-center gap-1">
+                  <p className="text-xs" style={{ color: S.muted }}>No materials requested yet</p>
+                </div>
+              )}
+
+              {matOrders.map((o, i) => {
+                const statusColor = o.status === 'received' ? S.green : o.status === 'ordered' ? S.accent : S.gold
+                const statusLabel = o.status === 'received' ? 'Received' : o.status === 'ordered' ? 'Ordered' : 'Pending'
+                return (
+                  <div key={o.id} className="flex items-start gap-3 px-4 py-3"
+                    style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium" style={{ color: S.text }}>{o.description}</p>
+                      <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                        {o.qty} {o.unit ?? 'nr'}{o.notes ? ` · ${o.notes}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                      style={{ background: `${statusColor}18`, color: statusColor }}>
+                      {statusLabel}
+                    </span>
+                    {o.status === 'pending' && (
+                      <button onClick={() => void deleteOrder(o.id)} style={{ color: S.muted, flexShrink: 0 }}>
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+
+              {showAddOrder && (
+                <div className="px-4 py-3 space-y-2" style={{ borderTop: matOrders.length > 0 ? `1px solid ${S.border}` : undefined }}>
+                  <input value={orderDesc} onChange={e => setOrderDesc(e.target.value)}
+                    placeholder="What do you need? (e.g. 20m 2.5mm cable)"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <div className="flex gap-2">
+                    <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
+                      placeholder="Qty" type="number" min="0.01" step="0.01"
+                      className="w-1/4 px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                    <input value={orderUnit} onChange={e => setOrderUnit(e.target.value)}
+                      placeholder="Unit (m / nr / box)"
+                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  </div>
+                  <input value={orderNotes} onChange={e => setOrderNotes(e.target.value)}
+                    placeholder="Notes for office (optional)"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('') }}
+                      className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => void addOrder()} disabled={!orderDesc.trim() || orderSaving}
+                      className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ background: S.accent }}>
+                      {orderSaving ? <Loader2 size={13} className="animate-spin inline" /> : 'Send Request'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Materials Used / Charged ── */}
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.muted }}>Materials Used</span>
+              </div>
               {materials.length === 0 && !showAddMaterial && (
-                <div className="py-8 flex flex-col items-center gap-2">
-                  <p className="text-sm" style={{ color: S.muted }}>No materials added yet</p>
+                <div className="py-6 flex flex-col items-center gap-1">
+                  <p className="text-xs" style={{ color: S.muted }}>No materials logged yet</p>
                 </div>
               )}
               {materials.map((m, i) => (
@@ -450,8 +588,6 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                   </button>
                 </div>
               ))}
-
-              {/* Inline add form */}
               {showAddMaterial && (
                 <div className="px-4 py-3 space-y-2" style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined }}>
                   <input value={matDesc} onChange={e => setMatDesc(e.target.value)}
@@ -481,15 +617,17 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                   </div>
                 </div>
               )}
+              {!showAddMaterial && (
+                <div className="px-4 py-3" style={{ borderTop: `1px solid ${S.border}` }}>
+                  <button onClick={() => setShowAddMaterial(true)}
+                    className="flex items-center gap-2 text-xs font-semibold"
+                    style={{ color: S.accent }}>
+                    <Plus size={12} /> Log Material Used
+                  </button>
+                </div>
+              )}
             </div>
 
-            {!showAddMaterial && (
-              <button onClick={() => setShowAddMaterial(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-                style={{ border: `1px solid ${S.border}`, color: S.accent, background: S.card }}>
-                <Plus size={14} /> Add Material
-              </button>
-            )}
             <button onClick={() => setTab('photos')}
               className="w-full py-3 rounded-xl text-sm font-semibold text-white"
               style={{ background: S.accent }}>

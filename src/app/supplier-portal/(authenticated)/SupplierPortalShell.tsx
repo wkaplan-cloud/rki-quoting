@@ -13,6 +13,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [pendingMaterialsCount, setPendingMaterialsCount] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const prevCountRef = useRef(-1) // -1 = not yet initialised; skip sound on first poll
 
@@ -26,6 +27,18 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
       .then(r => r.json())
       .then(d => setPendingCount(d.count ?? 0))
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    function fetchMaterials() {
+      fetch('/api/supplier-portal/quoting/material-requests?status=pending&count=1')
+        .then(r => r.json())
+        .then((d: { count?: number }) => setPendingMaterialsCount(d.count ?? 0))
+        .catch(() => {})
+    }
+    fetchMaterials()
+    const id = setInterval(fetchMaterials, 60_000)
+    return () => clearInterval(id)
   }, [])
 
   // Pre-unlock audio on first user interaction so autoplay works when a notification arrives
@@ -84,6 +97,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
         hasQuoting={hasQuoting}
         supplierCategory={supplierCategory}
         notificationCount={notificationCount}
+        pendingMaterialsCount={pendingMaterialsCount}
         desktopExpanded={desktopExpanded}
         onDesktopToggle={() => setDesktopExpanded(e => {
           const next = !e

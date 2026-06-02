@@ -16,6 +16,7 @@ import { SnagTab } from './SnagTab'
 import { COCTab } from './COCTab'
 import { ReportingTab } from './ReportingTab'
 import { ClaimsTab } from './ClaimsTab'
+import { MaterialsTab } from './MaterialsTab'
 import { ClientCombobox } from '../../ClientCombobox'
 
 const S = {
@@ -347,7 +348,7 @@ interface Props {
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
-type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'snag' | 'coc' | 'reporting'
+type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting'
 
 export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
   const router = useRouter()
@@ -390,6 +391,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     quote:      true,
     variations: ['approved', 'in_progress', 'completed'].includes(q.status),
     claims:     ['in_progress', 'completed'].includes(q.status),
+    materials:  ['in_progress', 'completed'].includes(q.status),
     snag:       ['in_progress', 'completed'].includes(q.status),
     coc:        ['in_progress', 'completed'].includes(q.status),
     as_built:   ['in_progress', 'completed'].includes(q.status),
@@ -667,6 +669,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     { id: 'quote',      label: 'Quote' },
     { id: 'variations', label: 'Variations' },
     { id: 'claims',     label: 'Claims' },
+    { id: 'materials',  label: 'Materials' },
     { id: 'snag',       label: 'Snag List' },
     { id: 'coc',        label: 'COC' },
     { id: 'as_built',   label: 'As-Built' },
@@ -931,6 +934,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           <ReportingTab quoteId={q.id} portalAccountId={portalAccountId} />
         </div>
       )}
+      <div style={{ display: activeTab === 'materials' ? undefined : 'none' }}>
+        <MaterialsTab quoteId={q.id} />
+      </div>
 
       {/* Quote tab content */}
       <div style={{ display: activeTab === 'quote' ? undefined : 'none' }}>

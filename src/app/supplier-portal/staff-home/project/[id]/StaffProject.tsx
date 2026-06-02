@@ -1,9 +1,10 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MapPin, Camera, Plus, X, Loader2, CheckCircle2, FileText, Trash2, AlertTriangle, TrendingDown } from 'lucide-react'
+import { ArrowLeft, MapPin, Camera, Plus, X, Loader2, CheckCircle2, FileText, Trash2, AlertTriangle, TrendingDown, ShoppingCart } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { StaffBottomNav } from '../../StaffBottomNav'
+import type { ElecMaterialRequest } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -20,7 +21,7 @@ const STATUS_LABEL: Record<string, string> = {
   in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled',
 }
 
-type Tab = 'details' | 'photos' | 'vo' | 'reporting'
+type Tab = 'details' | 'materials' | 'photos' | 'vo' | 'reporting'
 
 interface Report {
   id: string; quote_id: string; portal_account_id: string
@@ -85,6 +86,57 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
   const [voSaving, setVOSaving] = useState(false)
   const [voSuccess, setVOSuccess] = useState(false)
   const [voError, setVOError] = useState('')
+
+  // Material requests
+  const [matOrders, setMatOrders] = useState<ElecMaterialRequest[]>([])
+  const [matOrdersLoaded, setMatOrdersLoaded] = useState(false)
+  const [showAddOrder, setShowAddOrder] = useState(false)
+  const [orderDesc, setOrderDesc] = useState('')
+  const [orderQty, setOrderQty] = useState('1')
+  const [orderUnit, setOrderUnit] = useState('')
+  const [orderNotes, setOrderNotes] = useState('')
+  const [orderLineItemId, setOrderLineItemId] = useState('')
+  const [orderIsVO, setOrderIsVO] = useState(false)
+  const [orderSaving, setOrderSaving] = useState(false)
+
+  // Load on tab switch
+  if (tab === 'materials' && !matOrdersLoaded) {
+    fetch(`/api/supplier-portal/quoting/material-requests?quote_id=${quote.id}`)
+      .then(r => r.json())
+      .then((d: ElecMaterialRequest[]) => { setMatOrders(d); setMatOrdersLoaded(true) })
+      .catch(() => setMatOrdersLoaded(true))
+  }
+
+  async function addOrder() {
+    if (!orderDesc.trim() || orderSaving) return
+    setOrderSaving(true)
+    const res = await fetch('/api/supplier-portal/quoting/material-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_type: 'project',
+        quote_id: quote.id,
+        line_item_id: orderLineItemId || null,
+        is_variation: orderIsVO,
+        description: orderDesc.trim(),
+        qty: parseFloat(orderQty) || 1,
+        unit: orderUnit.trim() || null,
+        notes: orderNotes.trim() || null,
+      }),
+    })
+    if (res.ok) {
+      const m = await res.json() as ElecMaterialRequest
+      setMatOrders(prev => [...prev, m])
+      setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('')
+      setOrderLineItemId(''); setOrderIsVO(false); setShowAddOrder(false)
+    }
+    setOrderSaving(false)
+  }
+
+  async function deleteOrder(orderId: string) {
+    await fetch(`/api/supplier-portal/quoting/material-requests/${orderId}`, { method: 'DELETE' })
+    setMatOrders(prev => prev.filter(o => o.id !== orderId))
+  }
 
   async function loadReports() {
     if (reportsLoaded) return
@@ -220,6 +272,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
       <div className="flex gap-1.5 px-4 pt-4 pb-2 overflow-x-auto">
         {([
           ['details', 'Line Items'],
+          ['materials', `Materials${matOrders.length > 0 ? ` (${matOrders.length})` : ''}`],
           ['photos', `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`],
           ['vo', 'Raise VO'],
           ['reporting', 'Report'],
@@ -289,6 +342,118 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {/* ── MATERIALS TAB ── */}
+        {tab === 'materials' && (
+          <div className="space-y-3">
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}` }}>
+                <div className="flex items-center gap-2">
+                  <ShoppingCart size={14} style={{ color: S.accent }} />
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.accent }}>Materials to Order</span>
+                </div>
+                {!showAddOrder && (
+                  <button onClick={() => setShowAddOrder(true)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                    style={{ color: S.accent, border: `1px solid rgba(58,124,165,0.3)` }}>
+                    <Plus size={11} /> Request
+                  </button>
+                )}
+              </div>
+
+              {matOrders.length === 0 && !showAddOrder && (
+                <div className="py-8 flex flex-col items-center gap-1">
+                  <ShoppingCart size={22} style={{ color: S.border }} />
+                  <p className="text-xs" style={{ color: S.muted }}>No material requests yet</p>
+                </div>
+              )}
+
+              {matOrders.map((o, i) => {
+                const statusColor = o.status === 'received' ? S.green : o.status === 'ordered' ? S.accent : S.gold
+                const statusLabel = o.status === 'received' ? 'Received' : o.status === 'ordered' ? 'Ordered' : 'Pending'
+                return (
+                  <div key={o.id} className="px-4 py-3" style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium" style={{ color: S.text }}>{o.description}</p>
+                          {o.is_variation && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(217,164,65,0.15)', color: S.gold }}>VO</span>
+                          )}
+                        </div>
+                        <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                          {o.qty} {o.unit ?? 'nr'}
+                          {o.line_item ? ` · ref: ${(o.line_item as { description: string }).description}` : ''}
+                          {o.notes ? ` · ${o.notes}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{ background: `${statusColor}18`, color: statusColor }}>
+                          {statusLabel}
+                        </span>
+                        {o.status === 'pending' && (
+                          <button onClick={() => void deleteOrder(o.id)} style={{ color: S.muted }}>
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {showAddOrder && (
+                <div className="px-4 py-3 space-y-2.5" style={{ borderTop: matOrders.length > 0 ? `1px solid ${S.border}` : undefined }}>
+                  <input value={orderDesc} onChange={e => setOrderDesc(e.target.value)}
+                    placeholder="What do you need? (e.g. 20m 2.5mm cable)"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <div className="flex gap-2">
+                    <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
+                      placeholder="Qty" type="number" min="0.01" step="0.01"
+                      className="w-1/4 px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                    <input value={orderUnit} onChange={e => setOrderUnit(e.target.value)}
+                      placeholder="Unit (m / nr / box)"
+                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  </div>
+                  {items.length > 0 && (
+                    <select value={orderLineItemId} onChange={e => setOrderLineItemId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: orderLineItemId ? S.text : S.muted }}>
+                      <option value="">Link to quoted line item (optional)</option>
+                      {items.map(item => (
+                        <option key={item.id} value={item.id}>{item.description}</option>
+                      ))}
+                    </select>
+                  )}
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={orderIsVO} onChange={e => setOrderIsVO(e.target.checked)}
+                      className="rounded" />
+                    <span style={{ color: S.text }}>This is extra — flag as Variation Order</span>
+                  </label>
+                  <input value={orderNotes} onChange={e => setOrderNotes(e.target.value)}
+                    placeholder="Notes for office (optional)"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes(''); setOrderLineItemId(''); setOrderIsVO(false) }}
+                      className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => void addOrder()} disabled={!orderDesc.trim() || orderSaving}
+                      className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ background: S.accent }}>
+                      {orderSaving ? <Loader2 size={13} className="animate-spin inline" /> : 'Send Request'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

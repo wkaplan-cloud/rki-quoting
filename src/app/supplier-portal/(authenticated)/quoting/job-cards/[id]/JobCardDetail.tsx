@@ -6,11 +6,12 @@ import {
   CheckCircle2, Clock, Play, XCircle, Loader2,
   MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
-  Download, Printer,
+  Download, Printer, ShoppingCart, PackageCheck,
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
-  ElecJobCardStatus, ElecJobCardType, ElecStaff, ElecClient
+  ElecJobCardStatus, ElecJobCardType, ElecStaff, ElecClient,
+  ElecMaterialRequest, ElecMaterialRequestStatus,
 } from '@/lib/elec-types'
 import { ClientCombobox } from '../../ClientCombobox'
 
@@ -159,6 +160,37 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [editingMatId, setEditingMatId] = useState<string | null>(null)
   const [editingMat, setEditingMat] = useState({ desc: '', qty: '', price: '' })
   const [matSaving, setMatSaving] = useState(false)
+
+  // Material order requests (from staff)
+  const [matOrders, setMatOrders] = useState<ElecMaterialRequest[]>([])
+  const [matOrdersLoaded, setMatOrdersLoaded] = useState(false)
+  const [matOrderUpdating, setMatOrderUpdating] = useState<string | null>(null)
+  const [matOrderSupplier, setMatOrderSupplier] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (tab === 'materials' && !matOrdersLoaded) {
+      fetch(`/api/supplier-portal/quoting/material-requests?job_card_id=${initial.id}`)
+        .then(r => r.json())
+        .then((d: ElecMaterialRequest[]) => { setMatOrders(d); setMatOrdersLoaded(true) })
+        .catch(() => setMatOrdersLoaded(true))
+    }
+  }, [tab, initial.id, matOrdersLoaded])
+
+  async function updateOrderStatus(req: ElecMaterialRequest, newStatus: ElecMaterialRequestStatus) {
+    setMatOrderUpdating(req.id)
+    const body: Record<string, unknown> = { status: newStatus }
+    if (matOrderSupplier[req.id]) body.supplier = matOrderSupplier[req.id]
+    const res = await fetch(`/api/supplier-portal/quoting/material-requests/${req.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (res.ok) {
+      const updated = await res.json() as ElecMaterialRequest
+      setMatOrders(prev => prev.map(r => r.id === req.id ? updated : r))
+    }
+    setMatOrderUpdating(null)
+  }
 
   // Photos
   const [photoUploading, setPhotoUploading] = useState(false)
@@ -772,6 +804,91 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       {/* ── Tab: Materials ───────────────────────────────────────────────── */}
       {tab === 'materials' && (
         <div>
+          {/* ── Staff Material Order Requests ── */}
+          <div className="rounded-2xl overflow-hidden mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+              <div className="flex items-center gap-2">
+                <ShoppingCart size={15} style={{ color: S.accent }} />
+                <p className="text-sm font-semibold" style={{ color: S.text }}>Material Requests</p>
+                <p className="text-[10px] ml-1" style={{ color: S.muted }}>— from staff on-site</p>
+              </div>
+              {matOrders.filter(o => o.status === 'pending').length > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(217,164,65,0.15)', color: S.gold }}>
+                  {matOrders.filter(o => o.status === 'pending').length} pending
+                </span>
+              )}
+            </div>
+
+            {!matOrdersLoaded && (
+              <div className="py-8 flex items-center justify-center">
+                <Loader2 size={20} className="animate-spin" style={{ color: S.muted }} />
+              </div>
+            )}
+
+            {matOrdersLoaded && matOrders.length === 0 && (
+              <div className="py-8 flex flex-col items-center gap-2">
+                <p className="text-sm" style={{ color: S.muted }}>No material requests from staff yet</p>
+              </div>
+            )}
+
+            {matOrders.map((req, i) => {
+              const statusColors: Record<string, string> = { pending: S.gold, ordered: S.accent, received: S.green, cancelled: S.muted }
+              const statusLabels: Record<string, string> = { pending: 'Pending', ordered: 'Ordered', received: 'Received', cancelled: 'Cancelled' }
+              const nextStatus: Partial<Record<string, ElecMaterialRequestStatus>> = { pending: 'ordered', ordered: 'received' }
+              const nextLabel: Partial<Record<string, string>> = { pending: 'Mark Ordered', ordered: 'Mark Received' }
+              const isUpdating = matOrderUpdating === req.id
+              return (
+                <div key={req.id} className="px-5 py-4" style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium" style={{ color: S.text }}>{req.description}</p>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                          style={{ background: `${statusColors[req.status]}18`, color: statusColors[req.status] }}>
+                          {statusLabels[req.status]}
+                        </span>
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                        <span className="font-semibold">{req.qty} {req.unit ?? 'nr'}</span>
+                        {req.requested_by_name ? ` · ${req.requested_by_name}` : ''}
+                        {req.notes ? ` · ${req.notes}` : ''}
+                      </p>
+                      {req.ordered_at && <p className="text-xs mt-0.5" style={{ color: S.muted }}>Ordered {new Date(req.ordered_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}{req.supplier ? ` from ${req.supplier}` : ''}</p>}
+                      {req.received_at && <p className="text-xs mt-0.5" style={{ color: S.green }}>Received {new Date(req.received_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      {nextStatus[req.status] && (
+                        <div className="flex items-center gap-1.5">
+                          {req.status === 'pending' && (
+                            <input
+                              value={matOrderSupplier[req.id] ?? ''}
+                              onChange={e => setMatOrderSupplier(p => ({ ...p, [req.id]: e.target.value }))}
+                              placeholder="Supplier"
+                              className="px-2 py-1 rounded-lg text-xs outline-none"
+                              style={{ border: `1px solid ${S.border}`, width: 100, color: S.text }}
+                            />
+                          )}
+                          <button
+                            onClick={() => void updateOrderStatus(req, nextStatus[req.status]!)}
+                            disabled={isUpdating}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white disabled:opacity-50"
+                            style={{ background: nextStatus[req.status] === 'received' ? S.green : S.accent }}>
+                            {isUpdating
+                              ? <Loader2 size={11} className="animate-spin" />
+                              : nextStatus[req.status] === 'received' ? <PackageCheck size={11} /> : <CheckCircle2 size={11} />}
+                            {isUpdating ? '…' : nextLabel[req.status]}
+                          </button>
+                        </div>
+                      )}
+                      {req.status === 'received' && <CheckCircle2 size={16} style={{ color: S.green }} />}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── Materials Used / Charged ── */}
           <div className="rounded-2xl overflow-hidden mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             {materials.length === 0 && !newMat && (
               <div className="py-10 flex flex-col items-center gap-2">
