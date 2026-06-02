@@ -545,6 +545,7 @@ export interface ElecJobCardMaterial {
   description: string
   qty: number
   unit_price: number | null
+  cost_price: number | null
   created_at: string
 }
 

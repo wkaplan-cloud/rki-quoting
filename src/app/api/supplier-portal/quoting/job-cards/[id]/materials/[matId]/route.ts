@@ -35,11 +35,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .maybeSingle()
     if (!mat) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const body = await req.json() as { description?: string; qty?: number; unit_price?: number }
-    const patch: Record<string, string | number> = {}
+    const body = await req.json() as { description?: string; qty?: number; unit_price?: number | null; cost_price?: number | null }
+    const patch: Record<string, string | number | null> = {}
     if (body.description !== undefined) patch.description = body.description
     if (body.qty          !== undefined) patch.qty         = body.qty
     if (body.unit_price   !== undefined) patch.unit_price  = body.unit_price
+    if (body.cost_price   !== undefined) patch.cost_price  = body.cost_price
 
     const { data: updated } = await supabaseAdmin
       .from('elec_job_card_materials')

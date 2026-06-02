@@ -31,11 +31,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from('elec_job_cards').select('id').eq('id', id).eq('portal_account_id', accountId).maybeSingle()
     if (!card) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const body = await req.json() as { description: string; qty: number; unit_price?: number | null }
+    const body = await req.json() as { description: string; qty: number; unit_price?: number | null; cost_price?: number | null }
 
     const { data, error } = await supabaseAdmin
       .from('elec_job_card_materials')
-      .insert({ job_card_id: id, description: body.description, qty: body.qty, unit_price: body.unit_price ?? null })
+      .insert({ job_card_id: id, description: body.description, qty: body.qty, unit_price: body.unit_price ?? null, cost_price: body.cost_price ?? null })
       .select().single()
     if (error) throw error
     return NextResponse.json(data)

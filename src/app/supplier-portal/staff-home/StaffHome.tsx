@@ -80,6 +80,18 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     }
   }, []) // eslint-disable-line
 
+  // Active clock-in job tracking
+  const [activeJobCardId, setActiveJobCardId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/supplier-portal/staff/punch')
+      .then(r => r.json())
+      .then((d: { isClockedIn: boolean; lastPunch: { job_id: string | null } | null }) => {
+        if (d.isClockedIn && d.lastPunch?.job_id) setActiveJobCardId(d.lastPunch.job_id)
+      })
+      .catch(() => {})
+  }, [])
+
   // New job modal
   const [showNewJob, setShowNewJob] = useState(false)
   const [jobCards, setJobCards] = useState<ElecJobCard[]>(initJobCards)
@@ -324,17 +336,20 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                     {activeJobs.map((j, i) => {
                       const ss = STATUS_STYLE[j.status] ?? STATUS_STYLE.pending
                       const client = !Array.isArray(j.client) ? j.client : null
+                      const isActive = activeJobCardId === j.id
                       return (
                         <button key={j.id}
                           onClick={() => router.push(`/supplier-portal/staff-home/job/${j.id}`)}
                           className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
                           style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: ss.bg }}>
-                            <ClipboardList size={16} style={{ color: ss.color }} />
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative" style={{ background: isActive ? 'rgba(22,163,74,0.12)' : ss.bg }}>
+                            <ClipboardList size={16} style={{ color: isActive ? S.green : ss.color }} />
+                            {isActive && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: S.green }} />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
+                            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: ss.bg, color: ss.color }}>{ss.label}</span>
+                              {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(22,163,74,0.12)', color: S.green }}>● Active</span>}
                               {j.scheduled_at && (
                                 <span className="text-[10px] flex items-center gap-0.5" style={{ color: S.muted }}>
                                   <Calendar size={9} />{new Date(j.scheduled_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
@@ -372,19 +387,22 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 {jobCards.map((j, i) => {
                   const ss = STATUS_STYLE[j.status] ?? STATUS_STYLE.pending
                   const client = !Array.isArray(j.client) ? j.client : null
+                  const isActive = activeJobCardId === j.id
                   return (
                     <button key={j.id}
                       onClick={() => router.push(`/supplier-portal/staff-home/job/${j.id}`)}
                       className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
                       style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: ss.bg }}>
-                        <ClipboardList size={16} style={{ color: ss.color }} />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative"
+                        style={{ background: isActive ? 'rgba(22,163,74,0.12)' : ss.bg }}>
+                        <ClipboardList size={16} style={{ color: isActive ? S.green : ss.color }} />
+                        {isActive && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: S.green }} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                           <span className="text-[10px] font-mono" style={{ color: S.muted }}>{j.job_number}</span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: ss.bg, color: ss.color }}>{ss.label}</span>
+                          {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(22,163,74,0.12)', color: S.green }}>● Active</span>}
                         </div>
                         <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{j.title}</p>
                         <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap" style={{ color: S.muted }}>
@@ -420,12 +438,16 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                       onClick={() => router.push(`/supplier-portal/staff-home/project/${p.id}`)}
                       className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
                       style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(58,124,165,0.1)' }}>
-                        <FolderOpen size={16} style={{ color: S.accent }} />
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative"
+                        style={{ background: isClockedIn ? 'rgba(22,163,74,0.1)' : 'rgba(58,124,165,0.1)' }}>
+                        <FolderOpen size={16} style={{ color: isClockedIn ? S.green : S.accent }} />
+                        {isClockedIn && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full animate-pulse" style={{ background: S.green }} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-mono mb-0.5" style={{ color: S.muted }}>{p.quote_number}</p>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <p className="text-[10px] font-mono" style={{ color: S.muted }}>{p.quote_number}</p>
+                          {isClockedIn && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>● On Site</span>}
+                        </div>
                         <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{p.project_name}</p>
                         <div className="flex items-center gap-3 text-xs mt-0.5" style={{ color: S.muted }}>
                           {client && <span>{client.client_name}</span>}

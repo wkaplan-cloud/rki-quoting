@@ -6,7 +6,7 @@ import {
   CheckCircle2, Clock, Play, XCircle, Loader2,
   MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
-  Download, Printer, ShoppingCart, PackageCheck,
+  Download, Printer, ShoppingCart, PackageCheck, ReceiptText,
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
@@ -92,7 +92,7 @@ interface Props {
   sageConnected?: boolean
 }
 
-type Tab = 'details' | 'report' | 'materials' | 'photos' | 'signature'
+type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'photos' | 'signature'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -156,9 +156,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   }, [initial.id])
 
   // Materials — inline form
-  const [newMat, setNewMat] = useState<{ desc: string; qty: string; price: string } | null>(null)
+  const [newMat, setNewMat] = useState<{ desc: string; qty: string; price: string; cost: string; markup: string } | null>(null)
   const [editingMatId, setEditingMatId] = useState<string | null>(null)
-  const [editingMat, setEditingMat] = useState({ desc: '', qty: '', price: '' })
+  const [editingMat, setEditingMat] = useState({ desc: '', qty: '', price: '', cost: '', markup: '' })
   const [matSaving, setMatSaving] = useState(false)
 
   // Material order requests (from staff)
@@ -297,6 +297,17 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   // ── Materials ─────────────────────────────────────────────────────────────
 
+  function computeSell(cost: string, markup: string): string {
+    const c = parseFloat(cost); const m = parseFloat(markup)
+    if (isNaN(c) || isNaN(m)) return ''
+    return (c * (1 + m / 100)).toFixed(2)
+  }
+  function computeMarkup(cost: string, sell: string): string {
+    const c = parseFloat(cost); const s = parseFloat(sell)
+    if (isNaN(c) || isNaN(s) || c === 0) return ''
+    return (((s - c) / c) * 100).toFixed(1)
+  }
+
   async function saveMaterial() {
     if (!newMat || !newMat.desc.trim()) return
     setMatSaving(true)
@@ -306,6 +317,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         description: newMat.desc.trim(),
         qty: parseFloat(newMat.qty) || 1,
         unit_price: newMat.price !== '' ? parseFloat(newMat.price) : null,
+        cost_price: newMat.cost !== '' ? parseFloat(newMat.cost) : null,
       }),
     })
     if (res.ok) {
@@ -318,7 +330,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   function startEditMaterial(m: ElecJobCardMaterial) {
     setEditingMatId(m.id)
-    setEditingMat({ desc: m.description, qty: String(m.qty), price: m.unit_price != null ? String(m.unit_price) : '' })
+    const cost = m.cost_price != null ? String(m.cost_price) : ''
+    const sell = m.unit_price != null ? String(m.unit_price) : ''
+    const markup = cost && sell ? computeMarkup(cost, sell) : ''
+    setEditingMat({ desc: m.description, qty: String(m.qty), price: sell, cost, markup })
   }
 
   async function updateMaterial() {
@@ -330,10 +345,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         description: editingMat.desc.trim(),
         qty: parseFloat(editingMat.qty) || 1,
         unit_price: editingMat.price !== '' ? parseFloat(editingMat.price) : null,
+        cost_price: editingMat.cost !== '' ? parseFloat(editingMat.cost) : null,
       }),
     })
     if (res.ok) {
-      const updated = await res.json() as ElecJobCardMaterial
+      const updated = (await res.json() as { ok: boolean; material: ElecJobCardMaterial }).material
       setCard(c => ({ ...c, materials: (c.materials ?? []).map(m => m.id === editingMatId ? updated : m) }))
       setEditingMatId(null)
     }
@@ -505,11 +521,12 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const checklistDoneCount = checklist.filter(c => c.done).length
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: 'details',   label: 'Details',   icon: Briefcase  },
-    { key: 'report',    label: 'Report',    icon: FileText   },
-    { key: 'materials', label: `Materials${materials.length > 0 ? ` (${materials.length})` : ''}`, icon: Wrench },
-    { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`,          icon: ImageIcon },
-    { key: 'signature', label: 'Signature', icon: Pen        },
+    { key: 'details',   label: 'Details',   icon: Briefcase   },
+    { key: 'report',    label: 'Report',    icon: FileText    },
+    { key: 'materials', label: 'Materials', icon: ShoppingCart },
+    { key: 'job_sheet', label: `Job Sheet${materials.length > 0 ? ` (${materials.length})` : ''}`, icon: ReceiptText },
+    { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`,          icon: ImageIcon  },
+    { key: 'signature', label: 'Signature', icon: Pen         },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -888,8 +905,33 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             })}
           </div>
 
-          {/* ── Materials Used / Charged ── */}
+        </div>
+      )}
+
+      {/* ── Tab: Job Sheet ─────────────────────────────────────────────────── */}
+      {tab === 'job_sheet' && (
+        <div>
+          {/* Line items */}
           <div className="rounded-2xl overflow-hidden mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+              <p className="text-sm font-semibold" style={{ color: S.text }}>Line Items</p>
+              <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Materials used on this job. Set cost + markup to compute sell price.</p>
+            </div>
+
+            {/* Column headers */}
+            {materials.length > 0 && (
+              <div className="hidden sm:grid px-5 py-2 text-[10px] font-bold uppercase tracking-wider"
+                style={{ gridTemplateColumns: '1fr 50px 90px 70px 90px 80px 28px', gap: '6px', color: S.muted, borderBottom: `1px solid ${S.border}` }}>
+                <span>Description</span>
+                <span className="text-center">Qty</span>
+                <span className="text-right">Cost (R)</span>
+                <span className="text-right">Markup %</span>
+                <span className="text-right">Sell (R)</span>
+                <span className="text-right">Total</span>
+                <span />
+              </div>
+            )}
+
             {materials.length === 0 && !newMat && (
               <div className="py-10 flex flex-col items-center gap-2">
                 <Wrench size={28} style={{ color: S.border }} />
@@ -901,98 +943,150 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             {materials.map((m, i) => (
               <div key={m.id}>
                 {editingMatId === m.id ? (
-                  /* Inline edit row */
-                  <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(58,124,165,0.03)' }}>
-                    <input
-                      value={editingMat.desc}
+                  <div className="px-4 py-3 space-y-2" style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(58,124,165,0.03)' }}>
+                    <input value={editingMat.desc} autoFocus
                       onChange={e => setEditingMat(p => ({ ...p, desc: e.target.value }))}
                       placeholder="Description"
-                      autoFocus
-                      className="flex-1 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                      className="w-full px-2.5 py-1.5 rounded-lg text-sm outline-none"
                       style={{ border: `1px solid ${S.accent}`, color: S.text }} />
-                    <input
-                      value={editingMat.qty}
-                      onChange={e => setEditingMat(p => ({ ...p, qty: e.target.value }))}
-                      placeholder="Qty"
-                      type="number" min="0.01" step="0.01"
-                      className="w-16 px-2.5 py-1.5 rounded-lg text-sm outline-none text-center"
-                      style={{ border: `1px solid ${S.border}`, color: S.text }} />
-                    <input
-                      value={editingMat.price}
-                      onChange={e => setEditingMat(p => ({ ...p, price: e.target.value }))}
-                      placeholder="Price"
-                      type="number" min="0" step="0.01"
-                      className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, color: S.text }} />
-                    <button onClick={() => void updateMaterial()} disabled={matSaving}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-                      style={{ background: S.accent }}>
-                      {matSaving ? <Loader2 size={12} className="animate-spin" /> : 'Save'}
-                    </button>
-                    <button onClick={() => setEditingMatId(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>
-                      Cancel
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <input value={editingMat.qty} type="number" min="0.01" step="0.01"
+                        onChange={e => setEditingMat(p => ({ ...p, qty: e.target.value }))}
+                        placeholder="Qty"
+                        className="w-16 px-2.5 py-1.5 rounded-lg text-sm outline-none text-center"
+                        style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                      <input value={editingMat.cost} type="number" min="0" step="0.01"
+                        onChange={e => {
+                          const cost = e.target.value
+                          const sell = editingMat.markup ? computeSell(cost, editingMat.markup) : editingMat.price
+                          setEditingMat(p => ({ ...p, cost, price: sell || p.price }))
+                        }}
+                        placeholder="Cost (R)"
+                        className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                        style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                      <input value={editingMat.markup} type="number" min="0" step="0.1"
+                        onChange={e => {
+                          const markup = e.target.value
+                          const sell = editingMat.cost ? computeSell(editingMat.cost, markup) : editingMat.price
+                          setEditingMat(p => ({ ...p, markup, price: sell || p.price }))
+                        }}
+                        placeholder="Markup %"
+                        className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                        style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                      <input value={editingMat.price} type="number" min="0" step="0.01"
+                        onChange={e => {
+                          const price = e.target.value
+                          const markup = editingMat.cost ? computeMarkup(editingMat.cost, price) : editingMat.markup
+                          setEditingMat(p => ({ ...p, price, markup: markup || p.markup }))
+                        }}
+                        placeholder="Sell (R)"
+                        className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                        style={{ border: `1px solid ${S.accent}`, color: S.text }} />
+                      <span className="text-sm font-mono font-semibold" style={{ color: S.muted }}>
+                        = R{((parseFloat(editingMat.qty) || 0) * (parseFloat(editingMat.price) || 0)).toFixed(2)}
+                      </span>
+                      <button onClick={() => void updateMaterial()} disabled={matSaving}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                        style={{ background: S.accent }}>
+                        {matSaving ? <Loader2 size={12} className="animate-spin" /> : 'Save'}
+                      </button>
+                      <button onClick={() => setEditingMatId(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  /* Display row */
-                  <div className="flex items-center gap-3 px-5 py-3 group" style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: S.text }}>{m.description}</p>
-                      <p className="text-xs" style={{ color: S.muted }}>
-                        Qty: {m.qty}{m.unit_price != null ? ` · R${m.unit_price.toFixed(2)} each` : ''}
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold shrink-0" style={{ color: S.text }}>
+                  <div className="hidden sm:grid items-center px-5 py-3 group cursor-pointer hover:bg-gray-50"
+                    style={{ gridTemplateColumns: '1fr 50px 90px 70px 90px 80px 28px', gap: '6px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}
+                    onClick={() => startEditMaterial(m)}>
+                    <span className="text-sm font-medium truncate" style={{ color: S.text }}>{m.description}</span>
+                    <span className="text-sm text-center tabular-nums" style={{ color: S.muted }}>{m.qty}</span>
+                    <span className="text-sm text-right tabular-nums" style={{ color: S.muted }}>{m.cost_price != null ? `R${m.cost_price.toFixed(2)}` : '—'}</span>
+                    <span className="text-sm text-right tabular-nums" style={{ color: S.muted }}>
+                      {m.cost_price != null && m.unit_price != null ? `${computeMarkup(String(m.cost_price), String(m.unit_price))}%` : '—'}
+                    </span>
+                    <span className="text-sm text-right tabular-nums" style={{ color: S.text }}>{m.unit_price != null ? `R${m.unit_price.toFixed(2)}` : '—'}</span>
+                    <span className="text-sm text-right font-semibold tabular-nums" style={{ color: S.text }}>
                       {m.unit_price != null ? `R${(m.qty * m.unit_price).toFixed(2)}` : '—'}
-                    </p>
-                    <button onClick={() => startEditMaterial(m)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded"
-                      style={{ color: S.accent }}>
-                      <Edit2 size={13} />
-                    </button>
-                    <button onClick={() => void deleteMaterial(m.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded"
+                    </span>
+                    <button onClick={e => { e.stopPropagation(); void deleteMaterial(m.id) }}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded justify-self-end"
                       style={{ color: S.muted }}>
-                      <X size={14} />
+                      <X size={13} />
                     </button>
                   </div>
                 )}
+                {/* Mobile row */}
+                <div className="sm:hidden flex items-center gap-3 px-4 py-3 group" style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" style={{ color: S.text }}>{m.description}</p>
+                    <p className="text-xs" style={{ color: S.muted }}>
+                      Qty {m.qty}{m.cost_price != null ? ` · Cost R${m.cost_price.toFixed(2)}` : ''}{m.unit_price != null ? ` · Sell R${m.unit_price.toFixed(2)}` : ''}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold shrink-0" style={{ color: S.text }}>
+                    {m.unit_price != null ? `R${(m.qty * m.unit_price).toFixed(2)}` : '—'}
+                  </p>
+                  <button onClick={() => startEditMaterial(m)} className="opacity-0 group-hover:opacity-100 p-1 rounded" style={{ color: S.accent }}>
+                    <Edit2 size={13} />
+                  </button>
+                  <button onClick={() => void deleteMaterial(m.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded" style={{ color: S.muted }}>
+                    <X size={13} />
+                  </button>
+                </div>
               </div>
             ))}
 
             {/* Inline new material form */}
             {newMat !== null && (
-              <div className="flex items-center gap-2 px-4 py-3" style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(22,163,74,0.03)' }}>
-                <input
-                  value={newMat.desc}
+              <div className="px-4 py-3 space-y-2" style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(22,163,74,0.03)' }}>
+                <input value={newMat.desc} autoFocus
                   onChange={e => setNewMat(p => p ? { ...p, desc: e.target.value } : p)}
                   placeholder="Material description"
-                  autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') void saveMaterial() }}
-                  className="flex-1 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                  className="w-full px-2.5 py-1.5 rounded-lg text-sm outline-none"
                   style={{ border: `1px solid ${S.green}`, color: S.text }} />
-                <input
-                  value={newMat.qty}
-                  onChange={e => setNewMat(p => p ? { ...p, qty: e.target.value } : p)}
-                  placeholder="Qty"
-                  type="number" min="0.01" step="0.01"
-                  className="w-16 px-2.5 py-1.5 rounded-lg text-sm outline-none text-center"
-                  style={{ border: `1px solid ${S.border}`, color: S.text }} />
-                <input
-                  value={newMat.price}
-                  onChange={e => setNewMat(p => p ? { ...p, price: e.target.value } : p)}
-                  placeholder="Unit price"
-                  type="number" min="0" step="0.01"
-                  className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
-                  style={{ border: `1px solid ${S.border}`, color: S.text }} />
-                <button onClick={() => void saveMaterial()} disabled={matSaving || !newMat.desc.trim()}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
-                  style={{ background: S.green }}>
-                  {matSaving ? <Loader2 size={12} className="animate-spin" /> : 'Add'}
-                </button>
-                <button onClick={() => setNewMat(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>
-                  Cancel
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input value={newMat.qty} type="number" min="0.01" step="0.01"
+                    onChange={e => setNewMat(p => p ? { ...p, qty: e.target.value } : p)}
+                    placeholder="Qty"
+                    className="w-16 px-2.5 py-1.5 rounded-lg text-sm outline-none text-center"
+                    style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                  <input value={newMat.cost} type="number" min="0" step="0.01"
+                    onChange={e => {
+                      const cost = e.target.value
+                      const sell = newMat.markup ? computeSell(cost, newMat.markup) : newMat.price
+                      setNewMat(p => p ? { ...p, cost, price: sell || p.price } : p)
+                    }}
+                    placeholder="Cost (R)"
+                    className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                  <input value={newMat.markup} type="number" min="0" step="0.1"
+                    onChange={e => {
+                      const markup = e.target.value
+                      const sell = newMat.cost ? computeSell(newMat.cost, markup) : newMat.price
+                      setNewMat(p => p ? { ...p, markup, price: sell || p.price } : p)
+                    }}
+                    placeholder="Markup %"
+                    className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                  <input value={newMat.price} type="number" min="0" step="0.01"
+                    onChange={e => {
+                      const price = e.target.value
+                      const markup = newMat.cost ? computeMarkup(newMat.cost, price) : newMat.markup
+                      setNewMat(p => p ? { ...p, price, markup: markup || p.markup } : p)
+                    }}
+                    placeholder="Sell (R)"
+                    className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                    style={{ border: `1px solid ${S.accent}`, color: S.text }} />
+                  <button onClick={() => void saveMaterial()} disabled={matSaving || !newMat.desc.trim()}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-40"
+                    style={{ background: S.green }}>
+                    {matSaving ? <Loader2 size={12} className="animate-spin" /> : 'Add'}
+                  </button>
+                  <button onClick={() => setNewMat(null)} className="px-2 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1007,7 +1101,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           </div>
 
           {newMat === null && (
-            <button onClick={() => setNewMat({ desc: '', qty: '1', price: '' })}
+            <button onClick={() => setNewMat({ desc: '', qty: '1', price: '', cost: '', markup: '' })}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold mt-3"
               style={{ border: `1px solid ${S.border}`, color: S.accent }}>
               <Plus size={14} /> Add Material
