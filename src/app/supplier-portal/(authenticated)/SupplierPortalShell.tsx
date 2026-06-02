@@ -8,9 +8,11 @@ interface Props {
   hasQuoting?: boolean
   quotingPlan?: string | null
   supplierCategory?: string
+  setupFeePaid?: boolean
+  staffCount?: number
 }
 
-export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer' }: Props) {
+export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0 }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
@@ -109,6 +111,29 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
         })}
       />
       <main className={`${desktopExpanded ? 'md:ml-52' : 'md:ml-12'} flex-1 pt-14 md:pt-0 md:transition-[margin-left] md:duration-200`}>
+        {/* Setup & Training fee banner */}
+        {!setupFeePaid && (
+          <div className="px-6 py-3 flex items-center justify-between gap-4 flex-wrap"
+            style={{ background: '#D97706', color: '#fff' }}>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-bold">⚠</span>
+              <span>
+                <span className="font-semibold">Setup & Training fee outstanding — R2,500 once-off.</span>
+                {' '}Pay now to complete your onboarding.
+              </span>
+            </div>
+            <a
+              href="https://paystack.com/buy/setup--training--r2500-once-off-vmoejb"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 px-4 py-1.5 rounded-lg text-sm font-bold transition-opacity hover:opacity-90"
+              style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff' }}
+            >
+              Pay R2,500 →
+            </a>
+          </div>
+        )}
+
         <div className="px-6 py-8">
           {children}
         </div>

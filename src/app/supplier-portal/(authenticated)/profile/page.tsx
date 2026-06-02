@@ -52,6 +52,12 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
       : Promise.resolve({ data: [] }),
   ])
 
+  const [{ data: acctExtra }, { count: staffCount }] = await Promise.all([
+    supabaseAdmin.from('supplier_portal_accounts').select('setup_fee_paid').eq('id', base.id).single(),
+    supabaseAdmin.from('elec_staff').select('id', { count: 'exact', head: true }).eq('portal_account_id', base.id).eq('is_active', true),
+  ])
+  const setupFeePaid = (acctExtra as Record<string, unknown> | null)?.setup_fee_paid === true
+
   return (
     <SupplierProfileClient
       portalAccountId={account.id}
@@ -59,6 +65,8 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
       plan={account.plan ?? null}
       subscriptionStatus={account.subscription_status ?? null}
       trialEndsAt={account.trial_ends_at ?? null}
+      staffCount={staffCount ?? 0}
+      setupFeePaid={setupFeePaid}
       initialTab={initialTab}
       justUpgraded={justUpgraded}
       account={{

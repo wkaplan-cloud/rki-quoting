@@ -3,7 +3,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
-import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2, ChevronRight, Zap } from 'lucide-react'
+import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2, ChevronRight, Zap, Receipt } from 'lucide-react'
 import type { PortalOrgMember, ElecSettings } from '@/lib/elec-types'
 import { SettingsClient } from '../quoting/settings/SettingsClient'
 import { PLANS, planRank } from '@/lib/plan-features'
@@ -14,6 +14,8 @@ interface Props {
   plan: string | null
   subscriptionStatus: string | null
   trialEndsAt: string | null
+  staffCount: number
+  setupFeePaid: boolean
   initialTab: 'profile' | 'settings'
   justUpgraded: boolean
   account: {
@@ -48,7 +50,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subscriptionStatus, trialEndsAt, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
+export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subscriptionStatus, trialEndsAt, staffCount, setupFeePaid, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'settings'>(initialTab)
@@ -423,6 +425,49 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Extra staff notice */}
+            {isActive && staffCount > 20 && (() => {
+              const extra = staffCount - 20
+              const monthlyCost = extra * 40
+              return (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl"
+                  style={{ background: 'rgba(217,164,65,0.07)', border: '1px solid rgba(217,164,65,0.25)' }}>
+                  <Users size={14} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: '#92400E' }}>
+                      Extra staff charge — {extra} staff over limit
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: '#92400E', opacity: 0.8 }}>
+                      Your plan includes 20 staff. You have {staffCount} active staff members.
+                      An additional <strong>R{monthlyCost}/month</strong> ({extra} × R40) will be added to your subscription.
+                    </p>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Setup fee notice */}
+            {!setupFeePaid && subscriptionStatus === 'active' && (
+              <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 rounded-xl"
+                style={{ background: 'rgba(217,119,6,0.07)', border: '1px solid rgba(217,119,6,0.25)' }}>
+                <div className="flex items-start gap-3">
+                  <Receipt size={14} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: '#92400E' }}>Setup & Training fee outstanding</p>
+                    <p className="text-xs mt-0.5" style={{ color: '#92400E', opacity: 0.8 }}>
+                      R2,500 once-off — covers onboarding, staff device setup, and training.
+                    </p>
+                  </div>
+                </div>
+                <a href="https://paystack.com/buy/setup--training--r2500-once-off-vmoejb"
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background: '#D97706', color: '#fff' }}>
+                  Pay R2,500 →
+                </a>
               </div>
             )}
           </div>

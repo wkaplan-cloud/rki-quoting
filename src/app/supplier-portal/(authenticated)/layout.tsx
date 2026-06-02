@@ -33,12 +33,24 @@ export default async function SupplierPortalLayout({
   const displayName = account.company_name ?? account.email
   const active = isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)
   const hasQuoting = planRank(account.plan) >= 1 && active
+  const isTrades = account.supplier_category === 'trades'
 
   const pathname = (await headers()).get('x-pathname') ?? ''
-  const isTrades = account.supplier_category === 'trades'
   const upgradeExempt = pathname.startsWith('/supplier-portal/upgrade') || pathname.startsWith('/supplier-portal/profile')
   if (isTrades && !hasQuoting && !upgradeExempt) {
     redirect('/supplier-portal/upgrade')
+  }
+
+  // Fetch setup fee status + staff count (only for active trades accounts)
+  let setupFeePaid = true
+  let staffCount = 0
+  if (isTrades && active) {
+    const [{ data: acctData }, { count }] = await Promise.all([
+      supabaseAdmin.from('supplier_portal_accounts').select('setup_fee_paid').eq('id', account.id).single(),
+      supabaseAdmin.from('elec_staff').select('id', { count: 'exact', head: true }).eq('portal_account_id', account.id).eq('is_active', true),
+    ])
+    setupFeePaid = (acctData as Record<string, unknown> | null)?.setup_fee_paid === true
+    staffCount   = count ?? 0
   }
 
   return (
@@ -47,6 +59,8 @@ export default async function SupplierPortalLayout({
       hasQuoting={hasQuoting}
       quotingPlan={active ? (account.plan ?? null) : null}
       supplierCategory={account.supplier_category ?? 'manufacturer'}
+      setupFeePaid={setupFeePaid}
+      staffCount={staffCount}
     >
       {children}
     </SupplierPortalShell>
