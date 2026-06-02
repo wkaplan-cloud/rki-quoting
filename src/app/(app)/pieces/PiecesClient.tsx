@@ -146,6 +146,7 @@ function PieceModal({
         supplier_id: supplierId || null,
         supplier_name: supplierId ? supplierName : (supplierName.trim() || null),
         base_price: basePrice ? Number(basePrice) : null,
+        image_urls: imageUrls,
       }
 
       let savedPiece: Piece
