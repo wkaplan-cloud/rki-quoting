@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose,
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 
@@ -25,6 +25,8 @@ interface Props {
   businessName: string
   sourcingEnabled: boolean
   sourcingBadge?: number
+  capitalHotelsEnabled?: boolean
+  capitalBadge?: number
   isOpen: boolean
   onClose: () => void
   onContactClick: () => void
@@ -35,7 +37,7 @@ interface Props {
   onDesktopToggle: () => void
 }
 
-export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge = 0, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft, desktopExpanded, onDesktopToggle }: Props) {
+export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge = 0, capitalHotelsEnabled = false, capitalBadge = 0, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft, desktopExpanded, onDesktopToggle }: Props) {
   const path = usePathname()
   const isActive = (href: string) =>
     href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
@@ -203,7 +205,7 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
               <Link
                 href="/sourcing"
                 onClick={onClose}
-                
+
                 className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
                   ${isActive('/sourcing')
                     ? 'bg-[#9A7B4F]/20 text-white'
@@ -220,6 +222,45 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
                     {sourcingBadge > 99 ? '99+' : sourcingBadge}
                   </span>
                 )}
+              </Link>
+            </>
+          )}
+
+          {capitalHotelsEnabled && (
+            <>
+              <div className="border-t border-white/10 my-2 mx-2" />
+              <Link
+                href="/capital-hotels"
+                onClick={onClose}
+                className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
+                  ${isActive('/capital-hotels')
+                    ? 'bg-[#9A7B4F]/20 text-white'
+                    : 'text-white/70 hover:text-white hover:bg-white/5'}`}
+              >
+                <span className="flex items-center justify-center w-10 flex-shrink-0">
+                  <Hotel size={15} className={isActive('/capital-hotels') ? 'text-[#C4A46B]' : 'opacity-60'} />
+                </span>
+                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
+                  Capital Hotels
+                </span>
+                {capitalBadge > 0 && (
+                  <span className={`transition-opacity duration-150 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center bg-blue-500 text-white ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
+                    {capitalBadge > 99 ? '99+' : capitalBadge}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/capital-pieces"
+                onClick={onClose}
+                className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
+                  ${isActive('/capital-pieces')
+                    ? 'text-white/80'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+              >
+                <span className="flex items-center justify-center w-10 flex-shrink-0">
+                  <LayoutGrid size={14} className={isActive('/capital-pieces') ? 'text-[#C4A46B]' : 'opacity-60'} />
+                </span>
+                <span className={labelCls}>Capital Pieces</span>
               </Link>
             </>
           )}

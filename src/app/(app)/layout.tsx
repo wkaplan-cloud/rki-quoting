@@ -63,16 +63,21 @@ export default async function Layout({ children }: { children: React.ReactNode }
       ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000))
       : null
 
-  const [{ data: membership }, { data: settings }, { data: sourcingBadgeData }] = await Promise.all([
+  const [{ data: membership }, { data: settings }, { data: sourcingBadgeData }, { count: capitalBadgeCount }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
-    supabase.from('settings').select('business_name').maybeSingle(),
+    supabase.from('settings').select('business_name, capital_hotels_enabled').maybeSingle(),
     orgId
       ? supabaseAdmin.rpc('get_sourcing_badge_count', { p_org_id: orgId })
       : Promise.resolve({ data: 0, error: null }),
+    orgId
+      ? supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending')
+      : Promise.resolve({ count: 0, error: null }),
   ])
 
   // Sourcing badge: supplier responses waiting for designer to review
   const sourcingBadge = (sourcingBadgeData as number) ?? 0
+  const capitalHotelsEnabled = settings?.capital_hotels_enabled ?? false
+  const capitalBadge = capitalBadgeCount ?? 0
 
   return (
     <AppLayout
@@ -80,6 +85,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
       businessName={settings?.business_name ?? ''}
       sourcingEnabled={true}
       sourcingBadge={sourcingBadge}
+      capitalHotelsEnabled={capitalHotelsEnabled}
+      capitalBadge={capitalBadge}
       userEmail={user.email ?? ''}
       userName={membership?.full_name ?? ''}
       plan={org?.plan ?? 'trial'}
