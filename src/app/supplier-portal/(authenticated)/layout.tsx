@@ -44,12 +44,14 @@ export default async function SupplierPortalLayout({
   // Fetch setup fee status + staff count (only for active trades accounts)
   let setupFeePaid = true
   let staffCount = 0
+  let accountCreatedAt: string | null = null
   if (isTrades && active) {
     const [{ data: acctData }, { count }] = await Promise.all([
-      supabaseAdmin.from('supplier_portal_accounts').select('setup_fee_paid').eq('id', account.id).single(),
+      supabaseAdmin.from('supplier_portal_accounts').select('setup_fee_paid, created_at').eq('id', account.id).single(),
       supabaseAdmin.from('elec_staff').select('id', { count: 'exact', head: true }).eq('portal_account_id', account.id).eq('is_active', true),
     ])
     setupFeePaid = (acctData as Record<string, unknown> | null)?.setup_fee_paid === true
+    accountCreatedAt = (acctData as Record<string, unknown> | null)?.created_at as string | null ?? null
     staffCount   = count ?? 0
   }
 
@@ -61,6 +63,7 @@ export default async function SupplierPortalLayout({
       supplierCategory={account.supplier_category ?? 'manufacturer'}
       setupFeePaid={setupFeePaid}
       staffCount={staffCount}
+      accountCreatedAt={accountCreatedAt ?? undefined}
     >
       {children}
     </SupplierPortalShell>

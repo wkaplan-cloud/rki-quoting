@@ -10,9 +10,10 @@ interface Props {
   supplierCategory?: string
   setupFeePaid?: boolean
   staffCount?: number
+  accountCreatedAt?: string
 }
 
-export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0 }: Props) {
+export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0, accountCreatedAt }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
@@ -111,8 +112,8 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
         })}
       />
       <main className={`${desktopExpanded ? 'md:ml-52' : 'md:ml-12'} flex-1 pt-14 md:pt-0 md:transition-[margin-left] md:duration-200`}>
-        {/* Setup & Training fee banner */}
-        {!setupFeePaid && (
+        {/* Setup & Training fee banner — shown only after 20 days from account creation */}
+        {!setupFeePaid && accountCreatedAt && Math.floor((Date.now() - new Date(accountCreatedAt).getTime()) / 86400000) >= 20 && (
           <div className="px-6 py-3 flex items-center justify-between gap-4 flex-wrap"
             style={{ background: '#D97706', color: '#fff' }}>
             <div className="flex items-center gap-2 text-sm">
