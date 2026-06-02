@@ -28,7 +28,7 @@ export default async function RequestPage({ params }: { params: Promise<{ reques
       .order('sort_order'),
     supabase
       .from('capital_pieces')
-      .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes)')
+      .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id), variants:capital_piece_variants(id, label, dimensions, sort_order, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id))')
       .order('name'),
     supabase
       .from('suppliers')

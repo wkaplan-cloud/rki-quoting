@@ -11,7 +11,14 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('capital_pieces')
-      .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, updated_at)')
+      .select(`
+        *,
+        prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id),
+        variants:capital_piece_variants(
+          id, label, dimensions, sort_order,
+          prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id)
+        )
+      `)
       .order('name')
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -31,7 +38,7 @@ export async function POST(req: NextRequest) {
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
 
-    const body = await req.json() as { name: string; description?: string; category?: string; image_url?: string }
+    const body = await req.json() as { name: string; description?: string; category?: string; fabric?: string; image_url?: string }
     if (!body.name?.trim()) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
 
     const { data, error } = await supabase
@@ -41,9 +48,10 @@ export async function POST(req: NextRequest) {
         name: body.name.trim(),
         description: body.description?.trim() ?? null,
         category: body.category ?? 'general',
+        fabric: body.fabric?.trim() ?? null,
         image_url: body.image_url ?? null,
       })
-      .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, updated_at)')
+      .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id), variants:capital_piece_variants(id, label, dimensions, sort_order, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id))')
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

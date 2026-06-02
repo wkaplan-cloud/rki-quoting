@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { apiError } from '@/lib/api-error'
 
 // POST /api/capital-hotels/[requestId]/send-quote
-// Creates a QuotingHub project + line items from all matched request items
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ requestId: string }> }
@@ -17,10 +16,9 @@ export async function POST(
     const { data: orgId } = await supabase.rpc('get_current_org_id')
     if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 403 })
 
-    // Load the request and its items
     const { data: request } = await supabase
       .from('capital_requests')
-      .select('id, hotel_name, hotel_id, submitted_at')
+      .select('id, hotel_name, submitted_at')
       .eq('id', requestId)
       .single()
 
@@ -46,22 +44,18 @@ export async function POST(
     if (lastProject?.project_number) {
       const match = lastProject.project_number.match(/^(.*?)(\d+)$/)
       if (match) {
-        const prefix = match[1]
-        const digits = match[2]
-        nextNumber = prefix + String(parseInt(digits) + 1).padStart(digits.length, '0')
+        nextNumber = match[1] + String(parseInt(match[2]) + 1).padStart(match[2].length, '0')
       }
     }
 
     const date = new Date(request.submitted_at).toISOString().split('T')[0]
     const projectName = `${request.hotel_name} — ${new Date(request.submitted_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}`
 
-    // Get default settings for vat_rate, deposit_percentage
     const { data: settings } = await supabase
       .from('settings')
       .select('vat_rate, deposit_percentage')
       .maybeSingle()
 
-    // Create the project
     const { data: project, error: projError } = await supabase
       .from('projects')
       .insert({
@@ -81,26 +75,41 @@ export async function POST(
 
     if (projError || !project) return NextResponse.json({ error: projError?.message ?? 'Failed to create project' }, { status: 500 })
 
-    // Create line items from each request item
-    const lineItemRows = items.map((item, idx) => ({
-      project_id: project.id,
-      org_id: orgId,
-      item_name: item.piece_name ?? item.description,
-      description: item.description,
-      quantity: item.quantity,
-      supplier_id: item.supplier_id ?? null,
-      supplier_name: item.supplier_name ?? null,
-      cost_price: item.cost_price ?? 0,
-      markup_percentage: item.markup_percentage ?? 0,
-      row_type: 'item',
-      indent_level: 0,
-      sort_order: idx,
-      received: false,
-    }))
+    // Build rich line item descriptions from all available fields
+    const lineItemRows = items.map((item, idx) => {
+      // item_name: "Piece Name — Variant Label" or just piece name or hotel description
+      const itemName = item.piece_name
+        ? item.variant_label
+          ? `${item.piece_name} — ${item.variant_label}`
+          : item.piece_name
+        : item.description
+
+      // description: hotel's original request + fabric + dimensions
+      const descParts: string[] = [item.description]
+      if (item.fabric) descParts.push(`Fabric: ${item.fabric}`)
+      if (item.dimensions) descParts.push(`Dimensions: ${item.dimensions}`)
+      const description = descParts.join('\n')
+
+      return {
+        project_id: project.id,
+        org_id: orgId,
+        item_name: itemName,
+        description,
+        quantity: item.quantity,
+        supplier_id: item.supplier_id ?? null,
+        supplier_name: item.supplier_name ?? null,
+        cost_price: item.cost_price ?? 0,
+        markup_percentage: item.markup_percentage ?? 0,
+        fabric_image_url: item.piece_image_url ?? null,
+        row_type: 'item',
+        indent_level: 0,
+        sort_order: idx,
+        received: false,
+      }
+    })
 
     await supabase.from('line_items').insert(lineItemRows)
 
-    // Mark the request as quoted and link to project
     await supabase
       .from('capital_requests')
       .update({ status: 'quoted', quote_project_id: project.id })
