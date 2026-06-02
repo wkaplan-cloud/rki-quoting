@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { isActivePlan, planRank } from '@/lib/plan-features'
 
 export default async function QuotingLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -10,9 +11,8 @@ export default async function QuotingLayout({ children }: { children: React.Reac
   const account = await resolvePortalAccount(session.user.id)
   if (!account) redirect('/supplier-portal/not-a-supplier')
 
-  const isTrialing = account.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  const hasAccess = account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing)
-  if (!hasAccess) redirect('/supplier-portal/upgrade')
+  const active = isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)
+  if (!(planRank(account.plan) >= 1 && active)) redirect('/supplier-portal/upgrade')
 
   return <>{children}</>
 }

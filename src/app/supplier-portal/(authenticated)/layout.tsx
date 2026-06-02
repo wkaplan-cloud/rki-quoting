@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { SupplierPortalShell } from './SupplierPortalShell'
+import { isActivePlan, planRank } from '@/lib/plan-features'
 
 export default async function SupplierPortalLayout({
   children,
@@ -30,8 +31,8 @@ export default async function SupplierPortalLayout({
   }
 
   const displayName = account.company_name ?? account.email
-  const isTrialing = account.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  const hasQuoting = account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing)
+  const active = isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)
+  const hasQuoting = planRank(account.plan) >= 1 && active
 
   const pathname = (await headers()).get('x-pathname') ?? ''
   const isTrades = account.supplier_category === 'trades'
@@ -41,7 +42,12 @@ export default async function SupplierPortalLayout({
   }
 
   return (
-    <SupplierPortalShell companyName={displayName} hasQuoting={hasQuoting} supplierCategory={account.supplier_category ?? 'manufacturer'}>
+    <SupplierPortalShell
+      companyName={displayName}
+      hasQuoting={hasQuoting}
+      quotingPlan={active ? (account.plan ?? null) : null}
+      supplierCategory={account.supplier_category ?? 'manufacturer'}
+    >
       {children}
     </SupplierPortalShell>
   )

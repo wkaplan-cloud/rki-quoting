@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { PLANS } from '@/lib/plan-features'
 
-// R1999/month — update PAYSTACK_PLAN_SUPPLIER_ELECTRICIAN in .env with your Paystack plan code
-const SUPPLIER_PLANS: Record<string, { price: number; planCode: string; label: string }> = {
-  electrician: {
-    price:    1999,
-    planCode: process.env.PAYSTACK_PLAN_SUPPLIER_ELECTRICIAN ?? '',
-    label:    'Electrician Quoting',
-  },
-}
+const PLAN_MAP = Object.fromEntries(
+  PLANS.map(p => [p.id, {
+    price:    p.price,
+    planCode: process.env[p.envKey] ?? '',
+    label:    p.label,
+  }])
+)
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { planCategory } = await req.json() as { planCategory: string }
-    const plan = SUPPLIER_PLANS[planCategory]
+    const { planId } = await req.json() as { planId: string }
+    const plan = PLAN_MAP[planId]
     if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
     if (!plan.planCode) return NextResponse.json({ error: 'Plan not configured' }, { status: 500 })
 
@@ -37,31 +37,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Already subscribed' }, { status: 400 })
     }
 
-    const reference = `QH-sup-${account.id.slice(0, 8)}-${planCategory}-${Date.now()}`
+    const reference = `QH-sup-${account.id.slice(0, 8)}-${planId}-${Date.now()}`
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
     const callbackUrl = `${appUrl}/api/supplier-portal/paystack/callback?ref=${reference}`
 
     await supabaseAdmin
       .from('supplier_portal_accounts')
-      .update({ paystack_reference: reference, plan_category: planCategory })
+      .update({ paystack_reference: reference, plan_category: 'electrician' })
       .eq('id', account.id)
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email:        account.email,
-        amount:       plan.price * 100, // kobo
+        amount:       plan.price * 100,
         reference,
         currency:     'ZAR',
         callback_url: callbackUrl,
         plan:         plan.planCode,
         metadata: {
           portal_account_id: account.id,
-          plan_category:     planCategory,
+          plan_id:           planId,
           type:              'supplier_quoting',
           user_email:        account.email,
         },

@@ -9,6 +9,7 @@ interface Props {
   companyName: string
   pendingCount: number
   hasQuoting: boolean
+  quotingPlan?: string | null
   supplierCategory?: string
   notificationCount?: number
   pendingMaterialsCount?: number
@@ -38,7 +39,7 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
-export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle }: Props) {
+export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle }: Props) {
   const isTrades = supplierCategory === 'trades'
   const pathname = usePathname()
   const router = useRouter()
@@ -167,12 +168,21 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, suppl
           {/* Trades/electrician nav */}
           {isTrades ? (
             <>
-              <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
-              <NavLink href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />
-              <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />
-              <NavLink href="/supplier-portal/quoting/materials" label="Materials"  icon={ShoppingCart} pendingBadge={pendingMaterialsCount} />
-              <NavLink href="/supplier-portal/quoting/clients"    label="Clients"     icon={Users}      />
-              <NavLink href="/supplier-portal/quoting/price-book" label="Line Items" icon={BookOpen}   />
+              {(() => {
+                const tierRank = { starter: 1, professional: 2, business: 3, quoting: 3 }[quotingPlan ?? ''] ?? 0
+                const isPro = tierRank >= 2
+                const isBiz = tierRank >= 3
+                return (
+                  <>
+                    <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
+                    {isBiz && <NavLink href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />}
+                    {isPro && <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />}
+                    {isPro && <NavLink href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}
+                    {isPro && <NavLink href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users} />}
+                    {isBiz && <NavLink href="/supplier-portal/quoting/price-book" label="Line Items" icon={BookOpen} />}
+                  </>
+                )
+              })()}
 
               <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
 

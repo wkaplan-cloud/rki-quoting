@@ -35,13 +35,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(`${appUrl}/supplier-portal/upgrade?payment=failed`)
     }
 
-    const planCategory = account.plan_category ?? paystackData.data?.metadata?.plan_category ?? 'electrician'
+    const planId = paystackData.data?.metadata?.plan_id ?? paystackData.data?.metadata?.plan_category ?? 'business'
+    // Map legacy plan_category to new tier if needed
+    const resolvedPlan = ['starter', 'professional', 'business'].includes(planId) ? planId : 'business'
 
     await supabaseAdmin
       .from('supplier_portal_accounts')
       .update({
-        plan:                'quoting',
-        plan_category:       planCategory,
+        plan:                resolvedPlan,
+        plan_category:       'electrician',
         subscription_status: 'active',
         paystack_reference:  null,
       })

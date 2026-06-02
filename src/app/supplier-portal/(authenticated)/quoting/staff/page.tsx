@@ -14,7 +14,7 @@ export default async function StaffPage() {
 
   const account = await resolvePortalAccount(user.id)
   const isTrialing = account?.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  if (!account || !(account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing))) {
+  if (!account || !(['quoting', 'starter', 'professional', 'business'].includes(account.plan ?? '') && (account.subscription_status === 'active' || isTrialing))) {
     redirect('/supplier-portal/upgrade')
   }
 

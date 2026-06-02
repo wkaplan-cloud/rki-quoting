@@ -19,8 +19,7 @@ export default async function JobCardsPage() {
     .eq('auth_user_id', user.id).maybeSingle()
 
   if (own) {
-    const isTrialing = own.subscription_status === 'trialing' && own.trial_ends_at != null && new Date(own.trial_ends_at) > new Date()
-    if (!(own.plan === 'quoting' && (own.subscription_status === 'active' || isTrialing))) redirect('/supplier-portal/upgrade')
+    if (!(['quoting', 'professional', 'business'].includes(own.plan ?? '') && (own.subscription_status === 'active' || (own.subscription_status === 'trialing' && own.trial_ends_at != null && new Date(own.trial_ends_at) > new Date())))) redirect('/supplier-portal/upgrade')
     accountId = own.id
   } else {
     const { data: mem } = await supabaseAdmin

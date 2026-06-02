@@ -1,75 +1,36 @@
 'use client'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Zap, Check, Bolt, Lock } from 'lucide-react'
+import { Check, Zap, ChevronRight, Users, Briefcase, FolderOpen } from 'lucide-react'
 import { Suspense } from 'react'
+import { PLANS } from '@/lib/plan-features'
 
 const S = {
-  bg:       '#F0F2F5',
-  card:     '#FFFFFF',
-  sidebar:  '#1E2A38',
-  accent:   '#3A7CA5',
-  gold:     '#D9A441',
-  text:     '#18181B',
-  muted:    '#71717A',
-  border:   '#E4E4E7',
+  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
+  text: '#18181B', muted: '#71717A', border: '#E4E4E7', sidebar: '#1E2A38',
 }
 
-const TRADES = [
-  {
-    id:       'electrician',
-    label:    'Electrician',
-    icon:     Bolt,
-    price:    1999,
-    features: [
-      'Full quote builder with sections & line items',
-      'As-built quantity editing',
-      'Monthly progress claims (invoice & proforma)',
-      'Variation orders & project contacts',
-      'Certificate of Compliance (COC) tracker',
-      'Snag list management',
-      'Monthly RECON dashboard',
-      'Smart autocomplete from your history',
-      'PDF generation for quotes & claims',
-    ],
-    available: true,
-  },
-  {
-    id:       'plumber',
-    label:    'Plumber',
-    icon:     Zap,
-    price:    499,
-    features: ['Coming soon'],
-    available: false,
-  },
-  {
-    id:       'manufacturer',
-    label:    'Manufacturer',
-    icon:     Zap,
-    price:    499,
-    features: ['Coming soon'],
-    available: false,
-  },
-]
+const TIER_ICON = { starter: Users, professional: Briefcase, business: FolderOpen } as const
+const TIER_COLOR = { starter: '#3A7CA5', professional: '#D9A441', business: '#166534' } as const
+const TIER_BG   = { starter: 'rgba(58,124,165,0.08)', professional: 'rgba(217,164,65,0.08)', business: 'rgba(22,101,52,0.08)' } as const
 
 function UpgradeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const paymentFailed = searchParams.get('payment') === 'failed'
-  const [selected, setSelected] = useState('electrician')
+  const [selected, setSelected] = useState<string>('professional')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(paymentFailed ? 'Payment was not completed. Please try again.' : '')
+  const [error, setError] = useState(paymentFailed ? 'Payment was not completed — please try again.' : '')
 
-  const selectedTrade = TRADES.find(t => t.id === selected)!
+  const selectedPlan = PLANS.find(p => p.id === selected)!
 
   async function handleUpgrade() {
-    setError('')
-    setLoading(true)
+    setError(''); setLoading(true)
     try {
       const res = await fetch('/api/supplier-portal/paystack/subscribe', {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ planCategory: selected }),
+        body: JSON.stringify({ planId: selected }),
       })
       const data = await res.json() as { authorization_url?: string; error?: string }
       if (!res.ok || !data.authorization_url) {
@@ -86,96 +47,115 @@ function UpgradeContent() {
 
   return (
     <div className="min-h-screen py-10 px-4" style={{ background: S.bg }}>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-3xl mx-auto">
 
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest mb-4"
             style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
             <Zap size={11} />
-            Quoting Upgrade
+            QuotingHub for Electricians
           </div>
-          <h1 className="text-2xl font-bold mb-2" style={{ color: S.text }}>Unlock the Quoting Module</h1>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: S.text }}>Choose your plan</h1>
           <p className="text-sm" style={{ color: S.muted }}>
-            A complete project &amp; billing system built for your trade. R1,999/month, cancel anytime.
+            All plans include 2 admin users and up to 20 staff. Cancel anytime.
           </p>
         </div>
 
-        {/* Trade selector */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {TRADES.map(trade => {
-            const Icon = trade.icon
-            const active = selected === trade.id
+        {/* Tier cards */}
+        <div className="grid md:grid-cols-3 gap-4 mb-8">
+          {PLANS.map(plan => {
+            const Icon = TIER_ICON[plan.id as keyof typeof TIER_ICON] ?? Zap
+            const color = TIER_COLOR[plan.id as keyof typeof TIER_COLOR] ?? S.accent
+            const bg    = TIER_BG[plan.id as keyof typeof TIER_BG] ?? 'rgba(58,124,165,0.08)'
+            const isSelected = selected === plan.id
+            const isPopular = plan.id === 'professional'
+
             return (
-              <button
-                key={trade.id}
-                onClick={() => trade.available && setSelected(trade.id)}
-                disabled={!trade.available}
-                className="relative rounded-xl p-4 text-left transition-all duration-150"
+              <button key={plan.id} onClick={() => setSelected(plan.id)}
+                className="relative rounded-2xl p-5 text-left transition-all duration-150"
                 style={{
-                  background:  active ? S.accent : S.card,
-                  border:      `2px solid ${active ? S.accent : S.border}`,
-                  cursor:      trade.available ? 'pointer' : 'not-allowed',
-                  opacity:     trade.available ? 1 : 0.5,
-                  boxShadow:   active ? `0 4px 16px rgba(58,124,165,0.25)` : '0 1px 3px rgba(0,0,0,0.06)',
-                }}
-              >
-                {!trade.available && (
-                  <span className="absolute top-2 right-2">
-                    <Lock size={10} style={{ color: S.muted }} />
+                  background: isSelected ? S.card : S.card,
+                  border: `2px solid ${isSelected ? color : S.border}`,
+                  boxShadow: isSelected ? `0 4px 20px ${color}22` : '0 1px 4px rgba(0,0,0,0.06)',
+                }}>
+                {isPopular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-1 rounded-full text-white"
+                    style={{ background: S.gold }}>
+                    Most Popular
                   </span>
                 )}
-                <Icon size={18} className="mb-2" style={{ color: active ? '#fff' : S.accent }} />
-                <p className="text-sm font-semibold" style={{ color: active ? '#fff' : S.text }}>{trade.label}</p>
-                {!trade.available && (
-                  <p className="text-[10px] mt-0.5" style={{ color: active ? 'rgba(255,255,255,0.6)' : S.muted }}>Coming soon</p>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: bg }}>
+                  <Icon size={16} style={{ color }} />
+                </div>
+                <p className="font-bold text-base mb-0.5" style={{ color: S.text }}>{plan.label}</p>
+                <p className="text-xs mb-3" style={{ color: S.muted }}>{plan.tagline}</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold" style={{ color: isSelected ? color : S.text }}>R{plan.price.toLocaleString()}</span>
+                  <span className="text-xs" style={{ color: S.muted }}>/mo</span>
+                </div>
+                <div className="mt-4 space-y-2">
+                  {plan.features.map(f => (
+                    <div key={f} className="flex items-start gap-2">
+                      <Check size={12} className="mt-0.5 shrink-0" style={{ color }} />
+                      <p className="text-xs leading-snug" style={{ color: S.text }}>{f}</p>
+                    </div>
+                  ))}
+                </div>
+                {isSelected && (
+                  <div className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center"
+                    style={{ background: color }}>
+                    <Check size={11} color="#fff" />
+                  </div>
                 )}
               </button>
             )
           })}
         </div>
 
-        {/* Feature card */}
-        <div className="rounded-2xl p-6 mb-6" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="font-bold text-lg" style={{ color: S.text }}>{selectedTrade.label} Quoting</p>
-              <p className="text-sm" style={{ color: S.muted }}>Everything you need to run your projects</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold" style={{ color: S.text }}>R{selectedTrade.price}</p>
-              <p className="text-xs" style={{ color: S.muted }}>/month excl. VAT</p>
-            </div>
-          </div>
+        {/* Staff add-on note */}
+        <div className="rounded-xl px-4 py-3 mb-6 flex items-center gap-3"
+          style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <Users size={14} style={{ color: S.muted }} />
+          <p className="text-xs" style={{ color: S.muted }}>
+            <span className="font-semibold" style={{ color: S.text }}>21+ staff?</span> Add R40/month per extra staff member — billed automatically through Paystack after setup.
+          </p>
+        </div>
 
-          <div className="space-y-2.5">
-            {selectedTrade.features.map(f => (
-              <div key={f} className="flex items-start gap-2.5">
-                <Check size={14} className="mt-0.5 flex-shrink-0" style={{ color: S.accent }} />
-                <p className="text-sm" style={{ color: S.text }}>{f}</p>
-              </div>
-            ))}
-          </div>
+        {/* Setup fee note */}
+        <div className="rounded-xl px-4 py-3 mb-6 flex items-center gap-3"
+          style={{ background: 'rgba(217,164,65,0.06)', border: `1px solid rgba(217,164,65,0.2)` }}>
+          <Zap size={14} style={{ color: S.gold }} />
+          <p className="text-xs" style={{ color: S.text }}>
+            <span className="font-semibold">Setup & Training — R2,500 once-off.</span>{' '}
+            We'll onboard your team, configure staff devices, and walk you through the system. Invoiced separately.
+          </p>
         </div>
 
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+          <div className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
             {error}
           </div>
         )}
 
-        <button
-          onClick={handleUpgrade}
-          disabled={loading || !selectedTrade.available}
-          className="w-full py-3.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-opacity duration-150"
-          style={{ background: S.accent }}
-        >
-          {loading ? 'Redirecting to checkout…' : `Upgrade to ${selectedTrade.label} Quoting — R${selectedTrade.price}/mo`}
+        <button onClick={handleUpgrade} disabled={loading}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-white text-sm font-bold disabled:opacity-50"
+          style={{ background: TIER_COLOR[selectedPlan.id as keyof typeof TIER_COLOR] ?? S.accent }}>
+          {loading ? 'Redirecting to checkout…' : (
+            <>
+              Subscribe to {selectedPlan.label} — R{selectedPlan.price.toLocaleString()}/mo
+              <ChevronRight size={16} />
+            </>
+          )}
         </button>
 
         <p className="text-center text-xs mt-4" style={{ color: S.muted }}>
-          Secured by Paystack · Cancel anytime from your profile
+          Secured by Paystack · Excl. VAT · Cancel anytime from your profile
         </p>
+
+        <button onClick={() => router.back()} className="w-full text-center text-xs mt-3" style={{ color: S.muted }}>
+          ← Go back
+        </button>
       </div>
     </div>
   )
