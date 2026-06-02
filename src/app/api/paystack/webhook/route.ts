@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
       const planId = data?.metadata?.plan
       if (!orgId) break
       const { data: org } = await supabaseAdmin.from('organizations').select('subscription_status, paystack_pending_plan').eq('id', orgId).single()
-      if (org && org.subscription_status !== 'active') {
+      // Apply on new subscription OR on plan-change (upgrade/downgrade)
+      if (org && (org.subscription_status !== 'active' || org.paystack_pending_plan)) {
         await supabaseAdmin.from('organizations').update({
           subscription_status: 'active',
           plan: planId ?? org.paystack_pending_plan,

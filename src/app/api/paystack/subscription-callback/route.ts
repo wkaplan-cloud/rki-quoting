@@ -21,11 +21,6 @@ export async function GET(req: NextRequest) {
 
   if (!org) return NextResponse.redirect(`${appUrl}/subscribe?payment=failed`)
 
-  // Idempotency — reference already activated, do not re-verify or re-activate
-  if (org.subscription_status === 'active') {
-    return NextResponse.redirect(`${appUrl}/dashboard?subscribed=1`)
-  }
-
   // Verify with Paystack
   const paystackRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`, {
     headers: { Authorization: `Bearer ${secretKey}` },
@@ -36,7 +31,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${appUrl}/subscribe?payment=failed`)
   }
 
-  // Activate the subscription and consume the reference so it cannot be replayed
+  // Apply plan — works for both new subscriptions and upgrades/downgrades
   const plan = org.paystack_pending_plan ?? paystackData.data?.metadata?.plan
   await supabaseAdmin
     .from('organizations')

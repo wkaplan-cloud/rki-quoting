@@ -49,10 +49,13 @@ const plans = [
   },
 ]
 
-export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName, memberCount }: { trialExpired: boolean; daysLeft: number; userEmail: string; studioName: string; memberCount: number }) {
+const PLAN_PRICES: Record<string, number> = { solo: 699, studio: 1499, agency: 2499 }
+
+export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName, memberCount, currentPlan }: { trialExpired: boolean; daysLeft: number; userEmail: string; studioName: string; memberCount: number; currentPlan: string | null }) {
   const [loading, setLoading] = useState<string | null>(null)
   const soloDisabled = memberCount > 1
   const studioDisabled = memberCount > 5
+  const isUpgrade = currentPlan !== null
 
   async function handleSubscribe(planId: string) {
     setLoading(planId)
@@ -85,38 +88,60 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
       </Link>
 
       {/* Status banner */}
-      <div className={`flex items-center gap-3 px-5 py-3 rounded-xl mb-10 text-sm font-medium ${
-        trialExpired
-          ? 'bg-red-50 border border-red-200 text-red-700'
-          : 'bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 text-[#9A7B4F]'
-      }`}>
-        {trialExpired ? <AlertCircle size={15} /> : <Clock size={15} />}
-        {trialExpired
-          ? 'Your 30-day trial has ended. Choose a plan to continue.'
-          : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in your free trial.`}
-      </div>
+      {isUpgrade ? (
+        <div className="flex items-center gap-3 px-5 py-3 rounded-xl mb-10 text-sm font-medium bg-[#1A1A18]/5 border border-[#1A1A18]/10 text-[#1A1A18]">
+          <Check size={15} />
+          You&apos;re on the <span className="font-semibold capitalize">{currentPlan}</span> plan — select a new plan below to upgrade or downgrade.
+        </div>
+      ) : (
+        <div className={`flex items-center gap-3 px-5 py-3 rounded-xl mb-10 text-sm font-medium ${
+          trialExpired
+            ? 'bg-red-50 border border-red-200 text-red-700'
+            : 'bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 text-[#9A7B4F]'
+        }`}>
+          {trialExpired ? <AlertCircle size={15} /> : <Clock size={15} />}
+          {trialExpired
+            ? 'Your 30-day trial has ended. Choose a plan to continue.'
+            : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left in your free trial.`}
+        </div>
+      )}
 
       <div className="w-full max-w-3xl">
-        <h1 className="font-serif text-4xl text-[#1A1A18] text-center mb-2">Choose your plan</h1>
+        <h1 className="font-serif text-4xl text-[#1A1A18] text-center mb-2">
+          {isUpgrade ? 'Change your plan' : 'Choose your plan'}
+        </h1>
         <p className="text-[#8A877F] text-center text-sm mb-10">
-          All plans include a 30-day free trial. Pricing is based on studio size — not features.
+          {isUpgrade
+            ? 'Your new plan activates immediately. You\'ll be charged the new rate from today.'
+            : 'All plans include a 30-day free trial. Pricing is based on studio size — not features.'}
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {plans.map(plan => {
-            const isDisabled = (plan.id === 'solo' && soloDisabled) || (plan.id === 'studio' && studioDisabled)
+            const isCurrent = currentPlan === plan.id
+            const isSizeBlocked = (plan.id === 'solo' && soloDisabled) || (plan.id === 'studio' && studioDisabled)
+            const isDisabled = isCurrent || isSizeBlocked
+            const currentPrice = currentPlan ? PLAN_PRICES[currentPlan] ?? 0 : 0
+            const isMoreExpensive = plan.price > currentPrice
             return (
               <div
                 key={plan.id}
                 className={`rounded-2xl border p-8 flex flex-col relative ${
-                  isDisabled
+                  isCurrent
+                    ? 'bg-[#F5F2EC] border-[#9A7B4F] ring-2 ring-[#9A7B4F]/30'
+                    : isSizeBlocked
                     ? 'bg-[#F5F2EC] border-[#D8D3C8] opacity-50 select-none'
                     : plan.highlight
                     ? 'bg-[#1A1A18] border-[#1A1A18] text-white'
                     : 'bg-white border-[#D8D3C8] text-[#1A1A18]'
                 }`}
               >
-                {isDisabled && (
+                {isCurrent && (
+                  <span className="absolute top-4 right-4 bg-[#9A7B4F] text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                    Current plan
+                  </span>
+                )}
+                {isSizeBlocked && !isCurrent && (
                   <div className="absolute inset-0 rounded-2xl flex items-center justify-center">
                     <span className="bg-white border border-[#D8D3C8] text-[#8A877F] text-xs font-medium px-3 py-1.5 rounded-full shadow-sm">
                       Not available — your studio has too many users
@@ -150,14 +175,22 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
                   onClick={() => !isDisabled && handleSubscribe(plan.id)}
                   disabled={loading !== null || isDisabled}
                   className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-colors ${
-                    isDisabled
+                    isCurrent
+                      ? 'bg-[#9A7B4F]/10 text-[#9A7B4F] cursor-default border border-[#9A7B4F]/20'
+                      : isSizeBlocked
                       ? 'bg-[#D8D3C8] text-[#8A877F] cursor-not-allowed'
                       : plan.highlight
                       ? 'bg-[#9A7B4F] text-white hover:bg-[#B8956A] cursor-pointer disabled:opacity-60'
                       : 'bg-[#1A1A18] text-white hover:bg-[#9A7B4F] cursor-pointer disabled:opacity-60'
                   }`}
                 >
-                  {loading === plan.id ? 'Redirecting to payment…' : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
+                  {loading === plan.id
+                    ? 'Redirecting to payment…'
+                    : isCurrent
+                    ? 'Current plan'
+                    : isUpgrade
+                    ? <>{isMoreExpensive ? 'Upgrade' : 'Downgrade'} to {plan.name} <ArrowRight size={14} /></>
+                    : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
                 </button>
               </div>
             )
@@ -171,10 +204,10 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
           </a>
         </p>
 
-        {!trialExpired && (
+        {(isUpgrade || !trialExpired) && (
           <p className="text-center text-xs text-[#C4BFB5] mt-4">
             <Link href="/dashboard" className="hover:text-[#8A877F] transition-colors">
-              ← Continue using my trial
+              ← {isUpgrade ? 'Back to dashboard' : 'Continue using my trial'}
             </Link>
           </p>
         )}

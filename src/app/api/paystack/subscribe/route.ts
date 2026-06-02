@@ -26,6 +26,40 @@ export async function POST(req: NextRequest) {
   const { data: orgId } = await supabase.rpc('get_current_org_id')
   if (!orgId) return NextResponse.json({ error: 'No organisation found' }, { status: 404 })
 
+  // Fetch org to check for existing active subscription
+  const { data: org } = await supabaseAdmin
+    .from('organizations')
+    .select('plan, subscription_status, paystack_subscription_code')
+    .eq('id', orgId)
+    .single()
+
+  if (org?.plan === planId && org?.subscription_status === 'active') {
+    return NextResponse.json({ error: 'You are already on this plan.' }, { status: 400 })
+  }
+
+  // Upgrade/downgrade: cancel existing Paystack subscription before creating a new one
+  if (org?.paystack_subscription_code && org.subscription_status === 'active') {
+    const subRes = await fetch(`https://api.paystack.co/subscription/${org.paystack_subscription_code}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    })
+    const subData = await subRes.json()
+    const emailToken = subData?.data?.email_token
+
+    if (emailToken) {
+      await fetch('https://api.paystack.co/subscription/disable', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: org.paystack_subscription_code, token: emailToken }),
+      })
+    }
+
+    // Clear old subscription code — new code arrives via subscription.create webhook
+    await supabaseAdmin
+      .from('organizations')
+      .update({ paystack_subscription_code: null })
+      .eq('id', orgId)
+  }
+
   // Enforce user limits per plan
   if (planId === 'solo' || planId === 'studio') {
     const { count } = await supabaseAdmin

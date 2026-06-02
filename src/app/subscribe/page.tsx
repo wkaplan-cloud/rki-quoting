@@ -19,13 +19,13 @@ export default async function SubscribePage() {
     .eq('id', orgId)
     .single()
 
-  if (org?.subscription_status === 'active') redirect('/dashboard')
+  const isActive = org?.subscription_status === 'active'
 
   const trialEndsAt = org?.trial_ends_at ? new Date(org.trial_ends_at) : null
   const daysLeft = trialEndsAt
     ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / 86400000))
     : 0
-  const trialExpired = daysLeft === 0
+  const trialExpired = !isActive && daysLeft === 0
 
   const [{ data: settings }, { count: memberCount }] = await Promise.all([
     supabaseAdmin.from('settings').select('business_name').eq('org_id', orgId).maybeSingle(),
@@ -39,6 +39,7 @@ export default async function SubscribePage() {
       userEmail={user.email ?? ''}
       studioName={settings?.business_name ?? ''}
       memberCount={memberCount ?? 1}
+      currentPlan={isActive ? (org?.plan ?? null) : null}
     />
   )
 }
