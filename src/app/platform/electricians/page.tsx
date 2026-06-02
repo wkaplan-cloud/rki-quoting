@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Zap, CheckCircle, Clock, FileText, Briefcase, TrendingUp } from 'lucide-react'
+import { Zap, CheckCircle, Clock, FileText, Briefcase, TrendingUp, Users, ShoppingCart } from 'lucide-react'
 import { ContractorsTable } from './ContractorsTable'
 import type { ContractorRow } from './ContractorsTable'
 
@@ -72,12 +72,16 @@ export default async function ElectriciansPage() {
   }))
 
   // Summary stats
-  const totalContractors = rows.length
+  const totalContractors  = rows.length
   const activeContractors = rows.filter(a => a.subscription_status === 'active').length
-  const trialContractors = rows.filter(a => a.subscription_status === 'trialing').length
-  const newThisMonth = rows.filter(a => a.created_at >= thirtyDaysAgo).length
-  const totalQuotes = rows.reduce((s, a) => s + a.quoteCount, 0)
-  const totalJobCards = rows.reduce((s, a) => s + a.jobCardCount, 0)
+  const trialContractors  = rows.filter(a => a.subscription_status === 'trialing').length
+  const newThisMonth      = rows.filter(a => a.created_at >= thirtyDaysAgo).length
+  const totalQuotes       = rows.reduce((s, a) => s + a.quoteCount, 0)
+  const totalJobCards     = rows.reduce((s, a) => s + a.jobCardCount, 0)
+  const totalStaff        = rows.reduce((s, a) => s + a.staffCount, 0)
+  const starterCount      = rows.filter(a => a.plan === 'starter').length
+  const professionalCount = rows.filter(a => a.plan === 'professional').length
+  const businessCount     = rows.filter(a => ['business', 'quoting'].includes(a.plan ?? '')).length
 
   return (
     <div className="p-8 space-y-8">
@@ -91,14 +95,12 @@ export default async function ElectriciansPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Contractors', value: totalContractors, icon: Zap,         color: 'text-amber-400' },
-          { label: 'Active',            value: activeContractors, icon: CheckCircle, color: 'text-emerald-400' },
-          { label: 'In Trial',          value: trialContractors,  icon: Clock,       color: 'text-amber-400' },
-          { label: 'New This Month',    value: newThisMonth,      icon: TrendingUp,  color: 'text-blue-400' },
-          { label: 'Total Quotes',      value: totalQuotes,       icon: FileText,    color: 'text-white/60' },
-          { label: 'Total Job Cards',   value: totalJobCards,     icon: Briefcase,   color: 'text-white/60' },
+          { label: 'Total',         value: totalContractors,  icon: Zap,         color: 'text-amber-400'   },
+          { label: 'Active',        value: activeContractors, icon: CheckCircle, color: 'text-emerald-400' },
+          { label: 'In Trial',      value: trialContractors,  icon: Clock,       color: 'text-amber-400'   },
+          { label: 'New this month',value: newThisMonth,      icon: TrendingUp,  color: 'text-blue-400'    },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white/5 rounded-xl px-4 py-4 border border-white/8">
             <div className="flex items-center gap-1.5 mb-2">
@@ -106,6 +108,22 @@ export default async function ElectriciansPage() {
               <p className="text-[10px] text-white/40 uppercase tracking-wider">{label}</p>
             </div>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Plan breakdown */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: 'Starter',       value: starterCount,      sub: 'R999/mo',    color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
+          { label: 'Professional',  value: professionalCount, sub: 'R1,999/mo',  color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
+          { label: 'Business',      value: businessCount,     sub: 'R3,199/mo',  color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+          { label: 'Total Staff',   value: totalStaff,        sub: 'across all', color: 'text-white/60',    bg: 'bg-white/5'        },
+        ].map(({ label, value, sub, color, bg }) => (
+          <div key={label} className={`rounded-xl px-4 py-4 border border-white/8 ${bg}`}>
+            <p className={`text-2xl font-bold ${color}`}>{value}</p>
+            <p className="text-xs font-medium text-white/60 mt-0.5">{label}</p>
+            <p className="text-[10px] text-white/30">{sub}</p>
           </div>
         ))}
       </div>
