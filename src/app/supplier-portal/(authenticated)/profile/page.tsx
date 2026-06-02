@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { isActivePlan, planRank } from '@/lib/plan-features'
 import { SupplierProfileClient } from './SupplierProfileClient'
 import type { PortalOrgMember } from '@/lib/elec-types'
 import type { ElecSettings } from '@/lib/elec-types'
@@ -34,8 +35,7 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
 
   if (!account) redirect('/supplier-portal/login')
 
-  const isTrialing = account.subscription_status === 'trialing' && account.trial_ends_at != null && new Date(account.trial_ends_at) > new Date()
-  const hasQuoting = account.plan === 'quoting' && (account.subscription_status === 'active' || isTrialing)
+  const hasQuoting = planRank(account.plan) >= 1 && isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)
 
   const [{ data: elecSettings }, { data: orgMembers }] = await Promise.all([
     supabaseAdmin
