@@ -122,14 +122,25 @@ function UpgradeContent() {
           </p>
         </div>
 
-        {/* Setup fee note */}
-        <div className="rounded-xl px-4 py-3 mb-6 flex items-center gap-3"
+        {/* Setup fee */}
+        <div className="rounded-xl px-4 py-4 mb-6 flex items-center justify-between gap-4"
           style={{ background: 'rgba(217,164,65,0.06)', border: `1px solid rgba(217,164,65,0.2)` }}>
-          <Zap size={14} style={{ color: S.gold }} />
-          <p className="text-xs" style={{ color: S.text }}>
-            <span className="font-semibold">Setup & Training — R2,500 once-off.</span>{' '}
-            We'll onboard your team, configure staff devices, and walk you through the system. Invoiced separately.
-          </p>
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <Zap size={14} style={{ color: S.gold, flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <p className="text-xs font-semibold" style={{ color: S.text }}>Setup & Training — R2,500 once-off</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>We'll onboard your team, configure staff devices, and walk you through the system.</p>
+            </div>
+          </div>
+          <a
+            href="https://paystack.com/buy/setup--training--r2500-once-off-vmoejb"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold flex-shrink-0"
+            style={{ background: S.gold, color: '#fff' }}
+          >
+            Pay R2,500 <ChevronRight size={13} />
+          </a>
         </div>
 
         {error && (
