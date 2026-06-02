@@ -335,8 +335,10 @@ export function RequestDetail({ request, initialItems, pieces: initialPieces, su
   const [sendingQuote, setSendingQuote] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
+  const [quoteProjectId, setQuoteProjectId] = useState(request.quote_project_id)
   const allMatched = items.length > 0 && items.every(i => i.capital_piece_id)
-  const canSendQuote = allMatched && status !== 'quoted'
+  // Allow re-sending if project was deleted (quote_project_id becomes null after ON DELETE SET NULL)
+  const canSendQuote = allMatched && (status !== 'quoted' || !quoteProjectId)
 
   async function updateStatus(newStatus: string) {
     const res = await fetch(`/api/capital-hotels/${request.id}/status`, {
@@ -406,6 +408,8 @@ export function RequestDetail({ request, initialItems, pieces: initialPieces, su
       const res = await fetch(`/api/capital-hotels/${request.id}/send-quote`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
+      setQuoteProjectId(json.project_id)
+      setStatus('quoted')
       toast.success('Quote created!')
       router.push(`/projects/${json.project_id}`)
     } catch (e) {
@@ -441,8 +445,8 @@ export function RequestDetail({ request, initialItems, pieces: initialPieces, su
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${cfg.color}`}>
                 {cfg.icon}{cfg.label}
               </span>
-              {request.quote_project_id && (
-                <Link href={`/projects/${request.quote_project_id}`} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold hover:bg-emerald-100 transition-colors">
+              {quoteProjectId && (
+                <Link href={`/projects/${quoteProjectId}`} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold hover:bg-emerald-100 transition-colors">
                   <ExternalLink size={11} /> View Quote
                 </Link>
               )}
@@ -529,15 +533,13 @@ export function RequestDetail({ request, initialItems, pieces: initialPieces, su
                 {sendingQuote ? <><Loader2 size={16} className="animate-spin" /> Creating Quote…</> : 'Send Quote →'}
               </button>
             </div>
-          ) : request.status === 'quoted' ? (
+          ) : status === 'quoted' && quoteProjectId ? (
             <div className="text-center">
               <CheckCircle2 size={24} className="text-emerald-500 mx-auto mb-2" />
               <p className="text-sm font-medium text-[#1A1A18]">Quote already created</p>
-              {request.quote_project_id && (
-                <Link href={`/projects/${request.quote_project_id}`} className="text-xs text-[#1B4F8A] hover:underline mt-1 inline-flex items-center gap-1">
-                  Open in Projects <ExternalLink size={11} />
-                </Link>
-              )}
+              <Link href={`/projects/${quoteProjectId}`} className="text-xs text-[#1B4F8A] hover:underline mt-1 inline-flex items-center gap-1">
+                Open in Projects <ExternalLink size={11} />
+              </Link>
             </div>
           ) : (
             <div className="text-center">
