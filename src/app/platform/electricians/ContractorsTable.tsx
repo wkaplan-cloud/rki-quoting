@@ -64,16 +64,28 @@ function timeAgo(iso: string) {
 }
 
 // ── Plan Management Panel ───────────────────────────────────────────────────────
-function PlanPanel({ accountId, initialPlan, initialStatus }: {
+function toDateInput(iso: string | null): string {
+  if (!iso) return ''
+  return iso.split('T')[0]
+}
+function defaultTrialEnd(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 14)
+  return d.toISOString().split('T')[0]
+}
+
+function PlanPanel({ accountId, initialPlan, initialStatus, initialTrialEndsAt }: {
   accountId: string
   initialPlan: string | null
   initialStatus: string | null
+  initialTrialEndsAt: string | null
 }) {
-  const [plan, setPlan]     = useState(initialPlan ?? 'free')
-  const [status, setStatus] = useState(initialStatus ?? 'free')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved]   = useState(false)
-  const [error, setError]   = useState('')
+  const [plan, setPlan]         = useState(initialPlan ?? 'free')
+  const [status, setStatus]     = useState(initialStatus ?? 'free')
+  const [trialEndsAt, setTrialEndsAt] = useState(toDateInput(initialTrialEndsAt) || defaultTrialEnd())
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [error, setError]       = useState('')
 
   const cfg = PLAN_CONFIG[plan] ?? PLAN_CONFIG.free
 
@@ -82,7 +94,11 @@ function PlanPanel({ accountId, initialPlan, initialStatus }: {
     const res = await fetch(`/api/platform/elec-accounts/${accountId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan, subscription_status: status }),
+      body: JSON.stringify({
+        plan,
+        subscription_status: status,
+        trial_ends_at: status === 'trialing' ? new Date(trialEndsAt).toISOString() : null,
+      }),
     })
     const data = await res.json() as { ok?: boolean; error?: string }
     setSaving(false)
@@ -120,7 +136,7 @@ function PlanPanel({ accountId, initialPlan, initialStatus }: {
         {/* Status + save */}
         <div>
           <p className="text-[10px] text-white/40 mb-1.5 uppercase tracking-wider">Subscription Status</p>
-          <div className="space-y-1.5 mb-4">
+          <div className="space-y-1.5 mb-3">
             {['active', 'trialing', 'cancelled', 'past_due'].map(s => (
               <button key={s} onClick={() => setStatus(s)}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${status === s ? 'bg-white/10 border border-white/20' : 'bg-white/3 border border-white/5 hover:bg-white/5'}`}>
@@ -136,6 +152,25 @@ function PlanPanel({ accountId, initialPlan, initialStatus }: {
               </button>
             ))}
           </div>
+
+          {/* Trial end date — only shown when trialing */}
+          {status === 'trialing' && (
+            <div className="mb-3">
+              <p className="text-[10px] text-white/40 mb-1.5 uppercase tracking-wider">Trial ends on</p>
+              <input
+                type="date"
+                value={trialEndsAt}
+                onChange={e => setTrialEndsAt(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg bg-white/5 border border-amber-500/30 text-white outline-none focus:border-amber-500/60"
+                style={{ colorScheme: 'dark' }}
+              />
+              {trialEndsAt && (
+                <p className="text-[10px] text-white/30 mt-1">
+                  {Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))} days remaining
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Preview */}
           <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white/3 rounded-lg border border-white/5">
@@ -407,6 +442,7 @@ export function ContractorsTable({ rows }: { rows: ContractorRow[] }) {
                 accountId={a.id}
                 initialPlan={a.plan}
                 initialStatus={a.subscription_status}
+                initialTrialEndsAt={a.trial_ends_at}
               />
             )}
 
