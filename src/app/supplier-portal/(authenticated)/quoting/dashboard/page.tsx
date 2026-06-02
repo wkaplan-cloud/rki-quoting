@@ -3,8 +3,10 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { planRank } from '@/lib/plan-features'
 import type { ElecQuoteStatus } from '@/lib/elec-types'
 import { QuotingDashboardClient } from '../QuotingDashboardClient'
+import { ClockingDashboardClient } from '../ClockingDashboardClient'
 
 type QuoteRow = {
   id: string
@@ -48,6 +50,27 @@ export default async function QuotingDashboardPage() {
 
   const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/login')
+
+  // Starter plan: show clocking dashboard instead
+  if (planRank(account.plan) === 1) {
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+    const weekStart  = new Date(); weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7)); weekStart.setHours(0, 0, 0, 0)
+
+    const [{ data: staffData }, { data: todayPunchData }, { data: weekPunchData }] = await Promise.all([
+      supabaseAdmin.from('elec_staff').select('id, name, color, role').eq('portal_account_id', account.id).eq('is_active', true).order('name'),
+      supabaseAdmin.from('elec_time_punches').select('id, staff_id, punch_type, punched_at, latitude, longitude').eq('portal_account_id', account.id).gte('punched_at', todayStart.toISOString()).order('punched_at', { ascending: false }),
+      supabaseAdmin.from('elec_time_punches').select('id, staff_id, punch_type, punched_at').eq('portal_account_id', account.id).gte('punched_at', weekStart.toISOString()).order('punched_at'),
+    ])
+
+    return (
+      <ClockingDashboardClient
+        companyName={account.company_name ?? account.email ?? ''}
+        staff={(staffData ?? []) as { id: string; name: string; color: string; role: string }[]}
+        todayPunches={(todayPunchData ?? []) as never[]}
+        weekPunches={(weekPunchData ?? []) as never[]}
+      />
+    )
+  }
 
   const [{ data: quotesRaw }, { data: claimsRaw }, { data: jobCardsRaw }] = await Promise.all([
     supabaseAdmin
