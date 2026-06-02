@@ -1,8 +1,9 @@
 'use client'
 import { useState } from 'react'
 import {
-  Zap, ChevronDown, ChevronUp, Users, Clock, RotateCcw, Trash2,
+  Zap, Users, Clock, RotateCcw, Trash2,
   CheckCircle, Loader2, Plus, X, AlertCircle, ShieldCheck, Edit2,
+  Receipt, AlertTriangle, BadgeCheck,
 } from 'lucide-react'
 
 // ── Plan config ────────────────────────────────────────────────────────────────
@@ -46,12 +47,16 @@ export interface ContractorRow {
   plan: string | null
   subscription_status: string | null
   trial_ends_at: string | null
+  setup_fee_paid: boolean
   created_at: string
   quoteCount: number
   jobCardCount: number
   staffCount: number
   adminMembers: AdminMember[]
 }
+
+const STAFF_INCLUDED = 20
+const EXTRA_STAFF_RATE = 40
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -296,6 +301,7 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
   const [rows, setRows] = useState(initialRows)
   const [expanded, setExpanded] = useState<Record<string, ExpandView | null>>({})
   const [activating, setActivating] = useState<string | null>(null)
+  const [markingFee, setMarkingFee] = useState<string | null>(null)
 
   function toggle(id: string, view: ExpandView) {
     setExpanded(prev => ({
@@ -317,6 +323,19 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
     setActivating(null)
   }
 
+  async function markSetupFeePaid(accountId: string, paid: boolean) {
+    setMarkingFee(accountId)
+    const res = await fetch(`/api/platform/elec-accounts/${accountId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setup_fee_paid: paid }),
+    })
+    if (res.ok) {
+      setRows(prev => prev.map(r => r.id === accountId ? { ...r, setup_fee_paid: paid } : r))
+    }
+    setMarkingFee(null)
+  }
+
   if (rows.length === 0) {
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl px-6 py-16 text-center">
@@ -333,13 +352,14 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
     <div className="bg-[#1A1A18] rounded-xl border border-white/10 overflow-hidden">
       {/* Column headers */}
       <div className="hidden md:grid px-5 py-2 border-b border-white/10 text-[10px] font-semibold text-white/30 uppercase tracking-wider"
-        style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 80px' }}>
+        style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 90px' }}>
         <span>Company</span>
         <span>Plan</span>
         <span>Status</span>
         <span>Quotes</span>
         <span>Jobs</span>
         <span>Staff</span>
+        <span>Setup Fee</span>
         <span>Joined</span>
       </div>
 
@@ -351,12 +371,13 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
         const trialDaysLeft = trialEnds ? Math.max(0, Math.ceil((trialEnds.getTime() - Date.now()) / 86400000)) : null
         const isTrialExpired = trialEnds && trialEnds < new Date() && a.subscription_status === 'trialing'
         const pendingAdmins  = a.adminMembers.filter(m => !m.accepted_at).length
+        const extraStaff     = Math.max(0, a.staffCount - STAFF_INCLUDED)
 
         return (
           <div key={a.id} className="border-b border-white/5 last:border-0">
             {/* Main row */}
             <div className="grid items-center px-5 py-3 gap-4 hover:bg-white/2 transition-colors"
-              style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 80px' }}>
+              style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 90px' }}>
 
               {/* Company */}
               <div className="flex items-center gap-2 min-w-0">
@@ -397,18 +418,41 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
               {/* Job cards */}
               <span className={`text-xs tabular-nums ${a.jobCardCount ? 'text-white/70' : 'text-white/20'}`}>{a.jobCardCount}</span>
 
-              {/* Staff + admins */}
+              {/* Staff + overage */}
               <button onClick={() => toggle(a.id, 'admins')}
-                className="flex items-center gap-2 cursor-pointer group" title="Click to manage admin users">
-                <span className={`text-xs tabular-nums ${a.staffCount ? 'text-white/70' : 'text-white/20'}`}>{a.staffCount} staff</span>
-                <span className="text-[10px] text-white/30 flex items-center gap-1 group-hover:text-white/50 transition-colors">
-                  <Users size={9} />
-                  {a.adminMembers.length}
-                  {pendingAdmins > 0 && (
-                    <span className="px-1 rounded-full bg-amber-500/20 text-amber-400 text-[9px]">{pendingAdmins}</span>
-                  )}
-                </span>
+                className="flex flex-col gap-0.5 cursor-pointer group text-left" title="Click to manage admin users">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-xs tabular-nums ${a.staffCount ? 'text-white/70' : 'text-white/20'}`}>{a.staffCount} staff</span>
+                  <span className="text-[10px] text-white/30 flex items-center gap-1 group-hover:text-white/50 transition-colors">
+                    <Users size={9} /> {a.adminMembers.length}
+                    {pendingAdmins > 0 && <span className="px-1 rounded-full bg-amber-500/20 text-amber-400 text-[9px]">{pendingAdmins}</span>}
+                  </span>
+                </div>
+                {extraStaff > 0 && (
+                  <span className="text-[9px] font-semibold flex items-center gap-1 text-amber-400">
+                    <AlertTriangle size={8} /> +{extraStaff} · R{extraStaff * EXTRA_STAFF_RATE}/mo
+                  </span>
+                )}
               </button>
+
+              {/* Setup fee */}
+              <div>
+                {a.setup_fee_paid ? (
+                  <span className="text-[10px] font-medium flex items-center gap-1 text-emerald-400">
+                    <BadgeCheck size={11} /> Paid
+                  </span>
+                ) : (
+                  <button
+                    onClick={e => { e.stopPropagation(); void markSetupFeePaid(a.id, true) }}
+                    disabled={markingFee === a.id}
+                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Mark setup fee as paid"
+                  >
+                    {markingFee === a.id ? <Loader2 size={9} className="animate-spin" /> : <Receipt size={9} />}
+                    {markingFee === a.id ? '…' : 'R2,500 owed'}
+                  </button>
+                )}
+              </div>
 
               {/* Joined + activate/pause */}
               <div className="text-right space-y-1">

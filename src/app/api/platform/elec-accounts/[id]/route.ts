@@ -24,13 +24,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       plan?: string
       subscription_status?: string
       trial_ends_at?: string | null
+      setup_fee_paid?: boolean
       admin_notes?: string
     }
 
-    const patch: Record<string, string | null> = {}
+    const patch: Record<string, string | boolean | null> = {}
     if (body.plan                !== undefined) patch.plan                = body.plan
     if (body.subscription_status !== undefined) patch.subscription_status = body.subscription_status
     if (body.trial_ends_at       !== undefined) patch.trial_ends_at       = body.trial_ends_at
+    if (body.setup_fee_paid      !== undefined) patch.setup_fee_paid      = body.setup_fee_paid
     if (body.admin_notes         !== undefined) patch.admin_notes         = body.admin_notes
 
     const { data, error } = await supabaseAdmin

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Zap, CheckCircle, Clock, FileText, Briefcase, TrendingUp, Users, ShoppingCart } from 'lucide-react'
+import { Zap, CheckCircle, Clock, TrendingUp, Users, Receipt } from 'lucide-react'
 import { ContractorsTable } from './ContractorsTable'
 import type { ContractorRow } from './ContractorsTable'
 
@@ -11,7 +11,7 @@ export default async function ElectriciansPage() {
   // All trades-category portal accounts
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, contact_name, phone, plan, subscription_status, trial_ends_at, created_at')
+    .select('id, email, company_name, contact_name, phone, plan, subscription_status, trial_ends_at, setup_fee_paid, created_at')
     .eq('supplier_category', 'trades')
     .order('created_at', { ascending: false })
 
@@ -64,6 +64,7 @@ export default async function ElectriciansPage() {
     plan: a.plan,
     subscription_status: a.subscription_status,
     trial_ends_at: a.trial_ends_at,
+    setup_fee_paid: (a as Record<string, unknown>).setup_fee_paid === true,
     created_at: a.created_at,
     quoteCount: quotesByAccount[a.id] ?? 0,
     jobCardCount: jobCardsByAccount[a.id] ?? 0,
@@ -82,6 +83,9 @@ export default async function ElectriciansPage() {
   const starterCount      = rows.filter(a => a.plan === 'starter').length
   const professionalCount = rows.filter(a => a.plan === 'professional').length
   const businessCount     = rows.filter(a => ['business', 'quoting'].includes(a.plan ?? '')).length
+  const setupFeeOwed      = rows.filter(a => !a.setup_fee_paid && a.subscription_status === 'active').length
+  const extraStaffAccounts = rows.filter(a => a.staffCount > 20)
+  const totalExtraStaff   = extraStaffAccounts.reduce((s, a) => s + Math.max(0, a.staffCount - 20), 0)
 
   return (
     <div className="p-8 space-y-8">
@@ -126,6 +130,26 @@ export default async function ElectriciansPage() {
             <p className="text-[10px] text-white/30">{sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Billing flags */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${setupFeeOwed > 0 ? 'bg-amber-500/8 border-amber-500/20' : 'bg-white/3 border-white/8'}`}>
+          <Receipt size={20} className={setupFeeOwed > 0 ? 'text-amber-400' : 'text-white/20'} />
+          <div>
+            <p className={`text-xl font-bold ${setupFeeOwed > 0 ? 'text-amber-400' : 'text-white/30'}`}>{setupFeeOwed}</p>
+            <p className="text-xs font-medium text-white/60">Setup fees outstanding</p>
+            <p className="text-[10px] text-white/30">R2,500 once-off each · total R{(setupFeeOwed * 2500).toLocaleString()}</p>
+          </div>
+        </div>
+        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${totalExtraStaff > 0 ? 'bg-amber-500/8 border-amber-500/20' : 'bg-white/3 border-white/8'}`}>
+          <Users size={20} className={totalExtraStaff > 0 ? 'text-amber-400' : 'text-white/20'} />
+          <div>
+            <p className={`text-xl font-bold ${totalExtraStaff > 0 ? 'text-amber-400' : 'text-white/30'}`}>{totalExtraStaff}</p>
+            <p className="text-xs font-medium text-white/60">Extra staff across {extraStaffAccounts.length} account{extraStaffAccounts.length !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-white/30">R40/staff/mo · R{(totalExtraStaff * 40).toLocaleString()}/mo to collect</p>
+          </div>
+        </div>
       </div>
 
       {/* Contractors table (client — handles expand/team management) */}
