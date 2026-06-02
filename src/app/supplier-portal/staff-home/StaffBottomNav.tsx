@@ -32,7 +32,7 @@ function NavButton({ tab, activeTab, icon, label, badge, onClick }: NavButtonPro
       style={{ color: isActive ? S.accent : S.muted }}
     >
       <div
-        className="w-12 h-7 rounded-full flex items-center justify-center relative"
+        className="w-14 h-8 rounded-full flex items-center justify-center relative"
         style={{ background: isActive ? 'rgba(58,124,165,0.14)' : 'transparent' }}
       >
         <div style={{ color: isActive ? S.accent : S.muted }}>{icon}</div>
@@ -87,8 +87,8 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, pr
       className="fixed bottom-0 left-0 right-0 z-40 flex items-center"
       style={{ background: S.card, borderTop: `1px solid ${S.border}`, paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <NavButton tab="home"     activeTab={activeTab} icon={<Home size={20} />}      label="Home"     onClick={() => go('home')} />
-      <NavButton tab="jobs"     activeTab={activeTab} icon={<Briefcase size={20} />} label="Jobs"     badge={jobsBadge}     onClick={() => go('jobs')} />
+      <NavButton tab="home"     activeTab={activeTab} icon={<Home size={24} />}      label="Home"     onClick={() => go('home')} />
+      <NavButton tab="jobs"     activeTab={activeTab} icon={<Briefcase size={24} />} label="Jobs"     badge={jobsBadge}     onClick={() => go('jobs')} />
 
       <div className="flex-1 flex items-center justify-center">
         <button
@@ -100,8 +100,8 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, pr
         </button>
       </div>
 
-      <NavButton tab="projects" activeTab={activeTab} icon={<FolderOpen size={20} />} label="Projects" badge={projectsBadge} onClick={() => go('projects')} />
-      <NavButton tab="more"     activeTab={activeTab} icon={<Menu size={20} />}       label="More"     onClick={() => go('more')} />
+      <NavButton tab="projects" activeTab={activeTab} icon={<FolderOpen size={24} />} label="Projects" badge={projectsBadge} onClick={() => go('projects')} />
+      <NavButton tab="more"     activeTab={activeTab} icon={<Menu size={24} />}       label="More"     onClick={() => go('more')} />
     </div>
   )
 }
