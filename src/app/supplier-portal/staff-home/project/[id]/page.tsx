@@ -49,6 +49,7 @@ export default async function StaffProjectPage({ params }: { params: Promise<{ i
     <StaffProject
       staffId={staff.id}
       staffName={staff.name}
+      portalAccountId={staff.portal_account_id}
       quote={quote as typeof quote & { client: { id: string; client_name: string; address: string | null } | null }}
       sections={(sections ?? []) as { id: string; title: string; sort_order: number }[]}
       items={(items ?? []) as { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; sort_order: number }[]}

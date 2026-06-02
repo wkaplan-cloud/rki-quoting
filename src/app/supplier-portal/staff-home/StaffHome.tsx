@@ -515,6 +515,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         onTabChange={t => setTab(t)}
         onNewJob={() => setShowNewJob(true)}
         jobsBadge={jobCards.filter(j => j.status === 'pending' || j.status === 'in_progress').length || undefined}
+        projectsBadge={assignedProjects.filter(p => p.status === 'in_progress' || p.status === 'approved').length || undefined}
       />
 
       {/* New Job modal */}

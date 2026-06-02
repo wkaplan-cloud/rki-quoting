@@ -1,7 +1,8 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MapPin, Camera, Plus, X, Loader2, CheckCircle2, FileText, Trash2 } from 'lucide-react'
+import { ArrowLeft, MapPin, Camera, Plus, X, Loader2, CheckCircle2, FileText, Trash2, AlertTriangle, TrendingDown } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { StaffBottomNav } from '../../StaffBottomNav'
 
 const S = {
@@ -19,7 +20,19 @@ const STATUS_LABEL: Record<string, string> = {
   in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled',
 }
 
-type Tab = 'details' | 'photos' | 'vo'
+type Tab = 'details' | 'photos' | 'vo' | 'reporting'
+
+interface Report {
+  id: string; quote_id: string; portal_account_id: string
+  report_type: string; description: string
+  amount: number | null; notes: string | null; photo_url: string | null; created_at: string
+}
+
+const REPORT_TYPES = [
+  { value: 'damage', label: 'Damage', color: '#DC2626' },
+  { value: 'loss',   label: 'Loss',   color: '#D9A441' },
+  { value: 'other',  label: 'Other',  color: '#71717A' },
+]
 
 interface VOItem { _id: string; description: string; unit: string; qty: string }
 
@@ -30,6 +43,7 @@ function newVOItem(): VOItem {
 interface Props {
   staffId: string
   staffName: string
+  portalAccountId: string
   quote: {
     id: string; quote_number: string; project_name: string
     project_address: string | null; status: string
@@ -40,12 +54,27 @@ interface Props {
   photos: { id: string; url: string; caption: string | null; created_at: string }[]
 }
 
-export function StaffProject({ staffId: _staffId, staffName: _staffName, quote, sections, items, photos: initialPhotos }: Props) {
+export function StaffProject({ staffId: _staffId, staffName: _staffName, portalAccountId, quote, sections, items, photos: initialPhotos }: Props) {
   const router = useRouter()
+  const supabase = createClient()
   const [tab, setTab] = useState<Tab>('details')
   const [photos, setPhotos] = useState(initialPhotos)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Reporting state
+  const [reports, setReports] = useState<Report[]>([])
+  const [reportsLoaded, setReportsLoaded] = useState(false)
+  const [showAddReport, setShowAddReport] = useState(false)
+  const [rType, setRType] = useState('damage')
+  const [rDesc, setRDesc] = useState('')
+  const [rAmount, setRAmount] = useState('')
+  const [rNotes, setRNotes] = useState('')
+  const [rPhotoUrl, setRPhotoUrl] = useState<string | null>(null)
+  const [rSaving, setRSaving] = useState(false)
+  const [rUploading, setRUploading] = useState(false)
+  const [rError, setRError] = useState('')
+  const reportFileRef = useRef<HTMLInputElement>(null)
 
   // VO form
   const [voDesc, setVODesc] = useState('')
@@ -54,6 +83,59 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, quote, 
   const [voSaving, setVOSaving] = useState(false)
   const [voSuccess, setVOSuccess] = useState(false)
   const [voError, setVOError] = useState('')
+
+  async function loadReports() {
+    if (reportsLoaded) return
+    const { data } = await supabase
+      .from('elec_project_reports')
+      .select('*')
+      .eq('quote_id', quote.id)
+      .order('created_at', { ascending: false })
+    setReports((data ?? []) as Report[])
+    setReportsLoaded(true)
+  }
+
+  async function handleReportPhotoUpload(files: FileList | null) {
+    if (!files || files.length === 0) return
+    setRUploading(true)
+    const file = files[0]
+    const path = `reports/${portalAccountId}/${quote.id}/${Date.now()}.${file.name.split('.').pop()}`
+    const { error: uploadErr } = await supabase.storage.from('job-card-photos').upload(path, file, { contentType: file.type })
+    if (!uploadErr) {
+      const { data: { publicUrl } } = supabase.storage.from('job-card-photos').getPublicUrl(path)
+      setRPhotoUrl(publicUrl)
+    }
+    setRUploading(false)
+  }
+
+  async function handleReportSave() {
+    if (!rDesc.trim() || rSaving) return
+    setRSaving(true); setRError('')
+    const { data, error: err } = await supabase
+      .from('elec_project_reports')
+      .insert({
+        quote_id: quote.id,
+        portal_account_id: portalAccountId,
+        report_type: rType,
+        description: rDesc.trim(),
+        amount: rAmount ? parseFloat(rAmount) : null,
+        notes: rNotes.trim() || null,
+        photo_url: rPhotoUrl,
+      })
+      .select()
+      .single()
+    if (err) { setRError(err.message); setRSaving(false); return }
+    setReports(prev => [data as Report, ...prev])
+    setRDesc(''); setRAmount(''); setRNotes(''); setRPhotoUrl(null); setShowAddReport(false)
+    setRSaving(false)
+  }
+
+  async function handleReportDelete(id: string) {
+    await supabase.from('elec_project_reports').delete().eq('id', id)
+    setReports(prev => prev.filter(r => r.id !== id))
+  }
+
+  if (tab === 'reporting' && !reportsLoaded) void loadReports()
 
   const client = !Array.isArray(quote.client) ? quote.client : null
   const address = quote.project_address || client?.address || null
@@ -133,10 +215,15 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, quote, 
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1.5 px-4 pt-4 pb-2">
-        {([['details', 'Line Items'], ['photos', `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`], ['vo', 'Raise VO']] as [Tab, string][]).map(([key, label]) => (
+      <div className="flex gap-1.5 px-4 pt-4 pb-2 overflow-x-auto">
+        {([
+          ['details', 'Line Items'],
+          ['photos', `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`],
+          ['vo', 'Raise VO'],
+          ['reporting', 'Report'],
+        ] as [Tab, string][]).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
-            className="px-4 py-2 rounded-xl text-xs font-semibold"
+            className="px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0"
             style={{
               background: tab === key ? S.accent : S.card,
               color: tab === key ? '#fff' : S.muted,
@@ -229,6 +316,158 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, quote, 
                 {uploading ? 'Uploading…' : 'Upload Photos'}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── REPORTING TAB ── */}
+        {tab === 'reporting' && (
+          <div className="space-y-3">
+
+            {/* Summary */}
+            {reports.length > 0 && (() => {
+              const total = reports.filter(r => r.report_type !== 'other').reduce((s, r) => s + (r.amount ?? 0), 0)
+              return (
+                <div className="rounded-2xl px-5 py-4 flex items-center justify-between"
+                  style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Total Reported</p>
+                    <p className="text-xl font-bold" style={{ color: total > 0 ? S.danger : S.text }}>
+                      R {total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                    style={{ background: 'rgba(220,38,38,0.08)', color: S.danger }}>
+                    {reports.length} report{reports.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )
+            })()}
+
+            {/* Report list */}
+            {reports.length > 0 && (
+              <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                {reports.map((r, i) => {
+                  const rt = REPORT_TYPES.find(x => x.value === r.report_type) ?? REPORT_TYPES[2]
+                  return (
+                    <div key={r.id} className="px-4 py-4"
+                      style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: `${rt.color}18` }}>
+                          {rt.value === 'loss'
+                            ? <TrendingDown size={14} style={{ color: rt.color }} />
+                            : <AlertTriangle size={14} style={{ color: rt.color }} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: rt.color }}>{rt.label}</span>
+                            <span className="text-[10px]" style={{ color: S.muted }}>{new Date(r.created_at).toLocaleDateString('en-ZA')}</span>
+                          </div>
+                          <p className="text-sm font-medium" style={{ color: S.text }}>{r.description}</p>
+                          {r.amount != null && (
+                            <p className="text-sm font-bold mt-0.5" style={{ color: rt.color }}>
+                              R {r.amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                            </p>
+                          )}
+                          {r.notes && <p className="text-xs mt-1 italic" style={{ color: S.muted }}>{r.notes}</p>}
+                          {r.photo_url && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.photo_url} alt="Report photo" className="mt-2 rounded-lg max-h-40 w-auto"
+                              style={{ border: `1px solid ${S.border}` }} />
+                          )}
+                        </div>
+                        <button onClick={() => void handleReportDelete(r.id)} className="p-1.5 flex-shrink-0"
+                          style={{ color: S.muted }}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Add form */}
+            {showAddReport ? (
+              <div className="rounded-2xl p-4 space-y-4" style={{ background: S.card, border: `1.5px solid ${S.accent}` }}>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold" style={{ color: S.text }}>New Report</p>
+                  <button onClick={() => setShowAddReport(false)} style={{ color: S.muted }}><X size={16} /></button>
+                </div>
+
+                <div className="flex gap-2">
+                  {REPORT_TYPES.map(rt => (
+                    <button key={rt.value} onClick={() => setRType(rt.value)}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                      style={{
+                        background: rType === rt.value ? `${rt.color}15` : S.bg,
+                        color: rType === rt.value ? rt.color : S.muted,
+                        border: `1.5px solid ${rType === rt.value ? rt.color : S.border}`,
+                      }}>
+                      {rt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Description *</label>
+                  <textarea value={rDesc} onChange={e => setRDesc(e.target.value)}
+                    placeholder="Describe the damage or loss…" rows={3}
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Amount (R)</label>
+                    <input type="number" value={rAmount} onChange={e => setRAmount(e.target.value)}
+                      placeholder="0.00" min="0" step="0.01"
+                      className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Photo</label>
+                    <input ref={reportFileRef} type="file" accept="image/*" capture="environment" className="hidden"
+                      onChange={e => void handleReportPhotoUpload(e.target.files)} />
+                    <button onClick={() => reportFileRef.current?.click()} disabled={rUploading}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: rPhotoUrl ? S.green : S.muted }}>
+                      {rUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                      {rUploading ? 'Uploading…' : rPhotoUrl ? 'Added ✓' : 'Add photo'}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Notes (optional)</label>
+                  <textarea value={rNotes} onChange={e => setRNotes(e.target.value)}
+                    placeholder="Additional notes…" rows={2}
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                </div>
+
+                {rError && <p className="text-xs px-3 py-2 rounded-xl" style={{ background: '#FEF2F2', color: S.danger }}>{rError}</p>}
+
+                <div className="flex gap-2">
+                  <button onClick={() => setShowAddReport(false)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted, background: S.bg }}>
+                    Cancel
+                  </button>
+                  <button onClick={() => void handleReportSave()} disabled={!rDesc.trim() || rSaving}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                    style={{ background: S.accent }}>
+                    {rSaving && <Loader2 size={13} className="animate-spin" />}
+                    {rSaving ? 'Saving…' : 'Add Report'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setShowAddReport(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ border: `1px solid ${S.border}`, color: S.accent, background: S.card }}>
+                <Plus size={14} /> Add Report
+              </button>
+            )}
           </div>
         )}
 

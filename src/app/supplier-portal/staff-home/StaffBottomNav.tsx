@@ -11,9 +11,10 @@ interface Props {
   onTabChange?: (tab: NavTab) => void
   onNewJob?: () => void
   jobsBadge?: number
+  projectsBadge?: number
 }
 
-export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge }: Props) {
+export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, projectsBadge }: Props) {
   const router = useRouter()
 
   function go(tab: NavTab) {
@@ -59,10 +60,16 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge }: 
       </div>
 
       <button onClick={() => go('projects')}
-        className="flex-1 flex flex-col items-center gap-1.5 py-3"
+        className="flex-1 flex flex-col items-center gap-1.5 py-3 relative"
         style={{ color: activeTab === 'projects' ? S.accent : S.muted }}>
         <FolderOpen size={24} />
         <span className="text-xs font-semibold">Projects</span>
+        {!!projectsBadge && (
+          <span className="absolute top-2 right-[calc(50%-16px)] w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
+            style={{ background: S.accent }}>
+            {projectsBadge}
+          </span>
+        )}
       </button>
 
       <button onClick={() => go('more')}
