@@ -5,7 +5,8 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { StaffHome } from './StaffHome'
 import type { ElecTimePunch, ElecJobCard, ElecClient } from '@/lib/elec-types'
 
-export default async function StaffHomePage() {
+export default async function StaffHomePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab: initialTab } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
@@ -50,7 +51,7 @@ export default async function StaffHomePage() {
       .select('id, quote_number, project_name, project_address, status, client:elec_clients(id, client_name)')
       .eq('portal_account_id', staff.portal_account_id)
       .eq('staff_id', staff.id)
-      .not('status', 'in', '("cancelled","completed")')
+      .in('status', ['approved', 'in_progress'])
       .order('created_at', { ascending: false }),
   ])
 
@@ -67,6 +68,7 @@ export default async function StaffHomePage() {
       assignedJobCards={(jobCards ?? []) as ElecJobCard[]}
       initialClients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>[]}
       assignedProjects={(projects ?? []) as unknown as { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]}
+      initialTab={(initialTab as 'home' | 'jobs' | 'projects' | 'history' | 'more') ?? 'home'}
     />
   )
 }

@@ -57,13 +57,14 @@ interface Props {
   assignedJobCards: ElecJobCard[]
   initialClients: ClientItem[]
   assignedProjects: { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]
+  initialTab?: Tab
 }
 
-export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects }: Props) {
+export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects, initialTab = 'home' }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
-  const [tab, setTab] = useState<Tab>('home')
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [punches, setPunches] = useState<ElecTimePunch[]>(initialPunches)
   const [isClockedIn, setIsClockedIn] = useState(initClockedIn)
   const [clockStatus, setClockStatus] = useState<'idle' | 'locating' | 'punching' | 'done' | 'error'>('idle')

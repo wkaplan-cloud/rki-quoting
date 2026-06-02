@@ -188,7 +188,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
     <div className="staff-portal min-h-screen pb-24" style={{ background: S.bg }}>
       {/* Header */}
       <div style={{ background: '#1E2A38' }} className="px-4 pt-10 pb-5">
-        <button onClick={() => router.push('/supplier-portal/staff-home')}
+        <button onClick={() => router.push('/supplier-portal/staff-home?tab=projects')}
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold mb-4"
           style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}>
           <ArrowLeft size={15} /> Projects
