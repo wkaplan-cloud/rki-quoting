@@ -41,13 +41,14 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
     return () => clearInterval(id)
   }, [])
 
-  // Pre-unlock audio on first user interaction so autoplay works when a notification arrives
+  // Pre-unlock audio silently on first user interaction so autoplay works for real notifications
   useEffect(() => {
     const unlock = () => {
       const audio = audioRef.current
       if (!audio) return
+      audio.volume = 0
       audio.play()
-        .then(() => { audio.pause(); audio.currentTime = 0 })
+        .then(() => { audio.pause(); audio.currentTime = 0; audio.volume = 1 })
         .catch(() => {})
     }
     document.addEventListener('click', unlock, { once: true })
