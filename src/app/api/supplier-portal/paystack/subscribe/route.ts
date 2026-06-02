@@ -33,9 +33,6 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!account) return NextResponse.json({ error: 'No supplier account found' }, { status: 404 })
-    if (account.subscription_status === 'active') {
-      return NextResponse.json({ error: 'Already subscribed' }, { status: 400 })
-    }
 
     const reference = `QH-sup-${account.id.slice(0, 8)}-${planId}-${Date.now()}`
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'

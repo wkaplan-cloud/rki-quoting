@@ -18,7 +18,8 @@ function UpgradeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const paymentFailed = searchParams.get('payment') === 'failed'
-  const [selected, setSelected] = useState<string>('professional')
+  const currentPlan = searchParams.get('current') ?? null
+  const [selected, setSelected] = useState<string>(currentPlan === 'starter' ? 'professional' : currentPlan === 'professional' ? 'business' : 'professional')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(paymentFailed ? 'Payment was not completed — please try again.' : '')
 

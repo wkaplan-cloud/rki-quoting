@@ -3,13 +3,17 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
-import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2 } from 'lucide-react'
+import { Check, Loader2, Upload, X, Plus, AlertCircle, CheckCircle2, Users, RotateCcw, Trash2, ChevronRight, Zap } from 'lucide-react'
 import type { PortalOrgMember, ElecSettings } from '@/lib/elec-types'
 import { SettingsClient } from '../quoting/settings/SettingsClient'
+import { PLANS, planRank } from '@/lib/plan-features'
 
 interface Props {
   portalAccountId: string
   hasQuoting: boolean
+  plan: string | null
+  subscriptionStatus: string | null
+  trialEndsAt: string | null
   initialTab: 'profile' | 'settings'
   justUpgraded: boolean
   account: {
@@ -44,7 +48,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, hasQuoting, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
+export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subscriptionStatus, trialEndsAt, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'settings'>(initialTab)
@@ -292,6 +296,90 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, initialTab,
         <SettingsClient portalAccountId={portalAccountId} companyName={account.company_name} settings={elecSettings} justUpgraded={justUpgraded} />
       ) : (
       <>
+
+      {/* ── Plan section ── */}
+      {(() => {
+        const currentRank = planRank(plan)
+        const currentPlan = PLANS.find(p => p.id === plan) ?? (plan === 'quoting' ? PLANS[2] : null)
+        const nextPlans = PLANS.filter(p => planRank(p.id) > currentRank)
+        const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt != null && new Date(trialEndsAt) > new Date()
+        const trialDaysLeft = trialEndsAt ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000)) : 0
+        const TIER_COLOR: Record<string, string> = { starter: '#3A7CA5', professional: '#D9A441', business: '#166534', quoting: '#166534' }
+        const color = TIER_COLOR[plan ?? ''] ?? '#71717A'
+
+        return (
+          <div className="p-5 rounded-xl space-y-4" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Your Plan</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {currentPlan ? (
+                    <span className="text-sm font-bold px-3 py-1 rounded-full"
+                      style={{ background: `${color}15`, color }}>
+                      {currentPlan.label}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-bold px-3 py-1 rounded-full" style={{ background: '#F4F4F5', color: '#71717A' }}>
+                      No plan
+                    </span>
+                  )}
+                  {isTrialing && (
+                    <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: 'rgba(217,164,65,0.1)', color: '#D9A441' }}>
+                      Trial · {trialDaysLeft}d left
+                    </span>
+                  )}
+                  {subscriptionStatus === 'active' && (
+                    <span className="text-xs flex items-center gap-1" style={{ color: '#16A34A' }}>
+                      <CheckCircle2 size={12} /> Active
+                    </span>
+                  )}
+                </div>
+                {currentPlan && (
+                  <p className="text-xs mt-1" style={{ color: '#71717A' }}>
+                    R{currentPlan.price.toLocaleString()}/month · {currentPlan.tagline}
+                  </p>
+                )}
+              </div>
+              {nextPlans.length > 0 && (
+                <a href={`/supplier-portal/upgrade${plan ? `?current=${plan}` : ''}`}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0"
+                  style={{ background: '#3A7CA5' }}>
+                  Upgrade Plan <ChevronRight size={14} />
+                </a>
+              )}
+              {nextPlans.length === 0 && currentPlan && (
+                <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full" style={{ background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                  <Zap size={11} /> Highest plan
+                </div>
+              )}
+            </div>
+
+            {/* What they have + what's next */}
+            {nextPlans.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold mb-2" style={{ color: '#71717A' }}>Included in your plan:</p>
+                <div className="space-y-1 mb-3">
+                  {(currentPlan?.features ?? ['No features — upgrade to get started']).map(f => (
+                    <div key={f} className="flex items-start gap-2">
+                      <Check size={12} className="mt-0.5 flex-shrink-0" style={{ color: '#16A34A' }} />
+                      <p className="text-xs" style={{ color: '#52525B' }}>{f}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs font-semibold mb-2" style={{ color: '#71717A' }}>Unlock with {nextPlans[0].label}:</p>
+                <div className="space-y-1">
+                  {nextPlans[0].features.filter(f => !(currentPlan?.features as readonly string[] | undefined)?.includes(f)).slice(0, 4).map(f => (
+                    <div key={f} className="flex items-start gap-2">
+                      <div className="w-3 h-3 rounded-full border flex items-center justify-center mt-0.5 flex-shrink-0" style={{ borderColor: '#D8D3C8' }} />
+                      <p className="text-xs" style={{ color: '#A1A1AA' }}>{f}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       <form onSubmit={handleSave} className="space-y-5">
         {/* Read-only email */}

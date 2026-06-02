@@ -56,6 +56,9 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
     <SupplierProfileClient
       portalAccountId={account.id}
       hasQuoting={hasQuoting}
+      plan={account.plan ?? null}
+      subscriptionStatus={account.subscription_status ?? null}
+      trialEndsAt={account.trial_ends_at ?? null}
       initialTab={initialTab}
       justUpgraded={justUpgraded}
       account={{
