@@ -449,8 +449,8 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
               )
             })()}
 
-            {/* Setup fee notice */}
-            {!setupFeePaid && subscriptionStatus === 'active' && (
+            {/* Setup fee notice — visible from day 1 regardless of subscription status */}
+            {!setupFeePaid && (
               <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 rounded-xl"
                 style={{ background: 'rgba(217,119,6,0.07)', border: '1px solid rgba(217,119,6,0.25)' }}>
                 <div className="flex items-start gap-3">
