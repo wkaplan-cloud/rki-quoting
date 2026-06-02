@@ -92,7 +92,6 @@ export async function POST(
 
       return {
         project_id: project.id,
-        org_id: orgId,
         item_name: itemName,
         description,
         quantity: item.quantity,
@@ -108,7 +107,8 @@ export async function POST(
       }
     })
 
-    await supabase.from('line_items').insert(lineItemRows)
+    const { error: lineItemsError } = await supabase.from('line_items').insert(lineItemRows)
+    if (lineItemsError) return NextResponse.json({ error: `Line items failed: ${lineItemsError.message}` }, { status: 500 })
 
     await supabase
       .from('capital_requests')
