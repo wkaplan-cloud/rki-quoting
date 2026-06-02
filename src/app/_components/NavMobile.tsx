@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 
 const links = [
-  { href: '/blog', label: 'Blog' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/faq', label: 'FAQ' },
-  { href: '/login', label: 'Log in' },
+  { href: '/blog',            label: 'Blog'            },
+  { href: '/pricing',         label: 'Pricing'         },
+  { href: '/faq',             label: 'FAQ'             },
+  { href: '/trades',          label: 'For Trades'      },
+  { href: '/supplier-portal', label: 'Supplier Portal' },
+  { href: '/login',           label: 'Log in'          },
 ]
 
 export function NavMobile() {

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { NavMobile } from '@/app/_components/NavMobile'
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,6 +22,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
             <Link href="/signup" className="px-3 py-2 sm:px-4 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Get started free
             </Link>
+            <NavMobile />
           </div>
         </div>
       </nav>
