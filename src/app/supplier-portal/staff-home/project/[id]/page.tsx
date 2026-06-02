@@ -17,7 +17,7 @@ export default async function StaffProjectPage({ params }: { params: Promise<{ i
     .single()
   if (!staff || !staff.is_active) redirect('/supplier-portal/login')
 
-  const [{ data: quote }, { data: sections }, { data: items }, { data: photos }] = await Promise.all([
+  const [{ data: quote }, { data: sections }, { data: items }, { data: photos }, { count: jobsCount }, { count: projectsCount }] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
       .select('id, quote_number, project_name, project_address, status, client_id, client:elec_clients(id, client_name, address)')
@@ -41,6 +41,12 @@ export default async function StaffProjectPage({ params }: { params: Promise<{ i
       .select('id, url, caption, created_at')
       .eq('quote_id', id)
       .order('created_at'),
+    supabaseAdmin.from('elec_job_cards').select('*', { count: 'exact', head: true })
+      .eq('staff_id', staff.id).eq('portal_account_id', staff.portal_account_id)
+      .in('status', ['pending', 'in_progress']),
+    supabaseAdmin.from('elec_quotes').select('*', { count: 'exact', head: true })
+      .eq('staff_id', staff.id).eq('portal_account_id', staff.portal_account_id)
+      .in('status', ['approved', 'in_progress']),
   ])
 
   if (!quote) notFound()
@@ -54,6 +60,8 @@ export default async function StaffProjectPage({ params }: { params: Promise<{ i
       sections={(sections ?? []) as { id: string; title: string; sort_order: number }[]}
       items={(items ?? []) as { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; sort_order: number }[]}
       photos={(photos ?? []) as { id: string; url: string; caption: string | null; created_at: string }[]}
+      jobsBadge={jobsCount ?? 0}
+      projectsBadge={projectsCount ?? 0}
     />
   )
 }

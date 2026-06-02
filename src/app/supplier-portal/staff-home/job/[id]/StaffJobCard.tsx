@@ -34,13 +34,15 @@ function fmtDate(iso: string | null) {
 interface Props {
   jobCard: ElecJobCard
   staffName: string
+  jobsBadge?: number
+  projectsBadge?: number
 }
 
 type Tab = 'report' | 'materials' | 'photos' | 'signature'
 type SignMode = 'draw' | 'send'
 type SendStatus = 'idle' | 'sending' | 'sent' | 'error'
 
-export function StaffJobCard({ jobCard: initial, staffName }: Props) {
+export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadge, projectsBadge }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [tab, setTab] = useState<Tab>('report')
@@ -310,7 +312,7 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
     <div className="staff-portal min-h-screen pb-24" style={{ background: S.bg }}>
       {/* Header */}
       <div style={{ background: '#1E2A38' }} className="px-4 pt-10 pb-5">
-        <button onClick={() => router.push('/supplier-portal/staff-home')}
+        <button onClick={() => router.push('/supplier-portal/staff-home?tab=jobs')}
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold mb-4"
           style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.25)' }}>
           <ArrowLeft size={15} /> My Jobs
@@ -674,7 +676,7 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
         )}
       </div>
 
-      <StaffBottomNav activeTab="jobs" />
+      <StaffBottomNav activeTab="jobs" jobsBadge={jobsBadge} projectsBadge={projectsBadge} />
     </div>
   )
 }

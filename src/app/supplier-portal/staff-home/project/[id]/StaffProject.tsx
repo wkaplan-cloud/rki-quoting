@@ -44,6 +44,8 @@ interface Props {
   staffId: string
   staffName: string
   portalAccountId: string
+  jobsBadge?: number
+  projectsBadge?: number
   quote: {
     id: string; quote_number: string; project_name: string
     project_address: string | null; status: string
@@ -54,7 +56,7 @@ interface Props {
   photos: { id: string; url: string; caption: string | null; created_at: string }[]
 }
 
-export function StaffProject({ staffId: _staffId, staffName: _staffName, portalAccountId, quote, sections, items, photos: initialPhotos }: Props) {
+export function StaffProject({ staffId: _staffId, staffName: _staffName, portalAccountId, jobsBadge, projectsBadge, quote, sections, items, photos: initialPhotos }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [tab, setTab] = useState<Tab>('details')
@@ -556,7 +558,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
         )}
       </div>
 
-      <StaffBottomNav activeTab="jobs" />
+      <StaffBottomNav activeTab="projects" jobsBadge={jobsBadge} projectsBadge={projectsBadge} />
     </div>
   )
 }

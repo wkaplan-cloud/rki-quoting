@@ -29,12 +29,25 @@ export default async function StaffJobCardPage({ params }: { params: Promise<{ i
 
   if (!card) notFound()
 
-  const [{ data: materials }, { data: photos }] = await Promise.all([
+  const [{ data: materials }, { data: photos }, { count: jobsCount }, { count: projectsCount }] = await Promise.all([
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
+    supabaseAdmin.from('elec_job_cards').select('*', { count: 'exact', head: true })
+      .eq('staff_id', staff.id).eq('portal_account_id', staff.portal_account_id)
+      .in('status', ['pending', 'in_progress']),
+    supabaseAdmin.from('elec_quotes').select('*', { count: 'exact', head: true })
+      .eq('staff_id', staff.id).eq('portal_account_id', staff.portal_account_id)
+      .in('status', ['approved', 'in_progress']),
   ])
 
   const jobCard: ElecJobCard = { ...card, materials: materials ?? [], photos: photos ?? [] }
 
-  return <StaffJobCard jobCard={jobCard} staffName={staff.name} />
+  return (
+    <StaffJobCard
+      jobCard={jobCard}
+      staffName={staff.name}
+      jobsBadge={jobsCount ?? 0}
+      projectsBadge={projectsCount ?? 0}
+    />
+  )
 }
