@@ -308,7 +308,12 @@ export default function CapitalPortalClient({ rkilogoUrl, businessName }: { rkil
       </div>
 
       {/* Sticky footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E8E4DC] p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E8E4DC] shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-center gap-2 py-2 border-b border-[#F0EDE8]">
+          <span className="text-[10px] text-[#C4BFB6] uppercase tracking-widest">Powered by</span>
+          <Image src="/logo.png" alt="QuotingHub" width={60} height={20} className="h-4 w-auto object-contain opacity-40" />
+        </div>
+        <div className="p-4">
         {error && (
           <p className="text-xs text-red-500 text-center mb-3">{error}</p>
         )}
@@ -322,6 +327,7 @@ export default function CapitalPortalClient({ rkilogoUrl, businessName }: { rkil
             : 'Send Request to R Kaplan Interiors'
           }
         </button>
+        </div>
       </div>
     </div>
   )
