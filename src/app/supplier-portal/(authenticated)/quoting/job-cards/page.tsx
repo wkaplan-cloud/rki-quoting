@@ -53,6 +53,7 @@ export default async function JobCardsPage() {
       initialJobCards={(jobCards ?? []) as ElecJobCard[]}
       staff={(staff ?? []) as ElecStaff[]}
       clients={(clients ?? []) as ElecClient[]}
+      portalAccountId={accountId!}
     />
   )
 }

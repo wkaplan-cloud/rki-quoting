@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardType, ElecStaff, ElecClient } from '@/lib/elec-types'
+import { ClientCombobox } from '../ClientCombobox'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -29,16 +30,19 @@ interface Props {
   initialJobCards: ElecJobCard[]
   staff: ElecStaff[]
   clients: ElecClient[]
+  portalAccountId: string
 }
 
 const EMPTY_FORM = {
   title: '', job_type: 'callout' as ElecJobCardType, staff_id: '', client_id: '',
+  client_display_name: '',
   location: '', scheduled_at: '', work_description: '',
 }
 
-export function JobCardsClient({ initialJobCards, staff, clients }: Props) {
+export function JobCardsClient({ initialJobCards, staff, clients: initialClients, portalAccountId }: Props) {
   const router = useRouter()
   const [jobCards, setJobCards] = useState<ElecJobCard[]>(initialJobCards)
+  const [clients, setClients] = useState<ElecClient[]>(initialClients)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterType, setFilterType] = useState<string>('all')
@@ -67,10 +71,10 @@ export function JobCardsClient({ initialJobCards, staff, clients }: Props) {
         scheduled_at: form.scheduled_at || null,
         work_description: form.work_description || null,
       }
-      // Pre-fill client name/email from client record
       if (form.client_id) {
+        body.client_name = form.client_display_name || null
         const c = clients.find(cl => cl.id === form.client_id)
-        if (c) { body.client_name = c.client_name; body.client_email = c.email ?? null }
+        if (c) body.client_email = c.email ?? null
       }
       const res = await fetch('/api/supplier-portal/quoting/job-cards', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -249,22 +253,23 @@ export function JobCardsClient({ initialJobCards, staff, clients }: Props) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Client</label>
-                  <select value={form.client_id} onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm"
-                    style={{ border: `1px solid ${S.border}`, color: S.text }}>
-                    <option value="">No client</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Scheduled Date & Time</label>
-                  <input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm"
-                    style={{ border: `1px solid ${S.border}`, color: S.text }} />
-                </div>
+              <div>
+                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Client</label>
+                <ClientCombobox
+                  clientId={form.client_id || null}
+                  displayName={form.client_display_name}
+                  clients={clients}
+                  portalAccountId={portalAccountId}
+                  onChange={(id, name) => setForm(f => ({ ...f, client_id: id ?? '', client_display_name: name }))}
+                  onNewClient={c => setClients(prev => [...prev, { ...c, portal_account_id: portalAccountId, email: null, contact_number: null, vat_number: null, address: null, payment_terms_days: null, notes: null, qs_name: null, qs_email: null, created_at: new Date().toISOString() }].sort((a, b) => a.client_name.localeCompare(b.client_name)))}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Scheduled Date & Time</label>
+                <input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-xl text-sm"
+                  style={{ border: `1px solid ${S.border}`, color: S.text }} />
               </div>
 
               <div>
