@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Hotel, Plus, Pencil, Trash2, X, ChevronRight, Clock, CheckCircle2, FileText, Settings2 } from 'lucide-react'
+import { Hotel, Plus, Pencil, Trash2, X, ChevronRight, Clock, CheckCircle2, FileText, Settings2, Copy, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Request {
@@ -42,6 +42,15 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
   const [savingHotel, setSavingHotel] = useState(false)
   const [editingHotel, setEditingHotel] = useState<{ id: string; name: string } | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [copied, setCopied] = useState(false)
+  const portalUrl = 'https://quotinghub.co.za/capital-portal'
+
+  function copyPortalUrl() {
+    navigator.clipboard.writeText(portalUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   const filtered = requests.filter(r => statusFilter === 'all' || r.status === statusFilter)
 
@@ -112,6 +121,25 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
 
   return (
     <div className="space-y-5">
+      {/* Portal URL banner */}
+      <div className="bg-white rounded-2xl border border-[#E8E4DC] px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-0.5">Hotel Portal Link</p>
+          <p className="text-sm text-[#1A1A18] font-medium">{portalUrl}</p>
+          <p className="text-xs text-[#8A877F] mt-0.5">Share this with The Capital Hotels team to submit maintenance requests.</p>
+        </div>
+        <button
+          onClick={copyPortalUrl}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex-shrink-0 ${
+            copied
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-[#F5F2EC] text-[#1A1A18] border border-[#E8E4DC] hover:border-[#1B4F8A] hover:text-[#1B4F8A]'
+          }`}
+        >
+          {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy Link</>}
+        </button>
+      </div>
+
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">

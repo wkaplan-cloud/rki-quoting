@@ -143,11 +143,32 @@ export default function CapitalPortalPage() {
   return (
     <div className="min-h-screen bg-[#F5F2EC]">
       {/* Header */}
-      <div className="bg-white border-b border-[#E8E4DC] px-5 py-4 flex items-center gap-3">
-        <Image src="/logo.png" alt="QuotingHub" width={32} height={32} className="w-8 h-8 object-contain" />
-        <div>
-          <p className="text-[11px] text-[#8A877F] uppercase tracking-widest font-medium">R Kaplan Interiors</p>
-          <h1 className="text-base font-semibold text-[#1A1A18] leading-tight">Capital Hotel Portal</h1>
+      <div className="bg-white border-b border-[#E8E4DC] px-5 py-5">
+        <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
+          {/* Capital logo */}
+          <Image
+            src="/Capital-Logo.png"
+            alt="The Capital Hotels"
+            width={180}
+            height={60}
+            className="h-12 w-auto object-contain"
+          />
+          {/* Divider */}
+          <div className="w-px h-10 bg-[#E8E4DC] flex-shrink-0" />
+          {/* QH logo + label */}
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo.png"
+              alt="QuotingHub"
+              width={48}
+              height={48}
+              className="h-12 w-auto object-contain"
+            />
+            <div className="hidden sm:block">
+              <p className="text-[10px] text-[#8A877F] uppercase tracking-widest font-medium leading-tight">Powered by</p>
+              <p className="text-xs font-semibold text-[#1A1A18] leading-tight">R Kaplan Interiors</p>
+            </div>
+          </div>
         </div>
       </div>
 
