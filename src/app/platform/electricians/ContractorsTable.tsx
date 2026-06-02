@@ -326,14 +326,29 @@ function AdminUsersPanel({ accountId, initial }: { accountId: string; initial: A
 // ── Main Table ──────────────────────────────────────────────────────────────────
 type ExpandView = 'plan' | 'admins'
 
-export function ContractorsTable({ rows }: { rows: ContractorRow[] }) {
+export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] }) {
+  const [rows, setRows] = useState(initialRows)
   const [expanded, setExpanded] = useState<Record<string, ExpandView | null>>({})
+  const [activating, setActivating] = useState<string | null>(null)
 
   function toggle(id: string, view: ExpandView) {
     setExpanded(prev => ({
       ...prev,
       [id]: prev[id] === view ? null : view,
     }))
+  }
+
+  async function handleActivate(accountId: string) {
+    setActivating(accountId)
+    const res = await fetch(`/api/platform/elec-accounts/${accountId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription_status: 'active', trial_ends_at: null }),
+    })
+    if (res.ok) {
+      setRows(prev => prev.map(r => r.id === accountId ? { ...r, subscription_status: 'active' } : r))
+    }
+    setActivating(null)
   }
 
   if (rows.length === 0) {
@@ -429,10 +444,23 @@ export function ContractorsTable({ rows }: { rows: ContractorRow[] }) {
                 </span>
               </button>
 
-              {/* Joined */}
-              <div className="text-right">
+              {/* Joined + activate */}
+              <div className="text-right space-y-1">
                 <p className="text-white/40 text-[10px]">{fmtDate(a.created_at)}</p>
-                <p className="text-white/20 text-[10px]">{a.phone ?? ''}</p>
+                {a.subscription_status !== 'active' ? (
+                  <button
+                    onClick={e => { e.stopPropagation(); void handleActivate(a.id) }}
+                    disabled={activating === a.id}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1 ml-auto"
+                  >
+                    {activating === a.id ? <Loader2 size={9} className="animate-spin" /> : <CheckCircle size={9} />}
+                    {activating === a.id ? 'Saving…' : 'Set Active'}
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-emerald-400/50 flex items-center gap-1 justify-end">
+                    <CheckCircle size={9} /> Active
+                  </span>
+                )}
               </div>
             </div>
 
