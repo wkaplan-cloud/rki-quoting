@@ -403,30 +403,16 @@ export function StaffJobCard({ jobCard: initial, staffName }: Props) {
           <div className="rounded-2xl p-4 space-y-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <p className="text-xs" style={{ color: S.muted }}>Your report saves automatically when you move to the next step.</p>
             <div>
-              <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>What Did You Find?</label>
+              <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>What Was Found</label>
               <textarea value={card.work_found ?? ''} onChange={e => setCard(c => ({ ...c, work_found: e.target.value || null }))}
-                placeholder="Describe what you found on site…" rows={4}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Work Completed</label>
-              <textarea value={card.work_done ?? ''} onChange={e => setCard(c => ({ ...c, work_done: e.target.value || null }))}
-                placeholder="Describe what you did…" rows={4}
+                placeholder="Describe what you found on site…" rows={5}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
                 style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
             </div>
             <div>
               <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Resolution</label>
               <textarea value={card.resolution ?? ''} onChange={e => setCard(c => ({ ...c, resolution: e.target.value || null }))}
-                placeholder="How was it resolved?" rows={3}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Notes</label>
-              <textarea value={card.notes ?? ''} onChange={e => setCard(c => ({ ...c, notes: e.target.value || null }))}
-                placeholder="Any other notes…" rows={2}
+                placeholder="How was the issue resolved?" rows={5}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
                 style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
             </div>
