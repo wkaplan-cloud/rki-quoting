@@ -1,6 +1,6 @@
 import { Document, Page, Text, View } from '@react-pdf/renderer'
 import { StyleSheet } from '@react-pdf/renderer'
-import { computeLineItem, formatZAR, computeTotals } from '../quoting'
+import { computeLineItem, computeLineItems, formatZAR, computeTotals } from '../quoting'
 import type { Project, LineItem, Supplier } from '../types'
 
 const s = StyleSheet.create({
@@ -79,6 +79,7 @@ interface Props {
 export function ProductionPDF({ project, lineItems, suppliers, businessName, vatRate = 15, printDate, assignedTo }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.supplier_name]))
   const totals = computeTotals(lineItems, project.design_fee, vatRate)
+  const grossProfit = computeLineItems(lineItems).reduce((sum, i) => sum + i.profit, 0) + totals.design_fee
   const clientName = (() => {
     const c = (project as any).client
     if (!c) return null
@@ -163,7 +164,13 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
         })}
 
         {/* Totals */}
-        <View style={{ marginTop: 16, marginBottom: 40, alignItems: 'flex-end' }}>
+        <View style={{ marginTop: 16, marginBottom: 40, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+          {/* Gross profit box */}
+          <View style={{ width: 160, borderWidth: 1, borderColor: '#86efac', borderRadius: 4, padding: 12, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 7, color: '#16a34a', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Gross Profit</Text>
+            <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: grossProfit >= 0 ? '#15803d' : '#dc2626' }}>{formatZAR(grossProfit)}</Text>
+            <Text style={{ fontSize: 6.5, color: '#4ade80', marginTop: 4 }}>excl. VAT</Text>
+          </View>
           <View style={{ width: 240, borderWidth: 1, borderColor: '#D8D3C8', borderRadius: 4, padding: 12 }}>
             <View style={s.totalsRow}><Text style={s.totalsLabel}>Subtotal</Text><Text style={s.totalsVal}>{formatZAR(totals.subtotal)}</Text></View>
             <View style={s.totalsRow}><Text style={s.totalsLabel}>Design Fee ({project.design_fee ?? 0}%)</Text><Text style={s.totalsVal}>{formatZAR(totals.design_fee)}</Text></View>
