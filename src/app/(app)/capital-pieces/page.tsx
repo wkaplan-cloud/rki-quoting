@@ -16,15 +16,20 @@ export default async function CapitalPiecesPage() {
 
   if (!settings?.capital_hotels_enabled) redirect('/dashboard')
 
-  const [{ data: pieces }, { data: suppliers }] = await Promise.all([
+  const [{ data: pieces }, { data: suppliers }, { data: hotels }] = await Promise.all([
     supabase
       .from('capital_pieces')
-      .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, updated_at)')
+      .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, updated_at), variants:capital_piece_variants(id, label, dimensions, sort_order, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id)), hotels:capital_piece_hotels(id, hotel_id, hotel:capital_hotels(id, name))')
       .order('name'),
     supabase
       .from('suppliers')
       .select('id, supplier_name, markup_percentage')
       .order('supplier_name'),
+    supabase
+      .from('capital_hotels')
+      .select('id, name')
+      .eq('active', true)
+      .order('name'),
   ])
 
   return (
@@ -37,6 +42,7 @@ export default async function CapitalPiecesPage() {
         <CapitalPiecesClient
           initialPieces={pieces ?? []}
           suppliers={suppliers ?? []}
+          hotels={hotels ?? []}
         />
       </div>
     </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, ImagePlus, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, ImagePlus, Loader2, Hotel } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { compressImage } from '@/lib/compressImage'
 
@@ -22,6 +22,12 @@ interface Variant {
   prices: Price[]
 }
 
+interface HotelTag {
+  id: string
+  hotel_id: string
+  hotel: { id: string; name: string }
+}
+
 interface Piece {
   id: string
   name: string
@@ -29,13 +35,15 @@ interface Piece {
   category: string
   fabric: string | null
   image_url: string | null
-  prices: Price[]       // base piece-level prices (variant_id = null)
+  prices: Price[]
   variants: Variant[]
+  hotels: HotelTag[]
 }
 
 interface Props {
   initialPieces: Piece[]
   suppliers: { id: string; supplier_name: string; markup_percentage: number }[]
+  hotels: { id: string; name: string }[]
 }
 
 const INPUT = 'w-full px-3 py-2.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#1B4F8A] bg-white'
@@ -210,10 +218,92 @@ function VariantSection({
   )
 }
 
+// ── Hotel Tag Editor ──────────────────────────────────────────────────────────
+function HotelTagEditor({
+  pieceId, tags, allHotels, onChange,
+}: {
+  pieceId: string
+  tags: HotelTag[]
+  allHotels: { id: string; name: string }[]
+  onChange: (tags: HotelTag[]) => void
+}) {
+  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const tagged = new Set(tags.map(t => t.hotel_id))
+  const available = allHotels.filter(h => !tagged.has(h.id))
+
+  async function addTag(hotelId: string) {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/capital-pieces/${pieceId}/hotels`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hotel_id: hotelId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      onChange([...tags, json.tag])
+      setAdding(false)
+    } catch (e) { toast.error((e as Error).message) }
+    finally { setSaving(false) }
+  }
+
+  async function removeTag(hotelId: string) {
+    const res = await fetch(`/api/capital-pieces/${pieceId}/hotels?hotel_id=${hotelId}`, { method: 'DELETE' })
+    if (res.ok) {
+      onChange(tags.filter(t => t.hotel_id !== hotelId))
+    } else {
+      toast.error('Failed to remove hotel')
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {tags.map(t => (
+        <span key={t.id} className="inline-flex items-center gap-1 text-[10px] font-medium bg-[#1B4F8A]/10 text-[#1B4F8A] px-2 py-0.5 rounded-full">
+          <Hotel size={9} />
+          {t.hotel.name}
+          <button
+            onClick={() => removeTag(t.hotel_id)}
+            className="ml-0.5 hover:text-red-500 transition-colors"
+            aria-label={`Remove ${t.hotel.name}`}
+          >
+            <X size={9} />
+          </button>
+        </span>
+      ))}
+      {adding ? (
+        <div className="flex items-center gap-1">
+          <select
+            className="text-xs px-2 py-0.5 border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#1B4F8A] bg-white"
+            defaultValue=""
+            onChange={e => { if (e.target.value) addTag(e.target.value) }}
+            disabled={saving}
+            autoFocus
+          >
+            <option value="" disabled>Select hotel…</option>
+            {available.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+          <button onClick={() => setAdding(false)} className="text-[#8A877F] hover:text-[#1A1A18] transition-colors"><X size={11} /></button>
+        </div>
+      ) : available.length > 0 && (
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[#1B4F8A]/60 hover:text-[#1B4F8A] border border-dashed border-[#1B4F8A]/30 hover:border-[#1B4F8A] px-2 py-0.5 rounded-full transition-colors"
+        >
+          <Plus size={9} /> Hotel
+        </button>
+      )}
+    </div>
+  )
+}
+
 // ── Piece Card ────────────────────────────────────────────────────────────────
-function PieceCard({ piece, suppliers, onUpdated, onDeleted }: {
+function PieceCard({ piece, suppliers, allHotels, onUpdated, onDeleted }: {
   piece: Piece
   suppliers: Props['suppliers']
+  allHotels: Props['hotels']
   onUpdated: (p: Piece) => void
   onDeleted: () => void
 }) {
@@ -228,6 +318,7 @@ function PieceCard({ piece, suppliers, onUpdated, onDeleted }: {
   const [imageUrl, setImageUrl] = useState(piece.image_url)
   const [prices, setPrices] = useState<Price[]>(piece.prices ?? [])
   const [variants, setVariants] = useState<Variant[]>(piece.variants ?? [])
+  const [hotelTags, setHotelTags] = useState<HotelTag[]>(piece.hotels ?? [])
   const [showAddPrice, setShowAddPrice] = useState(false)
   const [showAddVariant, setShowAddVariant] = useState(false)
   const [newVariantLabel, setNewVariantLabel] = useState('')
@@ -355,6 +446,14 @@ function PieceCard({ piece, suppliers, onUpdated, onDeleted }: {
                   : <span className="text-[10px] text-[#8A877F]">{basePrices.length} price{basePrices.length !== 1 ? 's' : ''}</span>
                 }
               </div>
+              <div className="mt-1.5" onClick={e => e.stopPropagation()}>
+                <HotelTagEditor
+                  pieceId={piece.id}
+                  tags={hotelTags}
+                  allHotels={allHotels}
+                  onChange={setHotelTags}
+                />
+              </div>
             </>
           )}
         </div>
@@ -452,15 +551,20 @@ function PieceCard({ piece, suppliers, onUpdated, onDeleted }: {
 }
 
 // ── Main Export ───────────────────────────────────────────────────────────────
-export function CapitalPiecesClient({ initialPieces, suppliers }: Props) {
+export function CapitalPiecesClient({ initialPieces, suppliers, hotels }: Props) {
   const [pieces, setPieces] = useState(initialPieces)
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [newCat, setNewCat] = useState('general')
   const [newFabric, setNewFabric] = useState('')
+  const [newHotelIds, setNewHotelIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
+
+  function toggleNewHotel(id: string) {
+    setNewHotelIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
 
   async function addPiece() {
     if (!newName.trim()) return
@@ -469,12 +573,12 @@ export function CapitalPiecesClient({ initialPieces, suppliers }: Props) {
       const res = await fetch('/api/capital-pieces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim(), description: newDesc.trim() || null, category: newCat, fabric: newFabric.trim() || null }),
+        body: JSON.stringify({ name: newName.trim(), description: newDesc.trim() || null, category: newCat, fabric: newFabric.trim() || null, hotel_ids: newHotelIds }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      setPieces(prev => [json.piece, ...prev])
-      setNewName(''); setNewDesc(''); setNewCat('general'); setNewFabric(''); setShowAdd(false)
+      setPieces(prev => [{ ...json.piece, hotels: json.piece.hotels ?? [] }, ...prev])
+      setNewName(''); setNewDesc(''); setNewCat('general'); setNewFabric(''); setNewHotelIds([]); setShowAdd(false)
       toast.success('Piece added')
     } catch (e) { toast.error((e as Error).message) }
     finally { setSaving(false) }
@@ -526,6 +630,28 @@ export function CapitalPiecesClient({ initialPieces, suppliers }: Props) {
               <label className={LABEL}>Description</label>
               <input className={INPUT} value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Optional details" />
             </div>
+            {hotels.length > 0 && (
+              <div className="col-span-2 sm:col-span-4">
+                <label className={LABEL}>Hotels</label>
+                <div className="flex flex-wrap gap-2">
+                  {hotels.map(h => (
+                    <button
+                      key={h.id}
+                      type="button"
+                      onClick={() => toggleNewHotel(h.id)}
+                      className={`inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
+                        newHotelIds.includes(h.id)
+                          ? 'bg-[#1B4F8A] text-white border-[#1B4F8A]'
+                          : 'bg-white text-[#8A877F] border-[#D4CFC7] hover:border-[#1B4F8A] hover:text-[#1B4F8A]'
+                      }`}
+                    >
+                      <Hotel size={11} />
+                      {h.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button onClick={addPiece} disabled={saving || !newName.trim()} className="px-5 py-2.5 bg-[#1B4F8A] text-white text-sm font-medium rounded-xl hover:bg-[#163d6e] disabled:opacity-50 transition-colors">
@@ -547,6 +673,7 @@ export function CapitalPiecesClient({ initialPieces, suppliers }: Props) {
               key={piece.id}
               piece={piece}
               suppliers={suppliers}
+              allHotels={hotels}
               onUpdated={updated => setPieces(prev => prev.map(p => p.id === updated.id ? updated : p))}
               onDeleted={() => setPieces(prev => prev.filter(p => p.id !== piece.id))}
             />
