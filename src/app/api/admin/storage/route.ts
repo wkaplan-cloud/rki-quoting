@@ -2,23 +2,79 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-// GET /api/admin/storage — returns total upload storage bytes for the current org
+// GET /api/admin/storage — total upload storage bytes for the current org
 export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: orgId } = await supabase.rpc('get_current_org_id')
+  if (!orgId) return NextResponse.json({ totalBytes: 0, fileCount: 0 })
 
-  // Sum file_size_bytes from sourcing_item_images scoped to this org
-  const { data, error } = await supabaseAdmin
-    .from('sourcing_item_images')
-    .select('file_size_bytes, sourcing_session_items!inner(session:sourcing_sessions!inner(org_id))')
-    .eq('sourcing_sessions.org_id', orgId)
+  // ── 1. Sourcing item images ──────────────────────────────────────────────
+  // Walk: sourcing_sessions (org-scoped via RLS) → sourcing_session_items → sourcing_item_images
+  const { data: sessions } = await supabase
+    .from('sourcing_sessions')
+    .select('id')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const sessionIds = (sessions ?? []).map(s => s.id)
 
-  const totalBytes = (data ?? []).reduce((sum: number, row: any) => sum + (row.file_size_bytes ?? 0), 0)
+  let sourcingBytes = 0
+  let sourcingCount = 0
 
-  return NextResponse.json({ totalBytes, fileCount: (data ?? []).length })
+  if (sessionIds.length > 0) {
+    const { data: sessionItems } = await supabase
+      .from('sourcing_session_items')
+      .select('id')
+      .in('session_id', sessionIds)
+
+    const itemIds = (sessionItems ?? []).map(i => i.id)
+
+    if (itemIds.length > 0) {
+      const { data: images } = await supabaseAdmin
+        .from('sourcing_item_images')
+        .select('file_size_bytes')
+        .in('item_id', itemIds)
+
+      sourcingBytes = (images ?? []).reduce((sum, r) => sum + (r.file_size_bytes ?? 0), 0)
+      sourcingCount = (images ?? []).length
+    }
+  }
+
+  // ── 2. Piece images ──────────────────────────────────────────────────────
+  // pieces.image_urls is a text[] — count non-empty entries as files
+  // We don't store file_size_bytes for pieces, so we estimate 200 KB each
+  const { data: pieces } = await supabase
+    .from('pieces')
+    .select('image_urls')
+
+  const pieceImageCount = (pieces ?? []).reduce((n, p) => n + ((p.image_urls as string[] | null)?.length ?? 0), 0)
+  const pieceBytes = pieceImageCount * 200 * 1024 // ~200 KB estimate per piece image
+  const pieceCount = pieceImageCount
+
+  // ── 3. Capital pieces images ─────────────────────────────────────────────
+  const { data: capitalPieces } = await supabaseAdmin
+    .from('capital_pieces')
+    .select('image_url')
+    .eq('org_id', orgId)
+    .not('image_url', 'is', null)
+
+  const capitalPieceCount = (capitalPieces ?? []).length
+  const capitalPieceBytes = capitalPieceCount * 200 * 1024
+
+  // ── 4. Capital request item images ───────────────────────────────────────
+  const { data: capitalItems } = await supabaseAdmin
+    .from('capital_request_items')
+    .select('image_url')
+    .eq('org_id', orgId)
+    .not('image_url', 'is', null)
+
+  const capitalItemCount = (capitalItems ?? []).length
+  const capitalItemBytes = capitalItemCount * 400 * 1024 // phone photos ~400 KB after compression
+
+  // ── Totals ───────────────────────────────────────────────────────────────
+  const totalBytes = sourcingBytes + pieceBytes + capitalPieceBytes + capitalItemBytes
+  const fileCount = sourcingCount + pieceCount + capitalPieceCount + capitalItemCount
+
+  return NextResponse.json({ totalBytes, fileCount })
 }
