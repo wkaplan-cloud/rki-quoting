@@ -170,7 +170,7 @@ export default function CapitalPortalClient({ rkilogoUrl, businessName }: { rkil
         </div>
       </div>
 
-      <div className="max-w-xl mx-auto p-5 space-y-5 pb-32">
+      <div className="max-w-xl mx-auto p-5 space-y-5 pb-52">
         {/* Hotel selector */}
         <div className="bg-white rounded-2xl border border-[#E8E4DC] p-5 shadow-sm">
           <label className={LABEL}>Select Hotel</label>
