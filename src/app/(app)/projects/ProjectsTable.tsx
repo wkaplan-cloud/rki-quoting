@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
 import type { Project, ProjectStatus, LineItem } from '@/lib/types'
 import { formatZAR, computeTotals } from '@/lib/quoting'
-import { FolderOpen, ChevronRight, Archive } from 'lucide-react'
+import { FolderOpen, ChevronRight, Archive, Trash2, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Paid', 'Completed', 'Cancelled']
@@ -22,6 +22,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
   const [showArchived, setShowArchived] = useState(false)
   const [myProjects, setMyProjects] = useState(true)
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -31,6 +32,15 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
     if (error) { alert(error.message); setRestoringId(null); return }
     router.refresh()
     setRestoringId(null)
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Permanently delete "${name}"? This cannot be undone.`)) return
+    setDeletingId(id)
+    const { error } = await supabase.from('projects').delete().eq('id', id)
+    if (error) { alert(error.message); setDeletingId(null); return }
+    router.refresh()
+    setDeletingId(null)
   }
 
   const active   = projects.filter(p => !p.archived_at)
@@ -156,6 +166,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Assigned To</th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Total</th>
+                {showArchived && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody>
@@ -178,7 +189,25 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                   </td>
                   {showArchived && (
                     <td className="px-4 py-3 text-right">
-                      <button onClick={e => { e.stopPropagation(); void handleUnarchive(p.id) }} disabled={restoringId === p.id} className="text-xs text-[#9A7B4F] hover:underline cursor-pointer disabled:opacity-50">{restoringId === p.id ? 'Restoring…' : 'Restore'}</button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={e => { e.stopPropagation(); void handleUnarchive(p.id) }}
+                          disabled={restoringId === p.id || deletingId === p.id}
+                          title="Restore project"
+                          className="flex items-center gap-1 text-xs text-[#9A7B4F] hover:underline cursor-pointer disabled:opacity-50"
+                        >
+                          <RotateCcw size={12} />
+                          {restoringId === p.id ? 'Restoring…' : 'Restore'}
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); void handleDelete(p.id, p.project_name) }}
+                          disabled={deletingId === p.id || restoringId === p.id}
+                          title="Permanently delete"
+                          className="p-1 text-[#C4BFB5] hover:text-red-500 transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                          {deletingId === p.id ? <span className="text-xs">Deleting…</span> : <Trash2 size={13} />}
+                        </button>
+                      </div>
                     </td>
                   )}
                 </tr>
