@@ -65,7 +65,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   const [{ data: membership }, { data: settings }, { data: sourcingBadgeData }, { count: capitalBadgeCount }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
-    supabase.from('settings').select('business_name, capital_hotels_enabled').maybeSingle(),
+    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled').eq('org_id', orgId).maybeSingle(),
     orgId
       ? supabaseAdmin.rpc('get_sourcing_badge_count', { p_org_id: orgId })
       : Promise.resolve({ data: 0, error: null }),

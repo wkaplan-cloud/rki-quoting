@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { RequestDetail } from './RequestDetail'
 
@@ -9,9 +10,13 @@ export default async function RequestPage({ params }: { params: Promise<{ reques
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: settings } = await supabase
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+  if (!orgId) redirect('/dashboard')
+
+  const { data: settings } = await supabaseAdmin
     .from('settings')
     .select('capital_hotels_enabled')
+    .eq('org_id', orgId)
     .maybeSingle()
   if (!settings?.capital_hotels_enabled) redirect('/dashboard')
 
