@@ -5,7 +5,6 @@ import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight, X } from '
 import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
 import { SettingsForm } from '../settings/SettingsForm'
-import { StorageWidget } from './StorageWidget'
 import Link from 'next/link'
 import { computeLineItems } from '@/lib/quoting'
 
@@ -449,7 +448,6 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
       {tab === 'studio' && (
         <div className="space-y-6">
           <StudioSettingsForm settings={settings as any} plan={plan} isAdmin={isAdmin} />
-          <StorageWidget />
         </div>
       )}
 

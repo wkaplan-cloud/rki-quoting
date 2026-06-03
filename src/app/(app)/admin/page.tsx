@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { AdminPanel } from './AdminPanel'
+import { StorageWidget } from './StorageWidget'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -86,7 +87,7 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <PageHeader title="Admin" subtitle="Manage your team, studio settings and activity" />
+      <PageHeader title="Admin" subtitle="Manage your team, studio settings and activity" actions={<StorageWidget />} />
       <div className="p-8">
         <AdminPanel
           members={members ?? []}
