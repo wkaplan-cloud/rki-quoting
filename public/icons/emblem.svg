@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">QuotingHub emblem</title>
+  <desc id="desc">QuotingHub square emblem icon on white background.</desc>
+  <rect width="1254" height="1254" fill="#ffffff"/>
+  <g fill="none" stroke="#282f3f" stroke-linecap="butt" stroke-linejoin="miter">
+    <!-- Outer square frame -->
+    <rect x="258" y="222" width="736" height="736" stroke-width="18"/>
+
+    <!-- Q circle -->
+    <circle cx="519" cy="564" r="175" stroke-width="20"/>
+
+    <!-- H horizontal and vertical bars -->
+    <line x1="690" y1="564" x2="852" y2="564" stroke-width="20"/>
+    <line x1="852" y1="380" x2="852" y2="766" stroke-width="20"/>
+
+    <!-- Q tail, dark section -->
+    <line x1="566" y1="605" x2="631" y2="797" stroke-width="24"/>
+  </g>
+
+  <!-- Q tail teal accent -->
+  <line x1="631" y1="797" x2="642" y2="830" stroke="#59b8c5" stroke-width="24" stroke-linecap="butt"/>
+</svg>
