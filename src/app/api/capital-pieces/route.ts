@@ -61,6 +61,13 @@ export async function POST(req: NextRequest) {
       await supabase.from('capital_piece_hotels').insert(
         body.hotel_ids.map(hotel_id => ({ piece_id: data.id, hotel_id, org_id: orgId }))
       )
+      // Re-fetch so returned piece includes the just-inserted hotel tags
+      const { data: full } = await supabase
+        .from('capital_pieces')
+        .select('*, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id), variants:capital_piece_variants(id, label, dimensions, sort_order, prices:capital_piece_prices(id, supplier_id, supplier_name, cost_price, notes, variant_id)), hotels:capital_piece_hotels(id, hotel_id, hotel:capital_hotels(id, name))')
+        .eq('id', data.id)
+        .single()
+      return NextResponse.json({ piece: full })
     }
 
     return NextResponse.json({ piece: data })

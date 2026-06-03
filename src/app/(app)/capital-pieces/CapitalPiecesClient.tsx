@@ -446,16 +446,17 @@ function PieceCard({ piece, suppliers, allHotels, onUpdated, onDeleted }: {
                   : <span className="text-[10px] text-[#8A877F]">{basePrices.length} price{basePrices.length !== 1 ? 's' : ''}</span>
                 }
               </div>
-              <div className="mt-1.5" onClick={e => e.stopPropagation()}>
-                <HotelTagEditor
-                  pieceId={piece.id}
-                  tags={hotelTags}
-                  allHotels={allHotels}
-                  onChange={setHotelTags}
-                />
-              </div>
             </>
           )}
+          {/* Hotel tags always visible — even during edit mode */}
+          <div className="mt-1.5" onClick={e => e.stopPropagation()}>
+            <HotelTagEditor
+              pieceId={piece.id}
+              tags={hotelTags}
+              allHotels={allHotels}
+              onChange={setHotelTags}
+            />
+          </div>
         </div>
 
         {!editing && (
