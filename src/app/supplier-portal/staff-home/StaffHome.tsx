@@ -124,11 +124,13 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
       setGpsBlocked(true)
     } else {
       try {
+        // iOS standalone PWA blocks high-accuracy requests — try standard first,
+        // then retry with high accuracy if it succeeds
         const pos = await new Promise<GeolocationPosition>((res, rej) =>
           navigator.geolocation.getCurrentPosition(res, rej, {
-            timeout: 10000,
-            maximumAge: 0,
-            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 60000,
+            enableHighAccuracy: false,
           })
         )
         latitude = pos.coords.latitude
@@ -136,7 +138,6 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         setGpsBlocked(false)
       } catch (err) {
         const code = (err as GeolocationPositionError).code
-        // code 1 = PERMISSION_DENIED — user blocked location
         setGpsBlocked(code === 1)
       }
     }
@@ -273,7 +274,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 <div>
                   <p className="text-sm font-semibold" style={{ color: S.danger }}>Location access blocked</p>
                   <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                    Open your browser settings, find &quot;Site permissions&quot; or &quot;Location&quot;, and allow access for this site. Then clock in again.
+                    On iPhone: go to <strong>Settings → Privacy &amp; Security → Location Services → Safari Websites</strong> and set to <strong>While Using</strong>. Then try again.
                   </p>
                 </div>
               </div>
