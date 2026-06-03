@@ -20,6 +20,7 @@ const inter = Inter({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  themeColor: '#1A1A18',
 }
 
 export const metadata: Metadata = {
@@ -43,6 +44,21 @@ export const metadata: Metadata = {
   authors: [{ name: 'QuotingHub', url: 'https://quotinghub.co.za' }],
   creator: 'QuotingHub',
   publisher: 'QuotingHub',
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png',   sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/apple-touch-icon-180.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'QuotingHub',
+    statusBarStyle: 'default',
+  },
   alternates: {
     canonical: 'https://quotinghub.co.za',
   },
