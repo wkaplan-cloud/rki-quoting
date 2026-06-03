@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 
 export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: Props) {
   const router = useRouter()
-  const [requests] = useState(initialRequests)
+  const [requests, setRequests] = useState(initialRequests)
   const [hotels, setHotels] = useState(initialHotels)
   const [showHotelsPanel, setShowHotelsPanel] = useState(false)
   const [newHotelName, setNewHotelName] = useState('')
@@ -117,6 +117,21 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
     }
   }
 
+  async function archiveRequest(id: string) {
+    if (!confirm('Archive this request? It will be hidden from this view.')) return
+    const res = await fetch(`/api/capital-hotels/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ archived: true }),
+    })
+    if (res.ok) {
+      setRequests(prev => prev.filter(r => r.id !== id))
+      toast.success('Request archived')
+    } else {
+      toast.error('Failed to archive request')
+    }
+  }
+
   const pendingCount = requests.filter(r => r.status === 'pending').length
 
   return (
@@ -194,28 +209,36 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
                 const date = new Date(req.submitted_at)
                 const itemCount = req.capital_request_items?.length ?? 0
                 return (
-                  <Link
-                    key={req.id}
-                    href={`/capital-hotels/${req.id}`}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-[#F5F2EC]/60 transition-colors group"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <span className="font-medium text-sm text-[#1A1A18]">
-                          {date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.color}`}>
-                          {cfg.icon}
-                          {cfg.label}
-                        </span>
+                  <div key={req.id} className="flex items-center group hover:bg-[#F5F2EC]/60 transition-colors">
+                    <Link
+                      href={`/capital-hotels/${req.id}`}
+                      className="flex items-center gap-4 px-5 py-4 flex-1 min-w-0"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className="font-medium text-sm text-[#1A1A18]">
+                            {date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.color}`}>
+                            {cfg.icon}
+                            {cfg.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#8A877F]">
+                          {itemCount} item{itemCount !== 1 ? 's' : ''}
+                          {req.quote_project_id && <span className="ml-2 text-emerald-600 font-medium">· Quote created</span>}
+                        </p>
                       </div>
-                      <p className="text-xs text-[#8A877F]">
-                        {itemCount} item{itemCount !== 1 ? 's' : ''}
-                        {req.quote_project_id && <span className="ml-2 text-emerald-600 font-medium">· Quote created</span>}
-                      </p>
-                    </div>
-                    <ChevronRight size={16} className="text-[#C4BFB6] group-hover:text-[#1A1A18] transition-colors flex-shrink-0" />
-                  </Link>
+                      <ChevronRight size={16} className="text-[#C4BFB6] group-hover:text-[#1A1A18] transition-colors flex-shrink-0" />
+                    </Link>
+                    <button
+                      onClick={() => archiveRequest(req.id)}
+                      className="opacity-0 group-hover:opacity-100 mr-4 p-2 text-[#C4BFB6] hover:text-red-500 transition-all flex-shrink-0"
+                      title="Archive request"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 )
               })}
             </div>

@@ -21,6 +21,7 @@ export default async function CapitalHotelsPage() {
     supabase
       .from('capital_requests')
       .select('id, hotel_name, hotel_id, status, submitted_at, quote_project_id, capital_request_items(id)')
+      .eq('archived', false)
       .order('submitted_at', { ascending: false }),
     supabase
       .from('capital_hotels')
