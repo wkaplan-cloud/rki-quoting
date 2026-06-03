@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, Upload, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel,
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 
@@ -278,25 +278,6 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
             </Link>
           )}
 
-          {plan === 'solo' ? (
-            <button
-              onClick={() => setUpgradeModalOpen(true)}
-              className="flex items-center h-8 rounded mx-1 text-white/30 hover:text-white/50 hover:bg-white/5 transition-colors w-[calc(100%-8px)]"
-            >
-              <span className="flex items-center justify-center w-10 flex-shrink-0">
-                <Upload size={14} className="opacity-30" />
-              </span>
-              <span className={`${labelCls} flex items-center gap-1.5`}>Import <Lock size={9} className="opacity-40" /></span>
-            </button>
-          ) : (
-            <Link href="/import" onClick={onClose}
-              className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors">
-              <span className="flex items-center justify-center w-10 flex-shrink-0">
-                <Upload size={14} />
-              </span>
-              <span className={labelCls}>Import</span>
-            </Link>
-          )}
 
           {plan !== 'solo' && (
             <Link href="/admin" onClick={onClose} 

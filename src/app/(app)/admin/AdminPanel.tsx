@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight, X } from 'lucide-react'
+import { UserPlus, ShieldCheck, User, Ban, Clock, Trash2, ArrowRight, X, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { StudioSettingsForm } from './StudioSettingsForm'
 import { SettingsForm } from '../settings/SettingsForm'
@@ -450,6 +450,20 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
         <div className="space-y-6">
           <StudioSettingsForm settings={settings as any} plan={plan} isAdmin={isAdmin} />
           <StorageWidget />
+          <div className="bg-white border border-[#E8E4DC] rounded-xl px-5 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-[#F5F2EC] flex items-center justify-center flex-shrink-0">
+                <Upload size={15} className="text-[#8A877F]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#2C2C2A]">Import Data</p>
+                <p className="text-xs text-[#8A877F]">Bulk import clients, suppliers or items from a spreadsheet</p>
+              </div>
+            </div>
+            <Link href="/import" className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#2C2C2A] bg-[#F5F2EC] rounded-lg hover:bg-[#EDE9E1] transition-colors flex-shrink-0">
+              Open <ArrowRight size={13} />
+            </Link>
+          </div>
         </div>
       )}
 
