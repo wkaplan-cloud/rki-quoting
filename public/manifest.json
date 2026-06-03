@@ -2,7 +2,7 @@
   "name": "QuotingHub",
   "short_name": "QuotingHub",
   "description": "Quoting software for interior designers in South Africa",
-  "start_url": "/",
+  "start_url": "/supplier-portal/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#F5F2EC",
