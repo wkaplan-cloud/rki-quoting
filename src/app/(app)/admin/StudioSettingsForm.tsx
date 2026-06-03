@@ -270,12 +270,13 @@ interface Settings {
   sage_invoice_message?: string | null
 }
 
-type Tab = 'general' | 'branding' | 'accounting'
+type Tab = 'general' | 'branding' | 'accounting' | 'import'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'general',    label: 'General' },
   { key: 'branding',  label: 'Branding' },
   { key: 'accounting', label: 'Accounting' },
+  { key: 'import',     label: 'Import' },
 ]
 
 export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Settings | null; plan?: string; isAdmin?: boolean }) {
@@ -984,6 +985,23 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
               )}
             </>
           )}
+        </div>
+      )}
+
+      {activeTab === 'import' && (
+        <div className="space-y-6 max-w-2xl">
+          <div className="bg-[#F5F2EC] border border-[#D8D3C8] rounded-xl px-6 py-5">
+            <h3 className="text-sm font-semibold text-[#2C2C2A] mb-1">Import Data</h3>
+            <p className="text-xs text-[#8A877F] leading-relaxed mb-4">
+              Bulk import your existing clients, suppliers, or items from a spreadsheet. Use this to populate QuotingHub quickly when getting started.
+            </p>
+            <a
+              href="/import"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1A1A18] text-white text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors"
+            >
+              Open Import Tool →
+            </a>
+          </div>
         </div>
       )}
 
