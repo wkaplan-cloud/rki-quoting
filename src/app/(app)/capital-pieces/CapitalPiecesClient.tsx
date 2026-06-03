@@ -134,11 +134,12 @@ function AddPriceForm({
 
 // ── Variant Section ───────────────────────────────────────────────────────────
 function VariantSection({
-  variant, pieceId, suppliers, onUpdated, onDeleted,
+  variant, pieceId, suppliers, allHotels, onUpdated, onDeleted,
 }: {
   variant: Variant
   pieceId: string
   suppliers: Props['suppliers']
+  allHotels: Props['hotels']
   onUpdated: (v: Variant) => void
   onDeleted: () => void
 }) {
@@ -181,7 +182,10 @@ function VariantSection({
       <div className="flex items-center gap-2 px-4 py-2.5 bg-[#F5F2EC]">
         {editing ? (
           <>
-            <input className="flex-1 px-2 py-1.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#1B4F8A] bg-white" value={label} onChange={e => setLabel(e.target.value)} placeholder="Label (e.g. Sandton)" />
+            <select className="flex-1 px-2 py-1.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#1B4F8A] bg-white" value={label} onChange={e => setLabel(e.target.value)}>
+              <option value="" disabled>Select hotel…</option>
+              {allHotels.map(h => <option key={h.id} value={h.name}>{h.name}</option>)}
+            </select>
             <input className="w-36 px-2 py-1.5 text-sm border border-[#D4CFC7] rounded-lg focus:outline-none focus:border-[#1B4F8A] bg-white" value={dimensions} onChange={e => setDimensions(e.target.value)} placeholder="Dimensions" />
             <button onClick={saveEdit} disabled={saving} className="text-xs text-emerald-600 font-medium px-2 py-1 hover:bg-emerald-50 rounded-lg transition-colors">{saving ? 'Saving…' : 'Save'}</button>
             <button onClick={() => setEditing(false)} className="text-[#8A877F] hover:text-[#1A1A18] transition-colors"><X size={13} /></button>
@@ -490,6 +494,7 @@ function PieceCard({ piece, suppliers, allHotels, onUpdated, onDeleted }: {
                   variant={v}
                   pieceId={piece.id}
                   suppliers={suppliers}
+                  allHotels={allHotels}
                   onUpdated={updated => setVariants(prev => prev.map(x => x.id === updated.id ? updated : x))}
                   onDeleted={() => setVariants(prev => prev.filter(x => x.id !== v.id))}
                 />
@@ -502,7 +507,10 @@ function PieceCard({ piece, suppliers, allHotels, onUpdated, onDeleted }: {
               {showAddVariant && (
                 <div className="border border-dashed border-[#1B4F8A]/40 rounded-xl p-3 space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <input className={INPUT} value={newVariantLabel} onChange={e => setNewVariantLabel(e.target.value)} placeholder="Label (e.g. Sandton)" autoFocus />
+                    <select className={INPUT} value={newVariantLabel} onChange={e => setNewVariantLabel(e.target.value)} autoFocus>
+                      <option value="" disabled>Select hotel…</option>
+                      {allHotels.map(h => <option key={h.id} value={h.name}>{h.name}</option>)}
+                    </select>
                     <input className={INPUT} value={newVariantDim} onChange={e => setNewVariantDim(e.target.value)} placeholder="Dimensions (e.g. 2200 x 900mm)" />
                   </div>
                   <div className="flex gap-2">
