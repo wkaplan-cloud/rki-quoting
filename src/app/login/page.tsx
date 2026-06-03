@@ -17,7 +17,10 @@ export default function LoginPage() {
   const [hashRedirecting, setHashRedirecting] = useState(() =>
     typeof window !== 'undefined' && window.location.hash.includes('access_token=')
   )
-  const [checkingSession, setCheckingSession] = useState(false)
+  // Show spinner immediately unless we're processing a hash token (which has its own state)
+  const [checkingSession, setCheckingSession] = useState(() =>
+    typeof window !== 'undefined' && !window.location.hash.includes('access_token=')
+  )
   const [platformSignoutEmail, setPlatformSignoutEmail] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [platformMode, setPlatformMode] = useState(false)
