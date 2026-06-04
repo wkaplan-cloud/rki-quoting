@@ -85,16 +85,22 @@ export default async function StudiosPage() {
 
   const orgIds = (orgs ?? []).map(o => o.id)
 
-  // 4 bulk queries + incomplete signups in parallel — replaces the previous N×4 query pattern
+  // Bulk queries in parallel
   const [
     { data: allActiveMembers },
     { data: allAdminMembers },
     { data: allProjectsData },
+    { data: allSourcingData },
+    { data: allAuditData },
+    { data: allClientsData },
     incompleteSignups,
   ] = await Promise.all([
     supabaseAdmin.from('org_members').select('org_id').eq('status', 'active').in('org_id', orgIds),
     supabaseAdmin.from('org_members').select('org_id, user_id, full_name, invited_email').eq('role', 'admin').in('org_id', orgIds).order('status', { ascending: true }),
     supabaseAdmin.from('projects').select('org_id, created_at, archived_at, status').order('created_at', { ascending: false }),
+    supabaseAdmin.from('sourcing_sessions').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }),
+    supabaseAdmin.from('audit_logs').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }).limit(1000),
+    supabaseAdmin.from('clients').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }),
     getIncompleteSignups(),
   ])
 
@@ -111,12 +117,22 @@ export default async function StudiosPage() {
 
   const projectCountByOrg = new Map<string, number>()
   const lastActiveByOrg = new Map<string, string>()
+
+  const bumpLastActive = (orgId: string | null, ts: string) => {
+    if (!orgId) return
+    const cur = lastActiveByOrg.get(orgId)
+    if (!cur || ts > cur) lastActiveByOrg.set(orgId, ts)
+  }
+
   for (const p of allProjectsData ?? []) {
-    if (p.org_id && !lastActiveByOrg.has(p.org_id)) lastActiveByOrg.set(p.org_id, p.created_at)
+    bumpLastActive(p.org_id, p.created_at)
     if (p.org_id && !p.archived_at && p.status !== 'Cancelled') {
       projectCountByOrg.set(p.org_id, (projectCountByOrg.get(p.org_id) ?? 0) + 1)
     }
   }
+  for (const s of allSourcingData ?? []) bumpLastActive(s.org_id, s.created_at)
+  for (const a of allAuditData ?? []) bumpLastActive((a as any).org_id, a.created_at)
+  for (const c of allClientsData ?? []) bumpLastActive((c as any).org_id, c.created_at)
 
   // One bulk settings fetch keyed by org_id (settings are org-scoped, not user-scoped)
   const { data: allSettings } = orgIds.length > 0
