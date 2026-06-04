@@ -282,7 +282,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                       </p>
                     ) : (
                       <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                        Tap the <strong>lock icon</strong> in Chrome&apos;s address bar → <strong>Permissions → Location → Allow</strong>. Then try again.
+                        Tap the <strong>lock icon</strong> in your browser&apos;s address bar → <strong>Permissions → Location → Allow</strong>. Then try again.
                       </p>
                     )}
                   </div>
