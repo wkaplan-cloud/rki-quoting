@@ -103,13 +103,19 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     const punch_type = isClockedIn ? 'clock_out' : 'clock_in'
     let latitude: number | undefined
     let longitude: number | undefined
-    try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
-      )
-      latitude = pos.coords.latitude
-      longitude = pos.coords.longitude
-    } catch {}
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, {
+            timeout: 8000,
+            maximumAge: 60000,
+            enableHighAccuracy: false,
+          })
+        )
+        latitude = pos.coords.latitude
+        longitude = pos.coords.longitude
+      } catch {}
+    }
     const res = await fetch('/api/supplier-portal/staff/punch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
