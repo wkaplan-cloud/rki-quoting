@@ -120,17 +120,18 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     let latitude: number | undefined
     let longitude: number | undefined
 
+    // iOS standalone PWA blocks high-accuracy GPS requests; Android does not
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+
     if (!navigator.geolocation) {
       setGpsBlocked(true)
     } else {
       try {
-        // iOS standalone PWA blocks high-accuracy requests — try standard first,
-        // then retry with high accuracy if it succeeds
         const pos = await new Promise<GeolocationPosition>((res, rej) =>
           navigator.geolocation.getCurrentPosition(res, rej, {
             timeout: 15000,
             maximumAge: 60000,
-            enableHighAccuracy: false,
+            enableHighAccuracy: !isIos,
           })
         )
         latitude = pos.coords.latitude
@@ -267,18 +268,27 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           <div className="px-4 pt-4 space-y-4">
 
             {/* GPS permission banner */}
-            {gpsBlocked && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-2xl"
-                style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
-                <MapPin size={16} className="flex-shrink-0 mt-0.5" style={{ color: S.danger }} />
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: S.danger }}>Location access blocked</p>
-                  <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                    On iPhone: go to <strong>Settings → Privacy &amp; Security → Location Services → Safari Websites</strong> and set to <strong>While Using</strong>. Then try again.
-                  </p>
+            {gpsBlocked && (() => {
+              const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
+              return (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-2xl"
+                  style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
+                  <MapPin size={16} className="flex-shrink-0 mt-0.5" style={{ color: S.danger }} />
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: S.danger }}>Location access blocked</p>
+                    {isIos ? (
+                      <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                        Go to <strong>Settings → Privacy &amp; Security → Location Services → Safari Websites</strong> and set to <strong>While Using</strong>. Then try again.
+                      </p>
+                    ) : (
+                      <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                        Tap the <strong>lock icon</strong> in Chrome&apos;s address bar → <strong>Permissions → Location → Allow</strong>. Then try again.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Clock in/out */}
             <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>

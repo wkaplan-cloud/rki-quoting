@@ -104,12 +104,13 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     let latitude: number | undefined
     let longitude: number | undefined
     if (navigator.geolocation) {
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
       try {
         const pos = await new Promise<GeolocationPosition>((res, rej) =>
           navigator.geolocation.getCurrentPosition(res, rej, {
             timeout: 8000,
             maximumAge: 60000,
-            enableHighAccuracy: false,
+            enableHighAccuracy: !isIos,
           })
         )
         latitude = pos.coords.latitude
