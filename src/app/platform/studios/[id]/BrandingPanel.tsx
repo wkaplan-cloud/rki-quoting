@@ -82,8 +82,10 @@ export function BrandingPanel({ orgId, adminUserId, logoUrl, letterheadUrl, lett
           {logoUrl && (
             <div>
               <p className="text-xs text-white/30 mb-2">Logo</p>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logoUrl} alt="Studio logo" className="h-10 max-w-[140px] object-contain rounded border border-white/10 p-2 bg-white/5" />
+              <a href={logoUrl} target="_blank" rel="noopener noreferrer" title="Click to view full size">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt="Studio logo" className="h-10 max-w-[140px] object-contain rounded border border-white/10 p-2 bg-white/5 cursor-pointer hover:border-white/30 transition-colors" />
+              </a>
             </div>
           )}
           {letterheadUrl && (
