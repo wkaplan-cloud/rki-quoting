@@ -764,14 +764,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             </div>
           )}
         </div>
-        {/* Primary CTA */}
-        {q.status === 'draft' && (
-          <button onClick={openSendModal}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold"
-            style={{ background: S.accent, color: '#fff' }}>
-            <Send size={13} /> Send to Client
-          </button>
-        )}
         {q.status === 'quoted' && (
           <button onClick={() => void transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
             disabled={transitioning}
@@ -1377,6 +1369,17 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           )}
         </div>
       </div>
+
+      {/* Send to Client — draft only, placed below totals so user reviews before sending */}
+      {q.status === 'draft' && (
+        <div className="flex justify-end mb-4">
+          <button onClick={openSendModal}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: S.accent, color: '#fff' }}>
+            <Send size={14} /> Send to Client
+          </button>
+        </div>
+      )}
 
       {/* Secondary actions strip */}
       {q.status === 'quoted' && (
