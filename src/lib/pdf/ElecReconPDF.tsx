@@ -8,6 +8,8 @@ const MUTED  = '#71717A'
 const BORDER = '#E4E4E7'
 const SURF   = '#F9FAFB'
 
+const GOLD = '#D9A441'
+
 const s = StyleSheet.create({
   page:       { fontFamily: 'Helvetica', fontSize: 9, color: DARK, padding: 48, paddingBottom: 64 },
   header:     { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, alignItems: 'flex-start' },
@@ -22,6 +24,8 @@ const s = StyleSheet.create({
   infoRow:    { fontSize: 7.5, color: MUTED, marginBottom: 1.5 },
   secRow:     { flexDirection: 'row', backgroundColor: ACCENT, paddingVertical: 4, paddingHorizontal: 8, marginTop: 8 },
   secLabel:   { fontSize: 8, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' },
+  voSecRow:   { flexDirection: 'row', backgroundColor: GOLD, paddingVertical: 4, paddingHorizontal: 8, marginTop: 8 },
+  voSecLabel: { fontSize: 8, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' },
   tableHead:  { flexDirection: 'row', backgroundColor: '#EFF6FF', paddingVertical: 4, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER },
   th:         { fontSize: 7.5, color: ACCENT, fontFamily: 'Helvetica-Bold' },
   row:        { flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER },
@@ -53,7 +57,9 @@ export interface ElecReconPDFProps {
 }
 
 export function ElecReconPDF({ quote, client, sections, items, settings, companyName, companyEmail, logoUrl }: ElecReconPDFProps) {
-  const freeItems = items.filter(i => i.section_id === null && !i.is_variation)
+  const quoteItems = items.filter(i => !i.is_variation)
+  const voItems    = items.filter(i => i.is_variation)
+  const freeItems  = quoteItems.filter(i => i.section_id === null)
   const metaParts = [
     settings?.vat_registration_number  ? `VAT: ${settings.vat_registration_number}` : null,
     settings?.company_registration_number ? `Reg: ${settings.company_registration_number}` : null,
@@ -129,7 +135,7 @@ export function ElecReconPDF({ quote, client, sections, items, settings, company
         <ItemRows list={freeItems} />
 
         {sections.map(sec => {
-          const secItems = items.filter(i => i.section_id === sec.id && !i.is_variation)
+          const secItems = quoteItems.filter(i => i.section_id === sec.id)
           if (secItems.length === 0) return null
           return (
             <View key={sec.id}>
@@ -140,6 +146,16 @@ export function ElecReconPDF({ quote, client, sections, items, settings, company
             </View>
           )
         })}
+
+        {/* ── Variation Orders ── */}
+        {voItems.length > 0 && (
+          <View>
+            <View style={s.voSecRow} wrap={false}>
+              <Text style={[s.voSecLabel, { flex: 1 }]}>VARIATION ORDERS</Text>
+            </View>
+            <ItemRows list={voItems} indent />
+          </View>
+        )}
 
         {/* Sign-off boxes */}
         <View style={s.signBox}>

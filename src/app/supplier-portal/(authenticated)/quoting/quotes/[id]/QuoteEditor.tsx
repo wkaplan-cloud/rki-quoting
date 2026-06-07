@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
-  MoreHorizontal, Archive, Lock,
+  MoreHorizontal, Archive, Lock, Printer,
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import type { DropResult, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
@@ -394,6 +394,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [activeTab, setActiveTab]   = useState<QuoteTab>('quote')
   const [transitioning, setTransitioning] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [showReconModal, setShowReconModal] = useState(false)
 
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
   const showTabs = true
@@ -717,12 +718,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
           {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
         </div>
-        <a href={`/api/supplier-portal/quoting/quotes/${q.id}/recon-pdf`} target="_blank" rel="noreferrer"
-          title="Site sign-off sheet — lists all line items with tick boxes for on-site verification by your team"
+        <button onClick={() => setShowReconModal(true)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
           style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
           <FileText size={12} /> Recon / Sign-off Sheet
-        </a>
+        </button>
         {['draft', 'quoted'].includes(q.status) && (
           <button onClick={() => void archiveQuote()}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
@@ -1522,6 +1522,50 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Recon / Sign-off Modal ── */}
+      {showReconModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowReconModal(false) }}>
+          <div className="rounded-2xl w-full max-w-sm p-6 shadow-2xl" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm font-bold" style={{ color: S.text }}>Recon / Sign-off Sheet</p>
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>Quote items + variation orders with tick boxes</p>
+              </div>
+              <button onClick={() => setShowReconModal(false)} className="p-1.5 rounded-lg"
+                style={{ color: S.muted }}
+                onMouseEnter={e => (e.currentTarget.style.background = S.border)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <X size={15} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              <a href={`/api/supplier-portal/quoting/quotes/${q.id}/recon-pdf`} target="_blank" rel="noreferrer"
+                onClick={() => setShowReconModal(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{ background: S.accent, color: '#fff', textDecoration: 'none' }}>
+                <Printer size={16} />
+                <div>
+                  <p>Print</p>
+                  <p className="text-xs font-normal opacity-80">Opens in browser — use Ctrl+P / ⌘P</p>
+                </div>
+              </a>
+              <a href={`/api/supplier-portal/quoting/quotes/${q.id}/recon-pdf?mode=download`} download
+                onClick={() => setShowReconModal(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{ background: S.bg, color: S.text, border: `1px solid ${S.border}`, textDecoration: 'none' }}>
+                <Download size={16} />
+                <div>
+                  <p>Download PDF</p>
+                  <p className="text-xs font-normal" style={{ color: S.muted }}>Save to your device</p>
+                </div>
+              </a>
+            </div>
           </div>
         </div>
       )}

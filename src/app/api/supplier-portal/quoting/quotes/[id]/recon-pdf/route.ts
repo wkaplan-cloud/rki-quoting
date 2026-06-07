@@ -11,7 +11,8 @@ import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSe
 
 export const maxDuration = 60
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const download = req.nextUrl.searchParams.get('mode') === 'download'
   try {
     const { id: quoteId } = await params
     const supabase = await createClient()
@@ -24,7 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const [{ data: quoteRaw }, { data: sections }, { data: items }, { data: settings }] = await Promise.all([
       supabaseAdmin.from('elec_quotes').select('*, client:elec_clients(*)').eq('id', quoteId).eq('portal_account_id', account.id).single(),
       supabaseAdmin.from('elec_quote_sections').select('*').eq('quote_id', quoteId).order('sort_order'),
-      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', quoteId).eq('is_variation', false).order('sort_order'),
+      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', quoteId).order('sort_order'),
       supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle(),
     ])
 
@@ -49,11 +50,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       }) as any
     )
 
+    const slug = (quoteRaw as ElecQuote).quote_number ?? quoteId
+    const disposition = download
+      ? `attachment; filename="${slug}-Recon.pdf"`
+      : `inline; filename="${slug}-Recon.pdf"`
     return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="recon-${quoteId}.pdf"`,
-      },
+      headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': disposition },
     })
   } catch (e) { return apiError(e) }
 }
