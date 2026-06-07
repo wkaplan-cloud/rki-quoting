@@ -100,7 +100,7 @@ type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'photos' | 'signat
 export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, sageConnected = false }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
-  const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'qs_name' | 'qs_email'>[]>(initialClients)
+  const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
   const initClient = initialClients.find(c => c.id === initial.client_id)
   const [clientCompany, setClientCompany] = useState(initClient?.company ?? '')
   const [clientQsName, setClientQsName] = useState(initClient?.qs_name ?? '')
@@ -288,7 +288,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       labour_rate: card.labour_rate,
     })
     if (card.client_id) {
-      const patch: Record<string, string> = {}
+      const patch: Record<string, string | null> = {}
       if (card.client_email?.trim()) patch.email = card.client_email.trim()
       if (card.location?.trim()) patch.address = card.location.trim()
       if (clientCompany.trim()) patch.company = clientCompany.trim()
@@ -861,7 +861,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   setClientQsEmail(existing?.qs_email ?? '')
                   setClientVatNumber(existing?.vat_number ?? '')
                 }}
-                onNewClient={c => setClients(prev => [...prev, { ...c, email: null, address: null, qs_name: null, qs_email: null }])}
+                onNewClient={c => setClients(prev => [...prev, { ...c, email: null, address: null, vat_number: null, qs_name: null, qs_email: null }])}
               />
             </Field>
             <Inp label="Client Email" val={card.client_email} cb={v => setField('client_email', v || null)} placeholder="client@example.com" />

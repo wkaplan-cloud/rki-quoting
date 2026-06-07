@@ -483,7 +483,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
       // Sync client fields via server route (supabaseAdmin bypasses RLS)
       if (q.client_id) {
-        const patch: Record<string, string> = {}
+        const patch: Record<string, string | null> = {}
         if (q.project_address?.trim()) patch.address = q.project_address.trim()
         if (clientCompany.trim()) patch.company = clientCompany.trim()
         if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
