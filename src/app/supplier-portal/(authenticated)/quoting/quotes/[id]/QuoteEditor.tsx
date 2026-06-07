@@ -699,129 +699,172 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   return (
     <div className="max-w-4xl mx-auto pb-16">
-      {/* Top bar */}
-      <div className="flex items-center gap-3 mb-4">
+
+      {/* ── Top bar ────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-5 gap-3">
         <button onClick={() => router.push('/supplier-portal/quoting/quotes')}
           className="flex items-center gap-1.5 text-sm font-medium" style={{ color: S.muted }}
           onMouseEnter={e => e.currentTarget.style.color = S.text}
           onMouseLeave={e => e.currentTarget.style.color = S.muted}>
-          <ChevronLeft size={16} /> Projects
+          <ChevronLeft size={15} /> Projects
         </button>
-        <span className="text-xs font-mono px-2 py-1 rounded" style={{ background: S.bg, color: S.muted }}>{q.quote_number}</span>
-        <div className="flex-1" />
-        {/* Save status */}
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
-          {saveStatus === 'saving' && <><Loader2 size={12} className="animate-spin" />Saving…</>}
-          {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
-          {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
+        <div className="flex items-center gap-2">
+          {saveStatus === 'saving' && <span className="text-xs" style={{ color: S.muted }}>Saving…</span>}
+          {saveStatus === 'saved'  && <span className="text-xs" style={{ color: S.green }}>Saved</span>}
+          {saveStatus === 'error'  && <span className="text-xs" style={{ color: S.danger }}>{saveError}</span>}
+          {q.status === 'quoted' && (
+            <button onClick={() => void transition('in_progress', { approved_date: new Date().toISOString().split('T')[0] })}
+              disabled={transitioning}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+              style={{ background: S.green, color: '#fff' }}>
+              <Check size={13} /> Mark Approved
+            </button>
+          )}
+          {q.status === 'in_progress' && (
+            <button disabled={transitioning}
+              onClick={() => { if (confirm('Mark this project as completed?')) void transition('completed') }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+              style={{ background: S.green, color: '#fff' }}>
+              <Check size={13} /> Mark Complete
+            </button>
+          )}
+          {/* Overflow */}
+          <div className="relative">
+            <button onClick={() => setShowMoreMenu(m => !m)}
+              className="flex items-center px-2.5 py-1.5 rounded-lg"
+              style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
+              <MoreHorizontal size={15} />
+            </button>
+            {showMoreMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[180px]"
+                  style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  <button onClick={() => { setShowMoreMenu(false); setShowReconModal(true) }}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
+                    style={{ color: S.text }}>
+                    <FileText size={14} /> Recon / Sign-off Sheet
+                  </button>
+                  {['draft', 'quoted'].includes(q.status) && (
+                    <button onClick={() => { setShowMoreMenu(false); void archiveQuote() }}
+                      className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
+                      style={{ color: S.danger }}>
+                      <Archive size={14} /> Archive
+                    </button>
+                  )}
+                  {['quoted', 'in_progress'].includes(q.status) && (
+                    <button onClick={() => { setShowMoreMenu(false); if (confirm('Cancel this quote / project?')) void transition('cancelled') }}
+                      className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
+                      style={{ color: S.danger }}>
+                      <X size={14} /> Cancel Project
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        <button onClick={() => setShowReconModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
-          <FileText size={12} /> Recon / Sign-off Sheet
-        </button>
-        {['draft', 'quoted'].includes(q.status) && (
-          <button onClick={() => void archiveQuote()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-            style={{ color: S.danger, border: `1px solid ${S.border}`, background: S.bg }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = '#FECACA' }}
-            onMouseLeave={e => { e.currentTarget.style.background = S.bg; e.currentTarget.style.borderColor = S.border }}>
-            <Archive size={12} /> Archive
-          </button>
-        )}
-        {['quoted', 'in_progress'].includes(q.status) && (
-          <button onClick={() => { if (confirm('Cancel this quote / project?')) void transition('cancelled') }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-            style={{ color: S.danger, border: `1px solid ${S.border}`, background: S.bg }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = '#FECACA' }}
-            onMouseLeave={e => { e.currentTarget.style.background = S.bg; e.currentTarget.style.borderColor = S.border }}>
-            <X size={12} /> Cancel
-          </button>
-        )}
-        {q.status === 'quoted' && (
-          <button onClick={() => void transition('in_progress', { approved_date: new Date().toISOString().split('T')[0] })}
-            disabled={transitioning}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
-            style={{ background: S.green, color: '#fff' }}>
-            <Check size={13} /> Mark Approved
-          </button>
-        )}
-        {q.status === 'in_progress' && (
-          <button disabled={transitioning}
-            onClick={() => { if (confirm('Mark this project as completed?')) void transition('completed') }}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
-            style={{ background: 'rgba(22,101,52,0.12)', color: '#166534', border: '1px solid rgba(22,101,52,0.25)' }}>
-            <Check size={13} /> Mark Complete
-          </button>
+      </div>
+
+      {/* ── Project header ─────────────────────────────────────────────────── */}
+      <div className="mb-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-mono mb-1" style={{ color: S.muted }}>{q.quote_number}</p>
+            <input value={q.project_name}
+              onChange={e => setQ(p => ({ ...p, project_name: e.target.value }))}
+              disabled={locked}
+              placeholder="Project Name"
+              className="w-full text-xl font-bold bg-transparent outline-none leading-snug"
+              style={{ color: S.text, border: 'none' }} />
+            <div className="flex items-center gap-3 mt-1.5 text-sm flex-wrap" style={{ color: S.muted }}>
+              {q.client && !Array.isArray(q.client) && <span style={{ color: S.text, fontWeight: 500 }}>{q.client.client_name}</span>}
+              {q.project_address && <span>{q.project_address}</span>}
+            </div>
+          </div>
+          {/* Status badge */}
+          <div className="shrink-0">
+            {q.status === 'cancelled'
+              ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#FEF2F2', color: S.danger }}>Cancelled</span>
+              : (() => {
+                  const statusCfg: Record<string, { label: string; color: string; bg: string }> = {
+                    draft:       { label: 'Draft',       color: S.muted,   bg: S.bg            },
+                    quoted:      { label: 'Quoted',      color: S.accent,  bg: 'rgba(58,124,165,0.08)' },
+                    approved:    { label: 'Approved',    color: S.green,   bg: 'rgba(22,163,74,0.08)'  },
+                    in_progress: { label: 'In Progress', color: '#166534', bg: 'rgba(22,101,52,0.08)'  },
+                    completed:   { label: 'Completed',   color: '#166534', bg: 'rgba(22,101,52,0.08)'  },
+                  }
+                  const sc = statusCfg[q.status] ?? statusCfg.draft
+                  return (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: sc.bg, color: sc.color }}>
+                      {sc.label}
+                    </span>
+                  )
+                })()
+            }
+          </div>
+        </div>
+
+        {/* Lifecycle stepper */}
+        {q.status !== 'cancelled' && (
+          <div className="flex items-center mt-4">
+            {LIFECYCLE_STEPS.map((step, i) => {
+              const currentIdx = LIFECYCLE_STEPS.findIndex(s => s.status === q.status)
+              const isPast    = i < currentIdx
+              const isCurrent = i === currentIdx
+              return (
+                <div key={step.status} className="flex items-center" style={{ flex: i < LIFECYCLE_STEPS.length - 1 ? 1 : undefined }}>
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    {step.status === 'completed' && tabAccessible.coc && (
+                      <button onClick={() => setActiveTab('coc')}
+                        className="text-[9px] font-semibold px-2 py-0.5 rounded mb-0.5"
+                        style={{
+                          background: activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.08)',
+                          color: activeTab === 'coc' ? '#fff' : S.accent,
+                          border: `1px solid ${activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.2)'}`,
+                        }}>
+                        COC
+                      </button>
+                    )}
+                    <div className="w-4 h-4 rounded-full flex items-center justify-center"
+                      style={{
+                        background: isCurrent ? S.accent : isPast ? S.accent : 'transparent',
+                        border: `2px solid ${isCurrent ? S.accent : isPast ? S.accent : S.border}`,
+                      }}>
+                      {isPast    && <Check size={8} color="#fff" strokeWidth={3} />}
+                      {isCurrent && <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }} />}
+                    </div>
+                    <p className="text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap"
+                      style={{ color: isCurrent ? S.accent : isPast ? S.accent : S.muted }}>
+                      {step.label}
+                    </p>
+                  </div>
+                  {i < LIFECYCLE_STEPS.length - 1 && (
+                    <div className="flex-1 h-px mx-2 mb-3" style={{ background: isPast ? S.accent : S.border }} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 
-      {/* Lifecycle stepper */}
-      {q.status !== 'cancelled' ? (
-        <div className="flex items-center mb-5 px-1">
-          {LIFECYCLE_STEPS.map((step, i) => {
-            const currentIdx = LIFECYCLE_STEPS.findIndex(s => s.status === q.status)
-            const isPast    = i < currentIdx
-            const isCurrent = i === currentIdx
-            return (
-              <div key={step.status} className="flex items-center" style={{ flex: i < LIFECYCLE_STEPS.length - 1 ? 1 : undefined }}>
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  {/* COC button above the COMPLETED node */}
-                  {step.status === 'completed' && tabAccessible.coc && (
-                    <button
-                      onClick={() => setActiveTab('coc')}
-                      className="text-[9px] font-semibold px-2 py-0.5 rounded mb-0.5"
-                      style={{
-                        background: activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.1)',
-                        color: activeTab === 'coc' ? '#fff' : S.accent,
-                        border: `1px solid ${activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.3)'}`,
-                      }}>
-                      COC
-                    </button>
-                  )}
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center"
-                    style={{
-                      background: isCurrent ? S.accent : isPast ? S.accent : 'transparent',
-                      border: `2px solid ${isCurrent ? S.accent : isPast ? S.accent : S.border}`,
-                    }}>
-                    {isPast    && <Check size={9} color="#fff" strokeWidth={3} />}
-                    {isCurrent && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
-                  </div>
-                  <p className="text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap"
-                    style={{ color: isCurrent ? S.accent : isPast ? S.accent : S.muted }}>
-                    {step.label}
-                  </p>
-                </div>
-                {i < LIFECYCLE_STEPS.length - 1 && (
-                  <div className="flex-1 h-px mx-2 mb-3.5" style={{ background: isPast ? S.accent : S.border }} />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 mb-5 px-1">
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#FEF2F2', color: S.danger }}>Cancelled</span>
-        </div>
-      )}
-
-      {/* Tab nav — always visible, locked tabs greyed out */}
-      <div className="flex items-center gap-1 mb-5 p-1 rounded-xl" style={{ background: S.bg }}>
+      {/* ── Tabs — flat underline style ─────────────────────────────────────── */}
+      <div className="flex gap-0 mb-5" style={{ borderBottom: `1px solid ${S.border}` }}>
         {TABS.map(tab => {
           const accessible = tabAccessible[tab.id]
           const isActive   = activeTab === tab.id
           return (
             <button key={tab.id}
               onClick={() => accessible && setActiveTab(tab.id)}
-              className="flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
+              className="px-4 py-2.5 text-sm font-medium whitespace-nowrap relative"
               style={{
-                background: isActive ? S.card : 'transparent',
-                color:      isActive ? S.text : accessible ? S.muted : S.border,
-                boxShadow:  isActive ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                cursor:     accessible ? 'pointer' : 'default',
+                color:  isActive ? S.text : accessible ? S.muted : S.border,
+                cursor: accessible ? 'pointer' : 'default',
               }}>
               {tab.label}
-              {!accessible && <Lock size={9} style={{ color: S.border }} />}
+              {isActive && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: S.accent }} />}
+              {!accessible && <Lock size={9} className="inline ml-1" style={{ color: S.border }} />}
             </button>
           )
         })}
@@ -934,12 +977,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
       {/* Quote tab content */}
       <div style={{ display: activeTab === 'quote' ? undefined : 'none' }}>
-
-      {/* Project name */}
-      <input value={q.project_name} onChange={e => setQ(p => ({ ...p, project_name: e.target.value }))}
-        disabled={locked} placeholder="Project Name"
-        className="w-full text-2xl font-bold bg-transparent outline-none mb-4"
-        style={{ color: S.text, border: 'none' }} />
 
       {/* Header card — condensed summary when locked, form when editable */}
       {locked ? (
