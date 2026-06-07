@@ -308,6 +308,24 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
           <Text style={[s.td, { width: COL.abVal, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#7EC8F4' }]}>{fmtR(totalAsBuilt)}</Text>
         </View>
 
+        {/* ── VAT & Total summary ── */}
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6, marginBottom: 4 }} wrap={false}>
+          <View style={{ width: 240 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER }}>
+              <Text style={{ fontSize: 8, color: MUTED }}>Total (ex VAT)</Text>
+              <Text style={{ fontSize: 8, color: DARK, fontFamily: 'Helvetica-Bold' }}>{fmtR(totalAsBuilt)}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, paddingHorizontal: 8, borderBottomWidth: 0.5, borderBottomColor: BORDER }}>
+              <Text style={{ fontSize: 8, color: MUTED }}>VAT ({vatRate}%)</Text>
+              <Text style={{ fontSize: 8, color: DARK }}>{fmtR(totalAsBuilt * vatRate / 100)}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, paddingHorizontal: 8, backgroundColor: ACCENT, borderRadius: 2 }}>
+              <Text style={{ fontSize: 9, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' }}>TOTAL (INCL. VAT)</Text>
+              <Text style={{ fontSize: 9, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' }}>{fmtR(totalInclVat)}</Text>
+            </View>
+          </View>
+        </View>
+
         {/* ── Materials (reference only) ── */}
         {materials.length > 0 && (
           <View style={{ marginTop: 14 }}>
