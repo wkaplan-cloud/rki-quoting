@@ -851,13 +851,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
       {/* ── Tabs — flat underline style ─────────────────────────────────────── */}
       <div className="flex gap-0 mb-5" style={{ borderBottom: `1px solid ${S.border}` }}>
-        {TABS.map(tab => {
+        {TABS.map((tab, idx) => {
           const accessible = tabAccessible[tab.id]
           const isActive   = activeTab === tab.id
+          const isPrimary  = tab.id === 'quote'
           return (
             <button key={tab.id}
               onClick={() => accessible && setActiveTab(tab.id)}
-              className="px-4 py-2.5 text-sm font-medium whitespace-nowrap relative"
+              className={`px-4 py-2.5 text-sm whitespace-nowrap relative ${isPrimary ? 'font-semibold mr-8' : 'font-medium'}`}
               style={{
                 color:  isActive ? S.text : accessible ? S.muted : S.border,
                 cursor: accessible ? 'pointer' : 'default',
