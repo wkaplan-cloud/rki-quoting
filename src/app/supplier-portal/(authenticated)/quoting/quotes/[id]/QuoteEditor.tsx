@@ -1231,12 +1231,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {freeItems.length > 0 && (
             <div className="rounded-2xl p-3 mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <div className="flex items-center gap-2 px-2 mb-1.5">
-                <div style={{ width: 28 }} />
+                <div style={{ width: 14 }} />
                 <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 160 }}>Description</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-center" style={{ color: S.muted, width: 60 }}>Unit</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Qty</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Cost</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 65 }}>Mkup</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Rate</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Subtotal</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Labour</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 92 }}>Total</div>
                 <div style={{ width: 28 }} />
