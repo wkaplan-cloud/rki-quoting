@@ -859,13 +859,15 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       {showTabs && (() => {
         const stripProfit = revisedTotal - itemCostTotal  // gross profit incl. labour (labour cost = 0)
         const stripMaterialProfit = revisedTotal - labourTotal - itemCostTotal
+        const vatRate = q.vat_rate ?? 0
+        const revisedTotalInclVat = revisedTotal * (1 + vatRate / 100)
         const metrics = [
           ...(approvedVOTotal !== 0 ? [
-            { label: 'Contract', value: fmtR(contractTotal), color: S.text },
+            { label: 'Contract (ex VAT)', value: fmtR(contractTotal), color: S.text },
             { label: 'Approved VOs', value: `+${fmtR(approvedVOTotal)}`, color: S.green },
-            { label: 'Revised Total', value: fmtR(revisedTotal), color: S.accent },
+            { label: 'Revised (ex VAT)', value: fmtR(revisedTotal), color: S.accent },
           ] : [
-            { label: 'Contract Total', value: fmtR(revisedTotal), color: S.accent },
+            { label: 'Contract (ex VAT)', value: fmtR(revisedTotal), color: S.accent },
           ]),
           ...(hasCostData ? [
             { label: 'Cost', value: fmtR(itemCostTotal), color: S.text },
@@ -874,6 +876,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             { label: 'Gross Profit', value: fmtR(stripProfit), color: stripProfit >= 0 ? S.green : S.danger },
             { label: 'Margin', value: revisedTotal > 0 ? `${Math.round(stripProfit / revisedTotal * 1000) / 10}%` : '—', color: stripProfit >= 0 ? S.green : S.danger },
           ] : []),
+          { label: `Total incl. VAT (${vatRate}%)`, value: fmtR(revisedTotalInclVat), color: S.accent },
         ]
         return (
           <div className="flex items-stretch rounded-2xl px-5 py-3.5 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
