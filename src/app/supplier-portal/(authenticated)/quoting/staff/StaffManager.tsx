@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 
@@ -66,6 +66,107 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = { name: '', role: 'electrician', phone: '', color: '#3A7CA5', username: '', pin: '' }
+
+function printWeek(
+  weekStart: string,
+  staffWeekPunches: Record<string, ElecTimePunch[]>,
+  staffMap: Record<string, ElecStaff>,
+) {
+  const wkStartDate = new Date(weekStart + 'T12:00:00')
+  const wkEndDate   = new Date(weekStart + 'T12:00:00'); wkEndDate.setDate(wkEndDate.getDate() + 6)
+  const periodStr   = `${wkStartDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} – ${wkEndDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}`
+
+  const staffRows: string[] = []
+
+  for (const [staffId, staffPunches] of Object.entries(staffWeekPunches)) {
+    const member = staffMap[staffId]
+    if (!member) continue
+
+    const sorted = [...staffPunches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+    const ins  = sorted.filter(p => p.punch_type === 'clock_in')
+    const outs = sorted.filter(p => p.punch_type === 'clock_out')
+
+    let totalMs = 0
+    const sessions = ins.map((inP, idx) => {
+      const outP = outs[idx] ?? null
+      const durMs = outP
+        ? new Date(outP.punched_at).getTime() - new Date(inP.punched_at).getTime()
+        : Date.now() - new Date(inP.punched_at).getTime()
+      totalMs += outP ? durMs : 0
+      return { in: inP, out: outP, durMs: outP ? durMs : null }
+    })
+
+    const initials = member.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+    const totalH = Math.floor(totalMs / 3600000)
+    const totalM = Math.floor((totalMs % 3600000) / 60000)
+    const totalStr = totalMs > 0 ? `${totalH}h ${totalM}m` : '—'
+
+    const rows = sessions.map(ses => {
+      const inDate  = new Date(ses.in.punched_at)
+      const outDate = ses.out ? new Date(ses.out.punched_at) : null
+      const durStr  = ses.durMs != null ? (() => { const h = Math.floor(ses.durMs / 3600000); const m = Math.floor((ses.durMs % 3600000) / 60000); return `${h}h ${m}m` })() : '<span class="open">On site</span>'
+      const job     = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
+      const inGps   = ses.in.latitude  ? `${ses.in.latitude.toFixed(5)}, ${ses.in.longitude?.toFixed(5)}`   : '—'
+      const outGps  = ses.out?.latitude ? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}` : '—'
+      return `<tr>
+        <td>${inDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+        <td>${inDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</td>
+        <td>${outDate ? outDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : '<span class="open">On site</span>'}</td>
+        <td><b>${durStr}</b></td>
+        <td>${job ? `<b>${job.job_number}</b> · ${job.title}` : '—'}</td>
+        <td class="gps">${inGps}</td>
+        <td class="gps">${outGps}</td>
+      </tr>`
+    }).join('')
+
+    staffRows.push(`<div class="staff-section">
+      <div class="staff-header">
+        <div class="avatar" style="background:${member.color}">${initials}</div>
+        <div>
+          <div class="staff-name">${member.name}</div>
+          <div class="staff-meta">${member.role} &nbsp;·&nbsp; <b>${totalStr}</b> this week &nbsp;·&nbsp; ${sessions.length} session${sessions.length !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Duration</th><th>Job</th><th>GPS In</th><th>GPS Out</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`)
+  }
+
+  const html = `<!DOCTYPE html><html><head>
+  <title>Timesheet ${periodStr}</title><meta charset="utf-8"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#18181b;padding:32px;background:#fff}
+    .print-btn{position:fixed;top:20px;right:20px;background:#3a7ca5;color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+    @media print{.print-btn{display:none}}
+    .doc-header{margin-bottom:24px;padding-bottom:14px;border-bottom:2px solid #1e2a38;display:flex;justify-content:space-between;align-items:flex-end}
+    .doc-title{font-size:18px;font-weight:700;color:#1e2a38}
+    .doc-period{font-size:12px;color:#71717a;margin-top:3px}
+    .staff-section{margin-bottom:28px;page-break-inside:avoid}
+    .staff-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0}
+    .staff-name{font-size:14px;font-weight:700;color:#18181b}
+    .staff-meta{font-size:11px;color:#71717a;margin-top:2px}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#f0f2f5;padding:6px 8px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#71717a;border:1px solid #e4e4e7}
+    td{padding:6px 8px;border:1px solid #e4e4e7;vertical-align:top}
+    tr:nth-child(even) td{background:#fafafa}
+    .open{color:#16a34a;font-weight:600}
+    .gps{font-family:monospace;font-size:10px;color:#71717a}
+  </style>
+  </head><body>
+  <button class="print-btn" onclick="window.print()">🖨 Print</button>
+  <div class="doc-header">
+    <div><div class="doc-title">Weekly Timesheet</div><div class="doc-period">${periodStr}</div></div>
+  </div>
+  ${staffRows.length > 0 ? staffRows.join('') : '<p style="color:#71717a;text-align:center;padding:40px">No data for this week</p>'}
+  </body></html>`
+
+  const win = window.open('', '_blank')
+  if (win) { win.document.write(html); win.document.close() }
+}
 
 type Tab = 'staff' | 'timesheet'
 
@@ -497,8 +598,14 @@ export function StaffManager({ initialStaff, punches }: Props) {
               const weekLabel = `${new Date(wk + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} – ${wkEnd.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`
               return (
                 <div key={wk} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                  <div className="px-4 py-2.5" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
+                  <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
                     <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Week: {weekLabel}</p>
+                    <button
+                      onClick={() => printWeek(wk, staffWeekPunches[wk], staffMap)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                      style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
+                      <Printer size={11} /> Print
+                    </button>
                   </div>
                   {Object.entries(staffWeekPunches[wk]).map(([staffId, staffPunches]) => {
                     const member = staffMap[staffId]
