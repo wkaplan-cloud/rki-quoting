@@ -111,7 +111,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [clientQsName, setClientQsName] = useState(initClient?.qs_name ?? '')
   const [clientQsEmail, setClientQsEmail] = useState(initClient?.qs_email ?? '')
   const [clientVatNumber, setClientVatNumber] = useState(initClient?.vat_number ?? '')
-  const [tab, setTab] = useState<Tab>('details')
+  const [tab, setTab] = useState<Tab>('job_sheet')
 
   // UI state
   const [saving, setSaving] = useState(false)
@@ -597,88 +597,68 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div>
+    <div className="max-w-3xl mx-auto">
 
-      {/* ── Top action bar ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6 gap-3">
+      {/* ── Top bar ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-5 gap-3">
         <button onClick={() => router.push('/supplier-portal/quoting/job-cards')}
-          className="flex items-center gap-2 text-sm shrink-0" style={{ color: S.muted }}>
-          <ArrowLeft size={16} /> Job Cards
+          className="flex items-center gap-1.5 text-sm font-medium" style={{ color: S.muted }}
+          onMouseEnter={e => e.currentTarget.style.color = S.text}
+          onMouseLeave={e => e.currentTarget.style.color = S.muted}>
+          <ArrowLeft size={15} /> Job Cards
         </button>
-
         <div className="flex items-center gap-2">
-          {saving && <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}><Loader2 size={11} className="animate-spin" />Saving…</span>}
+          {saving && <span className="text-xs" style={{ color: S.muted }}>Saving…</span>}
           {!saving && saveMsg && <span className="text-xs" style={{ color: saveMsg === 'Saved' ? S.green : S.danger }}>{saveMsg}</span>}
-
-          {/* Download + Print */}
-          <button
-            onClick={() => void handleDownload()}
-            disabled={downloading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
-            style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
-            <Download size={13} />
-            PDF
-          </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
-            <Printer size={13} />
-            Print
-          </button>
-
-          {/* Finish Job */}
-          {canFinish && (
-            <button
-              onClick={() => setShowFinishFlow(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: checklistDoneCount === checklist.length ? S.green : 'rgba(22,163,74,0.08)', color: checklistDoneCount === checklist.length ? '#fff' : S.green, border: `1px solid ${checklistDoneCount === checklist.length ? S.green : 'rgba(22,163,74,0.25)'}` }}>
-              <ClipboardCheck size={13} />
-              Finish Job
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5"
-                style={{ background: checklistDoneCount === checklist.length ? 'rgba(255,255,255,0.25)' : 'rgba(22,163,74,0.15)', color: checklistDoneCount === checklist.length ? '#fff' : S.green }}>
-                {checklistDoneCount}/{checklist.length}
-              </span>
+          {/* Mark Complete */}
+          {card.status === 'in_progress' && (
+            <button onClick={() => void handleStatusChange('completed')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+              style={{ background: S.green }}>
+              <Check size={13} /> Mark Complete
             </button>
           )}
-
-          {/* Send Job Card */}
-          <button
-            onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setShowSend(true) }}
+          {/* Send */}
+          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setShowSend(true) }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
             style={{ background: S.accent }}>
-            <Send size={13} /> Send Job Card
+            <Send size={13} /> Send
           </button>
-
-          {/* Push to Sage */}
-          {sageConnected && (
-            <button
-              onClick={() => void openSagePush()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
-              <Upload size={13} /> Push to Sage
-            </button>
-          )}
-
-          {/* More (⋯) — contains Delete */}
+          {/* Overflow */}
           <div className="relative">
             <button onClick={() => setShowMoreMenu(m => !m)}
               className="flex items-center px-2.5 py-1.5 rounded-lg"
-              style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+              style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
               <MoreHorizontal size={15} />
             </button>
             {showMoreMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[140px]"
+                <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[160px]"
                   style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                  <button
-                    onClick={() => { setShowMoreMenu(false); void handleDelete() }}
-                    disabled={deleting}
-                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 hover:bg-red-50 disabled:opacity-50"
+                  <button onClick={() => { setShowMoreMenu(false); void handleDownload() }} disabled={downloading}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-50"
+                    style={{ color: S.text }}>
+                    <Download size={14} /> Download PDF
+                  </button>
+                  <button onClick={() => { setShowMoreMenu(false); handlePrint() }}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
+                    style={{ color: S.text }}>
+                    <Printer size={14} /> Print
+                  </button>
+                  {sageConnected && (
+                    <button onClick={() => { setShowMoreMenu(false); void openSagePush() }}
+                      className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
+                      style={{ color: S.text }}>
+                      <Upload size={14} /> Push to Sage
+                    </button>
+                  )}
+                  <div style={{ borderTop: `1px solid ${S.border}`, margin: '4px 0' }} />
+                  <button onClick={() => { setShowMoreMenu(false); void handleDelete() }} disabled={deleting}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-50"
                     style={{ color: S.danger }}>
                     {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    Delete Job Card
+                    Delete
                   </button>
                 </div>
               </>
@@ -687,32 +667,24 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </div>
       </div>
 
-      {/* ── Header card ─────────────────────────────────────────────────── */}
-      <div className="rounded-2xl p-5 mb-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-        <div className="flex items-start justify-between gap-4">
+      {/* ── Header ───────────────────────────────────────────────────────── */}
+      <div className="mb-5">
+        <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono" style={{ color: S.muted }}>{card.job_number}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: S.bg, color: S.muted }}>
-                {TYPE_LABEL[card.job_type]}
-              </span>
-            </div>
-            <h1 className="text-lg font-bold truncate" style={{ color: S.text }}>{card.title}</h1>
-            <div className="flex items-center gap-3 mt-1 flex-wrap text-xs" style={{ color: S.muted }}>
-              {card.location && <span className="flex items-center gap-1"><MapPin size={11} />{card.location}</span>}
-              {card.scheduled_at && <span className="flex items-center gap-1"><Calendar size={11} />{fmtDate(card.scheduled_at)}</span>}
+            <p className="text-xs font-mono mb-1" style={{ color: S.muted }}>{card.job_number} · {TYPE_LABEL[card.job_type]}</p>
+            <h1 className="text-xl font-bold leading-snug" style={{ color: S.text }}>{card.title}</h1>
+            <div className="flex items-center gap-3 mt-1.5 text-sm flex-wrap" style={{ color: S.muted }}>
+              {(card.client_name ?? card.client?.client_name) && <span style={{ color: S.text, fontWeight: 500 }}>{card.client_name ?? card.client?.client_name}</span>}
+              {card.location && <span className="flex items-center gap-1"><MapPin size={12} />{card.location}</span>}
+              {card.scheduled_at && <span className="flex items-center gap-1"><Calendar size={12} />{fmtDate(card.scheduled_at)}</span>}
             </div>
           </div>
-
-          {/* Status pill + compact staff time */}
-          <div className="relative shrink-0 flex flex-col items-end gap-2">
-            <button
-              onClick={() => setShowStatusMenu(m => !m)}
+          {/* Status dropdown */}
+          <div className="relative shrink-0">
+            <button onClick={() => setShowStatusMenu(m => !m)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: ss.bg, color: ss.color, border: `1px solid ${ss.color}22` }}>
-              <StatusIcon size={12} />
-              {ss.label}
-              <ChevronDown size={11} style={{ opacity: 0.6 }} />
+              style={{ background: ss.bg, color: ss.color, border: `1px solid ${ss.color}33` }}>
+              <StatusIcon size={12} />{ss.label}<ChevronDown size={10} style={{ opacity: 0.6 }} />
             </button>
             {showStatusMenu && (
               <>
@@ -759,58 +731,52 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           </div>
         </div>
 
-        {/* Meta row */}
-        <div className="mt-3 pt-3 flex items-center gap-4 text-xs flex-wrap" style={{ borderTop: `1px solid ${S.border}`, color: S.muted }}>
-          <span className="flex items-center gap-1"><Clock size={10} />Created {fmtDate(card.created_at)}</span>
-          {(card.created_by_name ?? staffMember?.name) && (
-            <span className="flex items-center gap-1"><User size={10} />Created by {card.created_by_name ?? staffMember?.name}</span>
-          )}
-          {card.sent_at && (
-            <span className="flex items-center gap-1">
-              <Send size={10} />Sent to {card.sent_to_name ?? card.sent_to_email} on {fmtDate(card.sent_at)}
-            </span>
-          )}
-        </div>
-
-      </div>
-
-      {/* ── Tabs ────────────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between gap-2 mb-5">
-
-        {/* Setup group — left */}
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[9px] font-semibold uppercase tracking-widest px-1" style={{ color: '#C4C9D4' }}>Setup</p>
-          {(() => {
-            const t = tabs[0]
-            const Icon = t.icon
-            const active = tab === t.key
-            return (
-              <button onClick={() => setTab(t.key)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
-                style={{ background: active ? S.accent : S.card, color: active ? '#fff' : S.muted, border: `1px solid ${active ? S.accent : S.border}` }}>
-                <Icon size={13} />{t.label}
-              </button>
-            )
-          })()}
-        </div>
-
-        {/* Field Report group — right */}
-        <div className="flex flex-col gap-1.5 items-end">
-          <p className="text-[9px] font-semibold uppercase tracking-widest px-1" style={{ color: '#C4C9D4' }}>Field Report</p>
-          <div className="flex gap-1 overflow-x-auto">
-            {tabs.slice(1).map(t => {
-              const Icon = t.icon
-              const active = tab === t.key
+        {/* Staff time — compact row */}
+        {staffSummary.length > 0 && (
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            {staffSummary.map(({ name, color, sessions, onSite }) => {
+              const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
               return (
-                <button key={t.key} onClick={() => setTab(t.key)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
-                  style={{ background: active ? S.gold : S.card, color: active ? '#fff' : S.muted, border: `1px solid ${active ? S.gold : S.border}` }}>
-                  <Icon size={13} />{t.label}
-                </button>
+                <div key={name} className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${onSite ? 'bg-green-500' : ''}`} style={!onSite ? { background: S.border } : {}} />
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
+                    style={{ background: color }}>{name.slice(0, 1)}</div>
+                  <span className="text-xs" style={{ color: S.muted }}>{name}</span>
+                  <span className="text-xs font-mono font-semibold" style={{ color: S.accent }}>{fmtDur(totalMs)}</span>
+                </div>
               )
             })}
           </div>
+        )}
+
+        {/* Meta */}
+        <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: S.muted }}>
+          <span>{fmtDate(card.created_at)}</span>
+          {(card.created_by_name ?? staffMember?.name) && <span>· {card.created_by_name ?? staffMember?.name}</span>}
+          {card.sent_at && <span>· Sent {fmtDate(card.sent_at)}</span>}
         </div>
+      </div>
+
+      {/* ── Tabs — flat, clean ───────────────────────────────────────────── */}
+      <div className="flex gap-0 mb-6" style={{ borderBottom: `1px solid ${S.border}` }}>
+        {([
+          { key: 'job_sheet', label: 'Job Sheet' },
+          { key: 'details',   label: 'Details'   },
+          { key: 'report',    label: 'Report'     },
+          { key: 'materials', label: `Orders${matOrders.length > 0 ? ` (${matOrders.length})` : ''}` },
+          { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}` },
+          { key: 'signature', label: 'Signature'  },
+        ] as { key: Tab; label: string }[]).map(t => {
+          const active = tab === t.key
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className="px-4 py-2.5 text-sm font-medium whitespace-nowrap relative"
+              style={{ color: active ? S.text : S.muted }}>
+              {t.label}
+              {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: S.accent }} />}
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Tab: Details (grouped) ───────────────────────────────────────── */}
@@ -921,14 +887,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div>
           {/* ── Staff Material Order Requests ── */}
           <div className="rounded-2xl overflow-hidden mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={15} style={{ color: S.accent }} />
-                <p className="text-sm font-semibold" style={{ color: S.text }}>Material Requests</p>
-                <p className="text-[10px] ml-1" style={{ color: S.muted }}>— from staff on-site</p>
-              </div>
+            <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <p className="text-sm font-semibold" style={{ color: S.text }}>Material Orders</p>
               {matOrders.filter(o => o.status === 'pending').length > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(217,164,65,0.15)', color: S.gold }}>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(217,164,65,0.12)', color: S.gold }}>
                   {matOrders.filter(o => o.status === 'pending').length} pending
                 </span>
               )}
@@ -1014,10 +976,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div>
           {/* Line items */}
           <div className="rounded-2xl overflow-hidden mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
-              <p className="text-sm font-semibold" style={{ color: S.text }}>Line Items</p>
-              <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Materials used on this job. Set cost + markup to compute sell price.</p>
-            </div>
 
             {/* Column headers — match QuoteEditor */}
             {(materials.length > 0 || newMat !== null) && (
@@ -1223,10 +1181,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
           {/* ── Charges section ─────────────────────────────────────────── */}
           <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
-              <p className="text-sm font-semibold" style={{ color: S.text }}>Charges</p>
-              <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Call-out fee and labour — filled in after the job</p>
-            </div>
 
             {/* Call-out fee */}
             <div className="flex items-center gap-4 px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
