@@ -207,8 +207,7 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
         {numInput(item.quoted_quantity, v => {
-          const sell = computeSellRate({ ...item, quoted_quantity: v })
-          set({ quoted_quantity: v, quoted_unit_rate: sell })
+          set({ quoted_quantity: v })
         }, 'Qty', 72)}
         {numInput(item.cost_unit_rate, v => {
           const sell = v * (1 + (item.markup_percentage ?? 0) / 100)
@@ -218,12 +217,16 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
           const sell = (item.cost_unit_rate ?? 0) * (1 + v / 100)
           set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, '%', 65)}
+        {/* Sell rate per unit — read only */}
+        <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 72 }}>
+          {fmtR(computeSellRate(item))}
+        </div>
+        {/* Material subtotal = qty × sell rate */}
         <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
           {fmtR((item.quoted_quantity ?? 0) * computeSellRate(item))}
         </div>
         {numInput(item.labour_rate, v => {
-          const sell = (item.cost_unit_rate ?? 0) * (1 + (item.markup_percentage ?? 0) / 100)
-          set({ labour_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
+          set({ labour_rate: v })
         }, 'Labour', 82)}
         <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 92 }}>
           {fmtR(itemTotal(item))}
@@ -294,6 +297,7 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
               {colHdr('Qty', 72, 'right')}
               {colHdr('Cost', 82, 'right')}
               {colHdr('Mkup', 65, 'right')}
+              {colHdr('Rate', 72, 'right')}
               {colHdr('Subtotal', 82, 'right')}
               {colHdr('Labour', 82, 'right')}
               {colHdr('Total', 92, 'right')}
