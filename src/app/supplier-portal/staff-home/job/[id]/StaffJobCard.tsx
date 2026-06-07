@@ -622,25 +622,36 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
 
             {/* ── Profit Summary ── */}
             {(() => {
-              const revenue = materials.reduce((s, m) => s + m.qty * (m.unit_price ?? 0), 0)
-              const cost = materials.reduce((s, m) => s + m.qty * (m.cost_price ?? 0), 0)
-              const profit = revenue - cost
-              if (revenue === 0) return null
+              const matRevenue = materials.reduce((s, m) => s + m.qty * (m.unit_price ?? 0), 0)
+              const matCost = materials.reduce((s, m) => s + m.qty * (m.cost_price ?? 0), 0)
+              const labour = (card.labour_hours ?? 0) * (card.labour_rate ?? 0)
+              const profit = (matRevenue - matCost) + labour
+              if (matRevenue === 0 && labour === 0) return null
               const fmt = (n: number) => `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
               return (
                 <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                   <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
-                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.muted }}>Materials Profit</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.muted }}>Job Profit</span>
                   </div>
                   <div className="px-4 py-3 space-y-2">
-                    <div className="flex justify-between text-xs" style={{ color: S.muted }}>
-                      <span>Revenue (rate)</span>
-                      <span className="font-medium tabular-nums" style={{ color: S.text }}>{fmt(revenue)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs" style={{ color: S.muted }}>
-                      <span>Cost</span>
-                      <span className="font-medium tabular-nums" style={{ color: S.text }}>{fmt(cost)}</span>
-                    </div>
+                    {matRevenue > 0 && (
+                      <>
+                        <div className="flex justify-between text-xs" style={{ color: S.muted }}>
+                          <span>Materials revenue</span>
+                          <span className="font-medium tabular-nums" style={{ color: S.text }}>{fmt(matRevenue)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs" style={{ color: S.muted }}>
+                          <span>Materials cost</span>
+                          <span className="font-medium tabular-nums" style={{ color: S.text }}>{fmt(matCost)}</span>
+                        </div>
+                      </>
+                    )}
+                    {labour > 0 && (
+                      <div className="flex justify-between text-xs" style={{ color: S.muted }}>
+                        <span>Labour ({card.labour_hours}h × R{card.labour_rate}/h)</span>
+                        <span className="font-medium tabular-nums" style={{ color: S.text }}>{fmt(labour)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
                       <span className="text-sm font-semibold" style={{ color: S.text }}>Profit</span>
                       <span className="text-sm font-bold tabular-nums" style={{ color: profit >= 0 ? S.green : S.danger }}>{fmt(profit)}</span>
