@@ -175,6 +175,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [matOrdersLoaded, setMatOrdersLoaded] = useState(false)
   const [matOrderUpdating, setMatOrderUpdating] = useState<string | null>(null)
   const [matOrderSupplier, setMatOrderSupplier] = useState<Record<string, string>>({})
+  const [sentToJobSheet, setSentToJobSheet] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (tab === 'materials' && !matOrdersLoaded) {
@@ -200,7 +201,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
       // Auto-add to job sheet materials when received
       if (newStatus === 'received') {
-        const matRes = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/materials`, {
+        const matRes = await fetch(`/api/supplier-portal/quoting/job-cards/${initial.id}/materials`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -213,6 +214,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         if (matRes.ok) {
           const m = await matRes.json() as ElecJobCardMaterial
           setCard(c => ({ ...c, materials: [...(c.materials ?? []), m] }))
+          setSentToJobSheet(prev => new Set(prev).add(req.id))
         }
       }
     }
@@ -954,6 +956,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       </p>
                       {req.ordered_at && <p className="text-xs mt-0.5" style={{ color: S.muted }}>Ordered {new Date(req.ordered_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}{req.supplier ? ` from ${req.supplier}` : ''}</p>}
                       {req.received_at && <p className="text-xs mt-0.5" style={{ color: S.green }}>Received {new Date(req.received_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}</p>}
+                      {sentToJobSheet.has(req.id) && (
+                        <p className="text-xs mt-0.5 font-medium" style={{ color: S.accent }}>→ Added to Job Sheet</p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       {nextStatus[req.status] && (
