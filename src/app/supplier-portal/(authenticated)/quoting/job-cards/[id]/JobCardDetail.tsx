@@ -149,7 +149,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   // Staff time for this job — polls every 10s
   const [jobPunches, setJobPunches] = useState<{ id: string; staff_id: string; punch_type: string; punched_at: string; staff: { id: string; name: string; color: string } | null }[]>([])
-  const [punchesOnline, setPunchesOnline] = useState(true)
   useEffect(() => {
     let alive = true
     async function fetchPunches() {
@@ -157,8 +156,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         const r = await fetch(`/api/supplier-portal/quoting/job-cards/${initial.id}/time`)
         const d = await r.json() as unknown
         if (!alive) return
-        if (Array.isArray(d)) { setJobPunches(d); setPunchesOnline(true) }
-      } catch { if (alive) setPunchesOnline(false) }
+        if (Array.isArray(d)) setJobPunches(d)
+      } catch {}
     }
     void fetchPunches()
     const id = setInterval(() => { void fetchPunches() }, 10_000)
@@ -713,15 +712,12 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             )}
             {staffSummary.length > 0 && (
               <div className="flex flex-col items-end gap-1.5">
-                <div className="flex items-center gap-1">
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${punchesOnline ? 'bg-green-500' : 'bg-red-500'}`} title={punchesOnline ? 'Live' : 'Offline'} />
-                  <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Staff Time</span>
-                </div>
+                <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Staff Time</span>
                 {staffSummary.map(({ name, color, sessions, onSite }) => {
                   const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
                   return (
                     <div key={name} className="flex items-center gap-1.5">
-                      {onSite && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />}
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${onSite ? 'bg-green-500' : 'bg-red-500'}`} title={onSite ? 'On site' : 'Clocked out'} />
                       <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
                         style={{ background: color }}>
                         {name.slice(0, 1).toUpperCase()}
