@@ -290,7 +290,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     autoSaveTimer.current = setTimeout(() => void handleSave(), 1500)
     return () => clearTimeout(autoSaveTimer.current)
   }, [ // eslint-disable-line react-hooks/exhaustive-deps
-    card.title, card.job_type, card.staff_id, card.client_id, card.client_name,
+    card.title, card.job_type, card.staff_id, card.additional_staff_ids?.join(','), card.client_id, card.client_name,
     card.client_email, card.location, card.scheduled_at, card.work_description,
     card.work_found, card.work_done, card.resolution, card.notes,
     card.callout_fee, card.labour_hours, card.labour_rate,
