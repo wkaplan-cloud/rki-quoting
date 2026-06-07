@@ -1189,7 +1189,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             {materials.length > 0 && (
               <div className="flex items-center justify-between px-5 py-3"
                 style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
-                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Materials Subtotal</p>
+                <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Subtotal</p>
                 <p className="text-sm font-semibold font-mono" style={{ color: S.muted }}>{fmtR(totalMaterials)}</p>
               </div>
             )}
@@ -1260,7 +1260,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </div>
 
             {/* Totals breakdown */}
-            <div style={{ borderTop: `1px solid ${S.border}` }}>
+            <div style={{ borderTop: `1px solid ${S.border}`, marginTop: '16px' }}>
               {/* Subtotal ex VAT */}
               <div className="flex items-center justify-between px-5 py-2.5">
                 <p className="text-xs font-semibold" style={{ color: S.muted }}>Subtotal (ex VAT)</p>
