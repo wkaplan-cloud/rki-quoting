@@ -197,6 +197,24 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     if (res.ok) {
       const updated = await res.json() as ElecMaterialRequest
       setMatOrders(prev => prev.map(r => r.id === req.id ? updated : r))
+
+      // Auto-add to job sheet materials when received
+      if (newStatus === 'received') {
+        const matRes = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/materials`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            description: req.description,
+            qty: req.qty,
+            unit_price: null,
+            cost_price: null,
+          }),
+        })
+        if (matRes.ok) {
+          const m = await matRes.json() as ElecJobCardMaterial
+          setCard(c => ({ ...c, materials: [...(c.materials ?? []), m] }))
+        }
+      }
     }
     setMatOrderUpdating(null)
   }
