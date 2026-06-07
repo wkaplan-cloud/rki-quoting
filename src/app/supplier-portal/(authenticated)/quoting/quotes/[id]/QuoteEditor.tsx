@@ -1350,20 +1350,20 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       </div>
 
       {/* PDF download + Send to Client — placed below totals so user reviews before acting */}
-      {q.status === 'draft' && (
-        <div className="flex items-center justify-end gap-3 mb-4">
-          <a href={`/api/supplier-portal/quoting/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
-            style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
-            <Download size={14} /> Download PDF
-          </a>
+      <div className="flex items-center justify-end gap-3 mb-4">
+        <a href={`/api/supplier-portal/quoting/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+          style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
+          <Download size={14} /> Download PDF
+        </a>
+        {q.status === 'draft' && (
           <button onClick={openSendModal}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: S.accent, color: '#fff' }}>
             <Send size={14} /> Send to Client
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Secondary actions strip */}
       {q.status === 'quoted' && (
