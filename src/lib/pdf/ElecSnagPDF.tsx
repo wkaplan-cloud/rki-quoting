@@ -61,10 +61,11 @@ interface Props {
   settings: ElecSettings | null
   snags: ElecSnagItem[]
   companyName: string
+  companyEmail?: string | null
   logoUrl?: string | null
 }
 
-export function ElecSnagPDF({ quote, client, settings, snags, companyName, logoUrl }: Props) {
+export function ElecSnagPDF({ quote, client, settings, snags, companyName, companyEmail, logoUrl }: Props) {
   const counts = {
     open:        snags.filter(s => s.status === 'open').length,
     in_progress: snags.filter(s => s.status === 'in_progress').length,
@@ -74,6 +75,7 @@ export function ElecSnagPDF({ quote, client, settings, snags, companyName, logoU
   const metaParts = [
     settings?.vat_registration_number    ? `VAT: ${settings.vat_registration_number}`    : null,
     settings?.company_registration_number ? `Reg: ${settings.company_registration_number}` : null,
+    settings?.cidb_registration_number    ? `Lic: ${settings.cidb_registration_number}`    : null,
   ].filter(Boolean).join('  ·  ')
 
   return (
@@ -83,10 +85,9 @@ export function ElecSnagPDF({ quote, client, settings, snags, companyName, logoU
         {/* Header */}
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            {logoUrl
-              ? <Image src={logoUrl} style={{ width: 180, marginBottom: metaParts ? 4 : 0 }} />
-              : <Text style={s.company}>{companyName}</Text>
-            }
+            {logoUrl && <Image src={logoUrl} style={{ width: 160, marginBottom: 4 }} />}
+            <Text style={s.company}>{companyName}</Text>
+            {companyEmail ? <Text style={s.companyMeta}>{companyEmail}</Text> : null}
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>

@@ -85,13 +85,14 @@ export interface ElecClaimPDFProps {
   client: ElecClient | null
   settings: ElecSettings | null
   companyName: string
+  companyEmail?: string | null
   contractTotal: number
   prevTotalClaimed: number
   logoUrl?: string | null
 }
 
 export function ElecClaimPDF({
-  claim, lineItems, sections, quote, client, settings, companyName, contractTotal, prevTotalClaimed, logoUrl,
+  claim, lineItems, sections, quote, client, settings, companyName, companyEmail, contractTotal, prevTotalClaimed, logoUrl,
 }: ElecClaimPDFProps) {
   const isDraft      = claim.status === 'draft'
   const isRetention  = claim.claim_type === 'retention'
@@ -113,8 +114,9 @@ export function ElecClaimPDF({
   const freeItems = lineItems.filter(li => li.section_id === null)
 
   const metaParts = [
-    settings?.vat_registration_number ? `VAT: ${settings.vat_registration_number}` : null,
+    settings?.vat_registration_number    ? `VAT: ${settings.vat_registration_number}`    : null,
     settings?.company_registration_number ? `Reg: ${settings.company_registration_number}` : null,
+    settings?.cidb_registration_number    ? `Lic: ${settings.cidb_registration_number}`    : null,
   ].filter(Boolean).join('  ·  ')
 
   function LineRows({ list, indent = false }: { list: ClaimLineItemForPDF[]; indent?: boolean }) {
@@ -155,10 +157,9 @@ export function ElecClaimPDF({
         {/* Header */}
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            {logoUrl
-              ? <Image src={logoUrl} style={{ width: 180, marginBottom: metaParts ? 4 : 0 }} />
-              : <Text style={s.company}>{companyName}</Text>
-            }
+            {logoUrl && <Image src={logoUrl} style={{ width: 160, marginBottom: 4 }} />}
+            <Text style={s.company}>{companyName}</Text>
+            {companyEmail ? <Text style={s.companyMeta}>{companyEmail}</Text> : null}
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>

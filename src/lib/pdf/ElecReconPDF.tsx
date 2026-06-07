@@ -48,10 +48,11 @@ export interface ElecReconPDFProps {
   items: ElecQuoteLineItem[]
   settings: ElecSettings | null
   companyName: string
+  companyEmail?: string | null
   logoUrl?: string | null
 }
 
-export function ElecReconPDF({ quote, client, sections, items, settings, companyName, logoUrl }: ElecReconPDFProps) {
+export function ElecReconPDF({ quote, client, sections, items, settings, companyName, companyEmail, logoUrl }: ElecReconPDFProps) {
   const freeItems = items.filter(i => i.section_id === null && !i.is_variation)
   const metaParts = [
     settings?.vat_registration_number  ? `VAT: ${settings.vat_registration_number}` : null,
@@ -85,9 +86,9 @@ export function ElecReconPDF({ quote, client, sections, items, settings, company
         {/* Header */}
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            {logoUrl
-              ? <Image src={logoUrl} style={{ width: 160, marginBottom: metaParts ? 4 : 0 }} />
-              : <Text style={s.company}>{companyName}</Text>}
+            {logoUrl && <Image src={logoUrl} style={{ width: 160, marginBottom: 4 }} />}
+            <Text style={s.company}>{companyName}</Text>
+            {companyEmail ? <Text style={s.meta}>{companyEmail}</Text> : null}
             {metaParts ? <Text style={s.meta}>{metaParts}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>

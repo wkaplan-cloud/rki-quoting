@@ -57,6 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         settings:        (settings ?? null) as ElecSettings | null,
         variationOrders: (vos ?? []) as ElecVariationOrder[],
         companyName,
+        companyEmail: account.email,
         logoUrl,
       }) as any
     )

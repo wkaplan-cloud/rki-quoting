@@ -129,6 +129,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         client:           (quoteClient ?? null) as ElecClient | null,
         settings:         (settings ?? null) as ElecSettings | null,
         companyName,
+        companyEmail: account.email,
         contractTotal,
         prevTotalClaimed,
         logoUrl,

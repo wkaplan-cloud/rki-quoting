@@ -44,6 +44,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         items: (items ?? []) as ElecQuoteLineItem[],
         settings: settings as ElecSettings | null,
         companyName,
+        companyEmail: account.email,
         logoUrl,
       }) as any
     )

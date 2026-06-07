@@ -105,7 +105,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       claim, lineItems: lineItemsForPDF, sections: (sections ?? []) as ElecQuoteSection[],
       quote: quoteRaw as ElecQuote, client: (quoteClient ?? null) as ElecClient | null,
       settings: (settings ?? null) as ElecSettings | null,
-      companyName, contractTotal, prevTotalClaimed, logoUrl,
+      companyName, companyEmail: account.email, contractTotal, prevTotalClaimed, logoUrl,
     }) as any)
 
     // Advance to submitted if draft

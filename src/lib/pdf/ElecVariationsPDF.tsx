@@ -65,10 +65,11 @@ interface Props {
   settings: ElecSettings | null
   variationOrders: ElecVariationOrder[]
   companyName: string
+  companyEmail?: string | null
   logoUrl?: string | null
 }
 
-export function ElecVariationsPDF({ quote, client, settings, variationOrders, companyName, logoUrl }: Props) {
+export function ElecVariationsPDF({ quote, client, settings, variationOrders, companyName, companyEmail, logoUrl }: Props) {
   const totalApproved = variationOrders.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
   const totalPending  = variationOrders.filter(v => v.status === 'pending').reduce((s, v) => s + v.value, 0)
   const totalAll      = variationOrders.reduce((s, v) => s + v.value, 0)
@@ -76,6 +77,7 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, co
   const metaParts = [
     settings?.vat_registration_number    ? `VAT: ${settings.vat_registration_number}`    : null,
     settings?.company_registration_number ? `Reg: ${settings.company_registration_number}` : null,
+    settings?.cidb_registration_number    ? `Lic: ${settings.cidb_registration_number}`    : null,
   ].filter(Boolean).join('  ·  ')
 
   return (
@@ -85,10 +87,9 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, co
         {/* Header */}
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            {logoUrl
-              ? <Image src={logoUrl} style={{ width: 180, marginBottom: metaParts ? 4 : 0 }} />
-              : <Text style={s.company}>{companyName}</Text>
-            }
+            {logoUrl && <Image src={logoUrl} style={{ width: 160, marginBottom: 4 }} />}
+            <Text style={s.company}>{companyName}</Text>
+            {companyEmail ? <Text style={s.companyMeta}>{companyEmail}</Text> : null}
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>

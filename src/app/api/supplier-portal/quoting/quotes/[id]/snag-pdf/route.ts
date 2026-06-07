@@ -57,6 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         settings: (settings ?? null) as ElecSettings | null,
         snags:    (snags ?? []) as ElecSnagItem[],
         companyName,
+        companyEmail: account.email,
         logoUrl,
       }) as any
     )
