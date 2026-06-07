@@ -90,13 +90,20 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
   const voItems    = items.filter(i => i.is_variation)
   const freeItems  = quoteItems.filter(i => i.section_id === null)
 
+  // Match QuoteEditor: contract value = qty × rate + labour_rate
+  const itemContractVal = (i: ElecQuoteLineItem) =>
+    i.quoted_quantity * i.quoted_unit_rate + (i.labour_rate ?? 0)
+  // As-built: keep same labour_rate (no as_built_labour_rate field exists)
+  const itemAsBuiltVal = (i: ElecQuoteLineItem) =>
+    (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate) + (i.labour_rate ?? 0)
+
   // Financial totals
-  const originalContract = quoteItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-  const approvedVOValue  = voItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+  const originalContract = quoteItems.reduce((s, i) => s + itemContractVal(i), 0)
+  const approvedVOValue  = voItems.reduce((s, i) => s + itemContractVal(i), 0)
   const revisedContract  = originalContract + approvedVOValue
 
-  const quoteAsBuilt = quoteItems.reduce((s, i) => s + (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate), 0)
-  const voAsBuilt    = voItems.reduce((s, i) => s + (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate), 0)
+  const quoteAsBuilt = quoteItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
+  const voAsBuilt    = voItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
   const totalAsBuilt = quoteAsBuilt + voAsBuilt
 
   const variance     = totalAsBuilt - revisedContract
@@ -115,10 +122,10 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
     return (
       <>
         {list.map((item, i) => {
-          const cVal  = item.quoted_quantity * item.quoted_unit_rate
+          const cVal   = itemContractVal(item)
           const abQty  = item.as_built_quantity  ?? item.quoted_quantity
           const abRate = item.as_built_unit_rate ?? item.quoted_unit_rate
-          const abVal  = abQty * abRate
+          const abVal  = itemAsBuiltVal(item)
           const diff   = abVal - cVal
           return (
             <View key={item.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
@@ -251,8 +258,8 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {sections.map(sec => {
           const secItems = quoteItems.filter(i => i.section_id === sec.id)
           if (secItems.length === 0) return null
-          const secContract = secItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-          const secAB       = secItems.reduce((s, i) => s + (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate), 0)
+          const secContract = secItems.reduce((s, i) => s + itemContractVal(i), 0)
+          const secAB       = secItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
           return (
             <View key={sec.id}>
               <View style={s.secRow} wrap={false}>
