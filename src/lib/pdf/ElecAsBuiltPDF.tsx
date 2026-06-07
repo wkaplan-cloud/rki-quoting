@@ -81,25 +81,29 @@ interface Props {
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
   materials: ElecMaterialRequest[]
+  vos: Pick<{ id: string; status: string; value: number }, 'id' | 'status' | 'value'>[]
   companyName: string
   logoUrl?: string | null
 }
 
-export function ElecAsBuiltPDF({ quote, client, settings, sections, items, materials, companyName, logoUrl }: Props) {
+export function ElecAsBuiltPDF({ quote, client, settings, sections, items, materials, vos, companyName, logoUrl }: Props) {
   const quoteItems = items.filter(i => !i.is_variation)
   const voItems    = items.filter(i => i.is_variation)
   const freeItems  = quoteItems.filter(i => i.section_id === null)
 
-  // Match QuoteEditor: contract value = qty × rate + labour_rate
+  // Match QuoteEditor itemTotal: labour_rate only included when cost_unit_rate is set
   const itemContractVal = (i: ElecQuoteLineItem) =>
-    i.quoted_quantity * i.quoted_unit_rate + (i.labour_rate ?? 0)
-  // As-built: keep same labour_rate (no as_built_labour_rate field exists)
+    i.cost_unit_rate != null
+      ? i.quoted_quantity * i.quoted_unit_rate + (i.labour_rate ?? 0)
+      : i.quoted_quantity * i.quoted_unit_rate
   const itemAsBuiltVal = (i: ElecQuoteLineItem) =>
-    (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate) + (i.labour_rate ?? 0)
+    i.cost_unit_rate != null
+      ? (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate) + (i.labour_rate ?? 0)
+      : (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate)
 
-  // Financial totals
+  // Financial totals — use stored VO values to match the QuoteEditor strip exactly
   const originalContract = quoteItems.reduce((s, i) => s + itemContractVal(i), 0)
-  const approvedVOValue  = voItems.reduce((s, i) => s + itemContractVal(i), 0)
+  const approvedVOValue  = vos.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
   const revisedContract  = originalContract + approvedVOValue
 
   const quoteAsBuilt = quoteItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
@@ -122,7 +126,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
     return (
       <>
         {list.map((item, i) => {
-          const labour = item.labour_rate ?? 0
+          const labour = item.cost_unit_rate != null ? (item.labour_rate ?? 0) : 0
           const cVal   = itemContractVal(item)
           const abQty  = item.as_built_quantity  ?? item.quoted_quantity
           const abRate = item.as_built_unit_rate ?? item.quoted_unit_rate
@@ -264,8 +268,8 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {sections.map(sec => {
           const secItems = quoteItems.filter(i => i.section_id === sec.id)
           if (secItems.length === 0) return null
-          const secContract = secItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-          const secLabour   = secItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
+          const secContract = secItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0) // material-only subtotal for display
+          const secLabour   = secItems.reduce((s, i) => s + (i.cost_unit_rate != null ? (i.labour_rate ?? 0) : 0), 0)
           const secAB       = secItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
           return (
             <View key={sec.id}>
@@ -281,7 +285,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {/* Quote items subtotal */}
         {quoteItems.length > 0 && (() => {
           const qMatTotal    = quoteItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-          const qLabourTotal = quoteItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
+          const qLabourTotal = quoteItems.reduce((s, i) => s + (i.cost_unit_rate != null ? (i.labour_rate ?? 0) : 0), 0)
           return (
             <View style={[s.subtotalRow, { backgroundColor: '#DBEAFE' }]} wrap={false}>
               <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: ACCENT }]}>Quote Items Total</Text>
@@ -315,7 +319,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {/* ── Grand Total Row ── */}
         {(() => {
           const totalMat    = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-          const totalLabour = items.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
+          const totalLabour = items.reduce((s, i) => s + (i.cost_unit_rate != null ? (i.labour_rate ?? 0) : 0), 0)
           return (
             <View style={s.grandTotal} wrap={false}>
               <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: '#FFFFFF' }]}>GRAND TOTAL (EX VAT)</Text>

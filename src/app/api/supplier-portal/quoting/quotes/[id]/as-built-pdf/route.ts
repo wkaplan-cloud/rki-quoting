@@ -7,7 +7,7 @@ import { ElecAsBuiltPDF } from '@/lib/pdf/ElecAsBuiltPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import { resolvePortalAccount } from '@/lib/portal-account'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings, ElecMaterialRequest } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings, ElecMaterialRequest, ElecVariationOrder } from '@/lib/elec-types'
 
 export const maxDuration = 60
 
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    const [{ data: quoteRaw }, { data: sections }, { data: items }, { data: settings }, { data: materials }] = await Promise.all([
+    const [{ data: quoteRaw }, { data: sections }, { data: items }, { data: settings }, { data: materials }, { data: vos }] = await Promise.all([
       supabaseAdmin
         .from('elec_quotes')
         .select('*, client:elec_clients(*)')
@@ -50,6 +50,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         .eq('quote_id', quoteId)
         .neq('status', 'cancelled')
         .order('created_at'),
+      supabaseAdmin
+        .from('elec_variation_orders')
+        .select('id, status, value')
+        .eq('quote_id', quoteId),
     ])
 
     if (!quoteRaw) return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
@@ -69,6 +73,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         sections:  (sections ?? []) as ElecQuoteSection[],
         items:     (items ?? []) as ElecQuoteLineItem[],
         materials: (materials ?? []) as ElecMaterialRequest[],
+        vos:       (vos ?? []) as Pick<ElecVariationOrder, 'id' | 'status' | 'value'>[],
         companyName,
         logoUrl,
       }) as any
