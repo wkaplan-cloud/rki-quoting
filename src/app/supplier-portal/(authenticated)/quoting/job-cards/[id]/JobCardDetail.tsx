@@ -1003,17 +1003,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           {/* Line items */}
           <div className="rounded-2xl overflow-hidden mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
-            {/* Column headers — match QuoteEditor */}
+            {/* Column headers */}
             {(materials.length > 0 || newMat !== null) && (
               <div className="grid px-5 py-2 text-[10px] font-bold uppercase tracking-wider"
-                style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px 56px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
                 <span>Description</span>
                 <span className="text-center">Qty</span>
                 <span className="text-right">Cost</span>
                 <span className="text-right">Mkup%</span>
                 <span className="text-right">Rate</span>
                 <span className="text-right">Total</span>
-                <span />
               </div>
             )}
 
@@ -1024,17 +1023,17 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               </div>
             )}
 
-            {/* Material rows — inline grid matching QuoteEditor */}
+            {/* Material rows */}
             {materials.map((m, i) => {
               const isEditing = editingMatId === m.id
               const rowTotal = (parseFloat(isEditing ? editingMat.qty : String(m.qty)) || 0) * (parseFloat(isEditing ? editingMat.price : String(m.unit_price ?? 0)) || 0)
               return (
                 <div key={m.id}
                   className={!isEditing ? 'group cursor-pointer' : ''}
-                  style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isEditing ? 'rgba(58,124,165,0.03)' : undefined }}
+                  style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isEditing ? 'rgba(58,124,165,0.03)' : undefined, position: 'relative' }}
                   onClick={!isEditing ? () => startEditMaterial(m) : undefined}>
                   <div className="grid px-5 items-center"
-                    style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px 56px', gap: '6px', paddingTop: 10, paddingBottom: 10 }}>
+                    style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px', gap: '6px', paddingTop: 10, paddingBottom: 10 }}>
                     {isEditing ? (
                       <input value={editingMat.desc} autoFocus
                         onClick={e => e.stopPropagation()}
@@ -1097,40 +1096,43 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     <span className="text-sm text-right font-semibold tabular-nums font-mono" style={{ color: rowTotal > 0 ? S.text : S.muted }}>
                       {rowTotal > 0 ? fmtR(rowTotal) : '—'}
                     </span>
-                    {isEditing ? (
-                      <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => void updateMaterial()} disabled={matSaving}
-                          className="flex items-center justify-center w-6 h-6 rounded-md disabled:opacity-50"
-                          style={{ background: S.accent, color: '#fff' }}>
-                          {matSaving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                        </button>
-                        <button onClick={() => setEditingMatId(null)}
-                          className="flex items-center justify-center w-6 h-6 rounded-md"
-                          style={{ background: S.bg, color: S.muted }}>
-                          <X size={11} />
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={e => { e.stopPropagation(); void deleteMaterial(m.id) }}
-                        className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6 rounded-md ml-auto"
-                        style={{ color: S.muted }}
-                        onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
-                        <Trash2 size={12} />
-                      </button>
-                    )}
                   </div>
+                  {/* Action buttons — absolutely positioned so they don't affect column alignment */}
+                  {isEditing ? (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
+                      style={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}
+                      onClick={e => e.stopPropagation()}>
+                      <button onClick={() => void updateMaterial()} disabled={matSaving}
+                        className="flex items-center justify-center w-6 h-6 rounded-md disabled:opacity-50"
+                        style={{ background: S.accent, color: '#fff' }}>
+                        {matSaving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                      </button>
+                      <button onClick={() => setEditingMatId(null)}
+                        className="flex items-center justify-center w-6 h-6 rounded-md"
+                        style={{ background: S.bg, color: S.muted }}>
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={e => { e.stopPropagation(); void deleteMaterial(m.id) }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6 rounded-md"
+                      style={{ color: S.muted }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               )
             })}
 
-            {/* Add new row — same inline grid */}
+            {/* Add new row */}
             {newMat !== null && (() => {
               const addTotal = (parseFloat(newMat.qty) || 0) * (parseFloat(newMat.price) || 0)
               return (
-                <div style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(22,163,74,0.03)' }}>
+                <div style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(22,163,74,0.03)', position: 'relative' }}>
                   <div className="grid px-5 items-center"
-                    style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px 56px', gap: '6px', paddingTop: 10, paddingBottom: 10 }}>
+                    style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px', gap: '6px', paddingTop: 10, paddingBottom: 10 }}>
                     <input value={newMat.desc} autoFocus
                       onChange={e => setNewMat(p => p ? { ...p, desc: e.target.value } : p)}
                       placeholder="Description"
@@ -1168,18 +1170,19 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     <span className="text-sm text-right font-semibold tabular-nums font-mono" style={{ color: addTotal > 0 ? S.green : S.muted }}>
                       {addTotal > 0 ? fmtR(addTotal) : '—'}
                     </span>
-                    <div className="flex items-center gap-1 justify-end">
-                      <button onClick={() => void saveMaterial()} disabled={matSaving || !newMat.desc.trim()}
-                        className="flex items-center justify-center w-6 h-6 rounded-md disabled:opacity-40"
-                        style={{ background: S.green, color: '#fff' }}>
-                        {matSaving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                      </button>
-                      <button onClick={() => setNewMat(null)}
-                        className="flex items-center justify-center w-6 h-6 rounded-md"
-                        style={{ background: S.bg, color: S.muted }}>
-                        <X size={11} />
-                      </button>
-                    </div>
+                  </div>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
+                    style={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
+                    <button onClick={() => void saveMaterial()} disabled={matSaving || !newMat.desc.trim()}
+                      className="flex items-center justify-center w-6 h-6 rounded-md disabled:opacity-40"
+                      style={{ background: S.green, color: '#fff' }}>
+                      {matSaving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                    </button>
+                    <button onClick={() => setNewMat(null)}
+                      className="flex items-center justify-center w-6 h-6 rounded-md"
+                      style={{ background: S.bg, color: S.muted }}>
+                      <X size={11} />
+                    </button>
                   </div>
                 </div>
               )
