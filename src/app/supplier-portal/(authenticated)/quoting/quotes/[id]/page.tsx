@@ -29,7 +29,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   ] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
-      .select('*, client:elec_clients(id, client_name, company, email, qs_name, qs_email)')
+      .select('*, client:elec_clients(id, client_name, company, email, vat_number, qs_name, qs_email)')
       .eq('id', id)
       .eq('portal_account_id', account.id)
       .single(),
@@ -45,7 +45,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .order('sort_order'),
     supabaseAdmin
       .from('elec_clients')
-      .select('id, client_name, company, email, address, qs_name, qs_email')
+      .select('id, client_name, company, email, address, vat_number, qs_name, qs_email')
       .eq('portal_account_id', account.id)
       .order('client_name'),
     supabaseAdmin

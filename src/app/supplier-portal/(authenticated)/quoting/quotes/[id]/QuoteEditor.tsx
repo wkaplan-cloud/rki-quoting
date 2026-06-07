@@ -488,7 +488,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         if (clientCompany.trim()) patch.company = clientCompany.trim()
         if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
         if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
-        if (clientVatNumber.trim()) patch.vat_number = clientVatNumber.trim()
+        patch.vat_number = clientVatNumber.trim() || null
         if (Object.keys(patch).length > 0) {
           fetch(`/api/supplier-portal/quoting/clients/${q.client_id}`, {
             method: 'PATCH',

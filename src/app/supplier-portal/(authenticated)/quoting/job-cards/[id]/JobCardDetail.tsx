@@ -294,7 +294,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       if (clientCompany.trim()) patch.company = clientCompany.trim()
       if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
       if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
-      if (clientVatNumber.trim()) patch.vat_number = clientVatNumber.trim()
+      patch.vat_number = clientVatNumber.trim() || null
       if (Object.keys(patch).length > 0) {
         fetch(`/api/supplier-portal/quoting/clients/${card.client_id}`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
