@@ -71,6 +71,7 @@ function printWeek(
   weekStart: string,
   staffWeekPunches: Record<string, ElecTimePunch[]>,
   staffMap: Record<string, ElecStaff>,
+  geoAddresses: Record<string, string>,
 ) {
   const wkStartDate = new Date(weekStart + 'T12:00:00')
   const wkEndDate   = new Date(weekStart + 'T12:00:00'); wkEndDate.setDate(wkEndDate.getDate() + 6)
@@ -106,8 +107,8 @@ function printWeek(
       const outDate = ses.out ? new Date(ses.out.punched_at) : null
       const durStr  = ses.durMs != null ? (() => { const h = Math.floor(ses.durMs / 3600000); const m = Math.floor((ses.durMs % 3600000) / 60000); return `${h}h ${m}m` })() : '<span class="open">On site</span>'
       const job     = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
-      const inGps   = ses.in.latitude  ? `${ses.in.latitude.toFixed(5)}, ${ses.in.longitude?.toFixed(5)}`   : '—'
-      const outGps  = ses.out?.latitude ? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}` : '—'
+      const inGps   = ses.in.latitude  ? (geoAddresses[`${ses.in.latitude},${ses.in.longitude}`]   ?? `${ses.in.latitude.toFixed(5)}, ${ses.in.longitude?.toFixed(5)}`)   : '—'
+      const outGps  = ses.out?.latitude ? (geoAddresses[`${ses.out.latitude},${ses.out.longitude}`] ?? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}`) : '—'
       return `<tr>
         <td>${inDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
         <td>${inDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</td>
@@ -154,7 +155,7 @@ function printWeek(
     td{padding:6px 8px;border:1px solid #e4e4e7;vertical-align:top}
     tr:nth-child(even) td{background:#fafafa}
     .open{color:#16a34a;font-weight:600}
-    .gps{font-family:monospace;font-size:10px;color:#71717a}
+    .gps{font-size:10px;color:#71717a}
   </style>
   </head><body>
   <button class="print-btn" onclick="window.print()">🖨 Print</button>
@@ -601,7 +602,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                   <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
                     <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Week: {weekLabel}</p>
                     <button
-                      onClick={() => printWeek(wk, staffWeekPunches[wk], staffMap)}
+                      onClick={() => printWeek(wk, staffWeekPunches[wk], staffMap, geoAddresses)}
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
                       style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
                       <Printer size={11} /> Print
