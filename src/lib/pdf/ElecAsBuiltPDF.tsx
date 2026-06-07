@@ -68,14 +68,22 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
   const voItems       = items.filter(i => i.is_variation)
   const freeItems     = quoteItems.filter(i => i.section_id === null)
 
-  const contractTotal = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-  const asBuiltTotal  = items.reduce((s, i) => {
+  const quoteContract = quoteItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+  const quoteAsBuilt  = quoteItems.reduce((s, i) => {
     const qty  = i.as_built_quantity  ?? i.quoted_quantity
     const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
     return s + qty * rate
   }, 0)
-  const variance      = asBuiltTotal - contractTotal
-  const completionPct = contractTotal > 0 ? Math.round((asBuiltTotal / contractTotal) * 100) : 0
+  const voAsBuilt     = voItems.reduce((s, i) => {
+    const qty  = i.as_built_quantity  ?? i.quoted_quantity
+    const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
+    return s + qty * rate
+  }, 0)
+  const totalAsBuilt  = quoteAsBuilt + voAsBuilt
+  const variance      = totalAsBuilt - quoteContract
+  const completionPct = quoteContract > 0 ? Math.round((totalAsBuilt / quoteContract) * 100) : 0
+  // keep contractTotal for the info box
+  const contractTotal = quoteContract
 
   const metaParts = [
     settings?.vat_registration_number    ? `VAT: ${settings.vat_registration_number}`    : null,
@@ -160,10 +168,11 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {/* Summary stats */}
         <View style={s.summaryRow}>
           {[
-            { label: 'CONTRACT VALUE',  val: fmtR(contractTotal), color: DARK },
-            { label: 'AS-BUILT VALUE',  val: fmtR(asBuiltTotal),  color: ACCENT },
+            { label: 'QUOTE CONTRACT',  val: fmtR(quoteContract),  color: DARK },
+            ...(voItems.length > 0 ? [{ label: 'VO AS-BUILT', val: fmtR(voAsBuilt), color: GOLD }] : []),
+            { label: 'TOTAL AS-BUILT',  val: fmtR(totalAsBuilt),   color: ACCENT },
             { label: 'VARIANCE',        val: (variance > 0 ? '+' : '') + fmtR(variance), color: variance > 0.01 ? GOLD : variance < -0.01 ? DANGER : GREEN },
-            { label: 'COMPLETION',      val: `${completionPct}%`, color: DARK },
+            { label: 'COMPLETION',      val: `${completionPct}%`,  color: completionPct >= 100 ? GREEN : DARK },
           ].map(c => (
             <View key={c.label} style={s.summaryBox}>
               <Text style={s.summaryLbl}>{c.label}</Text>
