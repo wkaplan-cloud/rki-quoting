@@ -544,8 +544,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
   const staffMember = !Array.isArray(card.staff) ? card.staff : null
   const totalMaterials = materials.reduce((a, m) => a + m.qty * (m.unit_price ?? 0), 0)
+  const totalMaterialsCost = materials.reduce((a, m) => a + m.qty * (m.cost_price ?? 0), 0)
   const labourCharge = (card.labour_hours ?? 0) * (card.labour_rate ?? 0)
   const totalCharge = (card.callout_fee ?? 0) + labourCharge + totalMaterials
+  const jobProfit = (totalMaterials - totalMaterialsCost) + labourCharge
   const canFinish = card.status !== 'completed' && card.status !== 'cancelled'
 
   // Staff time summary (shared by header compact strip + Job Sheet full table)
@@ -1252,6 +1254,20 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   {fmtR(totalCharge * (1 + vatRate / 100))}
                 </p>
               </div>
+              {/* Profit */}
+              {(totalMaterials > 0 || labourCharge > 0) && (
+                <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: `2px solid ${S.border}`, background: jobProfit >= 0 ? 'rgba(22,163,74,0.04)' : 'rgba(220,38,38,0.04)' }}>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest" style={{ color: jobProfit >= 0 ? '#16A34A' : '#DC2626' }}>Profit</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>
+                      Materials margin + labour · excl. VAT
+                    </p>
+                  </div>
+                  <p className="text-base font-bold font-mono" style={{ color: jobProfit >= 0 ? '#16A34A' : '#DC2626' }}>
+                    {fmtR(jobProfit)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
