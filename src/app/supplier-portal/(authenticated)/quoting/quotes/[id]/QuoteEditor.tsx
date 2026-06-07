@@ -879,13 +879,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           { label: `Total incl. VAT (${vatRate}%)`, value: fmtR(revisedTotalInclVat), color: S.accent },
         ]
         return (
-          <div className="flex items-stretch rounded-2xl px-5 py-3.5 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <div className="flex items-stretch rounded-2xl px-4 py-3 mb-4 overflow-x-auto" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             {metrics.map((m, i) => (
               <div key={m.label} className="flex items-stretch">
-                {i > 0 && <div style={{ width: 1, background: S.border, margin: '0 20px', alignSelf: 'stretch' }} />}
+                {i > 0 && <div style={{ width: 1, background: S.border, margin: '0 14px', alignSelf: 'stretch' }} />}
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{m.label}</p>
-                  <p className="text-sm font-bold" style={{ color: m.color }}>{m.value}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{m.label}</p>
+                  <p className="text-xs font-bold tabular-nums" style={{ color: m.color }}>{m.value}</p>
                 </div>
               </div>
             ))}
