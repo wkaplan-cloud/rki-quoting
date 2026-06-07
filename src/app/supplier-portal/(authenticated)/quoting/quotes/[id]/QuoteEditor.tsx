@@ -75,10 +75,7 @@ function computeSellRate(item: ItemState): number {
   return item.quoted_unit_rate ?? 0
 }
 function itemTotal(item: ItemState): number {
-  if (item.cost_unit_rate != null) {
-    return (item.quoted_quantity ?? 0) * computeSellRate(item) + (item.labour_rate ?? 0)
-  }
-  return (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0)
+  return (item.quoted_quantity ?? 0) * computeSellRate(item) + (item.labour_rate ?? 0)
 }
 
 function fmtR(n: number) {

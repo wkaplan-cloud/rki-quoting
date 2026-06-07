@@ -23,18 +23,13 @@ interface Props {
   clientEmail?: string | null
 }
 
-// Mirror QuoteEditor's itemTotal: only include labour when cost_unit_rate is set
 function itemContractVal(i: ElecQuoteLineItem): number {
-  return i.cost_unit_rate != null
-    ? i.quoted_quantity * i.quoted_unit_rate + (i.labour_rate ?? 0)
-    : i.quoted_quantity * i.quoted_unit_rate
+  return i.quoted_quantity * i.quoted_unit_rate + (i.labour_rate ?? 0)
 }
 function itemAsBuiltVal(i: ElecQuoteLineItem): number {
   const qty  = i.as_built_quantity  ?? i.quoted_quantity
   const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
-  return i.cost_unit_rate != null
-    ? qty * rate + (i.labour_rate ?? 0)
-    : qty * rate
+  return qty * rate + (i.labour_rate ?? 0)
 }
 
 export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal, approvedVOTotal, clientEmail }: Props) {
