@@ -18,11 +18,26 @@ interface Props {
   quoteId: string
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
-  contractTotal: number
+  contractTotal: number      // quote items only (non-VO), with conditional labour — from QuoteEditor
+  approvedVOTotal: number    // sum of approved elec_variation_orders.value — from QuoteEditor
   clientEmail?: string | null
 }
 
-export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal, clientEmail }: Props) {
+// Mirror QuoteEditor's itemTotal: only include labour when cost_unit_rate is set
+function itemContractVal(i: ElecQuoteLineItem): number {
+  return i.cost_unit_rate != null
+    ? i.quoted_quantity * i.quoted_unit_rate + (i.labour_rate ?? 0)
+    : i.quoted_quantity * i.quoted_unit_rate
+}
+function itemAsBuiltVal(i: ElecQuoteLineItem): number {
+  const qty  = i.as_built_quantity  ?? i.quoted_quantity
+  const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
+  return i.cost_unit_rate != null
+    ? qty * rate + (i.labour_rate ?? 0)
+    : qty * rate
+}
+
+export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal, approvedVOTotal, clientEmail }: Props) {
   const supabase = createClient()
   const [items, setItems] = useState<ElecQuoteLineItem[]>(initialItems)
   const [materials, setMaterials] = useState<ElecMaterialRequest[]>([])
@@ -67,13 +82,10 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
     }
   }
 
-  const asBuiltTotal = items.reduce((sum, item) => {
-    const qty = item.as_built_quantity ?? item.quoted_quantity
-    const rate = item.as_built_unit_rate ?? item.quoted_unit_rate
-    return sum + qty * rate
-  }, 0)
-  const variance = asBuiltTotal - contractTotal
-  const completionPct = contractTotal > 0 ? Math.round((asBuiltTotal / contractTotal) * 100) : 0
+  const asBuiltTotal   = items.reduce((sum, i) => sum + itemAsBuiltVal(i), 0)
+  const revisedContract = contractTotal + approvedVOTotal
+  const variance        = asBuiltTotal - revisedContract
+  const completionPct   = revisedContract > 0 ? Math.round((asBuiltTotal / revisedContract) * 100) : 0
 
   const saveDataRef = useRef(items)
   useEffect(() => { saveDataRef.current = items }, [items])
@@ -112,12 +124,8 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
 
   function renderGroup(title: string | null, groupItems: ElecQuoteLineItem[]) {
     if (groupItems.length === 0) return null
-    const contractGroup = groupItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-    const asBuiltGroup = groupItems.reduce((s, i) => {
-      const qty = i.as_built_quantity ?? i.quoted_quantity
-      const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
-      return s + qty * rate
-    }, 0)
+    const contractGroup = groupItems.reduce((s, i) => s + itemContractVal(i), 0)
+    const asBuiltGroup  = groupItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
 
     return (
       <div className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
@@ -208,29 +216,43 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
   return (
     <div>
       {/* Summary */}
-      <div className="rounded-2xl p-4 mb-4 grid grid-cols-4 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Contract Value</p>
-          <p className="text-lg font-bold" style={{ color: S.text }}>{fmtR(contractTotal)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>As-Built Value</p>
-          <p className="text-lg font-bold" style={{ color: S.accent }}>{fmtR(asBuiltTotal)}</p>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Variance</p>
-          <p className="text-lg font-bold" style={{ color: variance > 0.01 ? S.gold : variance < -0.01 ? S.danger : S.green }}>
-            {variance > 0 ? '+' : ''}{fmtR(variance)}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Completion</p>
-          <p className="text-lg font-bold" style={{ color: S.text }}>{completionPct}%</p>
-          <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: S.bg }}>
-            <div className="h-full rounded-full" style={{ width: `${Math.min(completionPct, 100)}%`, background: S.accent }} />
+      <div className="rounded-2xl p-4 mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+        <div className="grid gap-4 mb-3" style={{ gridTemplateColumns: approvedVOTotal > 0 ? 'repeat(6,1fr)' : 'repeat(4,1fr)' }}>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Quote Contract</p>
+            <p className="text-base font-bold" style={{ color: S.text }}>{fmtR(contractTotal)}</p>
+          </div>
+          {approvedVOTotal > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Approved VOs</p>
+              <p className="text-base font-bold" style={{ color: S.gold }}>+{fmtR(approvedVOTotal)}</p>
+            </div>
+          )}
+          {approvedVOTotal > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Revised Contract</p>
+              <p className="text-base font-bold" style={{ color: S.text }}>{fmtR(revisedContract)}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>As-Built Total</p>
+            <p className="text-base font-bold" style={{ color: S.accent }}>{fmtR(asBuiltTotal)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Variance</p>
+            <p className="text-base font-bold" style={{ color: variance > 0.01 ? S.gold : variance < -0.01 ? S.danger : S.green }}>
+              {variance > 0 ? '+' : ''}{fmtR(variance)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>Completion</p>
+            <p className="text-base font-bold" style={{ color: completionPct >= 100 ? S.green : S.text }}>{completionPct}%</p>
+            <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: S.bg }}>
+              <div className="h-full rounded-full" style={{ width: `${Math.min(completionPct, 100)}%`, background: S.accent }} />
+            </div>
           </div>
         </div>
-        <div className="col-span-4 flex justify-between items-center pt-1" style={{ borderTop: `1px solid ${S.border}` }}>
+        <div className="flex justify-between items-center pt-3" style={{ borderTop: `1px solid ${S.border}` }}>
           <p className="text-[10px]" style={{ color: S.muted }}>
             <span style={{ color: S.muted }}>C = Contract (locked)</span>
             <span className="mx-3">·</span>

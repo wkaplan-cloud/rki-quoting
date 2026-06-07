@@ -876,6 +876,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             sections={sections as unknown as ElecQuoteSection[]}
             items={itemsForChildTabs}
             contractTotal={contractTotal}
+            approvedVOTotal={approvedVOTotal}
             clientEmail={q.client?.email ?? null}
           />
         </div>
