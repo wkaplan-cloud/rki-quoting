@@ -253,7 +253,7 @@ export function ClientsClient({ portalAccountId, initialClients }: Props) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

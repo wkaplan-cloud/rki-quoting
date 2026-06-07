@@ -229,7 +229,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto pb-16">
+    <div className="pb-16">
 
       {/* On-site banner */}
       {onSiteStaff.length > 0 && (
