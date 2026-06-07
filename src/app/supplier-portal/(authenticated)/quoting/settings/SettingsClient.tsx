@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Zap, Link2, Link2Off, RefreshCw, ArrowUpRight, Loader2 } from 'lucide-react'
+import { Check, Zap, Link2, Link2Off, ArrowUpRight, Loader2 } from 'lucide-react'
 import type { ElecSettings } from '@/lib/elec-types'
 
 const S = {
@@ -79,8 +79,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export function SettingsClient({ portalAccountId, companyName, settings, justUpgraded = false }: Props) {
-  const supabase = createClient()
+export function SettingsClient({ portalAccountId: _portalAccountId, companyName, settings, justUpgraded = false }: Props) {
+  const supabase = createClient() // still used for Sage connect/disconnect
 
   // Defaults
   const [vatRate, setVatRate]               = useState(String(settings?.default_vat_rate ?? 15))
@@ -155,29 +155,27 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
     const derivedCode = deriveCompanyCode(companyName)
     const codeToSave = companyCodeVal.trim().toUpperCase() || derivedCode || null
 
-    const payload = {
-      portal_account_id:              portalAccountId,
-      default_vat_rate:               vatRate.trim() !== '' ? parseFloat(vatRate) : 15,
-      default_retention_percentage:   retention.trim() !== '' ? parseFloat(retention) : 0,
-      default_payment_terms_days:     paymentTerms.trim() !== '' ? parseInt(paymentTerms) : 30,
-      default_defects_liability_days: defectsLiability.trim() !== '' ? parseInt(defectsLiability) : 90,
-      quote_prefix:                   quotePrefix.trim() || 'QU',
-      claim_prefix:                   claimPrefix.trim() || 'CLM',
-      vo_prefix:                      voPrefix.trim() || 'VO',
-      coc_prefix:                     cocPrefix.trim() || 'COC',
-      email_footer_text:              footer.trim() || null,
-      company_code:                   codeToSave,
-      updated_at:                     new Date().toISOString(),
-    }
-
-    const { error: err } = await supabase
-      .from('elec_settings')
-      .upsert(payload, { onConflict: 'portal_account_id' })
+    const res = await fetch('/api/supplier-portal/quoting/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        default_vat_rate:               vatRate.trim() !== '' ? parseFloat(vatRate) : 15,
+        default_retention_percentage:   retention.trim() !== '' ? parseFloat(retention) : 0,
+        default_payment_terms_days:     paymentTerms.trim() !== '' ? parseInt(paymentTerms) : 30,
+        default_defects_liability_days: defectsLiability.trim() !== '' ? parseInt(defectsLiability) : 90,
+        quote_prefix:                   quotePrefix.trim() || 'QU',
+        claim_prefix:                   claimPrefix.trim() || 'CLM',
+        vo_prefix:                      voPrefix.trim() || 'VO',
+        coc_prefix:                     cocPrefix.trim() || 'COC',
+        email_footer_text:              footer.trim() || null,
+        company_code:                   codeToSave,
+      }),
+    })
 
     setSaving(false)
-    if (err) { setError(err.message); return }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as any).error ?? 'Save failed'); return }
     setSaved(true)
-  }, [portalAccountId, companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, supabase])
+  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal])
 
   // Auto-save on any field change — 1.5s debounce, skip on first render
   useEffect(() => {
