@@ -711,23 +711,35 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 </div>
               </>
             )}
-            {staffSummary.length > 0 && (
-              <div className="flex flex-col items-end gap-1.5">
-                <span className="text-[9px] font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Staff Time</span>
-                {staffSummary.map(({ name, color, sessions, onSite }) => {
-                  const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
-                  return (
-                    <div key={name} className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${onSite ? 'bg-green-500' : 'bg-red-500'}`} title={onSite ? 'On site' : 'Clocked out'} />
+            {(staffMember || staffSummary.length > 0) && (
+              <div className="flex flex-col items-end gap-1.5 mt-2">
+                {(() => {
+                  const items: { key: string; name: string; color: string; onSite: boolean; totalMs: number }[] = []
+                  if (staffMember) {
+                    const punch = staffSummary.find(s => s.name === staffMember.name)
+                    const totalMs = punch ? punch.sessions.reduce((a, ses) => a + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0) : 0
+                    items.push({ key: staffMember.id, name: staffMember.name, color: staffMember.color, onSite: punch?.onSite ?? false, totalMs })
+                  }
+                  for (const s of staffSummary) {
+                    if (!items.find(i => i.name === s.name)) {
+                      const totalMs = s.sessions.reduce((a, ses) => a + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
+                      items.push({ key: s.name, name: s.name, color: s.color, onSite: s.onSite, totalMs })
+                    }
+                  }
+                  return items.map(({ key, name, color, onSite, totalMs }) => (
+                    <div key={key} className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: onSite ? '#16A34A' : '#DC2626' }}
+                        title={onSite ? 'On site' : 'Not on site'} />
                       <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
                         style={{ background: color }}>
                         {name.slice(0, 1).toUpperCase()}
                       </div>
                       <span className="text-xs font-medium" style={{ color: S.text }}>{name}</span>
-                      <span className="text-xs font-mono font-semibold" style={{ color: S.accent }}>{fmtDur(totalMs)}</span>
+                      {totalMs > 0 && <span className="text-xs font-mono font-semibold" style={{ color: S.accent }}>{fmtDur(totalMs)}</span>}
                     </div>
-                  )
-                })}
+                  ))
+                })()}
               </div>
             )}
           </div>
