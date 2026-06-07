@@ -717,28 +717,29 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           )}
         </div>
 
-        {/* Compact staff time strip */}
-        {staffSummary.length > 0 && (
-          <div className="mt-3 pt-3 flex items-center gap-3 flex-wrap" style={{ borderTop: `1px solid ${S.border}` }}>
-            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Staff Time</span>
-            {staffSummary.map(({ name, color, sessions }) => {
-              const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
-              const onSite = sessions.some(s => !s.out)
-              return (
-                <div key={name} className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
-                    style={{ background: color }}>
-                    {name.slice(0, 1).toUpperCase()}
-                  </div>
-                  <span className="text-xs font-medium" style={{ color: S.text }}>{name}</span>
-                  <span className="text-xs font-mono font-semibold" style={{ color: S.accent }}>{fmtDur(totalMs)}</span>
-                  {onSite && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" title="Currently on site" />}
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
+
+      {/* Compact staff time strip */}
+      {staffSummary.length > 0 && (
+        <div className="rounded-2xl px-4 py-2.5 mb-5 flex items-center gap-3 flex-wrap" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Staff Time</span>
+          {staffSummary.map(({ name, color, sessions }) => {
+            const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
+            const onSite = sessions.some(s => !s.out)
+            return (
+              <div key={name} className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                  style={{ background: color }}>
+                  {name.slice(0, 1).toUpperCase()}
+                </div>
+                <span className="text-xs font-medium" style={{ color: S.text }}>{name}</span>
+                <span className="text-xs font-mono font-semibold" style={{ color: S.accent }}>{fmtDur(totalMs)}</span>
+                {onSite && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" title="Currently on site" />}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
       <div className="flex items-end justify-between gap-2 mb-5">
