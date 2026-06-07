@@ -773,8 +773,20 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
       {/* ── Tabs — flat, clean ───────────────────────────────────────────── */}
       <div className="flex gap-0 mb-6" style={{ borderBottom: `1px solid ${S.border}` }}>
+        {/* Job Sheet — primary tab, separated from the rest */}
+        {(() => {
+          const active = tab === 'job_sheet'
+          return (
+            <button onClick={() => setTab('job_sheet')}
+              className="px-4 py-2.5 text-sm font-semibold whitespace-nowrap relative mr-8"
+              style={{ color: active ? S.text : S.muted }}>
+              Job Sheet
+              {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: S.accent }} />}
+            </button>
+          )
+        })()}
+        {/* Secondary tabs */}
         {([
-          { key: 'job_sheet', label: 'Job Sheet' },
           { key: 'details',   label: 'Details'   },
           { key: 'report',    label: 'Report'     },
           { key: 'materials', label: `Orders${matOrders.length > 0 ? ` (${matOrders.length})` : ''}` },
