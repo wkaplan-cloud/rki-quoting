@@ -1099,7 +1099,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   </div>
                   {/* Action buttons — absolutely positioned so they don't affect column alignment */}
                   {isEditing ? (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
                       style={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}
                       onClick={e => e.stopPropagation()}>
                       <button onClick={() => void updateMaterial()} disabled={matSaving}
@@ -1115,7 +1115,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     </div>
                   ) : (
                     <button onClick={e => { e.stopPropagation(); void deleteMaterial(m.id) }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6 rounded-md"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6 rounded-md"
                       style={{ color: S.muted }}
                       onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.color = S.danger }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
@@ -1171,7 +1171,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       {addTotal > 0 ? fmtR(addTotal) : '—'}
                     </span>
                   </div>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
                     style={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
                     <button onClick={() => void saveMaterial()} disabled={matSaving || !newMat.desc.trim()}
                       className="flex items-center justify-center w-6 h-6 rounded-md disabled:opacity-40"
