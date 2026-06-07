@@ -38,7 +38,6 @@ const STATUS_CONFIG: Record<ElecQuoteStatus, { label: string; color: string; bg:
 const LIFECYCLE_STEPS: { status: ElecQuoteStatus; label: string }[] = [
   { status: 'draft',       label: 'Draft' },
   { status: 'quoted',      label: 'Quoted' },
-  { status: 'approved',    label: 'Approved' },
   { status: 'in_progress', label: 'In Progress' },
   { status: 'completed',   label: 'Completed' },
 ]
@@ -734,7 +733,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <Archive size={12} /> Archive
           </button>
         )}
-        {['quoted', 'approved', 'in_progress'].includes(q.status) && (
+        {['quoted', 'in_progress'].includes(q.status) && (
           <button onClick={() => { if (confirm('Cancel this quote / project?')) void transition('cancelled') }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
             style={{ color: S.danger, border: `1px solid ${S.border}`, background: S.bg }}
@@ -744,18 +743,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </button>
         )}
         {q.status === 'quoted' && (
-          <button onClick={() => void transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
+          <button onClick={() => void transition('in_progress', { approved_date: new Date().toISOString().split('T')[0], started_at: new Date().toISOString() })}
             disabled={transitioning}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
             style={{ background: S.green, color: '#fff' }}>
             <Check size={13} /> Mark Approved
-          </button>
-        )}
-        {q.status === 'approved' && (
-          <button onClick={() => void transition('in_progress')} disabled={transitioning}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
-            style={{ background: S.gold, color: '#fff' }}>
-            Start Project →
           </button>
         )}
         {q.status === 'in_progress' && (
