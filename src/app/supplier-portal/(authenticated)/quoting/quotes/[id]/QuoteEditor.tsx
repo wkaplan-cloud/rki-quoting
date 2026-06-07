@@ -1155,8 +1155,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {/* VAT rate */}
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>VAT Rate (%)</label>
-            <input type="number" value={q.vat_rate ?? 15} placeholder="15"
-              onChange={e => setQ(p => ({ ...p, vat_rate: parseFloat(e.target.value) || 15 }))}
+            <input type="number" value={q.vat_rate ?? ''} placeholder="15"
+              onChange={e => setQ(p => ({ ...p, vat_rate: e.target.value === '' ? null : parseFloat(e.target.value) }))}
               className="w-full px-3 py-2 text-sm rounded-lg outline-none"
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>
