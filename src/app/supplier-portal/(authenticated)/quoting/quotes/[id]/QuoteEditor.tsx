@@ -683,9 +683,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     { id: 'claims',     label: 'Claims' },
     { id: 'materials',  label: 'Materials' },
     { id: 'snag',       label: 'Snag List' },
-    { id: 'coc',        label: 'COC' },
     { id: 'as_built',   label: 'As-Built' },
-    { id: 'reporting',  label: 'Reporting' },
   ]
 
   const contractTotal = allItems.reduce((s, i) => s + itemTotal(i), 0)
@@ -771,6 +769,19 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             return (
               <div key={step.status} className="flex items-center" style={{ flex: i < LIFECYCLE_STEPS.length - 1 ? 1 : undefined }}>
                 <div className="flex flex-col items-center gap-1 shrink-0">
+                  {/* COC button above the COMPLETED node */}
+                  {step.status === 'completed' && tabAccessible.coc && (
+                    <button
+                      onClick={() => setActiveTab('coc')}
+                      className="text-[9px] font-semibold px-2 py-0.5 rounded mb-0.5"
+                      style={{
+                        background: activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.1)',
+                        color: activeTab === 'coc' ? '#fff' : S.accent,
+                        border: `1px solid ${activeTab === 'coc' ? S.accent : 'rgba(58,124,165,0.3)'}`,
+                      }}>
+                      COC
+                    </button>
+                  )}
                   <div className="w-5 h-5 rounded-full flex items-center justify-center"
                     style={{
                       background: isCurrent ? S.accent : isPast ? S.accent : 'transparent',
@@ -917,11 +928,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             projectAddress={q.project_address ?? null}
             clientName={q.client?.client_name ?? null}
             clientEmail={q.client?.email ?? null} />
-        </div>
-      )}
-      {tabAccessible.reporting && (
-        <div style={{ display: activeTab === 'reporting' ? undefined : 'none' }}>
-          <ReportingTab quoteId={q.id} portalAccountId={portalAccountId} />
         </div>
       )}
       <div style={{ display: activeTab === 'materials' ? undefined : 'none' }}>
