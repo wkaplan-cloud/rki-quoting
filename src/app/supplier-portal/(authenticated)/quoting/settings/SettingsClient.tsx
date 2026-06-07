@@ -157,10 +157,10 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
 
     const payload = {
       portal_account_id:              portalAccountId,
-      default_vat_rate:               parseFloat(vatRate) || 15,
-      default_retention_percentage:   parseFloat(retention) || 0,
-      default_payment_terms_days:     parseInt(paymentTerms) || 30,
-      default_defects_liability_days: parseInt(defectsLiability) || 90,
+      default_vat_rate:               vatRate.trim() !== '' ? parseFloat(vatRate) : 15,
+      default_retention_percentage:   retention.trim() !== '' ? parseFloat(retention) : 0,
+      default_payment_terms_days:     paymentTerms.trim() !== '' ? parseInt(paymentTerms) : 30,
+      default_defects_liability_days: defectsLiability.trim() !== '' ? parseInt(defectsLiability) : 90,
       quote_prefix:                   quotePrefix.trim() || 'QU',
       claim_prefix:                   claimPrefix.trim() || 'CLM',
       vo_prefix:                      voPrefix.trim() || 'VO',
