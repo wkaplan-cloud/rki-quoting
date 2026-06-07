@@ -97,7 +97,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .map(qi => {
         const cli = claimLineItemMap[qi.id]
         if (!cli) return null
-        const contractValue = (qi as ElecQuoteLineItem).quoted_quantity * (qi as ElecQuoteLineItem).quoted_unit_rate
+        const qli = qi as ElecQuoteLineItem
+        const contractValue = (qli.quoted_quantity ?? 0) * (qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0)
         return {
           id:             cli.id,
           description:    (qi as ElecQuoteLineItem).description,
@@ -110,9 +111,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       })
       .filter((li): li is ClaimLineItemForPDF => li !== null)
 
-    const contractTotal = (quoteItems ?? []).reduce(
-      (s, qi) => s + (qi as ElecQuoteLineItem).quoted_quantity * (qi as ElecQuoteLineItem).quoted_unit_rate, 0
-    )
+    const contractTotal = (quoteItems ?? []).reduce((s, qi) => {
+      const qli = qi as ElecQuoteLineItem
+      return s + (qli.quoted_quantity ?? 0) * (qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0)
+    }, 0)
 
     const companyName = account.company_name ?? account.email ?? 'Company'
     const logoUrl = await fetchLogoBase64((account as any).logo_url)

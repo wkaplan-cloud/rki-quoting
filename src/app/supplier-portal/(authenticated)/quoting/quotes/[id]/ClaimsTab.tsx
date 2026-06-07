@@ -110,7 +110,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
   const lineItems = items
     .filter(item => !(item.is_variation && item.variation_order_id && invoicedVOIds.has(item.variation_order_id)))
     .map(item => {
-      const contractVal = item.quoted_quantity * item.quoted_unit_rate
+      const contractVal = (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) + (item.labour_rate ?? 0)
       const prev = prevPct(item.id, claims)
       const thisPct = getPct(item.id)
       const thisAmt = contractVal * thisPct / 100
@@ -123,7 +123,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
     })
 
   const totalThisClaim = lineItems.reduce((s, l) => s + l.thisAmt, 0)
-  const totalContract = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+  const totalContract = items.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0) + (i.labour_rate ?? 0), 0)
   const itemsWithClaim = lineItems.filter(l => l.thisPct > 0)
 
   async function handleSubmit(submitFlag: boolean) {
