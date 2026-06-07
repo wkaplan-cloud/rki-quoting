@@ -75,7 +75,7 @@ export default async function QuotingDashboardPage() {
   const [{ data: quotesRaw }, { data: claimsRaw }, { data: jobCardsRaw }] = await Promise.all([
     supabaseAdmin
       .from('elec_quotes')
-      .select('id, quote_number, project_name, status, contract_type, expected_completion_date, client:elec_clients(client_name), line_items:elec_quote_line_items(quoted_quantity, quoted_unit_rate, as_built_quantity, as_built_unit_rate), variation_orders:elec_variation_orders(status, value)')
+      .select('id, quote_number, project_name, status, contract_type, expected_completion_date, client:elec_clients(client_name), line_items:elec_quote_line_items(quoted_quantity, quoted_unit_rate, labour_rate, as_built_quantity, as_built_unit_rate), variation_orders:elec_variation_orders(status, value)')
       .eq('portal_account_id', account.id)
       .is('archived_at', null)
       .order('created_at', { ascending: false }),
@@ -121,7 +121,7 @@ export default async function QuotingDashboardPage() {
     const client = Array.isArray(q.client) ? q.client[0] : q.client
     const lis: any[] = Array.isArray(q.line_items) ? q.line_items : []
     const vos: any[] = Array.isArray(q.variation_orders) ? q.variation_orders : []
-    const contract_value = lis.reduce((s: number, li: any) => s + (li.quoted_quantity ?? 0) * (li.quoted_unit_rate ?? 0), 0)
+    const contract_value = lis.reduce((s: number, li: any) => s + (li.quoted_quantity ?? 0) * (li.quoted_unit_rate ?? 0) + (li.labour_rate ?? 0), 0)
     const approved_vo_value = vos.filter((v: any) => v.status === 'approved').reduce((s: number, v: any) => s + (v.value ?? 0), 0)
     const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
     return {

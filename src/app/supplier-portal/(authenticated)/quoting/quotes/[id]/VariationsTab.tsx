@@ -347,7 +347,6 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       .from('elec_variation_orders')
       .insert({
         quote_id: quoteId,
-        portal_account_id: portalAccountId,
         vo_number: voNumber,
         description: formDesc.trim(),
         value,
