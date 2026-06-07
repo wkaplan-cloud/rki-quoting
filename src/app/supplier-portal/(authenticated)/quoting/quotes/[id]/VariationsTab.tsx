@@ -198,7 +198,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   }
 
   const formVOValue = formLineItems.reduce((s, li) => s + computeVOLineTotal(li.qty, li.cost, li.markup, li.labour), 0)
-  const formVOCost = formLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * (parseFloat(li.cost) || 0) + (parseFloat(li.labour) || 0), 0)
+  const formVOCost = formLineItems.reduce((s, li) => s + (parseFloat(li.qty) || 0) * (parseFloat(li.cost) || 0), 0)
   const formVOProfit = formVOValue - formVOCost
   const formVOMargin = formVOValue > 0 ? formVOProfit / formVOValue * 100 : 0
 
