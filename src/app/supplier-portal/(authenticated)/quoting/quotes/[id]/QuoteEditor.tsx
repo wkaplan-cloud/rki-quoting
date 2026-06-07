@@ -698,7 +698,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const revisedGrossProfit = revisedTotal - costTotal
 
   return (
-    <div className="max-w-4xl mx-auto pb-16">
+    <div className="pb-16">
 
       {/* ── Top bar ────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-5 gap-3">

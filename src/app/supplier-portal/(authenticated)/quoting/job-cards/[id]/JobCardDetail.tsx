@@ -599,7 +599,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div>
 
       {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-5 gap-3">
