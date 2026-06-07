@@ -1006,6 +1006,24 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {q.notes && (
             <p className="text-sm mt-4 pt-4 italic" style={{ color: S.muted, borderTop: `1px solid ${S.border}` }}>{q.notes}</p>
           )}
+          {/* Technicians — always editable even when project is locked */}
+          {staff.length > 0 && (
+            <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${S.border}` }}>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Technicians</label>
+              <StaffMultiSelect
+                selectedIds={[
+                  ...(q.staff_id ? [q.staff_id] : []),
+                  ...(q.additional_staff_ids ?? []),
+                ]}
+                staff={staff}
+                onChange={ids => setQ(p => ({
+                  ...p,
+                  staff_id: ids[0] ?? null,
+                  additional_staff_ids: ids.slice(1),
+                }))}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="rounded-2xl p-5 mb-4 grid grid-cols-2 gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
