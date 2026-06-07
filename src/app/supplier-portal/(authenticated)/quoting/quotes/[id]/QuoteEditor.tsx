@@ -720,9 +720,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
         </div>
         <a href={`/api/supplier-portal/quoting/quotes/${q.id}/recon-pdf`} target="_blank" rel="noreferrer"
+          title="Site sign-off sheet — lists all line items with tick boxes for on-site verification by your team"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
           style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
-          <FileText size={12} /> Recon Sheet
+          <FileText size={12} /> Recon / Sign-off Sheet
         </a>
         {['draft', 'quoted'].includes(q.status) && (
           <button onClick={() => void archiveQuote()}
