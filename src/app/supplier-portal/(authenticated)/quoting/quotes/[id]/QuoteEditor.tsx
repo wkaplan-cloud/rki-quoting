@@ -857,14 +857,22 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
       {/* Project profit strip — always visible when in progress / completed */}
       {showTabs && (() => {
+        const stripProfit = revisedTotal - itemCostTotal  // gross profit incl. labour (labour cost = 0)
+        const stripMaterialProfit = revisedTotal - labourTotal - itemCostTotal
         const metrics = [
-          { label: 'Contract', value: fmtR(contractTotal), color: S.text },
-          ...(approvedVOTotal !== 0 ? [{ label: 'Approved VOs', value: `+${fmtR(approvedVOTotal)}`, color: S.green }] : []),
-          { label: approvedVOTotal !== 0 ? 'Revised Total' : 'Contract Total', value: fmtR(revisedTotal), color: S.accent },
+          ...(approvedVOTotal !== 0 ? [
+            { label: 'Contract', value: fmtR(contractTotal), color: S.text },
+            { label: 'Approved VOs', value: `+${fmtR(approvedVOTotal)}`, color: S.green },
+            { label: 'Revised Total', value: fmtR(revisedTotal), color: S.accent },
+          ] : [
+            { label: 'Contract Total', value: fmtR(revisedTotal), color: S.accent },
+          ]),
           ...(hasCostData ? [
-            { label: 'Cost', value: fmtR(costTotal), color: S.text },
-            { label: 'Gross Profit', value: fmtR(revisedGrossProfit), color: revisedGrossProfit >= 0 ? S.green : S.danger },
-            { label: 'Margin', value: revisedTotal > 0 ? `${Math.round(revisedGrossProfit / revisedTotal * 1000) / 10}%` : '—', color: revisedGrossProfit >= 0 ? S.green : S.danger },
+            { label: 'Cost', value: fmtR(itemCostTotal), color: S.text },
+            { label: 'Material Profit', value: fmtR(stripMaterialProfit), color: stripMaterialProfit >= 0 ? S.green : S.danger },
+            ...(labourTotal > 0 ? [{ label: '+ Labour', value: fmtR(labourTotal), color: S.green }] : []),
+            { label: 'Gross Profit', value: fmtR(stripProfit), color: stripProfit >= 0 ? S.green : S.danger },
+            { label: 'Margin', value: revisedTotal > 0 ? `${Math.round(stripProfit / revisedTotal * 1000) / 10}%` : '—', color: stripProfit >= 0 ? S.green : S.danger },
           ] : []),
         ]
         return (
