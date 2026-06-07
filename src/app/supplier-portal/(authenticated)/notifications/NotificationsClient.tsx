@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin, ShoppingCart, PenLine, GitPullRequest, AlertTriangle } from 'lucide-react'
 import type { ElecNotification } from '@/lib/elec-types'
 
@@ -36,6 +37,26 @@ function typeColor(type: string) {
     case 'material_request':   return { bg: 'rgba(217,164,65,0.08)',  border: 'rgba(217,164,65,0.2)'  }
     case 'report_submitted':   return { bg: 'rgba(220,38,38,0.06)',   border: 'rgba(220,38,38,0.2)'   }
     default:                   return { bg: S.bg, border: S.border }
+  }
+}
+
+function getLink(n: ElecNotification): string | null {
+  const m = n.metadata
+  const jcId = m.job_card_id as string | null | undefined
+  const qId  = m.quote_id   as string | null | undefined
+  switch (n.type) {
+    case 'clock_in':
+    case 'clock_out':
+    case 'job_completed':
+    case 'signature_captured':
+    case 'report_submitted':
+    case 'job_card_photo':
+    case 'material_request':
+      return jcId ? `/supplier-portal/quoting/job-cards/${jcId}` : null
+    case 'vo_submitted':
+      return qId ? `/supplier-portal/quoting/quotes/${qId}` : null
+    default:
+      return null
   }
 }
 
@@ -122,6 +143,7 @@ export function NotificationsClient({ portalAccountId: _portalAccountId, initial
           {notifications.map((n, i) => {
             const colors = typeColor(n.type)
             const isUnread = !n.read_at
+            const link = getLink(n)
             return (
               <div key={n.id}
                 className="flex items-start gap-3 px-4 py-3.5"
@@ -132,7 +154,10 @@ export function NotificationsClient({ portalAccountId: _portalAccountId, initial
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold leading-snug" style={{ color: S.text }}>{n.title}</p>
+                    {link
+                      ? <Link href={link} className="text-sm font-semibold leading-snug hover:underline" style={{ color: S.accent }}>{n.title}</Link>
+                      : <p className="text-sm font-semibold leading-snug" style={{ color: S.text }}>{n.title}</p>
+                    }
                     <span className="text-[10px] flex-shrink-0 mt-0.5" style={{ color: S.muted }}>{fmtRelative(n.created_at)}</span>
                   </div>
                   {n.body && <p className="text-xs mt-0.5" style={{ color: S.muted }}>{n.body}</p>}

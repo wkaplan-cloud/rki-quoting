@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       type: punch_type,
       title: `${staff.name} ${punch_type === 'clock_in' ? 'clocked in' : 'clocked out'}`,
       body: `${punch_type === 'clock_in' ? 'Clocked in' : 'Clocked out'}${gpsNote}`,
-      metadata: { staff_id: staff.id, punch_id: punch.id, latitude: latitude ?? null, longitude: longitude ?? null, address: address ?? null },
+      metadata: { staff_id: staff.id, punch_id: punch.id, job_card_id: job_id ?? null, latitude: latitude ?? null, longitude: longitude ?? null, address: address ?? null },
     })
 
     return NextResponse.json({ ok: true, punch, address: address ?? null })

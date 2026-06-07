@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
         type: 'material_request',
         title: `Material needed — ${staffName ?? 'Staff'}`,
         body: `${body.description.trim()} (qty ${body.qty ?? 1}${body.unit ? ' ' + body.unit : ''}) on ${sourceLabel}`,
-        metadata: { material_request_id: data.id, staff_id: staffId, source_type: body.source_type },
+        metadata: { material_request_id: data.id, staff_id: staffId, source_type: body.source_type, job_card_id: body.job_card_id ?? null },
       })
     }
 
