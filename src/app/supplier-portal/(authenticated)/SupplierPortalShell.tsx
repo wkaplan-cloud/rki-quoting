@@ -92,8 +92,8 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
     <div className="flex min-h-screen" style={{ background: '#F5F7F9' }}>
       {/* Hidden notification sound */}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-      <audio ref={audioRef} preload="auto">
-        <source src="/notification.mp3" type="audio/mpeg" />
+      <audio ref={audioRef} preload="auto" playsInline>
+        <source src="/notification.wav" type="audio/wav" />
       </audio>
 
       <SupplierPortalNav
