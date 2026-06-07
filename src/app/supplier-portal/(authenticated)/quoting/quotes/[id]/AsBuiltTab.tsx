@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Loader2, AlertCircle, Download, Printer, Send, X } from 'lucide-react'
-import type { ElecQuoteLineItem, ElecQuoteSection } from '@/lib/elec-types'
+import type { ElecQuoteLineItem, ElecQuoteSection, ElecMaterialRequest } from '@/lib/elec-types'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -25,8 +25,14 @@ interface Props {
 export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal, clientEmail }: Props) {
   const supabase = createClient()
   const [items, setItems] = useState<ElecQuoteLineItem[]>(initialItems)
+  const [materials, setMaterials] = useState<ElecMaterialRequest[]>([])
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
+
+  useEffect(() => {
+    supabase.from('elec_material_requests').select('*').eq('quote_id', quoteId).neq('status', 'cancelled').order('created_at')
+      .then(({ data }) => setMaterials((data ?? []) as ElecMaterialRequest[]))
+  }, [quoteId]) // eslint-disable-line
 
   const [showSendModal, setShowSendModal] = useState(false)
   const [sendEmail, setSendEmail] = useState('')
@@ -191,7 +197,13 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
     )
   }
 
-  const freeItems = items.filter(i => i.section_id === null)
+  const quoteItems = items.filter(i => !i.is_variation)
+  const voItems    = items.filter(i => i.is_variation)
+  const freeItems  = quoteItems.filter(i => i.section_id === null)
+
+  const MAT_STATUS_COLOR: Record<string, string> = {
+    pending: S.gold, ordered: S.accent, received: S.green,
+  }
 
   return (
     <div>
@@ -255,10 +267,57 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
         </div>
       </div>
 
-      {freeItems.length > 0 && renderGroup(null, freeItems)}
-      {sections.map(s => renderGroup(s.title || 'Untitled Section', items.filter(i => i.section_id === s.id)))}
+      {/* ── Quote Items ── */}
+      {(freeItems.length > 0 || sections.some(s => quoteItems.some(i => i.section_id === s.id))) && (
+        <div className="mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: S.muted }}>Quote Items</p>
+          {freeItems.length > 0 && renderGroup(null, freeItems)}
+          {sections.map(s => renderGroup(s.title || 'Untitled Section', quoteItems.filter(i => i.section_id === s.id)))}
+        </div>
+      )}
 
-      {items.length === 0 && (
+      {/* ── VO Items ── */}
+      {voItems.length > 0 && (
+        <div className="mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: S.gold }}>Variation Orders</p>
+          {renderGroup(null, voItems)}
+        </div>
+      )}
+
+      {/* ── Materials ── */}
+      {materials.length > 0 && (
+        <div className="mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: S.muted }}>Materials</p>
+          <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${S.border}`, background: S.card }}>
+            <div className="grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider"
+              style={{ gridTemplateColumns: '1fr 60px 60px 90px', gap: '8px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+              <span>Description</span>
+              <span className="text-center">Unit</span>
+              <span className="text-right">Qty</span>
+              <span className="text-right">Status</span>
+            </div>
+            {materials.map((m, i) => (
+              <div key={m.id} className="grid px-4 py-3 items-center text-sm"
+                style={{ gridTemplateColumns: '1fr 60px 60px 90px', gap: '8px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                <div>
+                  <p style={{ color: S.text }}>{m.description}</p>
+                  {m.notes && <p className="text-xs mt-0.5 italic" style={{ color: S.muted }}>{m.notes}</p>}
+                </div>
+                <span className="text-xs text-center" style={{ color: S.muted }}>{m.unit ?? 'nr'}</span>
+                <span className="text-xs text-right font-mono" style={{ color: S.muted }}>{m.qty}</span>
+                <span className="text-right">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize"
+                    style={{ background: `${MAT_STATUS_COLOR[m.status] ?? S.muted}18`, color: MAT_STATUS_COLOR[m.status] ?? S.muted }}>
+                    {m.status}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {items.length === 0 && materials.length === 0 && (
         <div className="rounded-2xl py-10 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
           <p className="text-sm" style={{ color: S.muted }}>No line items found</p>
         </div>
