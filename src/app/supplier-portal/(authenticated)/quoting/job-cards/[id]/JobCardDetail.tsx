@@ -38,6 +38,10 @@ function fmtDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function fmtR(n: number) {
+  return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 // ── Form primitives ───────────────────────────────────────────────────────────
 
 function SectionHeader({ label }: { label: string }) {
@@ -1079,7 +1083,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none"
                         style={{ border: `1px solid ${S.accent}`, color: S.text }} />
                       <span className="text-sm font-mono font-semibold" style={{ color: S.muted }}>
-                        = R{((parseFloat(editingMat.qty) || 0) * (parseFloat(editingMat.price) || 0)).toFixed(2)}
+                        = {fmtR((parseFloat(editingMat.qty) || 0) * (parseFloat(editingMat.price) || 0))}
                       </span>
                       <button onClick={() => void updateMaterial()} disabled={matSaving}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
@@ -1097,13 +1101,13 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     onClick={() => startEditMaterial(m)}>
                     <span className="text-sm font-medium truncate" style={{ color: S.text }}>{m.description}</span>
                     <span className="text-sm text-center tabular-nums" style={{ color: S.muted }}>{m.qty}</span>
-                    <span className="text-sm text-right tabular-nums" style={{ color: S.muted }}>{m.cost_price != null ? `R${m.cost_price.toFixed(2)}` : '—'}</span>
+                    <span className="text-sm text-right tabular-nums font-mono" style={{ color: S.muted }}>{m.cost_price != null ? fmtR(m.cost_price) : '—'}</span>
                     <span className="text-sm text-right tabular-nums" style={{ color: S.muted }}>
                       {m.cost_price != null && m.unit_price != null ? `${computeMarkup(String(m.cost_price), String(m.unit_price))}%` : '—'}
                     </span>
-                    <span className="text-sm text-right tabular-nums" style={{ color: S.text }}>{m.unit_price != null ? `R${m.unit_price.toFixed(2)}` : '—'}</span>
-                    <span className="text-sm text-right font-semibold tabular-nums" style={{ color: S.text }}>
-                      {m.unit_price != null ? `R${(m.qty * m.unit_price).toFixed(2)}` : '—'}
+                    <span className="text-sm text-right tabular-nums font-mono" style={{ color: S.text }}>{m.unit_price != null ? fmtR(m.unit_price) : '—'}</span>
+                    <span className="text-sm text-right font-semibold tabular-nums font-mono" style={{ color: S.text }}>
+                      {m.unit_price != null ? fmtR(m.qty * m.unit_price) : '—'}
                     </span>
                     <button onClick={e => { e.stopPropagation(); void deleteMaterial(m.id) }}
                       className="opacity-0 group-hover:opacity-100 p-1 rounded justify-self-end"
@@ -1117,11 +1121,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate" style={{ color: S.text }}>{m.description}</p>
                     <p className="text-xs" style={{ color: S.muted }}>
-                      Qty {m.qty}{m.cost_price != null ? ` · Cost R${m.cost_price.toFixed(2)}` : ''}{m.unit_price != null ? ` · Sell R${m.unit_price.toFixed(2)}` : ''}
+                      Qty {m.qty}{m.cost_price != null ? ` · Cost ${fmtR(m.cost_price)}` : ''}{m.unit_price != null ? ` · Sell ${fmtR(m.unit_price)}` : ''}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold shrink-0" style={{ color: S.text }}>
-                    {m.unit_price != null ? `R${(m.qty * m.unit_price).toFixed(2)}` : '—'}
+                  <p className="text-sm font-semibold font-mono shrink-0" style={{ color: S.text }}>
+                    {m.unit_price != null ? fmtR(m.qty * m.unit_price) : '—'}
                   </p>
                   <button onClick={() => startEditMaterial(m)} className="opacity-0 group-hover:opacity-100 p-1 rounded" style={{ color: S.accent }}>
                     <Edit2 size={13} />
@@ -1191,7 +1195,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <div className="flex items-center justify-between px-5 py-3"
                 style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
                 <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Materials Subtotal</p>
-                <p className="text-sm font-semibold font-mono" style={{ color: S.muted }}>R{totalMaterials.toFixed(2)}</p>
+                <p className="text-sm font-semibold font-mono" style={{ color: S.muted }}>{fmtR(totalMaterials)}</p>
               </div>
             )}
           </div>
@@ -1256,7 +1260,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 </div>
                 {labourCharge > 0 && (
                   <span className="text-sm font-semibold font-mono w-24 text-right shrink-0" style={{ color: S.text }}>
-                    R{labourCharge.toFixed(2)}
+                    {fmtR(labourCharge)}
                   </span>
                 )}
               </div>
@@ -1266,7 +1270,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             <div className="flex items-center justify-between px-5 py-3" style={{ background: S.bg }}>
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: S.text }}>Total Charge</p>
               <p className="text-base font-bold font-mono" style={{ color: totalCharge > 0 ? S.accent : S.muted }}>
-                R{totalCharge.toFixed(2)}
+                {fmtR(totalCharge)}
               </p>
             </div>
           </div>
@@ -1473,7 +1477,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 <CheckCircle2 size={36} style={{ color: S.green }} />
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Invoice pushed to Sage!</p>
                 {sagePushResult.total_incl_vat != null && (
-                  <p className="text-xs" style={{ color: S.muted }}>Total: R{sagePushResult.total_incl_vat.toFixed(2)} incl. VAT</p>
+                  <p className="text-xs" style={{ color: S.muted }}>Total: {fmtR(sagePushResult.total_incl_vat)} incl. VAT</p>
                 )}
                 <button onClick={() => setShowSagePush(false)}
                   className="mt-2 px-6 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>
