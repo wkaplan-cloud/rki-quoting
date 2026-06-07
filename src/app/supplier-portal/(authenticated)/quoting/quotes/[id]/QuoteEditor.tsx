@@ -743,7 +743,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </button>
         )}
         {q.status === 'quoted' && (
-          <button onClick={() => void transition('in_progress', { approved_date: new Date().toISOString().split('T')[0], started_at: new Date().toISOString() })}
+          <button onClick={() => void transition('in_progress', { approved_date: new Date().toISOString().split('T')[0] })}
             disabled={transitioning}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50"
             style={{ background: S.green, color: '#fff' }}>
