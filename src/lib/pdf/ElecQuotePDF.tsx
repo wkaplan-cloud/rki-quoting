@@ -96,10 +96,13 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
                 <Text style={{ fontSize: 6.5, color: '#D9A441', marginTop: 1 }}>VARIATION ORDER</Text>
               )}
             </View>
-            <Text style={[s.td, s.tdMuted, { width: 40, textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
-            <Text style={[s.td, { width: 50, textAlign: 'right' }]}>{item.quoted_quantity}</Text>
-            <Text style={[s.td, { width: 80, textAlign: 'right' }]}>{fmtR(item.quoted_unit_rate)}</Text>
-            <Text style={[s.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
+            <Text style={[s.td, { width: 45, textAlign: 'right' }]}>{item.quoted_quantity}</Text>
+            <Text style={[s.td, s.tdMuted, { width: 36, textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
+            <Text style={[s.td, { width: 72, textAlign: 'right' }]}>{fmtR(item.quoted_unit_rate ?? 0)}</Text>
+            <Text style={[s.td, s.tdMuted, { width: 60, textAlign: 'right' }]}>
+              {(item.labour_rate ?? 0) > 0 ? fmtR(item.labour_rate ?? 0) : '—'}
+            </Text>
+            <Text style={[s.td, { width: 72, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
               {fmtR(lineTotal(item))}
             </Text>
           </View>
@@ -169,10 +172,11 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
         {/* Table */}
         <View style={s.tableHead}>
           <Text style={[s.th, { flex: 1 }]}>Description</Text>
-          <Text style={[s.th, { width: 40, textAlign: 'center' }]}>Unit</Text>
-          <Text style={[s.th, { width: 50, textAlign: 'right' }]}>Qty</Text>
-          <Text style={[s.th, { width: 80, textAlign: 'right' }]}>Unit Rate</Text>
-          <Text style={[s.th, { width: 80, textAlign: 'right' }]}>Amount</Text>
+          <Text style={[s.th, { width: 45, textAlign: 'right' }]}>Qty</Text>
+          <Text style={[s.th, { width: 36, textAlign: 'center' }]}>Unit</Text>
+          <Text style={[s.th, { width: 72, textAlign: 'right' }]}>Unit Rate</Text>
+          <Text style={[s.th, { width: 60, textAlign: 'right' }]}>+Labour</Text>
+          <Text style={[s.th, { width: 72, textAlign: 'right' }]}>Total</Text>
         </View>
 
         <ItemRows list={freeItems} />
@@ -185,7 +189,7 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
             <View key={sec.id}>
               <View style={s.secRow} wrap={false}>
                 <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
-                <Text style={[s.secLabel, { width: 80, textAlign: 'right' }]}>{fmtR(secTotal)}</Text>
+                <Text style={[s.secLabel, { width: 72, textAlign: 'right' }]}>{fmtR(secTotal)}</Text>
               </View>
               <ItemRows list={secItems} indent />
             </View>
