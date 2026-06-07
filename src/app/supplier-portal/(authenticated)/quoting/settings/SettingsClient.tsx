@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check, Zap, Link2, Link2Off, RefreshCw, ArrowUpRight } from 'lucide-react'
+import { Check, Zap, Link2, Link2Off, RefreshCw, ArrowUpRight, Loader2 } from 'lucide-react'
 import type { ElecSettings } from '@/lib/elec-types'
 
 const S = {
@@ -101,6 +101,8 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState('')
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const isMountRef = useRef(true)
 
   // Sage
   const [sageConnected, setSageConnected] = useState(!!(settings?.sage_company_id))
@@ -140,19 +142,19 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
     setSageConnected(false); setSageCompanyId(''); setSageUsername(''); setSageSuccess(''); setSageError('')
   }
 
-  // Auto-dismiss saved banner
+  // Auto-dismiss saved indicator
   useEffect(() => {
     if (!saved) return
-    const t = setTimeout(() => setSaved(false), 3000)
+    const t = setTimeout(() => setSaved(false), 2500)
     return () => clearTimeout(t)
   }, [saved])
 
-  async function handleSave() {
+  const handleSave = useCallback(async () => {
     setSaving(true)
     setError('')
     const derivedCode = deriveCompanyCode(companyName)
+    const codeToSave = companyCodeVal.trim().toUpperCase() || derivedCode || null
 
-    // Core settings — always upsert these (no new columns required)
     const payload = {
       portal_account_id:              portalAccountId,
       default_vat_rate:               parseFloat(vatRate) || 15,
@@ -164,6 +166,7 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
       vo_prefix:                      voPrefix.trim() || 'VO',
       coc_prefix:                     cocPrefix.trim() || 'COC',
       email_footer_text:              footer.trim() || null,
+      company_code:                   codeToSave,
       updated_at:                     new Date().toISOString(),
     }
 
@@ -171,22 +174,18 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
       .from('elec_settings')
       .upsert(payload, { onConflict: 'portal_account_id' })
 
-    if (err) { setSaving(false); setError(err.message); return }
-
-    // Company code — best-effort update (requires DB migration; silently skips if column absent)
-    const codeToSave = companyCodeVal.trim().toUpperCase() || derivedCode || null
-    const { error: codeErr } = await supabase
-      .from('elec_settings')
-      .update({ company_code: codeToSave })
-      .eq('portal_account_id', portalAccountId)
-
     setSaving(false)
-    // Ignore codeErr — column may not exist yet until migration is run
-    if (!codeErr) {
-      // If it saved fine, nothing extra to do
-    }
+    if (err) { setError(err.message); return }
     setSaved(true)
-  }
+  }, [portalAccountId, companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, supabase])
+
+  // Auto-save on any field change — 1.5s debounce, skip on first render
+  useEffect(() => {
+    if (isMountRef.current) { isMountRef.current = false; return }
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => { void handleSave() }, 1500)
+    return () => clearTimeout(autoSaveTimer.current)
+  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, handleSave])
 
   return (
     <div className="space-y-6">
@@ -338,21 +337,9 @@ export function SettingsClient({ portalAccountId, companyName, settings, justUpg
           </p>
         )}
 
-        <div className="flex items-center justify-between pb-8">
-          {saved ? (
-            <div className="flex items-center gap-2 text-sm font-medium" style={{ color: '#16A34A' }}>
-              <Check size={16} />
-              Settings saved
-            </div>
-          ) : <div />}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-opacity"
-            style={{ background: S.accent }}
-          >
-            {saving ? 'Saving…' : 'Save Settings'}
-          </button>
+        <div className="flex items-center justify-end gap-2 pb-8 text-xs" style={{ color: S.muted }}>
+          {saving && <><Loader2 size={12} className="animate-spin" />Saving…</>}
+          {saved && !saving && <><Check size={12} style={{ color: '#16A34A' }} /><span style={{ color: '#16A34A' }}>Saved</span></>}
         </div>
     </div>
   )
