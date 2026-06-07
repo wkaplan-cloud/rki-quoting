@@ -211,15 +211,16 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
           set({ quoted_quantity: v, quoted_unit_rate: sell })
         }, 'Qty', 72)}
         {numInput(item.cost_unit_rate, v => {
-          const sell = v * (1 + (item.markup_percentage ?? 0) / 100) + (item.labour_rate ?? 0)
+          const sell = v * (1 + (item.markup_percentage ?? 0) / 100)
           set({ cost_unit_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, 'Cost', 82)}
         {numInput(item.markup_percentage, v => {
-          const sell = (item.cost_unit_rate ?? 0) * (1 + v / 100) + (item.labour_rate ?? 0)
+          const sell = (item.cost_unit_rate ?? 0) * (1 + v / 100)
           set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, '%', 65)}
         {numInput(item.labour_rate, v => {
-          set({ labour_rate: v })
+          const sell = (item.cost_unit_rate ?? 0) * (1 + (item.markup_percentage ?? 0) / 100)
+          set({ labour_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, 'Labour', 82)}
         <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 92 }}>
           {fmtR(itemTotal(item))}
@@ -360,6 +361,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [clientCompany, setClientCompany] = useState(initialQuote.client?.company ?? '')
   const [clientQsName, setClientQsName] = useState(initialQuote.client?.qs_name ?? '')
   const [clientQsEmail, setClientQsEmail] = useState(initialQuote.client?.qs_email ?? '')
+  const [clientVatNumber, setClientVatNumber] = useState(initialQuote.client?.vat_number ?? '')
   const [clients, setClients] = useState(initialClients)
   const [voCreatedClaims, setVOCreatedClaims] = useState<(ElecClaim & { line_items: ElecClaimLineItem[] })[]>([])
   const [liveVOs, setLiveVOs] = useState(variations)
@@ -459,11 +461,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const retention = subtotal * ((q.retention_percentage ?? 0) / 100)
 
   // ── Save function (stable ref so auto-save always calls latest) ─────────────
-  const saveDataRef = useRef({ q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail })
-  useEffect(() => { saveDataRef.current = { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail } }, [q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail])
+  const saveDataRef = useRef({ q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber })
+  useEffect(() => { saveDataRef.current = { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber } }, [q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber])
 
   const handleSave = useCallback(async () => {
-    const { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail } = saveDataRef.current
+    const { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber } = saveDataRef.current
     setSaveStatus('saving'); setSaveError('')
     try {
       await supabase.from('elec_quotes').update({
@@ -486,6 +488,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         if (clientCompany.trim()) patch.company = clientCompany.trim()
         if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
         if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
+        if (clientVatNumber.trim()) patch.vat_number = clientVatNumber.trim()
         if (Object.keys(patch).length > 0) {
           fetch(`/api/supplier-portal/quoting/clients/${q.client_id}`, {
             method: 'PATCH',
@@ -559,7 +562,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => void handleSave(), 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [q, sections, freeItems, clientCompany, clientQsName, clientQsEmail]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [q, sections, freeItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset active tab to quote if it becomes inaccessible after status change
   useEffect(() => {
@@ -678,13 +681,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     { id: 'reporting',  label: 'Reporting' },
   ]
 
-  const contractTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0), 0)
+  const contractTotal = allItems.reduce((s, i) => s + itemTotal(i), 0)
   const approvedVOs = liveVOs.filter(v => v.status === 'approved')
   const approvedVOTotal = approvedVOs.reduce((s, v) => s + v.value, 0)
   const approvedVOCostTotal = approvedVOs.reduce((s, v) => s + (v.cost_value ?? 0), 0)
   const itemCostTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
   const costTotal = itemCostTotal + approvedVOCostTotal
-  const grossProfit = subtotal - itemCostTotal
+  const labourTotal = allItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
+  const grossProfit = subtotal - labourTotal - itemCostTotal
   const hasCostData = allItems.some(i => i.cost_unit_rate != null) || approvedVOs.some(v => v.cost_value != null)
   const revisedTotal = contractTotal + approvedVOTotal
   const revisedGrossProfit = revisedTotal - costTotal
@@ -1093,6 +1097,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>QS Email</label>
             <input type="email" value={clientQsEmail} onChange={e => setClientQsEmail(e.target.value)}
               placeholder="qs@example.com"
+              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+          </div>
+          <div>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Tax / VAT Number</label>
+            <input value={clientVatNumber} onChange={e => setClientVatNumber(e.target.value)}
+              placeholder="4123456789"
               className="w-full px-3 py-2 text-sm rounded-lg outline-none"
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
           </div>

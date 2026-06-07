@@ -105,6 +105,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [clientCompany, setClientCompany] = useState(initClient?.company ?? '')
   const [clientQsName, setClientQsName] = useState(initClient?.qs_name ?? '')
   const [clientQsEmail, setClientQsEmail] = useState(initClient?.qs_email ?? '')
+  const [clientVatNumber, setClientVatNumber] = useState(initClient?.vat_number ?? '')
   const [tab, setTab] = useState<Tab>('details')
 
   // UI state
@@ -262,11 +263,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   }
 
   // Use a ref so the auto-save timer always calls with the latest data
-  const autoSaveDataRef = useRef({ card, clientCompany, clientQsName, clientQsEmail })
-  useEffect(() => { autoSaveDataRef.current = { card, clientCompany, clientQsName, clientQsEmail } }, [card, clientCompany, clientQsName, clientQsEmail])
+  const autoSaveDataRef = useRef({ card, clientCompany, clientQsName, clientQsEmail, clientVatNumber })
+  useEffect(() => { autoSaveDataRef.current = { card, clientCompany, clientQsName, clientQsEmail, clientVatNumber } }, [card, clientCompany, clientQsName, clientQsEmail, clientVatNumber])
 
   const handleSave = useCallback(async () => {
-    const { card, clientCompany, clientQsName, clientQsEmail } = autoSaveDataRef.current
+    const { card, clientCompany, clientQsName, clientQsEmail, clientVatNumber } = autoSaveDataRef.current
     await save({
       title: card.title,
       job_type: card.job_type,
@@ -293,6 +294,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       if (clientCompany.trim()) patch.company = clientCompany.trim()
       if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
       if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
+      if (clientVatNumber.trim()) patch.vat_number = clientVatNumber.trim()
       if (Object.keys(patch).length > 0) {
         fetch(`/api/supplier-portal/quoting/clients/${card.client_id}`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
@@ -314,7 +316,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     card.client_email, card.location, card.scheduled_at, card.work_description,
     card.work_found, card.work_done, card.resolution, card.notes,
     card.callout_fee, card.labour_hours, card.labour_rate,
-    clientCompany, clientQsName, clientQsEmail,
+    clientCompany, clientQsName, clientQsEmail, clientVatNumber,
   ])
 
   async function handleDelete() {
@@ -857,16 +859,23 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   setClientCompany(existing?.company ?? '')
                   setClientQsName(existing?.qs_name ?? '')
                   setClientQsEmail(existing?.qs_email ?? '')
+                  setClientVatNumber(existing?.vat_number ?? '')
                 }}
                 onNewClient={c => setClients(prev => [...prev, { ...c, email: null, address: null, qs_name: null, qs_email: null }])}
               />
             </Field>
             <Inp label="Client Email" val={card.client_email} cb={v => setField('client_email', v || null)} placeholder="client@example.com" />
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Field label="Company Name">
               <input value={clientCompany} onChange={e => setClientCompany(e.target.value)}
                 placeholder="Client company"
+                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+            </Field>
+            <Field label="Tax / VAT Number">
+              <input value={clientVatNumber} onChange={e => setClientVatNumber(e.target.value)}
+                placeholder="4123456789"
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none"
                 style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
             </Field>
