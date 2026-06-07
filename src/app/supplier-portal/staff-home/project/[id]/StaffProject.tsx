@@ -679,29 +679,49 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                     <Plus size={11} /> Add
                   </button>
                 </div>
-                <div className="space-y-2">
-                  {voItems.map(li => (
-                    <div key={li._id} className="flex items-center gap-2">
-                      <input value={li.description} onChange={e => setVOItems(prev => prev.map(i => i._id === li._id ? { ...i, description: e.target.value } : i))}
+                <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+                  {/* Column headers — match quote line items table */}
+                  <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ gridTemplateColumns: '1fr 50px 55px 20px', gap: '8px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                    <span>Item</span>
+                    <span className="text-center">Unit</span>
+                    <span className="text-right">Qty</span>
+                    <span />
+                  </div>
+                  {voItems.map((li, i) => (
+                    <div key={li._id} className="grid px-3 py-2 items-center"
+                      style={{ gridTemplateColumns: '1fr 50px 55px 20px', gap: '8px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                      <input
+                        value={li.description}
+                        onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, description: e.target.value } : it))}
                         placeholder="Description"
-                        className="flex-1 px-2.5 py-2 rounded-xl text-sm outline-none"
+                        className="w-full px-2.5 py-1.5 rounded-lg text-sm outline-none"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                      <select value={li.unit} onChange={e => setVOItems(prev => prev.map(i => i._id === li._id ? { ...i, unit: e.target.value } : i))}
-                        className="px-2 py-2 rounded-xl text-sm outline-none"
+                      <select
+                        value={li.unit}
+                        onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, unit: e.target.value } : it))}
+                        className="w-full px-1 py-1.5 rounded-lg text-xs outline-none text-center"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }}>
                         <option value="nr">nr</option>
                         <option value="m">m</option>
+                        <option value="m²">m²</option>
+                        <option value="hr">hr</option>
+                        <option value="set">set</option>
+                        <option value="lot">lot</option>
                       </select>
-                      <input type="number" value={li.qty} onChange={e => setVOItems(prev => prev.map(i => i._id === li._id ? { ...i, qty: e.target.value } : i))}
-                        placeholder="Qty" min="0.01"
-                        className="w-16 px-2 py-2 rounded-xl text-sm outline-none text-right"
+                      <input
+                        type="number"
+                        value={li.qty}
+                        onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, qty: e.target.value } : it))}
+                        placeholder="0"
+                        min="0.01"
+                        className="w-full px-2 py-1.5 rounded-lg text-sm outline-none text-right font-mono"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                      {voItems.length > 1 && (
-                        <button onClick={() => setVOItems(prev => prev.filter(i => i._id !== li._id))}
-                          style={{ color: S.muted }}>
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setVOItems(prev => voItems.length > 1 ? prev.filter(it => it._id !== li._id) : prev)}
+                        style={{ color: voItems.length > 1 ? S.muted : 'transparent', pointerEvents: voItems.length > 1 ? 'auto' : 'none' }}>
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   ))}
                 </div>
