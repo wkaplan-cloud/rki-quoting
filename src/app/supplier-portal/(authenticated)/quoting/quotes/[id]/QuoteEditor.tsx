@@ -696,7 +696,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const itemCostTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
   const costTotal = itemCostTotal + approvedVOCostTotal
   const labourTotal = allItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
-  const grossProfit = subtotal - labourTotal - itemCostTotal
+  const materialProfit = subtotal - labourTotal - itemCostTotal
+  const grossProfit = materialProfit + labourTotal  // material profit + labour (all labour is profit — no labour cost tracked)
   const hasCostData = allItems.some(i => i.cost_unit_rate != null) || approvedVOs.some(v => v.cost_value != null)
   const revisedTotal = contractTotal + approvedVOTotal
   const revisedGrossProfit = revisedTotal - costTotal
@@ -1319,8 +1320,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               </div>
               <div className="flex justify-between text-sm">
                 <span style={{ color: S.muted }}>Cost (ex VAT)</span>
-                <span className="font-medium" style={{ color: S.text }}>{fmtR(costTotal)}</span>
+                <span className="font-medium" style={{ color: S.text }}>{fmtR(itemCostTotal)}</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span style={{ color: S.muted }}>Material Profit</span>
+                <span className="font-medium" style={{ color: materialProfit >= 0 ? S.green : S.danger }}>{fmtR(materialProfit)}</span>
+              </div>
+              {labourTotal > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: S.muted }}>+ Labour Profit</span>
+                  <span className="font-medium" style={{ color: S.green }}>{fmtR(labourTotal)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span style={{ color: S.muted }}>Gross Profit</span>
                 <span className="font-medium" style={{ color: grossProfit >= 0 ? S.green : S.danger }}>{fmtR(grossProfit)}</span>
