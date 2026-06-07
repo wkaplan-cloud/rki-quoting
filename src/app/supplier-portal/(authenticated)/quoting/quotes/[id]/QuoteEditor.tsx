@@ -720,50 +720,29 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
           {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
         </div>
-        <a href={`/api/supplier-portal/quoting/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-          style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
-          <Download size={12} /> PDF
-        </a>
         <a href={`/api/supplier-portal/quoting/quotes/${q.id}/recon-pdf`} target="_blank" rel="noreferrer"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
           style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
           <FileText size={12} /> Recon Sheet
         </a>
-        {/* More menu */}
-        <div className="relative">
-          <button onClick={() => setShowMoreMenu(m => !m)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
-            style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}
-            onMouseEnter={e => e.currentTarget.style.color = S.text}
-            onMouseLeave={e => e.currentTarget.style.color = S.muted}>
-            <MoreHorizontal size={14} />
+        {['draft', 'quoted'].includes(q.status) && (
+          <button onClick={() => void archiveQuote()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            style={{ color: S.danger, border: `1px solid ${S.border}`, background: S.bg }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = '#FECACA' }}
+            onMouseLeave={e => { e.currentTarget.style.background = S.bg; e.currentTarget.style.borderColor = S.border }}>
+            <Archive size={12} /> Archive
           </button>
-          {showMoreMenu && (
-            <div className="absolute right-0 top-full mt-1 z-30 rounded-xl overflow-hidden w-44"
-              style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
-              onMouseLeave={() => setShowMoreMenu(false)}>
-              {['draft', 'quoted'].includes(q.status) && (
-                <button onClick={() => { setShowMoreMenu(false); void archiveQuote() }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left"
-                  style={{ color: S.danger }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <Archive size={13} /> Archive quote
-                </button>
-              )}
-              {['quoted', 'approved', 'in_progress'].includes(q.status) && (
-                <button onClick={() => { setShowMoreMenu(false); if (confirm('Cancel this quote / project?')) void transition('cancelled') }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left"
-                  style={{ color: S.danger }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <X size={13} /> Cancel
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        )}
+        {['quoted', 'approved', 'in_progress'].includes(q.status) && (
+          <button onClick={() => { if (confirm('Cancel this quote / project?')) void transition('cancelled') }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            style={{ color: S.danger, border: `1px solid ${S.border}`, background: S.bg }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#FEF2F2'; e.currentTarget.style.borderColor = '#FECACA' }}
+            onMouseLeave={e => { e.currentTarget.style.background = S.bg; e.currentTarget.style.borderColor = S.border }}>
+            <X size={12} /> Cancel
+          </button>
+        )}
         {q.status === 'quoted' && (
           <button onClick={() => void transition('approved', { approved_date: new Date().toISOString().split('T')[0] })}
             disabled={transitioning}
@@ -1370,9 +1349,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </div>
       </div>
 
-      {/* Send to Client — draft only, placed below totals so user reviews before sending */}
+      {/* PDF download + Send to Client — placed below totals so user reviews before acting */}
       {q.status === 'draft' && (
-        <div className="flex justify-end mb-4">
+        <div className="flex items-center justify-end gap-3 mb-4">
+          <a href={`/api/supplier-portal/quoting/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
+            style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
+            <Download size={14} /> Download PDF
+          </a>
           <button onClick={openSendModal}
             className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: S.accent, color: '#fff' }}>
