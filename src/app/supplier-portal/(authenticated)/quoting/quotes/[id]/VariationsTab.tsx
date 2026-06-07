@@ -603,42 +603,48 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
             {/* Column headers */}
             <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px', color: S.muted }}>
+              style={{ gridTemplateColumns: '1fr 50px 36px 82px 55px 65px 75px 80px 80px 20px', gap: '4px', color: S.muted }}>
               <span>Description</span>
-              <span>Unit</span>
               <span className="text-right">Qty</span>
+              <span className="text-center">Unit</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Mkup%</span>
-              <span className="text-right">Labour</span>
+              <span className="text-right">Rate</span>
+              <span className="text-right">Subtotal</span>
+              <span className="text-right">+Labour</span>
               <span className="text-right">Total</span>
               <span />
             </div>
 
             {formLineItems.map(li => {
-              const lineTotal = computeVOLineTotal(li.qty, li.cost, li.markup, li.labour)
+              const rate = (parseFloat(li.cost) || 0) * (1 + (parseFloat(li.markup) || 0) / 100)
+              const subtotal = (parseFloat(li.qty) || 0) * rate
+              const lineTotal = subtotal + (parseFloat(li.labour) || 0)
               return (
               <div key={li._id} className="grid mb-1.5 items-center"
-                style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px' }}>
+                style={{ gridTemplateColumns: '1fr 50px 36px 82px 55px 65px 75px 80px 80px 20px', gap: '4px' }}>
                 <VODescriptionInput
                   value={li.description}
                   onChange={v => updateFormItem(li._id, { description: v })}
                   onSelect={s => updateFormItem(li._id, { description: s.description, unit: s.unit ?? li.unit, markup: s.default_markup_percent != null ? String(s.default_markup_percent) : li.markup })}
                   portalAccountId={portalAccountId} />
+                <input type="number" value={li.qty} onChange={e => updateFormItem(li._id, { qty: e.target.value })}
+                  className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
+                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 <select value={li.unit} onChange={e => updateFormItem(li._id, { unit: e.target.value })}
-                  className="px-1 py-1.5 text-sm rounded-lg outline-none"
+                  className="px-1 py-1.5 text-xs rounded-lg outline-none"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
                   <option value="nr">nr</option>
                   <option value="m">m</option>
                 </select>
-                <input type="number" value={li.qty} onChange={e => updateFormItem(li._id, { qty: e.target.value })}
-                  className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
-                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 <input type="number" value={li.cost} onChange={e => updateFormItem(li._id, { cost: e.target.value })}
                   placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 <input type="number" value={li.markup} onChange={e => updateFormItem(li._id, { markup: e.target.value })}
                   placeholder="%" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{rate > 0 ? fmtR(rate) : '—'}</div>
+                <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{subtotal > 0 ? fmtR(subtotal) : '—'}</div>
                 <input type="number" value={li.labour} onChange={e => updateFormItem(li._id, { labour: e.target.value })}
                   placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
@@ -806,7 +812,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                           <span>Item</span>
                           <span className="text-center">Unit</span>
                           <span className="text-right">Qty</span>
-                          {hasCost && <><span className="text-right">Cost</span><span className="text-right">Mkup</span><span className="text-right">Labour</span></>}
+                          {hasCost && <><span className="text-right">Cost</span><span className="text-right">Mkup</span><span className="text-right">+Labour</span></>}
                           <span className="text-right">Total</span>
                           {hasCost && <span className="text-right" style={{ color: S.green }}>Profit</span>}
                         </div>
@@ -974,7 +980,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       </div>
                       <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
                         style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px', color: S.muted }}>
-                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">Labour</span><span className="text-right">Total</span><span />
+                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">+Labour</span><span className="text-right">Total</span><span />
                       </div>
                       {editLineItems.map(li => {
                         const lineTotal = computeVOLineTotal(li.qty, li.cost, li.markup, li.labour)
