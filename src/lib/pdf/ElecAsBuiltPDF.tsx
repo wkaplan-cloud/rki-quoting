@@ -72,7 +72,7 @@ function fmtDate(iso: string | null | undefined) {
 }
 
 // Column widths — must sum consistently across header + rows
-const COL = { unit: 28, cQty: 38, cRate: 60, cVal: 68, abQty: 38, abRate: 60, abVal: 68 }
+const COL = { unit: 28, cQty: 38, cRate: 56, cVal: 64, labour: 52, abQty: 38, abRate: 56, abVal: 64 }
 
 interface Props {
   quote: ElecQuote
@@ -122,6 +122,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
     return (
       <>
         {list.map((item, i) => {
+          const labour = item.labour_rate ?? 0
           const cVal   = itemContractVal(item)
           const abQty  = item.as_built_quantity  ?? item.quoted_quantity
           const abRate = item.as_built_unit_rate ?? item.quoted_unit_rate
@@ -132,10 +133,13 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
               <View style={{ flex: 1, paddingRight: 4, paddingLeft: indent ? 10 : 0 }}>
                 <Text style={s.td}>{item.description || '—'}</Text>
               </View>
-              <Text style={[s.td, s.tdMuted, { width: COL.unit,  textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
-              <Text style={[s.td, s.tdMuted, { width: COL.cQty,  textAlign: 'right'  }]}>{item.quoted_quantity}</Text>
-              <Text style={[s.td, s.tdMuted, { width: COL.cRate, textAlign: 'right'  }]}>{fmtR(item.quoted_unit_rate)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: COL.cVal,  textAlign: 'right'  }]}>{fmtR(cVal)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: COL.unit,   textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
+              <Text style={[s.td, s.tdMuted, { width: COL.cQty,   textAlign: 'right'  }]}>{item.quoted_quantity}</Text>
+              <Text style={[s.td, s.tdMuted, { width: COL.cRate,  textAlign: 'right'  }]}>{fmtR(item.quoted_unit_rate)}</Text>
+              <Text style={[s.td, s.tdMuted, { width: COL.cVal,   textAlign: 'right'  }]}>{fmtR(item.quoted_quantity * item.quoted_unit_rate)}</Text>
+              <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labour > 0 ? GREEN : MUTED }]}>
+                {labour > 0 ? fmtR(labour) : '—'}
+              </Text>
               <Text style={[s.td, { width: COL.abQty,  textAlign: 'right', color: ACCENT }]}>{abQty}</Text>
               <Text style={[s.td, { width: COL.abRate, textAlign: 'right', color: ACCENT }]}>{fmtR(abRate)}</Text>
               <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold',
@@ -150,17 +154,18 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
   }
 
   // Section subtotal row
-  function SecSubtotal({ contractVal, abVal }: { contractVal: number; abVal: number }) {
+  function SecSubtotal({ contractVal, labourVal, abVal }: { contractVal: number; labourVal: number; abVal: number }) {
     return (
       <View style={s.subtotalRow} wrap={false}>
         <Text style={[s.td, { flex: 1, color: MUTED, fontSize: 7 }]}>Section total</Text>
         <Text style={[s.td, s.tdMuted, { width: COL.unit }]} />
         <Text style={[s.td, s.tdMuted, { width: COL.cQty }]} />
         <Text style={[s.td, s.tdMuted, { width: COL.cRate }]} />
-        <Text style={[s.td, { width: COL.cVal, textAlign: 'right', color: MUTED, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(contractVal)}</Text>
+        <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', color: MUTED,  fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(contractVal)}</Text>
+        <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labourVal > 0 ? GREEN : MUTED, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{labourVal > 0 ? fmtR(labourVal) : '—'}</Text>
         <Text style={[s.td, { width: COL.abQty }]} />
         <Text style={[s.td, { width: COL.abRate }]} />
-        <Text style={[s.td, { width: COL.abVal, textAlign: 'right', color: ACCENT, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(abVal)}</Text>
+        <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', color: ACCENT, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(abVal)}</Text>
       </View>
     )
   }
@@ -244,13 +249,14 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {/* ── Table Header ── */}
         <View style={s.tableHead}>
           <Text style={[s.th, { flex: 1 }]}>Description</Text>
-          <Text style={[s.th, { width: COL.unit,  textAlign: 'center' }]}>Unit</Text>
-          <Text style={[s.th, { width: COL.cQty,  textAlign: 'right'  }]}>C Qty</Text>
-          <Text style={[s.th, { width: COL.cRate, textAlign: 'right'  }]}>C Rate</Text>
-          <Text style={[s.th, { width: COL.cVal,  textAlign: 'right'  }]}>C Value</Text>
-          <Text style={[s.th, { width: COL.abQty, textAlign: 'right'  }]}>AB Qty</Text>
-          <Text style={[s.th, { width: COL.abRate,textAlign: 'right'  }]}>AB Rate</Text>
-          <Text style={[s.th, { width: COL.abVal, textAlign: 'right'  }]}>AB Value</Text>
+          <Text style={[s.th, { width: COL.unit,   textAlign: 'center' }]}>Unit</Text>
+          <Text style={[s.th, { width: COL.cQty,   textAlign: 'right'  }]}>C Qty</Text>
+          <Text style={[s.th, { width: COL.cRate,  textAlign: 'right'  }]}>C Rate</Text>
+          <Text style={[s.th, { width: COL.cVal,   textAlign: 'right'  }]}>C Value</Text>
+          <Text style={[s.th, { width: COL.labour, textAlign: 'right'  }]}>+ Labour</Text>
+          <Text style={[s.th, { width: COL.abQty,  textAlign: 'right'  }]}>AB Qty</Text>
+          <Text style={[s.th, { width: COL.abRate, textAlign: 'right'  }]}>AB Rate</Text>
+          <Text style={[s.th, { width: COL.abVal,  textAlign: 'right'  }]}>AB Value</Text>
         </View>
 
         {/* ── Quote Items ── */}
@@ -258,7 +264,8 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {sections.map(sec => {
           const secItems = quoteItems.filter(i => i.section_id === sec.id)
           if (secItems.length === 0) return null
-          const secContract = secItems.reduce((s, i) => s + itemContractVal(i), 0)
+          const secContract = secItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+          const secLabour   = secItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
           const secAB       = secItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
           return (
             <View key={sec.id}>
@@ -266,21 +273,26 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
                 <Text style={[s.secLabel, { flex: 1 }]}>{sec.title || 'Untitled Section'}</Text>
               </View>
               <ItemRows list={secItems} indent />
-              <SecSubtotal contractVal={secContract} abVal={secAB} />
+              <SecSubtotal contractVal={secContract} labourVal={secLabour} abVal={secAB} />
             </View>
           )
         })}
 
         {/* Quote items subtotal */}
-        {quoteItems.length > 0 && (
-          <View style={[s.subtotalRow, { backgroundColor: '#DBEAFE' }]} wrap={false}>
-            <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: ACCENT }]}>Quote Items Total</Text>
-            <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
-            <Text style={[s.td, { width: COL.cVal, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED }]}>{fmtR(originalContract)}</Text>
-            <Text style={{ width: COL.abQty + COL.abRate }} />
-            <Text style={[s.td, { width: COL.abVal, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: ACCENT }]}>{fmtR(quoteAsBuilt)}</Text>
-          </View>
-        )}
+        {quoteItems.length > 0 && (() => {
+          const qMatTotal    = quoteItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+          const qLabourTotal = quoteItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
+          return (
+            <View style={[s.subtotalRow, { backgroundColor: '#DBEAFE' }]} wrap={false}>
+              <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: ACCENT }]}>Quote Items Total</Text>
+              <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
+              <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED  }]}>{fmtR(qMatTotal)}</Text>
+              <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: qLabourTotal > 0 ? GREEN : MUTED }]}>{qLabourTotal > 0 ? fmtR(qLabourTotal) : '—'}</Text>
+              <Text style={{ width: COL.abQty + COL.abRate }} />
+              <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: ACCENT }]}>{fmtR(quoteAsBuilt)}</Text>
+            </View>
+          )
+        })()}
 
         {/* ── Variation Orders ── */}
         {voItems.length > 0 && (
@@ -292,21 +304,29 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
             <View style={[s.subtotalRow, { backgroundColor: '#FEFCE8' }]} wrap={false}>
               <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: GOLD }]}>Variation Orders Total</Text>
               <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
-              <Text style={[s.td, { width: COL.cVal, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED }]}>{fmtR(approvedVOValue)}</Text>
+              <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: MUTED }]}>{fmtR(voItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0))}</Text>
+              <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: GREEN }]}>{fmtR(voItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0))}</Text>
               <Text style={{ width: COL.abQty + COL.abRate }} />
-              <Text style={[s.td, { width: COL.abVal, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: GOLD }]}>{fmtR(voAsBuilt)}</Text>
+              <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: GOLD }]}>{fmtR(voAsBuilt)}</Text>
             </View>
           </View>
         )}
 
         {/* ── Grand Total Row ── */}
-        <View style={s.grandTotal} wrap={false}>
-          <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: '#FFFFFF' }]}>GRAND TOTAL (EX VAT)</Text>
-          <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
-          <Text style={[s.td, { width: COL.cVal, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: 'rgba(255,255,255,0.6)' }]}>{fmtR(revisedContract)}</Text>
-          <Text style={{ width: COL.abQty + COL.abRate }} />
-          <Text style={[s.td, { width: COL.abVal, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#7EC8F4' }]}>{fmtR(totalAsBuilt)}</Text>
-        </View>
+        {(() => {
+          const totalMat    = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+          const totalLabour = items.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
+          return (
+            <View style={s.grandTotal} wrap={false}>
+              <Text style={[s.td, { flex: 1, fontFamily: 'Helvetica-Bold', color: '#FFFFFF' }]}>GRAND TOTAL (EX VAT)</Text>
+              <Text style={{ width: COL.unit + COL.cQty + COL.cRate }} />
+              <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', fontFamily: 'Helvetica-Bold', color: 'rgba(255,255,255,0.55)' }]}>{fmtR(totalMat)}</Text>
+              <Text style={[s.td, { width: COL.labour, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#4ADE80' }]}>{fmtR(totalLabour)}</Text>
+              <Text style={{ width: COL.abQty + COL.abRate }} />
+              <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#7EC8F4' }]}>{fmtR(totalAsBuilt)}</Text>
+            </View>
+          )
+        })()}
 
         {/* ── VAT & Total summary ── */}
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 6, marginBottom: 4 }} wrap={false}>
