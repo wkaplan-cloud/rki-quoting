@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings, ElecMaterialRequest } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
 const DARK   = '#18181B'
@@ -58,11 +58,16 @@ interface Props {
   settings: ElecSettings | null
   sections: ElecQuoteSection[]
   items: ElecQuoteLineItem[]
+  materials: ElecMaterialRequest[]
   companyName: string
   logoUrl?: string | null
 }
 
-export function ElecAsBuiltPDF({ quote, client, settings, sections, items, companyName, logoUrl }: Props) {
+export function ElecAsBuiltPDF({ quote, client, settings, sections, items, materials, companyName, logoUrl }: Props) {
+  const quoteItems    = items.filter(i => !i.is_variation)
+  const voItems       = items.filter(i => i.is_variation)
+  const freeItems     = quoteItems.filter(i => i.section_id === null)
+
   const contractTotal = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
   const asBuiltTotal  = items.reduce((s, i) => {
     const qty  = i.as_built_quantity  ?? i.quoted_quantity
@@ -77,7 +82,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, compa
     settings?.company_registration_number ? `Reg: ${settings.company_registration_number}` : null,
   ].filter(Boolean).join('  ·  ')
 
-  const freeItems = items.filter(i => i.section_id === null)
+  const MAT_STATUS_COLOR: Record<string, string> = { pending: GOLD, ordered: ACCENT, received: GREEN }
 
   function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
     return (
@@ -179,10 +184,10 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, compa
           <Text style={[s.th, { width: 68, textAlign: 'right' }]}>AB Value</Text>
         </View>
 
+        {/* ── Quote Items ── */}
         <ItemRows list={freeItems} />
-
         {sections.map(sec => {
-          const secItems = items.filter(i => i.section_id === sec.id)
+          const secItems = quoteItems.filter(i => i.section_id === sec.id)
           if (secItems.length === 0) return null
           const secAB = secItems.reduce((sum, i) => {
             const qty  = i.as_built_quantity  ?? i.quoted_quantity
@@ -199,6 +204,52 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, compa
             </View>
           )
         })}
+
+        {/* ── Variation Orders ── */}
+        {voItems.length > 0 && (
+          <View>
+            <View style={[s.secRow, { backgroundColor: '#FEF9EC' }]} wrap={false}>
+              <Text style={[s.secLabel, { flex: 1, color: GOLD }]}>VARIATION ORDERS</Text>
+              <Text style={[s.secLabel, { width: 68, textAlign: 'right', color: GOLD }]}>
+                {fmtR(voItems.reduce((sum, i) => {
+                  const qty  = i.as_built_quantity  ?? i.quoted_quantity
+                  const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
+                  return sum + qty * rate
+                }, 0))}
+              </Text>
+            </View>
+            <ItemRows list={voItems} indent />
+          </View>
+        )}
+
+        {/* ── Materials ── */}
+        {materials.length > 0 && (
+          <View>
+            <View style={[s.secRow, { backgroundColor: '#F0FDF4' }]} wrap={false}>
+              <Text style={[s.secLabel, { flex: 1, color: GREEN }]}>MATERIALS</Text>
+            </View>
+            {/* Materials header */}
+            <View style={[s.row, { backgroundColor: SURF }]} wrap={false}>
+              <Text style={[s.td, s.tdMuted, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>Description</Text>
+              <Text style={[s.td, s.tdMuted, { width: 40, textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>Unit</Text>
+              <Text style={[s.td, s.tdMuted, { width: 40, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>Qty</Text>
+              <Text style={[s.td, s.tdMuted, { width: 70, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>Status</Text>
+            </View>
+            {materials.map((m, i) => (
+              <View key={m.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
+                <View style={{ flex: 1, paddingRight: 4 }}>
+                  <Text style={s.td}>{m.description}</Text>
+                  {m.notes ? <Text style={[s.td, s.tdMuted, { fontSize: 7 }]}>{m.notes}</Text> : null}
+                </View>
+                <Text style={[s.td, s.tdMuted, { width: 40, textAlign: 'center' }]}>{m.unit ?? 'nr'}</Text>
+                <Text style={[s.td, s.tdMuted, { width: 40, textAlign: 'right' }]}>{m.qty}</Text>
+                <Text style={[s.td, { width: 70, textAlign: 'right', color: MAT_STATUS_COLOR[m.status] ?? MUTED }]}>
+                  {m.status.charAt(0).toUpperCase() + m.status.slice(1)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Footer */}
         <View style={s.footer} fixed>

@@ -8,7 +8,7 @@ import { ElecAsBuiltPDF } from '@/lib/pdf/ElecAsBuiltPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import { resolvePortalAccount } from '@/lib/portal-account'
-import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
+import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings, ElecMaterialRequest } from '@/lib/elec-types'
 
 export const maxDuration = 60
 
@@ -31,11 +31,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    const [{ data: quoteRaw }, { data: sections }, { data: items }, { data: settings }] = await Promise.all([
+    const [{ data: quoteRaw }, { data: sections }, { data: items }, { data: settings }, { data: materials }] = await Promise.all([
       supabaseAdmin.from('elec_quotes').select('*, client:elec_clients(*)').eq('id', quoteId).eq('portal_account_id', account.id).single(),
       supabaseAdmin.from('elec_quote_sections').select('*').eq('quote_id', quoteId).order('sort_order'),
       supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', quoteId).order('sort_order'),
       supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle(),
+      supabaseAdmin.from('elec_material_requests').select('*').eq('quote_id', quoteId).neq('status', 'cancelled').order('created_at'),
     ])
     if (!quoteRaw) return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
 
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       client: (client ?? null) as ElecClient | null,
       sections: (sections ?? []) as ElecQuoteSection[],
       items: (items ?? []) as ElecQuoteLineItem[],
+      materials: (materials ?? []) as ElecMaterialRequest[],
       settings: (settings ?? null) as ElecSettings | null,
       companyName,
       logoUrl,
