@@ -520,13 +520,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     return h > 0 ? `${h}h ${m}m` : `${m}m`
   }
   const staffSummary = (() => {
-    const byStaff: Record<string, { name: string; color: string; sessions: { in: Date; out: Date | null }[] }> = {}
+    const byStaff: Record<string, { name: string; color: string; sessions: { in: Date; out: Date | null }[]; lastPunchType: string }> = {}
     const openSessions: Record<string, Date> = {}
-    for (const p of jobPunches) {
+    for (const p of jobPunches) { // sorted by punched_at ASC from API
       const staffObj = !Array.isArray(p.staff) ? p.staff : null
       const name = staffObj?.name ?? 'Unknown'
       const color = staffObj?.color ?? S.accent
-      if (!byStaff[p.staff_id]) byStaff[p.staff_id] = { name, color, sessions: [] }
+      if (!byStaff[p.staff_id]) byStaff[p.staff_id] = { name, color, sessions: [], lastPunchType: '' }
+      byStaff[p.staff_id].lastPunchType = p.punch_type // track last punch — ground truth for on-site status
       if (p.punch_type === 'clock_in') {
         openSessions[p.staff_id] = new Date(p.punched_at)
       } else if (p.punch_type === 'clock_out' && openSessions[p.staff_id]) {
@@ -537,7 +538,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     for (const [staffId, inTime] of Object.entries(openSessions)) {
       byStaff[staffId]?.sessions.push({ in: inTime, out: null })
     }
-    return Object.values(byStaff)
+    return Object.values(byStaff).map(s => ({ ...s, onSite: s.lastPunchType === 'clock_in' }))
   })()
 
   // Finish job checklist
@@ -703,9 +704,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             )}
             {staffSummary.length > 0 && (
               <div className="flex flex-col items-end gap-1">
-                {staffSummary.map(({ name, color, sessions }) => {
+                {staffSummary.map(({ name, color, sessions, onSite }) => {
                   const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
-                  const onSite = sessions.some(s => !s.out)
                   return (
                     <div key={name} className="flex items-center gap-1.5">
                       {onSite && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />}
@@ -1237,7 +1237,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Staff Time on Job</p>
                 <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Clocked in/out via the job card on mobile</p>
               </div>
-              {staffSummary.map(({ name, color, sessions }) => {
+              {staffSummary.map(({ name, color, sessions, onSite }) => {
                 const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
                 return (
                   <div key={name} className="px-5 py-3 flex items-center justify-between gap-4"
@@ -1251,7 +1251,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         <p className="text-sm font-medium" style={{ color: S.text }}>{name}</p>
                         <p className="text-[10px]" style={{ color: S.muted }}>
                           {sessions.length} session{sessions.length !== 1 ? 's' : ''}
-                          {sessions.some(s => !s.out) ? ' · currently on site' : ''}
+                          {onSite ? ' · currently on site' : ''}
                         </p>
                       </div>
                     </div>
