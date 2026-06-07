@@ -59,7 +59,7 @@ export default async function QuotingDashboardPage() {
     const [{ data: staffData }, { data: todayPunchData }, { data: weekPunchData }] = await Promise.all([
       supabaseAdmin.from('elec_staff').select('id, name, color, role').eq('portal_account_id', account.id).eq('is_active', true).order('name'),
       supabaseAdmin.from('elec_time_punches').select('id, staff_id, punch_type, punched_at, latitude, longitude').eq('portal_account_id', account.id).gte('punched_at', todayStart.toISOString()).order('punched_at', { ascending: false }),
-      supabaseAdmin.from('elec_time_punches').select('id, staff_id, punch_type, punched_at').eq('portal_account_id', account.id).gte('punched_at', weekStart.toISOString()).order('punched_at'),
+      supabaseAdmin.from('elec_time_punches').select('id, staff_id, punch_type, punched_at, latitude, longitude, job_id, job:elec_job_cards(job_number, title)').eq('portal_account_id', account.id).gte('punched_at', weekStart.toISOString()).order('punched_at'),
     ])
 
     return (
