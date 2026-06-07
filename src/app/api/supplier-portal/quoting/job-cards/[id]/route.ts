@@ -72,6 +72,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .single()
     if (error) throw error
 
+    // Auto clock-out any staff still on-site when job is completed
+    if (body.status === 'completed') {
+      const { data: punches } = await supabaseAdmin
+        .from('elec_time_punches')
+        .select('staff_id, punch_type')
+        .eq('portal_account_id', accountId)
+        .eq('job_id', id)
+        .order('punched_at', { ascending: true })
+
+      if (punches && punches.length > 0) {
+        // Find the last punch per staff — if it's clock_in, they're still on site
+        const lastPunch: Record<string, string> = {}
+        for (const p of punches) lastPunch[p.staff_id] = p.punch_type
+
+        const stillOnSite = Object.entries(lastPunch)
+          .filter(([, type]) => type === 'clock_in')
+          .map(([staffId]) => staffId)
+
+        if (stillOnSite.length > 0) {
+          const now = new Date().toISOString()
+          await supabaseAdmin.from('elec_time_punches').insert(
+            stillOnSite.map(sid => ({
+              portal_account_id: accountId,
+              staff_id: sid,
+              job_id: id,
+              punch_type: 'clock_out',
+              punched_at: now,
+              notes: 'Auto clocked-out — job completed',
+            }))
+          )
+        }
+      }
+    }
+
     // Notify admin when staff updates status
     if (staffId && body.status) {
       const isComplete = body.status === 'completed'
