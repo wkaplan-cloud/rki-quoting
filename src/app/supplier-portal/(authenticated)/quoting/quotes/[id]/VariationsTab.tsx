@@ -661,11 +661,18 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
             })}
 
             {formVOValue > 0 && (
-              <div className="flex justify-end gap-4 px-3 py-2.5 text-xs mt-1 rounded-lg"
-                style={{ borderTop: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
-                <span style={{ color: S.muted }}>ex VAT <strong style={{ color: S.text }}>{fmtR(formVOValue)}</strong></span>
-                <span style={{ color: S.muted }}>VAT ({vatRate}%) <strong style={{ color: S.text }}>{fmtR(formVOValue * vatRate / 100)}</strong></span>
-                <span className="text-sm font-bold" style={{ color: S.accent }}>Total {fmtR(formVOValue * (1 + vatRate / 100))}</span>
+              <div className="flex justify-end mt-3 pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
+                <div className="space-y-1 text-right min-w-[180px]">
+                  <div className="flex justify-between gap-8 text-xs" style={{ color: S.muted }}>
+                    <span>Subtotal (ex VAT)</span><span>{fmtR(formVOValue)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 text-xs" style={{ color: S.muted }}>
+                    <span>VAT ({vatRate}%)</span><span>{fmtR(formVOValue * vatRate / 100)}</span>
+                  </div>
+                  <div className="flex justify-between gap-8 text-sm font-bold pt-1" style={{ borderTop: `1px solid ${S.border}`, color: S.accent }}>
+                    <span>Total incl. VAT</span><span>{fmtR(formVOValue * (1 + vatRate / 100))}</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
