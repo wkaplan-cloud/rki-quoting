@@ -693,7 +693,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                     <div style={{ minWidth: 700 }}>
                       {/* Column headers */}
                       <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
-                        style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 84px 84px 20px', gap: '4px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                        style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 84px 20px', gap: '4px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
                         <span>Description</span>
                         <span className="text-right">Unit</span>
                         <span className="text-right">Qty</span>
@@ -712,7 +712,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                         const fmtR = (v: number) => `R ${v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                         return (
                           <div key={li._id} className="grid px-3 py-2 items-center"
-                            style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 84px 84px 20px', gap: '4px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                            style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 84px 20px', gap: '4px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                             <input value={li.description}
                               onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, description: e.target.value } : it))}
                               placeholder="Description"
