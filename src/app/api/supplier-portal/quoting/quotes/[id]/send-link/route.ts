@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .eq('quote_id', quoteId)
 
     const subtotal = (items ?? []).reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-    const vatAmt = subtotal * (quoteRaw.vat_rate / 100)
+    const vatAmt = subtotal * ((quoteRaw.vat_rate ?? 0) / 100)
     const total = subtotal + vatAmt
 
     const client = Array.isArray(quoteRaw.client) ? quoteRaw.client[0] : quoteRaw.client

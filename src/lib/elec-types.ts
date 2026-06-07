@@ -111,7 +111,7 @@ export interface ElecQuote {
   project_type: ElecProjectType | null
   contract_type: ElecContractType
   status: ElecQuoteStatus
-  vat_rate: number
+  vat_rate: number | null
   retention_percentage: number
   payment_terms_days: number
   liquidated_damages_per_day: number | null
