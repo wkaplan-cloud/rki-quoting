@@ -81,7 +81,7 @@ function fmtTime(iso: string | null) {
 }
 function fmtCurrency(n: number | null) {
   if (n == null) return '—'
-  return `R ${n.toFixed(2)}`
+  return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 interface Props {
