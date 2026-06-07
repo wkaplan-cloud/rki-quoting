@@ -513,6 +513,33 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const totalCharge = (card.callout_fee ?? 0) + labourCharge + totalMaterials
   const canFinish = card.status !== 'completed' && card.status !== 'cancelled'
 
+  // Staff time summary (shared by header compact strip + Job Sheet full table)
+  function fmtDur(ms: number) {
+    const h = Math.floor(ms / 3600000)
+    const m = Math.floor((ms % 3600000) / 60000)
+    return h > 0 ? `${h}h ${m}m` : `${m}m`
+  }
+  const staffSummary = (() => {
+    const byStaff: Record<string, { name: string; color: string; sessions: { in: Date; out: Date | null }[] }> = {}
+    const openSessions: Record<string, Date> = {}
+    for (const p of jobPunches) {
+      const staffObj = !Array.isArray(p.staff) ? p.staff : null
+      const name = staffObj?.name ?? 'Unknown'
+      const color = staffObj?.color ?? S.accent
+      if (!byStaff[p.staff_id]) byStaff[p.staff_id] = { name, color, sessions: [] }
+      if (p.punch_type === 'clock_in') {
+        openSessions[p.staff_id] = new Date(p.punched_at)
+      } else if (p.punch_type === 'clock_out' && openSessions[p.staff_id]) {
+        byStaff[p.staff_id].sessions.push({ in: openSessions[p.staff_id], out: new Date(p.punched_at) })
+        delete openSessions[p.staff_id]
+      }
+    }
+    for (const [staffId, inTime] of Object.entries(openSessions)) {
+      byStaff[staffId]?.sessions.push({ in: inTime, out: null })
+    }
+    return Object.values(byStaff)
+  })()
+
   // Finish job checklist
   const checklist = [
     { label: 'Report filled in',    done: !!(card.work_found?.trim() || card.work_done?.trim()), tab: 'report'    as Tab },
@@ -689,6 +716,28 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </span>
           )}
         </div>
+
+        {/* Compact staff time strip */}
+        {staffSummary.length > 0 && (
+          <div className="mt-3 pt-3 flex items-center gap-3 flex-wrap" style={{ borderTop: `1px solid ${S.border}` }}>
+            <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Staff Time</span>
+            {staffSummary.map(({ name, color, sessions }) => {
+              const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
+              const onSite = sessions.some(s => !s.out)
+              return (
+                <div key={name} className="flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                    style={{ background: color }}>
+                    {name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-medium" style={{ color: S.text }}>{name}</span>
+                  <span className="text-xs font-mono font-semibold" style={{ color: S.accent }}>{fmtDur(totalMs)}</span>
+                  {onSite && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" title="Currently on site" />}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
@@ -1184,62 +1233,36 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           </div>
 
           {/* ── Staff time for this job ──────────────────────────────────── */}
-          {jobPunches.length > 0 && (() => {
-            // Pair clock_in / clock_out per staff member
-            const byStaff: Record<string, { name: string; color: string; sessions: { in: Date; out: Date | null }[] }> = {}
-            const openSessions: Record<string, Date> = {}
-            for (const p of jobPunches) {
-              const staffObj = !Array.isArray(p.staff) ? p.staff : null
-              const name = staffObj?.name ?? 'Unknown'
-              const color = staffObj?.color ?? S.accent
-              if (!byStaff[p.staff_id]) byStaff[p.staff_id] = { name, color, sessions: [] }
-              if (p.punch_type === 'clock_in') {
-                openSessions[p.staff_id] = new Date(p.punched_at)
-              } else if (p.punch_type === 'clock_out' && openSessions[p.staff_id]) {
-                byStaff[p.staff_id].sessions.push({ in: openSessions[p.staff_id], out: new Date(p.punched_at) })
-                delete openSessions[p.staff_id]
-              }
-            }
-            // Add still-open sessions
-            for (const [staffId, inTime] of Object.entries(openSessions)) {
-              byStaff[staffId]?.sessions.push({ in: inTime, out: null })
-            }
-            function fmtDur(ms: number) {
-              const h = Math.floor(ms / 3600000)
-              const m = Math.floor((ms % 3600000) / 60000)
-              return h > 0 ? `${h}h ${m}m` : `${m}m`
-            }
-            return (
-              <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
-                  <p className="text-sm font-semibold" style={{ color: S.text }}>Staff Time on Job</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Clocked in/out via the job card on mobile</p>
-                </div>
-                {Object.values(byStaff).map(({ name, color, sessions }) => {
-                  const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
-                  return (
-                    <div key={name} className="px-5 py-3 flex items-center justify-between gap-4"
-                      style={{ borderTop: `1px solid ${S.border}` }}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                          style={{ background: color }}>
-                          {name.slice(0, 1).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: S.text }}>{name}</p>
-                          <p className="text-[10px]" style={{ color: S.muted }}>
-                            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
-                            {sessions.some(s => !s.out) ? ' · currently on site' : ''}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-sm font-bold font-mono" style={{ color: S.accent }}>{fmtDur(totalMs)}</p>
-                    </div>
-                  )
-                })}
+          {staffSummary.length > 0 && (
+            <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(58,124,165,0.03)' }}>
+                <p className="text-sm font-semibold" style={{ color: S.text }}>Staff Time on Job</p>
+                <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Clocked in/out via the job card on mobile</p>
               </div>
-            )
-          })()}
+              {staffSummary.map(({ name, color, sessions }) => {
+                const totalMs = sessions.reduce((s, ses) => s + (ses.out ? ses.out.getTime() - ses.in.getTime() : Date.now() - ses.in.getTime()), 0)
+                return (
+                  <div key={name} className="px-5 py-3 flex items-center justify-between gap-4"
+                    style={{ borderTop: `1px solid ${S.border}` }}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
+                        style={{ background: color }}>
+                        {name.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: S.text }}>{name}</p>
+                        <p className="text-[10px]" style={{ color: S.muted }}>
+                          {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                          {sessions.some(s => !s.out) ? ' · currently on site' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold font-mono" style={{ color: S.accent }}>{fmtDur(totalMs)}</p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
