@@ -61,11 +61,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       items: (items ?? []) as ElecQuoteLineItem[],
       settings: (settings ?? null) as ElecSettings | null,
       companyName,
+      companyEmail: account.email,
       logoUrl,
     }) as any)
 
-    const subtotal = (items ?? []).reduce((s, i) => s + (i as ElecQuoteLineItem).quoted_quantity * (i as ElecQuoteLineItem).quoted_unit_rate, 0)
-    const total = subtotal * (1 + quoteRaw.vat_rate / 100)
+    const subtotal = (items ?? []).reduce((s, i) => {
+      const item = i as ElecQuoteLineItem
+      return s + (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) + (item.labour_rate ?? 0)
+    }, 0)
+    const vatRate = quoteRaw.vat_rate != null ? quoteRaw.vat_rate : (settings?.default_vat_rate ?? 0)
+    const total = subtotal * (1 + vatRate / 100)
     const subject = `Quote ${quoteRaw.quote_number} – ${quoteRaw.project_name}`
 
     // Sync client details back to the client record

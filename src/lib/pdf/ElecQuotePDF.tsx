@@ -66,13 +66,18 @@ export interface ElecQuotePDFProps {
   items: ElecQuoteLineItem[]
   settings: ElecSettings | null
   companyName: string
+  companyEmail?: string | null
   logoUrl?: string | null
 }
 
-export function ElecQuotePDF({ quote, client, sections, items, settings, companyName, logoUrl }: ElecQuotePDFProps) {
-  const freeItems    = items.filter(i => i.section_id === null)
-  const contractTotal = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
-  const vatRate       = quote.vat_rate ?? settings?.default_vat_rate ?? 15
+function lineTotal(i: ElecQuoteLineItem): number {
+  return (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0) + (i.labour_rate ?? 0)
+}
+
+export function ElecQuotePDF({ quote, client, sections, items, settings, companyName, companyEmail, logoUrl }: ElecQuotePDFProps) {
+  const freeItems     = items.filter(i => i.section_id === null)
+  const contractTotal = items.reduce((s, i) => s + lineTotal(i), 0)
+  const vatRate       = quote.vat_rate != null ? quote.vat_rate : (settings?.default_vat_rate ?? 0)
   const vatAmount     = contractTotal * (vatRate / 100)
   const grandTotal    = contractTotal + vatAmount
 
@@ -95,7 +100,7 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
             <Text style={[s.td, { width: 50, textAlign: 'right' }]}>{item.quoted_quantity}</Text>
             <Text style={[s.td, { width: 80, textAlign: 'right' }]}>{fmtR(item.quoted_unit_rate)}</Text>
             <Text style={[s.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
-              {fmtR(item.quoted_quantity * item.quoted_unit_rate)}
+              {fmtR(lineTotal(item))}
             </Text>
           </View>
         ))}
@@ -116,10 +121,9 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
         {/* Header */}
         <View style={s.header}>
           <View style={{ flex: 1, paddingRight: 16 }}>
-            {logoUrl
-              ? <Image src={logoUrl} style={{ width: 180, marginBottom: metaParts ? 4 : 0 }} />
-              : <Text style={s.company}>{companyName}</Text>
-            }
+            {logoUrl && <Image src={logoUrl} style={{ width: 160, marginBottom: 4 }} />}
+            <Text style={s.company}>{companyName}</Text>
+            {companyEmail && <Text style={s.companyMeta}>{companyEmail}</Text>}
             {metaParts ? <Text style={s.companyMeta}>{metaParts}</Text> : null}
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -176,7 +180,7 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
         {sections.map(sec => {
           const secItems = items.filter(i => i.section_id === sec.id)
           if (secItems.length === 0) return null
-          const secTotal = secItems.reduce((sum, i) => sum + i.quoted_quantity * i.quoted_unit_rate, 0)
+          const secTotal = secItems.reduce((sum, i) => sum + lineTotal(i), 0)
           return (
             <View key={sec.id}>
               <View style={s.secRow} wrap={false}>
