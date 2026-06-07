@@ -38,7 +38,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     supabaseAdmin.from('elec_staff').select('id,name,color,role').eq('portal_account_id', accountId!).eq('is_active', true).order('name'),
     supabaseAdmin.from('elec_clients').select('id,client_name,company,email,address,vat_number,qs_name,qs_email').eq('portal_account_id', accountId!).order('client_name'),
-    supabaseAdmin.from('elec_settings').select('sage_company_id').eq('portal_account_id', accountId!).maybeSingle(),
+    supabaseAdmin.from('elec_settings').select('sage_company_id, vat_rate').eq('portal_account_id', accountId!).maybeSingle(),
   ])
 
   const jobCard: ElecJobCard = { ...card, materials: materials ?? [], photos: photos ?? [] }
@@ -50,6 +50,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       clients={(clients ?? []) as ElecClient[]}
       portalAccountId={accountId!}
       companyName={own?.company_name ?? ''}
+      vatRate={settings?.vat_rate ?? 15}
       sageConnected={!!(settings?.sage_company_id)}
     />
   )

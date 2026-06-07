@@ -94,6 +94,7 @@ interface Props {
   clients: ElecClient[]
   portalAccountId: string
   companyName: string
+  vatRate?: number
   sageConnected?: boolean
 }
 
@@ -101,7 +102,7 @@ type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'photos' | 'signat
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, sageConnected = false }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -1266,12 +1267,25 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               </div>
             </div>
 
-            {/* Grand total */}
-            <div className="flex items-center justify-between px-5 py-3" style={{ background: S.bg }}>
-              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: S.text }}>Total Charge</p>
-              <p className="text-base font-bold font-mono" style={{ color: totalCharge > 0 ? S.accent : S.muted }}>
-                {fmtR(totalCharge)}
-              </p>
+            {/* Totals breakdown */}
+            <div style={{ borderTop: `1px solid ${S.border}` }}>
+              {/* Subtotal ex VAT */}
+              <div className="flex items-center justify-between px-5 py-2.5">
+                <p className="text-xs font-semibold" style={{ color: S.muted }}>Subtotal (ex VAT)</p>
+                <p className="text-sm font-semibold font-mono" style={{ color: S.text }}>{fmtR(totalCharge)}</p>
+              </div>
+              {/* VAT */}
+              <div className="flex items-center justify-between px-5 py-2.5" style={{ borderTop: `1px solid ${S.border}` }}>
+                <p className="text-xs font-semibold" style={{ color: S.muted }}>VAT ({vatRate}%)</p>
+                <p className="text-sm font-semibold font-mono" style={{ color: S.muted }}>{fmtR(totalCharge * vatRate / 100)}</p>
+              </div>
+              {/* Total incl. VAT */}
+              <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: S.text }}>Total (incl. VAT)</p>
+                <p className="text-base font-bold font-mono" style={{ color: totalCharge > 0 ? S.accent : S.muted }}>
+                  {fmtR(totalCharge * (1 + vatRate / 100))}
+                </p>
+              </div>
             </div>
           </div>
 
