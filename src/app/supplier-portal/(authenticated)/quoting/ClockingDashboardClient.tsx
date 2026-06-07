@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { MapPin, LogIn, LogOut, Users, Clock, CalendarDays, RefreshCw, Printer } from 'lucide-react'
+import { MapPin, LogIn, LogOut, Users, Clock, CalendarDays, RefreshCw } from 'lucide-react'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -38,8 +38,6 @@ interface Punch {
   punched_at: string
   latitude: number | null
   longitude: number | null
-  job_id?: string | null
-  job?: { job_number: string; title: string } | null
   staff?: StaffMember | null
 }
 
@@ -63,8 +61,11 @@ function computeHoursMs(punches: Punch[], staffId?: string): number {
       delete openSessions[p.staff_id]
     }
   }
+  // Add open sessions up to now
   const now = Date.now()
-  for (const t of Object.values(openSessions)) total += now - t
+  for (const t of Object.values(openSessions)) {
+    total += now - t
+  }
   return total
 }
 
@@ -91,127 +92,6 @@ function getLastLocation(punches: Punch[], staffId: string): { lat: number; lng:
   return { lat: p.latitude, lng: p.longitude! }
 }
 
-function buildSessions(punches: Punch[], staffId: string): { in: Punch; out: Punch | null }[] {
-  const sorted = [...punches.filter(p => p.staff_id === staffId)]
-    .sort((a, b) => new Date(a.punched_at).getTime() - new Date(b.punched_at).getTime())
-  const sessions: { in: Punch; out: Punch | null }[] = []
-  let openIn: Punch | null = null
-  for (const p of sorted) {
-    if (p.punch_type === 'clock_in') {
-      openIn = p
-    } else if (openIn) {
-      sessions.push({ in: openIn, out: p })
-      openIn = null
-    }
-  }
-  if (openIn) sessions.push({ in: openIn, out: null })
-  return sessions
-}
-
-function printWeeklyTimesheet(weekPunches: Punch[], staff: StaffMember[], companyName: string) {
-  const weekStart = new Date()
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7))
-  weekStart.setHours(0, 0, 0, 0)
-  const weekEnd = new Date()
-
-  const staffRows: string[] = []
-
-  for (const member of staff) {
-    const sessions = buildSessions(weekPunches, member.id)
-    if (sessions.length === 0) continue
-
-    const totalMs = sessions.reduce((s, ses) => {
-      const end = ses.out ? new Date(ses.out.punched_at).getTime() : Date.now()
-      return s + end - new Date(ses.in.punched_at).getTime()
-    }, 0)
-
-    const sessionRows = sessions.map(ses => {
-      const inTime  = new Date(ses.in.punched_at)
-      const outTime = ses.out ? new Date(ses.out.punched_at) : null
-      const durMs   = outTime ? outTime.getTime() - inTime.getTime() : Date.now() - inTime.getTime()
-      const job     = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
-      const inGps   = ses.in.latitude  ? `${ses.in.latitude.toFixed(5)}, ${ses.in.longitude?.toFixed(5)}` : '—'
-      const outGps  = ses.out?.latitude ? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}` : '—'
-      return `
-        <tr>
-          <td>${fmtDate(ses.in.punched_at)}</td>
-          <td>${inTime.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</td>
-          <td>${outTime ? outTime.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : '<span class="open">On site</span>'}</td>
-          <td><strong>${fmtHours(durMs)}</strong></td>
-          <td>${job ? `<strong>${job.job_number}</strong><br/><span class="sub">${job.title}</span>` : '—'}</td>
-          <td class="gps">${inGps}</td>
-          <td class="gps">${outGps}</td>
-        </tr>`
-    }).join('')
-
-    staffRows.push(`
-      <div class="staff-section">
-        <div class="staff-header">
-          <div class="avatar" style="background:${member.color}">${initials(member.name)}</div>
-          <div>
-            <div class="staff-name">${member.name}</div>
-            <div class="staff-meta">${member.role} &nbsp;·&nbsp; <strong>${fmtHours(totalMs)}</strong> this week &nbsp;·&nbsp; ${sessions.length} session${sessions.length !== 1 ? 's' : ''}</div>
-          </div>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th><th>Clock In</th><th>Clock Out</th><th>Duration</th><th>Job</th><th>GPS In</th><th>GPS Out</th>
-            </tr>
-          </thead>
-          <tbody>${sessionRows}</tbody>
-        </table>
-      </div>`)
-  }
-
-  const periodStr = `${weekStart.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long' })} – ${weekEnd.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}`
-  const totalWeekMs = computeHoursMs(weekPunches)
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-  <title>Weekly Timesheet · ${periodStr}</title>
-  <meta charset="utf-8"/>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#18181b;padding:32px;background:#fff}
-    .print-btn{position:fixed;top:20px;right:20px;background:#3a7ca5;color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
-    @media print{.print-btn{display:none}}
-    .doc-header{margin-bottom:28px;padding-bottom:16px;border-bottom:2px solid #1e2a38;display:flex;justify-content:space-between;align-items:flex-end}
-    .doc-title{font-size:20px;font-weight:700;color:#1e2a38}
-    .doc-period{font-size:12px;color:#71717a;margin-top:3px}
-    .doc-total{text-align:right;font-size:13px;font-weight:700;color:#3a7ca5}
-    .staff-section{margin-bottom:32px;page-break-inside:avoid}
-    .staff-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-    .avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0}
-    .staff-name{font-size:14px;font-weight:700;color:#18181b}
-    .staff-meta{font-size:11px;color:#71717a;margin-top:2px}
-    table{width:100%;border-collapse:collapse;font-size:11px}
-    th{background:#f0f2f5;padding:6px 9px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#71717a;border:1px solid #e4e4e7}
-    td{padding:6px 9px;border:1px solid #e4e4e7;vertical-align:top}
-    tr:nth-child(even) td{background:#fafafa}
-    .open{color:#16a34a;font-weight:600}
-    .gps{font-family:monospace;font-size:10px;color:#71717a}
-    .sub{color:#71717a;font-size:10px}
-  </style>
-</head>
-<body>
-  <button class="print-btn" onclick="window.print()">🖨 Print</button>
-  <div class="doc-header">
-    <div>
-      <div class="doc-title">${companyName} — Weekly Timesheet</div>
-      <div class="doc-period">${periodStr}</div>
-    </div>
-    <div class="doc-total">Total: ${totalWeekMs > 0 ? fmtHours(totalWeekMs) : '—'} across all staff</div>
-  </div>
-  ${staffRows.length > 0 ? staffRows.join('') : '<p style="color:#71717a;text-align:center;padding:40px">No time data for this week</p>'}
-</body>
-</html>`
-
-  const win = window.open('', '_blank')
-  if (win) { win.document.write(html); win.document.close() }
-}
-
 export function ClockingDashboardClient({ companyName, staff, todayPunches: initToday, weekPunches: initWeek }: Props) {
   const [todayPunches, setTodayPunches] = useState<Punch[]>(initToday)
   const [weekPunches]  = useState<Punch[]>(initWeek)
@@ -225,7 +105,10 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
 
   async function refresh() {
     setRefreshing(true)
-    await fetch('/api/supplier-portal/quoting/staff-live')
+    const res = await fetch('/api/supplier-portal/quoting/staff-live')
+    if (res.ok) {
+      // Re-fetch today punches via a lightweight API; for now just tick the clock
+    }
     setRefreshing(false)
   }
 
@@ -258,10 +141,10 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'On site now',     value: String(onSite.length),                                   sub: `of ${staff.length} staff`,  color: onSite.length > 0 ? S.green : S.muted },
-          { label: 'Off site',        value: String(offSite.length),                                  sub: 'not clocked in',             color: S.muted  },
-          { label: 'Hours today',     value: todayMs > 0 ? fmtHours(todayMs) : '—',                  sub: 'across all staff',           color: S.accent },
-          { label: 'Hours this week', value: weekMs  > 0 ? fmtHours(weekMs)  : '—',                  sub: 'Mon – today',                color: S.accent },
+          { label: 'On site now',    value: String(onSite.length),       sub: `of ${staff.length} staff`,         color: onSite.length > 0 ? S.green : S.muted },
+          { label: 'Off site',       value: String(offSite.length),      sub: 'not clocked in',                   color: S.muted              },
+          { label: 'Hours today',    value: todayMs > 0 ? fmtHours(todayMs) : '—',  sub: 'across all staff',   color: S.accent             },
+          { label: 'Hours this week',value: weekMs  > 0 ? fmtHours(weekMs)  : '—',  sub: 'Mon – today',        color: S.accent             },
         ].map(c => (
           <div key={c.label} className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <p className="text-2xl font-bold mb-0.5" style={{ color: c.color }}>{c.value}</p>
@@ -293,9 +176,9 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
           </div>
         ) : (
           onSite.map((s, i) => {
-            const clockedAt = getClockedInAt(todayPunches, s.id)
-            const elapsed   = clockedAt ? Date.now() - new Date(clockedAt).getTime() : 0
-            const loc       = getLastLocation(todayPunches, s.id)
+            const clockedAt  = getClockedInAt(todayPunches, s.id)
+            const elapsed    = clockedAt ? Date.now() - new Date(clockedAt).getTime() : 0
+            const loc        = getLastLocation(todayPunches, s.id)
             return (
               <div key={s.id} className="flex items-center gap-4 px-5 py-4"
                 style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
@@ -347,23 +230,13 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
       {/* Hours per staff this week */}
       {staff.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(30,42,56,0.03)' }}>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: S.text }}>Hours this week</p>
-              <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Monday to today, including live open sessions</p>
-            </div>
-            <button
-              onClick={() => printWeeklyTimesheet(weekPunches, staff, companyName)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.bg }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.color = S.accent }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.color = S.muted }}>
-              <Printer size={13} /> Print Timesheet
-            </button>
+          <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(30,42,56,0.03)' }}>
+            <p className="text-sm font-semibold" style={{ color: S.text }}>Hours this week</p>
+            <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>Monday to today, including live open sessions</p>
           </div>
           {staff.map((s, i) => {
-            const ms       = computeHoursMs(weekPunches, s.id)
-            const today    = computeHoursMs(todayPunches, s.id)
+            const ms    = computeHoursMs(weekPunches, s.id)
+            const today = computeHoursMs(todayPunches, s.id)
             const isOnSite = onSite.find(o => o.id === s.id)
             return (
               <div key={s.id} className="flex items-center gap-4 px-5 py-3"
@@ -411,14 +284,14 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
           </div>
           {[...todayPunches].sort((a, b) => new Date(b.punched_at).getTime() - new Date(a.punched_at).getTime()).slice(0, 20).map((p, i) => {
             const member = staff.find(s => s.id === p.staff_id)
-            const isIn   = p.punch_type === 'clock_in'
+            const isIn = p.punch_type === 'clock_in'
             return (
               <div key={p.id} className="flex items-center gap-3 px-5 py-3"
                 style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                 <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{ background: isIn ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.08)' }}>
                   {isIn
-                    ? <LogIn  size={13} style={{ color: S.green  }} />
+                    ? <LogIn size={13} style={{ color: S.green }} />
                     : <LogOut size={13} style={{ color: S.danger }} />}
                 </div>
                 <div className="flex-1 min-w-0">
