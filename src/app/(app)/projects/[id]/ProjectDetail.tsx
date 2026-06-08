@@ -117,6 +117,14 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     })
       .then(r => r.json())
       .then(data => {
+        if (data.deposit_amount_received != null) {
+          setDepositAmountReceived(data.deposit_amount_received)
+        }
+        if (data.deposit_received_auto) {
+          const now = new Date().toISOString()
+          setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
+          toast.success('Deposit detected in Sage — stage updated')
+        }
         if (data.status && data.status !== initial.sage_invoice_status) {
           setSageInvoiceStatus(data.status)
           if ((data.status ?? '').toUpperCase() === 'PAID') {
