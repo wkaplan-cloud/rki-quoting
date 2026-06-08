@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { apiError } from '@/lib/api-error'
 
 const MAX_BYTES = 5 * 1024 * 1024
@@ -14,12 +15,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: portalAccount } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
-
+  const portalAccount = await resolvePortalAccount(user.id)
   if (!portalAccount) return NextResponse.json({ error: 'Portal account not found' }, { status: 404 })
 
   const form = await req.formData()

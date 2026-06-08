@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { apiError } from '@/lib/api-error'
 
 export async function GET() {
@@ -9,10 +10,13 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const account = await resolvePortalAccount(user.id)
+    if (!account) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     const { data } = await supabaseAdmin
       .from('supplier_portal_accounts')
       .select('id, email, company_name, phone, address, categories, description, website, logo_url')
-      .eq('auth_user_id', user.id)
+      .eq('id', account.id)
       .maybeSingle()
 
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -27,6 +31,9 @@ export async function PATCH(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const account = await resolvePortalAccount(user.id)
+    if (!account) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const body = await req.json() as {
       company_name?: string
@@ -52,7 +59,7 @@ export async function PATCH(req: NextRequest) {
     const { data, error } = await supabaseAdmin
       .from('supplier_portal_accounts')
       .update(patch)
-      .eq('auth_user_id', user.id)
+      .eq('id', account.id)
       .select()
       .single()
 

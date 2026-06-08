@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { apiError } from '@/lib/api-error'
 
 async function getPortalAccountId(userId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin
-    .from('supplier_portal_accounts')
-    .select('id')
-    .eq('auth_user_id', userId)
-    .maybeSingle()
-  return data?.id ?? null
+  const account = await resolvePortalAccount(userId)
+  return account?.id ?? null
 }
 
 // GET /api/supplier-portal/price-list — list items

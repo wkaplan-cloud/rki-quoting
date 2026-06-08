@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 import { ElecClaimPDF } from '@/lib/pdf/ElecClaimPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
@@ -33,11 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id, company_name, email, logo_url')
-      .eq('auth_user_id', user.id)
-      .single()
+    const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
     const { data: claimRaw } = await supabaseAdmin

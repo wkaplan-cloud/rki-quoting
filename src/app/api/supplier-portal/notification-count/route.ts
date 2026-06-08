@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { resolvePortalAccount } from '@/lib/portal-account'
 
 export async function GET() {
   try {
@@ -8,11 +9,7 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ count: 0, portalAccountId: null })
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle()
+    const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ count: 0, portalAccountId: null })
 
     const { count } = await supabaseAdmin
