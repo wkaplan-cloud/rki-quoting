@@ -70,7 +70,7 @@ function newSection(quoteId: string, sortOrder: number): SectionState {
 
 function computeSellRate(item: ItemState): number {
   if (item.cost_unit_rate != null) {
-    return item.cost_unit_rate * (1 + (item.markup_percentage ?? 0) / 100)
+    return Math.round(item.cost_unit_rate * (1 + (item.markup_percentage ?? 0) / 100) * 100) / 100
   }
   return item.quoted_unit_rate ?? 0
 }
@@ -249,7 +249,7 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
   const [collapsed, setCollapsed] = useState(false)
   const subtotal = section.items.reduce((s, i) => s + itemTotal(i), 0)
   const sectionCostTotal = section.items.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
-  const hasCosting = section.items.some(i => i.cost_unit_rate != null)
+  const hasCosting = section.items.length > 0 && section.items.every(i => i.cost_unit_rate != null)
   const sectionMarginPct = hasCosting && subtotal > 0 ? ((subtotal - sectionCostTotal) / subtotal * 100) : null
   const colHdr = (label: string, w: number, align: 'left' | 'right' | 'center' = 'left') => (
     <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, width: w, textAlign: align, flexShrink: 0 }}>{label}</div>
@@ -693,7 +693,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const labourTotal = allItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
   const materialProfit = subtotal - labourTotal - itemCostTotal
   const grossProfit = materialProfit + labourTotal  // material profit + labour (all labour is profit — no labour cost tracked)
-  const hasCostData = allItems.some(i => i.cost_unit_rate != null) || approvedVOs.some(v => v.cost_value != null)
+  const hasCostData = (allItems.length > 0 && allItems.every(i => i.cost_unit_rate != null)) || approvedVOs.some(v => v.cost_value != null)
   const revisedTotal = contractTotal + approvedVOTotal
   const revisedGrossProfit = revisedTotal - costTotal
 
