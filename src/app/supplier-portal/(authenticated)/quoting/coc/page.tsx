@@ -18,11 +18,21 @@ export default async function COCPage() {
     redirect('/supplier-portal/upgrade')
   }
 
-  // Fetch all COCs with their linked quotes and job cards
+  // Get all quote IDs for this account (covers COCs created before the migration
+  // which don't have portal_account_id set directly on elec_coc)
+  const { data: accountQuotes } = await supabaseAdmin
+    .from('elec_quotes')
+    .select('id')
+    .eq('portal_account_id', account.id)
+
+  const quoteIds = (accountQuotes ?? []).map(q => q.id)
+
+  // Fetch COCs by: direct portal_account_id match (new job-card COCs after migration)
+  // OR by quote_id belonging to this account (all project COCs)
   const { data: cocs } = await supabaseAdmin
     .from('elec_coc')
     .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
-    .eq('portal_account_id', account.id)
+    .or(`portal_account_id.eq.${account.id}${quoteIds.length > 0 ? `,quote_id.in.(${quoteIds.join(',')})` : ''}`)
     .order('created_at', { ascending: false })
 
   return (
