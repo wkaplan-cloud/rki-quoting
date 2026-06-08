@@ -721,14 +721,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               <Check size={13} /> Mark Approved
             </button>
           )}
-          {q.status === 'approved' && (
-            <button onClick={() => void transition('in_progress')}
-              disabled={transitioning}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
-              style={{ background: S.green, color: '#fff' }}>
-              <Check size={13} /> Start Project
-            </button>
-          )}
           {q.status === 'in_progress' && (
             <button disabled={transitioning}
               onClick={() => { if (confirm('Mark this project as completed?')) void transition('completed') }}

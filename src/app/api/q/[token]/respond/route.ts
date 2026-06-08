@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (body.action === 'approve') {
       await supabaseAdmin
         .from('elec_quotes')
-        .update({ status: 'approved', approved_date: new Date().toISOString().split('T')[0] })
+        .update({ status: 'in_progress', approved_date: new Date().toISOString().split('T')[0] })
         .eq('id', quote.id)
     }
 
