@@ -18,8 +18,9 @@ export default async function COCPage() {
     redirect('/supplier-portal/upgrade')
   }
 
-  // Get all quote IDs for this account (covers COCs created before the migration
-  // which don't have portal_account_id set directly on elec_coc)
+  // Two separate queries to avoid .or() + .in() Supabase reliability issues:
+  // 1. COCs linked to any of this account's quotes (covers all pre-migration project COCs)
+  // 2. COCs with portal_account_id set directly (new job-card COCs post-migration)
   const { data: accountQuotes } = await supabaseAdmin
     .from('elec_quotes')
     .select('id')
@@ -27,13 +28,29 @@ export default async function COCPage() {
 
   const quoteIds = (accountQuotes ?? []).map(q => q.id)
 
-  // Fetch COCs by: direct portal_account_id match (new job-card COCs after migration)
-  // OR by quote_id belonging to this account (all project COCs)
-  const { data: cocs } = await supabaseAdmin
-    .from('elec_coc')
-    .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
-    .or(`portal_account_id.eq.${account.id}${quoteIds.length > 0 ? `,quote_id.in.(${quoteIds.join(',')})` : ''}`)
-    .order('created_at', { ascending: false })
+  const [{ data: projectCOCs }, { data: directCOCs }] = await Promise.all([
+    quoteIds.length > 0
+      ? supabaseAdmin
+          .from('elec_coc')
+          .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
+          .in('quote_id', quoteIds)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    supabaseAdmin
+      .from('elec_coc')
+      .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
+      .eq('portal_account_id', account.id)
+      .is('quote_id', null)
+      .order('created_at', { ascending: false }),
+  ])
+
+  // Merge, deduplicate by id
+  const seen = new Set<string>()
+  const cocs = [...(projectCOCs ?? []), ...(directCOCs ?? [])].filter(c => {
+    if (seen.has(c.id)) return false
+    seen.add(c.id)
+    return true
+  }).sort((a, b) => b.created_at.localeCompare(a.created_at))
 
   return (
     <COCListClient
