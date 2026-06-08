@@ -5,12 +5,6 @@ import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 60
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT ?? 'mailto:info@quotinghub.co.za',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
-  process.env.VAPID_PRIVATE_KEY ?? '',
-)
-
 // Called by cron-job.org:
 //   ?type=clock_in   → sent at 5:00pm  → remind staff who haven't clocked in today
 //   ?type=clock_out  → sent at 7:30pm  → remind staff who are still clocked in
@@ -25,6 +19,14 @@ export async function GET(req: NextRequest) {
     if (type !== 'clock_in' && type !== 'clock_out') {
       return NextResponse.json({ error: 'type must be clock_in or clock_out' }, { status: 400 })
     }
+
+    const vapidPublic  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    const vapidPrivate = process.env.VAPID_PRIVATE_KEY
+    const vapidSubject = process.env.VAPID_SUBJECT ?? 'mailto:info@quotinghub.co.za'
+    if (!vapidPublic || !vapidPrivate) {
+      return NextResponse.json({ error: 'VAPID keys not configured' }, { status: 500 })
+    }
+    webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
 
     // Today's date in SAST (UTC+2) — use UTC string and offset
     const now  = new Date()
