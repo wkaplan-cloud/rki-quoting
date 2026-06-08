@@ -1,7 +1,6 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
-import Link from 'next/link'
-import { FileCheck, Download, Loader2, Search, CheckCircle2, Plus, ExternalLink, X, Pencil, Check, AlertCircle, Send, Printer } from 'lucide-react'
+import { FileCheck, Download, Loader2, Search, CheckCircle2, Plus, X, Check, AlertCircle, Send, Printer, FileX } from 'lucide-react'
 import type { ElecCOC } from '@/lib/elec-types'
 
 const S = {
@@ -10,11 +9,14 @@ const S = {
   danger: '#DC2626', green: '#16A34A',
 }
 
-type COCWithQuote = ElecCOC & {
-  quote: { id: string; quote_number: string; project_name: string; project_address: string | null } | null
-  job_card: { id: string; job_number: string; title: string; location: string | null } | null
+type CompletedProject = {
+  id: string; quote_number: string; project_name: string; project_address: string | null
+  client: { id: string; client_name: string; email: string | null } | null
 }
-
+type CompletedJobCard = {
+  id: string; job_number: string; title: string; location: string | null
+  client_name: string | null; client_email: string | null
+}
 type TestResult = 'pass' | 'fail' | 'n/a'
 
 function fmtDate(iso: string | null | undefined) {
@@ -24,16 +26,22 @@ function fmtDate(iso: string | null | undefined) {
 }
 
 interface Props {
-  initialCOCs: COCWithQuote[]
+  completedProjects: CompletedProject[]
+  completedJobCards: CompletedJobCard[]
+  cocByQuoteId: Record<string, ElecCOC>
+  cocByJobCardId: Record<string, ElecCOC>
+  cocPrefix: string
+  companyCode: string
 }
 
-// ── Edit Modal ────────────────────────────────────────────────────────────────
-function COCEditModal({ coc: initial, onClose, onSaved }: {
-  coc: COCWithQuote
+// ── Edit / Create Modal ───────────────────────────────────────────────────────
+function COCModal({ coc: initial, title, onClose, onSaved }: {
+  coc: ElecCOC
+  title: string
   onClose: () => void
-  onSaved: (updated: COCWithQuote) => void
+  onSaved: (updated: ElecCOC) => void
 }) {
-  const [coc, setCOC] = useState<COCWithQuote>(initial)
+  const [coc, setCOC] = useState<ElecCOC>(initial)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState('')
   const [downloading, setDownloading] = useState(false)
@@ -67,8 +75,7 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
     setSaveStatus('saving'); setSaveError('')
     try {
       const res = await fetch('/api/supplier-portal/quoting/coc/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(current),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
@@ -81,7 +88,7 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
       setSaveStatus('error')
       return false
     }
-  }, [onSaved]) // eslint-disable-line
+  }, [onSaved])
 
   async function handleDownload() {
     setDownloading(true)
@@ -111,8 +118,7 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
     await handleSave(true)
     try {
       const res = await fetch(`/api/supplier-portal/quoting/coc/${coc.id}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: sendEmail.trim(), message: sendMsg.trim() || undefined }),
       })
       const d = await res.json() as { ok?: boolean; error?: string }
@@ -150,38 +156,27 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
 
   function ResultToggle({ val, onChange }: { val: string | null; onChange: (v: TestResult) => void }) {
     const current = (val ?? 'pass') as TestResult
-    const opts: { v: TestResult; label: string; color: string; bg: string }[] = [
-      { v: 'pass', label: 'Pass', color: S.green,  bg: 'rgba(22,163,74,0.1)'  },
-      { v: 'fail', label: 'Fail', color: S.danger, bg: 'rgba(220,38,38,0.1)'  },
-      { v: 'n/a',  label: 'N/A',  color: S.muted,  bg: S.bg                   },
-    ]
     return (
       <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-        {opts.map(o => (
-          <button key={o.v} type="button" onClick={() => onChange(o.v)}
+        {([['pass', 'Pass', S.green, 'rgba(22,163,74,0.1)'], ['fail', 'Fail', S.danger, 'rgba(220,38,38,0.1)'], ['n/a', 'N/A', S.muted, S.bg]] as const).map(([v, label, color, bg]) => (
+          <button key={v} type="button" onClick={() => onChange(v as TestResult)}
             className="flex-1 py-1 text-xs font-semibold"
-            style={{ background: current === o.v ? o.bg : '#fff', color: current === o.v ? o.color : S.muted }}>
-            {o.label}
+            style={{ background: current === v ? bg : '#fff', color: current === v ? color : S.muted }}>
+            {label}
           </button>
         ))}
       </div>
     )
   }
 
-  function SectionHead({ letter, title }: { letter: string; title: string }) {
+  function SectionHead({ letter, title: t }: { letter: string; title: string }) {
     return (
       <div className="flex items-center gap-3 mb-4">
         <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: S.accent }}>{letter}</div>
-        <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: S.text }}>{title}</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: S.text }}>{t}</h3>
       </div>
     )
   }
-
-  const title = coc.quote
-    ? `${coc.quote.quote_number} — ${coc.quote.project_name}`
-    : coc.job_card
-    ? `${coc.job_card.job_number} — ${coc.job_card.title}`
-    : coc.coc_number
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
@@ -190,21 +185,19 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
       <div className="w-full max-w-2xl rounded-2xl overflow-hidden my-4"
         style={{ background: S.bg, border: `1px solid ${S.border}`, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
 
-        {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-4 sticky top-0 z-10"
           style={{ background: S.card, borderBottom: `1px solid ${S.border}` }}>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-mono" style={{ color: S.muted }}>{coc.coc_number}</p>
-            <p className="text-sm font-semibold truncate mt-0.5" style={{ color: S.text }}>{title}</p>
+            <p className="text-xs" style={{ color: S.muted }}>{title}</p>
+            <p className="text-sm font-bold mt-0.5" style={{ color: S.text }}>{coc.coc_number || 'COC'}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: S.muted }}>
+            <span className="text-xs flex items-center gap-1" style={{ color: S.muted }}>
               {saveStatus === 'saving' && <><Loader2 size={12} className="animate-spin" />Saving…</>}
               {saveStatus === 'saved'  && <><Check size={12} style={{ color: S.green }} /><span style={{ color: S.green }}>Saved</span></>}
               {saveStatus === 'error'  && <><AlertCircle size={12} style={{ color: S.danger }} /><span style={{ color: S.danger }}>{saveError}</span></>}
-            </div>
-            <button onClick={handlePrint}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium"
+            </span>
+            <button onClick={handlePrint} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium"
               style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}>
               <Printer size={12} /> Print
             </button>
@@ -219,18 +212,13 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
               {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               PDF
             </button>
-            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: S.muted }}
-              onMouseEnter={e => e.currentTarget.style.background = S.bg}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: S.muted }}>
               <X size={15} />
             </button>
           </div>
         </div>
 
-        {/* Form sections */}
         <div className="p-5 space-y-4">
-
-          {/* A — Installation Details */}
           <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <SectionHead letter="A" title="Installation Details" />
             <div className="grid grid-cols-2 gap-4">
@@ -242,9 +230,7 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
               <Sel label="Installation Type" val={coc.installation_type} cb={v => set({ installation_type: v })}
                 options={[{ v: 'residential', label: 'Residential' }, { v: 'commercial', label: 'Commercial' }, { v: 'industrial', label: 'Industrial' }, { v: 'agricultural', label: 'Agricultural' }]} />
               <Inp label="Owner / Occupier Name" val={coc.owner_name} cb={v => set({ owner_name: v || null })} />
-              <div className="col-span-2">
-                <Inp label="Installation Address" val={coc.installation_address} cb={v => set({ installation_address: v || null })} />
-              </div>
+              <div className="col-span-2"><Inp label="Installation Address" val={coc.installation_address} cb={v => set({ installation_address: v || null })} /></div>
               <div className="col-span-2">
                 <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Description of Installation</label>
                 <textarea value={coc.installation_description} onChange={e => { hasEditedRef.current = true; setCOC(p => ({ ...p, installation_description: e.target.value })) }}
@@ -256,13 +242,12 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* B — Supply Details */}
           <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <SectionHead letter="B" title="Supply Details" />
             <div className="grid grid-cols-3 gap-4">
               <Inp label="Supply Authority" val={coc.supply_authority} cb={v => set({ supply_authority: v || null })} placeholder="e.g. Eskom" />
               <Sel label="Nominal Voltage" val={coc.supply_voltage} cb={v => set({ supply_voltage: v })}
-                options={[{ v: '230/400V', label: '230/400V (Standard)' }, { v: '230V', label: '230V (Single Phase)' }, { v: '400V', label: '400V (Three Phase)' }, { v: 'Other', label: 'Other' }]} />
+                options={[{ v: '230/400V', label: '230/400V' }, { v: '230V', label: '230V Single' }, { v: '400V', label: '400V Three' }, { v: 'Other', label: 'Other' }]} />
               <Sel label="Supply Phases" val={coc.supply_phases} cb={v => set({ supply_phases: v })}
                 options={[{ v: 'single', label: 'Single Phase' }, { v: 'three', label: 'Three Phase' }]} />
               <Sel label="Earthing System" val={coc.supply_earthing} cb={v => set({ supply_earthing: v })}
@@ -271,30 +256,26 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* C — Test Results */}
           <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <SectionHead letter="C" title="Test Results" />
             <div className="grid grid-cols-2 gap-4">
-              {[
-                { key: 'earth_continuity',       label: 'Earth Continuity',               desc: 'All metalwork bonded' },
-                { key: 'insulation_resistance',  label: 'Insulation Resistance (500V DC)', desc: 'Min. 1 MΩ' },
-                { key: 'polarity',               label: 'Polarity Correct',               desc: 'Live & neutral correct' },
-                { key: 'earth_leakage',          label: 'Earth Leakage Protection',        desc: '30mA / 100mA RCD' },
-                { key: 'overcurrent_protection', label: 'Overcurrent Protection',          desc: 'Breakers correctly sized' },
-                { key: 'phase_rotation',         label: 'Phase Rotation (3-phase)',        desc: 'Correct rotation' },
-              ].map(({ key, label, desc }) => (
+              {([
+                ['earth_continuity', 'Earth Continuity', 'All metalwork bonded'],
+                ['insulation_resistance', 'Insulation Resistance (500V DC)', 'Min. 1 MΩ'],
+                ['polarity', 'Polarity Correct', 'Live & neutral correct'],
+                ['earth_leakage', 'Earth Leakage Protection', '30mA / 100mA RCD'],
+                ['overcurrent_protection', 'Overcurrent Protection', 'Breakers correctly sized'],
+                ['phase_rotation', 'Phase Rotation (3-phase)', 'Correct rotation'],
+              ] as const).map(([key, label, desc]) => (
                 <div key={key} className="rounded-xl p-3" style={{ border: `1px solid ${S.border}`, background: S.bg }}>
                   <p className="text-xs font-semibold mb-0.5" style={{ color: S.text }}>{label}</p>
                   <p className="text-[10px] mb-2" style={{ color: S.muted }}>{desc}</p>
-                  <ResultToggle
-                    val={(coc as unknown as Record<string, unknown>)[key] as string | null}
-                    onChange={v => set({ [key]: v } as Partial<ElecCOC>)} />
+                  <ResultToggle val={(coc as unknown as Record<string, unknown>)[key] as string | null} onChange={v => set({ [key]: v } as Partial<ElecCOC>)} />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* D — Tester */}
           <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <SectionHead letter="D" title="Tester / Inspector Details" />
             <div className="grid grid-cols-2 gap-4">
@@ -310,11 +291,9 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* Send modal */}
       {showSendModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) setShowSendModal(false) }}>
@@ -359,134 +338,214 @@ function COCEditModal({ coc: initial, onClose, onSaved }: {
   )
 }
 
-// ── List ──────────────────────────────────────────────────────────────────────
-export function COCListClient({ initialCOCs }: Props) {
-  const [cocs, setCocs] = useState(initialCOCs)
-  const [search, setSearch] = useState('')
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
-  const [editing, setEditing] = useState<COCWithQuote | null>(null)
+// ── Main list ─────────────────────────────────────────────────────────────────
+export function COCListClient({ completedProjects, completedJobCards, cocByQuoteId: initialCocByQuoteId, cocByJobCardId: initialCocByJobCardId, cocPrefix, companyCode }: Props) {
+  const [cocByQuoteId, setCocByQuoteId]       = useState(initialCocByQuoteId)
+  const [cocByJobCardId, setCocByJobCardId]   = useState(initialCocByJobCardId)
+  const [search, setSearch]                   = useState('')
+  const [editing, setEditing]                 = useState<{ coc: ElecCOC; title: string; onSaved: (c: ElecCOC) => void } | null>(null)
+  const [downloadingId, setDownloadingId]     = useState<string | null>(null)
 
-  const projectCOCs    = cocs.filter(c => c.quote !== null)
-  const jobCardCOCs    = cocs.filter(c => c.job_card !== null && c.quote === null)
-  const standaloneCOCs = cocs.filter(c => c.quote === null && c.job_card === null)
-
-  const filtered = (list: COCWithQuote[]) =>
-    list.filter(c =>
-      !search ||
-      c.coc_number.toLowerCase().includes(search.toLowerCase()) ||
-      (c.quote?.project_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.job_card?.title ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.installation_address ?? '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.owner_name ?? '').toLowerCase().includes(search.toLowerCase())
-    )
-
-  function handleSaved(updated: COCWithQuote) {
-    setCocs(prev => prev.map(c => c.id === updated.id ? { ...updated, quote: c.quote, job_card: c.job_card } : c))
+  const year = new Date().getFullYear()
+  function newCOC(quoteId: string | null, jobCardId: string | null, address: string | null, ownerName: string | null, clientEmail: string | null): ElecCOC {
+    return {
+      id: crypto.randomUUID(),
+      quote_id: quoteId,
+      job_card_id: jobCardId,
+      portal_account_id: null,
+      coc_number: companyCode ? `${companyCode}-${cocPrefix}-${year}-001` : `${cocPrefix}-${year}-001`,
+      installation_description: '',
+      issue_date: new Date().toISOString().split('T')[0],
+      tester_name: '',
+      tester_registration_number: null,
+      linked_doc_number: null,
+      notes: null,
+      installation_address: address,
+      owner_name: ownerName,
+      supply_authority: null,
+      supply_voltage: '230/400V',
+      supply_phases: 'three',
+      supply_earthing: 'TN-C-S',
+      main_breaker_amps: null,
+      work_type: 'new',
+      installation_type: 'residential',
+      earth_continuity: 'pass',
+      insulation_resistance: 'pass',
+      polarity: 'pass',
+      earth_leakage: 'pass',
+      overcurrent_protection: 'pass',
+      phase_rotation: 'pass',
+      sent_to_name: null,
+      sent_to_email: clientEmail,
+      sent_at: null,
+      share_token: null,
+      created_at: new Date().toISOString(),
+    }
   }
 
-  async function handleDownload(coc: COCWithQuote, e: React.MouseEvent) {
+  function openProject(p: CompletedProject) {
+    const existing = cocByQuoteId[p.id]
+    const client = !Array.isArray(p.client) ? p.client : null
+    const coc = existing ?? newCOC(p.id, null, p.project_address, client?.client_name ?? null, client?.email ?? null)
+    setEditing({
+      coc,
+      title: `${p.quote_number} — ${p.project_name}`,
+      onSaved: updated => setCocByQuoteId(prev => ({ ...prev, [p.id]: updated })),
+    })
+  }
+
+  function openJobCard(jc: CompletedJobCard) {
+    const existing = cocByJobCardId[jc.id]
+    const coc = existing ?? newCOC(null, jc.id, jc.location, jc.client_name, jc.client_email)
+    setEditing({
+      coc,
+      title: `${jc.job_number} — ${jc.title}`,
+      onSaved: updated => setCocByJobCardId(prev => ({ ...prev, [jc.id]: updated })),
+    })
+  }
+
+  async function handleDownload(cocId: string, e: React.MouseEvent) {
     e.stopPropagation()
-    setDownloadingId(coc.id)
-    const win = window.open(`/api/supplier-portal/quoting/coc/${coc.id}/pdf`, '_blank')
-    if (!win) window.location.href = `/api/supplier-portal/quoting/coc/${coc.id}/pdf`
+    setDownloadingId(cocId)
+    window.open(`/api/supplier-portal/quoting/coc/${cocId}/pdf`, '_blank')
     setDownloadingId(null)
   }
 
-  function COCRow({ coc }: { coc: COCWithQuote }) {
-    const testsPassed = [coc.earth_continuity, coc.insulation_resistance, coc.polarity, coc.earth_leakage, coc.overcurrent_protection, coc.phase_rotation].filter(r => r === 'pass').length
-    const hasFail     = [coc.earth_continuity, coc.insulation_resistance, coc.polarity, coc.earth_leakage, coc.overcurrent_protection, coc.phase_rotation].some(r => r === 'fail')
+  const matchProject = (p: CompletedProject) =>
+    !search ||
+    p.project_name.toLowerCase().includes(search.toLowerCase()) ||
+    p.quote_number.toLowerCase().includes(search.toLowerCase()) ||
+    (p.client && !Array.isArray(p.client) ? p.client.client_name.toLowerCase().includes(search.toLowerCase()) : false)
+
+  const matchJobCard = (jc: CompletedJobCard) =>
+    !search ||
+    jc.title.toLowerCase().includes(search.toLowerCase()) ||
+    jc.job_number.toLowerCase().includes(search.toLowerCase()) ||
+    (jc.client_name ?? '').toLowerCase().includes(search.toLowerCase())
+
+  const filteredProjects  = completedProjects.filter(matchProject)
+  const filteredJobCards  = completedJobCards.filter(matchJobCard)
+
+  function ProjectRow({ p }: { p: CompletedProject }) {
+    const coc = cocByQuoteId[p.id]
+    const client = !Array.isArray(p.client) ? p.client : null
+    const hasCOC = !!coc
+    const testsPassed = hasCOC ? [coc.earth_continuity, coc.insulation_resistance, coc.polarity, coc.earth_leakage, coc.overcurrent_protection, coc.phase_rotation].filter(r => r === 'pass').length : 0
+    const hasFail = hasCOC && [coc.earth_continuity, coc.insulation_resistance, coc.polarity, coc.earth_leakage, coc.overcurrent_protection, coc.phase_rotation].some(r => r === 'fail')
 
     return (
-      <button
-        onClick={() => setEditing(coc)}
-        className="w-full flex items-center gap-4 px-4 py-3 text-left transition-colors"
+      <button onClick={() => openProject(p)}
+        className="w-full flex items-center gap-4 px-4 py-3 text-left"
         style={{ borderTop: `1px solid ${S.border}` }}
         onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.03)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: hasFail ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)' }}>
-          <FileCheck size={16} style={{ color: hasFail ? S.danger : S.green }} />
+          style={{ background: hasCOC ? (hasFail ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)') : S.bg }}>
+          {hasCOC
+            ? <FileCheck size={16} style={{ color: hasFail ? S.danger : S.green }} />
+            : <FileX size={16} style={{ color: S.muted }} />}
         </div>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold font-mono" style={{ color: S.text }}>{coc.coc_number}</span>
-            {coc.sent_at && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
-                <CheckCircle2 size={9} className="inline mr-0.5" />Sent
-              </span>
-            )}
-            {coc.linked_doc_number && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                style={{ background: S.bg, color: S.muted, border: `1px solid ${S.border}` }}>
-                Doc: {coc.linked_doc_number}
+            <span className="text-sm font-semibold truncate" style={{ color: S.text }}>{p.project_name}</span>
+            <span className="text-[10px] font-mono" style={{ color: S.muted }}>{p.quote_number}</span>
+            {hasCOC && coc.sent_at && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
+                <CheckCircle2 size={8} className="inline mr-0.5" />Sent
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap" style={{ color: S.muted }}>
-            {coc.installation_address && <span>{coc.installation_address}</span>}
-            {coc.owner_name && <span>· {coc.owner_name}</span>}
-            <span>· {fmtDate(coc.issue_date)}</span>
+          <div className="flex items-center gap-3 text-xs mt-0.5" style={{ color: S.muted }}>
+            {client && <span>{client.client_name}</span>}
+            {p.project_address && <span>{p.project_address}</span>}
+            {hasCOC && <span style={{ color: S.accent }}>{coc.coc_number}</span>}
           </div>
-          {coc.quote && (
-            <div className="flex items-center gap-1 text-[10px] font-medium mt-0.5" style={{ color: S.accent }}>
-              <ExternalLink size={9} />
-              {coc.quote.quote_number} — {coc.quote.project_name}
-            </div>
-          )}
-          {coc.job_card && (
-            <div className="flex items-center gap-1 text-[10px] font-medium mt-0.5" style={{ color: S.accent }}>
-              <ExternalLink size={9} />
-              {coc.job_card.job_number} — {coc.job_card.title}
-            </div>
-          )}
         </div>
-
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-            style={{ background: hasFail ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)', color: hasFail ? S.danger : S.green }}>
-            {testsPassed}/6
-          </span>
-          <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
-            style={{ color: S.muted, border: `1px solid ${S.border}` }}>
-            <Pencil size={11} /> Edit
-          </div>
-          <button
-            onClick={e => void handleDownload(coc, e)}
-            disabled={downloadingId === coc.id}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
-            style={{ background: S.accent, color: '#fff' }}>
-            {downloadingId === coc.id ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-            PDF
-          </button>
+          {hasCOC ? (
+            <>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                style={{ background: hasFail ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)', color: hasFail ? S.danger : S.green }}>
+                {testsPassed}/6
+              </span>
+              <button onClick={e => void handleDownload(coc.id, e)} disabled={downloadingId === coc.id}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                style={{ background: S.accent, color: '#fff' }}>
+                {downloadingId === coc.id ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+                PDF
+              </button>
+            </>
+          ) : (
+            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ border: `1px solid ${S.border}`, color: S.accent }}>
+              <Plus size={11} /> Add COC
+            </span>
+          )}
         </div>
       </button>
     )
   }
 
-  function EmptyState({ label }: { label: string }) {
+  function JobCardRow({ jc }: { jc: CompletedJobCard }) {
+    const coc = cocByJobCardId[jc.id]
+    const hasCOC = !!coc
+    const testsPassed = hasCOC ? [coc.earth_continuity, coc.insulation_resistance, coc.polarity, coc.earth_leakage, coc.overcurrent_protection, coc.phase_rotation].filter(r => r === 'pass').length : 0
+    const hasFail = hasCOC && [coc.earth_continuity, coc.insulation_resistance, coc.polarity, coc.earth_leakage, coc.overcurrent_protection, coc.phase_rotation].some(r => r === 'fail')
+
     return (
-      <div className="py-12 flex flex-col items-center gap-2">
-        <FileCheck size={28} style={{ color: S.border }} />
-        <p className="text-sm" style={{ color: S.muted }}>{label}</p>
-      </div>
+      <button onClick={() => openJobCard(jc)}
+        className="w-full flex items-center gap-4 px-4 py-3 text-left"
+        style={{ borderTop: `1px solid ${S.border}` }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.03)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: hasCOC ? (hasFail ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)') : S.bg }}>
+          {hasCOC
+            ? <FileCheck size={16} style={{ color: hasFail ? S.danger : S.green }} />
+            : <FileX size={16} style={{ color: S.muted }} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold truncate" style={{ color: S.text }}>{jc.title}</span>
+            <span className="text-[10px] font-mono" style={{ color: S.muted }}>{jc.job_number}</span>
+            {hasCOC && coc.sent_at && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
+                <CheckCircle2 size={8} className="inline mr-0.5" />Sent
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs mt-0.5" style={{ color: S.muted }}>
+            {jc.client_name && <span>{jc.client_name}</span>}
+            {jc.location && <span>{jc.location}</span>}
+            {hasCOC && <span style={{ color: S.accent }}>{coc.coc_number}</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {hasCOC ? (
+            <>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                style={{ background: hasFail ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)', color: hasFail ? S.danger : S.green }}>
+                {testsPassed}/6
+              </span>
+              <button onClick={e => void handleDownload(coc.id, e)} disabled={downloadingId === coc.id}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
+                style={{ background: S.accent, color: '#fff' }}>
+                {downloadingId === coc.id ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+                PDF
+              </button>
+            </>
+          ) : (
+            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ border: `1px solid ${S.border}`, color: S.accent }}>
+              <Plus size={11} /> Add COC
+            </span>
+          )}
+        </div>
+      </button>
     )
   }
 
-  function Section({ title, list, emptyLabel }: { title: string; list: COCWithQuote[]; emptyLabel: string }) {
-    const rows = filtered(list)
-    return (
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
-          {title} · {rows.length}
-        </p>
-        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          {rows.length === 0 ? <EmptyState label={emptyLabel} /> : rows.map(coc => <COCRow key={coc.id} coc={coc} />)}
-        </div>
-      </div>
-    )
-  }
+  const totalWithCOC = Object.keys(cocByQuoteId).length + Object.keys(cocByJobCardId).length
 
   return (
     <div className="space-y-6 pb-16">
@@ -496,35 +555,60 @@ export function COCListClient({ initialCOCs }: Props) {
           <FileCheck size={20} style={{ color: S.accent }} />
           <div>
             <h1 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>COC</h1>
-            <p className="text-xs mt-0.5" style={{ color: S.muted }}>Certificates of Compliance · {cocs.length} total</p>
+            <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+              {completedProjects.length + completedJobCards.length} completed · {totalWithCOC} have COC · {(completedProjects.length + completedJobCards.length) - totalWithCOC} outstanding
+            </p>
           </div>
         </div>
-        <Link href="/supplier-portal/quoting/quotes"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
-          style={{ background: S.accent, color: '#fff' }}>
-          <Plus size={14} /> Add COC via Project
-        </Link>
       </div>
 
       {/* Search */}
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: S.muted }} />
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Search by COC number, address, owner or project…"
+          placeholder="Search by project name, job number or client…"
           className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl outline-none"
           style={{ background: S.card, border: `1px solid ${S.border}`, color: S.text }} />
       </div>
 
-      <Section title="Linked to Projects" list={projectCOCs} emptyLabel="No project COCs yet — open a project and go to the COC tab" />
-      <Section title="Linked to Job Cards" list={jobCardCOCs} emptyLabel="No job card COCs yet — open a job card and go to the COC tab" />
-      <Section title="Standalone" list={standaloneCOCs} emptyLabel="No standalone COCs yet" />
+      {/* Completed Projects */}
+      {filteredProjects.length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+            Completed Projects · {filteredProjects.length}
+          </p>
+          <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            {filteredProjects.map(p => <ProjectRow key={p.id} p={p} />)}
+          </div>
+        </div>
+      )}
 
-      {/* Edit modal */}
+      {/* Completed Job Cards */}
+      {filteredJobCards.length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+            Completed Job Cards · {filteredJobCards.length}
+          </p>
+          <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            {filteredJobCards.map(jc => <JobCardRow key={jc.id} jc={jc} />)}
+          </div>
+        </div>
+      )}
+
+      {filteredProjects.length === 0 && filteredJobCards.length === 0 && (
+        <div className="rounded-2xl py-16 flex flex-col items-center gap-2" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <FileCheck size={32} style={{ color: S.border }} />
+          <p className="text-sm" style={{ color: S.muted }}>No completed projects or job cards yet</p>
+        </div>
+      )}
+
+      {/* Edit/Create Modal */}
       {editing && (
-        <COCEditModal
-          coc={editing}
+        <COCModal
+          coc={editing.coc}
+          title={editing.title}
           onClose={() => setEditing(null)}
-          onSaved={updated => { handleSaved(updated); setEditing(prev => prev ? { ...updated, quote: prev.quote, job_card: prev.job_card } : null) }}
+          onSaved={updated => { editing.onSaved(updated); setEditing(prev => prev ? { ...prev, coc: updated } : null) }}
         />
       )}
     </div>

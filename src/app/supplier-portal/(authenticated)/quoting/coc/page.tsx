@@ -18,58 +18,79 @@ export default async function COCPage() {
     redirect('/supplier-portal/upgrade')
   }
 
-  const SEL = '*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)'
-
-  // Fetch all quote IDs for this account (paginated to handle > 1000 quotes)
-  const quoteIds: string[] = []
-  let from = 0
-  while (true) {
-    const { data: batch } = await supabaseAdmin
+  const [
+    { data: completedProjects },
+    { data: completedJobCards },
+    { data: existingCOCs },
+    { data: settings },
+  ] = await Promise.all([
+    // All completed projects
+    supabaseAdmin
       .from('elec_quotes')
-      .select('id')
+      .select('id, quote_number, project_name, project_address, client:elec_clients(id, client_name, email)')
       .eq('portal_account_id', account.id)
-      .range(from, from + 999)
-    if (!batch?.length) break
-    for (const q of batch) quoteIds.push(q.id)
-    if (batch.length < 1000) break
-    from += 1000
-  }
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(500),
 
-  // Three queries to catch everything regardless of migration state:
-  // 1. By portal_account_id (catches backfilled project COCs + new job card COCs)
-  // 2. By quote_id IN (catches project COCs where backfill may have missed)
-  // 3. Merge & deduplicate
-  const [{ data: byAccountId }, { data: byQuoteId }] = await Promise.all([
+    // All completed job cards
+    supabaseAdmin
+      .from('elec_job_cards')
+      .select('id, job_number, title, location, client_name, client_email')
+      .eq('portal_account_id', account.id)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(500),
+
+    // All existing COCs for this account (by account_id OR quote_id)
     supabaseAdmin
       .from('elec_coc')
-      .select(SEL)
+      .select('*')
       .eq('portal_account_id', account.id)
-      .order('created_at', { ascending: false })
       .limit(2000),
-    quoteIds.length > 0
-      ? supabaseAdmin
-          .from('elec_coc')
-          .select(SEL)
-          .in('quote_id', quoteIds)
-          .order('created_at', { ascending: false })
-          .limit(2000)
-      : Promise.resolve({ data: [] }),
+
+    // Settings for COC prefix
+    supabaseAdmin
+      .from('elec_settings')
+      .select('coc_prefix, company_code')
+      .eq('portal_account_id', account.id)
+      .maybeSingle(),
   ])
 
-  // Merge, deduplicate by id
-  const seen = new Set<string>()
-  const cocs = [...(byAccountId ?? []), ...(byQuoteId ?? [])].filter(c => {
-    if (seen.has(c.id)) return false
-    seen.add(c.id)
-    return true
-  }).sort((a, b) => b.created_at.localeCompare(a.created_at))
+  // Also fetch COCs by quote_id for projects that existed before the migration backfill
+  const projectIds = (completedProjects ?? []).map(p => p.id)
+  let legacyCOCs: ElecCOC[] = []
+  if (projectIds.length > 0) {
+    const { data } = await supabaseAdmin
+      .from('elec_coc')
+      .select('*')
+      .in('quote_id', projectIds)
+      .limit(2000)
+    legacyCOCs = (data ?? []) as ElecCOC[]
+  }
+
+  // Build a merged COC map: quote_id → COC, job_card_id → COC (deduplicated)
+  const cocByQuoteId = new Map<string, ElecCOC>()
+  const cocByJobCardId = new Map<string, ElecCOC>()
+  for (const coc of [...legacyCOCs, ...(existingCOCs ?? []) as ElecCOC[]]) {
+    if (coc.quote_id && !cocByQuoteId.has(coc.quote_id)) cocByQuoteId.set(coc.quote_id, coc)
+    if (coc.job_card_id && !cocByJobCardId.has(coc.job_card_id)) cocByJobCardId.set(coc.job_card_id, coc)
+  }
 
   return (
     <COCListClient
-      initialCOCs={(cocs ?? []) as (ElecCOC & {
-        quote: { id: string; quote_number: string; project_name: string; project_address: string | null } | null
-        job_card: { id: string; job_number: string; title: string; location: string | null } | null
-      })[]}
+      completedProjects={(completedProjects ?? []) as unknown as {
+        id: string; quote_number: string; project_name: string; project_address: string | null
+        client: { id: string; client_name: string; email: string | null } | null
+      }[]}
+      completedJobCards={(completedJobCards ?? []) as {
+        id: string; job_number: string; title: string; location: string | null
+        client_name: string | null; client_email: string | null
+      }[]}
+      cocByQuoteId={Object.fromEntries(cocByQuoteId) as Record<string, ElecCOC>}
+      cocByJobCardId={Object.fromEntries(cocByJobCardId) as Record<string, ElecCOC>}
+      cocPrefix={(settings as { coc_prefix?: string } | null)?.coc_prefix ?? 'COC'}
+      companyCode={(settings as { company_code?: string } | null)?.company_code ?? ''}
     />
   )
 }
