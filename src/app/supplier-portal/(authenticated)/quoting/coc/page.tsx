@@ -28,7 +28,8 @@ export default async function COCPage() {
 
   const quoteIds = (accountQuotes ?? []).map(q => q.id)
 
-  const [{ data: projectCOCs }, { data: directCOCs }] = await Promise.all([
+  const [{ data: projectCOCs }, { data: jobCardCOCs }] = await Promise.all([
+    // All COCs linked to any project in this account
     quoteIds.length > 0
       ? supabaseAdmin
           .from('elec_coc')
@@ -36,6 +37,7 @@ export default async function COCPage() {
           .in('quote_id', quoteIds)
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
+    // All COCs linked to job cards (quote_id is null, portal_account_id is set)
     supabaseAdmin
       .from('elec_coc')
       .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
@@ -46,7 +48,7 @@ export default async function COCPage() {
 
   // Merge, deduplicate by id
   const seen = new Set<string>()
-  const cocs = [...(projectCOCs ?? []), ...(directCOCs ?? [])].filter(c => {
+  const cocs = [...(projectCOCs ?? []), ...(jobCardCOCs ?? [])].filter(c => {
     if (seen.has(c.id)) return false
     seen.add(c.id)
     return true
