@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, FileText, X, ChevronRight, Calendar, User, Archive, RotateCcw } from 'lucide-react'
+import { Plus, Search, FileText, X, ChevronRight, Calendar, User, Archive, RotateCcw, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { ElecQuote, ElecClient, ElecQuoteStatus } from '@/lib/elec-types'
 
@@ -241,6 +241,16 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
   const [showNewModal, setShowNewModal] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [unarchiving, setUnarchiving] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function deleteArchived(id: string) {
+    if (!confirm('Permanently delete this project? This cannot be undone.')) return
+    setDeletingId(id)
+    const res = await fetch(`/api/supplier-portal/quoting/quotes/${id}`, { method: 'DELETE' })
+    if (!res.ok) { const d = await res.json(); alert(d.error ?? 'Delete failed'); setDeletingId(null); return }
+    setArchivedQuotes(prev => prev.filter(q => q.id !== id))
+    setDeletingId(null)
+  }
 
   async function unarchive(id: string) {
     setUnarchiving(id)
@@ -411,14 +421,24 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => unarchive(q.id)}
-                    disabled={unarchiving === q.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-opacity hover:opacity-75"
-                    style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
-                    <RotateCcw size={11} />
-                    {unarchiving === q.id ? 'Restoring…' : 'Unarchive'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => unarchive(q.id)}
+                      disabled={unarchiving === q.id || deletingId === q.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-opacity hover:opacity-75"
+                      style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+                      <RotateCcw size={11} />
+                      {unarchiving === q.id ? 'Restoring…' : 'Unarchive'}
+                    </button>
+                    <button
+                      onClick={() => void deleteArchived(q.id)}
+                      disabled={deletingId === q.id || unarchiving === q.id}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 transition-opacity hover:opacity-75"
+                      style={{ background: 'rgba(220,38,38,0.06)', color: '#DC2626' }}>
+                      <Trash2 size={11} />
+                      {deletingId === q.id ? '…' : 'Delete'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

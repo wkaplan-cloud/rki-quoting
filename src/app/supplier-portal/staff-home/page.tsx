@@ -56,11 +56,12 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       .order('created_at', { ascending: false }),
     supabaseAdmin
       .from('elec_jobs')
-      .select('*, quote:elec_quotes(id,quote_number,project_name,project_address)')
+      .select('id, title, start_time, end_time, address, status, quote_id')
       .eq('portal_account_id', staff.portal_account_id)
       .eq('staff_id', staff.id)
       .eq('scheduled_date', todayStr)
       .in('status', ['scheduled', 'in_progress'])
+      .is('quote_id', null)   // only standalone jobs — project/job-card linked ones already appear in their tabs
       .order('start_time'),
   ])
 
