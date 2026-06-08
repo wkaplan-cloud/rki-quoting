@@ -92,6 +92,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/supplier-portal/auth') ||
     pathname.startsWith('/api/supplier-portal/staff/accept-invite') ||
     pathname.startsWith('/api/supplier-portal/staff/login') ||
+    pathname.startsWith('/api/supplier-portal/staff/push-reminder') ||
     pathname.startsWith('/api/supplier-portal/quoting/team/accept') ||
     pathname.startsWith('/meta-callback') ||
     pathname.startsWith('/q/') ||
