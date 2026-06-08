@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw,
+  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw, Bell, BellOff,
 } from 'lucide-react'
 import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient, ElecJob } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
@@ -117,6 +117,49 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     setRefreshing(true)
     router.refresh()
     setTimeout(() => setRefreshing(false), 1200)
+  }
+
+  // Push notifications
+  const [notifState, setNotifState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown')
+  const [enablingNotifs, setEnablingNotifs] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) {
+      setNotifState('unsupported')
+      return
+    }
+    setNotifState(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'unknown')
+
+    // Register service worker
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  }, [])
+
+  async function enableNotifications() {
+    if (enablingNotifs) return
+    setEnablingNotifs(true)
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') { setNotifState('denied'); setEnablingNotifs(false); return }
+      setNotifState('granted')
+
+      const reg = await navigator.serviceWorker.ready
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!vapidKey) { setEnablingNotifs(false); return }
+
+      // Convert VAPID public key to Uint8Array
+      const key = vapidKey.replace(/-/g, '+').replace(/_/g, '/')
+      const raw = Uint8Array.from(atob(key), c => c.charCodeAt(0))
+
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw })
+      const subJson = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } }
+
+      await fetch('/api/supplier-portal/staff/push-subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subJson),
+      })
+    } catch {}
+    setEnablingNotifs(false)
   }
 
   // Sign out
@@ -345,6 +388,34 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 )}
               </div>
             </div>
+
+            {/* Enable notifications banner — shown once until granted */}
+            {notifState === 'unknown' && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(58,124,165,0.06)', border: `1px solid rgba(58,124,165,0.2)` }}>
+                <Bell size={16} className="flex-shrink-0" style={{ color: S.accent }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: S.text }}>Enable clock-in reminders</p>
+                  <p className="text-xs mt-0.5" style={{ color: S.muted }}>Get notified at 5pm and 7:30pm to clock in/out</p>
+                </div>
+                <button
+                  onClick={() => void enableNotifications()}
+                  disabled={enablingNotifs}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                  style={{ background: S.accent, color: '#fff' }}>
+                  {enablingNotifs ? <Loader2 size={12} className="animate-spin inline" /> : 'Enable'}
+                </button>
+              </div>
+            )}
+            {notifState === 'denied' && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(113,113,122,0.06)', border: `1px solid rgba(113,113,122,0.2)` }}>
+                <BellOff size={15} className="flex-shrink-0" style={{ color: S.muted }} />
+                <p className="text-xs" style={{ color: S.muted }}>
+                  Notifications blocked — enable them in your browser settings to receive clock-in reminders.
+                </p>
+              </div>
+            )}
 
             {/* Today's active jobs */}
             {(() => {
