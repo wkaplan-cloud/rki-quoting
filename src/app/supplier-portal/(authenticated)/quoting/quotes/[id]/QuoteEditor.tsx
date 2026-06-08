@@ -38,6 +38,7 @@ const STATUS_CONFIG: Record<ElecQuoteStatus, { label: string; color: string; bg:
 const LIFECYCLE_STEPS: { status: ElecQuoteStatus; label: string }[] = [
   { status: 'draft',       label: 'Draft' },
   { status: 'quoted',      label: 'Quoted' },
+  { status: 'approved',    label: 'Approved' },
   { status: 'in_progress', label: 'In Progress' },
   { status: 'completed',   label: 'Completed' },
 ]
@@ -398,12 +399,12 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const tabAccessible: Record<QuoteTab, boolean> = {
     quote:      true,
     variations: ['approved', 'in_progress', 'completed'].includes(q.status),
-    claims:     ['in_progress', 'completed'].includes(q.status),
-    materials:  ['in_progress', 'completed'].includes(q.status),
-    snag:       ['in_progress', 'completed'].includes(q.status),
-    coc:        ['in_progress', 'completed'].includes(q.status),
-    as_built:   ['in_progress', 'completed'].includes(q.status),
-    reporting:  ['in_progress', 'completed'].includes(q.status),
+    claims:     ['approved', 'in_progress', 'completed'].includes(q.status),
+    materials:  ['approved', 'in_progress', 'completed'].includes(q.status),
+    snag:       ['approved', 'in_progress', 'completed'].includes(q.status),
+    coc:        ['approved', 'in_progress', 'completed'].includes(q.status),
+    as_built:   ['approved', 'in_progress', 'completed'].includes(q.status),
+    reporting:  ['approved', 'in_progress', 'completed'].includes(q.status),
   }
 
   const [showSendModal, setShowSendModal] = useState(false)
@@ -718,6 +719,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
               style={{ background: S.green, color: '#fff' }}>
               <Check size={13} /> Mark Approved
+            </button>
+          )}
+          {q.status === 'approved' && (
+            <button onClick={() => void transition('in_progress')}
+              disabled={transitioning}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+              style={{ background: S.green, color: '#fff' }}>
+              <Check size={13} /> Start Project
             </button>
           )}
           {q.status === 'in_progress' && (
