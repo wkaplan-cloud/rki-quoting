@@ -165,8 +165,8 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName, logoUrl 
             <View style={s.cocNumBox}>
               <Text style={s.cocNum}>COC No: {coc.coc_number || '—'}</Text>
               <Text style={s.cocDate}>Issue Date: {fmtDate(coc.issue_date)}</Text>
-              {coc.valid_until && (
-                <Text style={s.cocDate}>Valid Until: {fmtDate(coc.valid_until)}</Text>
+              {coc.linked_doc_number && (
+                <Text style={s.cocDate}>Linked Doc: {coc.linked_doc_number}</Text>
               )}
             </View>
           </View>

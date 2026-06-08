@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Camera, Plus, X, Pen, CheckCircle2,
-  Loader2, MapPin, Clock, Briefcase, Send, Mail, Play, Square, ShoppingCart,
+  Loader2, MapPin, Clock, Briefcase, Play, Square, ShoppingCart,
 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto, ElecMaterialRequest } from '@/lib/elec-types'
 import { StaffBottomNav } from '../../StaffBottomNav'
@@ -39,8 +39,6 @@ interface Props {
 }
 
 type Tab = 'report' | 'materials' | 'photos' | 'signature'
-type SignMode = 'draw' | 'send'
-type SendStatus = 'idle' | 'sending' | 'sent' | 'error'
 
 export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadge, projectsBadge }: Props) {
   const router = useRouter()
@@ -59,13 +57,8 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const [sigSaving, setSigSaving] = useState(false)
   const isDrawing = useRef(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
-  const [signMode, setSignMode] = useState<SignMode>('draw')
 
-  // Send for signature
   const client = !Array.isArray(card.client) ? card.client : null
-  const [sigEmail, setSigEmail] = useState(card.client_email ?? client?.email ?? '')
-  const [sigName, setSigName] = useState(card.client_name ?? client?.client_name ?? '')
-  const [sendStatus, setSendStatus] = useState<SendStatus>(card.sent_at ? 'sent' : 'idle')
 
   // Job clock in/out
   const [isClockedIn, setIsClockedIn] = useState(false)
@@ -154,8 +147,6 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const [showAddOrder, setShowAddOrder] = useState(false)
   const [orderDesc, setOrderDesc] = useState('')
   const [orderQty, setOrderQty] = useState('1')
-  const [orderUnit, setOrderUnit] = useState('')
-  const [orderNotes, setOrderNotes] = useState('')
   const [orderSaving, setOrderSaving] = useState(false)
 
   useEffect(() => {
@@ -178,14 +169,12 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
         job_card_id: card.id,
         description: orderDesc.trim(),
         qty: parseFloat(orderQty) || 1,
-        unit: orderUnit.trim() || null,
-        notes: orderNotes.trim() || null,
       }),
     })
     if (res.ok) {
       const m = await res.json() as ElecMaterialRequest
       setMatOrders(prev => [...prev, m])
-      setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('')
+      setOrderDesc(''); setOrderQty('1')
       setShowAddOrder(false)
     }
     setOrderSaving(false)
@@ -330,23 +319,6 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     setSigSaving(false)
   }
 
-  async function sendSignatureRequest() {
-    if (!sigEmail || sendStatus === 'sending') return
-    setSendStatus('sending')
-    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/signature-request`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: sigEmail, name: sigName }),
-    })
-    if (res.ok) {
-      setSendStatus('sent')
-      setCard(c => ({ ...c, sent_at: new Date().toISOString(), sent_to_email: sigEmail }))
-    } else {
-      setSendStatus('error')
-      setTimeout(() => setSendStatus('idle'), 3000)
-    }
-  }
-
   const materials = card.materials ?? []
   const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
 
@@ -414,8 +386,10 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
             )}
           </div>
         </div>
-        {client && (
-          <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Client: {client.client_name}</p>
+        {(client?.client_name || card.client_name) && (
+          <p className="text-xs mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            Client: {client?.client_name ?? card.client_name}
+          </p>
         )}
       </div>
 
@@ -532,25 +506,15 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
               {showAddOrder && (
                 <div className="px-4 py-3 space-y-2" style={{ borderTop: matOrders.length > 0 ? `1px solid ${S.border}` : undefined }}>
                   <input value={orderDesc} onChange={e => setOrderDesc(e.target.value)}
-                    placeholder="What do you need? (e.g. 20m 2.5mm cable)"
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    placeholder="Item (e.g. 20m 2.5mm cable)"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
+                    placeholder="Quantity" type="number" min="0.01" step="0.01"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                     style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
                   <div className="flex gap-2">
-                    <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
-                      placeholder="Qty" type="number" min="0.01" step="0.01"
-                      className="w-1/4 px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                    <input value={orderUnit} onChange={e => setOrderUnit(e.target.value)}
-                      placeholder="Unit (m / nr / box)"
-                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                  </div>
-                  <input value={orderNotes} onChange={e => setOrderNotes(e.target.value)}
-                    placeholder="Notes for office (optional)"
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                  <div className="flex gap-2">
-                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('') }}
+                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1') }}
                       className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                       Cancel
                     </button>
@@ -680,94 +644,35 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
               </div>
             ) : (
               <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                {/* Mode toggle */}
-                <div className="flex" style={{ borderBottom: `1px solid ${S.border}` }}>
-                  {([['draw', 'Sign here', Pen], ['send', 'Send to client', Mail]] as const).map(([mode, label, Icon]) => (
-                    <button key={mode} onClick={() => setSignMode(mode as SignMode)}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold"
-                      style={{
-                        color: signMode === mode ? S.accent : S.muted,
-                        borderBottom: signMode === mode ? `2px solid ${S.accent}` : '2px solid transparent',
-                        marginBottom: '-1px',
-                      }}>
-                      <Icon size={14} />{label}
-                    </button>
-                  ))}
+                <div className="px-4 pt-3 pb-1" style={{ borderBottom: `1px solid ${S.border}` }}>
+                  <div className="flex items-center gap-2">
+                    <Pen size={13} style={{ color: S.accent }} />
+                    <span className="text-sm font-semibold" style={{ color: S.accent }}>Sign here</span>
+                  </div>
                 </div>
-
-                {/* Draw mode */}
-                {signMode === 'draw' && (
-                  <div className="p-4 space-y-3">
-                    <p className="text-xs" style={{ color: S.muted }}>Hand the device to the client to sign below.</p>
-                    <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA' }}>
-                      <canvas ref={canvasRef} width={600} height={200} className="w-full" style={{ cursor: 'crosshair', display: 'block', touchAction: 'none' }}
-                        onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} />
-                    </div>
-                    <input value={sigCaption} onChange={e => setSigCaption(e.target.value)}
-                      placeholder="Client name (optional)"
-                      className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                    <div className="flex gap-2">
-                      <button onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200) }}
-                        className="px-4 py-2.5 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
-                        Clear
-                      </button>
-                      <button onClick={() => void saveSignature()} disabled={sigSaving}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                        style={{ background: S.green }}>
-                        {sigSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-                        Save Signature
-                      </button>
-                    </div>
+                <div className="p-4 space-y-3">
+                  <p className="text-xs" style={{ color: S.muted }}>Hand the device to the client to sign below.</p>
+                  <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA' }}>
+                    <canvas ref={canvasRef} width={600} height={200} className="w-full" style={{ cursor: 'crosshair', display: 'block', touchAction: 'none' }}
+                      onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} />
                   </div>
-                )}
-
-                {/* Send mode */}
-                {signMode === 'send' && (
-                  <div className="p-4 space-y-3">
-                    {sendStatus === 'sent' ? (
-                      <div className="flex flex-col items-center py-4 gap-3 text-center">
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(22,163,74,0.1)' }}>
-                          <CheckCircle2 size={24} style={{ color: S.green }} />
-                        </div>
-                        <p className="text-sm font-semibold" style={{ color: S.text }}>Request sent</p>
-                        <p className="text-xs" style={{ color: S.muted }}>
-                          A signing link was emailed to <strong>{card.sent_to_email ?? sigEmail}</strong>
-                        </p>
-                        <button onClick={() => setSendStatus('idle')}
-                          className="text-xs px-3 py-1.5 rounded-lg"
-                          style={{ color: S.accent, border: `1px solid ${S.border}` }}>
-                          Resend
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-xs" style={{ color: S.muted }}>
-                          Client not present? Send them a link to sign from their own device.
-                        </p>
-                        <input value={sigName} onChange={e => setSigName(e.target.value)}
-                          placeholder="Client name"
-                          className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                          style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                        <input value={sigEmail} onChange={e => setSigEmail(e.target.value)}
-                          placeholder="Client email address" type="email"
-                          className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                          style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                        {sendStatus === 'error' && (
-                          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>
-                            Failed to send — check the email and try again.
-                          </p>
-                        )}
-                        <button onClick={() => void sendSignatureRequest()} disabled={!sigEmail || sendStatus === 'sending'}
-                          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                          style={{ background: S.accent }}>
-                          {sendStatus === 'sending' ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                          {sendStatus === 'sending' ? 'Sending…' : 'Send Signing Link'}
-                        </button>
-                      </>
-                    )}
+                  <input value={sigCaption} onChange={e => setSigCaption(e.target.value)}
+                    placeholder="Client name (optional)"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                  <div className="flex gap-2">
+                    <button onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200) }}
+                      className="px-4 py-2.5 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                      Clear
+                    </button>
+                    <button onClick={() => void saveSignature()} disabled={sigSaving}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ background: S.green }}>
+                      {sigSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                      Save Signature
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
             )}
 

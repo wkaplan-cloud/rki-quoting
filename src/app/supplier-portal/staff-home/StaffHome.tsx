@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen,
+  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw,
 } from 'lucide-react'
 import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
@@ -109,6 +109,15 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   const [clientFocused, setClientFocused] = useState(false)
   const [creatingClient, setCreatingClient] = useState(false)
 
+  // Refresh
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    router.refresh()
+    setTimeout(() => setRefreshing(false), 1200)
+  }
+
   // Sign out
   const [signingOut, setSigningOut] = useState(false)
 
@@ -179,7 +188,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         job_type: newType,
         location: newLocation.trim() || null,
         client_id: newClientId || null,
-        client_name: newClientId ? null : (newClientName.trim() || null),
+        client_name: newClientName.trim() || null,
       }),
     })
     const data = await res.json() as ElecJobCard & { error?: string }
@@ -251,6 +260,14 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           <p className="text-white font-bold truncate">{staff.name}</p>
           <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{companyName}</p>
         </div>
+        <button
+          onClick={() => void handleRefresh()}
+          disabled={refreshing}
+          className="p-2 rounded-lg disabled:opacity-50"
+          style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
+          title="Refresh">
+          <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+        </button>
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full flex-shrink-0"
           style={{ background: isClockedIn ? 'rgba(22,163,74,0.25)' : 'rgba(255,255,255,0.08)' }}>
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: isClockedIn ? S.green : 'rgba(255,255,255,0.3)' }} />
@@ -387,15 +404,18 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         {/* ── JOBS TAB ── */}
         {tab === 'jobs' && (
           <div className="px-4 pt-4">
-            {jobCards.length === 0 ? (
-              <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                <ClipboardList size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
-                <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No jobs assigned</p>
-                <p className="text-xs" style={{ color: S.muted }}>Tap + to create a new job card</p>
-              </div>
-            ) : (
+            {(() => {
+              const activeJobCards = jobCards.filter(j => j.status !== 'completed' && j.status !== 'cancelled')
+              if (activeJobCards.length === 0) return (
+                <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  <ClipboardList size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
+                  <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No active jobs</p>
+                  <p className="text-xs" style={{ color: S.muted }}>Tap + to create a new job card</p>
+                </div>
+              )
+              return (
               <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                {jobCards.map((j, i) => {
+                {activeJobCards.map((j, i) => {
                   const ss = STATUS_STYLE[j.status] ?? STATUS_STYLE.pending
                   const client = !Array.isArray(j.client) ? j.client : null
                   const isActive = activeJobCardId === j.id
@@ -427,22 +447,26 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                   )
                 })}
               </div>
-            )}
+              )
+            })()}
           </div>
         )}
 
         {/* ── PROJECTS TAB ── */}
         {tab === 'projects' && (
           <div className="px-4 pt-4">
-            {assignedProjects.length === 0 ? (
-              <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                <FolderOpen size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
-                <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No projects assigned</p>
-                <p className="text-xs" style={{ color: S.muted }}>Projects assigned to you will appear here</p>
-              </div>
-            ) : (
+            {(() => {
+              const activeProjects = assignedProjects.filter(p => p.status !== 'completed' && p.status !== 'cancelled')
+              if (activeProjects.length === 0) return (
+                <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  <FolderOpen size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
+                  <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No active projects</p>
+                  <p className="text-xs" style={{ color: S.muted }}>Active projects assigned to you will appear here</p>
+                </div>
+              )
+              return (
               <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                {assignedProjects.map((p, i) => {
+                {activeProjects.map((p, i) => {
                   const client = !Array.isArray(p.client) ? p.client : null
                   return (
                     <button key={p.id}
@@ -470,7 +494,8 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                   )
                 })}
               </div>
-            )}
+              )
+            })()}
           </div>
         )}
 
@@ -549,7 +574,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         onTabChange={t => setTab(t)}
         onNewJob={() => setShowNewJob(true)}
         jobsBadge={jobCards.filter(j => j.status === 'pending' || j.status === 'in_progress').length || undefined}
-        projectsBadge={assignedProjects.length || undefined}
+        projectsBadge={assignedProjects.filter(p => p.status !== 'completed' && p.status !== 'cancelled').length || undefined}
       />
 
       {/* New Job modal */}

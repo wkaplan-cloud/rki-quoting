@@ -349,7 +349,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
         {materials.length > 0 && (
           <View style={{ marginTop: 14 }}>
             <View style={s.matSecRow} wrap={false}>
-              <Text style={[s.matSecLabel, { flex: 1 }]}>MATERIAL REQUESTS (Reference Only)</Text>
+              <Text style={[s.matSecLabel, { flex: 1 }]}>MATERIALS (Internal Use Only)</Text>
             </View>
             <View style={[s.row, { backgroundColor: SURF }]} wrap={false}>
               <Text style={[s.td, s.tdMuted, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>Description</Text>

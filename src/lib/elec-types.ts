@@ -308,7 +308,7 @@ export interface ElecCOC {
   issue_date: string
   tester_name: string
   tester_registration_number: string | null
-  valid_until: string | null
+  linked_doc_number: string | null
   notes: string | null
   // Extended fields (phase 2)
   installation_address: string | null

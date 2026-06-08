@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -177,6 +177,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
                     <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
                     {isBiz && <NavLink href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />}
                     {isPro && <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />}
+                    {isPro && <NavLink href="/supplier-portal/quoting/coc"       label="COC"       icon={FileCheck} />}
                     {isPro && <NavLink href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}
                     {isPro && <NavLink href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users} />}
                     {isBiz && <NavLink href="/supplier-portal/quoting/price-book" label="Line Items" icon={BookOpen} />}

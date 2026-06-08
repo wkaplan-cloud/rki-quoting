@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 
@@ -240,6 +240,38 @@ export function StaffManager({ initialStaff, punches }: Props) {
   }
   const sortedWeeks = Object.keys(staffWeekPunches).sort((a, b) => b.localeCompare(a))
 
+  // Timesheet email modal
+  const [emailModal, setEmailModal] = useState<{ weekStart: string } | null>(null)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailMsg, setEmailMsg] = useState('')
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+
+  async function handleEmailTimesheet() {
+    if (!emailTo.trim() || !emailModal || emailSending) return
+    setEmailSending(true)
+    try {
+      const wk = emailModal.weekStart
+      const wkEnd = new Date(wk + 'T12:00:00'); wkEnd.setDate(wkEnd.getDate() + 6)
+      const periodStr = `${new Date(wk + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} – ${wkEnd.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}`
+      const res = await fetch('/api/supplier-portal/quoting/staff/email-timesheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailTo.trim(),
+          message: emailMsg.trim() || null,
+          weekStart: wk,
+          periodLabel: periodStr,
+        }),
+      })
+      if (res.ok) {
+        setEmailSent(true)
+        setTimeout(() => { setEmailModal(null); setEmailSent(false); setEmailTo(''); setEmailMsg('') }, 2000)
+      }
+    } catch {}
+    setEmailSending(false)
+  }
+
   const lastPunchPerStaff: Record<string, ElecTimePunch> = {}
   for (const p of punches) {
     if (!lastPunchPerStaff[p.staff_id]) lastPunchPerStaff[p.staff_id] = p
@@ -423,99 +455,106 @@ export function StaffManager({ initialStaff, punches }: Props) {
             </div>
           )}
 
-          {/* Add / Edit form */}
+          {/* Add / Edit form — modal overlay */}
           {showForm && (
-            <div className="rounded-2xl p-5 mb-5" style={{ background: S.card, border: `1.5px solid ${S.accent}` }}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-sm" style={{ color: S.text }}>
-                  {editingId ? 'Edit Member' : 'New Team Member'}
-                </h2>
-                <button onClick={closeForm} className="p-1.5 rounded-lg" style={{ color: S.muted }}
-                  onMouseEnter={e => e.currentTarget.style.background = S.bg}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Full Name *</label>
-                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="e.g. John Dlamini"
-                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ background: 'rgba(0,0,0,0.45)' }}
+              onClick={e => { if (e.target === e.currentTarget) closeForm() }}>
+              <div className="w-full max-w-md rounded-2xl overflow-hidden"
+                style={{ background: S.card, border: `1.5px solid ${S.accent}`, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+                  <h2 className="font-semibold text-sm" style={{ color: S.text }}>
+                    {editingId ? 'Edit Member' : 'New Team Member'}
+                  </h2>
+                  <button onClick={closeForm} className="p-1.5 rounded-lg" style={{ color: S.muted }}
+                    onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <X size={14} />
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Role</label>
-                  <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as ElecStaffRole }))}
-                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
-                    {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                  </select>
-                </div>
+                <div className="p-5">
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Full Name *</label>
+                      <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder="e.g. John Dlamini"
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                        style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                    </div>
 
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Phone</label>
-                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                    placeholder="e.g. 082 555 1234"
-                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Role</label>
+                      <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as ElecStaffRole }))}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                        style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+                        {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
-                    Username *
-                  </label>
-                  <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, '') }))}
-                    placeholder="e.g. john123"
-                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none font-mono"
-                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Phone</label>
+                      <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                        placeholder="e.g. 082 555 1234"
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                        style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                    </div>
 
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
-                    PIN {editingId ? '(leave blank to keep)' : '*'}
-                  </label>
-                  <div className="relative">
-                    <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: S.muted }} />
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={4}
-                      value={form.pin}
-                      onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                      placeholder="4 digits"
-                      className="w-full pl-8 pr-3 py-2.5 text-sm rounded-xl outline-none font-mono tracking-widest"
-                      style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                        Username *
+                      </label>
+                      <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/\s/g, '') }))}
+                        placeholder="e.g. john123"
+                        className="w-full px-3 py-2.5 text-sm rounded-xl outline-none font-mono"
+                        style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                        PIN {editingId ? '(leave blank to keep)' : '*'}
+                      </label>
+                      <div className="relative">
+                        <KeyRound size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: S.muted }} />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={form.pin}
+                          onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                          placeholder="4 digits"
+                          className="w-full pl-8 pr-3 py-2.5 text-sm rounded-xl outline-none font-mono tracking-widest"
+                          style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                      </div>
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>Calendar Colour</label>
+                      <div className="flex items-center gap-2">
+                        {COLORS.map(c => (
+                          <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))}
+                            className="w-7 h-7 rounded-full flex items-center justify-center transition-transform"
+                            style={{ background: c, transform: form.color === c ? 'scale(1.25)' : 'scale(1)', boxShadow: form.color === c ? `0 0 0 2px #fff, 0 0 0 3.5px ${c}` : 'none' }}>
+                            {form.color === c && <Check size={12} color="#fff" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-medium"
+                      style={{ background: S.bg, color: S.muted }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => void handleSave()} disabled={!form.name.trim() || saving}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ background: S.accent }}>
+                      {saving && <Loader2 size={13} className="animate-spin" />}
+                      {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Member'}
+                    </button>
                   </div>
                 </div>
-
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>Calendar Colour</label>
-                  <div className="flex items-center gap-2">
-                    {COLORS.map(c => (
-                      <button key={c} onClick={() => setForm(f => ({ ...f, color: c }))}
-                        className="w-7 h-7 rounded-full flex items-center justify-center transition-transform"
-                        style={{ background: c, transform: form.color === c ? 'scale(1.25)' : 'scale(1)', boxShadow: form.color === c ? `0 0 0 2px #fff, 0 0 0 3.5px ${c}` : 'none' }}>
-                        {form.color === c && <Check size={12} color="#fff" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <button onClick={closeForm} className="px-4 py-2 rounded-xl text-sm font-medium"
-                  style={{ background: S.bg, color: S.muted }}>
-                  Cancel
-                </button>
-                <button onClick={() => void handleSave()} disabled={!form.name.trim() || saving}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ background: S.accent }}>
-                  {saving && <Loader2 size={13} className="animate-spin" />}
-                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Member'}
-                </button>
               </div>
             </div>
           )}
@@ -601,12 +640,20 @@ export function StaffManager({ initialStaff, punches }: Props) {
                 <div key={wk} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                   <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
                     <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Week: {weekLabel}</p>
-                    <button
-                      onClick={() => printWeek(wk, staffWeekPunches[wk], staffMap, geoAddresses)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
-                      style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
-                      <Printer size={11} /> Print
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => { setEmailModal({ weekStart: wk }); setEmailSent(false) }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                        style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
+                        <Mail size={11} /> Email
+                      </button>
+                      <button
+                        onClick={() => printWeek(wk, staffWeekPunches[wk], staffMap, geoAddresses)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                        style={{ border: `1px solid ${S.border}`, color: S.muted, background: S.card }}>
+                        <Printer size={11} /> Print
+                      </button>
+                    </div>
                   </div>
                   {Object.entries(staffWeekPunches[wk]).map(([staffId, staffPunches]) => {
                     const member = staffMap[staffId]
@@ -723,6 +770,59 @@ export function StaffManager({ initialStaff, punches }: Props) {
               })}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Email timesheet modal */}
+      {emailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={e => { if (e.target === e.currentTarget) { setEmailModal(null); setEmailSent(false); setEmailTo(''); setEmailMsg('') } }}>
+          <div className="w-full max-w-sm rounded-2xl overflow-hidden"
+            style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <div className="flex items-center gap-2">
+                <Mail size={15} style={{ color: S.accent }} />
+                <h2 className="font-bold text-sm" style={{ color: S.text }}>Email Timesheet</h2>
+              </div>
+              <button onClick={() => { setEmailModal(null); setEmailSent(false); setEmailTo(''); setEmailMsg('') }}
+                className="p-1.5 rounded-lg" style={{ color: S.muted }}
+                onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <X size={14} />
+              </button>
+            </div>
+            {emailSent ? (
+              <div className="px-5 py-10 flex flex-col items-center gap-3">
+                <CheckCircle2 size={28} style={{ color: S.green }} />
+                <p className="font-semibold text-sm" style={{ color: S.green }}>Timesheet sent!</p>
+              </div>
+            ) : (
+              <div className="p-5 space-y-3">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To *</label>
+                  <input type="email" value={emailTo} onChange={e => setEmailTo(e.target.value)}
+                    placeholder="recipient@email.com"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Message <span style={{ fontWeight: 400 }}>(optional)</span></label>
+                  <textarea value={emailMsg} onChange={e => setEmailMsg(e.target.value)}
+                    rows={2} placeholder="Add a note…"
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none resize-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+                <button onClick={() => void handleEmailTimesheet()}
+                  disabled={!emailTo.trim() || emailSending}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                  style={{ background: S.accent }}>
+                  {emailSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                  {emailSending ? 'Sending…' : 'Send Timesheet'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

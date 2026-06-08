@@ -214,10 +214,13 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
           const sell = (item.cost_unit_rate ?? 0) * (1 + v / 100)
           set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, '%', 65)}
-        {/* Sell rate per unit — read only */}
-        <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 72 }}>
-          {fmtR(computeSellRate(item))}
-        </div>
+        {/* Sell rate per unit — editable; changing it auto-updates markup % */}
+        {numInput(item.quoted_unit_rate, v => {
+          const newMarkup = item.cost_unit_rate && item.cost_unit_rate > 0
+            ? Math.round(((v / item.cost_unit_rate - 1) * 100) * 10) / 10
+            : item.markup_percentage
+          set({ quoted_unit_rate: v, markup_percentage: newMarkup ?? item.markup_percentage })
+        }, 'Rate', 72)}
         {/* Material subtotal = qty × sell rate */}
         <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
           {fmtR((item.quoted_quantity ?? 0) * computeSellRate(item))}
@@ -592,6 +595,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     router.push('/supplier-portal/quoting/quotes')
   }
 
+  async function deleteProject() {
+    if (!confirm('Delete this project permanently? All sections, line items, COCs and attachments will be removed. This cannot be undone.')) return
+    const res = await fetch(`/api/supplier-portal/quoting/quotes/${q.id}`, { method: 'DELETE' })
+    if (!res.ok) { const d = await res.json(); alert(d.error ?? 'Delete failed'); return }
+    router.push('/supplier-portal/quoting/quotes')
+  }
+
   function addSection() { setSections(ss => [...ss, newSection(q.id, ss.length)]) }
   function addFreeItem() { setFreeItems(items => [...items, newItem(q.id, null, items.length)]) }
 
@@ -760,6 +770,12 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                       <X size={14} /> Cancel Project
                     </button>
                   )}
+                  <div style={{ borderTop: `1px solid ${S.border}`, margin: '4px 0' }} />
+                  <button onClick={() => { setShowMoreMenu(false); void deleteProject() }}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 font-semibold"
+                    style={{ color: S.danger }}>
+                    <Trash2 size={14} /> Delete Project
+                  </button>
                 </div>
               </>
             )}

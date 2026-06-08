@@ -35,7 +35,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
     issue_date: new Date().toISOString().split('T')[0],
     tester_name: '',
     tester_registration_number: null,
-    valid_until: null,
+    linked_doc_number: null,
     notes: null,
     installation_address: projectAddress ?? null,
     owner_name: clientName ?? null,
@@ -253,7 +253,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
         <div className="grid grid-cols-2 gap-4">
           <Inp label="COC Number" val={coc.coc_number} cb={v => set({ coc_number: v })} placeholder={defaultCocNumber} />
           <Inp label="Issue Date" val={coc.issue_date} cb={v => set({ issue_date: v })} type="date" />
-          <Inp label="Valid Until" val={coc.valid_until} cb={v => set({ valid_until: v || null })} type="date" />
+          <Inp label="Linked Doc Number" val={coc.linked_doc_number} cb={v => set({ linked_doc_number: v || null })} placeholder="e.g. INV-2024-001" />
           <Sel label="Work Type" val={coc.work_type} cb={v => set({ work_type: v })}
             options={[
               { v: 'new', label: 'New Installation' },

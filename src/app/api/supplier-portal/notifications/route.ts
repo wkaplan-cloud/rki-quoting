@@ -23,6 +23,14 @@ export async function GET(req: NextRequest) {
 
     if (!accountId) return NextResponse.json({ notifications: [], count: 0 })
 
+    // Auto-delete notifications older than 30 days
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    await supabaseAdmin
+      .from('elec_notifications')
+      .delete()
+      .eq('portal_account_id', accountId)
+      .lt('created_at', cutoff)
+
     const since = req.nextUrl.searchParams.get('since')
 
     let query = supabaseAdmin

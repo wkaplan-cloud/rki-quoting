@@ -96,10 +96,6 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
   const [showAddOrder, setShowAddOrder] = useState(false)
   const [orderDesc, setOrderDesc] = useState('')
   const [orderQty, setOrderQty] = useState('1')
-  const [orderUnit, setOrderUnit] = useState('')
-  const [orderNotes, setOrderNotes] = useState('')
-  const [orderLineItemId, setOrderLineItemId] = useState('')
-  const [orderIsVO, setOrderIsVO] = useState(false)
   const [orderSaving, setOrderSaving] = useState(false)
 
   // Load on tab switch
@@ -119,19 +115,14 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
       body: JSON.stringify({
         source_type: 'project',
         quote_id: quote.id,
-        line_item_id: orderLineItemId || null,
-        is_variation: orderIsVO,
         description: orderDesc.trim(),
         qty: parseFloat(orderQty) || 1,
-        unit: orderUnit.trim() || null,
-        notes: orderNotes.trim() || null,
       }),
     })
     if (res.ok) {
       const m = await res.json() as ElecMaterialRequest
       setMatOrders(prev => [...prev, m])
-      setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('')
-      setOrderLineItemId(''); setOrderIsVO(false); setShowAddOrder(false)
+      setOrderDesc(''); setOrderQty('1'); setShowAddOrder(false)
     }
     setOrderSaving(false)
   }
@@ -415,40 +406,15 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
               {showAddOrder && (
                 <div className="px-4 py-3 space-y-2.5" style={{ borderTop: matOrders.length > 0 ? `1px solid ${S.border}` : undefined }}>
                   <input value={orderDesc} onChange={e => setOrderDesc(e.target.value)}
-                    placeholder="What do you need? (e.g. 20m 2.5mm cable)"
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    placeholder="Item (e.g. 20m 2.5mm cable)"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
+                    placeholder="Quantity" type="number" min="0.01" step="0.01"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                     style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
                   <div className="flex gap-2">
-                    <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
-                      placeholder="Qty" type="number" min="0.01" step="0.01"
-                      className="w-1/4 px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                    <input value={orderUnit} onChange={e => setOrderUnit(e.target.value)}
-                      placeholder="Unit (m / nr / box)"
-                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                  </div>
-                  {items.length > 0 && (
-                    <select value={orderLineItemId} onChange={e => setOrderLineItemId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: orderLineItemId ? S.text : S.muted }}>
-                      <option value="">Link to quoted line item (optional)</option>
-                      {items.map(item => (
-                        <option key={item.id} value={item.id}>{item.description}</option>
-                      ))}
-                    </select>
-                  )}
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" checked={orderIsVO} onChange={e => setOrderIsVO(e.target.checked)}
-                      className="rounded" />
-                    <span style={{ color: S.text }}>This is extra — flag as Variation Order</span>
-                  </label>
-                  <input value={orderNotes} onChange={e => setOrderNotes(e.target.value)}
-                    placeholder="Notes for office (optional)"
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                  <div className="flex gap-2">
-                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes(''); setOrderLineItemId(''); setOrderIsVO(false) }}
+                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1') }}
                       className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                       Cancel
                     </button>

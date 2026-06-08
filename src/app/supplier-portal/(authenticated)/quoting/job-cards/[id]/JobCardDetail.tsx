@@ -184,7 +184,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [sentToJobSheet, setSentToJobSheet] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (tab === 'materials' && !matOrdersLoaded) {
+    if ((tab === 'materials' || tab === 'job_sheet') && !matOrdersLoaded) {
       fetch(`/api/supplier-portal/quoting/material-requests?job_card_id=${initial.id}`)
         .then(r => r.json())
         .then((d: ElecMaterialRequest[]) => { setMatOrders(d); setMatOrdersLoaded(true) })
@@ -1207,6 +1207,39 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <Plus size={13} /> Add Item
             </button>
           )}
+
+          {/* ── Office received orders on job sheet ──────────────────────── */}
+          {(() => {
+            const receivedOrders = matOrders.filter(o => o.status === 'received')
+            if (receivedOrders.length === 0) return null
+            return (
+              <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <div className="flex items-center gap-2 px-4 py-2.5" style={{ background: 'rgba(22,163,74,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                  <PackageCheck size={13} style={{ color: S.green }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.green }}>
+                    Office Orders — Received ({receivedOrders.length})
+                  </span>
+                </div>
+                <div className="grid px-5 py-2 text-[10px] font-bold uppercase tracking-wider"
+                  style={{ gridTemplateColumns: '1fr 60px 80px', gap: '6px', color: S.muted, background: S.bg, borderBottom: `1px solid ${S.border}` }}>
+                  <span>Description</span>
+                  <span className="text-center">Qty</span>
+                  <span className="text-right">Supplier</span>
+                </div>
+                {receivedOrders.map((o, i) => (
+                  <div key={o.id} className="grid px-5 items-center"
+                    style={{ gridTemplateColumns: '1fr 60px 80px', gap: '6px', paddingTop: 8, paddingBottom: 8, borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                    <div>
+                      <span className="text-sm font-medium" style={{ color: S.text }}>{o.description}</span>
+                      {o.unit && <span className="ml-1.5 text-xs" style={{ color: S.muted }}>{o.unit}</span>}
+                    </div>
+                    <span className="text-sm text-center tabular-nums font-mono" style={{ color: S.muted }}>{o.qty}</span>
+                    <span className="text-xs text-right truncate" style={{ color: S.muted }}>{o.supplier ?? '—'}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
 
           {/* ── Charges section ─────────────────────────────────────────── */}
           <div className="rounded-2xl overflow-hidden mt-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
