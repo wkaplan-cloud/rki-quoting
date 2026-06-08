@@ -797,6 +797,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           { key: 'materials', label: `Orders${matOrders.length > 0 ? ` (${matOrders.length})` : ''}` },
           { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}` },
           { key: 'signature', label: 'Signature'  },
+          { key: 'coc',       label: 'COC'        },
         ] as { key: Tab; label: string }[]).map(t => {
           const active = tab === t.key
           return (
