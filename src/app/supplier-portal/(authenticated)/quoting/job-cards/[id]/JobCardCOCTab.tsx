@@ -12,23 +12,23 @@ const S = {
 type TestResult = 'pass' | 'fail' | 'n/a'
 
 interface Props {
-  quoteId: string
+  jobCardId: string
   initialCOC: ElecCOC | null
   cocPrefix: string
   companyCode: string
-  projectAddress?: string | null
+  location?: string | null
   clientName?: string | null
   clientEmail?: string | null
 }
 
-export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAddress, clientName, clientEmail }: Props) {
+export function JobCardCOCTab({ jobCardId, initialCOC, cocPrefix, companyCode, location, clientName, clientEmail }: Props) {
   const year = new Date().getFullYear()
   const defaultCocNumber = companyCode ? `${companyCode}-${cocPrefix}-${year}-001` : `${cocPrefix}-${year}-001`
 
   const [coc, setCOC] = useState<ElecCOC>(() => initialCOC ?? {
     id: crypto.randomUUID(),
-    quote_id: quoteId,
-    job_card_id: null,
+    quote_id: null,
+    job_card_id: jobCardId,
     portal_account_id: null,
     coc_number: defaultCocNumber,
     installation_description: '',
@@ -37,7 +37,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
     tester_registration_number: null,
     linked_doc_number: null,
     notes: null,
-    installation_address: projectAddress ?? null,
+    installation_address: location ?? null,
     owner_name: clientName ?? null,
     supply_authority: null,
     supply_voltage: '230/400V',
@@ -86,7 +86,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
       const res = await fetch('/api/supplier-portal/quoting/coc/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...current, quote_id: quoteId }),
+        body: JSON.stringify({ ...current, job_card_id: jobCardId, quote_id: null }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Save failed') }
       setSaveStatus('saved')
@@ -97,7 +97,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
       setSaveStatus('error')
       return false
     }
-  }, [quoteId]) // eslint-disable-line
+  }, [jobCardId]) // eslint-disable-line
 
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isMountRef = useRef(true)
@@ -111,16 +111,11 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
   async function handleDownload() {
     setDownloading(true)
     clearTimeout(autoSaveTimer.current)
-    // Open the window synchronously (inside user gesture) to avoid popup blockers,
-    // then navigate it after the save completes.
     const win = window.open('', '_blank')
     hasEditedRef.current = true
     const ok = await handleSave(true)
-    if (ok && win) {
-      win.location.href = `/api/supplier-portal/quoting/coc/${coc.id}/pdf`
-    } else if (win) {
-      win.close()
-    }
+    if (ok && win) win.location.href = `/api/supplier-portal/quoting/coc/${coc.id}/pdf`
+    else if (win) win.close()
     setDownloading(false)
   }
 
@@ -129,11 +124,8 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
     const win = window.open('', '_blank')
     hasEditedRef.current = true
     const ok = await handleSave(true)
-    if (ok && win) {
-      win.location.href = `/api/supplier-portal/quoting/coc/${coc.id}/pdf?inline=1`
-    } else if (win) {
-      win.close()
-    }
+    if (ok && win) win.location.href = `/api/supplier-portal/quoting/coc/${coc.id}/pdf?inline=1`
+    else if (win) win.close()
   }
 
   async function handleSend() {
@@ -152,23 +144,20 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
       if (!res.ok || !data.ok) { setSendStatus('error'); setSendError(data.error ?? 'Failed to send'); return }
       setCOC(prev => ({ ...prev, sent_to_email: sendEmail.trim(), sent_at: new Date().toISOString() }))
       setSendStatus('sent')
-    } catch {
-      setSendStatus('error'); setSendError('Network error')
-    }
+    } catch { setSendStatus('error'); setSendError('Network error') }
   }
 
   function ResultToggle({ val, onChange }: { val: string | null; onChange: (v: TestResult) => void }) {
     const current = (val ?? 'pass') as TestResult
     const opts: { v: TestResult; label: string; color: string; bg: string }[] = [
-      { v: 'pass', label: 'Pass', color: S.green, bg: 'rgba(22,163,74,0.1)' },
-      { v: 'fail', label: 'Fail', color: S.danger, bg: 'rgba(220,38,38,0.1)' },
-      { v: 'n/a',  label: 'N/A',  color: S.muted, bg: S.bg },
+      { v: 'pass', label: 'Pass', color: S.green,  bg: 'rgba(22,163,74,0.1)'  },
+      { v: 'fail', label: 'Fail', color: S.danger, bg: 'rgba(220,38,38,0.1)'  },
+      { v: 'n/a',  label: 'N/A',  color: S.muted,  bg: S.bg                   },
     ]
     return (
       <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
         {opts.map(o => (
-          <button key={o.v} type="button"
-            onClick={() => onChange(o.v)}
+          <button key={o.v} type="button" onClick={() => onChange(o.v)}
             className="flex-1 py-1 text-xs font-semibold transition-colors"
             style={{ background: current === o.v ? o.bg : '#fff', color: current === o.v ? o.color : S.muted }}>
             {o.label}
@@ -182,8 +171,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
     return (
       <div>
         <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>{label}</label>
-        <input type={type} value={val ?? ''} onChange={e => cb(e.target.value)}
-          placeholder={placeholder}
+        <input type={type} value={val ?? ''} onChange={e => cb(e.target.value)} placeholder={placeholder}
           className="w-full px-3 py-2 text-sm rounded-lg outline-none"
           style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
           onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
@@ -208,8 +196,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
   function SectionHead({ letter, title }: { letter: string; title: string }) {
     return (
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-          style={{ background: S.accent }}>{letter}</div>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: S.accent }}>{letter}</div>
         <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: S.text }}>{title}</h3>
       </div>
     )
@@ -218,8 +205,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 rounded-2xl"
-        style={{ background: S.card, border: `1px solid ${S.border}` }}>
+      <div className="flex items-center justify-between px-4 py-3 rounded-2xl" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <div>
           <p className="text-sm font-semibold" style={{ color: S.text }}>Certificate of Compliance</p>
           <p className="text-xs" style={{ color: S.muted }}>SANS 10142-1 · OHS Act 85 of 1993 · EIR 2009</p>
@@ -251,7 +237,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
         </div>
       </div>
 
-      {/* Section A — Installation Details */}
+      {/* Section A */}
       <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <SectionHead letter="A" title="Installation Details" />
         <div className="grid grid-cols-2 gap-4">
@@ -259,26 +245,17 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
           <Inp label="Issue Date" val={coc.issue_date} cb={v => set({ issue_date: v })} type="date" />
           <Inp label="Linked Doc Number" val={coc.linked_doc_number} cb={v => set({ linked_doc_number: v || null })} placeholder="e.g. INV-2024-001" />
           <Sel label="Work Type" val={coc.work_type} cb={v => set({ work_type: v })}
-            options={[
-              { v: 'new', label: 'New Installation' },
-              { v: 'addition', label: 'Addition to Existing' },
-              { v: 'alteration', label: 'Alteration / Rewire' },
-            ]} />
+            options={[{ v: 'new', label: 'New Installation' }, { v: 'addition', label: 'Addition to Existing' }, { v: 'alteration', label: 'Alteration / Rewire' }]} />
           <Sel label="Installation Type" val={coc.installation_type} cb={v => set({ installation_type: v })}
-            options={[
-              { v: 'residential', label: 'Residential' },
-              { v: 'commercial', label: 'Commercial' },
-              { v: 'industrial', label: 'Industrial' },
-              { v: 'agricultural', label: 'Agricultural' },
-            ]} />
+            options={[{ v: 'residential', label: 'Residential' }, { v: 'commercial', label: 'Commercial' }, { v: 'industrial', label: 'Industrial' }, { v: 'agricultural', label: 'Agricultural' }]} />
           <Inp label="Owner / Occupier Name" val={coc.owner_name} cb={v => set({ owner_name: v || null })} placeholder={clientName ?? ''} />
           <div className="col-span-2">
-            <Inp label="Installation Address" val={coc.installation_address} cb={v => set({ installation_address: v || null })} placeholder={projectAddress ?? 'Street, City, Province, Postal Code'} />
+            <Inp label="Installation Address" val={coc.installation_address} cb={v => set({ installation_address: v || null })} placeholder={location ?? 'Street, City, Province, Postal Code'} />
           </div>
           <div className="col-span-2">
             <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Description of Installation</label>
             <textarea value={coc.installation_description} onChange={e => { hasEditedRef.current = true; setCOC(p => ({ ...p, installation_description: e.target.value })) }}
-              rows={3} placeholder="e.g. Complete wiring of 3-bedroom residential dwelling including DB board, lighting, plugs and outdoor circuits"
+              rows={3} placeholder="e.g. Complete wiring of residential dwelling"
               className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none"
               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
               onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
@@ -287,36 +264,22 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
         </div>
       </div>
 
-      {/* Section B — Supply Details */}
+      {/* Section B */}
       <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <SectionHead letter="B" title="Supply Details" />
         <div className="grid grid-cols-3 gap-4">
           <Inp label="Supply Authority" val={coc.supply_authority} cb={v => set({ supply_authority: v || null })} placeholder="e.g. Eskom, City Power" />
           <Sel label="Nominal Voltage" val={coc.supply_voltage} cb={v => set({ supply_voltage: v })}
-            options={[
-              { v: '230/400V', label: '230/400V (Standard)' },
-              { v: '230V', label: '230V (Single Phase)' },
-              { v: '400V', label: '400V (Three Phase)' },
-              { v: 'Other', label: 'Other' },
-            ]} />
+            options={[{ v: '230/400V', label: '230/400V (Standard)' }, { v: '230V', label: '230V (Single Phase)' }, { v: '400V', label: '400V (Three Phase)' }, { v: 'Other', label: 'Other' }]} />
           <Sel label="Supply Phases" val={coc.supply_phases} cb={v => set({ supply_phases: v })}
-            options={[
-              { v: 'single', label: 'Single Phase' },
-              { v: 'three', label: 'Three Phase' },
-            ]} />
+            options={[{ v: 'single', label: 'Single Phase' }, { v: 'three', label: 'Three Phase' }]} />
           <Sel label="Earthing System" val={coc.supply_earthing} cb={v => set({ supply_earthing: v })}
-            options={[
-              { v: 'TN-C-S', label: 'TN-C-S (MEN)' },
-              { v: 'TN-S', label: 'TN-S' },
-              { v: 'TN-C', label: 'TN-C' },
-              { v: 'TT', label: 'TT' },
-              { v: 'IT', label: 'IT' },
-            ]} />
+            options={[{ v: 'TN-C-S', label: 'TN-C-S (MEN)' }, { v: 'TN-S', label: 'TN-S' }, { v: 'TN-C', label: 'TN-C' }, { v: 'TT', label: 'TT' }, { v: 'IT', label: 'IT' }]} />
           <Inp label="Main Breaker / Fuse Size (A)" val={coc.main_breaker_amps} cb={v => set({ main_breaker_amps: v || null })} placeholder="e.g. 60A" />
         </div>
       </div>
 
-      {/* Section C — Test Results */}
+      {/* Section C */}
       <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <SectionHead letter="C" title="Test Results" />
         <p className="text-xs mb-4" style={{ color: S.muted }}>Tested in accordance with SANS 10142-1</p>
@@ -332,16 +295,13 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
             <div key={key} className="rounded-xl p-3" style={{ border: `1px solid ${S.border}`, background: S.bg }}>
               <p className="text-xs font-semibold mb-0.5" style={{ color: S.text }}>{label}</p>
               <p className="text-[10px] mb-2" style={{ color: S.muted }}>{desc}</p>
-              <ResultToggle
-                val={(coc as unknown as Record<string, unknown>)[key] as string | null}
-                onChange={v => set({ [key]: v } as Partial<ElecCOC>)}
-              />
+              <ResultToggle val={(coc as unknown as Record<string, unknown>)[key] as string | null} onChange={v => set({ [key]: v } as Partial<ElecCOC>)} />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Section D — Tester / Inspector */}
+      {/* Section D */}
       <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <SectionHead letter="D" title="Tester / Inspector Details" />
         <div className="grid grid-cols-2 gap-4">
@@ -369,11 +329,8 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
                 <h2 className="font-bold text-sm" style={{ color: S.text }}>Send COC to Client</h2>
                 <p className="text-xs mt-0.5" style={{ color: S.muted }}>{coc.coc_number} · PDF attached</p>
               </div>
-              <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: S.muted }}>
-                <X size={15} />
-              </button>
+              <button onClick={() => setShowSendModal(false)} className="p-1.5 rounded-lg" style={{ color: S.muted }}><X size={15} /></button>
             </div>
-
             {sendStatus === 'sent' ? (
               <div className="px-5 py-10 flex flex-col items-center gap-3">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(22,163,74,0.1)' }}>
@@ -381,33 +338,24 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
                 </div>
                 <p className="font-semibold text-sm" style={{ color: S.text }}>COC sent successfully!</p>
                 <p className="text-xs text-center" style={{ color: S.muted }}>PDF sent to {sendEmail}</p>
-                <button onClick={() => setShowSendModal(false)}
-                  className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold text-white"
-                  style={{ background: S.accent }}>Done</button>
+                <button onClick={() => setShowSendModal(false)} className="mt-2 px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>Done</button>
               </div>
             ) : (
               <div className="p-5 space-y-4">
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Send To *</label>
-                  <input type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)}
-                    placeholder="client@email.com"
+                  <input type="email" value={sendEmail} onChange={e => setSendEmail(e.target.value)} placeholder="client@email.com"
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Message <span style={{ fontWeight: 400 }}>(optional)</span></label>
-                  <textarea value={sendMessage} onChange={e => setSendMessage(e.target.value)}
-                    rows={2} placeholder="Add a personal note…"
+                  <textarea value={sendMessage} onChange={e => setSendMessage(e.target.value)} rows={2} placeholder="Add a personal note…"
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none resize-none"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 </div>
-                {sendError && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: '#FEF2F2', color: S.danger }}>
-                    <AlertCircle size={13} />{sendError}
-                  </div>
-                )}
-                <button onClick={() => void handleSend()}
-                  disabled={!sendEmail.trim() || sendStatus === 'sending'}
+                {sendError && <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: '#FEF2F2', color: S.danger }}><AlertCircle size={13} />{sendError}</div>}
+                <button onClick={() => void handleSend()} disabled={!sendEmail.trim() || sendStatus === 'sending'}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
                   style={{ background: S.accent }}>
                   {sendStatus === 'sending' ? <><Loader2 size={14} className="animate-spin" />Sending…</> : <><Send size={14} />Send COC</>}

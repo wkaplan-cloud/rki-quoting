@@ -108,7 +108,7 @@ export default async function SchedulePage() {
   })
 
   return (
-    <div className="flex flex-col h-full">
+    <div>
       <WeekCalendar
         initialJobs={(jobs ?? []) as ElecJob[]}
         staff={(staff ?? []) as ElecStaff[]}

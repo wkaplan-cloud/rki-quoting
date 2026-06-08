@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { StaffHome } from './StaffHome'
-import type { ElecTimePunch, ElecJobCard, ElecClient } from '@/lib/elec-types'
+import type { ElecTimePunch, ElecJobCard, ElecClient, ElecJob } from '@/lib/elec-types'
 
 export default async function StaffHomePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab: initialTab } = await searchParams
@@ -25,9 +25,10 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
     .eq('id', staff.portal_account_id)
     .single()
 
-  // Last 30 days punches + assigned job cards + clients
+  // Last 30 days punches + assigned job cards + clients + today's scheduled jobs
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-  const [{ data: punches }, { data: jobCards }, { data: clients }, { data: projects }] = await Promise.all([
+  const todayStr = new Date().toISOString().split('T')[0]
+  const [{ data: punches }, { data: jobCards }, { data: clients }, { data: projects }, { data: scheduledToday }] = await Promise.all([
     supabaseAdmin
       .from('elec_time_punches')
       .select('*')
@@ -53,6 +54,14 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       .eq('staff_id', staff.id)
       .in('status', ['approved', 'in_progress'])
       .order('created_at', { ascending: false }),
+    supabaseAdmin
+      .from('elec_jobs')
+      .select('*, quote:elec_quotes(id,quote_number,project_name,project_address)')
+      .eq('portal_account_id', staff.portal_account_id)
+      .eq('staff_id', staff.id)
+      .eq('scheduled_date', todayStr)
+      .in('status', ['scheduled', 'in_progress'])
+      .order('start_time'),
   ])
 
   const lastPunch = (punches ?? [])[0] ?? null
@@ -68,6 +77,7 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       assignedJobCards={(jobCards ?? []) as ElecJobCard[]}
       initialClients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>[]}
       assignedProjects={(projects ?? []) as unknown as { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]}
+      scheduledToday={(scheduledToday ?? []) as ElecJob[]}
       initialTab={(initialTab as 'home' | 'jobs' | 'projects' | 'history' | 'more') ?? 'home'}
     />
   )

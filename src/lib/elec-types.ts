@@ -302,7 +302,9 @@ export interface ElecCertificate {
 
 export interface ElecCOC {
   id: string
-  quote_id: string
+  quote_id: string | null
+  job_card_id: string | null
+  portal_account_id: string | null
   coc_number: string
   installation_description: string
   issue_date: string

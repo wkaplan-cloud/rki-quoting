@@ -147,6 +147,8 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const [showAddOrder, setShowAddOrder] = useState(false)
   const [orderDesc, setOrderDesc] = useState('')
   const [orderQty, setOrderQty] = useState('1')
+  const [orderUnit, setOrderUnit] = useState('')
+  const [orderNotes, setOrderNotes] = useState('')
   const [orderSaving, setOrderSaving] = useState(false)
 
   useEffect(() => {
@@ -169,12 +171,14 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
         job_card_id: card.id,
         description: orderDesc.trim(),
         qty: parseFloat(orderQty) || 1,
+        unit: orderUnit.trim() || null,
+        notes: orderNotes.trim() || null,
       }),
     })
     if (res.ok) {
       const m = await res.json() as ElecMaterialRequest
       setMatOrders(prev => [...prev, m])
-      setOrderDesc(''); setOrderQty('1')
+      setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('')
       setShowAddOrder(false)
     }
     setOrderSaving(false)
@@ -506,15 +510,25 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
               {showAddOrder && (
                 <div className="px-4 py-3 space-y-2" style={{ borderTop: matOrders.length > 0 ? `1px solid ${S.border}` : undefined }}>
                   <input value={orderDesc} onChange={e => setOrderDesc(e.target.value)}
-                    placeholder="Item (e.g. 20m 2.5mm cable)"
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
-                  <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
-                    placeholder="Quantity" type="number" min="0.01" step="0.01"
+                    placeholder="What do you need? (e.g. 20m 2.5mm cable)"
                     className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                     style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
                   <div className="flex gap-2">
-                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1') }}
+                    <input value={orderQty} onChange={e => setOrderQty(e.target.value)}
+                      placeholder="Qty" type="number" min="0.01" step="0.01"
+                      className="w-1/3 px-3 py-2.5 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                    <input value={orderUnit} onChange={e => setOrderUnit(e.target.value)}
+                      placeholder="Unit (m / nr / box)"
+                      className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  </div>
+                  <input value={orderNotes} onChange={e => setOrderNotes(e.target.value)}
+                    placeholder="Notes for office (optional)"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowAddOrder(false); setOrderDesc(''); setOrderQty('1'); setOrderUnit(''); setOrderNotes('') }}
                       className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                       Cancel
                     </button>

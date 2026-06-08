@@ -6,7 +6,7 @@ import {
   CheckCircle2, Check, Clock, Play, XCircle, Loader2,
   MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
-  Download, Printer, ShoppingCart, PackageCheck, ReceiptText,
+  Download, Printer, ShoppingCart, PackageCheck, ReceiptText, FileCheck,
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
@@ -15,6 +15,7 @@ import type {
 } from '@/lib/elec-types'
 import { ClientCombobox } from '../../ClientCombobox'
 import { StaffMultiSelect } from '../../StaffMultiSelect'
+import { JobCardCOCTab } from './JobCardCOCTab'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -96,13 +97,16 @@ interface Props {
   companyName: string
   vatRate?: number
   sageConnected?: boolean
+  cocPrefix?: string
+  companyCode?: string
+  initialCOC?: import('@/lib/elec-types').ElecCOC | null
 }
 
-type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'photos' | 'signature'
+type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'photos' | 'signature' | 'coc'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -594,6 +598,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     { key: 'job_sheet', label: `Job Sheet${materials.length > 0 ? ` (${materials.length})` : ''}`, icon: ReceiptText },
     { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`,          icon: ImageIcon  },
     { key: 'signature', label: 'Signature', icon: Pen         },
+    { key: 'coc',       label: 'COC',       icon: FileCheck   },
   ]
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -1517,6 +1522,19 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── COC tab ──────────────────────────────────────────────────────── */}
+      {tab === 'coc' && (
+        <JobCardCOCTab
+          jobCardId={card.id}
+          initialCOC={initialCOC}
+          cocPrefix={cocPrefix}
+          companyCode={companyCode}
+          location={card.location}
+          clientName={card.client_name ?? ((!Array.isArray(card.client) && card.client) ? card.client.client_name : null)}
+          clientEmail={card.client_email ?? ((!Array.isArray(card.client) && card.client) ? card.client.email : null)}
+        />
       )}
 
       {/* ── Sage push modal ──────────────────────────────────────────────── */}

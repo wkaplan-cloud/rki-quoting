@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { JobCardDetail } from './JobCardDetail'
-import type { ElecJobCard, ElecStaff, ElecClient } from '@/lib/elec-types'
+import type { ElecJobCard, ElecStaff, ElecClient, ElecCOC } from '@/lib/elec-types'
 
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -33,12 +33,13 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
 
   if (!card) notFound()
 
-  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }] = await Promise.all([
+  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }] = await Promise.all([
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     supabaseAdmin.from('elec_staff').select('id,name,color,role').eq('portal_account_id', accountId!).eq('is_active', true).order('name'),
     supabaseAdmin.from('elec_clients').select('id,client_name,company,email,address,vat_number,qs_name,qs_email').eq('portal_account_id', accountId!).order('client_name'),
-    supabaseAdmin.from('elec_settings').select('sage_company_id, vat_rate').eq('portal_account_id', accountId!).maybeSingle(),
+    supabaseAdmin.from('elec_settings').select('sage_company_id, vat_rate, coc_prefix, company_code').eq('portal_account_id', accountId!).maybeSingle(),
+    supabaseAdmin.from('elec_coc').select('*').eq('job_card_id', id).maybeSingle(),
   ])
 
   const jobCard: ElecJobCard = { ...card, materials: materials ?? [], photos: photos ?? [] }
@@ -50,8 +51,11 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       clients={(clients ?? []) as ElecClient[]}
       portalAccountId={accountId!}
       companyName={own?.company_name ?? ''}
-      vatRate={settings?.vat_rate ?? 15}
+      vatRate={(settings as { vat_rate?: number } | null)?.vat_rate ?? 15}
       sageConnected={!!(settings?.sage_company_id)}
+      cocPrefix={(settings as { coc_prefix?: string } | null)?.coc_prefix ?? 'COC'}
+      companyCode={(settings as { company_code?: string } | null)?.company_code ?? ''}
+      initialCOC={(existingCOC ?? null) as ElecCOC | null}
     />
   )
 }

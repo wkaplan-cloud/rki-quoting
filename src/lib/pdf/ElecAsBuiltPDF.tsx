@@ -345,33 +345,6 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
           </View>
         </View>
 
-        {/* ── Materials (reference only) ── */}
-        {materials.length > 0 && (
-          <View style={{ marginTop: 14 }}>
-            <View style={s.matSecRow} wrap={false}>
-              <Text style={[s.matSecLabel, { flex: 1 }]}>MATERIALS (Internal Use Only)</Text>
-            </View>
-            <View style={[s.row, { backgroundColor: SURF }]} wrap={false}>
-              <Text style={[s.td, s.tdMuted, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>Description</Text>
-              <Text style={[s.td, s.tdMuted, { width: 50, textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>Unit</Text>
-              <Text style={[s.td, s.tdMuted, { width: 50, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>Qty</Text>
-              <Text style={[s.td, s.tdMuted, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>Status</Text>
-            </View>
-            {materials.map((m, i) => (
-              <View key={m.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
-                <View style={{ flex: 1, paddingRight: 4 }}>
-                  <Text style={s.td}>{m.description}</Text>
-                  {m.notes ? <Text style={[s.td, s.tdMuted, { fontSize: 7 }]}>{m.notes}</Text> : null}
-                </View>
-                <Text style={[s.td, s.tdMuted, { width: 50, textAlign: 'center' }]}>{m.unit ?? 'nr'}</Text>
-                <Text style={[s.td, s.tdMuted, { width: 50, textAlign: 'right' }]}>{m.qty}</Text>
-                <Text style={[s.td, { width: 80, textAlign: 'right', color: MAT_COLOR[m.status] ?? MUTED }]}>
-                  {m.status.charAt(0).toUpperCase() + m.status.slice(1)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
 
         {/* ── Footer ── */}
         <View style={s.footer} fixed>

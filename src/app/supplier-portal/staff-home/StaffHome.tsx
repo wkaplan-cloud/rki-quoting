@@ -7,7 +7,7 @@ import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
   ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw,
 } from 'lucide-react'
-import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient } from '@/lib/elec-types'
+import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient, ElecJob } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
 
 const S = {
@@ -57,10 +57,11 @@ interface Props {
   assignedJobCards: ElecJobCard[]
   initialClients: ClientItem[]
   assignedProjects: { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]
+  scheduledToday?: ElecJob[]
   initialTab?: Tab
 }
 
-export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects, initialTab = 'home' }: Props) {
+export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects, scheduledToday = [], initialTab = 'home' }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -398,6 +399,39 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 </div>
               )
             })()}
+
+            {/* Today's scheduled calendar jobs */}
+            {scheduledToday.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+                  Scheduled Today · {scheduledToday.length} job{scheduledToday.length !== 1 ? 's' : ''}
+                </p>
+                <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  {scheduledToday.map((j, i) => {
+                    const linked = !Array.isArray(j.quote) ? j.quote : null
+                    return (
+                      <div key={j.id} className="flex items-center gap-3 px-4 py-3.5"
+                        style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(58,124,165,0.1)' }}>
+                          <Calendar size={16} style={{ color: S.accent }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{j.title}</p>
+                          <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap" style={{ color: S.muted }}>
+                            <span className="flex items-center gap-0.5">
+                              <Clock size={9} />{j.start_time.slice(0,5)} – {j.end_time.slice(0,5)}
+                            </span>
+                            {j.address && <span className="flex items-center gap-0.5"><MapPin size={9} />{j.address}</span>}
+                            {linked && <span>{linked.project_name}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

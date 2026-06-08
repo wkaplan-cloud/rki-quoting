@@ -22,7 +22,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    // Fetch COC and verify ownership via the quote
     const { data: coc } = await supabaseAdmin
       .from('elec_coc')
       .select('*')
@@ -30,23 +29,55 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .single()
     if (!coc) return NextResponse.json({ error: 'COC not found' }, { status: 404 })
 
-    const [{ data: quoteRaw }, { data: settings }] = await Promise.all([
-      supabaseAdmin
+    // Verify ownership via quote or job card or portal_account_id
+    const isOwned = (coc.portal_account_id === account.id) ||
+      (!coc.quote_id && !coc.job_card_id) // fallback for legacy
+    if (!isOwned && coc.quote_id) {
+      const { data: q } = await supabaseAdmin.from('elec_quotes').select('id').eq('id', coc.quote_id).eq('portal_account_id', account.id).maybeSingle()
+      if (!q) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+    if (!isOwned && coc.job_card_id) {
+      const { data: jc } = await supabaseAdmin.from('elec_job_cards').select('id').eq('id', coc.job_card_id).eq('portal_account_id', account.id).maybeSingle()
+      if (!jc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    // Fetch quote (if linked) or build a stub from job card
+    let quoteRaw: ElecQuote | null = null
+    let clientData: ElecClient | null = null
+
+    if (coc.quote_id) {
+      const { data: q } = await supabaseAdmin
         .from('elec_quotes')
         .select('*, client:elec_clients(*)')
         .eq('id', coc.quote_id)
-        .eq('portal_account_id', account.id)
-        .single(),
-      supabaseAdmin
-        .from('elec_settings')
-        .select('*')
-        .eq('portal_account_id', account.id)
-        .maybeSingle(),
-    ])
+        .maybeSingle()
+      quoteRaw = q as ElecQuote | null
+      clientData = quoteRaw ? (Array.isArray((quoteRaw as any).client) ? (quoteRaw as any).client[0] : (quoteRaw as any).client) : null
+    } else if (coc.job_card_id) {
+      const { data: jc } = await supabaseAdmin
+        .from('elec_job_cards')
+        .select('id, job_number, title, location, client_name')
+        .eq('id', coc.job_card_id)
+        .maybeSingle()
+      if (jc) {
+        quoteRaw = {
+          id: jc.id,
+          portal_account_id: account.id,
+          quote_number: jc.job_number,
+          project_name: jc.title,
+          project_address: jc.location ?? null,
+          client_id: null,
+        } as unknown as ElecQuote
+        if (jc.client_name) {
+          clientData = { id: '', client_name: jc.client_name } as unknown as ElecClient
+        }
+      }
+    }
 
-    if (!quoteRaw) return NextResponse.json({ error: 'Quote not found' }, { status: 404 })
+    if (!quoteRaw) return NextResponse.json({ error: 'Source not found' }, { status: 404 })
 
-    const client = Array.isArray(quoteRaw.client) ? quoteRaw.client[0] : quoteRaw.client
+    const { data: settings } = await supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle()
+
     const companyName = account.company_name ?? account.email ?? 'Company'
     const logoUrl = await fetchLogoBase64((account as any).logo_url)
 
@@ -55,7 +86,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       createElement(ElecCOCPDF, {
         coc:         coc as ElecCOC,
         quote:       quoteRaw as ElecQuote,
-        client:      (client ?? null) as ElecClient | null,
+        client:      clientData as ElecClient | null,
         settings:    (settings ?? null) as ElecSettings | null,
         companyName,
         logoUrl,

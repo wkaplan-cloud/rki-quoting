@@ -18,16 +18,19 @@ export default async function COCPage() {
     redirect('/supplier-portal/upgrade')
   }
 
-  // Fetch all COCs with their linked quotes
+  // Fetch all COCs with their linked quotes and job cards
   const { data: cocs } = await supabaseAdmin
     .from('elec_coc')
-    .select('*, quote:elec_quotes(id, quote_number, project_name, project_address)')
+    .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
     .eq('portal_account_id', account.id)
     .order('created_at', { ascending: false })
 
   return (
     <COCListClient
-      initialCOCs={(cocs ?? []) as (ElecCOC & { quote: { id: string; quote_number: string; project_name: string; project_address: string | null } | null })[]}
+      initialCOCs={(cocs ?? []) as (ElecCOC & {
+        quote: { id: string; quote_number: string; project_name: string; project_address: string | null } | null
+        job_card: { id: string; job_number: string; title: string; location: string | null } | null
+      })[]}
     />
   )
 }

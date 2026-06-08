@@ -12,6 +12,7 @@ const S = {
 
 type COCWithQuote = ElecCOC & {
   quote: { id: string; quote_number: string; project_name: string; project_address: string | null } | null
+  job_card: { id: string; job_number: string; title: string; location: string | null } | null
 }
 
 function fmtDate(iso: string | null | undefined) {
@@ -29,9 +30,10 @@ export function COCListClient({ initialCOCs }: Props) {
   const [search, setSearch] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
-  // Split into two categories: linked to projects and standalone
+  // Split into three categories
   const projectCOCs = cocs.filter(c => c.quote !== null)
-  const standaloneCOCs = cocs.filter(c => c.quote === null)
+  const jobCardCOCs = cocs.filter(c => c.job_card !== null && c.quote === null)
+  const standaloneCOCs = cocs.filter(c => c.quote === null && c.job_card === null)
 
   const filtered = (list: COCWithQuote[]) =>
     list.filter(c =>
@@ -93,6 +95,14 @@ export function COCListClient({ initialCOCs }: Props) {
               style={{ color: S.accent }}>
               <ExternalLink size={9} />
               {coc.quote.quote_number} — {coc.quote.project_name}
+            </Link>
+          )}
+          {coc.job_card && (
+            <Link href={`/supplier-portal/quoting/job-cards/${coc.job_card.id}`}
+              className="flex items-center gap-1 text-[10px] font-medium mt-0.5 hover:underline"
+              style={{ color: S.accent }}>
+              <ExternalLink size={9} />
+              {coc.job_card.job_number} — {coc.job_card.title}
             </Link>
           )}
         </div>
@@ -164,6 +174,19 @@ export function COCListClient({ initialCOCs }: Props) {
           {filtered(projectCOCs).length === 0
             ? <EmptyState label="No project COCs yet — open a project and go to the COC tab" />
             : filtered(projectCOCs).map(coc => <COCRow key={coc.id} coc={coc} />)
+          }
+        </div>
+      </div>
+
+      {/* Job Card COCs */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+          Linked to Job Cards · {filtered(jobCardCOCs).length}
+        </p>
+        <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          {filtered(jobCardCOCs).length === 0
+            ? <EmptyState label="No job card COCs yet — open a job card and go to the COC tab" />
+            : filtered(jobCardCOCs).map(coc => <COCRow key={coc.id} coc={coc} />)
           }
         </div>
       </div>

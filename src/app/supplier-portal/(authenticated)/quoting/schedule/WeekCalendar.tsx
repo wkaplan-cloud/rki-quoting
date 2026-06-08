@@ -419,10 +419,10 @@ export function WeekCalendar({
   const onSite = liveStatuses.filter(ls => ls.isClockedIn)
 
   return (
-    <div className="flex flex-col h-full" style={{ minHeight: 0 }}>
+    <div className="flex flex-col gap-4">
 
       {/* ── Toolbar ───────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-1">
           <button onClick={prevDay}
             className="p-2 rounded-lg transition-colors" style={{ color: S.muted }}
@@ -485,7 +485,7 @@ export function WeekCalendar({
 
       {/* ── Live Now bar (on-site only) ───────────────────────────────── */}
       {isToday && onSite.length > 0 && (
-        <div className="rounded-2xl mb-4 overflow-hidden" style={{ border: `1px solid ${S.border}`, background: S.card }}>
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${S.border}`, background: S.card }}>
           <div className="flex items-center gap-2.5 px-4 py-2.5" style={{ borderBottom: `1px solid ${S.border}`, background: '#F8FAFB' }}>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: S.green }} />
@@ -544,7 +544,7 @@ export function WeekCalendar({
       )}
 
       {/* ── Calendar grid (single day) ────────────────────────────────── */}
-      <div className="rounded-2xl overflow-hidden flex flex-col flex-1" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+      <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
         {/* Day header */}
         <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${S.border}`, background: isToday ? 'rgba(58,124,165,0.04)' : 'transparent' }}>
@@ -558,7 +558,7 @@ export function WeekCalendar({
         </div>
 
         {/* Scrollable time grid */}
-        <div ref={scrollRef} className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+        <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
           <div className="flex" style={{ height: HOURS.length * HOUR_HEIGHT }}>
 
             {/* Time labels */}
