@@ -18,37 +18,47 @@ export default async function COCPage() {
     redirect('/supplier-portal/upgrade')
   }
 
-  // Two separate queries to avoid .or() + .in() Supabase reliability issues:
-  // 1. COCs linked to any of this account's quotes (covers all pre-migration project COCs)
-  // 2. COCs with portal_account_id set directly (new job-card COCs post-migration)
-  const { data: accountQuotes } = await supabaseAdmin
-    .from('elec_quotes')
-    .select('id')
-    .eq('portal_account_id', account.id)
+  const SEL = '*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)'
 
-  const quoteIds = (accountQuotes ?? []).map(q => q.id)
+  // Fetch all quote IDs for this account (paginated to handle > 1000 quotes)
+  const quoteIds: string[] = []
+  let from = 0
+  while (true) {
+    const { data: batch } = await supabaseAdmin
+      .from('elec_quotes')
+      .select('id')
+      .eq('portal_account_id', account.id)
+      .range(from, from + 999)
+    if (!batch?.length) break
+    for (const q of batch) quoteIds.push(q.id)
+    if (batch.length < 1000) break
+    from += 1000
+  }
 
-  const [{ data: projectCOCs }, { data: jobCardCOCs }] = await Promise.all([
-    // All COCs linked to any project in this account
+  // Three queries to catch everything regardless of migration state:
+  // 1. By portal_account_id (catches backfilled project COCs + new job card COCs)
+  // 2. By quote_id IN (catches project COCs where backfill may have missed)
+  // 3. Merge & deduplicate
+  const [{ data: byAccountId }, { data: byQuoteId }] = await Promise.all([
+    supabaseAdmin
+      .from('elec_coc')
+      .select(SEL)
+      .eq('portal_account_id', account.id)
+      .order('created_at', { ascending: false })
+      .limit(2000),
     quoteIds.length > 0
       ? supabaseAdmin
           .from('elec_coc')
-          .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
+          .select(SEL)
           .in('quote_id', quoteIds)
           .order('created_at', { ascending: false })
+          .limit(2000)
       : Promise.resolve({ data: [] }),
-    // All COCs linked to job cards (quote_id is null, portal_account_id is set)
-    supabaseAdmin
-      .from('elec_coc')
-      .select('*, quote:elec_quotes(id, quote_number, project_name, project_address), job_card:elec_job_cards(id, job_number, title, location)')
-      .eq('portal_account_id', account.id)
-      .is('quote_id', null)
-      .order('created_at', { ascending: false }),
   ])
 
   // Merge, deduplicate by id
   const seen = new Set<string>()
-  const cocs = [...(projectCOCs ?? []), ...(jobCardCOCs ?? [])].filter(c => {
+  const cocs = [...(byAccountId ?? []), ...(byQuoteId ?? [])].filter(c => {
     if (seen.has(c.id)) return false
     seen.add(c.id)
     return true
