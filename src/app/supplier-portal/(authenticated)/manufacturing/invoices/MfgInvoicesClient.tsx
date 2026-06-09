@@ -223,12 +223,18 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
                       </p>
                     )}
                   </div>
-                  <a href={`/api/supplier-portal/manufacturing/invoices/${inv.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="text-xs px-2.5 py-1 rounded-lg flex-shrink-0 transition-colors"
-                    style={{ background: S.input, color: S.muted, border: `1px solid ${S.border}` }}>
-                    PDF
-                  </a>
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    <a href={`/api/supplier-portal/manufacturing/invoices/${inv.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                      className="text-xs px-2.5 py-1 rounded-lg transition-colors"
+                      style={{ background: S.input, color: S.muted, border: `1px solid ${S.border}` }}>
+                      PDF
+                    </a>
+                    <button onClick={() => openSendModal(inv)}
+                      className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg transition-opacity hover:opacity-80 text-white"
+                      style={{ background: S.accent }}>
+                      <Send size={11} /> Send
+                    </button>
+                  </div>
                 </div>
 
                 {/* Expanded payment history */}
@@ -265,20 +271,13 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {inv.status !== 'paid' && (
-                        <button onClick={e => { e.stopPropagation(); openPaymentModal(inv.id, balance) }}
-                          className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-colors"
-                          style={{ background: S.input, color: S.accent, border: `1px solid ${S.border}` }}>
-                          <Plus size={12} /> Record Payment
-                        </button>
-                      )}
-                      <button onClick={e => { e.stopPropagation(); openSendModal(inv) }}
+                    {inv.status !== 'paid' && (
+                      <button onClick={e => { e.stopPropagation(); openPaymentModal(inv.id, balance) }}
                         className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-colors"
-                        style={{ background: S.accent, color: '#fff' }}>
-                        <Send size={12} /> Send Invoice
+                        style={{ background: S.input, color: S.accent, border: `1px solid ${S.border}` }}>
+                        <Plus size={12} /> Record Payment
                       </button>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
