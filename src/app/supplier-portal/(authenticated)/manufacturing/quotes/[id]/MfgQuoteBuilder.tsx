@@ -109,8 +109,10 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const [creatingRevision, setCreatingRevision] = useState(false)
   const [saveFeedback, setSaveFeedback] = useState('')
   const [error, setError]             = useState('')
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const isMountRef    = useRef(true)
+  const autoSaveTimer  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const isMountRef     = useRef(true)
+  const pbTimers       = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const [pbSaved, setPbSaved] = useState<Set<string>>(new Set())
   const [showSendModal, setShowSendModal] = useState(false)
   const [sendEmail, setSendEmail] = useState(quote.job?.client ? '' : '')
   const [showConvertModal, setShowConvertModal] = useState(false)
@@ -213,6 +215,27 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
       sort_order: lineItems[liIdx].hardware.length,
     }
     updateLineItem(liIdx, { hardware: [...lineItems[liIdx].hardware, hw] })
+  }
+
+  // Update unit cost and debounce a price book save for non-supplier-quoted items
+  function handleUnitCostChange(liIdx: number, section: 'materials' | 'hardware', itemIdx: number, newCost: number | null) {
+    const arr = section === 'materials' ? [...lineItems[liIdx].materials] : [...lineItems[liIdx].hardware]
+    const item = arr[itemIdx]
+    arr[itemIdx] = { ...item, unit_cost: newCost }
+    updateLineItem(liIdx, { [section]: arr })
+
+    if (!item.price_book_item_id || item.supplier_quoted || newCost === null) return
+    const pbId = item.price_book_item_id
+    clearTimeout(pbTimers.current[pbId])
+    pbTimers.current[pbId] = setTimeout(async () => {
+      await fetch(`/api/supplier-portal/manufacturing/price-book/${pbId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cost_price: newCost }),
+      })
+      setPbSaved(prev => { const s = new Set(prev); s.add(pbId); return s })
+      setTimeout(() => setPbSaved(prev => { const s = new Set(prev); s.delete(pbId); return s }), 2000)
+    }, 1000)
   }
 
   const handleSave = useCallback(async (quiet = false) => {
@@ -515,21 +538,24 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                               className="w-16 px-2 py-0.5 rounded text-center outline-none"
                               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                             <span style={{ color: S.muted }}>{m.unit}</span>
-                            {m.supplier_quoted ? (
-                              <input type="number" value={m.unit_cost ?? ''} placeholder="Enter quote"
-                                onChange={e => {
-                                  const mats = [...li.materials]
-                                  mats[mIdx] = { ...mats[mIdx], unit_cost: e.target.value === '' ? null : parseFloat(e.target.value) }
-                                  updateLineItem(liIdx, { materials: mats })
-                                }}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px]" style={{ color: S.muted }}>R</span>
+                              <input type="number" value={m.unit_cost ?? ''} placeholder="price"
+                                onChange={e => handleUnitCostChange(liIdx, 'materials', mIdx, e.target.value === '' ? null : parseFloat(e.target.value))}
                                 disabled={isReadOnly}
-                                className="w-28 px-2 py-0.5 rounded outline-none text-right"
-                                style={{ background: '#FEF3C7', border: `1px solid #FDE68A`, color: '#92400E' }} />
-                            ) : (
-                              <span className="w-20 text-right font-semibold" style={{ color: S.text }}>
-                                {m.unit_cost !== null && m.unit_cost !== undefined ? `R ${(m.unit_cost * m.quantity).toFixed(2)}` : '—'}
-                              </span>
-                            )}
+                                className="w-20 px-2 py-0.5 rounded outline-none text-right"
+                                style={{
+                                  background: m.supplier_quoted ? '#FEF3C7' : S.input,
+                                  border: `1px solid ${m.price_book_item_id && pbSaved.has(m.price_book_item_id) ? '#16A34A' : m.supplier_quoted ? '#FDE68A' : S.border}`,
+                                  color: m.supplier_quoted ? '#92400E' : S.text,
+                                }} />
+                              {m.price_book_item_id && pbSaved.has(m.price_book_item_id) && (
+                                <span className="text-[9px]" style={{ color: '#16A34A' }}>✓</span>
+                              )}
+                            </div>
+                            <span className="w-16 text-right font-semibold" style={{ color: S.text }}>
+                              {m.unit_cost ? `R ${(m.unit_cost * m.quantity).toFixed(2)}` : '—'}
+                            </span>
                             {!isReadOnly && (
                               <button onClick={() => updateLineItem(liIdx, { materials: li.materials.filter((_, i) => i !== mIdx) })}
                                 style={{ color: S.muted }}><Trash2 size={11} /></button>
@@ -584,21 +610,24 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                               style={{ background: h.apply_markup ? '#EFF6FF' : S.input, color: h.apply_markup ? S.accent : S.muted }}>
                               {h.apply_markup ? 'markup ✓' : 'at cost'}
                             </button>
-                            {h.supplier_quoted ? (
-                              <input type="number" value={h.unit_cost ?? ''} placeholder="Enter quote"
-                                onChange={e => {
-                                  const hws = [...li.hardware]
-                                  hws[hIdx] = { ...hws[hIdx], unit_cost: e.target.value === '' ? null : parseFloat(e.target.value) }
-                                  updateLineItem(liIdx, { hardware: hws })
-                                }}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px]" style={{ color: S.muted }}>R</span>
+                              <input type="number" value={h.unit_cost ?? ''} placeholder="price"
+                                onChange={e => handleUnitCostChange(liIdx, 'hardware', hIdx, e.target.value === '' ? null : parseFloat(e.target.value))}
                                 disabled={isReadOnly}
-                                className="w-28 px-2 py-0.5 rounded outline-none text-right"
-                                style={{ background: '#FEF3C7', border: `1px solid #FDE68A`, color: '#92400E' }} />
-                            ) : (
-                              <span className="w-20 text-right font-semibold" style={{ color: S.text }}>
-                                {h.unit_cost !== null && h.unit_cost !== undefined ? `R ${(h.unit_cost * h.quantity).toFixed(2)}` : '—'}
-                              </span>
-                            )}
+                                className="w-20 px-2 py-0.5 rounded outline-none text-right"
+                                style={{
+                                  background: h.supplier_quoted ? '#FEF3C7' : S.input,
+                                  border: `1px solid ${h.price_book_item_id && pbSaved.has(h.price_book_item_id) ? '#16A34A' : h.supplier_quoted ? '#FDE68A' : S.border}`,
+                                  color: h.supplier_quoted ? '#92400E' : S.text,
+                                }} />
+                              {h.price_book_item_id && pbSaved.has(h.price_book_item_id) && (
+                                <span className="text-[9px]" style={{ color: '#16A34A' }}>✓</span>
+                              )}
+                            </div>
+                            <span className="w-16 text-right font-semibold" style={{ color: S.text }}>
+                              {h.unit_cost ? `R ${(h.unit_cost * h.quantity).toFixed(2)}` : '—'}
+                            </span>
                             {!isReadOnly && (
                               <button onClick={() => updateLineItem(liIdx, { hardware: li.hardware.filter((_, i) => i !== hIdx) })}
                                 style={{ color: S.muted }}><Trash2 size={11} /></button>
