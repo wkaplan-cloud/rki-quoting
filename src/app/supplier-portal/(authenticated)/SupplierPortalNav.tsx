@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Hammer, Receipt, Library } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -41,6 +41,7 @@ const S = {
 
 export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle }: Props) {
   const isTrades = supplierCategory === 'trades'
+  const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -156,8 +157,21 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
         {/* Nav */}
         <nav className="flex-1 pt-3 pb-2 overflow-y-auto overflow-x-hidden space-y-0.5">
 
-          {/* Manufacturer nav */}
-          {!isTrades && (
+          {/* Manufacturing quoting module nav */}
+          {isManufacturing && (
+            <>
+              <NavLink href="/supplier-portal/manufacturing/dashboard"  label="Dashboard"   icon={LayoutDashboard} exact />
+              <NavLink href="/supplier-portal/manufacturing/quotes"     label="Quotes"      icon={FileText} />
+              <NavLink href="/supplier-portal/manufacturing/invoices"   label="Invoices"    icon={Receipt} />
+              <NavLink href="/supplier-portal/manufacturing/clients"    label="Clients"     icon={Users} />
+              <NavLink href="/supplier-portal/manufacturing/price-book" label="Price Book"  icon={Library} />
+              <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
+              <NavLink href="/supplier-portal/manufacturing/settings"   label="Settings"    icon={Settings} />
+            </>
+          )}
+
+          {/* Standard supplier nav (price requests / price list) */}
+          {!isTrades && !isManufacturing && (
             <>
               <NavLink href="/supplier-portal/home"          label="Home"           icon={Home}  />
               <NavLink href="/supplier-portal/price-requests" label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
