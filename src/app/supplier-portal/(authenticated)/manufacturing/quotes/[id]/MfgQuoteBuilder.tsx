@@ -314,7 +314,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     router.push('/supplier-portal/manufacturing/invoices')
   }
 
-  const isReadOnly = quote.status === 'invoiced'
+  const isReadOnly = quote.status === 'invoiced' || quote.status === 'superseded'
+  const latestRevision = revisions[revisions.length - 1]
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -333,8 +334,10 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
               <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#EFF6FF', color: S.accent }}>v{quote.revision_number}</span>
             )}
             <span className="text-xs px-2 py-0.5 rounded-full font-semibold capitalize"
-              style={{ background: quote.status === 'accepted' ? '#DCFCE7' : quote.status === 'sent' ? '#FEF3C7' : '#F4F4F5',
-                       color: quote.status === 'accepted' ? '#16A34A' : quote.status === 'sent' ? '#D97706' : S.muted }}>
+              style={{
+                background: quote.status === 'accepted' ? '#DCFCE7' : quote.status === 'sent' ? '#FEF3C7' : quote.status === 'superseded' ? '#F4F4F5' : '#F4F4F5',
+                color:      quote.status === 'accepted' ? '#16A34A' : quote.status === 'sent' ? '#D97706' : quote.status === 'superseded' ? '#A1A1AA' : S.muted,
+              }}>
               {quote.status}
             </span>
           </div>
@@ -420,6 +423,18 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
           </a>
         </div>
       </div>
+
+      {quote.status === 'superseded' && latestRevision && latestRevision.id !== quote.id && (
+        <div className="mb-6 flex items-center justify-between gap-4 px-4 py-3 rounded-xl text-sm"
+          style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#71717A' }}>
+          <span>This revision has been superseded. You are viewing a read-only copy.</span>
+          <button onClick={() => router.push(`/supplier-portal/manufacturing/quotes/${latestRevision.id}`)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0"
+            style={{ background: S.accent, color: '#fff' }}>
+            Go to v{latestRevision.revision_number} →
+          </button>
+        </div>
+      )}
 
       {error && <p className="mb-4 px-4 py-3 rounded-xl text-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{error}</p>}
       {hasPendingItems && (
