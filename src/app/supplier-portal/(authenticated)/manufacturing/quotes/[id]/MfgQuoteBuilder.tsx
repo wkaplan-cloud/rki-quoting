@@ -881,49 +881,62 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                     )}
                     {!isReadOnly && <PriceBookSelect items={priceBook} itemType="material" onSelect={item => addMaterial(liIdx, item)} placeholder="+ Add material from price book…" />}
                     {!isReadOnly && showCustomForm === `${liIdx}-material` ? (
-                      <div className="mt-2 rounded-xl p-3 space-y-2" style={{ background: S.card, border: `1.5px solid ${S.accent}` }}>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
-                            placeholder="Material name" autoFocus
-                            className="col-span-2 px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          <input value={customForm.unit} onChange={e => setCustomForm(f => ({ ...f, unit: e.target.value }))}
-                            placeholder="Unit (m, m², each…)"
-                            className="px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
-                            placeholder="Qty"
-                            className="px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          <div className="flex items-center gap-1 col-span-2">
-                            <span className="text-xs" style={{ color: S.muted }}>R</span>
-                            <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
-                              placeholder="Unit cost (optional)"
-                              className="flex-1 px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          </div>
+                      <div className="mt-3 rounded-xl overflow-hidden" style={{ border: `2px solid ${S.accent}`, boxShadow: '0 4px 16px rgba(27,79,138,0.12)' }}>
+                        <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.accent }}>
+                          <span className="text-xs font-bold text-white uppercase tracking-widest">Custom Material</span>
+                          <button onClick={() => setShowCustomForm(null)} className="text-white opacity-70 hover:opacity-100 text-xs">✕</button>
                         </div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={customForm.saveToPb} onChange={e => setCustomForm(f => ({ ...f, saveToPb: e.target.checked }))}
-                            className="rounded" />
-                          <span className="text-xs" style={{ color: S.muted }}>Save to price book</span>
-                        </label>
-                        <div className="flex gap-2 pt-1">
-                          <button onClick={() => void submitCustom(liIdx, 'material')} disabled={!customForm.name.trim() || customForm.saving}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-                            style={{ background: S.accent }}>
-                            {customForm.saving ? 'Adding…' : 'Add'}
-                          </button>
-                          <button onClick={() => setShowCustomForm(null)} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>Cancel</button>
+                        <div className="p-4 space-y-3" style={{ background: '#fff' }}>
+                          <div>
+                            <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Name</label>
+                            <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
+                              placeholder="e.g. 18mm Oak Veneer MDF" autoFocus
+                              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                              style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Unit</label>
+                              <input value={customForm.unit} onChange={e => setCustomForm(f => ({ ...f, unit: e.target.value }))}
+                                placeholder="m², each…"
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Qty</label>
+                              <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Cost (R)</label>
+                              <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
+                                placeholder="optional"
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                            </div>
+                          </div>
+                          <label className="flex items-center gap-2.5 cursor-pointer py-1">
+                            <input type="checkbox" checked={customForm.saveToPb} onChange={e => setCustomForm(f => ({ ...f, saveToPb: e.target.checked }))} className="w-4 h-4 rounded accent-blue-700" />
+                            <span className="text-sm" style={{ color: S.text }}>Save to price book for future quotes</span>
+                          </label>
+                          <div className="flex gap-2 pt-1">
+                            <button onClick={() => void submitCustom(liIdx, 'material')} disabled={!customForm.name.trim() || customForm.saving}
+                              className="flex-1 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+                              style={{ background: S.accent }}>
+                              {customForm.saving ? 'Adding…' : 'Add Material'}
+                            </button>
+                            <button onClick={() => setShowCustomForm(null)} className="px-4 py-2 rounded-lg text-sm" style={{ color: S.muted }}>Cancel</button>
+                          </div>
                         </div>
                       </div>
                     ) : (
                       !isReadOnly && (
                         <button onClick={() => openCustomForm(liIdx, 'material')}
-                          className="mt-1.5 text-xs px-2.5 py-1 rounded-lg transition-colors"
-                          style={{ color: S.muted, background: 'transparent' }}
-                          onMouseEnter={e => (e.currentTarget.style.color = S.accent)}
-                          onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
+                          className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
+                          style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
+                          onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
+                          onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
                           + Add custom material
                         </button>
                       )
@@ -1006,54 +1019,68 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                     )}
                     {!isReadOnly && <PriceBookSelect items={priceBook} itemType="hardware" onSelect={item => addHardware(liIdx, item)} placeholder="+ Add hardware from price book…" />}
                     {!isReadOnly && showCustomForm === `${liIdx}-hardware` ? (
-                      <div className="mt-2 rounded-xl p-3 space-y-2" style={{ background: S.card, border: `1.5px solid ${S.accent}` }}>
-                        <div className="grid grid-cols-2 gap-2">
-                          <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
-                            placeholder="Hardware / finish name" autoFocus
-                            className="col-span-2 px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          <input value={customForm.unit} onChange={e => setCustomForm(f => ({ ...f, unit: e.target.value }))}
-                            placeholder="Unit (each, set…)"
-                            className="px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
-                            placeholder="Qty"
-                            className="px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          <div className="flex items-center gap-1 col-span-2">
-                            <span className="text-xs" style={{ color: S.muted }}>R</span>
-                            <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
-                              placeholder="Unit cost (optional)"
-                              className="flex-1 px-2.5 py-1.5 text-xs rounded-lg outline-none"
-                              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                      <div className="mt-3 rounded-xl overflow-hidden" style={{ border: `2px solid ${S.accent}`, boxShadow: '0 4px 16px rgba(27,79,138,0.12)' }}>
+                        <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.accent }}>
+                          <span className="text-xs font-bold text-white uppercase tracking-widest">Custom Hardware / Finish</span>
+                          <button onClick={() => setShowCustomForm(null)} className="text-white opacity-70 hover:opacity-100 text-xs">✕</button>
+                        </div>
+                        <div className="p-4 space-y-3" style={{ background: '#fff' }}>
+                          <div>
+                            <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Name</label>
+                            <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
+                              placeholder="e.g. Soft-close hinge pair" autoFocus
+                              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                              style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
                           </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={customForm.applyMarkup} onChange={e => setCustomForm(f => ({ ...f, applyMarkup: e.target.checked }))} />
-                            <span className="text-xs" style={{ color: S.muted }}>Apply markup</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" checked={customForm.saveToPb} onChange={e => setCustomForm(f => ({ ...f, saveToPb: e.target.checked }))} />
-                            <span className="text-xs" style={{ color: S.muted }}>Save to price book</span>
-                          </label>
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <button onClick={() => void submitCustom(liIdx, 'hardware')} disabled={!customForm.name.trim() || customForm.saving}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-                            style={{ background: S.accent }}>
-                            {customForm.saving ? 'Adding…' : 'Add'}
-                          </button>
-                          <button onClick={() => setShowCustomForm(null)} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>Cancel</button>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Unit</label>
+                              <input value={customForm.unit} onChange={e => setCustomForm(f => ({ ...f, unit: e.target.value }))}
+                                placeholder="each, set…"
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Qty</label>
+                              <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Cost (R)</label>
+                              <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
+                                placeholder="optional"
+                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
+                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <label className="flex items-center gap-2.5 cursor-pointer">
+                              <input type="checkbox" checked={customForm.applyMarkup} onChange={e => setCustomForm(f => ({ ...f, applyMarkup: e.target.checked }))} className="w-4 h-4 rounded" />
+                              <span className="text-sm" style={{ color: S.text }}>Apply markup to this item</span>
+                            </label>
+                            <label className="flex items-center gap-2.5 cursor-pointer">
+                              <input type="checkbox" checked={customForm.saveToPb} onChange={e => setCustomForm(f => ({ ...f, saveToPb: e.target.checked }))} className="w-4 h-4 rounded accent-blue-700" />
+                              <span className="text-sm" style={{ color: S.text }}>Save to price book for future quotes</span>
+                            </label>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button onClick={() => void submitCustom(liIdx, 'hardware')} disabled={!customForm.name.trim() || customForm.saving}
+                              className="flex-1 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
+                              style={{ background: S.accent }}>
+                              {customForm.saving ? 'Adding…' : 'Add Hardware'}
+                            </button>
+                            <button onClick={() => setShowCustomForm(null)} className="px-4 py-2 rounded-lg text-sm" style={{ color: S.muted }}>Cancel</button>
+                          </div>
                         </div>
                       </div>
                     ) : (
                       !isReadOnly && (
                         <button onClick={() => openCustomForm(liIdx, 'hardware')}
-                          className="mt-1.5 text-xs px-2.5 py-1 rounded-lg transition-colors"
-                          style={{ color: S.muted, background: 'transparent' }}
-                          onMouseEnter={e => (e.currentTarget.style.color = S.accent)}
-                          onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
+                          className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
+                          style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
+                          onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
+                          onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
                           + Add custom hardware
                         </button>
                       )
