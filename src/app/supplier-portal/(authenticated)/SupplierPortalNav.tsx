@@ -238,25 +238,27 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
           {isManufacturing && (
             <NavLink href="/supplier-portal/manufacturing/settings" label="Settings" icon={Settings} />
           )}
-          <Link
-            href="/supplier-portal/profile"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
-            style={{
-              background: pathname.startsWith('/supplier-portal/profile') ? S.activeBg : 'transparent',
-              borderLeft: pathname.startsWith('/supplier-portal/profile') ? `3px solid ${S.activeAccent}` : '3px solid transparent',
-            }}
-            onMouseEnter={e => { if (!pathname.startsWith('/supplier-portal/profile')) e.currentTarget.style.background = S.hoverBg }}
-            onMouseLeave={e => { if (!pathname.startsWith('/supplier-portal/profile')) e.currentTarget.style.background = 'transparent' }}
-          >
-            <span className="flex items-center justify-center w-9 flex-shrink-0">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: S.activeAccent, color: '#fff' }}>
-                {companyName.charAt(0).toUpperCase()}
-              </div>
-            </span>
-            <span className={`${labelCls} flex-1 truncate`} style={{ color: pathname.startsWith('/supplier-portal/profile') ? S.textLight : S.textMuted }}>{isManufacturing ? 'Admin' : companyName}</span>
-            <User size={11} className={`${labelCls} shrink-0 !pr-2`} style={{ color: S.textMuted }} />
-          </Link>
+          {!isManufacturing && (
+            <Link
+              href="/supplier-portal/profile"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
+              style={{
+                background: pathname.startsWith('/supplier-portal/profile') ? S.activeBg : 'transparent',
+                borderLeft: pathname.startsWith('/supplier-portal/profile') ? `3px solid ${S.activeAccent}` : '3px solid transparent',
+              }}
+              onMouseEnter={e => { if (!pathname.startsWith('/supplier-portal/profile')) e.currentTarget.style.background = S.hoverBg }}
+              onMouseLeave={e => { if (!pathname.startsWith('/supplier-portal/profile')) e.currentTarget.style.background = 'transparent' }}
+            >
+              <span className="flex items-center justify-center w-9 flex-shrink-0">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: S.activeAccent, color: '#fff' }}>
+                  {companyName.charAt(0).toUpperCase()}
+                </div>
+              </span>
+              <span className={`${labelCls} flex-1 truncate`} style={{ color: pathname.startsWith('/supplier-portal/profile') ? S.textLight : S.textMuted }}>{companyName}</span>
+              <User size={11} className={`${labelCls} shrink-0 !pr-2`} style={{ color: S.textMuted }} />
+            </Link>
+          )}
 
           <button
             onClick={handleSignOut}
