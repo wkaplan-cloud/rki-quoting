@@ -13,18 +13,17 @@ export default async function MfgQuoteBuilderPage({ params }: { params: Promise<
   const account = await resolvePortalAccount(user.id)
   if (!account) redirect('/supplier-portal/login')
 
+  // Round 1 — all queries that only need `id` or `account.id` run in parallel
   const [
     { data: quote },
     { data: priceBook },
     { data: settings },
     { data: templates },
+    { data: lineItems },
   ] = await Promise.all([
     supabase
       .from('mfg_quotes')
-      .select(`
-        *,
-        job:mfg_jobs(id, job_name, client:mfg_clients(id, client_name, client_type, contact_person, email, phone, address, vat_number))
-      `)
+      .select(`*, job:mfg_jobs(id, job_name, client:mfg_clients(id, client_name, client_type, contact_person, email, phone, address, vat_number))`)
       .eq('id', id)
       .eq('portal_account_id', account.id)
       .single(),
@@ -44,21 +43,26 @@ export default async function MfgQuoteBuilderPage({ params }: { params: Promise<
       .select('*, materials:mfg_template_materials(*), hardware:mfg_template_hardware(*)')
       .eq('portal_account_id', account.id)
       .order('template_name'),
+    supabase
+      .from('mfg_quote_line_items')
+      .select('*')
+      .eq('quote_id', id)
+      .order('sort_order'),
   ])
 
   if (!quote) notFound()
 
-  // Load line items with cost build
-  const { data: lineItems } = await supabase
-    .from('mfg_quote_line_items')
-    .select('*')
-    .eq('quote_id', id)
-    .order('sort_order')
-
+  // Round 2 — needs lineItem IDs (from round 1) and quote_number (from round 1)
   const liIds = (lineItems ?? []).map(li => li.id)
-  const [{ data: materials }, { data: hardware }] = await Promise.all([
+  const [{ data: materials }, { data: hardware }, { data: revisions }] = await Promise.all([
     liIds.length ? supabase.from('mfg_cost_materials').select('*').in('line_item_id', liIds).order('sort_order') : { data: [] },
     liIds.length ? supabase.from('mfg_cost_hardware').select('*').in('line_item_id', liIds).order('sort_order') : { data: [] },
+    supabase
+      .from('mfg_quotes')
+      .select('id, revision_number, status, created_at')
+      .eq('portal_account_id', account.id)
+      .eq('quote_number', quote.quote_number)
+      .order('revision_number'),
   ])
 
   const lineItemsFull = (lineItems ?? []).map(li => ({
@@ -67,14 +71,6 @@ export default async function MfgQuoteBuilderPage({ params }: { params: Promise<
     hardware:  (hardware ?? []).filter(h => h.line_item_id === li.id),
     cost_builder_open: false,
   }))
-
-  // Fetch all revisions for this quote number
-  const { data: revisions } = await supabase
-    .from('mfg_quotes')
-    .select('id, revision_number, status, created_at')
-    .eq('portal_account_id', account.id)
-    .eq('quote_number', quote.quote_number)
-    .order('revision_number')
 
   return (
     <MfgQuoteBuilder
