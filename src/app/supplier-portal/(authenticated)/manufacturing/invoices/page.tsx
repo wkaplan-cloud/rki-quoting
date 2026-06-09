@@ -13,7 +13,7 @@ export default async function MfgInvoicesPage() {
 
   const { data: invoices } = await supabase
     .from('mfg_invoices')
-    .select('*, job:mfg_jobs(id, job_name, client:mfg_clients(id, client_name))')
+    .select('*, job:mfg_jobs(id, job_name, client:mfg_clients(id, client_name, email))')
     .eq('portal_account_id', account.id)
     .is('archived_at', null)
     .order('created_at', { ascending: false })

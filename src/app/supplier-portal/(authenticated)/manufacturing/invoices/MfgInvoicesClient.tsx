@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Receipt, CheckCircle, AlertCircle, Plus, Trash2, X } from 'lucide-react'
+import { Receipt, CheckCircle, AlertCircle, Plus, Trash2, X, Send, Check } from 'lucide-react'
 import type { MfgInvoice } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
@@ -13,7 +13,7 @@ const STATUS_CONFIG = {
   overdue:        { label: 'Overdue', color: '#DC2626', bg: '#FEE2E2' },
 }
 
-type InvoiceWithJob = MfgInvoice & { job?: { id: string; job_name: string; client?: { client_name: string } | null } | null }
+type InvoiceWithJob = MfgInvoice & { job?: { id: string; job_name: string; client?: { client_name: string; email?: string | null } | null } | null }
 
 interface PaymentForm { amount: string; payment_date: string; payment_method: string; reference: string }
 
@@ -30,6 +30,12 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
   const [loadingPayments, setLoadingPayments] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<{ invoiceId: string; paymentId: string } | null>(null)
+  const [showSendModal, setShowSendModal] = useState<string | null>(null)
+  const [sendEmail, setSendEmail] = useState('')
+  const [sendBody, setSendBody] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendSuccess, setSendSuccess] = useState(false)
+  const [sendError, setSendError] = useState('')
 
   const filtered = invoices.filter(inv => {
     if (statusFilter !== 'all' && inv.status !== statusFilter) return false
@@ -99,6 +105,36 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
       setInvoices(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: updated.status, amount_paid: updated.amount_paid } : inv))
     }
     setConfirmDelete(null)
+  }
+
+  function openSendModal(inv: InvoiceWithJob) {
+    const clientName = inv.job?.client?.client_name ?? 'Client'
+    const jobName = inv.job?.job_name ?? 'your project'
+    const invoiceLabel = inv.invoice_type === 'deposit' ? 'deposit invoice' : inv.invoice_type === 'final' ? 'final invoice' : 'invoice'
+    setSendEmail(inv.job?.client?.email ?? '')
+    setSendBody(`Dear ${clientName},\n\nPlease find attached your ${invoiceLabel} for the ${jobName} project.\n\nAmount due: R ${inv.total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}${inv.due_date ? `\nDue date: ${new Date(inv.due_date + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}\n\nPlease don't hesitate to contact us if you have any questions.\n\nKind regards`)
+    setSendSuccess(false)
+    setSendError('')
+    setShowSendModal(inv.id)
+  }
+
+  async function handleSendInvoice() {
+    if (!showSendModal || !sendEmail.trim()) return
+    setSending(true)
+    setSendError('')
+    const res = await fetch(`/api/supplier-portal/manufacturing/invoices/${showSendModal}/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: sendEmail.trim(), body: sendBody }),
+    })
+    setSending(false)
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setSendError((d as { error?: string }).error ?? 'Send failed')
+      return
+    }
+    setSendSuccess(true)
+    setInvoices(prev => prev.map(inv => inv.id === showSendModal ? { ...inv, status: 'sent' as const } : inv))
   }
 
   const totalOutstanding = filtered.filter(i => i.status !== 'paid').reduce((s, i) => s + (i.total - i.amount_paid), 0)
@@ -229,13 +265,20 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
                       </div>
                     )}
 
-                    {inv.status !== 'paid' && (
-                      <button onClick={e => { e.stopPropagation(); openPaymentModal(inv.id, balance) }}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {inv.status !== 'paid' && (
+                        <button onClick={e => { e.stopPropagation(); openPaymentModal(inv.id, balance) }}
+                          className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+                          style={{ background: S.input, color: S.accent, border: `1px solid ${S.border}` }}>
+                          <Plus size={12} /> Record Payment
+                        </button>
+                      )}
+                      <button onClick={e => { e.stopPropagation(); openSendModal(inv) }}
                         className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-colors"
-                        style={{ background: S.input, color: S.accent, border: `1px solid ${S.border}` }}>
-                        <Plus size={12} /> Record Payment
+                        style={{ background: S.accent, color: '#fff' }}>
+                        <Send size={12} /> Send Invoice
                       </button>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -300,6 +343,61 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
               </button>
               <button onClick={() => setAddingPayment(null)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Invoice modal */}
+      {showSendModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={() => { setShowSendModal(null); setSendSuccess(false) }}>
+          <div className="rounded-2xl p-6 w-full max-w-lg shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+            {sendSuccess ? (
+              <div className="text-center py-4">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#DCFCE7' }}>
+                  <Check size={28} style={{ color: '#16A34A' }} />
+                </div>
+                <h3 className="text-lg font-bold mb-1" style={{ color: S.text }}>Invoice sent!</h3>
+                <p className="text-sm mb-6" style={{ color: S.muted }}>Delivered to <span className="font-medium" style={{ color: S.text }}>{sendEmail}</span></p>
+                <button onClick={() => { setShowSendModal(null); setSendSuccess(false) }}
+                  className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+                  style={{ background: S.accent }}>
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-base font-bold" style={{ color: S.text }}>Send Invoice</h3>
+                  <button onClick={() => setShowSendModal(null)} style={{ color: S.muted }}><X size={18} /></button>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Send to</label>
+                    <input value={sendEmail} onChange={e => setSendEmail(e.target.value)}
+                      placeholder="client@email.com" type="email"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Email body</label>
+                    <textarea value={sendBody} onChange={e => setSendBody(e.target.value)} rows={8}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none resize-y"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text, lineHeight: '1.6' }} />
+                    <p className="text-[10px] mt-1" style={{ color: S.muted }}>The PDF invoice is attached automatically.</p>
+                  </div>
+                  {sendError && <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{sendError}</p>}
+                </div>
+                <div className="flex gap-3 mt-5">
+                  <button onClick={() => void handleSendInvoice()} disabled={sending || !sendEmail.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ background: S.accent }}>
+                    <Send size={14} /> {sending ? 'Sending…' : 'Send with PDF'}
+                  </button>
+                  <button onClick={() => setShowSendModal(null)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
