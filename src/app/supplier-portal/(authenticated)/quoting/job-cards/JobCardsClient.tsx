@@ -53,7 +53,12 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
   const [error, setError] = useState('')
 
   const filtered = jobCards.filter(j => {
-    const matchSearch = !search || j.title.toLowerCase().includes(search.toLowerCase()) || j.job_number.toLowerCase().includes(search.toLowerCase()) || (j.location ?? '').toLowerCase().includes(search.toLowerCase())
+    const clientObj = !Array.isArray(j.client) ? j.client : null
+    const matchSearch = !search ||
+      j.title.toLowerCase().includes(search.toLowerCase()) ||
+      j.job_number.toLowerCase().includes(search.toLowerCase()) ||
+      (j.location ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (clientObj?.client_name ?? '').toLowerCase().includes(search.toLowerCase())
     const matchStatus = filterStatus === 'all' || j.status === filterStatus
     const matchType = filterType === 'all' || j.job_type === filterType
     return matchSearch && matchStatus && matchType
@@ -133,7 +138,7 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: S.muted }} />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search job cards…"
+            placeholder="Search by title, number, client, or location…"
             className="w-full pl-9 pr-3 py-2 rounded-xl text-sm outline-none"
             style={{ background: S.card, border: `1px solid ${S.border}`, color: S.text }} />
         </div>
