@@ -169,7 +169,7 @@ export function MfgQuotePDF(props: MfgPDFProps) {
             {clientPhone && <Text style={s.infoRow}>{clientPhone}</Text>}
             {clientVatNumber && <Text style={s.infoRow}>VAT: {clientVatNumber}</Text>}
           </View>
-          <View style={[s.infoBox, { justifyContent: 'center' }]}>
+          <View style={s.infoBox}>
             <Text style={s.infoHead}>JOB</Text>
             <Text style={[s.infoBold, { fontSize: 10 }]}>{jobName}</Text>
           </View>
