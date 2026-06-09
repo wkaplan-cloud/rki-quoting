@@ -192,6 +192,7 @@ export interface MfgQuoteLineItem {
   cost_per_unit: number
   profit_per_unit: number
   margin_percentage: number
+  option_label: string | null
   created_at: string
   updated_at: string
 }

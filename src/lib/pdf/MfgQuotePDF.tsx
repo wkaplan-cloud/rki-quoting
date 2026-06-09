@@ -107,6 +107,13 @@ function makeStyles(accent: string) {
     sigLabel:    { fontSize: 7, color: MUTED },
     tcHead:      { fontSize: 6.5, color: accent, fontFamily: 'Helvetica-Bold', letterSpacing: 0.5, marginBottom: 5, marginTop: 16 },
     tcBody:      { fontSize: 7.5, color: MUTED, lineHeight: 1.5 },
+    optSection:  { marginTop: 12, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 8 },
+    optHead:     { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    optLabel:    { fontSize: 7, fontFamily: 'Helvetica-Bold', letterSpacing: 0.4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 2 },
+    optSub:      { flexDirection: 'row', justifyContent: 'flex-end', paddingRight: 8, paddingVertical: 4, borderTopWidth: 0.5, borderTopColor: BORDER },
+    optSubLabel: { fontSize: 7.5, color: MUTED, marginRight: 8 },
+    optSubVal:   { width: 72, fontSize: 8, fontFamily: 'Helvetica-Bold', textAlign: 'right' },
+    optsDivider: { marginTop: 10, borderTopWidth: 0.5, borderTopColor: BORDER },
     footer:      { position: 'absolute', bottom: 24, left: 48, right: 48, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 5, flexDirection: 'row', justifyContent: 'space-between' },
     footTxt:     { fontSize: 7, color: MUTED },
     depNote:     { marginTop: 10, padding: 10, borderWidth: 0.5, borderColor: '#FDE68A', borderRadius: 3, backgroundColor: '#FFFBEB' },
@@ -186,49 +193,117 @@ export function MfgQuotePDF(props: MfgPDFProps) {
         )}
 
         {/* Line items */}
-        <View style={[s.tableHead, { marginTop: 8 }]}>
-          <Text style={[s.th, { width: 18 }]}>#</Text>
-          <Text style={[s.th, { flex: 1 }]}>DESCRIPTION</Text>
-          <Text style={[s.th, { width: showUnitPrice ? 28 : 36, textAlign: 'center' }]}>QTY</Text>
-          {showUnitPrice && <Text style={[s.th, { width: 64, textAlign: 'right' }]}>UNIT PRICE</Text>}
-          <Text style={[s.th, { width: showUnitPrice ? 64 : 72, textAlign: 'right' }]}>TOTAL</Text>
-        </View>
+        {(() => {
+          const baseItems   = lineItems.filter(li => !li.option_label)
+          const optionItems = lineItems.filter(li => li.option_label)
+          const optionGroups = [...new Set(optionItems.map(li => li.option_label))] as string[]
+          const hasOptions  = optionGroups.length > 0
+          const baseSubtotal = baseItems.reduce((s, li) => s + li.line_total, 0)
+          const baseVat      = applyVat ? baseSubtotal * (vatRate / 100) : 0
+          const baseTotal    = baseSubtotal + baseVat
 
-        {lineItems.map((li, idx) => (
-          <View key={li.id ?? idx} style={[s.row, idx % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
-            <Text style={s.itemNum}>{idx + 1}</Text>
-            <View style={s.desc}>
-              <Text>{li.description}</Text>
-              {li.callout_note && <Text style={s.callout}>⚠ {li.callout_note}</Text>}
-            </View>
-            <Text style={[s.qty, { width: showUnitPrice ? 28 : 36 }]}>{li.quantity}</Text>
-            {showUnitPrice && (
-              <Text style={[s.amt, { width: 64 }]}>{li.unit_price > 0 ? fmtR(li.unit_price) : 'TBC'}</Text>
-            )}
-            <Text style={[s.amt, { width: showUnitPrice ? 64 : 72 }]}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
-          </View>
-        ))}
+          const ACCENT_COLORS: Record<string, string> = {
+            'Option A': '#1D4ED8',
+            'Option B': '#15803D',
+            'Option C': '#C2410C',
+            'Option D': '#7E22CE',
+          }
+          const ACCENT_BG: Record<string, string> = {
+            'Option A': '#DBEAFE',
+            'Option B': '#DCFCE7',
+            'Option C': '#FFEDD5',
+            'Option D': '#F3E8FF',
+          }
 
-        {/* Totals */}
-        <View style={s.totalsWrap} wrap={false}>
-          <View style={s.totalsBox}>
-            <View style={s.tRow}>
-              <Text style={s.tLabel}>Subtotal</Text>
-              <Text style={s.tVal}>{fmtR(subtotal)}</Text>
-            </View>
-            {applyVat && (
-              <View style={s.tRow}>
-                <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
-                <Text style={s.tVal}>{fmtR(vatAmount)}</Text>
+          return (
+            <>
+              <View style={[s.tableHead, { marginTop: 8 }]}>
+                <Text style={[s.th, { width: 18 }]}>#</Text>
+                <Text style={[s.th, { flex: 1 }]}>DESCRIPTION</Text>
+                <Text style={[s.th, { width: showUnitPrice ? 28 : 36, textAlign: 'center' }]}>QTY</Text>
+                {showUnitPrice && <Text style={[s.th, { width: 64, textAlign: 'right' }]}>UNIT PRICE</Text>}
+                <Text style={[s.th, { width: showUnitPrice ? 64 : 72, textAlign: 'right' }]}>TOTAL</Text>
               </View>
-            )}
-            <View style={s.tDivider} />
-            <View style={s.tBig}>
-              <Text style={s.tBigLabel}>TOTAL</Text>
-              <Text style={s.tBigVal}>{fmtR(total)}</Text>
-            </View>
-          </View>
-        </View>
+
+              {baseItems.map((li, idx) => (
+                <View key={li.id ?? idx} style={[s.row, idx % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
+                  <Text style={s.itemNum}>{idx + 1}</Text>
+                  <View style={s.desc}>
+                    <Text>{li.description}</Text>
+                    {li.callout_note && <Text style={s.callout}>⚠ {li.callout_note}</Text>}
+                  </View>
+                  <Text style={[s.qty, { width: showUnitPrice ? 28 : 36 }]}>{li.quantity}</Text>
+                  {showUnitPrice && <Text style={[s.amt, { width: 64 }]}>{li.unit_price > 0 ? fmtR(li.unit_price) : 'TBC'}</Text>}
+                  <Text style={[s.amt, { width: showUnitPrice ? 64 : 72 }]}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
+                </View>
+              ))}
+
+              {hasOptions && optionGroups.map(label => {
+                const items = optionItems.filter(li => li.option_label === label)
+                const grpSubtotal = items.reduce((s, li) => s + li.line_total, 0)
+                const optAccent = ACCENT_COLORS[label] ?? accent
+                const optBg     = ACCENT_BG[label] ?? '#F4F4F5'
+                return (
+                  <View key={label} style={s.optSection} wrap={false}>
+                    <View style={s.optHead}>
+                      <Text style={[s.optLabel, { backgroundColor: optBg, color: optAccent }]}>{label.toUpperCase()}</Text>
+                    </View>
+                    {items.map((li, idx) => (
+                      <View key={li.id ?? idx} style={[s.row, { backgroundColor: idx % 2 === 0 ? '#FAFAFA' : '#FFFFFF' }]} wrap={false}>
+                        <Text style={[s.itemNum, { color: optAccent }]}>{baseItems.length + lineItems.filter(x => x.option_label === label).indexOf(li) + 1}</Text>
+                        <View style={s.desc}>
+                          <Text>{li.description}</Text>
+                          {li.callout_note && <Text style={s.callout}>⚠ {li.callout_note}</Text>}
+                        </View>
+                        <Text style={[s.qty, { width: showUnitPrice ? 28 : 36 }]}>{li.quantity}</Text>
+                        {showUnitPrice && <Text style={[s.amt, { width: 64 }]}>{li.unit_price > 0 ? fmtR(li.unit_price) : 'TBC'}</Text>}
+                        <Text style={[s.amt, { width: showUnitPrice ? 64 : 72 }]}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
+                      </View>
+                    ))}
+                    <View style={s.optSub}>
+                      <Text style={s.optSubLabel}>{label} subtotal</Text>
+                      <Text style={[s.optSubVal, { color: optAccent }]}>{fmtR(grpSubtotal)}</Text>
+                    </View>
+                  </View>
+                )
+              })}
+
+              {hasOptions && <View style={s.optsDivider} />}
+
+              {/* Totals */}
+              <View style={s.totalsWrap} wrap={false}>
+                <View style={s.totalsBox}>
+                  <View style={s.tRow}>
+                    <Text style={s.tLabel}>{hasOptions ? 'Base subtotal' : 'Subtotal'}</Text>
+                    <Text style={s.tVal}>{fmtR(hasOptions ? baseSubtotal : subtotal)}</Text>
+                  </View>
+                  {hasOptions && (
+                    <View style={s.tRow}>
+                      <Text style={[s.tLabel, { fontStyle: 'italic' }]}>Options — please select one</Text>
+                      <Text style={[s.tLabel, { fontStyle: 'italic' }]}>see above</Text>
+                    </View>
+                  )}
+                  {applyVat && (
+                    <View style={s.tRow}>
+                      <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
+                      <Text style={s.tVal}>{fmtR(hasOptions ? baseVat : vatAmount)}</Text>
+                    </View>
+                  )}
+                  <View style={s.tDivider} />
+                  <View style={s.tBig}>
+                    <Text style={s.tBigLabel}>{hasOptions ? 'BASE TOTAL' : 'TOTAL'}</Text>
+                    <Text style={s.tBigVal}>{fmtR(hasOptions ? baseTotal : total)}</Text>
+                  </View>
+                  {hasOptions && (
+                    <View style={[s.tRow, { marginTop: 6 }]}>
+                      <Text style={[s.tLabel, { fontSize: 7 }]}>+ Add your chosen option total</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </>
+          )
+        })()}
 
         {/* Banking details */}
         {(settings?.bank_name || settings?.bank_account_number) && (

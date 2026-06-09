@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { fmtR } from '@/lib/mfg-format'
 import {
@@ -55,8 +55,17 @@ const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
   sort_order: 0, description: '', callout_note: '', quantity: 1,
   unit_price: 0, line_total: 0, markup_percentage: markup,
   cost_per_unit: 0, profit_per_unit: 0, margin_percentage: 0,
+  option_label: null,
   materials: [], hardware: [], cost_builder_open: true,
 })
+
+const OPTION_LABELS = ['Option A', 'Option B', 'Option C', 'Option D']
+const OPTION_COLORS: Record<string, { bg: string; color: string }> = {
+  'Option A': { bg: '#EFF6FF', color: '#1D4ED8' },
+  'Option B': { bg: '#F0FDF4', color: '#15803D' },
+  'Option C': { bg: '#FFF7ED', color: '#C2410C' },
+  'Option D': { bg: '#FAF5FF', color: '#7E22CE' },
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -166,6 +175,32 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
 
   function removeLineItem(idx: number) {
     setLineItems(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  function duplicateLineItem(idx: number) {
+    setLineItems(prev => {
+      const src = prev[idx]
+      const clone = {
+        ...src,
+        id: undefined,
+        description: src.description ? `${src.description} (copy)` : '',
+        cost_builder_open: false,
+        materials: src.materials.map(m => ({ ...m, id: undefined })),
+        hardware:  src.hardware.map(h => ({ ...h, id: undefined })),
+      }
+      const next = [...prev]
+      next.splice(idx + 1, 0, clone)
+      return next.map((li, i) => ({ ...li, sort_order: i }))
+    })
+  }
+
+  function cycleOptionLabel(idx: number) {
+    setLineItems(prev => {
+      const current = prev[idx].option_label
+      const pos = current ? OPTION_LABELS.indexOf(current) : -1
+      const next = pos < OPTION_LABELS.length - 1 ? OPTION_LABELS[pos + 1] : null
+      return prev.map((li, i) => i === idx ? { ...li, option_label: next } : li)
+    })
   }
 
   function loadTemplate(idx: number, template: MfgLineItemTemplateFull) {
@@ -534,14 +569,28 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
       <div className="space-y-4 mb-6">
         {lineItems.map((li, liIdx) => {
           const pending = hasPending(li)
+          const optColors = li.option_label ? (OPTION_COLORS[li.option_label] ?? { bg: '#F4F4F5', color: '#71717A' }) : null
+          const prevLabel = liIdx > 0 ? lineItems[liIdx - 1].option_label : '__none__'
+          const showGroupHeader = li.option_label && li.option_label !== prevLabel
           return (
-            <div key={liIdx} className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${pending ? '#FDE68A' : S.border}`, background: S.card }}>
+            <React.Fragment key={liIdx}>
+              {showGroupHeader && (
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="flex-1 h-px" style={{ background: optColors?.color, opacity: 0.3 }} />
+                  <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full"
+                    style={{ background: optColors?.bg, color: optColors?.color }}>
+                    {li.option_label}
+                  </span>
+                  <div className="flex-1 h-px" style={{ background: optColors?.color, opacity: 0.3 }} />
+                </div>
+              )}
+            <div className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${pending ? '#FDE68A' : li.option_label ? (optColors?.color ?? S.border) : S.border}`, background: S.card, borderOpacity: li.option_label ? 0.4 : 1 }}>
 
               {/* Line item header */}
               <div className="p-5">
                 <div className="flex items-start gap-3">
                   <span className="text-xs font-bold mt-2 flex-shrink-0 w-6 text-center rounded-full py-0.5"
-                    style={{ background: '#EFF6FF', color: S.accent }}>
+                    style={{ background: li.option_label ? optColors?.bg : '#EFF6FF', color: li.option_label ? optColors?.color : S.accent }}>
                     {liIdx + 1}
                   </span>
                   <div className="flex-1 space-y-3">
@@ -596,6 +645,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                   </div>
 
                   <div className="flex items-center gap-1 flex-shrink-0 mt-1">
+                    {!isReadOnly && (
+                      <button onClick={() => cycleOptionLabel(liIdx)}
+                        title={li.option_label ? `${li.option_label} — click to cycle` : 'Assign to option group'}
+                        className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
+                        style={li.option_label && optColors ? { background: optColors.bg, color: optColors.color } : { background: S.input, color: S.muted }}>
+                        {li.option_label ?? 'Opt'}
+                      </button>
+                    )}
                     {templates.length > 0 && !isReadOnly && (
                       <div className="relative group">
                         <button className="p-1.5 rounded-lg transition-colors text-xs flex items-center gap-1"
@@ -621,12 +678,21 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                       {li.cost_builder_open ? 'Collapse' : 'Cost Build'}
                     </button>
                     {!isReadOnly && (
-                      <button onClick={() => removeLineItem(liIdx)} className="p-1.5 rounded-lg transition-colors"
-                        style={{ color: S.muted }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#DC2626')}
-                        onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
-                        <Trash2 size={14} />
-                      </button>
+                      <>
+                        <button onClick={() => duplicateLineItem(liIdx)} title="Duplicate row"
+                          className="p-1.5 rounded-lg transition-colors"
+                          style={{ color: S.muted }}
+                          onMouseEnter={e => (e.currentTarget.style.color = S.accent)}
+                          onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
+                          <Copy size={14} />
+                        </button>
+                        <button onClick={() => removeLineItem(liIdx)} className="p-1.5 rounded-lg transition-colors"
+                          style={{ color: S.muted }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#DC2626')}
+                          onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -822,6 +888,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 </div>
               )}
             </div>
+            </React.Fragment>
           )
         })}
       </div>
