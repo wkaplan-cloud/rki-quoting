@@ -1,6 +1,9 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecCOC, ElecQuote, ElecClient, ElecSettings, COCTestReport } from '@/lib/elec-types'
+
+const ECA_LOGO_URL   = 'https://ecasa.co.za/wpc/wp-content/uploads/2025/01/cropped-eca_icon-85x85.png'
+const COAT_ARMS_URL  = 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Coat_of_arms_of_South_Africa_%28heraldic%29.svg/500px-Coat_of_arms_of_South_Africa_%28heraldic%29.svg.png'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -22,18 +25,23 @@ const s = StyleSheet.create({
   outer: { borderWidth: 1, borderColor: B, flex: 1 },
 
   // ── Page 1 header ──
-  p1Header: { flexDirection: 'row', borderBottomWidth: 1, borderColor: B },
-  p1HeaderLeft: { width: 60, borderRightWidth: 1, borderColor: B, alignItems: 'center', justifyContent: 'center', padding: 4 },
-  p1HeaderMid: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 6, borderRightWidth: 1, borderColor: B },
-  p1HeaderRight: { width: 80, alignItems: 'center', justifyContent: 'center', padding: 4 },
-  p1Title: { fontFamily: 'Helvetica-Bold', fontSize: 9, textAlign: 'center', marginBottom: 2 },
-  p1Sub: { fontSize: 6.5, textAlign: 'center', color: '#333' },
-  p1RightTop: { fontSize: 6.5, textAlign: 'center', marginBottom: 2 },
+  p1Header: { flexDirection: 'row', borderBottomWidth: 0.75, borderColor: B },
+  p1HeaderLeft: { width: 68, borderRightWidth: 0.75, borderColor: B, alignItems: 'center', justifyContent: 'center', padding: 5 },
+  p1HeaderMid: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: '6 8', borderRightWidth: 0.75, borderColor: B },
+  p1HeaderRight: { width: 90, padding: '4 5' },
+  p1Title: { fontFamily: 'Helvetica-Bold', fontSize: 9.5, textAlign: 'center', marginBottom: 2, letterSpacing: 0.2 },
+  p1Sub: { fontSize: 7, textAlign: 'center', color: '#222' },
+  p1RightBorder: { borderWidth: 0.75, borderColor: B, padding: '2 4', marginBottom: 4, alignItems: 'center' },
   p1RightBold: { fontFamily: 'Helvetica-Bold', fontSize: 7, textAlign: 'center' },
+  p1RightTop: { fontSize: 6, textAlign: 'center', marginBottom: 1 },
 
-  // ECA badge placeholder
-  ecaBadge: { width: 44, height: 44, borderWidth: 1, borderColor: B, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  ecaText: { fontFamily: 'Helvetica-Bold', fontSize: 8, textAlign: 'center' },
+  // ECA logo
+  ecaLogo: { width: 50, height: 50 },
+  ecaSubText: { fontSize: 5, textAlign: 'center', color: '#333', marginTop: 2, lineHeight: 1.3 },
+
+  // ECA contact bar
+  ecaContactBar: { flexDirection: 'row', justifyContent: 'center', padding: '2 6', borderBottomWidth: 0.75, borderColor: B, backgroundColor: '#FAFAFA' },
+  ecaContactText: { fontSize: 5.5, textAlign: 'center', color: '#333' },
 
   // DB/Supply row
   dbRow: { flexDirection: 'row', borderBottomWidth: 1, borderColor: B, padding: '3 6', alignItems: 'center', flexWrap: 'wrap' },
@@ -104,7 +112,10 @@ const s = StyleSheet.create({
   s5Label: { fontFamily: 'Helvetica-Bold', fontSize: 6.5, marginRight: 2 },
 
   // ── Page 2 ──
-  p2HeaderTop: { alignItems: 'center', borderBottomWidth: 1, borderColor: B, padding: '4 6' },
+  p2HeaderTop: { flexDirection: 'row', borderBottomWidth: 1, borderColor: B, alignItems: 'center' },
+  p2HeaderTopText: { flex: 1, alignItems: 'center', padding: '4 6' },
+  p2HeaderTopLogo: { width: 52, alignItems: 'center', justifyContent: 'center', padding: 4 },
+  p2CoatArms: { width: 44, height: 44 },
   p2TopBold: { fontFamily: 'Helvetica-Bold', fontSize: 8, textAlign: 'center', marginBottom: 1 },
   p2TopNorm: { fontSize: 7, textAlign: 'center', marginBottom: 1 },
 
@@ -307,27 +318,34 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName }: Props)
           {/* Header */}
           <View style={s.p1Header}>
             <View style={s.p1HeaderLeft}>
-              <View style={s.ecaBadge}><Text style={s.ecaText}>ECA</Text></View>
-              <Text style={{ fontSize: 5, textAlign: 'center', color: '#555' }}>ELECTRICAL CONTRACTORS&apos;{'\n'}ASSOCIATION (S.A.)</Text>
+              <Image src={ECA_LOGO_URL} style={s.ecaLogo} />
+              <Text style={s.ecaSubText}>ELECTRICAL CONTRACTORS&apos;{'\n'}ASSOCIATION (S.A.){'\n'}YOUR TRUSTED ELECTRICAL{'\n'}CONTRACTORS</Text>
             </View>
             <View style={s.p1HeaderMid}>
               <Text style={s.p1Title}>TEST REPORT{'\n'}for ELECTRICAL INSTALLATIONS</Text>
               <Text style={s.p1Sub}>(To SANS 10142-1)</Text>
             </View>
             <View style={s.p1HeaderRight}>
-              <Text style={s.p1RightTop}>FOR USE BY</Text>
-              <Text style={s.p1RightBold}>ECA MEMBERS ONLY</Text>
-              <View style={{ marginTop: 6 }}>
-                <Text style={{ fontSize: 6 }}>Certificate of{'\n'}Compliance (CoC) No:</Text>
-                <View style={{ borderBottomWidth: 0.5, borderColor: '#888', marginTop: 2, marginBottom: 2 }}>
-                  <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold' }}>{coc.coc_number || ''}</Text>
-                </View>
-                <Text style={{ fontSize: 6 }}>Date of issue:</Text>
-                <View style={{ borderBottomWidth: 0.5, borderColor: '#888', marginTop: 1 }}>
-                  <Text style={{ fontSize: 7 }}>{fmtDate(coc.issue_date)}</Text>
-                </View>
+              <View style={s.p1RightBorder}>
+                <Text style={s.p1RightTop}>FOR USE BY</Text>
+                <Text style={s.p1RightBold}>ECA MEMBERS ONLY</Text>
+              </View>
+              <Text style={{ fontSize: 5.5, marginBottom: 1 }}>Certificate of Compliance (CoC) No:</Text>
+              <View style={{ borderBottomWidth: 0.75, borderColor: B, marginBottom: 3, minHeight: 10 }}>
+                <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold' }}>{coc.coc_number || ''}</Text>
+              </View>
+              <Text style={{ fontSize: 5.5, marginBottom: 1 }}>Date of issue:</Text>
+              <View style={{ borderBottomWidth: 0.75, borderColor: B, minHeight: 9 }}>
+                <Text style={{ fontSize: 7 }}>{fmtDate(coc.issue_date)}</Text>
               </View>
             </View>
+          </View>
+
+          {/* ECA contact bar */}
+          <View style={s.ecaContactBar}>
+            <Text style={s.ecaContactText}>
+              EMAIL: info@ecasa.co.za  ·  011 392 0000  ·  010 271 0686  ·  012 342 3242  ·  031 312 6313  ·  051 447 0859  ·  043 726 6359  ·  041 363 1990  ·  021 462 2690
+            </Text>
           </View>
 
           {/* Test Report for DB/Supply row */}
@@ -615,10 +633,15 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName }: Props)
 
           {/* Page 2 header */}
           <View style={s.p2HeaderTop}>
-            <Text style={s.p2TopBold}>Annexure 1</Text>
-            <Text style={s.p2TopBold}>DEPARTMENT OF LABOUR</Text>
-            <Text style={s.p2TopBold}>OCCUPATIONAL HEALTH AND SAFETY ACT, 1993</Text>
-            <Text style={s.p2TopBold}>CERTIFICATE OF COMPLIANCE</Text>
+            <View style={s.p2HeaderTopText}>
+              <Text style={s.p2TopBold}>Annexure 1</Text>
+              <Text style={s.p2TopBold}>DEPARTMENT OF LABOUR</Text>
+              <Text style={s.p2TopBold}>OCCUPATIONAL HEALTH AND SAFETY ACT, 1993</Text>
+              <Text style={s.p2TopBold}>CERTIFICATE OF COMPLIANCE</Text>
+            </View>
+            <View style={s.p2HeaderTopLogo}>
+              <Image src={COAT_ARMS_URL} style={s.p2CoatArms} />
+            </View>
           </View>
 
           <View style={s.p2TitleBar}>
