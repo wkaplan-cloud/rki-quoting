@@ -17,6 +17,7 @@ export default async function MfgQuotesPage() {
       .select('*, job:mfg_jobs(id, job_name, client:mfg_clients(id, client_name))')
       .eq('portal_account_id', account.id)
       .is('archived_at', null)
+      .neq('status', 'superseded')
       .order('created_at', { ascending: false }),
     supabase
       .from('mfg_clients')

@@ -1,18 +1,19 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CopySlash } from 'lucide-react'
 import type { MfgQuote, MfgClient } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
 
 const STATUS_CONFIG = {
-  draft:    { label: 'Draft',    color: '#71717A', bg: '#F4F4F5',    icon: FileText },
-  sent:     { label: 'Sent',     color: '#D97706', bg: '#FEF3C7',    icon: Clock },
-  accepted: { label: 'Accepted', color: '#16A34A', bg: '#DCFCE7',    icon: CheckCircle },
-  declined: { label: 'Declined', color: '#DC2626', bg: '#FEE2E2',    icon: XCircle },
-  expired:  { label: 'Expired',  color: '#9A3412', bg: '#FEF3C7',    icon: AlertCircle },
-  invoiced: { label: 'Invoiced', color: '#1B4F8A', bg: '#EFF6FF',    icon: RefreshCw },
+  draft:      { label: 'Draft',      color: '#71717A', bg: '#F4F4F5', icon: FileText },
+  sent:       { label: 'Sent',       color: '#D97706', bg: '#FEF3C7', icon: Clock },
+  accepted:   { label: 'Accepted',   color: '#16A34A', bg: '#DCFCE7', icon: CheckCircle },
+  declined:   { label: 'Declined',   color: '#DC2626', bg: '#FEE2E2', icon: XCircle },
+  expired:    { label: 'Expired',    color: '#9A3412', bg: '#FEF3C7', icon: AlertCircle },
+  invoiced:   { label: 'Invoiced',   color: '#1B4F8A', bg: '#EFF6FF', icon: RefreshCw },
+  superseded: { label: 'Superseded', color: '#71717A', bg: '#F4F4F5', icon: CopySlash },
 }
 
 type QuoteWithJob = MfgQuote & { job?: { id: string; job_name: string; client?: { id: string; client_name: string } | null } | null }

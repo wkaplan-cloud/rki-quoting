@@ -81,6 +81,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
+  // Mark the previous quote as superseded
+  await supabase
+    .from('mfg_quotes')
+    .update({ status: 'superseded', updated_at: new Date().toISOString() })
+    .eq('id', id)
+
   // Log activity
   await supabase.from('mfg_activity_log').insert({
     portal_account_id: auth.portalAccountId,

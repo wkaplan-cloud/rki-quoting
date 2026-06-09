@@ -15,12 +15,13 @@ function fmtR(n: number) {
 }
 
 const QUOTE_STATUS_COLOR: Record<string, string> = {
-  draft:    'bg-white/5 text-white/40',
-  sent:     'bg-blue-500/15 text-blue-400',
-  accepted: 'bg-emerald-500/15 text-emerald-400',
-  declined: 'bg-red-500/15 text-red-400',
-  expired:  'bg-white/5 text-white/30',
-  invoiced: 'bg-purple-500/15 text-purple-400',
+  draft:      'bg-white/5 text-white/40',
+  sent:       'bg-blue-500/15 text-blue-400',
+  accepted:   'bg-emerald-500/15 text-emerald-400',
+  declined:   'bg-red-500/15 text-red-400',
+  expired:    'bg-white/5 text-white/30',
+  invoiced:   'bg-purple-500/15 text-purple-400',
+  superseded: 'bg-white/5 text-white/20',
 }
 const INV_STATUS_COLOR: Record<string, string> = {
   draft:          'bg-white/5 text-white/40',
