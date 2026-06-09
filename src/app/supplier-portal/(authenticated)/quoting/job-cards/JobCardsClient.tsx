@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X } from 'lucide-react'
+import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X, CheckSquare, Square } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardType, ElecStaff, ElecClient } from '@/lib/elec-types'
 import { ClientCombobox } from '../ClientCombobox'
 import { StaffMultiSelect } from '../StaffMultiSelect'
@@ -63,6 +63,17 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
     const matchType = filterType === 'all' || j.job_type === filterType
     return matchSearch && matchStatus && matchType
   })
+
+  async function toggleInvoiced(id: string, current: boolean, e: React.MouseEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    const next = !current
+    setJobCards(prev => prev.map(j => j.id === id ? { ...j, invoiced: next } : j))
+    await fetch(`/api/supplier-portal/quoting/job-cards/${id}/invoiced`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiced: next }),
+    })
+  }
 
   async function handleCreate() {
     if (!form.title.trim()) { setError('Title is required'); return }
@@ -203,6 +214,22 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
                     )}
                   </div>
                 </div>
+                {/* Invoiced checkbox — completed only */}
+                {j.status === 'completed' && (
+                  <button
+                    onClick={e => void toggleInvoiced(j.id, !!j.invoiced, e)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
+                    style={{
+                      background: j.invoiced ? 'rgba(22,163,74,0.1)' : S.bg,
+                      border: `1.5px solid ${j.invoiced ? 'rgba(22,163,74,0.4)' : S.border}`,
+                      color: j.invoiced ? S.green : S.muted,
+                    }}>
+                    {j.invoiced
+                      ? <CheckSquare size={13} style={{ color: S.green }} />
+                      : <Square size={13} />}
+                    Invoiced
+                  </button>
+                )}
                 {/* Date + arrow */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right hidden sm:block">

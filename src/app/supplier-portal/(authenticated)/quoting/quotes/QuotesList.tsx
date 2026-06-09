@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, FileText, X, ChevronRight, Calendar, User, Archive, RotateCcw, Trash2 } from 'lucide-react'
+import { Plus, Search, FileText, X, ChevronRight, Calendar, User, Archive, RotateCcw, Trash2, CheckSquare, Square } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { ElecQuote, ElecClient, ElecQuoteStatus } from '@/lib/elec-types'
 
@@ -234,7 +234,7 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
 export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuotes, clients }: Props) {
   const router = useRouter()
   const supabase = createClient()
-  const [quotes] = useState(initialQuotes)
+  const [quotes, setQuotes] = useState(initialQuotes)
   const [archivedQuotes, setArchivedQuotes] = useState(initialArchivedQuotes)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ElecQuoteStatus | 'all'>('all')
@@ -242,6 +242,17 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
   const [showArchived, setShowArchived] = useState(false)
   const [unarchiving, setUnarchiving] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function toggleInvoiced(id: string, current: boolean, e: React.MouseEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    const next = !current
+    setQuotes(prev => prev.map(q => q.id === id ? { ...q, invoiced: next } : q))
+    await fetch(`/api/supplier-portal/quoting/quotes/${id}/invoiced`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiced: next }),
+    })
+  }
 
   async function deleteArchived(id: string) {
     if (!confirm('Permanently delete this project? This cannot be undone.')) return
@@ -364,6 +375,22 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
                     )}
                   </div>
                 </div>
+                {/* Invoiced checkbox — completed only */}
+                {q.status === 'completed' && (
+                  <button
+                    onClick={e => void toggleInvoiced(q.id, !!q.invoiced, e)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
+                    style={{
+                      background: q.invoiced ? 'rgba(22,163,74,0.1)' : S.bg,
+                      border: `1.5px solid ${q.invoiced ? 'rgba(22,163,74,0.4)' : S.border}`,
+                      color: q.invoiced ? '#16A34A' : S.muted,
+                    }}>
+                    {q.invoiced
+                      ? <CheckSquare size={13} style={{ color: '#16A34A' }} />
+                      : <Square size={13} />}
+                    Invoiced
+                  </button>
+                )}
                 {/* Date + arrow */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right hidden sm:block">

@@ -217,6 +217,7 @@ export interface ElecQuote {
   expected_completion_date: string | null
   practical_completion_date: string | null
   archived_at: string | null
+  invoiced: boolean | null
   share_token: string | null
   share_token_created_at: string | null
   created_by_name: string | null
@@ -657,6 +658,7 @@ export interface ElecJobCard {
   sent_to_email: string | null
   sent_at: string | null
   share_token: string | null
+  invoiced: boolean | null
   sage_invoice_id: string | null
   sage_invoice_status: string | null
   sage_pushed_at: string | null
