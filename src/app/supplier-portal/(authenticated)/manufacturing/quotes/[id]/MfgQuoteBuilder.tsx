@@ -15,18 +15,18 @@ function fmt(n: number) { return `R ${n.toLocaleString('en-ZA', { minimumFractio
 
 function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
   const markup = li.markup_percentage / 100
-  // Materials cost (at cost, before markup)
+  // Materials cost — supplier_quoted items are included once a price is entered
   const matCost = li.materials.reduce((sum, m) => {
-    if (m.supplier_quoted || m.unit_cost === null || m.unit_cost === undefined) return sum
+    if (m.unit_cost === null || m.unit_cost === undefined) return sum
     return sum + (m.unit_cost * m.quantity)
   }, 0)
-  // Hardware cost — split by markup flag
+  // Hardware cost — split by markup flag, include supplier_quoted once price is entered
   const hwMarkupCost = li.hardware.reduce((sum, h) => {
-    if (h.supplier_quoted || h.unit_cost === null || h.unit_cost === undefined || !h.apply_markup) return sum
+    if (h.unit_cost === null || h.unit_cost === undefined || !h.apply_markup) return sum
     return sum + (h.unit_cost * h.quantity)
   }, 0)
   const hwAtCost = li.hardware.reduce((sum, h) => {
-    if (h.supplier_quoted || h.unit_cost === null || h.unit_cost === undefined || h.apply_markup) return sum
+    if (h.unit_cost === null || h.unit_cost === undefined || h.apply_markup) return sum
     return sum + (h.unit_cost * h.quantity)
   }, 0)
   const costPerUnit = matCost + hwMarkupCost + hwAtCost
@@ -39,7 +39,8 @@ function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
 }
 
 function hasPending(li: MfgQuoteLineItemDraft) {
-  return li.materials.some(m => m.supplier_quoted) || li.hardware.some(h => h.supplier_quoted)
+  return li.materials.some(m => m.supplier_quoted && (m.unit_cost === null || m.unit_cost === undefined))
+    || li.hardware.some(h => h.supplier_quoted && (h.unit_cost === null || h.unit_cost === undefined))
 }
 
 const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
