@@ -60,7 +60,7 @@ export default async function SupplierPortalLayout({
       companyName={displayName}
       hasQuoting={hasQuoting}
       quotingPlan={active ? (account.plan ?? null) : null}
-      supplierCategory={account.supplier_category ?? 'manufacturer'}
+      supplierCategory={account.supplier_category ?? account.plan_category ?? 'manufacturer'}
       setupFeePaid={setupFeePaid}
       staffCount={staffCount}
       accountCreatedAt={accountCreatedAt ?? undefined}

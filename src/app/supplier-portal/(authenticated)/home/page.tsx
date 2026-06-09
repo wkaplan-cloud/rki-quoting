@@ -17,6 +17,9 @@ export default async function SupplierHomePage() {
 
   if (account.supplier_category === 'trades') redirect('/supplier-portal/quoting/dashboard')
 
+  const isManufacturing = account.plan_category === 'manufacturer' || account.supplier_category === 'manufacturer'
+  if (isManufacturing) redirect('/supplier-portal/manufacturing/dashboard')
+
   // Fetch all session-supplier rows for this account
   const { data: ssRows } = await supabaseAdmin
     .from('sourcing_session_suppliers')

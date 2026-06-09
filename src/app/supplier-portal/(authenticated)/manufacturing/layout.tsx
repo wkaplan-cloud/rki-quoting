@@ -13,7 +13,7 @@ export default async function ManufacturingLayout({ children }: { children: Reac
 
   const active = isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)
   const hasQuoting = planRank(account.plan) >= 1 && active
-  const isManufacturer = account.supplier_category === 'manufacturer'
+  const isManufacturer = account.plan_category === 'manufacturer' || account.supplier_category === 'manufacturer'
 
   if (!hasQuoting || !isManufacturer) redirect('/supplier-portal/upgrade')
 
