@@ -540,12 +540,12 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                         <div className="px-3 py-2 border-t space-y-1" style={{ borderColor: S.border, background: '#F8FAFC' }}>
                           <div className="flex justify-between text-xs">
                             <span style={{ color: S.muted }}>Materials subtotal</span>
-                            <span style={{ color: S.text }}>R {li.materials.reduce((s,m) => s + (m.supplier_quoted || !m.unit_cost ? 0 : m.unit_cost * m.quantity), 0).toFixed(2)}</span>
+                            <span style={{ color: S.text }}>R {li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0).toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span style={{ color: S.muted }}>Markup {li.markup_percentage}%</span>
                             <span style={{ color: S.text }}>
-                              R {(li.materials.reduce((s,m) => s + (m.supplier_quoted || !m.unit_cost ? 0 : m.unit_cost * m.quantity), 0) * li.markup_percentage / 100).toFixed(2)}
+                              R {(li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0) * li.markup_percentage / 100).toFixed(2)}
                             </span>
                           </div>
                         </div>
