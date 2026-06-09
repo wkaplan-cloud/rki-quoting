@@ -77,9 +77,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         unit:               h.unit,
         quantity:           h.quantity ?? 1,
         unit_cost:          h.unit_cost ?? null,
-        supplier_quoted:    h.supplier_quoted ?? false,
-        apply_markup:       h.apply_markup ?? false,
-        sort_order:         hidx,
+        supplier_quoted:      h.supplier_quoted ?? false,
+        apply_markup:         h.apply_markup ?? false,
+        markup_percentage:    h.markup_percentage ?? null,
+        sort_order:           hidx,
       })
     })
   })

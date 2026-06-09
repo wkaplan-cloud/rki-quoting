@@ -227,6 +227,7 @@ export interface MfgCostHardware {
   unit_cost: number | null
   supplier_quoted: boolean
   apply_markup: boolean
+  markup_percentage: number | null  // null = use line item default
   sort_order: number
   created_at: string
 }
@@ -379,6 +380,7 @@ export interface MfgCostMaterialDraft extends Omit<MfgCostMaterial, 'id' | 'line
 
 export interface MfgCostHardwareDraft extends Omit<MfgCostHardware, 'id' | 'line_item_id' | 'created_at'> {
   id?: string
+  markup_percentage: number | null
 }
 
 export interface MfgQuoteLineItemDraft extends Omit<MfgQuoteLineItem, 'id' | 'quote_id' | 'created_at' | 'updated_at'> {

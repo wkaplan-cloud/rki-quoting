@@ -15,23 +15,30 @@ function fmt(n: number) { return `R ${n.toLocaleString('en-ZA', { minimumFractio
 
 function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
   const markup = li.markup_percentage / 100
-  // Materials cost — supplier_quoted items are included once a price is entered
+  // Materials — all marked up at line item markup %
   const matCost = li.materials.reduce((sum, m) => {
     if (m.unit_cost === null || m.unit_cost === undefined) return sum
     return sum + (m.unit_cost * m.quantity)
   }, 0)
-  // Hardware cost — split by markup flag, include supplier_quoted once price is entered
-  const hwMarkupCost = li.hardware.reduce((sum, h) => {
-    if (h.unit_cost === null || h.unit_cost === undefined || !h.apply_markup) return sum
+  const markedUpMaterials = matCost * (1 + markup)
+
+  // Hardware — each item uses its own markup_percentage if set, otherwise line default
+  const hwCost = li.hardware.reduce((sum, h) => {
+    if (h.unit_cost === null || h.unit_cost === undefined) return sum
     return sum + (h.unit_cost * h.quantity)
   }, 0)
-  const hwAtCost = li.hardware.reduce((sum, h) => {
-    if (h.unit_cost === null || h.unit_cost === undefined || h.apply_markup) return sum
-    return sum + (h.unit_cost * h.quantity)
+  const hwSelling = li.hardware.reduce((sum, h) => {
+    if (h.unit_cost === null || h.unit_cost === undefined) return sum
+    const lineCost = h.unit_cost * h.quantity
+    if (!h.apply_markup) return sum + lineCost
+    const hwMarkup = h.markup_percentage !== null && h.markup_percentage !== undefined
+      ? h.markup_percentage / 100
+      : markup
+    return sum + lineCost * (1 + hwMarkup)
   }, 0)
-  const costPerUnit = matCost + hwMarkupCost + hwAtCost
-  const sellingMatAndMarkupHw = (matCost + hwMarkupCost) * (1 + markup)
-  const unitPrice = sellingMatAndMarkupHw + hwAtCost
+
+  const costPerUnit = matCost + hwCost
+  const unitPrice   = markedUpMaterials + hwSelling
   const lineTotal = unitPrice * li.quantity
   const profitPerUnit = unitPrice - costPerUnit
   const marginPct = unitPrice > 0 ? (profitPerUnit / unitPrice) * 100 : 0
@@ -178,6 +185,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
         unit_cost: pbItem?.supplier_quoted ? null : (pbItem?.cost_price ?? null),
         supplier_quoted: pbItem?.supplier_quoted ?? false,
         apply_markup: h.apply_markup,
+        markup_percentage: null,
         sort_order: h.sort_order,
       }
     })
@@ -212,6 +220,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
       unit_cost: item.supplier_quoted ? null : (item.cost_price ?? null),
       supplier_quoted: item.supplier_quoted,
       apply_markup: item.apply_markup_default,
+      markup_percentage: null,
       sort_order: lineItems[liIdx].hardware.length,
     }
     updateLineItem(liIdx, { hardware: [...lineItems[liIdx].hardware, hw] })
@@ -599,17 +608,35 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                               className="w-16 px-2 py-0.5 rounded text-center outline-none"
                               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                             <span style={{ color: S.muted }}>{h.unit}</span>
-                            {/* Markup toggle */}
-                            <button onClick={() => {
-                                const hws = [...li.hardware]
-                                hws[hIdx] = { ...hws[hIdx], apply_markup: !hws[hIdx].apply_markup }
-                                updateLineItem(liIdx, { hardware: hws })
-                              }}
-                              disabled={isReadOnly}
-                              className="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors"
-                              style={{ background: h.apply_markup ? '#EFF6FF' : S.input, color: h.apply_markup ? S.accent : S.muted }}>
-                              {h.apply_markup ? 'markup ✓' : 'at cost'}
-                            </button>
+                            {/* Markup toggle + per-item % */}
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => {
+                                  const hws = [...li.hardware]
+                                  hws[hIdx] = { ...hws[hIdx], apply_markup: !hws[hIdx].apply_markup }
+                                  updateLineItem(liIdx, { hardware: hws })
+                                }}
+                                disabled={isReadOnly}
+                                className="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors whitespace-nowrap"
+                                style={{ background: h.apply_markup ? '#EFF6FF' : S.input, color: h.apply_markup ? S.accent : S.muted }}>
+                                {h.apply_markup ? 'markup' : 'at cost'}
+                              </button>
+                              {h.apply_markup && (
+                                <div className="flex items-center gap-0.5">
+                                  <input type="number" min={0} max={200} step={1}
+                                    value={h.markup_percentage !== null && h.markup_percentage !== undefined ? h.markup_percentage : ''}
+                                    placeholder={String(li.markup_percentage)}
+                                    onChange={e => {
+                                      const hws = [...li.hardware]
+                                      hws[hIdx] = { ...hws[hIdx], markup_percentage: e.target.value === '' ? null : parseFloat(e.target.value) }
+                                      updateLineItem(liIdx, { hardware: hws })
+                                    }}
+                                    disabled={isReadOnly}
+                                    className="w-10 px-1 py-0.5 rounded outline-none text-center text-[10px]"
+                                    style={{ background: '#EFF6FF', border: `1px solid rgba(27,79,138,0.2)`, color: S.accent }} />
+                                  <span className="text-[10px]" style={{ color: S.accent }}>%</span>
+                                </div>
+                              )}
+                            </div>
                             <div className="flex items-center gap-1">
                               <span className="text-[10px]" style={{ color: S.muted }}>R</span>
                               <input type="number" value={h.unit_cost ?? ''} placeholder="price"
