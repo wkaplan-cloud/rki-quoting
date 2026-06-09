@@ -1,6 +1,7 @@
 'use client'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { fmtR } from '@/lib/mfg-format'
 import {
   Plus, Trash2, ChevronDown, ChevronUp, Check, AlertTriangle, Save,
   Send, FileDown, RefreshCw, ArrowLeft, Eye, EyeOff, Copy, Loader2
@@ -11,7 +12,7 @@ const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(n: number) { return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
+const fmt = fmtR
 
 function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
   const markup = li.markup_percentage / 100
@@ -80,7 +81,7 @@ function PriceBookSelect({ items, itemType, onSelect, placeholder }: {
               className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 text-left">
               <span style={{ color: S.text }}>{item.name}</span>
               <span style={{ color: S.muted }}>
-                {item.supplier_quoted ? '⚠ per quote' : `R ${item.cost_price?.toFixed(2)}`} /{item.unit === 'custom' ? item.unit_custom : item.unit}
+                {item.supplier_quoted ? '⚠ per quote' : (item.cost_price != null ? fmtR(item.cost_price) : 'R —')} /{item.unit === 'custom' ? item.unit_custom : item.unit}
               </span>
             </button>
           ))}
@@ -563,7 +564,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                               )}
                             </div>
                             <span className="w-16 text-right font-semibold" style={{ color: S.text }}>
-                              {m.unit_cost ? `R ${(m.unit_cost * m.quantity).toFixed(2)}` : '—'}
+                              {m.unit_cost ? fmtR(m.unit_cost * m.quantity) : '—'}
                             </span>
                             {!isReadOnly && (
                               <button onClick={() => updateLineItem(liIdx, { materials: li.materials.filter((_, i) => i !== mIdx) })}
@@ -575,12 +576,12 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                         <div className="px-3 py-2 border-t space-y-1" style={{ borderColor: S.border, background: '#F8FAFC' }}>
                           <div className="flex justify-between text-xs">
                             <span style={{ color: S.muted }}>Materials subtotal</span>
-                            <span style={{ color: S.text }}>R {li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0).toFixed(2)}</span>
+                            <span style={{ color: S.text }}>{fmtR(li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0))}</span>
                           </div>
                           <div className="flex justify-between text-xs">
                             <span style={{ color: S.muted }}>Markup {li.markup_percentage}%</span>
                             <span style={{ color: S.text }}>
-                              R {(li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0) * li.markup_percentage / 100).toFixed(2)}
+                              {fmtR(li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0) * li.markup_percentage / 100)}
                             </span>
                           </div>
                         </div>
@@ -653,7 +654,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                               )}
                             </div>
                             <span className="w-16 text-right font-semibold" style={{ color: S.text }}>
-                              {h.unit_cost ? `R ${(h.unit_cost * h.quantity).toFixed(2)}` : '—'}
+                              {h.unit_cost ? fmtR(h.unit_cost * h.quantity) : '—'}
                             </span>
                             {!isReadOnly && (
                               <button onClick={() => updateLineItem(liIdx, { hardware: li.hardware.filter((_, i) => i !== hIdx) })}
@@ -671,7 +672,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                     <div className="rounded-xl p-4 space-y-1.5" style={{ background: '#EFF6FF', border: `1px solid rgba(27,79,138,0.15)` }}>
                       <div className="flex justify-between text-xs">
                         <span style={{ color: S.muted }}>Total cost per unit</span>
-                        <span style={{ color: S.text }}>R {li.cost_per_unit.toFixed(2)}</span>
+                        <span style={{ color: S.text }}>{fmtR(li.cost_per_unit)}</span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span style={{ color: S.muted }}>Selling price per unit</span>
@@ -717,27 +718,27 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
             <>
               <div className="flex justify-between text-xs pb-2" style={{ borderBottom: `1px dashed ${S.border}` }}>
                 <span style={{ color: S.muted }}>Total cost</span>
-                <span style={{ color: S.text }}>R {totalCost.toFixed(2)}</span>
+                <span style={{ color: S.text }}>{fmtR(totalCost)}</span>
               </div>
               <div className="flex justify-between text-xs pb-2" style={{ borderBottom: `1px solid ${S.border}` }}>
                 <span style={{ color: '#16A34A' }}>Total profit ({totalMargin.toFixed(1)}%)</span>
-                <span style={{ color: '#16A34A', fontWeight: 600 }}>R {totalProfit.toFixed(2)}</span>
+                <span style={{ color: '#16A34A', fontWeight: 600 }}>{fmtR(totalProfit)}</span>
               </div>
             </>
           )}
           <div className="flex justify-between text-sm">
             <span style={{ color: S.muted }}>Subtotal</span>
-            <span style={{ color: S.text }}>R {subtotal.toFixed(2)}</span>
+            <span style={{ color: S.text }}>{fmtR(subtotal)}</span>
           </div>
           {applyVat && (
             <div className="flex justify-between text-sm">
               <span style={{ color: S.muted }}>VAT ({vatRate}%)</span>
-              <span style={{ color: S.text }}>R {vatAmt.toFixed(2)}</span>
+              <span style={{ color: S.text }}>{fmtR(vatAmt)}</span>
             </div>
           )}
           <div className="flex justify-between text-base font-bold pt-2" style={{ borderTop: `2px solid ${S.border}` }}>
             <span style={{ color: S.text }}>Total</span>
-            <span style={{ color: S.text }}>R {total.toFixed(2)}</span>
+            <span style={{ color: S.text }}>{fmtR(total)}</span>
           </div>
         </div>
         {!isReadOnly && (
