@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Trash2, ChevronDown, ChevronUp, Check, AlertTriangle, Save,
@@ -105,10 +105,12 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const [applyVat, setApplyVat]   = useState(quote.apply_vat)
   const [vatRate] = useState(quote.vat_rate)
   const [saving, setSaving]       = useState(false)
-  const [sending, setSending]     = useState(false)
+  const [sending, setSending]         = useState(false)
   const [creatingRevision, setCreatingRevision] = useState(false)
   const [saveFeedback, setSaveFeedback] = useState('')
-  const [error, setError]         = useState('')
+  const [error, setError]             = useState('')
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const isMountRef    = useRef(true)
   const [showSendModal, setShowSendModal] = useState(false)
   const [sendEmail, setSendEmail] = useState(quote.job?.client ? '' : '')
   const [showConvertModal, setShowConvertModal] = useState(false)
@@ -123,6 +125,16 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const totalProfit = subtotal - totalCost
   const totalMargin = subtotal > 0 ? (totalProfit / subtotal) * 100 : 0
   const hasPendingItems = lineItems.some(hasPending)
+
+  // Autosave — 1.5s debounce after any line item change, skip on first render
+  useEffect(() => {
+    if (isReadOnly) return
+    if (isMountRef.current) { isMountRef.current = false; return }
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => { void handleSave(true) }, 1500)
+    return () => clearTimeout(autoSaveTimer.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems, applyVat])
 
   function updateLineItem(idx: number, updates: Partial<MfgQuoteLineItemDraft>) {
     setLineItems(prev => {
@@ -308,12 +320,15 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
 
           {!isReadOnly && (
             <>
-              <button onClick={() => handleSave()} disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
-                {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-                {saveFeedback || 'Save'}
-              </button>
+              <div className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg"
+                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.muted }}>
+                {saving
+                  ? <><Loader2 size={12} className="animate-spin" /> Saving…</>
+                  : saveFeedback
+                  ? <><Check size={12} style={{ color: '#16A34A' }} /><span style={{ color: '#16A34A' }}>Saved</span></>
+                  : <><Save size={12} /> Auto-saves</>
+                }
+              </div>
 
               {(quote.status === 'draft' || quote.status === 'sent') && (
                 <button onClick={() => setShowSendModal(true)}
@@ -670,13 +685,10 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
           </div>
         </div>
         {!isReadOnly && (
-          <div className="flex justify-end mt-4">
-            <button onClick={() => handleSave()} disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-              style={{ background: S.accent }}>
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              {saveFeedback ? 'Saved ✓' : 'Save Quote'}
-            </button>
+          <div className="flex items-center justify-end gap-2 mt-4 text-xs" style={{ color: S.muted }}>
+            {saving && <><Loader2 size={12} className="animate-spin" /> Saving…</>}
+            {!saving && saveFeedback && <><Check size={12} style={{ color: '#16A34A' }} /><span style={{ color: '#16A34A' }}>Saved</span></>}
+            {!saving && !saveFeedback && <span>Changes save automatically</span>}
           </div>
         )}
       </div>
