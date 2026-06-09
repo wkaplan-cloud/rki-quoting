@@ -135,7 +135,7 @@ export function MfgQuotePDF(props: MfgPDFProps) {
   const s = makeStyles(accent)
 
   const isInvoice = documentType !== 'quote'
-  const docLabel = documentType === 'deposit_invoice' ? 'DEPOSIT INVOICE' : documentType === 'final_invoice' ? 'FINAL INVOICE' : documentType === 'invoice' ? 'INVOICE' : 'QUOTATION'
+  const docLabel = documentType === 'quote' ? 'QUOTATION' : 'INVOICE'
   const docNumber = isInvoice ? invoiceNumber : quoteNumber
 
   return (
