@@ -165,8 +165,6 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
               <NavLink href="/supplier-portal/manufacturing/invoices"   label="Invoices"    icon={Receipt} />
               <NavLink href="/supplier-portal/manufacturing/clients"    label="Clients"     icon={Users} />
               <NavLink href="/supplier-portal/manufacturing/price-book" label="Price Book"  icon={Library} />
-              <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
-              <NavLink href="/supplier-portal/manufacturing/settings"   label="Settings"    icon={Settings} />
             </>
           )}
 
@@ -237,6 +235,9 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
 
         {/* Footer */}
         <div className="flex-shrink-0 py-2 space-y-0.5" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
+          {isManufacturing && (
+            <NavLink href="/supplier-portal/manufacturing/settings" label="Settings" icon={Settings} />
+          )}
           <Link
             href="/supplier-portal/profile"
             onClick={() => setMobileOpen(false)}
@@ -253,7 +254,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
                 {companyName.charAt(0).toUpperCase()}
               </div>
             </span>
-            <span className={`${labelCls} flex-1 truncate`} style={{ color: pathname.startsWith('/supplier-portal/profile') ? S.textLight : S.textMuted }}>{companyName}</span>
+            <span className={`${labelCls} flex-1 truncate`} style={{ color: pathname.startsWith('/supplier-portal/profile') ? S.textLight : S.textMuted }}>{isManufacturing ? 'Admin' : companyName}</span>
             <User size={11} className={`${labelCls} shrink-0 !pr-2`} style={{ color: S.textMuted }} />
           </Link>
 
