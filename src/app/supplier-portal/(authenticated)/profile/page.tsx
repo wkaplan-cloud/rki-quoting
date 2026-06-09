@@ -36,6 +36,7 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
   if (!account) redirect('/supplier-portal/login')
 
   const hasQuoting = planRank(account.plan) >= 1 && isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)
+  const isManufacturer = base.plan_category === 'manufacturer' || base.supplier_category === 'manufacturer'
 
   const [{ data: elecSettings }, { data: orgMembers }] = await Promise.all([
     supabaseAdmin
@@ -62,6 +63,7 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
     <SupplierProfileClient
       portalAccountId={account.id}
       hasQuoting={hasQuoting}
+      isManufacturer={isManufacturer}
       plan={account.plan ?? null}
       subscriptionStatus={account.subscription_status ?? null}
       trialEndsAt={account.trial_ends_at ?? null}

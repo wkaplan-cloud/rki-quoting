@@ -11,6 +11,7 @@ import { PLANS, planRank } from '@/lib/plan-features'
 interface Props {
   portalAccountId: string
   hasQuoting: boolean
+  isManufacturer?: boolean
   plan: string | null
   subscriptionStatus: string | null
   trialEndsAt: string | null
@@ -50,7 +51,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subscriptionStatus, trialEndsAt, staffCount, setupFeePaid, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
+export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufacturer = false, plan, subscriptionStatus, trialEndsAt, staffCount, setupFeePaid, initialTab, justUpgraded, account, elecSettings, categoryOptions, orgMembers }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [tab, setTab] = useState<'profile' | 'settings'>(initialTab)
@@ -274,7 +275,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
         <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>
           {tab === 'settings' ? 'Default values and configuration for your quoting.' : 'Your business account details'}
         </p>
-        {hasQuoting && (
+        {hasQuoting && !isManufacturer && (
           <div className="flex gap-1 mt-3 p-1 rounded-xl w-fit" style={{ background: '#F1F5F9' }}>
             <button
               onClick={() => switchTab('profile')}
@@ -294,7 +295,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
         )}
       </div>
 
-      {tab === 'settings' ? (
+      {tab === 'settings' && !isManufacturer ? (
         <SettingsClient portalAccountId={portalAccountId} companyName={account.company_name} settings={elecSettings} justUpgraded={justUpgraded} />
       ) : (
       <>
@@ -474,7 +475,22 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
         )
       })()}
 
-      <form onSubmit={handleSave} className="space-y-5">
+      {isManufacturer && (
+        <div className="flex items-start gap-3 px-4 py-3.5 rounded-xl"
+          style={{ background: 'rgba(58,124,165,0.06)', border: '1px solid rgba(58,124,165,0.2)' }}>
+          <div className="mt-0.5 w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold" style={{ background: '#3A7CA5', color: '#fff' }}>i</div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: '#1E3A5F' }}>Business details live in Settings</p>
+            <p className="text-xs mt-0.5" style={{ color: '#52525B' }}>
+              Company name, logo, address, banking, VAT, and document defaults are managed in{' '}
+              <a href="/supplier-portal/manufacturing/settings" className="font-semibold underline" style={{ color: '#3A7CA5' }}>Manufacturing → Settings</a>.
+              That&apos;s where they&apos;re read from when generating quotes and invoices.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isManufacturer && <form onSubmit={handleSave} className="space-y-5">
         {/* Read-only email */}
         <div className="p-4 rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #E4E4E7' }}>
           <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: '#71717A' }}>Email</p>
@@ -666,7 +682,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, plan, subsc
             </span>
           )}
         </div>
-      </form>
+      </form>}
 
       {/* Admin Users — only shown for quoting plan accounts */}
       {orgMembers !== null && (
