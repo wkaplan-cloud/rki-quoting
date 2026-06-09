@@ -130,6 +130,7 @@ export default function SignupPage() {
                 <img src="/logo.png" alt="QuotingHub" className="lg:hidden h-14 w-auto object-contain mx-auto mb-6" />
                 <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Create your account</h1>
                 <p className="text-sm text-[#8A877F] mt-1.5">Sign up as a designer or supplier</p>
+                <p className="text-xs text-[#9A7B4F] font-medium mt-2">30-day free trial · no credit card needed</p>
               </div>
               <div className="space-y-3">
                 <button
@@ -188,6 +189,7 @@ export default function SignupPage() {
               <div className="mb-7">
                 <h1 className="font-serif text-3xl text-[#1A1A18] tracking-tight">Create your account</h1>
                 <p className="text-sm text-[#8A877F] mt-1.5">Start quoting in minutes</p>
+                <p className="text-xs text-[#9A7B4F] font-medium mt-1">30-day free trial · no credit card needed</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
