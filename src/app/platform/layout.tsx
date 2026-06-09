@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut,
   ArrowLeftRight, Store, FolderOpen, Activity, BadgeDollarSign,
-  Radio, Zap, Palette, Package,
+  Radio, Zap, Palette, Package, Hammer, Users,
 } from 'lucide-react'
 
 const PLATFORM_ADMIN = process.env.PLATFORM_ADMIN_EMAIL
@@ -57,6 +57,15 @@ export default async function PlatformLayout({ children }: { children: React.Rea
         { href: '/platform/suppliers',   label: 'Suppliers',    icon: Store,           badge: 0 },
         { href: '/platform/sourcing',    label: 'Sourcing',     icon: ArrowLeftRight,  badge: 0 },
         { href: '/platform/price-lists', label: 'Price Lists',  icon: BookOpen,        badge: pendingPriceListCount ?? 0 },
+      ],
+    },
+    {
+      key: 'manufacturing',
+      label: 'Manufacturing Portal',
+      icon: Hammer,
+      color: 'text-orange-400',
+      items: [
+        { href: '/platform/manufacturing', label: 'Accounts', icon: Users, badge: 0 },
       ],
     },
     {
