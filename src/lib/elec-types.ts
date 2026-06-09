@@ -36,8 +36,100 @@ export interface ElecSettings {
   sage_refresh_token: string | null
   sage_token_expires_at: string | null
   sage_item_id: number | null
+  // COC defaults — registered person
+  reg_person_name: string | null
+  reg_person_id_no: string | null
+  reg_person_reg_no: string | null
+  reg_person_reg_date: string | null
+  reg_person_type: string | null
+  reg_person_address: string | null
+  reg_person_tel: string | null
+  reg_person_fax: string | null
+  reg_person_cell: string | null
+  reg_person_email: string | null
+  // COC defaults — electrical contractor
+  contractor_name: string | null
+  contractor_id_no: string | null
+  contractor_reg_no: string | null
+  contractor_reg_date: string | null
+  contractor_address: string | null
+  contractor_tel: string | null
+  contractor_fax: string | null
+  contractor_cell: string | null
+  contractor_email: string | null
   created_at: string
   updated_at: string
+}
+
+// ─── COC Test Report (Section 2–4, stored as JSONB) ──────────────────────────
+
+export interface COCTestReport {
+  // Section 2 — Installation
+  installation_permanent: boolean
+  supply_system: string      // 'TN-S' | 'TN-C-S' | 'TN-C' | 'TT' | 'IT'
+  voltage: string            // '230V' | '400V' | '525V' | 'other'
+  voltage_other: string
+  phases: string             // 'one' | 'two' | 'three'
+  phase_rotation: string     // 'clockwise' | 'anticlockwise'
+  frequency: string          // '50Hz' | 'other' | 'dc'
+  frequency_other: string
+  main_switch_type: string   // 'switch_disconnector' | 'fuse_switch' | 'circuit_breaker' | 'elcb' | 'elsd'
+  main_switch_poles: string
+  main_switch_current_rating: string
+  main_switch_sc_rating: string
+  earth_leakage_current: string   // '30mA' | 'other'
+  earth_leakage_current_other: string
+  surge_protection: boolean
+  lightning_protection: boolean
+  alt_power_supply: boolean
+  specialised_installation: boolean
+  above_1kv: boolean
+  // Section 3 — Circuit counts (New / Existing)
+  lighting_circuits_new: string;    lighting_circuits_existing: string
+  lighting_points_new: string;      lighting_points_existing: string
+  socket_outlet_circuits_new: string; socket_outlet_circuits_existing: string
+  socket_outlets_new: string;       socket_outlets_existing: string
+  ac_circuits_new: string;          ac_circuits_existing: string
+  transformer_lighting_new: string; transformer_lighting_existing: string
+  transformer_bell_new: string;     transformer_bell_existing: string
+  transformer_other_new: string;    transformer_other_existing: string
+  heating_new: string;              heating_existing: string
+  alt_power_new: string;            alt_power_existing: string
+  fan_circuits_new: string;         fan_circuits_existing: string
+  cooking_new: string;              cooking_existing: string
+  geyser_new: string;               geyser_existing: string
+  pool_pump_new: string;            pool_pump_existing: string
+  borehole_pump_new: string;        borehole_pump_existing: string
+  fixed_other_new: string;          fixed_other_existing: string
+  earth_leakage_complete: boolean
+  earth_leakage_partial: boolean
+  // Section 4 — Inspection checkboxes (yes | no | na)
+  inspect_conductors: string
+  inspect_components: string
+  inspect_disconnecting: string
+  inspect_labelled: string
+  // Section 4 — Test readings
+  test_continuity_bonding: string      // 'compliant' | 'non_compliant' | 'na'
+  test_earth_resistance: string        // 'compliant' | 'non_compliant' | 'na'
+  test_ring_circuits: string
+  test_earth_loop: string              // Ω
+  test_neutral_loop: string            // Ω
+  test_pscc_value: string              // kA
+  test_pscc_method: string             // 'calculated' | 'measured'
+  test_elevated_voltage: string        // V
+  test_insulation: string              // MΩ
+  test_voltage_no_load_a: string; test_voltage_no_load_b: string; test_voltage_no_load_c: string
+  test_voltage_load_a: string;    test_voltage_load_b: string;    test_voltage_load_c: string
+  test_earth_leakage_value: string     // mA
+  test_earth_leakage_button: string    // 'correct' | 'incorrect' | 'na'
+  test_polarity: string                // 'correct' | 'incorrect' | 'na'
+  test_phase_rotation: string          // 'correct' | 'incorrect' | 'na'
+  test_switching: string               // 'correct' | 'incorrect' | 'na'
+  comments: string
+  comments_not_covered: string
+  // Section 5 — Responsibility (date + tel on the test report)
+  section5_date: string
+  section5_tel: string
 }
 
 // ─── Clients ─────────────────────────────────────────────────────────────────
@@ -305,29 +397,70 @@ export interface ElecCOC {
   quote_id: string | null
   job_card_id: string | null
   portal_account_id: string | null
-  coc_number: string
-  installation_description: string
+  // ── COC Certificate ──────────────────────────────────────────────────────────
+  coc_number: string              // ECA certificate number — blank, electrician fills
+  certificate_type: string | null // 'initial' | 'supplementary'
+  supplement_no: string | null
+  to_initial_cert_no: string | null
+  initial_cert_date: string | null
   issue_date: string
-  tester_name: string
-  tester_registration_number: string | null
-  linked_doc_number: string | null
-  notes: string | null
-  // Extended fields (phase 2)
+  regulation_type: string | null  // 'a' | 'b' | 'c'
+  // ── Location ─────────────────────────────────────────────────────────────────
   installation_address: string | null
+  name_of_building: string | null
+  suburb_township: string | null
+  district_town_city: string | null
+  gps_coordinates: string | null
+  pole_number: string | null
+  erf_lot_no: string | null
+  db_supply: string | null        // "Test Report for DB/Supply" header field
+  additional_pages: boolean | null
+  // ── Owner / Occupier ─────────────────────────────────────────────────────────
   owner_name: string | null
-  supply_authority: string | null
+  // ── Registered Person (per-COC snapshot, pre-filled from settings) ───────────
+  tester_name: string             // registered person's full name
+  tester_registration_number: string | null  // registration certificate no.
+  reg_person_id_no: string | null
+  reg_person_reg_date: string | null
+  reg_person_type: string | null  // 'master' | 'installation' | 'single_phase'
+  reg_person_address: string | null
+  reg_person_tel: string | null
+  reg_person_fax: string | null
+  reg_person_cell: string | null
+  reg_person_email: string | null
+  // ── Electrical Contractor (per-COC snapshot) ──────────────────────────────────
+  contractor_name: string | null
+  contractor_id_no: string | null
+  contractor_reg_no: string | null
+  contractor_reg_date: string | null
+  contractor_address: string | null
+  contractor_tel: string | null
+  contractor_fax: string | null
+  contractor_cell: string | null
+  contractor_email: string | null
+  // ── Recipient ────────────────────────────────────────────────────────────────
+  recipient_name: string | null
+  recipient_date: string | null
+  // ── Section 2–4 data (JSONB) ─────────────────────────────────────────────────
+  test_report: COCTestReport | null
+  // ── Legacy fields kept for backward compat ───────────────────────────────────
+  installation_description: string
+  installation_type: string | null
+  work_type: string | null
   supply_voltage: string | null
   supply_phases: string | null
   supply_earthing: string | null
   main_breaker_amps: string | null
-  work_type: string | null
-  installation_type: string | null
+  supply_authority: string | null
   earth_continuity: string | null
   insulation_resistance: string | null
   polarity: string | null
   earth_leakage: string | null
   overcurrent_protection: string | null
   phase_rotation: string | null
+  linked_doc_number: string | null
+  notes: string | null
+  // ── Email / sharing ──────────────────────────────────────────────────────────
   sent_to_name: string | null
   sent_to_email: string | null
   sent_at: string | null

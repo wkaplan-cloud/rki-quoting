@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { COCListClient } from './COCListClient'
-import type { ElecCOC } from '@/lib/elec-types'
+import type { ElecCOC, ElecSettings } from '@/lib/elec-types'
 
 export const metadata = { title: 'COC — QuotingHub' }
 
@@ -89,8 +89,7 @@ export default async function COCPage() {
       }[]}
       cocByQuoteId={Object.fromEntries(cocByQuoteId) as Record<string, ElecCOC>}
       cocByJobCardId={Object.fromEntries(cocByJobCardId) as Record<string, ElecCOC>}
-      cocPrefix={(settings as { coc_prefix?: string } | null)?.coc_prefix ?? 'COC'}
-      companyCode={(settings as { company_code?: string } | null)?.company_code ?? ''}
+      settings={(settings ?? null) as ElecSettings | null}
     />
   )
 }
