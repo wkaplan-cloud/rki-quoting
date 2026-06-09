@@ -54,6 +54,7 @@ export interface MfgPDFProps {
   // Settings
   settings: MfgSettings | null
   logoBase64?: string | null
+  showUnitPrice?: boolean
 }
 
 function makeStyles(accent: string) {
@@ -120,7 +121,7 @@ export function MfgQuotePDF(props: MfgPDFProps) {
     jobName, sentByName, sentByEmail, sentByPhone,
     lineItems, subtotal, vatAmount, total, applyVat, vatRate,
     fullProjectTotal, depositPercentage,
-    settings, logoBase64,
+    settings, logoBase64, showUnitPrice,
   } = props
 
   const accent = settings?.accent_color ?? '#1B4F8A'
@@ -188,8 +189,9 @@ export function MfgQuotePDF(props: MfgPDFProps) {
         <View style={[s.tableHead, { marginTop: 8 }]}>
           <Text style={[s.th, { width: 18 }]}>#</Text>
           <Text style={[s.th, { flex: 1 }]}>DESCRIPTION</Text>
-          <Text style={[s.th, { width: 36, textAlign: 'center' }]}>QTY</Text>
-          <Text style={[s.th, { width: 72, textAlign: 'right' }]}>TOTAL</Text>
+          <Text style={[s.th, { width: showUnitPrice ? 28 : 36, textAlign: 'center' }]}>QTY</Text>
+          {showUnitPrice && <Text style={[s.th, { width: 64, textAlign: 'right' }]}>UNIT PRICE</Text>}
+          <Text style={[s.th, { width: showUnitPrice ? 64 : 72, textAlign: 'right' }]}>TOTAL</Text>
         </View>
 
         {lineItems.map((li, idx) => (
@@ -199,8 +201,11 @@ export function MfgQuotePDF(props: MfgPDFProps) {
               <Text>{li.description}</Text>
               {li.callout_note && <Text style={s.callout}>⚠ {li.callout_note}</Text>}
             </View>
-            <Text style={s.qty}>{li.quantity}</Text>
-            <Text style={s.amt}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
+            <Text style={[s.qty, { width: showUnitPrice ? 28 : 36 }]}>{li.quantity}</Text>
+            {showUnitPrice && (
+              <Text style={[s.amt, { width: 64 }]}>{li.unit_price > 0 ? fmtR(li.unit_price) : 'TBC'}</Text>
+            )}
+            <Text style={[s.amt, { width: showUnitPrice ? 64 : 72 }]}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
           </View>
         ))}
 

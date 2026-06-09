@@ -94,7 +94,7 @@ function PriceBookSelect({ items, itemType, onSelect, placeholder }: {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 interface Props {
-  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; valid_until: string | null; notes: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; job?: { id: string; job_name: string; client?: { client_name: string } | null } | null }
+  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; show_unit_price: boolean; valid_until: string | null; notes: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; job?: { id: string; job_name: string; client?: { client_name: string } | null } | null }
   initialLineItems: MfgQuoteLineItemDraft[]
   priceBook: MfgPriceBookItem[]
   settings: MfgSettings | null
@@ -110,7 +110,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     initialLineItems.length ? initialLineItems.map(li => ({ ...li, cost_builder_open: false })) : []
   )
   const [showInternalView, setShowInternalView] = useState(false)
-  const [applyVat, setApplyVat]   = useState(quote.apply_vat)
+  const [applyVat, setApplyVat]     = useState(quote.apply_vat)
+  const [showUnitPrice, setShowUnitPrice] = useState(quote.show_unit_price ?? false)
   const [vatRate] = useState(quote.vat_rate)
   const [saving, setSaving]       = useState(false)
   const [sending, setSending]         = useState(false)
@@ -248,6 +249,20 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     }, 1000)
   }
 
+  async function patchQuoteField(fields: Record<string, unknown>) {
+    await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    })
+  }
+
+  async function toggleShowUnitPrice() {
+    const next = !showUnitPrice
+    setShowUnitPrice(next)
+    await patchQuoteField({ show_unit_price: next })
+  }
+
   const handleSave = useCallback(async (quiet = false) => {
     if (!quiet) setSaving(true)
     setError('')
@@ -350,6 +365,15 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
             {showInternalView ? <EyeOff size={12} /> : <Eye size={12} />}
             {showInternalView ? 'Hide margins' : 'Show margins'}
           </button>
+
+          {!isReadOnly && (
+            <button onClick={() => void toggleShowUnitPrice()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              style={{ background: showUnitPrice ? '#F0FDF4' : S.input, color: showUnitPrice ? '#16A34A' : S.muted, border: `1px solid ${showUnitPrice ? '#BBF7D0' : S.border}` }}>
+              <FileDown size={12} />
+              {showUnitPrice ? 'Unit price: on' : 'Unit price: off'}
+            </button>
+          )}
 
           {!isReadOnly && (
             <>

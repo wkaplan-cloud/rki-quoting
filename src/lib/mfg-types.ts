@@ -149,6 +149,7 @@ export interface MfgQuote {
   status: MfgQuoteStatus
   apply_vat: boolean
   vat_rate: number
+  show_unit_price: boolean
   valid_until: string | null
   notes: string | null
   sent_to_email: string | null

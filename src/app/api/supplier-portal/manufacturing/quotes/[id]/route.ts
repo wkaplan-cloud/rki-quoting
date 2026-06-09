@@ -61,7 +61,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params
   const body = await req.json()
-  const allowed = ['status','apply_vat','vat_rate','valid_until','notes','acceptance_date','sent_to_email','sent_by_name','sent_by_email','sent_by_phone','sent_at']
+  const allowed = ['status','apply_vat','vat_rate','show_unit_price','valid_until','notes','acceptance_date','sent_to_email','sent_by_name','sent_by_email','sent_by_phone','sent_at']
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   for (const key of allowed) { if (key in body) patch[key] = body[key] }
 

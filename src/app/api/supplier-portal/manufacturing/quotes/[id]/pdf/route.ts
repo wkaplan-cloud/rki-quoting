@@ -64,6 +64,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     vatRate:        quote.vat_rate,
     settings:       settings ?? null,
     logoBase64,
+    showUnitPrice:  (quote as Record<string, unknown>).show_unit_price === true,
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
