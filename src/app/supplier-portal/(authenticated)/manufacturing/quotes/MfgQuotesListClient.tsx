@@ -112,37 +112,39 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
         )}
       </div>
 
-      {/* New quote panel */}
+      {/* New quote modal */}
       {showNew && (
-        <div className="rounded-2xl p-6 mb-6" style={{ background: S.card, border: `1.5px solid ${S.accent}`, boxShadow: '0 2px 12px rgba(27,79,138,0.1)' }}>
-          <h3 className="text-sm font-bold mb-4" style={{ color: S.text }}>New Quote</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Client</label>
-              <select value={newClientId} onChange={e => setNewClientId(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
-                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
-                <option value="">No client / select later</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}</option>)}
-              </select>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setShowNew(false)}>
+          <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-5" style={{ color: S.text }}>New Quote</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Client</label>
+                <select value={newClientId} onChange={e => setNewClientId(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
+                  <option value="">No client / select later</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Job Name</label>
+                <input value={newJobName} onChange={e => setNewJobName(e.target.value)}
+                  placeholder="e.g. Master Bedroom Built-ins"
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Job Name</label>
-              <input value={newJobName} onChange={e => setNewJobName(e.target.value)}
-                placeholder="e.g. Master Bedroom Built-ins"
-                className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
-                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
-                onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+            {error && <p className="mt-3 text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{error}</p>}
+            <div className="flex gap-3 mt-5">
+              <button onClick={handleCreate} disabled={creating}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: S.accent }}>
+                {creating ? 'Creating…' : 'Create Quote →'}
+              </button>
+              <button onClick={() => setShowNew(false)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
             </div>
-          </div>
-          {error && <p className="mt-3 text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{error}</p>}
-          <div className="flex gap-3 mt-4">
-            <button onClick={handleCreate} disabled={creating}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-              style={{ background: S.accent }}>
-              {creating ? 'Creating…' : 'Create Quote →'}
-            </button>
-            <button onClick={() => setShowNew(false)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
           </div>
         </div>
       )}

@@ -1,17 +1,16 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Receipt, CheckCircle, Clock, AlertCircle, Plus, Trash2 } from 'lucide-react'
+import { Receipt, CheckCircle, AlertCircle, Plus, Trash2, X } from 'lucide-react'
 import type { MfgInvoice } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
 
 const STATUS_CONFIG = {
-  draft:          { label: 'Draft',          color: '#71717A', bg: '#F4F4F5' },
-  sent:           { label: 'Sent',           color: '#D97706', bg: '#FEF3C7' },
-  partially_paid: { label: 'Partial',        color: '#2563EB', bg: '#EFF6FF' },
-  paid:           { label: 'Paid',           color: '#16A34A', bg: '#DCFCE7' },
-  overdue:        { label: 'Overdue',        color: '#DC2626', bg: '#FEE2E2' },
+  draft:          { label: 'Draft',   color: '#71717A', bg: '#F4F4F5' },
+  sent:           { label: 'Sent',    color: '#D97706', bg: '#FEF3C7' },
+  partially_paid: { label: 'Partial', color: '#2563EB', bg: '#EFF6FF' },
+  paid:           { label: 'Paid',    color: '#16A34A', bg: '#DCFCE7' },
+  overdue:        { label: 'Overdue', color: '#DC2626', bg: '#FEE2E2' },
 }
 
 type InvoiceWithJob = MfgInvoice & { job?: { id: string; job_name: string; client?: { client_name: string } | null } | null }
@@ -21,16 +20,16 @@ interface PaymentForm { amount: string; payment_date: string; payment_method: st
 interface Props { initialInvoices: InvoiceWithJob[] }
 
 export function MfgInvoicesClient({ initialInvoices }: Props) {
-  const router = useRouter()
   const [invoices, setInvoices] = useState<InvoiceWithJob[]>(initialInvoices)
   const [search, setSearch]     = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [expandedId, setExpandedId]     = useState<string | null>(null)
-  const [paymentForm, setPaymentForm]   = useState<Record<string, PaymentForm>>({})
   const [addingPayment, setAddingPayment] = useState<string | null>(null)
+  const [paymentForm, setPaymentForm]     = useState<PaymentForm>({ amount: '', payment_date: '', payment_method: 'eft', reference: '' })
   const [payments, setPayments]           = useState<Record<string, { id: string; amount: number; payment_date: string; payment_method: string; reference: string | null }[]>>({})
   const [loadingPayments, setLoadingPayments] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<{ invoiceId: string; paymentId: string } | null>(null)
 
   const filtered = invoices.filter(inv => {
     if (statusFilter !== 'all' && inv.status !== statusFilter) return false
@@ -60,36 +59,38 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
     await loadPayments(invoiceId)
   }
 
-  async function handleAddPayment(invoiceId: string) {
-    const form = paymentForm[invoiceId]
-    if (!form?.amount) return
+  function openPaymentModal(invoiceId: string, balance: number) {
+    setPaymentForm({ amount: balance.toFixed(2), payment_date: new Date().toISOString().split('T')[0], payment_method: 'eft', reference: '' })
+    setAddingPayment(invoiceId)
+  }
+
+  async function handleAddPayment() {
+    if (!addingPayment || !paymentForm.amount) return
     setSaving(true)
-    const res = await fetch(`/api/supplier-portal/manufacturing/invoices/${invoiceId}/payments`, {
+    const res = await fetch(`/api/supplier-portal/manufacturing/invoices/${addingPayment}/payments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        amount: parseFloat(form.amount),
-        payment_date: form.payment_date || new Date().toISOString().split('T')[0],
-        payment_method: form.payment_method || 'eft',
-        reference: form.reference || null,
+        amount: parseFloat(paymentForm.amount),
+        payment_date: paymentForm.payment_date || new Date().toISOString().split('T')[0],
+        payment_method: paymentForm.payment_method || 'eft',
+        reference: paymentForm.reference || null,
       }),
     })
     setSaving(false)
     if (!res.ok) return
     const newPayment = await res.json()
+    const invoiceId = addingPayment
     setPayments(prev => ({ ...prev, [invoiceId]: [...(prev[invoiceId] ?? []), newPayment] }))
-    // Reload invoice to get updated status and amount_paid
     const invRes = await fetch(`/api/supplier-portal/manufacturing/invoices/${invoiceId}`)
     if (invRes.ok) {
       const updated = await invRes.json()
       setInvoices(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: updated.status, amount_paid: updated.amount_paid } : inv))
     }
-    setPaymentForm(prev => ({ ...prev, [invoiceId]: { amount: '', payment_date: '', payment_method: 'eft', reference: '' } }))
     setAddingPayment(null)
   }
 
   async function handleDeletePayment(invoiceId: string, paymentId: string) {
-    if (!confirm('Remove this payment?')) return
     await fetch(`/api/supplier-portal/manufacturing/invoices/${invoiceId}/payments?payment_id=${paymentId}`, { method: 'DELETE' })
     setPayments(prev => ({ ...prev, [invoiceId]: (prev[invoiceId] ?? []).filter(p => p.id !== paymentId) }))
     const res = await fetch(`/api/supplier-portal/manufacturing/invoices/${invoiceId}`)
@@ -97,6 +98,7 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
       const updated = await res.json()
       setInvoices(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: updated.status, amount_paid: updated.amount_paid } : inv))
     }
+    setConfirmDelete(null)
   }
 
   const totalOutstanding = filtered.filter(i => i.status !== 'paid').reduce((s, i) => s + (i.total - i.amount_paid), 0)
@@ -193,7 +195,7 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
                   </a>
                 </div>
 
-                {/* Expanded payment panel */}
+                {/* Expanded payment history */}
                 {isExpanded && (
                   <div className="px-5 pb-5 border-t space-y-3" style={{ borderColor: S.border, background: '#FAFBFC' }}>
                     <p className="text-xs font-bold uppercase tracking-widest pt-4" style={{ color: S.muted }}>Payments</p>
@@ -211,7 +213,8 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
                             <span style={{ color: S.muted }}>{p.payment_date}</span>
                             <span className="capitalize px-2 py-0.5 rounded-full text-[10px]" style={{ background: '#EFF6FF', color: S.accent }}>{p.payment_method}</span>
                             {p.reference && <span style={{ color: S.muted }}>{p.reference}</span>}
-                            <button onClick={() => handleDeletePayment(inv.id, p.id)} className="ml-auto" style={{ color: S.muted }}>
+                            <button onClick={e => { e.stopPropagation(); setConfirmDelete({ invoiceId: inv.id, paymentId: p.id }) }}
+                              className="ml-auto" style={{ color: S.muted }}>
                               <Trash2 size={11} />
                             </button>
                           </div>
@@ -226,73 +229,96 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
                       </div>
                     )}
 
-                    {/* Add payment */}
                     {inv.status !== 'paid' && (
-                      addingPayment === inv.id ? (
-                        <div className="rounded-xl p-4 space-y-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Amount (R)</label>
-                              <input type="number" min={0.01} step={0.01}
-                                value={paymentForm[inv.id]?.amount ?? ''}
-                                onChange={e => setPaymentForm(prev => ({ ...prev, [inv.id]: { ...prev[inv.id] ?? { amount: '', payment_date: '', payment_method: 'eft', reference: '' }, amount: e.target.value } }))}
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
-                                placeholder={`R ${balance.toFixed(2)}`} />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Date</label>
-                              <input type="date"
-                                value={paymentForm[inv.id]?.payment_date ?? ''}
-                                onChange={e => setPaymentForm(prev => ({ ...prev, [inv.id]: { ...prev[inv.id] ?? { amount: '', payment_date: '', payment_method: 'eft', reference: '' }, payment_date: e.target.value } }))}
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Method</label>
-                              <select
-                                value={paymentForm[inv.id]?.payment_method ?? 'eft'}
-                                onChange={e => setPaymentForm(prev => ({ ...prev, [inv.id]: { ...prev[inv.id] ?? { amount: '', payment_date: '', payment_method: 'eft', reference: '' }, payment_method: e.target.value } }))}
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
-                                <option value="eft">EFT</option>
-                                <option value="cash">Cash</option>
-                                <option value="card">Card</option>
-                                <option value="other">Other</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Reference</label>
-                              <input type="text"
-                                value={paymentForm[inv.id]?.reference ?? ''}
-                                onChange={e => setPaymentForm(prev => ({ ...prev, [inv.id]: { ...prev[inv.id] ?? { amount: '', payment_date: '', payment_method: 'eft', reference: '' }, reference: e.target.value } }))}
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
-                                placeholder="e.g. INV-001" />
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => handleAddPayment(inv.id)} disabled={saving}
-                              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
-                              style={{ background: '#16A34A' }}>
-                              <CheckCircle size={12} /> {saving ? 'Saving…' : 'Record Payment'}
-                            </button>
-                            <button onClick={() => setAddingPayment(null)} className="px-3 py-2 rounded-lg text-xs" style={{ color: S.muted }}>Cancel</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button onClick={() => setAddingPayment(inv.id)}
-                          className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-colors"
-                          style={{ background: S.input, color: S.accent, border: `1px solid ${S.border}` }}>
-                          <Plus size={12} /> Record Payment
-                        </button>
-                      )
+                      <button onClick={e => { e.stopPropagation(); openPaymentModal(inv.id, balance) }}
+                        className="flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-colors"
+                        style={{ background: S.input, color: S.accent, border: `1px solid ${S.border}` }}>
+                        <Plus size={12} /> Record Payment
+                      </button>
                     )}
                   </div>
                 )}
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Record Payment modal */}
+      {addingPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setAddingPayment(null)}>
+          <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-bold" style={{ color: S.text }}>Record Payment</h3>
+              <button onClick={() => setAddingPayment(null)} style={{ color: S.muted }}><X size={18} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Amount (R)</label>
+                <input type="number" min={0.01} step={0.01}
+                  value={paymentForm.amount}
+                  onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Date</label>
+                <input type="date"
+                  value={paymentForm.payment_date}
+                  onChange={e => setPaymentForm(prev => ({ ...prev, payment_date: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Method</label>
+                <select
+                  value={paymentForm.payment_method}
+                  onChange={e => setPaymentForm(prev => ({ ...prev, payment_method: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
+                  <option value="eft">EFT</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Reference</label>
+                <input type="text"
+                  value={paymentForm.reference}
+                  onChange={e => setPaymentForm(prev => ({ ...prev, reference: e.target.value }))}
+                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+                  placeholder="e.g. INV-001" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => void handleAddPayment()} disabled={saving}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: '#16A34A' }}>
+                <CheckCircle size={14} /> {saving ? 'Saving…' : 'Record Payment'}
+              </button>
+              <button onClick={() => setAddingPayment(null)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete payment confirm modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setConfirmDelete(null)}>
+          <div className="rounded-2xl p-6 w-full max-w-sm shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-2" style={{ color: S.text }}>Remove payment?</h3>
+            <p className="text-sm mb-5" style={{ color: S.muted }}>This will update the invoice balance and status.</p>
+            <div className="flex gap-3">
+              <button onClick={() => void handleDeletePayment(confirmDelete.invoiceId, confirmDelete.paymentId)}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{ background: '#DC2626' }}>
+                Remove
+              </button>
+              <button onClick={() => setConfirmDelete(null)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
