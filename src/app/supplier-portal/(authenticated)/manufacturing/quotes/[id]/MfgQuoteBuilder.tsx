@@ -235,6 +235,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const [showSendModal, setShowSendModal] = useState(false)
   const [sendEmail, setSendEmail] = useState('')
   const [sendBody, setSendBody] = useState('')
+  const [sendSuccess, setSendSuccess] = useState(false)
   const [markingSent, setMarkingSent] = useState(false)
   const [markingAccepted, setMarkingAccepted] = useState(false)
   const [showConvertModal, setShowConvertModal] = useState(false)
@@ -463,7 +464,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     })
     setSending(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Send failed'); return }
-    setShowSendModal(false)
+    setSendSuccess(true)
     setCurrentStatus('sent')
   }
 
@@ -1096,38 +1097,56 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
 
       {/* Send Modal */}
       {showSendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowSendModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => { setShowSendModal(false); setSendSuccess(false) }}>
           <div className="rounded-2xl p-6 w-full max-w-lg shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
-            <h3 className="text-base font-bold mb-5" style={{ color: S.text }}>Send Quote</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Send to</label>
-                <input value={sendEmail} onChange={e => setSendEmail(e.target.value)}
-                  placeholder="client@email.com" type="email"
-                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
-                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+            {sendSuccess ? (
+              <div className="text-center py-4">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#DCFCE7' }}>
+                  <Check size={28} style={{ color: '#16A34A' }} />
+                </div>
+                <h3 className="text-lg font-bold mb-1" style={{ color: S.text }}>Quote sent!</h3>
+                <p className="text-sm mb-6" style={{ color: S.muted }}>Delivered to <span className="font-medium" style={{ color: S.text }}>{sendEmail}</span></p>
+                <button onClick={() => { setShowSendModal(false); setSendSuccess(false) }}
+                  className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+                  style={{ background: S.accent }}>
+                  Close
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Email body</label>
-                <textarea value={sendBody} onChange={e => setSendBody(e.target.value)} rows={8}
-                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none resize-y"
-                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text, lineHeight: '1.6' }} />
-                <p className="text-[10px] mt-1" style={{ color: S.muted }}>The PDF is attached automatically.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-5 flex-wrap">
-              <button onClick={() => void handleSend()} disabled={sending || !sendEmail.trim()}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: S.accent }}>
-                <Send size={14} /> {sending ? 'Sending…' : 'Send with PDF'}
-              </button>
-              <button onClick={() => setShowSendModal(false)} className="px-4 py-2.5 rounded-xl text-sm" style={{ color: S.muted }}>Cancel</button>
-              <button onClick={() => void handleMarkSent()} disabled={markingSent}
-                className="ml-auto text-xs disabled:opacity-50"
-                style={{ color: S.muted }}>
-                {markingSent ? 'Marking…' : 'Mark as sent without emailing →'}
-              </button>
-            </div>
+            ) : (
+              <>
+                <h3 className="text-base font-bold mb-5" style={{ color: S.text }}>Send Quote</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Send to</label>
+                    <input value={sendEmail} onChange={e => setSendEmail(e.target.value)}
+                      placeholder="client@email.com" type="email"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Email body</label>
+                    <textarea value={sendBody} onChange={e => setSendBody(e.target.value)} rows={8}
+                      className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none resize-y"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text, lineHeight: '1.6' }} />
+                    <p className="text-[10px] mt-1" style={{ color: S.muted }}>The PDF is attached automatically.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 mt-5 flex-wrap">
+                  <button onClick={() => void handleSend()} disabled={sending || !sendEmail.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ background: S.accent }}>
+                    <Send size={14} /> {sending ? 'Sending…' : 'Send with PDF'}
+                  </button>
+                  <button onClick={() => setShowSendModal(false)} className="px-4 py-2.5 rounded-xl text-sm" style={{ color: S.muted }}>Cancel</button>
+                  <button onClick={() => void handleMarkSent()} disabled={markingSent}
+                    className="ml-auto text-xs disabled:opacity-50"
+                    style={{ color: S.muted }}>
+                    {markingSent ? 'Marking…' : 'Mark as sent without emailing →'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
