@@ -63,7 +63,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         item_name:          m.item_name,
         unit:               m.unit,
         quantity:           m.quantity ?? 1,
-        unit_cost:          m.supplier_quoted ? null : (m.unit_cost ?? null),
+        unit_cost:          m.unit_cost ?? null,
         supplier_quoted:    m.supplier_quoted ?? false,
         sort_order:         midx,
       })
@@ -76,7 +76,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         item_name:          h.item_name,
         unit:               h.unit,
         quantity:           h.quantity ?? 1,
-        unit_cost:          h.supplier_quoted ? null : (h.unit_cost ?? null),
+        unit_cost:          h.unit_cost ?? null,
         supplier_quoted:    h.supplier_quoted ?? false,
         apply_markup:       h.apply_markup ?? false,
         sort_order:         hidx,
