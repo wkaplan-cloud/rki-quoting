@@ -203,6 +203,17 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     })
   }
 
+  const [confirmChooseOption, setConfirmChooseOption] = useState<string | null>(null)
+
+  function chooseOptionGroup(label: string) {
+    setLineItems(prev =>
+      prev
+        .filter(li => !li.option_label || li.option_label === label)
+        .map((li, i) => ({ ...li, option_label: null, sort_order: i }))
+    )
+    setConfirmChooseOption(null)
+  }
+
   function loadTemplate(idx: number, template: MfgLineItemTemplateFull) {
     const materials: MfgCostMaterialDraft[] = template.materials.map(m => {
       const pbItem = priceBook.find(p => p.id === m.price_book_item_id)
@@ -581,10 +592,32 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                     style={{ background: optColors?.bg, color: optColors?.color }}>
                     {li.option_label}
                   </span>
+                  {!isReadOnly && li.option_label && (
+                    confirmChooseOption === li.option_label ? (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => chooseOptionGroup(li.option_label!)}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-lg"
+                          style={{ background: '#16A34A', color: '#fff' }}>
+                          Confirm
+                        </button>
+                        <button onClick={() => setConfirmChooseOption(null)}
+                          className="text-xs px-2 py-1 rounded-lg"
+                          style={{ color: S.muted }}>
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmChooseOption(li.option_label!)}
+                        className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors"
+                        style={{ background: S.input, color: S.muted, border: `1px solid ${S.border}` }}>
+                        Client chose this →
+                      </button>
+                    )
+                  )}
                   <div className="flex-1 h-px" style={{ background: optColors?.color, opacity: 0.3 }} />
                 </div>
               )}
-            <div className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${pending ? '#FDE68A' : li.option_label ? (optColors?.color ?? S.border) : S.border}`, background: S.card, borderOpacity: li.option_label ? 0.4 : 1 }}>
+            <div className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${pending ? '#FDE68A' : li.option_label ? (optColors?.color + '66') : S.border}`, background: S.card }}>
 
               {/* Line item header */}
               <div className="p-5">
