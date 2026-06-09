@@ -60,26 +60,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     invoices.push(inv)
   } else if (invoice_type === 'deposit') {
     const pct = deposit_percentage ?? settings?.default_deposit_percentage ?? 50
-    const depositAmount = Math.round(quote.total * pct) / 100
-    const finalAmount   = Math.round((quote.total - depositAmount) * 100) / 100
+
+    // Split on ex-VAT subtotal — SARS requires VAT on each portion separately
+    const depositSubtotal = Math.round(quote.subtotal * pct / 100 * 100) / 100
+    const finalSubtotal   = Math.round((quote.subtotal - depositSubtotal) * 100) / 100
+    const depositVat      = quote.apply_vat ? Math.round(depositSubtotal * quote.vat_rate) / 100 : 0
+    const finalVat        = quote.apply_vat ? Math.round(finalSubtotal   * quote.vat_rate) / 100 : 0
+    const depositTotal    = Math.round((depositSubtotal + depositVat) * 100) / 100
+    const finalTotal      = Math.round((finalSubtotal   + finalVat)   * 100) / 100
 
     const [{ data: depInv, error: dErr }, { data: finInv, error: fErr }] = await Promise.all([
       supabase.from('mfg_invoices').insert({
         portal_account_id: auth.portalAccountId,
         quote_id: id, job_id: quote.job_id,
-        invoice_number: `${baseNumber}-D`, invoice_type: 'deposit', status: 'draft',
-        apply_vat: false, vat_rate: quote.vat_rate,
-        subtotal: depositAmount, vat_amount: 0, total: depositAmount,
+        invoice_number: `${baseNumber}-DEPOSIT`, invoice_type: 'deposit', status: 'draft',
+        apply_vat: quote.apply_vat, vat_rate: quote.vat_rate,
+        subtotal: depositSubtotal, vat_amount: depositVat, total: depositTotal,
         due_date: dueDateStr,
       }).select().single(),
       supabase.from('mfg_invoices').insert({
         portal_account_id: auth.portalAccountId,
         quote_id: id, job_id: quote.job_id,
-        invoice_number: `${baseNumber}-F`, invoice_type: 'final', status: 'draft',
+        invoice_number: `${baseNumber}-FINAL`, invoice_type: 'final', status: 'draft',
         apply_vat: quote.apply_vat, vat_rate: quote.vat_rate,
-        subtotal: finalAmount,
-        vat_amount: quote.apply_vat ? Math.round(finalAmount * quote.vat_rate) / 100 : 0,
-        total: quote.apply_vat ? finalAmount + Math.round(finalAmount * quote.vat_rate) / 100 : finalAmount,
+        subtotal: finalSubtotal, vat_amount: finalVat, total: finalTotal,
         due_date: dueDateStr,
       }).select().single(),
     ])
