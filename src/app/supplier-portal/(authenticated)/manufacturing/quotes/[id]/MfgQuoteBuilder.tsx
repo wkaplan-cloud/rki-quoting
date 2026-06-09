@@ -6,7 +6,7 @@ import {
   Plus, Trash2, ChevronDown, ChevronUp, Check, AlertTriangle, Save,
   Send, FileDown, RefreshCw, ArrowLeft, Eye, EyeOff, Copy, Loader2, Archive
 } from 'lucide-react'
-import type { MfgPriceBookItem, MfgSettings, MfgLineItemTemplateFull, MfgQuoteLineItemDraft, MfgCostMaterialDraft, MfgCostHardwareDraft } from '@/lib/mfg-types'
+import type { MfgPriceBookItem, MfgPriceBookCategory, MfgSettings, MfgLineItemTemplateFull, MfgQuoteLineItemDraft, MfgCostMaterialDraft, MfgCostHardwareDraft } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5', bg: '#F5F7F9' }
 
@@ -132,20 +132,48 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const pbTimers       = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const [pbSaved, setPbSaved] = useState<Set<string>>(new Set())
 
-  type CustomFormKey = `${number}-${'material' | 'hardware'}`
-  interface CustomFormState { name: string; unit: string; qty: string; cost: string; saveToPb: boolean; applyMarkup: boolean; saving: boolean }
-  const BLANK_CUSTOM = (): CustomFormState => ({ name: '', unit: 'each', qty: '1', cost: '', saveToPb: true, applyMarkup: false, saving: false })
-  const [showCustomForm, setShowCustomForm] = useState<CustomFormKey | null>(null)
+  const PB_UNITS = ['sheet','plank','meter','piece','litre','kg','custom'] as const
+  type PbUnit = typeof PB_UNITS[number]
+  const MATERIAL_CATS: { value: MfgPriceBookCategory; label: string }[] = [
+    { value: 'boards', label: 'Boards' },
+    { value: 'solid_timber', label: 'Solid Timber' },
+    { value: 'acrylic_specialty', label: 'Acrylic & Specialty' },
+  ]
+  const HARDWARE_CATS: { value: MfgPriceBookCategory; label: string }[] = [
+    { value: 'glass_mirrors', label: 'Glass & Mirrors' },
+    { value: 'hinges_rails', label: 'Hinges & Rails' },
+    { value: 'handles_fittings', label: 'Handles & Fittings' },
+    { value: 'stone_steel', label: 'Stone & Steel' },
+    { value: 'finishes_oils', label: 'Finishes & Oils' },
+    { value: 'lighting', label: 'Lighting' },
+  ]
+  interface CustomFormState {
+    name: string; pbUnit: PbUnit; unitCustom: string; qty: string; cost: string
+    saveToPb: boolean; applyMarkup: boolean; supplierQuoted: boolean
+    category: MfgPriceBookCategory; supplierName: string; supplierContact: string; notes: string; saving: boolean
+  }
+  const BLANK_CUSTOM = (type: 'material' | 'hardware' = 'material'): CustomFormState => ({
+    name: '', pbUnit: 'piece', unitCustom: '', qty: '1', cost: '',
+    saveToPb: true, applyMarkup: false, supplierQuoted: false,
+    category: type === 'material' ? 'boards' : 'glass_mirrors',
+    supplierName: '', supplierContact: '', notes: '', saving: false,
+  })
+  const [showCustomForm, setShowCustomForm] = useState<{ liIdx: number; type: 'material' | 'hardware' } | null>(null)
   const [customForm, setCustomForm] = useState<CustomFormState>(BLANK_CUSTOM())
 
   function openCustomForm(liIdx: number, type: 'material' | 'hardware') {
-    setShowCustomForm(`${liIdx}-${type}`)
-    setCustomForm(BLANK_CUSTOM())
+    setShowCustomForm({ liIdx, type })
+    setCustomForm(BLANK_CUSTOM(type))
   }
 
-  async function submitCustom(liIdx: number, type: 'material' | 'hardware') {
+  async function submitCustom() {
+    if (!showCustomForm) return
+    const { liIdx, type } = showCustomForm
     if (!customForm.name.trim()) return
+    if (customForm.pbUnit === 'custom' && !customForm.unitCustom.trim()) return
     setCustomForm(f => ({ ...f, saving: true }))
+
+    const displayUnit = customForm.pbUnit === 'custom' ? customForm.unitCustom.trim() : customForm.pbUnit
 
     let pbItemId: string | null = null
     if (customForm.saveToPb) {
@@ -153,12 +181,17 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          item_type:   type === 'material' ? 'material' : 'hardware',
-          name:        customForm.name.trim(),
-          unit:        customForm.unit.trim() || 'each',
-          cost_price:  customForm.cost ? parseFloat(customForm.cost) : null,
-          supplier_quoted: false,
+          item_type:            type,
+          category:             customForm.category,
+          name:                 customForm.name.trim(),
+          unit:                 customForm.pbUnit,
+          unit_custom:          customForm.pbUnit === 'custom' ? customForm.unitCustom.trim() : null,
+          cost_price:           customForm.supplierQuoted ? null : (customForm.cost ? parseFloat(customForm.cost) : null),
+          supplier_quoted:      customForm.supplierQuoted,
           apply_markup_default: customForm.applyMarkup,
+          supplier_name:        customForm.supplierName.trim() || null,
+          supplier_contact:     customForm.supplierContact.trim() || null,
+          notes:                customForm.notes.trim() || null,
         }),
       })
       if (res.ok) {
@@ -167,31 +200,31 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
       }
     }
 
-    const cost = customForm.cost ? parseFloat(customForm.cost) : null
+    const cost = customForm.supplierQuoted ? null : (customForm.cost ? parseFloat(customForm.cost) : null)
     const qty  = parseFloat(customForm.qty) || 1
 
     if (type === 'material') {
-      const mat: import('@/lib/mfg-types').MfgCostMaterialDraft = {
+      const mat: MfgCostMaterialDraft = {
         price_book_item_id: pbItemId,
-        item_name:  customForm.name.trim(),
-        unit:       customForm.unit.trim() || 'each',
-        quantity:   qty,
-        unit_cost:  cost,
-        supplier_quoted: false,
-        sort_order: lineItems[liIdx].materials.length,
+        item_name:       customForm.name.trim(),
+        unit:            displayUnit,
+        quantity:        qty,
+        unit_cost:       cost,
+        supplier_quoted: customForm.supplierQuoted,
+        sort_order:      lineItems[liIdx].materials.length,
       }
       updateLineItem(liIdx, { materials: [...lineItems[liIdx].materials, mat] })
     } else {
-      const hw: import('@/lib/mfg-types').MfgCostHardwareDraft = {
+      const hw: MfgCostHardwareDraft = {
         price_book_item_id: pbItemId,
-        item_name:  customForm.name.trim(),
-        unit:       customForm.unit.trim() || 'each',
-        quantity:   qty,
-        unit_cost:  cost,
-        supplier_quoted: false,
-        apply_markup: customForm.applyMarkup,
+        item_name:         customForm.name.trim(),
+        unit:              displayUnit,
+        quantity:          qty,
+        unit_cost:         cost,
+        supplier_quoted:   customForm.supplierQuoted,
+        apply_markup:      customForm.applyMarkup,
         markup_percentage: null,
-        sort_order: lineItems[liIdx].hardware.length,
+        sort_order:        lineItems[liIdx].hardware.length,
       }
       updateLineItem(liIdx, { hardware: [...lineItems[liIdx].hardware, hw] })
     }
@@ -880,66 +913,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                       </div>
                     )}
                     {!isReadOnly && <PriceBookSelect items={priceBook} itemType="material" onSelect={item => addMaterial(liIdx, item)} placeholder="+ Add material from price book…" />}
-                    {!isReadOnly && showCustomForm === `${liIdx}-material` ? (
-                      <div className="mt-3 rounded-xl overflow-hidden" style={{ border: `2px solid ${S.accent}`, boxShadow: '0 4px 16px rgba(27,79,138,0.12)' }}>
-                        <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.accent }}>
-                          <span className="text-xs font-bold text-white uppercase tracking-widest">Custom Material</span>
-                          <button onClick={() => setShowCustomForm(null)} className="text-white opacity-70 hover:opacity-100 text-xs">✕</button>
-                        </div>
-                        <div className="p-4 space-y-3" style={{ background: '#fff' }}>
-                          <div>
-                            <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Name</label>
-                            <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
-                              placeholder="e.g. 18mm Oak Veneer MDF" autoFocus
-                              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                              style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                          </div>
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Unit</label>
-                              <input value={customForm.unit} onChange={e => setCustomForm(f => ({ ...f, unit: e.target.value }))}
-                                placeholder="m², each…"
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Qty</label>
-                              <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Cost (R)</label>
-                              <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
-                                placeholder="optional"
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                            </div>
-                          </div>
-                          <label className="flex items-center gap-2.5 cursor-pointer py-1">
-                            <input type="checkbox" checked={customForm.saveToPb} onChange={e => setCustomForm(f => ({ ...f, saveToPb: e.target.checked }))} className="w-4 h-4 rounded accent-blue-700" />
-                            <span className="text-sm" style={{ color: S.text }}>Save to price book for future quotes</span>
-                          </label>
-                          <div className="flex gap-2 pt-1">
-                            <button onClick={() => void submitCustom(liIdx, 'material')} disabled={!customForm.name.trim() || customForm.saving}
-                              className="flex-1 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                              style={{ background: S.accent }}>
-                              {customForm.saving ? 'Adding…' : 'Add Material'}
-                            </button>
-                            <button onClick={() => setShowCustomForm(null)} className="px-4 py-2 rounded-lg text-sm" style={{ color: S.muted }}>Cancel</button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      !isReadOnly && (
-                        <button onClick={() => openCustomForm(liIdx, 'material')}
-                          className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
-                          style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
-                          onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
-                          onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
-                          + Add custom material
-                        </button>
-                      )
+                    {!isReadOnly && (
+                      <button onClick={() => openCustomForm(liIdx, 'material')}
+                        className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
+                        onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
+                        onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
+                        + Add custom material
+                      </button>
                     )}
                   </div>
 
@@ -1018,72 +999,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                       </div>
                     )}
                     {!isReadOnly && <PriceBookSelect items={priceBook} itemType="hardware" onSelect={item => addHardware(liIdx, item)} placeholder="+ Add hardware from price book…" />}
-                    {!isReadOnly && showCustomForm === `${liIdx}-hardware` ? (
-                      <div className="mt-3 rounded-xl overflow-hidden" style={{ border: `2px solid ${S.accent}`, boxShadow: '0 4px 16px rgba(27,79,138,0.12)' }}>
-                        <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.accent }}>
-                          <span className="text-xs font-bold text-white uppercase tracking-widest">Custom Hardware / Finish</span>
-                          <button onClick={() => setShowCustomForm(null)} className="text-white opacity-70 hover:opacity-100 text-xs">✕</button>
-                        </div>
-                        <div className="p-4 space-y-3" style={{ background: '#fff' }}>
-                          <div>
-                            <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Name</label>
-                            <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
-                              placeholder="e.g. Soft-close hinge pair" autoFocus
-                              className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                              style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                          </div>
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Unit</label>
-                              <input value={customForm.unit} onChange={e => setCustomForm(f => ({ ...f, unit: e.target.value }))}
-                                placeholder="each, set…"
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Qty</label>
-                              <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-semibold uppercase tracking-widest mb-1" style={{ color: S.muted }}>Cost (R)</label>
-                              <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
-                                placeholder="optional"
-                                className="w-full px-3 py-2 text-sm rounded-lg outline-none"
-                                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <label className="flex items-center gap-2.5 cursor-pointer">
-                              <input type="checkbox" checked={customForm.applyMarkup} onChange={e => setCustomForm(f => ({ ...f, applyMarkup: e.target.checked }))} className="w-4 h-4 rounded" />
-                              <span className="text-sm" style={{ color: S.text }}>Apply markup to this item</span>
-                            </label>
-                            <label className="flex items-center gap-2.5 cursor-pointer">
-                              <input type="checkbox" checked={customForm.saveToPb} onChange={e => setCustomForm(f => ({ ...f, saveToPb: e.target.checked }))} className="w-4 h-4 rounded accent-blue-700" />
-                              <span className="text-sm" style={{ color: S.text }}>Save to price book for future quotes</span>
-                            </label>
-                          </div>
-                          <div className="flex gap-2 pt-1">
-                            <button onClick={() => void submitCustom(liIdx, 'hardware')} disabled={!customForm.name.trim() || customForm.saving}
-                              className="flex-1 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                              style={{ background: S.accent }}>
-                              {customForm.saving ? 'Adding…' : 'Add Hardware'}
-                            </button>
-                            <button onClick={() => setShowCustomForm(null)} className="px-4 py-2 rounded-lg text-sm" style={{ color: S.muted }}>Cancel</button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      !isReadOnly && (
-                        <button onClick={() => openCustomForm(liIdx, 'hardware')}
-                          className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
-                          style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
-                          onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
-                          onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
-                          + Add custom hardware
-                        </button>
-                      )
+                    {!isReadOnly && (
+                      <button onClick={() => openCustomForm(liIdx, 'hardware')}
+                        className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
+                        style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
+                        onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
+                        onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
+                        + Add custom hardware
+                      </button>
                     )}
                   </div>
 
@@ -1208,6 +1131,165 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
           </div>
         </div>
       )}
+
+      {/* Add Custom Item Modal */}
+      {showCustomForm && (() => {
+        const { type } = showCustomForm
+        const cats = type === 'material' ? MATERIAL_CATS : HARDWARE_CATS
+        const canSave = customForm.name.trim() !== '' && !(customForm.pbUnit === 'custom' && !customForm.unitCustom.trim())
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setShowCustomForm(null)}>
+            <div className="rounded-2xl p-6 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-base font-bold" style={{ color: S.text }}>
+                  {type === 'material' ? 'Add Custom Material' : 'Add Custom Hardware'}
+                </h3>
+                <button onClick={() => setShowCustomForm(null)} style={{ color: S.muted }}>✕</button>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Category */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Category</label>
+                  <select value={customForm.category} onChange={e => setCustomForm(f => ({ ...f, category: e.target.value as MfgPriceBookCategory }))}
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
+                    {cats.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+                {/* Name */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Name</label>
+                  <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder={type === 'material' ? 'e.g. 18mm Oak Veneer MDF' : 'e.g. Soft-close hinge pair'}
+                    autoFocus
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                </div>
+                {/* Unit */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Unit</label>
+                  <select value={customForm.pbUnit} onChange={e => setCustomForm(f => ({ ...f, pbUnit: e.target.value as PbUnit }))}
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
+                    <option value="piece">Piece</option>
+                    <option value="sheet">Sheet</option>
+                    <option value="plank">Plank</option>
+                    <option value="meter">Meter</option>
+                    <option value="litre">Litre</option>
+                    <option value="kg">Kg</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                </div>
+                {customForm.pbUnit === 'custom' ? (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Custom Unit</label>
+                    <input value={customForm.unitCustom} onChange={e => setCustomForm(f => ({ ...f, unitCustom: e.target.value }))}
+                      placeholder="e.g. m², pair, set"
+                      className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Qty (for this item)</label>
+                    <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                  </div>
+                )}
+                {customForm.pbUnit === 'custom' && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Qty (for this item)</label>
+                    <input type="number" min={0.01} step={0.01} value={customForm.qty} onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                  </div>
+                )}
+                {/* Supplier quoted toggle */}
+                <div className="col-span-2 flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <div onClick={() => setCustomForm(f => ({ ...f, supplierQuoted: !f.supplierQuoted }))}
+                      className="relative rounded-full transition-colors flex-shrink-0"
+                      style={{ background: customForm.supplierQuoted ? S.accent : S.border, width: 36, height: 20 }}>
+                      <div className="absolute top-0.5 transition-transform rounded-full bg-white shadow"
+                        style={{ width: 16, height: 16, left: 2, transform: customForm.supplierQuoted ? 'translateX(16px)' : 'translateX(0)' }} />
+                    </div>
+                    <span className="text-sm" style={{ color: S.text }}>Price varies — enter per quote</span>
+                  </label>
+                  {customForm.supplierQuoted && (
+                    <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                      <AlertTriangle size={10} /> Supplier quoted
+                    </span>
+                  )}
+                </div>
+                {/* Cost price */}
+                {!customForm.supplierQuoted && (
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Cost Price (R)</label>
+                    <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                      style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                  </div>
+                )}
+                {/* Apply markup */}
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <div onClick={() => setCustomForm(f => ({ ...f, applyMarkup: !f.applyMarkup }))}
+                      className="relative rounded-full transition-colors flex-shrink-0"
+                      style={{ background: customForm.applyMarkup ? S.accent : S.border, width: 36, height: 20 }}>
+                      <div className="absolute top-0.5 transition-transform rounded-full bg-white shadow"
+                        style={{ width: 16, height: 16, left: 2, transform: customForm.applyMarkup ? 'translateX(16px)' : 'translateX(0)' }} />
+                    </div>
+                    <span className="text-sm" style={{ color: S.text }}>Apply markup by default</span>
+                  </label>
+                </div>
+                {/* Supplier info */}
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Supplier (optional)</label>
+                  <input value={customForm.supplierName} onChange={e => setCustomForm(f => ({ ...f, supplierName: e.target.value }))}
+                    placeholder="Timber City"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Supplier Contact (optional)</label>
+                  <input value={customForm.supplierContact} onChange={e => setCustomForm(f => ({ ...f, supplierContact: e.target.value }))}
+                    placeholder="021 555 0123"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Notes (optional)</label>
+                  <input value={customForm.notes} onChange={e => setCustomForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Min order, lead time, spec notes…"
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                </div>
+                {/* Save to price book */}
+                <div className="col-span-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <div onClick={() => setCustomForm(f => ({ ...f, saveToPb: !f.saveToPb }))}
+                      className="relative rounded-full transition-colors flex-shrink-0"
+                      style={{ background: customForm.saveToPb ? S.accent : S.border, width: 36, height: 20 }}>
+                      <div className="absolute top-0.5 transition-transform rounded-full bg-white shadow"
+                        style={{ width: 16, height: 16, left: 2, transform: customForm.saveToPb ? 'translateX(16px)' : 'translateX(0)' }} />
+                    </div>
+                    <span className="text-sm" style={{ color: S.text }}>Save to price book for future quotes</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-5">
+                <button onClick={() => void submitCustom()} disabled={!canSave || customForm.saving}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ background: S.accent }}>
+                  <Check size={14} /> {customForm.saving ? 'Adding…' : type === 'material' ? 'Add Material' : 'Add Hardware'}
+                </button>
+                <button onClick={() => setShowCustomForm(null)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Convert to Invoice Modal */}
       {showConvertModal && (
