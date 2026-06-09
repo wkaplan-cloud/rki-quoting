@@ -94,7 +94,7 @@ function PriceBookSelect({ items, itemType, onSelect, placeholder }: {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 interface Props {
-  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; show_unit_price: boolean; valid_until: string | null; notes: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; job?: { id: string; job_name: string; client?: { client_name: string } | null } | null }
+  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; show_unit_price: boolean; valid_until: string | null; notes: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; job?: { id: string; job_name: string; client?: { client_name: string; email: string | null } | null } | null }
   initialLineItems: MfgQuoteLineItemDraft[]
   priceBook: MfgPriceBookItem[]
   settings: MfgSettings | null
@@ -122,8 +122,12 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const isMountRef     = useRef(true)
   const pbTimers       = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const [pbSaved, setPbSaved] = useState<Set<string>>(new Set())
+  const [currentStatus, setCurrentStatus] = useState(quote.status)
   const [showSendModal, setShowSendModal] = useState(false)
-  const [sendEmail, setSendEmail] = useState(quote.job?.client ? '' : '')
+  const [sendEmail, setSendEmail] = useState('')
+  const [sendBody, setSendBody] = useState('')
+  const [markingSent, setMarkingSent] = useState(false)
+  const [markingAccepted, setMarkingAccepted] = useState(false)
   const [showConvertModal, setShowConvertModal] = useState(false)
   const [convertType, setConvertType] = useState<'full' | 'deposit'>('deposit')
   const [converting, setConverting] = useState(false)
@@ -283,6 +287,25 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     return true
   }, [quote.id, lineItems])
 
+  function openSendModal() {
+    const clientName  = quote.job?.client?.client_name ?? 'Client'
+    const jobName     = quote.job?.job_name ?? ''
+    const businessName = settings?.business_name ?? ''
+    const validUntil  = quote.valid_until
+      ? new Date(quote.valid_until + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '30 days from date of issue'
+    setSendEmail(quote.job?.client?.email ?? '')
+    setSendBody(
+      (settings?.email_template_quote
+        ?.replace('{client_name}', clientName)
+        ?.replace('{job_name}', jobName)
+        ?.replace('{doc_number}', quote.quote_number)
+        ?.replace('{valid_until}', validUntil)
+      ) ?? `Dear ${clientName},\n\nPlease find attached your quotation for the ${jobName} project.\n\nThis quote is valid until ${validUntil}.\n\nDon't hesitate to reach out if you have any questions.\n\nKind regards\n${businessName}`
+    )
+    setShowSendModal(true)
+  }
+
   async function handleSend() {
     if (!sendEmail.trim()) return
     setSending(true)
@@ -290,12 +313,37 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     const res = await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: sendEmail.trim() }),
+      body: JSON.stringify({ email: sendEmail.trim(), body: sendBody }),
     })
     setSending(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Send failed'); return }
     setShowSendModal(false)
-    router.refresh()
+    setCurrentStatus('sent')
+  }
+
+  async function handleMarkSent() {
+    setMarkingSent(true)
+    const now = new Date().toISOString()
+    await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'sent', sent_at: now }),
+    })
+    setMarkingSent(false)
+    setCurrentStatus('sent')
+    setShowSendModal(false)
+  }
+
+  async function handleMarkAccepted() {
+    setMarkingAccepted(true)
+    const today = new Date().toISOString().split('T')[0]
+    await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'accepted', acceptance_date: today }),
+    })
+    setMarkingAccepted(false)
+    setCurrentStatus('accepted')
   }
 
   async function handleRevision() {
@@ -320,9 +368,9 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     router.push('/supplier-portal/manufacturing/invoices')
   }
 
-  const isReadOnly = quote.status === 'invoiced' || quote.status === 'superseded'
+  const isReadOnly = currentStatus === 'invoiced' || currentStatus === 'superseded'
   const latestRevision = revisions[revisions.length - 1]
-  const isArchivable = ['draft', 'declined', 'expired', 'superseded'].includes(quote.status)
+  const isArchivable = ['draft', 'declined', 'expired', 'superseded'].includes(currentStatus)
   const [confirmArchive, setConfirmArchive] = useState(false)
 
   return (
@@ -343,10 +391,10 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
             )}
             <span className="text-xs px-2 py-0.5 rounded-full font-semibold capitalize"
               style={{
-                background: quote.status === 'accepted' ? '#DCFCE7' : quote.status === 'sent' ? '#FEF3C7' : quote.status === 'superseded' ? '#F4F4F5' : '#F4F4F5',
-                color:      quote.status === 'accepted' ? '#16A34A' : quote.status === 'sent' ? '#D97706' : quote.status === 'superseded' ? '#A1A1AA' : S.muted,
+                background: currentStatus === 'accepted' ? '#DCFCE7' : currentStatus === 'sent' ? '#FEF3C7' : currentStatus === 'superseded' ? '#F4F4F5' : '#F4F4F5',
+                color:      currentStatus === 'accepted' ? '#16A34A' : currentStatus === 'sent' ? '#D97706' : currentStatus === 'superseded' ? '#A1A1AA' : S.muted,
               }}>
-              {quote.status}
+              {currentStatus}
             </span>
           </div>
           <p className="text-sm mt-0.5" style={{ color: S.muted }}>
@@ -398,15 +446,23 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 }
               </div>
 
-              {(quote.status === 'draft' || quote.status === 'sent') && (
-                <button onClick={() => setShowSendModal(true)}
+              {(currentStatus === 'draft' || currentStatus === 'sent') && (
+                <button onClick={openSendModal}
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white"
                   style={{ background: S.accent }}>
                   <Send size={12} /> Send Quote
                 </button>
               )}
 
-              {(quote.status === 'sent' || quote.status === 'accepted') && (
+              {currentStatus === 'sent' && (
+                <button onClick={() => void handleMarkAccepted()} disabled={markingAccepted}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                  style={{ background: '#16A34A' }}>
+                  <Check size={12} /> {markingAccepted ? 'Marking…' : 'Mark as Accepted'}
+                </button>
+              )}
+
+              {(currentStatus === 'sent' || currentStatus === 'accepted') && (
                 <button onClick={handleRevision} disabled={creatingRevision}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
@@ -414,7 +470,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 </button>
               )}
 
-              {quote.status === 'accepted' && (
+              {currentStatus === 'accepted' && (
                 <button onClick={() => setShowConvertModal(true)}
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white"
                   style={{ background: '#16A34A' }}>
@@ -455,7 +511,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
         </div>
       </div>
 
-      {quote.status === 'superseded' && latestRevision && latestRevision.id !== quote.id && (
+      {currentStatus === 'superseded' && latestRevision && latestRevision.id !== quote.id && (
         <div className="mb-6 flex items-center justify-between gap-4 px-4 py-3 rounded-xl text-sm"
           style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#71717A' }}>
           <span>This revision has been superseded. You are viewing a read-only copy.</span>
@@ -822,10 +878,10 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
 
       {/* Send Modal */}
       {showSendModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: S.card }}>
-            <h3 className="text-base font-bold mb-4" style={{ color: S.text }}>Send Quote</h3>
-            <div className="space-y-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowSendModal(false)}>
+          <div className="rounded-2xl p-6 w-full max-w-lg shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold mb-5" style={{ color: S.text }}>Send Quote</h3>
+            <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Send to</label>
                 <input value={sendEmail} onChange={e => setSendEmail(e.target.value)}
@@ -833,14 +889,26 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                   className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
                   style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
               </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Email body</label>
+                <textarea value={sendBody} onChange={e => setSendBody(e.target.value)} rows={8}
+                  className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none resize-y"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text, lineHeight: '1.6' }} />
+                <p className="text-[10px] mt-1" style={{ color: S.muted }}>The PDF is attached automatically.</p>
+              </div>
             </div>
-            <div className="flex gap-3 mt-5">
-              <button onClick={handleSend} disabled={sending || !sendEmail.trim()}
+            <div className="flex items-center gap-3 mt-5 flex-wrap">
+              <button onClick={() => void handleSend()} disabled={sending || !sendEmail.trim()}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                 style={{ background: S.accent }}>
-                <Send size={14} /> {sending ? 'Sending…' : 'Send'}
+                <Send size={14} /> {sending ? 'Sending…' : 'Send with PDF'}
               </button>
               <button onClick={() => setShowSendModal(false)} className="px-4 py-2.5 rounded-xl text-sm" style={{ color: S.muted }}>Cancel</button>
+              <button onClick={() => void handleMarkSent()} disabled={markingSent}
+                className="ml-auto text-xs disabled:opacity-50"
+                style={{ color: S.muted }}>
+                {markingSent ? 'Marking…' : 'Mark as sent without emailing →'}
+              </button>
             </div>
           </div>
         </div>
