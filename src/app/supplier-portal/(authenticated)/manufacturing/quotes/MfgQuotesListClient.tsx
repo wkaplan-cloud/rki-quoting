@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CopySlash } from 'lucide-react'
+import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CopySlash, Archive, ArchiveRestore } from 'lucide-react'
 import type { MfgQuote, MfgClient } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
@@ -18,22 +18,26 @@ const STATUS_CONFIG = {
 
 type QuoteWithJob = MfgQuote & { job?: { id: string; job_name: string; client?: { id: string; client_name: string } | null } | null }
 
+const ARCHIVABLE_STATUSES = ['draft', 'declined', 'expired', 'superseded']
+
 interface Props {
   initialQuotes: QuoteWithJob[]
   clients: Pick<MfgClient, 'id' | 'client_name' | 'contact_person'>[]
   defaultMarkup: number
+  showArchived?: boolean
 }
 
-export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup }: Props) {
+export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, showArchived = false }: Props) {
   const router = useRouter()
-  const [quotes, setQuotes]         = useState<QuoteWithJob[]>(initialQuotes)
-  const [search, setSearch]         = useState('')
+  const [quotes, setQuotes]             = useState<QuoteWithJob[]>(initialQuotes)
+  const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [showNew, setShowNew]       = useState(false)
-  const [newClientId, setNewClientId]  = useState('')
-  const [newJobName, setNewJobName]    = useState('')
-  const [creating, setCreating]     = useState(false)
-  const [error, setError]           = useState('')
+  const [showNew, setShowNew]           = useState(false)
+  const [newClientId, setNewClientId]   = useState('')
+  const [newJobName, setNewJobName]     = useState('')
+  const [creating, setCreating]         = useState(false)
+  const [error, setError]               = useState('')
+  const [confirmArchive, setConfirmArchive] = useState<string | null>(null)
 
   const filtered = quotes.filter(q => {
     if (statusFilter !== 'all' && q.status !== statusFilter) return false
@@ -55,6 +59,19 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup }: P
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Failed to create'); return }
     const newQuote = await res.json()
     router.push(`/supplier-portal/manufacturing/quotes/${newQuote.id}`)
+  }
+
+  async function handleArchive(id: string) {
+    const res = await fetch(`/api/supplier-portal/manufacturing/quotes/${id}/archive`, { method: 'POST' })
+    if (!res.ok) return
+    setQuotes(prev => prev.filter(q => q.id !== id))
+    setConfirmArchive(null)
+  }
+
+  async function handleUnarchive(id: string) {
+    const res = await fetch(`/api/supplier-portal/manufacturing/quotes/${id}/archive`, { method: 'DELETE' })
+    if (!res.ok) return
+    setQuotes(prev => prev.filter(q => q.id !== id))
   }
 
   function daysSince(dateStr: string) {
@@ -81,11 +98,18 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup }: P
             </button>
           ))}
         </div>
-        <button onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90"
-          style={{ background: S.accent }}>
-          <Plus size={14} /> New Quote
+        <button onClick={() => router.push(showArchived ? '/supplier-portal/manufacturing/quotes' : '/supplier-portal/manufacturing/quotes?archived=1')}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+          style={{ background: showArchived ? S.accent : S.input, color: showArchived ? '#fff' : S.muted, border: `1px solid ${S.border}` }}>
+          <Archive size={14} /> {showArchived ? 'Hide archived' : 'Archived'}
         </button>
+        {!showArchived && (
+          <button onClick={() => setShowNew(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90"
+            style={{ background: S.accent }}>
+            <Plus size={14} /> New Quote
+          </button>
+        )}
       </div>
 
       {/* New quote panel */}
@@ -127,7 +151,7 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup }: P
       {filtered.length === 0 ? (
         <div className="text-center py-16" style={{ color: S.muted }}>
           <FileText size={32} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">{search || statusFilter !== 'all' ? 'No quotes match your filters.' : 'No quotes yet. Create your first quote.'}</p>
+          <p className="text-sm">{showArchived ? 'No archived quotes.' : search || statusFilter !== 'all' ? 'No quotes match your filters.' : 'No quotes yet. Create your first quote.'}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -172,6 +196,42 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup }: P
                   )}
                   {!days && <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>{new Date(q.created_at).toLocaleDateString('en-ZA')}</p>}
                 </div>
+
+                {/* Archive / unarchive */}
+                {showArchived ? (
+                  <button onClick={e => { e.stopPropagation(); void handleUnarchive(q.id) }}
+                    title="Restore from archive"
+                    className="ml-2 p-1.5 rounded-lg transition-colors flex-shrink-0"
+                    style={{ color: S.muted, background: 'transparent' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = S.input; e.currentTarget.style.color = S.accent }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
+                    <ArchiveRestore size={14} />
+                  </button>
+                ) : ARCHIVABLE_STATUSES.includes(q.status) ? (
+                  confirmArchive === q.id ? (
+                    <div className="ml-2 flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => void handleArchive(q.id)}
+                        className="text-[10px] font-semibold px-2 py-1 rounded-lg"
+                        style={{ background: '#FEE2E2', color: '#DC2626' }}>
+                        Confirm
+                      </button>
+                      <button onClick={() => setConfirmArchive(null)}
+                        className="text-[10px] px-2 py-1 rounded-lg"
+                        style={{ color: S.muted }}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={e => { e.stopPropagation(); setConfirmArchive(q.id) }}
+                      title="Archive quote"
+                      className="ml-2 p-1.5 rounded-lg transition-colors flex-shrink-0"
+                      style={{ color: S.muted, background: 'transparent' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = S.input; e.currentTarget.style.color = '#DC2626' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
+                      <Archive size={14} />
+                    </button>
+                  )
+                ) : null}
               </div>
             )
           })}

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { fmtR } from '@/lib/mfg-format'
 import {
   Plus, Trash2, ChevronDown, ChevronUp, Check, AlertTriangle, Save,
-  Send, FileDown, RefreshCw, ArrowLeft, Eye, EyeOff, Copy, Loader2
+  Send, FileDown, RefreshCw, ArrowLeft, Eye, EyeOff, Copy, Loader2, Archive
 } from 'lucide-react'
 import type { MfgPriceBookItem, MfgSettings, MfgLineItemTemplateFull, MfgQuoteLineItemDraft, MfgCostMaterialDraft, MfgCostHardwareDraft } from '@/lib/mfg-types'
 
@@ -249,6 +249,12 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     }, 1000)
   }
 
+  async function handleArchive() {
+    const res = await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}/archive`, { method: 'POST' })
+    if (!res.ok) return
+    router.push('/supplier-portal/manufacturing/quotes')
+  }
+
   async function patchQuoteField(fields: Record<string, unknown>) {
     await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}`, {
       method: 'PATCH',
@@ -316,6 +322,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
 
   const isReadOnly = quote.status === 'invoiced' || quote.status === 'superseded'
   const latestRevision = revisions[revisions.length - 1]
+  const isArchivable = ['draft', 'declined', 'expired', 'superseded'].includes(quote.status)
+  const [confirmArchive, setConfirmArchive] = useState(false)
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -421,6 +429,29 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
             style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
             <FileDown size={12} /> PDF
           </a>
+
+          {isArchivable && (
+            confirmArchive ? (
+              <div className="flex items-center gap-1">
+                <button onClick={() => void handleArchive()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                  Confirm archive
+                </button>
+                <button onClick={() => setConfirmArchive(false)}
+                  className="px-2 py-1.5 rounded-lg text-xs"
+                  style={{ color: S.muted }}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setConfirmArchive(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.muted }}>
+                <Archive size={12} /> Archive
+              </button>
+            )
+          )}
         </div>
       </div>
 
