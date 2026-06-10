@@ -527,7 +527,7 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
               <div className="flex-1">
                 <p className="text-sm font-medium mb-0.5" style={{ color: S.text }}>Receive price requests from designers</p>
                 <p className="text-xs leading-relaxed" style={{ color: S.muted }}>
-                  When enabled, interior designers on QuotingHub can send you product pricing requests and your business appears in the supplier network.
+                  When enabled, interior designers on QuotingHub can send you product pricing requests.
                 </p>
               </div>
               <div className="flex-shrink-0 pt-0.5">
