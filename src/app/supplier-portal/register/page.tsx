@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, ArrowLeft, Check, Package, Zap } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft, Check, Package, Zap, Hammer } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const INPUT_STYLE = {
@@ -13,7 +13,7 @@ const INPUT_STYLE = {
   transition: 'border-color 0.15s, background 0.15s',
 }
 
-type Category = 'manufacturer' | 'trades'
+type Category = 'manufacturer' | 'trades' | 'manufacturer_quoting'
 
 // ── Screen 1: type selector ───────────────────────────────────────────────────
 function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
@@ -42,7 +42,7 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
           We&apos;ll tailor your experience from the start.
         </p>
 
-        <div className="grid sm:grid-cols-2 gap-5 w-full max-w-2xl">
+        <div className="grid sm:grid-cols-3 gap-5 w-full max-w-4xl">
 
           {/* Product Supplier */}
           <button
@@ -111,6 +111,41 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
             </div>
           </button>
 
+          {/* Manufacturer / Workshop */}
+          <button
+            onClick={() => onSelect('manufacturer_quoting')}
+            className="group text-left rounded-2xl p-7 transition-all duration-200 hover:scale-[1.02]"
+            style={{
+              background: 'rgba(154,123,79,0.06)',
+              border: '1.5px solid rgba(154,123,79,0.2)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(154,123,79,0.12)'; e.currentTarget.style.borderColor = 'rgba(154,123,79,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(154,123,79,0.06)'; e.currentTarget.style.borderColor = 'rgba(154,123,79,0.2)' }}
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(154,123,79,0.15)' }}>
+              <Hammer size={22} style={{ color: '#9A7B4F' }} />
+            </div>
+            <h2 className="text-lg font-bold mb-1.5" style={{ color: '#FFFFFF' }}>Manufacturer / Workshop</h2>
+            <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              Wood workshops, furniture makers, joiners — quote custom jobs, manage clients, and invoice professionally.
+            </p>
+            <div className="space-y-1.5">
+              {['Custom job quoting with price book', 'Invoicing & client management', 'Professional branded PDFs'].map(f => (
+                <div key={f} className="flex items-center gap-2">
+                  <Check size={11} style={{ color: '#9A7B4F', flexShrink: 0 }} />
+                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold" style={{ color: '#9A7B4F' }}>30-day free trial</span>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>then R699/mo</span>
+              </div>
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0" style={{ background: 'rgba(154,123,79,0.15)', color: '#9A7B4F' }}>Get started →</span>
+            </div>
+          </button>
+
         </div>
       </div>
     </div>
@@ -139,7 +174,8 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
   const widgetId  = useRef<string | null>(null)
   const siteKey   = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
-  const isElec = category === 'trades'
+  const isElec   = category === 'trades'
+  const isMfgQ   = category === 'manufacturer_quoting'
 
   useEffect(() => {
     if (!siteKey) return
@@ -181,10 +217,11 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
     if (siteKey && !cfToken) { setError('Please complete the security check.'); return }
 
     setLoading(true)
+    const apiCategory = isMfgQ ? 'manufacturer' : category
     const res = await fetch('/api/supplier-portal/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), contact_name: contactName.trim(), supplier_category: category, cf_token: cfToken }),
+      body: JSON.stringify({ email: email.trim(), password, company_name: companyName.trim(), contact_name: contactName.trim(), supplier_category: apiCategory, cf_token: cfToken }),
     })
     const data = await res.json() as { error?: string }
     if (!res.ok) { setError(data.error ?? 'Registration failed'); setLoading(false); return }
@@ -193,17 +230,19 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
       email: email.trim().toLowerCase(), password,
     })
     if (signInError) { router.push('/supplier-portal/login'); return }
-    router.push('/supplier-portal/home')
+    router.push(isMfgQ ? '/supplier-portal/upgrade-manufacturer' : '/supplier-portal/home')
   }
 
-  const accent     = isElec ? '#D9A441' : '#3A7CA5'
-  const accentBg   = isElec ? 'rgba(217,164,65,0.1)' : 'rgba(58,124,165,0.1)'
-  const panelBg    = isElec ? '#1A1408' : '#0F1923'
-  const submitBg   = isElec ? '#D9A441' : '#3A7CA5'
+  const accent     = isElec ? '#D9A441' : isMfgQ ? '#9A7B4F' : '#3A7CA5'
+  const accentBg   = isElec ? 'rgba(217,164,65,0.1)' : isMfgQ ? 'rgba(154,123,79,0.1)' : 'rgba(58,124,165,0.1)'
+  const panelBg    = isElec ? '#1A1408' : isMfgQ ? '#1A1510' : '#0F1923'
+  const submitBg   = isElec ? '#D9A441' : isMfgQ ? '#9A7B4F' : '#3A7CA5'
   const submitText = isElec ? '#1A1408' : '#FFFFFF'
 
   const leftFeatures = isElec
     ? ['Full quoting & progress claims', 'Team scheduling with drag & drop', 'Worker job links & photo uploads', 'PDF generation for all documents', 'COC tracker & snag list']
+    : isMfgQ
+    ? ['Custom job quoting with price book', 'Professional branded PDF quotes', 'Invoice management & client tracking', 'Receive briefs from QuotingHub designers', '30-day free trial — no card required']
     : ['Receive requests from design studios', 'Manage your full price list', 'Respond faster, win more business', 'All requests in one dashboard']
 
   return (
@@ -218,14 +257,16 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="QuotingHub" className="h-40 sm:h-52 w-auto object-contain mb-12" style={{ filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
           <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6" style={{ background: accentBg }}>
-            {isElec ? <Zap size={20} style={{ color: accent }} /> : <Package size={20} style={{ color: accent }} />}
+            {isElec ? <Zap size={20} style={{ color: accent }} /> : isMfgQ ? <Hammer size={20} style={{ color: accent }} /> : <Package size={20} style={{ color: accent }} />}
           </div>
           <h2 className="text-2xl font-bold leading-snug mb-2" style={{ color: '#FFFFFF' }}>
-            {isElec ? 'Built for electrical contractors.' : 'Join the QuotingHub supplier network.'}
+            {isElec ? 'Built for electrical contractors.' : isMfgQ ? 'Built for workshops and furniture makers.' : 'Join the QuotingHub supplier network.'}
           </h2>
           <p className="text-sm leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.45)' }}>
             {isElec
               ? 'Everything you need to quote, invoice, and manage your team — in one place.'
+              : isMfgQ
+              ? 'Quote custom manufacturing jobs, manage your clients, and invoice professionally.'
               : 'Receive price requests directly from interior design studios. Respond faster, win more business.'}
           </p>
           <div className="space-y-3">
@@ -244,6 +285,11 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
           {isElec ? (
             <div className="rounded-xl px-4 py-4 mb-6" style={{ background: 'rgba(217,164,65,0.08)', border: '1px solid rgba(217,164,65,0.2)' }}>
               <p className="text-xs font-semibold mb-0.5" style={{ color: '#D9A441' }}>30 days free, then R1,999/month</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>No card required. Cancel anytime.</p>
+            </div>
+          ) : isMfgQ ? (
+            <div className="rounded-xl px-4 py-4 mb-6" style={{ background: 'rgba(154,123,79,0.08)', border: '1px solid rgba(154,123,79,0.2)' }}>
+              <p className="text-xs font-semibold mb-0.5" style={{ color: '#9A7B4F' }}>30 days free, then R699/month</p>
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>No card required. Cancel anytime.</p>
             </div>
           ) : (
@@ -280,16 +326,16 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
             {/* Type badge */}
             <div className="flex items-center gap-2 mb-5">
               <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: accentBg }}>
-                {isElec ? <Zap size={12} style={{ color: accent }} /> : <Package size={12} style={{ color: accent }} />}
+                {isElec ? <Zap size={12} style={{ color: accent }} /> : isMfgQ ? <Hammer size={12} style={{ color: accent }} /> : <Package size={12} style={{ color: accent }} />}
               </div>
               <span className="text-xs font-semibold" style={{ color: accent }}>
-                {isElec ? 'Electrician' : 'Product Supplier'}
+                {isElec ? 'Electrician' : isMfgQ ? 'Manufacturer / Workshop' : 'Product Supplier'}
               </span>
             </div>
 
             <h1 className="text-2xl font-bold mb-1" style={{ color: '#18181B' }}>Create account</h1>
             <p className="text-sm mb-6" style={{ color: '#71717A' }}>
-              {isElec ? '30-day free trial — no card required' : 'Free forever · No monthly fees'}
+              {isElec || isMfgQ ? '30-day free trial — no card required' : 'Free forever · No monthly fees'}
             </p>
 
             {noPortalAccount && (
@@ -298,7 +344,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
               </div>
             )}
 
-            {!isElec && (
+            {!isElec && !isMfgQ && (
               <div className="mb-5 px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F4F4F5', border: '1px solid #E4E4E7', color: '#52525B' }}>
                 <strong style={{ color: '#18181B' }}>Tip:</strong> Use the same email address that design studios use when sending you price requests.
               </div>
@@ -310,7 +356,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#71717A' }}>Company Name</label>
                 <input
                   value={companyName} onChange={e => setCompanyName(e.target.value)}
-                  placeholder={isElec ? 'e.g. Smith Electrical (Pty) Ltd' : 'e.g. ABC Fabrics (Pty) Ltd'}
+                  placeholder={isElec ? 'e.g. Smith Electrical (Pty) Ltd' : isMfgQ ? 'e.g. Cape Wood Workshop (Pty) Ltd' : 'e.g. ABC Fabrics (Pty) Ltd'}
                   required autoFocus
                   className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
                   style={INPUT_STYLE}
@@ -381,7 +427,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
               </div>
 
               {/* Fee notice */}
-              {!isElec && (
+              {!isElec && !isMfgQ && (
                 <div className="px-4 py-3 rounded-lg text-xs leading-relaxed" style={{ background: '#F0F8FF', border: '1px solid #BFDBFE', color: '#1D4ED8' }}>
                   A <strong>1% platform fee</strong> applies to the value of all confirmed deals through QuotingHub.
                 </div>
@@ -398,7 +444,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
                   <a href="/supplier-portal/terms" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: accent }}>Terms &amp; Conditions</a>
                   {' '}and{' '}
                   <a href="/supplier-portal/privacy" target="_blank" rel="noreferrer" className="font-medium hover:underline" style={{ color: accent }}>Privacy Policy</a>
-                  {!isElec && ', including the 1% platform fee on confirmed deals'}.
+                  {!isElec && !isMfgQ && ', including the 1% platform fee on confirmed deals'}.
                 </span>
               </label>
 
@@ -434,7 +480,7 @@ function RegisterFlow() {
   const searchParams = useSearchParams()
   const typeParam = searchParams.get('type') as Category | null
   const [category, setCategory] = useState<Category | null>(
-    typeParam === 'trades' || typeParam === 'manufacturer' ? typeParam : null
+    typeParam === 'trades' || typeParam === 'manufacturer' || typeParam === 'manufacturer_quoting' ? typeParam : null
   )
 
   if (!category) return <TypeSelector onSelect={setCategory} />

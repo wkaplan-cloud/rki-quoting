@@ -76,7 +76,7 @@ export default function ManufacturerLandingPage() {
             <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
             <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
             <Link href="/supplier-portal/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
-            <Link href="/supplier-portal/register?type=manufacturer" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
+            <Link href="/supplier-portal/register?type=manufacturer_quoting" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Get started free
             </Link>
             <NavMobile manufacturer />
@@ -100,7 +100,7 @@ export default function ManufacturerLandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/supplier-portal/register?type=manufacturer"
+              href="/supplier-portal/register?type=manufacturer_quoting"
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors"
             >
               Start free trial <ArrowRight size={15} />
@@ -220,7 +220,7 @@ export default function ManufacturerLandingPage() {
             Start with a free trial — no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/supplier-portal/register?type=manufacturer"
+            <Link href="/supplier-portal/register?type=manufacturer_quoting"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1A1A18] text-[#F5F2EC] font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Start free trial <ChevronRight size={16} />
             </Link>
