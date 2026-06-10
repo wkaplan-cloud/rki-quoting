@@ -36,6 +36,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-5">
             <Link href="/faq" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">FAQ</Link>
             <Link href="/trades" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Trades</Link>
+            <Link href="/manufacturer" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Manufacturers</Link>
             <Link href="/supplier-portal/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Supplier Portal</Link>
             <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
             <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>

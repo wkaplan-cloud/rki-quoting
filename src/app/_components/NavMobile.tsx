@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Package, Zap } from 'lucide-react'
+import { Menu, X, Package, Zap, Hammer } from 'lucide-react'
 
 const mainLinks = [
   { href: '/pricing', label: 'Pricing' },
@@ -11,15 +11,18 @@ const mainLinks = [
 ]
 
 const partnerLinks = [
-  { href: '/supplier-portal/login', icon: Package, label: 'Supplier Portal',   desc: 'Manage pricing requests & catalogue' },
-  { href: '/trades',                icon: Zap,     label: 'For Trades',         desc: 'Electricians, plumbers & contractors' },
+  { href: '/supplier-portal/login', icon: Package, label: 'Supplier Portal',    desc: 'Manage pricing requests & catalogue' },
+  { href: '/trades',                icon: Zap,     label: 'For Trades',          desc: 'Electricians, plumbers & contractors' },
+  { href: '/manufacturer',          icon: Hammer,  label: 'For Manufacturers',   desc: 'Wood workshops & furniture makers' },
 ]
 
-export function NavMobile({ trades }: { trades?: boolean } = {}) {
+export function NavMobile({ trades, manufacturer }: { trades?: boolean; manufacturer?: boolean } = {}) {
   const [open, setOpen] = useState(false)
 
-  const loginHref  = trades ? '/supplier-portal/login'               : '/login'
-  const signupHref = trades ? '/supplier-portal/register?type=trades' : '/signup'
+  const loginHref  = (trades || manufacturer) ? '/supplier-portal/login'                        : '/login'
+  const signupHref = trades        ? '/supplier-portal/register?type=trades'
+                   : manufacturer  ? '/supplier-portal/register?type=manufacturer'
+                   : '/signup'
 
   return (
     <>
