@@ -24,11 +24,30 @@ const FEATURE_ICONS: Record<string, React.ElementType> = {
 function UpgradeManufacturerContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const trialExpired  = searchParams.get('trial') === 'expired'
   const paymentFailed = searchParams.get('payment') === 'failed'
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(paymentFailed ? 'Payment was not completed — please try again.' : '')
 
-  async function handleUpgrade() {
+  async function handleStartTrial() {
+    setError(''); setLoading(true)
+    try {
+      const res = await fetch('/api/supplier-portal/manufacturing/start-trial', { method: 'POST' })
+      const data = await res.json() as { error?: string }
+      if (!res.ok) {
+        setError(data.error ?? 'Could not start trial. Please try again.')
+        setLoading(false)
+        return
+      }
+      router.push('/supplier-portal/manufacturing/dashboard?trial=started')
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  async function handleSubscribe() {
     setError(''); setLoading(true)
     try {
       const res = await fetch('/api/supplier-portal/paystack/subscribe', {
@@ -59,13 +78,22 @@ function UpgradeManufacturerContent() {
             style={{ background: 'rgba(27,79,138,0.1)', color: S.accent }}>
             <Zap size={11} /> QuotingHub for Manufacturers
           </div>
-          <h1 className="text-3xl font-bold mb-3" style={{ color: S.text }}>
-            Upgrade to Manufacturing
-          </h1>
-          <p className="text-sm leading-relaxed" style={{ color: S.muted }}>
-            Add professional quoting, invoicing and client management to your existing supplier account.
-            Your price requests and price list stay exactly as they are.
-          </p>
+          {trialExpired ? (
+            <>
+              <h1 className="text-3xl font-bold mb-3" style={{ color: S.text }}>Your trial has ended</h1>
+              <p className="text-sm leading-relaxed" style={{ color: S.muted }}>
+                Subscribe to keep your quotes, invoices, and clients — everything you set up during the trial is still there.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold mb-3" style={{ color: S.text }}>Upgrade to Manufacturing</h1>
+              <p className="text-sm leading-relaxed" style={{ color: S.muted }}>
+                Add professional quoting, invoicing and client management to your existing supplier account.
+                Your price requests and price list stay exactly as they are.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Plan card */}
@@ -84,6 +112,12 @@ function UpgradeManufacturerContent() {
               <span className="text-4xl font-bold text-white">R{MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}</span>
               <span className="text-white/70 text-sm ml-1">/month</span>
             </div>
+            {!trialExpired && (
+              <div className="mt-2 inline-block px-3 py-1 rounded-full text-xs font-semibold"
+                style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}>
+                30-day free trial · no card required
+              </div>
+            )}
           </div>
 
           {/* Features */}
@@ -108,7 +142,7 @@ function UpgradeManufacturerContent() {
 
             <div className="mt-5 p-4 rounded-xl text-sm" style={{ background: '#F0F7FF', border: `1px solid rgba(27,79,138,0.15)` }}>
               <p style={{ color: S.accent }}>
-                <strong>Your supplier access stays.</strong> Price requests, your price list, and all existing supplier features remain fully accessible after upgrading.
+                <strong>Your supplier access stays.</strong> Price requests, your price list, and all existing supplier features remain fully accessible.
               </p>
             </div>
           </div>
@@ -120,16 +154,29 @@ function UpgradeManufacturerContent() {
                 {error}
               </p>
             )}
-            <button
-              onClick={() => void handleUpgrade()}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: S.accent }}>
-              <Zap size={15} />
-              {loading ? 'Redirecting to checkout…' : `Subscribe for R${MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}/month`}
-            </button>
+
+            {trialExpired ? (
+              <button
+                onClick={() => void handleSubscribe()}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: S.accent }}>
+                <Zap size={15} />
+                {loading ? 'Redirecting to checkout…' : `Subscribe for R${MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}/month`}
+              </button>
+            ) : (
+              <button
+                onClick={() => void handleStartTrial()}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ background: S.accent }}>
+                <Zap size={15} />
+                {loading ? 'Starting trial…' : 'Start 30-day free trial'}
+              </button>
+            )}
+
             <p className="text-xs text-center mt-3" style={{ color: S.muted }}>
-              Secure payment via Paystack · Cancel anytime
+              {trialExpired ? 'Secure payment via Paystack · Cancel anytime' : 'No credit card required · Cancel anytime after trial'}
             </p>
           </div>
         </div>

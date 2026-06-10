@@ -12,10 +12,11 @@ export default async function ManufacturingLayout({ children }: { children: Reac
   if (!account) redirect('/supplier-portal/login')
 
   const active = isActivePlan(account.plan, account.subscription_status, account.trial_ends_at)
-  const hasQuoting = planRank(account.plan) >= 1 && active
   const isManufacturer = account.plan_category === 'manufacturer' || account.supplier_category === 'manufacturer'
+  const hasQuoting = planRank(account.plan) >= 1 && active
 
-  if (!hasQuoting || !isManufacturer) redirect('/supplier-portal/upgrade')
+  if (!isManufacturer) redirect('/supplier-portal/upgrade')
+  if (!hasQuoting) redirect('/supplier-portal/upgrade-manufacturer?trial=expired')
 
   return <>{children}</>
 }
