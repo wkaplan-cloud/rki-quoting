@@ -195,9 +195,9 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
     setUploading(true)
     const ext = file.name.split('.').pop()
     const path = `mfg-logos/${portalAccountId}.${ext}`
-    const { error: upErr } = await supabase.storage.from('logos').upload(path, file, { upsert: true })
-    if (upErr) { setUploading(false); setSaveError('Logo upload failed'); return }
-    const { data: urlData } = supabase.storage.from('logos').getPublicUrl(path)
+    const { error: upErr } = await supabase.storage.from('branding').upload(path, file, { upsert: true, contentType: file.type })
+    if (upErr) { setUploading(false); setSaveError('Logo upload failed: ' + upErr.message); return }
+    const { data: urlData } = supabase.storage.from('branding').getPublicUrl(path)
     setLogoUrl(urlData.publicUrl)
     setUploading(false)
   }
