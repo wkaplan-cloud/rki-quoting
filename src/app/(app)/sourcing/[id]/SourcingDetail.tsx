@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import {
   Plus, Send, Archive, Loader2, ChevronDown, ChevronUp,
   X, Check, CheckCircle2, ImagePlus,
@@ -2425,6 +2426,28 @@ export function SourcingDetail({ session, initialItems, initialSuppliers, allSup
       ? 'compare'
       : 'request'
   )
+
+  // Realtime: refresh designer view when any supplier submits or updates a price
+  useEffect(() => {
+    const supplierIds = initialSuppliers.map(s => s.id)
+    if (!supplierIds.length) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`sourcing-session-${session.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'sourcing_item_assignments',
+          filter: `session_supplier_id=in.(${supplierIds.join(',')})`,
+        },
+        () => startTransition(() => router.refresh())
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const isDraft = session.status === 'draft'
   const isArchived = session.archived

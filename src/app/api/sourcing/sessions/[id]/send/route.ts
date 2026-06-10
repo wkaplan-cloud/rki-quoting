@@ -190,9 +190,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
 
       const isRegistered = !!resolvedPortalAccountId
-      const respondUrl = isRegistered
-        ? `${SUPPLIER_PORTAL_URL}/supplier-portal/requests/${ss.id}`
-        : `${SITE_URL}/sourcing/respond/${ss.token}`
+      // Always use the token URL — it works for everyone (portal users see their nav,
+      // non-registered users see the standalone form), and avoids redirecting designers
+      // who click the link while logged into the main app.
+      const respondUrl = `${SITE_URL}/sourcing/respond/${ss.token}`
 
       const ccEmails: string[] = (ss as any).cc_emails ?? []
 
