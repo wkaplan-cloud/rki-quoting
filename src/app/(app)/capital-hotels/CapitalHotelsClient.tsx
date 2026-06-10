@@ -24,6 +24,7 @@ interface HotelRow {
 
 interface Props {
   initialRequests: Request[]
+  initialArchivedRequests: Request[]
   hotels: HotelRow[]
 }
 
@@ -33,9 +34,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   quoted:      { label: 'Quoted',     color: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle2 size={11} /> },
 }
 
-export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: Props) {
+export function CapitalHotelsClient({ initialRequests, initialArchivedRequests, hotels: initialHotels }: Props) {
   const router = useRouter()
   const [requests, setRequests] = useState(initialRequests)
+  const [archivedRequests, setArchivedRequests] = useState(initialArchivedRequests)
   const [hotels, setHotels] = useState(initialHotels)
   const [showHotelsPanel, setShowHotelsPanel] = useState(false)
   const [newHotelName, setNewHotelName] = useState('')
@@ -119,6 +121,7 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
 
   async function archiveRequest(id: string) {
     if (!confirm('Archive this request? It will be hidden from this view.')) return
+    const archived = requests.find(r => r.id === id)
     const res = await fetch(`/api/capital-hotels/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -126,9 +129,21 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
     })
     if (res.ok) {
       setRequests(prev => prev.filter(r => r.id !== id))
+      if (archived) setArchivedRequests(prev => [archived, ...prev])
       toast.success('Request archived')
     } else {
       toast.error('Failed to archive request')
+    }
+  }
+
+  async function deleteRequest(id: string) {
+    if (!confirm('Permanently delete this request? This cannot be undone.')) return
+    const res = await fetch(`/api/capital-hotels/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setArchivedRequests(prev => prev.filter(r => r.id !== id))
+      toast.success('Request deleted')
+    } else {
+      toast.error('Failed to delete request')
     }
   }
 
@@ -158,7 +173,7 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          {(['all', 'pending', 'in_progress', 'quoted'] as const).map(s => (
+          {(['all', 'pending', 'in_progress', 'quoted', 'archived'] as const).map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -168,10 +183,15 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
                   : 'bg-white text-[#8A877F] border border-[#E8E4DC] hover:border-[#C4A46B]'
               }`}
             >
-              {s === 'all' ? 'All' : STATUS_CONFIG[s]?.label}
+              {s === 'all' ? 'All' : s === 'archived' ? 'Archived' : STATUS_CONFIG[s]?.label}
               {s === 'pending' && pendingCount > 0 && (
                 <span className="ml-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
                   {pendingCount}
+                </span>
+              )}
+              {s === 'archived' && archivedRequests.length > 0 && (
+                <span className="ml-1.5 bg-[#8A877F] text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                  {archivedRequests.length}
                 </span>
               )}
             </button>
@@ -186,25 +206,21 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
         </button>
       </div>
 
-      {/* Requests grouped by hotel */}
-      {Object.keys(grouped).length === 0 ? (
-        <div className="bg-white rounded-2xl border border-[#E8E4DC] p-12 text-center">
-          <Hotel size={36} className="text-[#D4CFC7] mx-auto mb-3" />
-          <p className="text-sm text-[#8A877F]">No requests yet.</p>
-          <p className="text-xs text-[#C4BFB6] mt-1">
-            Share <strong>quotinghub.co.za/capital-portal</strong> with The Capital Hotels team.
-          </p>
-        </div>
-      ) : (
-        Object.entries(grouped).map(([hotelName, hotelRequests]) => (
-          <div key={hotelName} className="bg-white rounded-2xl border border-[#E8E4DC] overflow-hidden">
+      {/* Archived requests view */}
+      {statusFilter === 'archived' ? (
+        archivedRequests.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#E8E4DC] p-12 text-center">
+            <Hotel size={36} className="text-[#D4CFC7] mx-auto mb-3" />
+            <p className="text-sm text-[#8A877F]">No archived requests.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-[#E8E4DC] overflow-hidden">
             <div className="px-5 py-3.5 border-b border-[#F0EDE8] flex items-center gap-2">
-              <Hotel size={15} className="text-[#1B4F8A]" />
-              <h3 className="font-semibold text-[#1A1A18] text-sm">{hotelName}</h3>
-              <span className="text-xs text-[#8A877F] ml-1">{hotelRequests.length} request{hotelRequests.length !== 1 ? 's' : ''}</span>
+              <h3 className="font-semibold text-[#1A1A18] text-sm">Archived Requests</h3>
+              <span className="text-xs text-[#8A877F] ml-1">{archivedRequests.length} request{archivedRequests.length !== 1 ? 's' : ''}</span>
             </div>
             <div className="divide-y divide-[#F5F2EC]">
-              {hotelRequests.map(req => {
+              {archivedRequests.map(req => {
                 const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending
                 const date = new Date(req.submitted_at)
                 const itemCount = req.capital_request_items?.length ?? 0
@@ -217,7 +233,7 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                           <span className="font-medium text-sm text-[#1A1A18]">
-                            {date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {req.hotel_name} — {date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
                           </span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.color}`}>
                             {cfg.icon}
@@ -232,9 +248,9 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
                       <ChevronRight size={16} className="text-[#C4BFB6] group-hover:text-[#1A1A18] transition-colors flex-shrink-0" />
                     </Link>
                     <button
-                      onClick={() => archiveRequest(req.id)}
+                      onClick={() => deleteRequest(req.id)}
                       className="opacity-0 group-hover:opacity-100 mr-4 p-2 text-[#C4BFB6] hover:text-red-500 transition-all flex-shrink-0"
-                      title="Archive request"
+                      title="Permanently delete request"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -243,7 +259,67 @@ export function CapitalHotelsClient({ initialRequests, hotels: initialHotels }: 
               })}
             </div>
           </div>
-        ))
+        )
+      ) : (
+        /* Requests grouped by hotel */
+        Object.keys(grouped).length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#E8E4DC] p-12 text-center">
+            <Hotel size={36} className="text-[#D4CFC7] mx-auto mb-3" />
+            <p className="text-sm text-[#8A877F]">No requests yet.</p>
+            <p className="text-xs text-[#C4BFB6] mt-1">
+              Share <strong>quotinghub.co.za/capital-portal</strong> with The Capital Hotels team.
+            </p>
+          </div>
+        ) : (
+          Object.entries(grouped).map(([hotelName, hotelRequests]) => (
+            <div key={hotelName} className="bg-white rounded-2xl border border-[#E8E4DC] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#F0EDE8] flex items-center gap-2">
+                <Hotel size={15} className="text-[#1B4F8A]" />
+                <h3 className="font-semibold text-[#1A1A18] text-sm">{hotelName}</h3>
+                <span className="text-xs text-[#8A877F] ml-1">{hotelRequests.length} request{hotelRequests.length !== 1 ? 's' : ''}</span>
+              </div>
+              <div className="divide-y divide-[#F5F2EC]">
+                {hotelRequests.map(req => {
+                  const cfg = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.pending
+                  const date = new Date(req.submitted_at)
+                  const itemCount = req.capital_request_items?.length ?? 0
+                  return (
+                    <div key={req.id} className="flex items-center group hover:bg-[#F5F2EC]/60 transition-colors">
+                      <Link
+                        href={`/capital-hotels/${req.id}`}
+                        className="flex items-center gap-4 px-5 py-4 flex-1 min-w-0"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className="font-medium text-sm text-[#1A1A18]">
+                              {date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </span>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.color}`}>
+                              {cfg.icon}
+                              {cfg.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#8A877F]">
+                            {itemCount} item{itemCount !== 1 ? 's' : ''}
+                            {req.quote_project_id && <span className="ml-2 text-emerald-600 font-medium">· Quote created</span>}
+                          </p>
+                        </div>
+                        <ChevronRight size={16} className="text-[#C4BFB6] group-hover:text-[#1A1A18] transition-colors flex-shrink-0" />
+                      </Link>
+                      <button
+                        onClick={() => archiveRequest(req.id)}
+                        className="opacity-0 group-hover:opacity-100 mr-4 p-2 text-[#C4BFB6] hover:text-red-500 transition-all flex-shrink-0"
+                        title="Archive request"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))
+        )
       )}
 
       {/* Manage Hotels Panel */}

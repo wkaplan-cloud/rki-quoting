@@ -70,7 +70,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       ? supabaseAdmin.rpc('get_sourcing_badge_count', { p_org_id: orgId })
       : Promise.resolve({ data: 0, error: null }),
     orgId
-      ? supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending')
+      ? supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending').eq('archived', false)
       : Promise.resolve({ count: 0, error: null }),
   ])
 

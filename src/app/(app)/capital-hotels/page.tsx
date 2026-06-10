@@ -21,11 +21,16 @@ export default async function CapitalHotelsPage() {
 
   if (!settings?.capital_hotels_enabled) redirect('/dashboard')
 
-  const [{ data: requests }, { data: hotels }] = await Promise.all([
+  const [{ data: requests }, { data: archivedRequests }, { data: hotels }] = await Promise.all([
     supabase
       .from('capital_requests')
       .select('id, hotel_name, hotel_id, status, submitted_at, quote_project_id, capital_request_items(id)')
       .eq('archived', false)
+      .order('submitted_at', { ascending: false }),
+    supabase
+      .from('capital_requests')
+      .select('id, hotel_name, hotel_id, status, submitted_at, quote_project_id, capital_request_items(id)')
+      .eq('archived', true)
       .order('submitted_at', { ascending: false }),
     supabase
       .from('capital_hotels')
@@ -42,6 +47,7 @@ export default async function CapitalHotelsPage() {
       <div className="p-6 lg:p-8">
         <CapitalHotelsClient
           initialRequests={requests ?? []}
+          initialArchivedRequests={archivedRequests ?? []}
           hotels={hotels ?? []}
         />
       </div>
