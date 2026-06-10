@@ -11,7 +11,7 @@ export async function POST() {
 
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
-      .select('id, plan, subscription_status, supplier_category')
+      .select('id, plan, plan_category, subscription_status, supplier_category')
       .eq('auth_user_id', user.id)
       .single()
 
@@ -24,13 +24,18 @@ export async function POST() {
 
     const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
+    const wasProductSupplier = account.supplier_category === 'manufacturer' && !account.plan
+
     await supabaseAdmin
       .from('supplier_portal_accounts')
       .update({
-        plan:                'manufacturer',
-        supplier_category:   'manufacturer',
-        subscription_status: 'trialing',
-        trial_ends_at:       trialEndsAt,
+        plan:                  'manufacturer',
+        plan_category:         'manufacturer',
+        supplier_category:     'manufacturer',
+        subscription_status:   'trialing',
+        trial_ends_at:         trialEndsAt,
+        // Preserve price request access for suppliers who are upgrading
+        ...(wasProductSupplier ? { receive_price_requests: true } : {}),
       } as Record<string, unknown>)
       .eq('id', account.id)
 
