@@ -41,7 +41,7 @@ const S = {
 
 export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle }: Props) {
   const isTrades = supplierCategory === 'trades'
-  const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
+  const isManufacturing = supplierCategory === 'manufacturer'
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
