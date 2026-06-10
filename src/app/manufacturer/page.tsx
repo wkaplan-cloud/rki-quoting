@@ -6,6 +6,7 @@ import {
   Hammer, FileText, Receipt, Users, BookOpen, Package,
 } from 'lucide-react'
 import { NavMobile } from '../_components/NavMobile'
+import { PublicFooter } from '@/components/layout/PublicFooter'
 
 export const metadata: Metadata = {
   title: 'QuotingHub for Manufacturers — Quoting Software for South African Furniture Makers',
@@ -232,21 +233,7 @@ export default function ManufacturerLandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-[#D8D3C8] py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <Link href="/">
-            <Image src="/logo.png" alt="QuotingHub" width={80} height={80} className="h-16 w-auto object-contain" />
-          </Link>
-          <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
-          <div className="flex items-center gap-5">
-            <Link href="/" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Designers</Link>
-            <Link href="/trades" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Trades</Link>
-            <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
-            <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
     </div>
   )

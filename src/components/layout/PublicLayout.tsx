@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { NavMobile } from '@/app/_components/NavMobile'
+import { PublicFooter } from './PublicFooter'
 
 export function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,21 +29,7 @@ export function PublicLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-[#D8D3C8] py-8 px-6 mt-16">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <Link href="/"><Image src="/logo.png" alt="QuotingHub" width={80} height={80} className="h-20 w-auto object-contain" /></Link>
-          <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
-          <div className="flex items-center gap-5">
-            <Link href="/faq" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">FAQ</Link>
-            <Link href="/trades" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Trades</Link>
-            <Link href="/manufacturer" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Manufacturers</Link>
-            <Link href="/supplier-portal/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Supplier Portal</Link>
-            <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
-            <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
-          </div>
-        </div>
-      </footer>
+      <div className="mt-16"><PublicFooter /></div>
 
     </div>
   )
