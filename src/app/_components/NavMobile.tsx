@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Paintbrush, Package, Zap } from 'lucide-react'
+import { Menu, X, Package, Zap } from 'lucide-react'
 
 const mainLinks = [
   { href: '/pricing', label: 'Pricing' },
@@ -10,14 +10,16 @@ const mainLinks = [
   { href: '/blog',    label: 'Blog'    },
 ]
 
-const portalLinks = [
-  { href: '/login',           icon: Paintbrush, label: 'Designer / Studio',     desc: 'Interior designers & decorators'   },
-  { href: '/supplier-portal', icon: Package,    label: 'Supplier Portal',        desc: 'Manage pricing requests & catalogue' },
-  { href: '/trades',          icon: Zap,        label: 'Electrician / Trades',   desc: 'Field staff & contractor portal'   },
+const partnerLinks = [
+  { href: '/supplier-portal/login', icon: Package, label: 'Supplier Portal',   desc: 'Manage pricing requests & catalogue' },
+  { href: '/trades',                icon: Zap,     label: 'For Trades',         desc: 'Electricians, plumbers & contractors' },
 ]
 
-export function NavMobile() {
+export function NavMobile({ trades }: { trades?: boolean } = {}) {
   const [open, setOpen] = useState(false)
+
+  const loginHref  = trades ? '/supplier-portal/login'               : '/login'
+  const signupHref = trades ? '/supplier-portal/register?type=trades' : '/signup'
 
   return (
     <>
@@ -45,11 +47,29 @@ export function NavMobile() {
               </Link>
             ))}
 
-            {/* Portal / login section */}
-            <p className="pt-4 pb-2 text-[10px] font-semibold text-[#C4BFB5] uppercase tracking-widest">
-              Log in as
+            {/* CTA buttons */}
+            <div className="flex gap-2 mt-4">
+              <Link
+                href={loginHref}
+                onClick={() => setOpen(false)}
+                className="flex-1 flex items-center justify-center px-4 py-3 border border-[#D8D3C8] text-[#2C2C2A] text-sm font-medium rounded-lg hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                href={signupHref}
+                onClick={() => setOpen(false)}
+                className="flex-1 flex items-center justify-center px-4 py-3 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors"
+              >
+                Get started free
+              </Link>
+            </div>
+
+            {/* Partner portals */}
+            <p className="pt-5 pb-2 text-[10px] font-semibold text-[#C4BFB5] uppercase tracking-widest">
+              Partner portals
             </p>
-            {portalLinks.map(({ href, icon: Icon, label, desc }) => (
+            {partnerLinks.map(({ href, icon: Icon, label, desc }) => (
               <Link
                 key={href}
                 href={href}
@@ -66,13 +86,6 @@ export function NavMobile() {
               </Link>
             ))}
 
-            <Link
-              href="/signup"
-              onClick={() => setOpen(false)}
-              className="mt-4 flex items-center justify-center px-4 py-3 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors"
-            >
-              Get started free
-            </Link>
           </nav>
         </div>
       )}

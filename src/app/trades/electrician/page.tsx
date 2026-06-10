@@ -135,7 +135,7 @@ export default function ElectricianLandingPage() {
               className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Start free trial
             </Link>
-            <NavMobile />
+            <NavMobile trades />
           </div>
         </div>
       </nav>

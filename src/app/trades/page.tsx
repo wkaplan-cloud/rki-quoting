@@ -78,7 +78,7 @@ export default function TradesHubPage() {
             <Link href="/supplier-portal/register?type=trades" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Get started free
             </Link>
-            <NavMobile />
+            <NavMobile trades />
           </div>
         </div>
       </nav>
@@ -222,7 +222,7 @@ export default function TradesHubPage() {
           <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
           <div className="flex items-center gap-5">
             <Link href="/" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Designers</Link>
-            <Link href="/trades/electrician" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Electricians</Link>
+            <Link href="/supplier-portal/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Supplier Portal</Link>
             <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
             <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
           </div>
