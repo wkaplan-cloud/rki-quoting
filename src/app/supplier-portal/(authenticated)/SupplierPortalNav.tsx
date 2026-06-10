@@ -166,12 +166,6 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
               <NavLink href="/supplier-portal/manufacturing/clients"    label="Clients"     icon={Users} />
               <NavLink href="/supplier-portal/manufacturing/price-book" label="Price Book"  icon={Library} />
 
-              {/* Suppliers who upgraded also keep their price request access */}
-              <div className="pt-1 mx-2 mt-1" style={{ borderTop: `1px solid ${S.sidebarBorder}` }} />
-              <p className={`text-[9px] font-bold uppercase tracking-widest px-3 pt-2 pb-1 transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ color: S.textMuted }}>Supplier</p>
-              <NavLink href="/supplier-portal/home"           label="Home"           icon={Home}  />
-              <NavLink href="/supplier-portal/price-requests" label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
-              <NavLink href="/supplier-portal/price-list"     label="My Price List"  icon={Tag}   />
             </>
           )}
 
