@@ -9,6 +9,11 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: '/supplier-portal', destination: '/supplier-portal/login', permanent: true },
+    ]
+  },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }]
   },

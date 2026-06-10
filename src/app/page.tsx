@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   FileText, Receipt, ShoppingCart, Users, Zap, Download,
-  ChevronRight, Check, ArrowRight, Mail
+  ChevronRight, Check, ArrowRight, Mail, HardHat
 } from 'lucide-react'
 import { ContactForm } from './ContactForm'
 import { AuthRecoveryRedirect } from './_components/AuthRecoveryRedirect'
@@ -144,7 +144,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Suppliers - Active */}
+            {/* Trades */}
             <div className="rounded-2xl overflow-hidden border border-[#D8D3C8] hover:border-[#C4A46B]/50 hover:shadow-lg transition-all duration-300 relative">
               <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/who-suppliers.jpg)' }} />
               <div className="absolute inset-0 bg-[#F5F2EC]/88" />
@@ -153,14 +153,14 @@ export default function LandingPage() {
                 Now live
               </div>
               <div className="w-11 h-11 rounded-xl bg-[#9A7B4F]/10 flex items-center justify-center mb-5">
-                <ShoppingCart size={20} className="text-[#9A7B4F]" />
+                <HardHat size={20} className="text-[#9A7B4F]" />
               </div>
-              <h3 className="font-serif text-xl text-[#1A1A18] mb-2">Suppliers</h3>
+              <h3 className="font-serif text-xl text-[#1A1A18] mb-2">Trades & Contractors</h3>
               <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
-                Receive pricing requests from designers, submit prices, and manage your product catalogue — all in one place.
+                Electricians, plumbers, and contractors — the same professional quoting system built for the way trade businesses actually work.
               </p>
               <ul className="space-y-2 mb-6">
-                {['Respond to designer pricing requests', 'Upload and manage your price list', 'Track all active requests in one dashboard'].map(i => (
+                {['Professional quotes, invoices & job cards', 'Digital COC — SANS 10142-1 compliant', 'GPS staff clock-in/out & timesheets'].map(i => (
                   <li key={i} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
                     <Check size={13} className="text-[#C4A46B] flex-shrink-0" />
                     {i}
@@ -168,10 +168,10 @@ export default function LandingPage() {
                 ))}
               </ul>
               <Link
-                href="/supplier-portal"
+                href="/trades"
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#1A1A18] text-[#F5F2EC] hover:bg-[#9A7B4F] transition-colors"
               >
-                Access Supplier Portal <ChevronRight size={14} />
+                Explore Trades Portal <ChevronRight size={14} />
               </Link>
               </div>
             </div>

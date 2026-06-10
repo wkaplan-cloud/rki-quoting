@@ -94,12 +94,24 @@ export default function TradesHubPage() {
             QuotingHub<br />
             <em className="text-[#C4A46B] not-italic">for Trades.</em>
           </h1>
-          <p className="text-xl text-[#8A877F] max-w-2xl mx-auto leading-relaxed mb-4">
-            The same professional quoting and business management system — now built for electricians, plumbers, and contractors.
+          <p className="text-xl text-[#8A877F] max-w-2xl mx-auto leading-relaxed mb-10">
+            Quotes, invoices, job cards, compliance certificates, and GPS staff tracking — everything you need to run a professional trade business in South Africa.
           </p>
-          <p className="text-base text-[#8A877F] max-w-xl mx-auto leading-relaxed mb-10">
-            Quotes, invoices, job cards, compliance certificates, GPS staff tracking, and more. Everything you need to run a professional trade business in South Africa.
-          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/supplier-portal/register?type=trades"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors"
+            >
+              Start free trial <ArrowRight size={15} />
+            </Link>
+            <Link
+              href="/trades/electrician"
+              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-[#D8D3C8] text-[#2C2C2A] text-sm font-medium rounded-lg hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors bg-white"
+            >
+              View electrician features
+            </Link>
+          </div>
+          <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · No credit card required</p>
         </div>
       </section>
 
@@ -147,7 +159,12 @@ export default function TradesHubPage() {
                         Learn more <ArrowRight size={14} />
                       </Link>
                     ) : (
-                      <p className={`text-xs ${isLive ? 'text-white/30' : 'text-[#C4BFB5]'}`}>Notify me when available →</p>
+                      <a
+                        href="mailto:hello@quotinghub.co.za?subject=Notify me — QuotingHub for Trades"
+                        className="inline-flex items-center gap-2 text-xs text-[#9A7B4F] hover:text-[#C4A46B] transition-colors font-medium"
+                      >
+                        Notify me when available →
+                      </a>
                     )}
                   </div>
                 </div>
@@ -222,7 +239,7 @@ export default function TradesHubPage() {
           <p className="text-xs text-[#8A877F]">© {new Date().getFullYear()} QuotingHub · quotinghub.co.za</p>
           <div className="flex items-center gap-5">
             <Link href="/" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Designers</Link>
-            <Link href="/supplier-portal/login" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Supplier Portal</Link>
+            <Link href="/trades/electrician" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">For Electricians</Link>
             <Link href="/terms" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Terms</Link>
             <Link href="/privacy" className="text-xs text-[#8A877F] hover:text-[#9A7B4F] transition-colors">Privacy</Link>
           </div>
