@@ -7,6 +7,7 @@ import {
   MapPin, Bell, Users, Zap
 } from 'lucide-react'
 import { NavMobile } from '../../_components/NavMobile'
+import { PLANS } from '@/lib/plan-features'
 
 export const metadata: Metadata = {
   title: 'Quoting Software for South African Electricians | QuotingHub',
@@ -172,7 +173,7 @@ export default function ElectricianLandingPage() {
                   Log in to your account
                 </Link>
               </div>
-              <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · then R1,999/month excl. VAT · Cancel any time</p>
+              <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · plans from R999/month excl. VAT · Cancel any time</p>
             </div>
 
             {/* Electrician illustration */}
@@ -281,28 +282,60 @@ export default function ElectricianLandingPage() {
         </div>
       </section>
 
-      {/* What's included */}
+      {/* Pricing */}
       <section className="py-20 px-6 bg-white border-y border-[#D8D3C8]">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">What you get</p>
-            <h2 className="font-serif text-3xl md:text-4xl text-[#1A1A18] tracking-tight mb-4">
-              Everything included from day one.
+            <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">Pricing</p>
+            <h2 className="font-serif text-3xl md:text-4xl text-[#1A1A18] tracking-tight mb-2">
+              Start free. Scale as you grow.
             </h2>
-            <div className="inline-flex items-baseline gap-1.5">
-              <span className="text-4xl font-bold text-[#1A1A18]">R1,999</span>
-              <span className="text-base text-[#8A877F]">/month excl. VAT</span>
-            </div>
-            <p className="text-sm text-[#C4BFB5] mt-1">30-day free trial · No credit card required</p>
+            <p className="text-[#8A877F] text-base">30-day free trial on every plan · No credit card required</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
-            {INCLUDE_ITEMS.map(item => (
-              <div key={item} className="flex items-center gap-3 p-4 rounded-xl border border-[#EDE9E1] bg-[#F5F2EC]">
-                <Check size={14} className="text-[#C4A46B] flex-shrink-0" />
-                <span className="text-sm text-[#2C2C2A]">{item}</span>
-              </div>
-            ))}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {PLANS.map((plan, i) => {
+              const isHighlighted = plan.id === 'professional'
+              return (
+                <div
+                  key={plan.id}
+                  className={`rounded-2xl border p-8 flex flex-col relative ${isHighlighted ? 'border-[#1A1A18] bg-[#1A1A18]' : 'border-[#D8D3C8] bg-white'}`}
+                >
+                  {isHighlighted && (
+                    <>
+                      <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-[#C4A46B]/10 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full bg-[#C4A46B] text-[#1A1A18]">
+                        Most popular
+                      </span>
+                    </>
+                  )}
+                  <div className="relative">
+                    <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${isHighlighted ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`}>{plan.label}</p>
+                    <div className="flex items-baseline gap-1 mb-1">
+                      <span className={`text-3xl font-bold ${isHighlighted ? 'text-white' : 'text-[#1A1A18]'}`}>R{plan.price.toLocaleString('en-ZA')}</span>
+                      <span className={`text-sm ${isHighlighted ? 'text-white/50' : 'text-[#8A877F]'}`}>/mo excl. VAT</span>
+                    </div>
+                    <p className={`text-xs mb-6 leading-relaxed ${isHighlighted ? 'text-white/50' : 'text-[#8A877F]'}`}>{plan.tagline}</p>
+                    <ul className="space-y-2.5 mb-8">
+                      {plan.features.map(f => (
+                        <li key={f} className={`flex items-start gap-2.5 text-sm ${isHighlighted ? 'text-white/75' : 'text-[#2C2C2A]'}`}>
+                          <Check size={13} className="text-[#C4A46B] flex-shrink-0 mt-0.5" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      href="/supplier-portal/register?type=trades"
+                      className={`mt-auto inline-flex items-center justify-center gap-2 w-full px-5 py-2.5 text-sm font-medium rounded-lg transition-colors ${isHighlighted ? 'bg-[#9A7B4F] text-white hover:bg-[#C4A46B]' : 'bg-[#1A1A18] text-[#F5F2EC] hover:bg-[#9A7B4F]'}`}
+                    >
+                      Start free trial <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                </div>
+              )
+            })}
           </div>
+          <p className="text-center text-xs text-[#C4BFB5] mt-6">All plans include a 30-day free trial. Month-to-month — cancel any time.</p>
         </div>
       </section>
 
