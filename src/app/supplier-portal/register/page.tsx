@@ -140,7 +140,7 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
             <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
               <div className="flex flex-col">
                 <span className="text-xs font-semibold" style={{ color: '#9A7B4F' }}>30-day free trial</span>
-                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>then R699/mo</span>
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>then R699/mo excl. VAT</span>
               </div>
               <span className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0" style={{ background: 'rgba(154,123,79,0.15)', color: '#9A7B4F' }}>Get started →</span>
             </div>
@@ -230,7 +230,7 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
       email: email.trim().toLowerCase(), password,
     })
     if (signInError) { router.push('/supplier-portal/login'); return }
-    router.push(isMfgQ ? '/supplier-portal/upgrade-manufacturer' : '/supplier-portal/home')
+    router.push(isMfgQ ? '/supplier-portal/upgrade-manufacturer?onboarding=1' : '/supplier-portal/home')
   }
 
   const accent     = isElec ? '#D9A441' : isMfgQ ? '#9A7B4F' : '#3A7CA5'
