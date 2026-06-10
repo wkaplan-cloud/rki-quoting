@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { PLANS } from '@/lib/plan-features'
+import { PLANS, MANUFACTURER_PLAN } from '@/lib/plan-features'
 
-const PLAN_MAP = Object.fromEntries(
-  PLANS.map(p => [p.id, {
-    price:    p.price,
-    planCode: process.env[p.envKey] ?? '',
-    label:    p.label,
-  }])
-)
+const PLAN_MAP: Record<string, { price: number; planCode: string; label: string; type: 'electrician' | 'manufacturer' }> = {
+  ...Object.fromEntries(
+    PLANS.map(p => [p.id, { price: p.price, planCode: process.env[p.envKey] ?? '', label: p.label, type: 'electrician' as const }])
+  ),
+  [MANUFACTURER_PLAN.id]: {
+    price:    MANUFACTURER_PLAN.price,
+    planCode: process.env[MANUFACTURER_PLAN.envKey] ?? '',
+    label:    MANUFACTURER_PLAN.label,
+    type:     'manufacturer',
+  },
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     await supabaseAdmin
       .from('supplier_portal_accounts')
-      .update({ paystack_reference: reference, plan_category: 'electrician' })
+      .update({ paystack_reference: reference })
       .eq('id', account.id)
 
     const paystackRes = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -56,7 +60,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           portal_account_id: account.id,
           plan_id:           planId,
-          type:              'supplier_quoting',
+          type:              plan.type,
           user_email:        account.email,
         },
       }),

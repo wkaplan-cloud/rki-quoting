@@ -1,14 +1,16 @@
 // Plan tier hierarchy
 // 'quoting' is the legacy plan — treated as 'business'
 // starter < professional < business
+// 'manufacturer' is a separate single-tier plan for the manufacturing module
 
-export type QuotingTier = 'starter' | 'professional' | 'business' | 'quoting'
+export type QuotingTier = 'starter' | 'professional' | 'business' | 'quoting' | 'manufacturer'
 
 const TIER_RANK: Record<string, number> = {
   starter:      1,
   professional: 2,
   business:     3,
   quoting:      3, // legacy — same as business
+  manufacturer: 1, // single tier — unlocks the full manufacturing module
 }
 
 export function planRank(plan: string | null | undefined): number {
@@ -78,3 +80,21 @@ export const PLANS = [
     ],
   },
 ] as const
+
+export const MANUFACTURER_PLAN = {
+  id:      'manufacturer',
+  label:   'Manufacturer',
+  price:   699,
+  tagline: 'Professional quoting & invoicing for manufacturers',
+  envKey:  'PAYSTACK_PLAN_MANUFACTURER',
+  features: [
+    'Unlimited quotes & invoices',
+    'Professional PDF quote & invoice output',
+    'Branded email delivery to clients',
+    'Client management',
+    'Cost builder with price book',
+    'Deposit & final invoice splitting (SARS-compliant VAT)',
+    'Option groups (A/B alternatives on quotes)',
+    'Team members',
+  ],
+} as const

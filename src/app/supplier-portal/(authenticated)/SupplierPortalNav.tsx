@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Hammer, Receipt, Library } from 'lucide-react'
+import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
@@ -165,6 +165,13 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
               <NavLink href="/supplier-portal/manufacturing/invoices"   label="Invoices"    icon={Receipt} />
               <NavLink href="/supplier-portal/manufacturing/clients"    label="Clients"     icon={Users} />
               <NavLink href="/supplier-portal/manufacturing/price-book" label="Price Book"  icon={Library} />
+
+              {/* Suppliers who upgraded also keep their price request access */}
+              <div className="pt-1 mx-2 mt-1" style={{ borderTop: `1px solid ${S.sidebarBorder}` }} />
+              <p className={`text-[9px] font-bold uppercase tracking-widest px-3 pt-2 pb-1 transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ color: S.textMuted }}>Supplier</p>
+              <NavLink href="/supplier-portal/home"           label="Home"           icon={Home}  />
+              <NavLink href="/supplier-portal/price-requests" label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
+              <NavLink href="/supplier-portal/price-list"     label="My Price List"  icon={Tag}   />
             </>
           )}
 
@@ -237,6 +244,25 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
         <div className="flex-shrink-0 py-2 space-y-0.5" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
           {isManufacturing && (
             <NavLink href="/supplier-portal/manufacturing/settings" label="Settings" icon={Settings} />
+          )}
+
+          {/* Upgrade CTA — plain suppliers only (not trades, not already a manufacturer) */}
+          {!isTrades && !isManufacturing && (
+            <Link
+              href="/supplier-portal/upgrade-manufacturer"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center h-9 mx-2 rounded-lg transition-colors duration-150 ${desktopExpanded ? '' : 'md:justify-center'}`}
+              style={{ background: 'rgba(27,79,138,0.18)', borderLeft: '3px solid transparent' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(27,79,138,0.28)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(27,79,138,0.18)' }}
+            >
+              <span className="flex items-center justify-center w-9 flex-shrink-0">
+                <Zap size={14} style={{ color: '#60A5FA' }} />
+              </span>
+              <span className={`${labelCls} font-semibold flex-1`} style={{ color: '#93C5FD' }}>
+                Upgrade
+              </span>
+            </Link>
           )}
           {!isManufacturing && (
             <Link

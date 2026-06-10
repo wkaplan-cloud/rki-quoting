@@ -270,7 +270,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufactu
     <div className="space-y-7">
       <div>
         <h1 className="text-xl font-bold tracking-tight" style={{ color: '#18181B' }}>
-          {tab === 'settings' ? 'Settings' : 'Profile'}
+          {tab === 'settings' ? 'Defaults' : 'Profile'}
         </h1>
         <p className="text-sm mt-0.5" style={{ color: '#71717A' }}>
           {tab === 'settings' ? 'Default values and configuration for your quoting.' : 'Your business account details'}
@@ -289,7 +289,7 @@ export function SupplierProfileClient({ portalAccountId, hasQuoting, isManufactu
               className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors"
               style={tab === 'settings' ? { background: '#FFFFFF', color: '#18181B', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: '#6B7280' }}
             >
-              Settings
+              Defaults
             </button>
           </div>
         )}
