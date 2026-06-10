@@ -70,6 +70,7 @@ export async function proxy(request: NextRequest) {
     pathname.endsWith('.html') ||
     pathname.startsWith('/interior-design-software-') ||
     pathname.startsWith('/trades') ||
+    pathname.startsWith('/manufacturer') ||
     pathname.startsWith('/blog') ||
     pathname.startsWith('/faq') ||
     pathname.startsWith('/terms') ||
