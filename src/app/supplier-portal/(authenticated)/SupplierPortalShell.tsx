@@ -11,9 +11,10 @@ interface Props {
   setupFeePaid?: boolean
   staffCount?: number
   accountCreatedAt?: string
+  receivePriceRequests?: boolean
 }
 
-export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0, accountCreatedAt }: Props) {
+export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0, accountCreatedAt, receivePriceRequests = false }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
   const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
@@ -105,6 +106,7 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
         notificationCount={notificationCount}
         pendingMaterialsCount={pendingMaterialsCount}
         desktopExpanded={desktopExpanded}
+        receivePriceRequests={receivePriceRequests}
         onDesktopToggle={() => setDesktopExpanded(e => {
           const next = !e
           localStorage.setItem('supplier-sidebar-expanded', String(next))

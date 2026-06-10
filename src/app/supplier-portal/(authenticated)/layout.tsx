@@ -64,6 +64,7 @@ export default async function SupplierPortalLayout({
       setupFeePaid={setupFeePaid}
       staffCount={staffCount}
       accountCreatedAt={accountCreatedAt ?? undefined}
+      receivePriceRequests={account.receive_price_requests}
     >
       {children}
     </SupplierPortalShell>

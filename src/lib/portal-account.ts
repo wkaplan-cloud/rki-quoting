@@ -11,6 +11,7 @@ export type PortalAccount = {
   supplier_category: string | null
   plan_category: string | null
   logo_url: string | null
+  receive_price_requests: boolean
 }
 
 // Resolves the supplier portal account for a given auth user ID.
@@ -21,12 +22,12 @@ export const resolvePortalAccount = cache(async (userId: string): Promise<Portal
   const [{ data: ownerAccount }, { data: membership }] = await Promise.all([
     supabaseAdmin
       .from('supplier_portal_accounts')
-      .select('id, email, company_name, plan, subscription_status, trial_ends_at, supplier_category, plan_category, logo_url')
+      .select('id, email, company_name, plan, subscription_status, trial_ends_at, supplier_category, plan_category, logo_url, receive_price_requests')
       .eq('auth_user_id', userId)
       .maybeSingle(),
     supabaseAdmin
       .from('portal_org_members')
-      .select('portal_account_id, account:supplier_portal_accounts(id, email, company_name, plan, subscription_status, trial_ends_at, supplier_category, plan_category, logo_url)')
+      .select('portal_account_id, account:supplier_portal_accounts(id, email, company_name, plan, subscription_status, trial_ends_at, supplier_category, plan_category, logo_url, receive_price_requests)')
       .eq('auth_user_id', userId)
       .not('accepted_at', 'is', null)
       .maybeSingle(),

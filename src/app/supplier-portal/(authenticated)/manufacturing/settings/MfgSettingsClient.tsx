@@ -84,9 +84,10 @@ interface Props {
   setupFeePaid: boolean
   orgMembers: PortalOrgMember[]
   initialTab?: 'business' | 'account'
+  receivePriceRequests?: boolean
 }
 
-export function MfgSettingsClient({ portalAccountId, settings, accountEmail, plan, subscriptionStatus, trialEndsAt, staffCount, setupFeePaid, orgMembers, initialTab = 'business' }: Props) {
+export function MfgSettingsClient({ portalAccountId, settings, accountEmail, plan, subscriptionStatus, trialEndsAt, staffCount, setupFeePaid, orgMembers, initialTab = 'business', receivePriceRequests: initialReceivePriceRequests = false }: Props) {
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState<'business' | 'account'>(initialTab)
 
@@ -135,6 +136,10 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
   const [deleteRequesting, setDeleteRequesting] = useState(false)
   const [deleteRequested, setDeleteRequested]   = useState(false)
   const [deleteError, setDeleteError]           = useState('')
+
+  // Supplier network toggle
+  const [receivePriceRequests, setReceivePriceRequests] = useState(initialReceivePriceRequests)
+  const [savingNetwork, setSavingNetwork] = useState(false)
 
   useEffect(() => {
     if (!saved) return
@@ -513,6 +518,39 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Supplier Network */}
+          <div className="p-5 rounded-2xl space-y-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: S.muted }}>Supplier Network</p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium mb-0.5" style={{ color: S.text }}>Receive price requests from designers</p>
+                <p className="text-xs leading-relaxed" style={{ color: S.muted }}>
+                  When enabled, interior designers on QuotingHub can send you product pricing requests and your business appears in the supplier network.
+                </p>
+              </div>
+              <div className="flex-shrink-0 pt-0.5">
+                <div
+                  onClick={async () => {
+                    const next = !receivePriceRequests
+                    setReceivePriceRequests(next)
+                    setSavingNetwork(true)
+                    await fetch('/api/supplier-portal/account', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ receive_price_requests: next }),
+                    })
+                    setSavingNetwork(false)
+                  }}
+                  className="relative rounded-full transition-colors flex-shrink-0 cursor-pointer"
+                  style={{ background: receivePriceRequests ? S.accent : S.border, width: 40, height: 22, opacity: savingNetwork ? 0.6 : 1 }}
+                >
+                  <div className="absolute top-0.5 transition-transform rounded-full bg-white shadow"
+                    style={{ width: 18, height: 18, left: 2, transform: receivePriceRequests ? 'translateX(18px)' : 'translateX(0)' }} />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Login email */}

@@ -56,6 +56,7 @@ export default async function MfgSettingsPage({ searchParams }: { searchParams: 
         setupFeePaid={setupFeePaid}
         orgMembers={(orgMembers ?? []) as PortalOrgMember[]}
         initialTab={initialTab}
+        receivePriceRequests={account.receive_price_requests}
       />
     </div>
   )
