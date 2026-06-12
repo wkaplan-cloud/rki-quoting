@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin, ShoppingCart, PenLine, GitPullRequest, AlertTriangle } from 'lucide-react'
 import type { ElecNotification } from '@/lib/elec-types'
+import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -79,28 +80,21 @@ export function NotificationsClient({ portalAccountId: _portalAccountId, initial
   const [notifications, setNotifications] = useState<ElecNotification[]>(initialNotifications)
   const latestCreatedAt = useRef(initialNotifications[0]?.created_at ?? new Date(0).toISOString())
 
-  // Poll every 5 s for new notifications
-  useEffect(() => {
-    let alive = true
-
-    async function poll() {
-      try {
-        const res = await fetch(`/api/supplier-portal/notifications?since=${encodeURIComponent(latestCreatedAt.current)}`)
-        const d = await res.json() as { notifications: ElecNotification[] }
-        if (!alive || !d.notifications?.length) return
-        setNotifications(prev => {
-          const existingIds = new Set(prev.map(n => n.id))
-          const fresh = d.notifications.filter(n => !existingIds.has(n.id))
-          if (!fresh.length) return prev
-          latestCreatedAt.current = fresh[0].created_at
-          return [...fresh, ...prev]
-        })
-      } catch {}
-    }
-
-    const interval = setInterval(() => { void poll() }, 5000)
-    return () => { alive = false; clearInterval(interval) }
-  }, []) // eslint-disable-line
+  // Poll every 30 s for new notifications, paused while the tab is hidden
+  useVisiblePoll(async () => {
+    try {
+      const res = await fetch(`/api/supplier-portal/notifications?since=${encodeURIComponent(latestCreatedAt.current)}`)
+      const d = await res.json() as { notifications: ElecNotification[] }
+      if (!d.notifications?.length) return
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n.id))
+        const fresh = d.notifications.filter(n => !existingIds.has(n.id))
+        if (!fresh.length) return prev
+        latestCreatedAt.current = fresh[0].created_at
+        return [...fresh, ...prev]
+      })
+    } catch {}
+  }, 30_000, { immediate: false })
 
   const unreadCount = notifications.filter(n => !n.read_at).length
 

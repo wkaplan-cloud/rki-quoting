@@ -16,6 +16,7 @@ import type {
 import { ClientCombobox } from '../../ClientCombobox'
 import { StaffMultiSelect } from '../../StaffMultiSelect'
 import { JobCardCOCTab } from './JobCardCOCTab'
+import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -157,22 +158,15 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [sageError, setSageError] = useState('')
   const [sagePushResult, setSagePushResult] = useState<{ ok: boolean; total_incl_vat?: number } | null>(null)
 
-  // Staff time for this job — polls every 10s
+  // Staff time for this job — polls every 30s while the tab is visible
   const [jobPunches, setJobPunches] = useState<{ id: string; staff_id: string; punch_type: string; punched_at: string; staff: { id: string; name: string; color: string } | null }[]>([])
-  useEffect(() => {
-    let alive = true
-    async function fetchPunches() {
-      try {
-        const r = await fetch(`/api/supplier-portal/quoting/job-cards/${initial.id}/time`)
-        const d = await r.json() as unknown
-        if (!alive) return
-        if (Array.isArray(d)) setJobPunches(d)
-      } catch {}
-    }
-    void fetchPunches()
-    const id = setInterval(() => { void fetchPunches() }, 10_000)
-    return () => { alive = false; clearInterval(id) }
-  }, [initial.id])
+  useVisiblePoll(async () => {
+    try {
+      const r = await fetch(`/api/supplier-portal/quoting/job-cards/${initial.id}/time`)
+      const d = await r.json() as unknown
+      if (Array.isArray(d)) setJobPunches(d)
+    } catch {}
+  }, 30_000)
 
   // Materials — inline form
   const [newMat, setNewMat] = useState<{ desc: string; qty: string; price: string; cost: string; markup: string } | null>(null)

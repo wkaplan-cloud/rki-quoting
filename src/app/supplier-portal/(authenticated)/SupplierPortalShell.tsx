@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { SupplierPortalNav } from './SupplierPortalNav'
+import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
 interface Props {
   children: React.ReactNode
@@ -34,17 +35,12 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    function fetchMaterials() {
-      fetch('/api/supplier-portal/quoting/material-requests?status=pending&count=1')
-        .then(r => r.json())
-        .then((d: { count?: number }) => setPendingMaterialsCount(d.count ?? 0))
-        .catch(() => {})
-    }
-    fetchMaterials()
-    const id = setInterval(fetchMaterials, 60_000)
-    return () => clearInterval(id)
-  }, [])
+  useVisiblePoll(() => {
+    fetch('/api/supplier-portal/quoting/material-requests?status=pending&count=1')
+      .then(r => r.json())
+      .then((d: { count?: number }) => setPendingMaterialsCount(d.count ?? 0))
+      .catch(() => {})
+  }, 60_000)
 
   // Pre-unlock audio silently on first user interaction so autoplay works for real notifications
   useEffect(() => {
@@ -64,30 +60,20 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
     }
   }, [])
 
-  // Poll every 5 s — fast enough to feel live, works regardless of RLS/Realtime setup
-  useEffect(() => {
-    let alive = true
-
-    async function poll() {
-      try {
-        const res = await fetch('/api/supplier-portal/notifications')
-        const d = await res.json() as { count: number }
-        if (!alive) return
-        const newCount = d.count ?? 0
-        if (prevCountRef.current >= 0 && newCount > prevCountRef.current) {
-          // New notification(s) arrived after initial load — play sound
-          try { audioRef.current?.play().catch(() => {}) } catch {}
-        }
-        prevCountRef.current = newCount
-        setNotificationCount(newCount)
-      } catch {}
-    }
-
-    void poll() // immediate first fetch
-    const interval = setInterval(() => { void poll() }, 5000)
-
-    return () => { alive = false; clearInterval(interval) }
-  }, []) // eslint-disable-line
+  // Poll every 30 s, paused while the tab is hidden — keeps Vercel CPU usage down
+  useVisiblePoll(async () => {
+    try {
+      const res = await fetch('/api/supplier-portal/notifications')
+      const d = await res.json() as { count: number }
+      const newCount = d.count ?? 0
+      if (prevCountRef.current >= 0 && newCount > prevCountRef.current) {
+        // New notification(s) arrived after initial load — play sound
+        try { audioRef.current?.play().catch(() => {}) } catch {}
+      }
+      prevCountRef.current = newCount
+      setNotificationCount(newCount)
+    } catch {}
+  }, 30_000)
 
   return (
     <div className="flex min-h-screen" style={{ background: '#F5F7F9' }}>

@@ -4,6 +4,7 @@ const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appear
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, Package, Paperclip, X, MessageSquare, Send } from 'lucide-react'
 import { compressImage } from '@/lib/compressImage'
+import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
 interface RequestData {
   id: string
@@ -117,18 +118,14 @@ export function SupplierPortalRequestDetail({ recipientId, data }: Props) {
     } catch { setNotifyError('Failed to send notification') } finally { setNotifying(false) }
   }
 
-  useEffect(() => {
-    async function fetchMessages() {
-      try {
-        const res = await fetch(`/api/sourcing/respond/${recipient.token}/messages`)
-        if (!res.ok) return
-        const d = await res.json() as { messages: MessageData[] }
-        setMessages(d.messages)
-      } catch {}
-    }
-    const id = setInterval(fetchMessages, 12000)
-    return () => clearInterval(id)
-  }, [recipient.token])
+  useVisiblePoll(async () => {
+    try {
+      const res = await fetch(`/api/sourcing/respond/${recipient.token}/messages`)
+      if (!res.ok) return
+      const d = await res.json() as { messages: MessageData[] }
+      setMessages(d.messages)
+    } catch {}
+  }, 30_000, { immediate: false })
 
   useEffect(() => {
     msgBottomRef.current?.scrollIntoView({ behavior: 'smooth' })

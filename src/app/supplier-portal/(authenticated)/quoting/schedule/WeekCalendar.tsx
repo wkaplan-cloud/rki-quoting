@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image, Camera, MapPin, RefreshCw } from 'lucide-react'
 import type { ElecJob, ElecJobStatus, ElecJobPhoto, ElecStaff } from '@/lib/elec-types'
 import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
+import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -215,11 +216,10 @@ export function WeekCalendar({
   }
 
   useEffect(() => {
-    if (!isToday) return
-    setLastRefreshed(new Date())
-    const t = setInterval(() => { void fetchLiveStatus() }, 60000)
-    return () => clearInterval(t)
-  }, [isToday]) // eslint-disable-line
+    if (isToday) setLastRefreshed(new Date())
+  }, [isToday])
+
+  useVisiblePoll(() => { void fetchLiveStatus() }, 60000, { immediate: false, enabled: isToday })
 
   const fetchJobs = useCallback(async (dateStr: string) => {
     setLoading(true)

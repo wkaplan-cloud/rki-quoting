@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Bell, CheckCheck } from 'lucide-react'
+import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
 type OrgNotification = {
   id: string
@@ -54,11 +55,7 @@ export function NotificationBell() {
     }
   }, [])
 
-  useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30_000)
-    return () => clearInterval(interval)
-  }, [fetchNotifications])
+  useVisiblePoll(fetchNotifications, 60_000)
 
   // Close on outside click
   useEffect(() => {
