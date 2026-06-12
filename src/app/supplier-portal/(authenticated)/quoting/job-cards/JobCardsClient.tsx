@@ -59,7 +59,8 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
       j.job_number.toLowerCase().includes(search.toLowerCase()) ||
       (j.location ?? '').toLowerCase().includes(search.toLowerCase()) ||
       (clientObj?.client_name ?? '').toLowerCase().includes(search.toLowerCase())
-    const matchStatus = filterStatus === 'all' || j.status === filterStatus
+    const matchStatus = filterStatus === 'all'
+      || (filterStatus === 'not_invoiced' ? j.status === 'completed' && !j.invoiced : j.status === filterStatus)
     const matchType = filterType === 'all' || j.job_type === filterType
     return matchSearch && matchStatus && matchType
   })
@@ -107,8 +108,11 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
     finally { setSaving(false) }
   }
 
-  const counts = { all: jobCards.length, pending: 0, in_progress: 0, completed: 0 }
-  jobCards.forEach(j => { if (j.status in counts) (counts as Record<string, number>)[j.status]++ })
+  const counts = { all: jobCards.length, pending: 0, in_progress: 0, completed: 0, not_invoiced: 0 }
+  jobCards.forEach(j => {
+    if (j.status in counts) (counts as Record<string, number>)[j.status]++
+    if (j.status === 'completed' && !j.invoiced) counts.not_invoiced++
+  })
 
   return (
     <div>
@@ -128,7 +132,7 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
 
       {/* Status tabs */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-        {(['all', 'pending', 'in_progress', 'completed'] as const).map(s => (
+        {(['all', 'pending', 'in_progress', 'completed', 'not_invoiced'] as const).map(s => (
           <button key={s}
             onClick={() => setFilterStatus(s)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
@@ -137,7 +141,7 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
               color: filterStatus === s ? '#fff' : S.muted,
               border: `1px solid ${filterStatus === s ? S.accent : S.border}`,
             }}>
-            {s === 'all' ? 'All' : STATUS_STYLE[s]?.label}
+            {s === 'all' ? 'All' : s === 'not_invoiced' ? 'Not Invoiced' : STATUS_STYLE[s]?.label}
             <span className="text-[10px] opacity-70">{counts[s as keyof typeof counts]}</span>
           </button>
         ))}
