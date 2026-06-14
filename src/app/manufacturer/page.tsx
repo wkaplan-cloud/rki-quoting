@@ -6,6 +6,7 @@ import {
   Hammer, FileText, Receipt, Users, BookOpen, Package,
 } from 'lucide-react'
 import { NavMobile } from '../_components/NavMobile'
+import { NavDropdown } from '../_components/NavDropdown'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { MANUFACTURER_PLAN } from '@/lib/plan-features'
 
@@ -75,8 +76,7 @@ export default function ManufacturerLandingPage() {
             <Image src="/logo.png" alt="QuotingHub" width={220} height={220} className="h-16 sm:h-28 w-auto max-w-[160px] sm:max-w-[220px] object-contain" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
-            <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
+            <NavDropdown />
             <Link href="#pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
             <Link href="/supplier-portal/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
             <Link href="/supplier-portal/register?type=manufacturer_quoting" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
