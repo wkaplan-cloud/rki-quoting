@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { NavMobile } from '../_components/NavMobile'
 import { PublicFooter } from '@/components/layout/PublicFooter'
+import { MANUFACTURER_PLAN } from '@/lib/plan-features'
 
 export const metadata: Metadata = {
   title: 'QuotingHub for Manufacturers — Quoting Software for South African Furniture Makers',
@@ -76,7 +77,7 @@ export default function ManufacturerLandingPage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
             <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
-            <Link href="#cta" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
+            <Link href="#pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
             <Link href="/supplier-portal/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
             <Link href="/supplier-portal/register?type=manufacturer_quoting" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Get started free
@@ -208,6 +209,46 @@ export default function ManufacturerLandingPage() {
                 <p className="text-sm text-[#8A877F] leading-relaxed">{desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-20 px-6 bg-white border-y border-[#D8D3C8]">
+        <div className="max-w-lg mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">Pricing</p>
+            <h2 className="font-serif text-3xl md:text-4xl text-[#1A1A18] tracking-tight mb-2">
+              One plan. Everything included.
+            </h2>
+            <p className="text-[#8A877F] text-base">30-day free trial on every plan · No credit card required</p>
+          </div>
+
+          <div className="rounded-2xl border border-[#1A1A18] bg-[#1A1A18] p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-[#C4A46B]/10 -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+            <div className="relative">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#C4A46B] mb-3">{MANUFACTURER_PLAN.label}</p>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-4xl font-bold text-white">R{MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}</span>
+                <span className="text-sm text-white/50">/month excl. VAT</span>
+              </div>
+              <p className="text-sm text-white/50 italic mb-6">{MANUFACTURER_PLAN.tagline}</p>
+              <ul className="space-y-2.5 mb-8">
+                {MANUFACTURER_PLAN.features.map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-white/75">
+                    <Check size={13} className="text-[#C4A46B] flex-shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/supplier-portal/register?type=manufacturer_quoting"
+                className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 text-sm font-medium rounded-lg bg-[#9A7B4F] text-white hover:bg-[#C4A46B] transition-colors"
+              >
+                Start free trial <ArrowRight size={14} />
+              </Link>
+              <p className="text-center text-xs text-white/25 mt-3">30-day free trial · No credit card required · Cancel any time</p>
+            </div>
           </div>
         </div>
       </section>
