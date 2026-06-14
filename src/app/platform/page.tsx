@@ -32,7 +32,7 @@ const getDashboardData = unstable_cache(
       supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('contact_submissions').select('*', { count: 'exact', head: true }).eq('read', false),
       supabaseAdmin.from('organizations').select('id, name, created_at').order('created_at', { ascending: false }).limit(5),
-      supabaseAdmin.from('organizations').select('id, plan, subscription_status, trial_ends_at, status, is_internal').eq('status', 'active'),
+      supabaseAdmin.from('organizations').select('id, name, plan, subscription_status, trial_ends_at, status, is_internal').eq('status', 'active'),
       supabaseAdmin.from('projects').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
       supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }),
       supabaseAdmin.from('sourcing_sessions').select('org_id'),
@@ -168,11 +168,24 @@ export default async function PlatformDashboard() {
             </div>
           )}
           {expiringTrials.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-              <AlertTriangle size={14} className="text-amber-400 shrink-0" />
-              <p className="text-sm text-amber-300">
-                <span className="font-semibold">{expiringTrials.length} trial{expiringTrials.length > 1 ? 's' : ''}</span> expiring within 7 days — consider reaching out
-              </p>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+                <p className="text-sm font-semibold text-amber-300">
+                  {expiringTrials.length} trial{expiringTrials.length > 1 ? 's' : ''} expiring within 7 days
+                </p>
+              </div>
+              <div className="flex flex-col gap-1 pl-5">
+                {expiringTrials.map(o => {
+                  const daysLeft = Math.ceil((new Date(o.trial_ends_at!).getTime() - now.getTime()) / 86400000)
+                  return (
+                    <a key={o.id} href={`/platform/studios/${o.id}`} className="flex items-center justify-between text-sm text-amber-200/80 hover:text-amber-200 transition-colors">
+                      <span>{(o as any).name ?? 'Unnamed studio'}</span>
+                      <span className="text-amber-400 font-medium tabular-nums">{daysLeft}d left</span>
+                    </a>
+                  )
+                })}
+              </div>
             </div>
           )}
           {expiredTrials.length > 0 && (
