@@ -76,6 +76,7 @@ export default function ManufacturerLandingPage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
             <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
+            <Link href="#cta" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
             <Link href="/supplier-portal/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
             <Link href="/supplier-portal/register?type=manufacturer_quoting" className="hidden sm:inline-flex px-4 py-2 bg-[#1A1A18] text-[#F5F2EC] text-sm font-medium rounded-lg hover:bg-[#9A7B4F] transition-colors">
               Get started free
@@ -212,7 +213,7 @@ export default function ManufacturerLandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6">
+      <section id="cta" className="py-24 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="font-serif text-4xl md:text-5xl text-[#1A1A18] tracking-tight mb-5">
             Ready to run a more professional workshop?

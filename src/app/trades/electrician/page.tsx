@@ -131,6 +131,7 @@ export default function ElectricianLandingPage() {
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/trades" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Trades</Link>
+            <Link href="#pricing" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Pricing</Link>
             <Link href="/" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">For Designers</Link>
             <Link href="/supplier-portal/login" className="hidden sm:block px-4 py-2 text-sm text-[#2C2C2A] hover:text-[#9A7B4F] transition-colors font-medium">Log in</Link>
             <Link href="/supplier-portal/register?type=trades"
@@ -284,7 +285,7 @@ export default function ElectricianLandingPage() {
       </section>
 
       {/* Pricing */}
-      <section className="py-20 px-6 bg-white border-y border-[#D8D3C8]">
+      <section id="pricing" className="py-20 px-6 bg-white border-y border-[#D8D3C8]">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs font-medium text-[#9A7B4F] uppercase tracking-widest mb-3">Pricing</p>

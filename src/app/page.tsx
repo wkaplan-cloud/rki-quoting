@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   FileText, Receipt, ShoppingCart, Users, Zap, Download,
-  ChevronRight, Check, ArrowRight, Mail, HardHat
+  ChevronRight, Check, ArrowRight, Mail, HardHat, Hammer
 } from 'lucide-react'
 import { ContactForm } from './ContactForm'
 import { AuthRecoveryRedirect } from './_components/AuthRecoveryRedirect'
@@ -96,7 +96,7 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Interior Designers */}
             <div className="rounded-2xl overflow-hidden border border-[#D8D3C8] hover:border-[#C4A46B]/50 hover:shadow-lg transition-all duration-300 relative">
               <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/who-designers.jpg)' }} />
@@ -172,6 +172,38 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#1A1A18] text-[#F5F2EC] hover:bg-[#9A7B4F] transition-colors"
               >
                 Explore Trades Portal <ChevronRight size={14} />
+              </Link>
+              </div>
+            </div>
+
+            {/* Manufacturers */}
+            <div className="rounded-2xl overflow-hidden border border-[#D8D3C8] hover:border-[#C4A46B]/50 hover:shadow-lg transition-all duration-300 relative">
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(/who-manufacturers.jpg)' }} />
+              <div className="absolute inset-0 bg-[#F5F2EC]/88" />
+              <div className="relative p-8">
+              <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-xs font-medium px-3 py-1 rounded-full border border-emerald-200">
+                Now live
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-[#9A7B4F]/10 flex items-center justify-center mb-5">
+                <Hammer size={20} className="text-[#9A7B4F]" />
+              </div>
+              <h3 className="font-serif text-xl text-[#1A1A18] mb-2">Manufacturers</h3>
+              <p className="text-sm text-[#8A877F] leading-relaxed mb-5">
+                Wood workshops, furniture makers, and custom manufacturers — quote custom jobs and invoice professionally without the spreadsheet chaos.
+              </p>
+              <ul className="space-y-2 mb-6">
+                {['Quote custom jobs with itemised materials', 'Build your price book once, quote faster', 'Receive briefs from designers directly'].map(i => (
+                  <li key={i} className="flex items-center gap-2 text-sm text-[#2C2C2A]">
+                    <Check size={13} className="text-[#C4A46B] flex-shrink-0" />
+                    {i}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/manufacturer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#1A1A18] text-[#F5F2EC] hover:bg-[#9A7B4F] transition-colors"
+              >
+                Explore Manufacturers <ChevronRight size={14} />
               </Link>
               </div>
             </div>
