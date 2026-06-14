@@ -27,7 +27,7 @@ const options = [
 
 export function NavDropdown() {
   const [open, setOpen] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   function show() {
     clearTimeout(timer.current)
