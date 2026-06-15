@@ -28,7 +28,6 @@ export interface ElecSettings {
   vo_prefix: string
   coc_prefix: string
   email_footer_text: string | null
-  quote_send_cc_emails: string | null   // comma-separated, up to 3
   quote_send_bcc_admins: boolean
   // Sage Accounting
   sage_username: string | null

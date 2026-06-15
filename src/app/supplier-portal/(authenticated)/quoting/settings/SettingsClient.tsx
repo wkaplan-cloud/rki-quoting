@@ -99,7 +99,6 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
   const [footer, setFooter] = useState(settings?.email_footer_text ?? '')
 
   // Email notifications
-  const [ccEmails, setCcEmails]       = useState(settings?.quote_send_cc_emails ?? '')
   const [bccAdmins, setBccAdmins]     = useState(settings?.quote_send_bcc_admins ?? false)
 
   const [saving, setSaving] = useState(false)
@@ -173,7 +172,6 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
         coc_prefix:                     cocPrefix.trim() || 'COC',
         email_footer_text:              footer.trim() || null,
         company_code:                   codeToSave,
-        quote_send_cc_emails:           ccEmails.trim() || null,
         quote_send_bcc_admins:          bccAdmins,
       }),
     })
@@ -181,7 +179,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     setSaving(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as any).error ?? 'Save failed'); return }
     setSaved(true)
-  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, ccEmails, bccAdmins])
+  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins])
 
   // Auto-save on any field change — 1.5s debounce, skip on first render
   useEffect(() => {
@@ -189,7 +187,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { void handleSave() }, 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, ccEmails, bccAdmins, handleSave])
+  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, handleSave])
 
   return (
     <div className="space-y-6">
@@ -270,10 +268,6 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
 
         {/* Email Notifications */}
         <Section title="Email Notifications">
-          <p className="text-xs -mt-2 mb-2" style={{ color: S.muted }}>Configure how quote emails are delivered.</p>
-          <Field label="CC Emails" hint="Up to 3 email addresses, comma-separated — pre-filled on every quote you send">
-            <Input value={ccEmails} onChange={setCcEmails} placeholder="e.g. office@company.com, pm@company.com" />
-          </Field>
           <div className="flex items-center justify-between py-1">
             <div>
               <p className="text-xs font-semibold" style={{ color: S.text }}>BCC admin team on quotes</p>

@@ -355,13 +355,12 @@ interface Props {
   cocPrefix: string
   companyCode: string
   sageConnected?: boolean
-  defaultCcEmails?: string | null
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false, defaultCcEmails = null }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -420,7 +419,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   function openSendModal() {
     setSendEmail(q.client?.email ?? '')
-    setSendCcEmails((defaultCcEmails ?? '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3))
+    setSendCcEmails([])
     setSendMethod('link')
     setSendMessage('')
     setSendStatus('idle')

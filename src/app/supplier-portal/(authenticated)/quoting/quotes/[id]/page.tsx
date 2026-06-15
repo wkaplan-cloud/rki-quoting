@@ -70,7 +70,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .order('created_at', { ascending: false }),
     supabaseAdmin
       .from('elec_settings')
-      .select('company_code, vo_prefix, coc_prefix, claim_prefix, sage_company_id, quote_send_cc_emails, quote_send_bcc_admins')
+      .select('company_code, vo_prefix, coc_prefix, claim_prefix, sage_company_id, quote_send_bcc_admins')
       .eq('portal_account_id', account.id)
       .maybeSingle(),
     supabaseAdmin
@@ -102,7 +102,6 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       cocPrefix={settings?.coc_prefix ?? 'COC'}
       companyCode={companyCode}
       sageConnected={!!(settings?.sage_company_id)}
-      defaultCcEmails={settings?.quote_send_cc_emails ?? null}
     />
   )
 }
