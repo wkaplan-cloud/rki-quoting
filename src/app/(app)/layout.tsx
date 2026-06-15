@@ -24,10 +24,18 @@ export default async function Layout({ children }: { children: React.ReactNode }
     if (user.email?.toLowerCase() === process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase()) {
       redirect('/platform')
     }
-    // Supplier/manufacturing portal accounts share Supabase auth but have no org — send them home.
-    // resolvePortalAccount checks both owner accounts and portal_org_members.
+    // resolvePortalAccount checks supplier_portal_accounts (owners) + portal_org_members (members)
     const portalAccount = await resolvePortalAccount(user.id)
-    redirect(portalAccount ? '/supplier-portal/dashboard' : '/onboarding')
+    if (portalAccount) redirect('/supplier-portal/dashboard')
+
+    // Electrician / trades staff have no portal account — send to staff home
+    const { data: staffMember } = await supabaseAdmin
+      .from('elec_staff')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle()
+    redirect(staffMember ? '/supplier-portal/staff-home' : '/onboarding')
   }
 
   // Check subscription / trial status
