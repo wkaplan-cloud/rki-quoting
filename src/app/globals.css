@@ -27,6 +27,12 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Supplier & staff portals use a cool-grey canvas — override the cream body bg */
+body:has(.supplier-portal-root),
+body:has(.staff-portal) {
+  background: #F5F7F9;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
