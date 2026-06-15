@@ -14,7 +14,7 @@ function fmtR(n: number) {
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: quoteId } = await params
-    const { email, message, company, qs_name, qs_email } = await req.json() as { email: string; message?: string; company?: string; qs_name?: string; qs_email?: string }
+    const { email, cc_emails, message, company, qs_name, qs_email } = await req.json() as { email: string; cc_emails?: string[]; message?: string; company?: string; qs_name?: string; qs_email?: string }
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
     const supabase = await createClient()
@@ -76,10 +76,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await supabaseAdmin.from('elec_clients').update(clientPatch).eq('id', quoteRaw.client_id)
     }
 
+    // Resolve BCC admin emails if the setting is enabled
+    const { data: settings } = await supabaseAdmin
+      .from('elec_settings')
+      .select('quote_send_bcc_admins')
+      .eq('portal_account_id', account.id)
+      .maybeSingle()
+
+    let bccEmails: string[] = []
+    if (settings?.quote_send_bcc_admins) {
+      const { data: members } = await supabaseAdmin
+        .from('portal_org_members')
+        .select('email')
+        .eq('portal_account_id', account.id)
+      bccEmails = (members ?? []).map(m => m.email).filter(Boolean) as string[]
+    }
+
+    const validCcEmails = (cc_emails ?? []).filter(Boolean)
+
     await resend.emails.send({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,
+      ...(validCcEmails.length > 0 && { cc: validCcEmails }),
+      ...(bccEmails.length > 0 && { bcc: bccEmails }),
       subject,
       html: buildLinkEmail({ companyName, companyEmail: account.email, clientName, quote: quoteRaw, total, approvalUrl, message }),
       text: `Hi ${clientName},\n\nThank you for the opportunity — your quote for ${quoteRaw.project_name} is ready for your review.\n\n${message ? message + '\n\n' : ''}Quote: ${quoteRaw.quote_number}\nTotal (incl. VAT): ${fmtR(total)}\n\nReview and approve here: ${approvalUrl}\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}`,

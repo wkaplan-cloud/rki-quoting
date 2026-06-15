@@ -28,8 +28,10 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.claim_prefix                   === 'string') payload.claim_prefix                   = body.claim_prefix
     if (typeof body.vo_prefix                      === 'string') payload.vo_prefix                      = body.vo_prefix
     if (typeof body.coc_prefix                     === 'string') payload.coc_prefix                     = body.coc_prefix
-    if (typeof body.email_footer_text              === 'string' || body.email_footer_text === null) payload.email_footer_text = body.email_footer_text
-    if (typeof body.company_code                   === 'string' || body.company_code === null)      payload.company_code      = body.company_code
+    if (typeof body.email_footer_text              === 'string' || body.email_footer_text === null) payload.email_footer_text      = body.email_footer_text
+    if (typeof body.company_code                   === 'string' || body.company_code === null)      payload.company_code           = body.company_code
+    if (typeof body.quote_send_cc_emails           === 'string' || body.quote_send_cc_emails === null) payload.quote_send_cc_emails = body.quote_send_cc_emails
+    if (typeof body.quote_send_bcc_admins          === 'boolean') payload.quote_send_bcc_admins                                    = body.quote_send_bcc_admins
 
     const { error } = await supabaseAdmin
       .from('elec_settings')

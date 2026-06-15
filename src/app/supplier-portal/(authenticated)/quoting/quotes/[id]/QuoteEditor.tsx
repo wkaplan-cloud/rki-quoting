@@ -355,12 +355,13 @@ interface Props {
   cocPrefix: string
   companyCode: string
   sageConnected?: boolean
+  defaultCcEmails?: string | null
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false, defaultCcEmails = null }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -412,12 +413,14 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const [showSendModal, setShowSendModal] = useState(false)
   const [sendEmail, setSendEmail] = useState('')
+  const [sendCcEmails, setSendCcEmails] = useState<string[]>([])
   const [sendMethod, setSendMethod] = useState<'link' | 'pdf'>('link')
   const [sendMessage, setSendMessage] = useState('')
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
   function openSendModal() {
     setSendEmail(q.client?.email ?? '')
+    setSendCcEmails((defaultCcEmails ?? '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 3))
     setSendMethod('link')
     setSendMessage('')
     setSendStatus('idle')
@@ -436,6 +439,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: sendEmail.trim(),
+          cc_emails: sendCcEmails.map(e => e.trim()).filter(Boolean),
           message: sendMessage.trim() || undefined,
           company: clientCompany.trim() || undefined,
           qs_name: clientQsName.trim() || undefined,
@@ -1499,6 +1503,58 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
                   />
+                </div>
+
+                {/* CC Emails */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>
+                      CC <span style={{ fontWeight: 400 }}>(optional)</span>
+                    </label>
+                    {sendCcEmails.length < 3 && (
+                      <button
+                        onClick={() => setSendCcEmails(p => [...p, ''])}
+                        className="text-[11px] font-semibold"
+                        style={{ color: S.accent }}>
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                  {sendCcEmails.length === 0 ? (
+                    <button
+                      onClick={() => setSendCcEmails([''])}
+                      className="text-[11px]"
+                      style={{ color: S.muted }}>
+                      + Add CC recipient
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      {sendCcEmails.map((ccEmail, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input
+                            type="email"
+                            value={ccEmail}
+                            onChange={e => {
+                              const updated = [...sendCcEmails]
+                              updated[i] = e.target.value
+                              setSendCcEmails(updated)
+                            }}
+                            placeholder="cc@example.com"
+                            className="flex-1 px-3 py-2 text-sm rounded-xl outline-none"
+                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
+                          />
+                          <button
+                            onClick={() => setSendCcEmails(p => p.filter((_, j) => j !== i))}
+                            className="p-1.5 rounded-lg flex-shrink-0"
+                            style={{ color: S.muted }}
+                            onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <X size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Send method */}
