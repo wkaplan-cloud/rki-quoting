@@ -21,6 +21,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const { data: orgId } = await supabase.rpc('get_current_org_id')
 
   if (!orgId) {
+    if (user.email?.toLowerCase() === process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase()) {
+      redirect('/platform')
+    }
     // Supplier/manufacturing portal accounts share Supabase auth but have no org — send them home.
     // resolvePortalAccount checks both owner accounts and portal_org_members.
     const portalAccount = await resolvePortalAccount(user.id)
