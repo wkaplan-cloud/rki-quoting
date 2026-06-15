@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { QuickDeleteButton } from './[id]/DeleteStudioButton'
 import { AssignRepCell } from './AssignRepCell'
 import { IncompleteSignups, type IncompleteSignup } from './IncompleteSignups'
+import { SendWelcomeButton } from './SendWelcomeButton'
 
 function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string; trialEndsAt: string | null }) {
   if (status === 'active') {
@@ -93,6 +94,7 @@ export default async function StudiosPage() {
     { data: allSourcingData },
     { data: allAuditData },
     { data: allClientsData },
+    { data: welcomeSentData },
     incompleteSignups,
   ] = await Promise.all([
     supabaseAdmin.from('org_members').select('org_id').eq('status', 'active').in('org_id', orgIds),
@@ -101,6 +103,7 @@ export default async function StudiosPage() {
     supabaseAdmin.from('sourcing_sessions').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }),
     supabaseAdmin.from('audit_logs').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }).limit(1000),
     supabaseAdmin.from('clients').select('org_id, created_at').in('org_id', orgIds).order('created_at', { ascending: false }),
+    supabaseAdmin.from('platform_welcome_emails').select('org_id').in('org_id', orgIds),
     getIncompleteSignups(),
   ])
 
@@ -139,6 +142,8 @@ export default async function StudiosPage() {
     ? await supabaseAdmin.from('settings').select('org_id, business_name').in('org_id', orgIds)
     : { data: [] as { org_id: string; business_name: string | null }[] }
   const businessNameByOrgId = new Map((allSettings ?? []).map(s => [s.org_id, s.business_name]))
+
+  const welcomeSentOrgIds = new Set((welcomeSentData ?? []).map(r => r.org_id))
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000)
 
@@ -197,7 +202,7 @@ export default async function StudiosPage() {
         ))}
       </div>
 
-      <StudioTable studios={activeStudios} />
+      <StudioTable studios={activeStudios} welcomeSentOrgIds={welcomeSentOrgIds} />
 
       {archivedStudios.length > 0 && (
         <div className="mt-10">
@@ -205,7 +210,7 @@ export default async function StudiosPage() {
             <h2 className="text-sm font-medium text-white/40 uppercase tracking-wider">Archived Studios</h2>
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400">{archivedStudios.length}</span>
           </div>
-          <StudioTable studios={archivedStudios} archived />
+          <StudioTable studios={archivedStudios} archived welcomeSentOrgIds={welcomeSentOrgIds} />
         </div>
       )}
 
@@ -224,7 +229,7 @@ function formatLastActive(dateStr: string | null): { label: string; urgent: bool
   return { label: `${days}d ago`, urgent: true }
 }
 
-function StudioTable({ studios, archived = false }: { studios: any[]; archived?: boolean }) {
+function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios: any[]; archived?: boolean; welcomeSentOrgIds: Set<string> }) {
   return (
     <div className={`bg-[#1A1A18] border rounded-xl overflow-hidden ${archived ? 'border-amber-500/20 opacity-70' : 'border-white/10'}`}>
       <table className="w-full text-sm">
@@ -312,6 +317,9 @@ function StudioTable({ studios, archived = false }: { studios: any[]; archived?:
                     <Link href={`/platform/studios/${studio.id}`} className="flex items-center gap-1 text-xs text-[#C4A46B] hover:underline">
                       {archived ? 'View' : 'Manage'} <ChevronRight size={12} />
                     </Link>
+                    {!archived && !welcomeSentOrgIds.has(studio.id) && (
+                      <SendWelcomeButton orgId={studio.id} />
+                    )}
                     {!archived && <QuickDeleteButton orgId={studio.id} studioName={studio.businessName} />}
                   </div>
                 </td>

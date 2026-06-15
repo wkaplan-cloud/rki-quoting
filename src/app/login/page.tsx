@@ -45,13 +45,12 @@ export default function LoginPage() {
         setCheckingSession(false)
         return
       }
-      const { data: portalAccount } = await supabase
-        .from('supplier_portal_accounts')
-        .select('id')
-        .eq('auth_user_id', session.user.id)
-        .maybeSingle()
+      const [{ data: portalAccount }, { data: portalMember }] = await Promise.all([
+        supabase.from('supplier_portal_accounts').select('id').eq('auth_user_id', session.user.id).maybeSingle(),
+        supabase.from('portal_org_members').select('id').eq('auth_user_id', session.user.id).not('accepted_at', 'is', null).maybeSingle(),
+      ])
       setCheckingSession(false)
-      router.replace(portalAccount ? '/supplier-portal/dashboard' : '/dashboard')
+      router.replace((portalAccount || portalMember) ? '/supplier-portal/dashboard' : '/dashboard')
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

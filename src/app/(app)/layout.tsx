@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { resolvePortalAccount } from '@/lib/portal-account'
 
 const GRACE_DAYS = 3
 
@@ -20,13 +21,10 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const { data: orgId } = await supabase.rpc('get_current_org_id')
 
   if (!orgId) {
-    // Supplier portal accounts share the same Supabase auth but have no org — send them home
-    const { data: supplierAccount } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle()
-    redirect(supplierAccount ? '/supplier-portal/dashboard' : '/onboarding')
+    // Supplier/manufacturing portal accounts share Supabase auth but have no org — send them home.
+    // resolvePortalAccount checks both owner accounts and portal_org_members.
+    const portalAccount = await resolvePortalAccount(user.id)
+    redirect(portalAccount ? '/supplier-portal/dashboard' : '/onboarding')
   }
 
   // Check subscription / trial status
