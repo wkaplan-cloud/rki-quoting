@@ -7,6 +7,9 @@ import {
 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto, ElecMaterialRequest } from '@/lib/elec-types'
 import { StaffBottomNav } from '../../StaffBottomNav'
+import { OfflineSyncBanner } from '../../OfflineSyncBanner'
+import { enqueue } from '@/lib/offline-punch-queue'
+import { compressImage } from '@/lib/compressImage'
 
 function fmtElapsed(seconds: number) {
   const h = Math.floor(seconds / 3600)
@@ -90,10 +93,13 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [card.id, startTimer])
 
+  const [offlinePending, setOfflinePending] = useState(0)
+
   async function handleClockToggle() {
     if (clockLoading) return
     setClockLoading(true)
     const punch_type = isClockedIn ? 'clock_out' : 'clock_in'
+    const punchedAt = new Date().toISOString()
     let latitude: number | undefined
     let longitude: number | undefined
     if (navigator.geolocation) {
@@ -110,14 +116,25 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
         longitude = pos.coords.longitude
       } catch {}
     }
-    const res = await fetch('/api/supplier-portal/staff/punch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ punch_type, latitude, longitude, job_id: card.id }),
-    })
-    if (res.ok) {
+
+    let success = false
+    try {
+      const res = await fetch('/api/supplier-portal/staff/punch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ punch_type, punched_at: punchedAt, latitude, longitude, job_id: card.id }),
+      })
+      success = res.ok
+    } catch {
+      // No internet — queue it
+      enqueue({ punch_type, punched_at: punchedAt, latitude, longitude, job_id: card.id })
+      setOfflinePending(prev => prev + 1)
+      success = true // optimistic
+    }
+
+    if (success) {
       if (punch_type === 'clock_in') {
-        const since = new Date()
+        const since = new Date(punchedAt)
         setIsClockedIn(true)
         setClockedInAt(since)
         startTimer(since)
@@ -266,7 +283,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     setPhotoUploading(true)
     for (const file of Array.from(files)) {
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', await compressImage(file))
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos`, { method: 'POST', body: fd })
       if (res.ok) {
         const p = await res.json() as ElecJobCardPhoto
@@ -396,6 +413,8 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
           </p>
         )}
       </div>
+
+      <OfflineSyncBanner onSynced={() => setOfflinePending(0)} />
 
       <div className="px-4 pt-4 space-y-4">
         {/* Step tabs */}
