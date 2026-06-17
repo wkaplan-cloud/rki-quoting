@@ -741,19 +741,13 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
         if (!li) return null
         const pending = hasPending(li)
         return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
-            onClick={() => setCostBuilderModal(null)}>
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
             <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
-              style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+              style={{ background: S.card }}>
               {/* Modal header */}
-              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: S.muted }}>Cost build — item {liIdx + 1}</p>
-                  <p className="text-sm font-medium" style={{ color: S.text }}>{li.description || 'Untitled item'}</p>
-                </div>
-                <button onClick={() => setCostBuilderModal(null)} className="p-1.5 rounded-lg" style={{ color: S.muted }}>
-                  <X size={16} />
-                </button>
+              <div className="px-5 py-4" style={{ borderBottom: `1px solid ${S.border}` }}>
+                <p className="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: S.muted }}>Cost build — item {liIdx + 1}</p>
+                <p className="text-sm font-medium" style={{ color: S.text }}>{li.description || 'Untitled item'}</p>
               </div>
               {/* Modal body */}
               <div className="px-5 py-5 space-y-5">
