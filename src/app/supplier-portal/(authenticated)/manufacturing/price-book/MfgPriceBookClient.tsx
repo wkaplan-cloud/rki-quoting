@@ -26,7 +26,7 @@ function categoryLabel(c: string) { return ALL_CATEGORIES.find(x => x.value === 
 const BLANK = (): Partial<MfgPriceBookItem> => ({
   item_type: 'material', category: 'boards', name: '', unit: 'sheet',
   unit_custom: '', cost_price: undefined, supplier_quoted: false,
-  apply_markup_default: true, supplier_name: '', supplier_contact: '', notes: '',
+  supplier_name: '',
 })
 
 interface Props { initialItems: MfgPriceBookItem[] }
@@ -77,9 +77,7 @@ export function MfgPriceBookClient({ initialItems }: Props) {
       unit: draft.unit, unit_custom: draft.unit === 'custom' ? draft.unit_custom : null,
       cost_price: draft.supplier_quoted ? null : (draft.cost_price ?? null),
       supplier_quoted: draft.supplier_quoted ?? false,
-      apply_markup_default: draft.apply_markup_default ?? true,
-      supplier_name: draft.supplier_name || null, supplier_contact: draft.supplier_contact || null,
-      notes: draft.notes || null,
+      supplier_name: draft.supplier_name || null,
     }
     const url = editingId ? `/api/supplier-portal/manufacturing/price-book/${editingId}` : '/api/supplier-portal/manufacturing/price-book'
     const method = editingId ? 'PATCH' : 'POST'
@@ -267,30 +265,10 @@ export function MfgPriceBookClient({ initialItems }: Props) {
                     onChange={v => setDraft(d => ({ ...d, cost_price: v === '' ? undefined : parseFloat(v) }))} placeholder="0.00" />
                 </div>
               )}
-              {/* Apply markup default */}
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <div onClick={() => setDraft(d => ({ ...d, apply_markup_default: !d.apply_markup_default }))}
-                    className="relative rounded-full transition-colors flex-shrink-0"
-                    style={{ background: draft.apply_markup_default ? S.accent : S.border, width: 36, height: 20 }}>
-                    <div className="absolute top-0.5 transition-transform rounded-full bg-white shadow"
-                      style={{ width: 16, height: 16, left: 2, transform: draft.apply_markup_default ? 'translateX(16px)' : 'translateX(0)' }} />
-                  </div>
-                  <span className="text-sm" style={{ color: S.text }}>Apply markup by default</span>
-                </label>
-              </div>
-              {/* Supplier info */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Supplier (optional)</label>
-                <Input value={draft.supplier_name ?? ''} onChange={v => setDraft(d => ({ ...d, supplier_name: v }))} placeholder="Timber City" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Supplier Contact (optional)</label>
-                <Input value={draft.supplier_contact ?? ''} onChange={v => setDraft(d => ({ ...d, supplier_contact: v }))} placeholder="021 555 0123" />
-              </div>
+              {/* Supplier */}
               <div className="col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Notes (optional)</label>
-                <Input value={draft.notes ?? ''} onChange={v => setDraft(d => ({ ...d, notes: v }))} placeholder="Min order 5 sheets. Lead time 3 days." />
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Supplier (optional)</label>
+                <Input value={draft.supplier_name ?? ''} onChange={v => setDraft(d => ({ ...d, supplier_name: v }))} placeholder="e.g. Timber City" />
               </div>
             </div>
 
