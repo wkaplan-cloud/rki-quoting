@@ -423,7 +423,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <label className="text-xs" style={{ color: S.muted }}>Qty</label>
-                  <input type="number" min={1} value={li.quantity}
+                  <input type="number" min={1} step={1} value={li.quantity}
                     onChange={e => updateLineItem(liIdx, { quantity: parseFloat(e.target.value) || 1 })}
                     disabled={isReadOnly}
                     className="w-20 px-2 py-1 text-sm rounded-lg outline-none text-center"
@@ -755,7 +755,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 <div className="flex items-center gap-3">
                   <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Markup</label>
                   <div className="flex items-center gap-1">
-                    <input type="number" min={0} value={li.markup_percentage}
+                    <input type="number" min={0} step={1} value={li.markup_percentage}
                       onChange={e => updateLineItem(liIdx, { markup_percentage: parseFloat(e.target.value) || 0 })}
                       disabled={isReadOnly}
                       className="w-20 px-2 py-1 text-sm rounded-lg outline-none text-center"
@@ -775,7 +775,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                         <div key={cIdx} className="flex items-center gap-2 px-3 py-2 text-xs"
                           style={{ background: c.supplier_quoted ? '#FFFBEB' : S.card, borderTop: cIdx > 0 ? `1px solid ${S.border}` : undefined }}>
                           <span className="flex-1 truncate font-medium" style={{ color: S.text }}>{c.item_name}</span>
-                          <input type="number" min={0.01} step={0.01} value={c.quantity}
+                          <input type="number" min={1} step={1} value={c.quantity}
                             onChange={e => {
                               const comps = [...li.components]
                               comps[cIdx] = { ...comps[cIdx], quantity: parseFloat(e.target.value) || 1 }
@@ -787,7 +787,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                           <span style={{ color: S.muted }}>{c.unit}</span>
                           <div className="flex items-center gap-1">
                             <span className="text-[10px]" style={{ color: S.muted }}>R</span>
-                            <input type="number" value={c.unit_cost ?? ''} placeholder="price"
+                            <input type="number" min={0} step={1} value={c.unit_cost ?? ''} placeholder="price"
                               onChange={e => handleUnitCostChange(liIdx, cIdx, e.target.value === '' ? null : parseFloat(e.target.value))}
                               disabled={isReadOnly}
                               className="w-20 px-2 py-0.5 rounded outline-none text-right"
@@ -831,7 +831,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Labour</span>
                   <div className="flex items-center gap-1.5">
-                    <input type="number" min={0} step={0.5} value={li.labour_hours ?? 0}
+                    <input type="number" min={0} step={1} value={li.labour_hours ?? 0}
                       onChange={e => updateLineItem(liIdx, { labour_hours: parseFloat(e.target.value) || 0 })}
                       disabled={isReadOnly}
                       className="w-20 px-2 py-1.5 text-sm rounded-lg outline-none text-center"
@@ -935,7 +935,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                   ) : (
                     <div className="flex-1">
                       <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Qty</label>
-                      <input type="number" min={0.01} step={0.01} value={customForm.qty}
+                      <input type="number" min={1} step={1} value={customForm.qty}
                         onChange={e => setCustomForm(f => ({ ...f, qty: e.target.value }))}
                         className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
                         style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
@@ -965,7 +965,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 {!customForm.supplierQuoted && (
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Cost Price (R)</label>
-                    <input type="number" min={0} step={0.01} value={customForm.cost}
+                    <input type="number" min={0} step={1} value={customForm.cost}
                       onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
                       placeholder="0.00"
                       className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"

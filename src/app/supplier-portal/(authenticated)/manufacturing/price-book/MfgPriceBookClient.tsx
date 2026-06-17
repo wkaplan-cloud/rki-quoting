@@ -19,7 +19,7 @@ interface Props { initialItems: MfgPriceBookItem[] }
 
 function Input({ value, onChange, placeholder, type='text', small }: { value: string; onChange: (v:string)=>void; placeholder?: string; type?: string; small?: boolean }) {
   return (
-    <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+    <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} step={type === 'number' ? 1 : undefined}
       className={`w-full px-3 ${small ? 'py-1.5 text-xs' : 'py-2.5 text-sm'} rounded-lg outline-none transition-colors`}
       style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
       onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background='#fff' }}

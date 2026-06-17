@@ -49,7 +49,7 @@ function Input({ value, onChange, placeholder, type = 'text' }: { value: string;
 
 function NumberInput({ value, onChange, placeholder, min }: { value: string; onChange: (v: string) => void; placeholder?: string; min?: number }) {
   return (
-    <input type="number" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} min={min}
+    <input type="number" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} min={min} step={1}
       className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none transition-colors"
       style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
       onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}

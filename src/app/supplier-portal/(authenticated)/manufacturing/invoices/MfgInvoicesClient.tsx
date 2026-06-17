@@ -297,7 +297,7 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Amount (R)</label>
-                <input type="number" min={0.01} step={0.01}
+                <input type="number" min={0} step={1}
                   value={paymentForm.amount}
                   onChange={e => setPaymentForm(prev => ({ ...prev, amount: e.target.value }))}
                   className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
