@@ -823,9 +823,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: '#FEF3C7', color: '#92400E' }}>custom</span>
                       )}
                     </div>
-                    <span className="text-xs ml-auto" style={{ color: S.muted }}>
-                      Building cost for 1 unit × {li.quantity} unit{li.quantity !== 1 ? 's' : ''}
-                    </span>
                   </div>
 
                   {/* Components */}
@@ -872,78 +869,64 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                         ))}
                       </div>
                     )}
-                    {!isReadOnly && <PriceBookSelect items={priceBook} onSelect={item => addComponent(liIdx, item)} placeholder="+ Search components…" />}
                     {!isReadOnly && (
-                      <button onClick={() => openCustomForm(liIdx)}
-                        className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
-                        style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
-                        onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
-                        onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
-                        + Add custom component
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <PriceBookSelect items={priceBook} onSelect={item => addComponent(liIdx, item)} placeholder="+ Search components…" />
+                        </div>
+                        <button onClick={() => openCustomForm(liIdx)}
+                          className="shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+                          style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
+                          onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
+                          onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
+                          + custom
+                        </button>
+                      </div>
                     )}
                   </div>
 
                   {/* Labour */}
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Labour</p>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex items-center gap-1.5">
-                        <input type="number" min={0} step={0.5} value={li.labour_hours ?? 0}
-                          onChange={e => updateLineItem(liIdx, { labour_hours: parseFloat(e.target.value) || 0 })}
-                          disabled={isReadOnly}
-                          className="w-20 px-2 py-1.5 text-sm rounded-lg outline-none text-center"
-                          style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                        <span className="text-xs" style={{ color: S.muted }}>hrs</span>
-                      </div>
-                      <span className="text-xs" style={{ color: S.muted }}>@</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs" style={{ color: S.muted }}>R</span>
-                        <input type="number" min={0} step={1} value={li.labour_rate ?? 0}
-                          onChange={e => updateLineItem(liIdx, { labour_rate: parseFloat(e.target.value) || 0 })}
-                          disabled={isReadOnly}
-                          className="w-28 px-2 py-1.5 text-sm rounded-lg outline-none"
-                          style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
-                        <span className="text-xs" style={{ color: S.muted }}>/hr</span>
-                      </div>
-                      {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 ? (
-                        <span className="ml-auto text-xs font-semibold" style={{ color: S.text }}>
-                          = {fmtR((li.labour_hours ?? 0) * (li.labour_rate ?? 0))} at cost
-                        </span>
-                      ) : (
-                        <span className="ml-auto text-xs" style={{ color: S.muted }}>enter if applicable</span>
-                      )}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Labour</span>
+                    <div className="flex items-center gap-1.5">
+                      <input type="number" min={0} step={0.5} value={li.labour_hours ?? 0}
+                        onChange={e => updateLineItem(liIdx, { labour_hours: parseFloat(e.target.value) || 0 })}
+                        disabled={isReadOnly}
+                        className="w-20 px-2 py-1.5 text-sm rounded-lg outline-none text-center"
+                        style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                      <span className="text-xs" style={{ color: S.muted }}>hrs</span>
                     </div>
+                    <span className="text-xs" style={{ color: S.muted }}>@</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs" style={{ color: S.muted }}>R</span>
+                      <input type="number" min={0} step={1} value={li.labour_rate ?? 0}
+                        onChange={e => updateLineItem(liIdx, { labour_rate: parseFloat(e.target.value) || 0 })}
+                        disabled={isReadOnly}
+                        className="w-28 px-2 py-1.5 text-sm rounded-lg outline-none"
+                        style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                      <span className="text-xs" style={{ color: S.muted }}>/hr</span>
+                    </div>
+                    {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 && (
+                      <span className="ml-auto text-xs font-semibold" style={{ color: S.text }}>
+                        = {fmtR((li.labour_hours ?? 0) * (li.labour_rate ?? 0))}
+                      </span>
+                    )}
                   </div>
 
                   {/* Cost summary */}
                   {(li.components.length > 0 || (li.labour_hours ?? 0) > 0) && (
-                    <div className="rounded-xl p-4 space-y-1.5" style={{ background: '#EFF6FF', border: `1px solid rgba(27,79,138,0.15)` }}>
-                      {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 && (
-                        <div className="flex justify-between text-xs pb-1.5" style={{ borderBottom: `1px dashed rgba(27,79,138,0.15)` }}>
-                          <span style={{ color: S.muted }}>Labour ({li.labour_hours}hr × {fmtR(li.labour_rate ?? 0)})</span>
-                          <span style={{ color: S.text }}>{fmtR((li.labour_hours ?? 0) * (li.labour_rate ?? 0))} at cost</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-xs">
-                        <span style={{ color: S.muted }}>Total cost per unit</span>
-                        <span style={{ color: S.text }}>{fmtR(li.cost_per_unit)}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span style={{ color: S.muted }}>Selling price per unit</span>
-                        <span style={{ color: S.text }}>{pending ? '—' : fmt(li.unit_price)}</span>
-                      </div>
-                      {showInternalView && (
+                    <div className="flex items-center gap-2 pt-1 flex-wrap" style={{ borderTop: `1px solid ${S.border}` }}>
+                      <span className="text-xs" style={{ color: S.muted }}>Cost {fmtR(li.cost_per_unit)}</span>
+                      <span className="text-xs" style={{ color: S.border }}>→</span>
+                      <span className="text-xs font-semibold" style={{ color: S.text }}>
+                        Selling {pending ? '—' : fmt(li.unit_price)}
+                      </span>
+                      {showInternalView && li.profit_per_unit > 0 && (
                         <>
-                          <div className="my-1 border-t" style={{ borderColor: 'rgba(27,79,138,0.15)' }} />
-                          <div className="flex justify-between text-xs font-semibold">
-                            <span style={{ color: S.accent }}>Profit per unit</span>
-                            <span style={{ color: '#16A34A' }}>{fmt(li.profit_per_unit)}</span>
-                          </div>
-                          <div className="flex justify-between text-xs font-semibold">
-                            <span style={{ color: S.accent }}>Margin</span>
-                            <span style={{ color: '#16A34A' }}>{li.margin_percentage.toFixed(1)}%</span>
-                          </div>
+                          <span className="text-xs" style={{ color: S.border }}>·</span>
+                          <span className="text-xs font-semibold" style={{ color: '#16A34A' }}>
+                            {fmt(li.profit_per_unit)} profit ({li.margin_percentage.toFixed(1)}%)
+                          </span>
                         </>
                       )}
                     </div>
