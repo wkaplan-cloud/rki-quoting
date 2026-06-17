@@ -1,30 +1,16 @@
 'use client'
 import { useState } from 'react'
 import { Plus, X, Check, AlertTriangle, Archive, Pencil } from 'lucide-react'
-import type { MfgPriceBookItem, MfgPriceBookCategory, MfgPriceBookItemType } from '@/lib/mfg-types'
+import type { MfgPriceBookItem, MfgPriceBookItemType } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5', bg: '#F5F7F9' }
 
-const MATERIAL_CATEGORIES: { value: MfgPriceBookCategory; label: string }[] = [
-  { value: 'boards',            label: 'Boards' },
-  { value: 'solid_timber',      label: 'Solid Timber' },
-  { value: 'acrylic_specialty', label: 'Acrylic & Specialty' },
-]
-const HARDWARE_CATEGORIES: { value: MfgPriceBookCategory; label: string }[] = [
-  { value: 'glass_mirrors',    label: 'Glass & Mirrors' },
-  { value: 'hinges_rails',     label: 'Hinges & Rails' },
-  { value: 'handles_fittings', label: 'Handles & Fittings' },
-  { value: 'stone_steel',      label: 'Stone & Steel' },
-  { value: 'finishes_oils',    label: 'Finishes & Oils' },
-  { value: 'lighting',         label: 'Lighting' },
-]
-const ALL_CATEGORIES = [...MATERIAL_CATEGORIES, ...HARDWARE_CATEGORIES]
 const UNITS = ['sheet','plank','meter','piece','litre','kg','custom']
 
-function categoryLabel(c: string) { return ALL_CATEGORIES.find(x => x.value === c)?.label ?? c }
+const DEFAULT_CATEGORY = { material: 'boards', hardware: 'hinges_rails' } as const
 
 const BLANK = (): Partial<MfgPriceBookItem> => ({
-  item_type: 'material', category: 'boards', name: '', unit: 'sheet',
+  item_type: 'material', name: '', unit: 'sheet',
   unit_custom: '', cost_price: undefined, supplier_quoted: false,
   supplier_name: '',
 })
@@ -53,8 +39,6 @@ export function MfgPriceBookClient({ initialItems }: Props) {
   const [error, setError]           = useState('')
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null)
 
-  const categories = draft.item_type === 'material' ? MATERIAL_CATEGORIES : HARDWARE_CATEGORIES
-
   const filtered = items.filter(i => {
     if (activeType !== 'all' && i.item_type !== activeType) return false
     if (search && !i.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -72,8 +56,11 @@ export function MfgPriceBookClient({ initialItems }: Props) {
   async function handleSave() {
     if (!draft.name?.trim()) { setError('Name is required'); return }
     setSaving(true); setError('')
+    const type = draft.item_type ?? 'material'
     const payload = {
-      item_type: draft.item_type, category: draft.category, name: draft.name?.trim(),
+      item_type: type,
+      category: DEFAULT_CATEGORY[type],
+      name: draft.name?.trim(),
       unit: draft.unit, unit_custom: draft.unit === 'custom' ? draft.unit_custom : null,
       cost_price: draft.supplier_quoted ? null : (draft.cost_price ?? null),
       supplier_quoted: draft.supplier_quoted ?? false,
@@ -98,13 +85,6 @@ export function MfgPriceBookClient({ initialItems }: Props) {
     if (res.ok) { setItems(prev => prev.filter(i => i.id !== id)); setConfirmArchiveId(null) }
   }
 
-  const grouped = filtered.reduce<Record<string, MfgPriceBookItem[]>>((acc, item) => {
-    const key = item.category
-    if (!acc[key]) acc[key] = []
-    acc[key].push(item)
-    return acc
-  }, {})
-
   return (
     <div>
       {/* Toolbar */}
@@ -128,82 +108,74 @@ export function MfgPriceBookClient({ initialItems }: Props) {
         </button>
       </div>
 
-      {/* Items grouped by category */}
+      {/* Items list */}
       {filtered.length === 0 ? (
         <div className="text-center py-16" style={{ color: S.muted }}>
           <p className="text-sm">No items yet. Add your first material or hardware item.</p>
         </div>
       ) : (
-        Object.entries(grouped).map(([cat, catItems]) => (
-          <div key={cat} className="mb-6">
-            <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: S.muted }}>{categoryLabel(cat)}</h3>
-            <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-              {catItems.map((item, idx) => (
-                <div key={item.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors"
-                  style={{ background: S.card, borderTop: idx > 0 ? `1px solid ${S.border}` : undefined }}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium truncate" style={{ color: S.text }}>{item.name}</span>
-                      {item.supplier_quoted && (
-                        <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
-                          style={{ background: '#FEF3C7', color: '#92400E' }}>
-                          <AlertTriangle size={8} /> varies
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                      per {item.unit === 'custom' ? item.unit_custom : item.unit}
-                      {item.supplier_name && ` · ${item.supplier_name}`}
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    {item.supplier_quoted ? (
-                      <span className="text-sm" style={{ color: S.muted }}>⚠ per quote</span>
-                    ) : (
-                      <span className="text-sm font-semibold" style={{ color: S.text }}>
-                        R {item.cost_price?.toFixed(2) ?? '—'}
-                      </span>
-                    )}
-                    <p className="text-[10px] mt-0.5" style={{ color: S.muted }}>
-                      {item.apply_markup_default ? 'markup ✓' : 'at cost'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => startEdit(item)} className="p-1.5 rounded-lg transition-colors"
-                      style={{ color: S.muted }}
-                      onMouseEnter={e => (e.currentTarget.style.background = S.input)}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                      <Pencil size={13} />
-                    </button>
-                    <button onClick={() => setConfirmArchiveId(item.id)} className="p-1.5 rounded-lg transition-colors"
-                      style={{ color: S.muted }}
-                      onMouseEnter={e => (e.currentTarget.style.background = S.input)}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                      <Archive size={13} />
-                    </button>
-                  </div>
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+          {filtered.map((item, idx) => (
+            <div key={item.id} className="flex items-center gap-4 px-5 py-3.5 transition-colors"
+              style={{ background: S.card, borderTop: idx > 0 ? `1px solid ${S.border}` : undefined }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium truncate" style={{ color: S.text }}>{item.name}</span>
+                  {item.supplier_quoted && (
+                    <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
+                      style={{ background: '#FEF3C7', color: '#92400E' }}>
+                      <AlertTriangle size={8} /> varies
+                    </span>
+                  )}
                 </div>
-              ))}
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                  {item.item_type === 'material' ? 'Material' : 'Hardware'} · per {item.unit === 'custom' ? item.unit_custom : item.unit}
+                  {item.supplier_name && ` · ${item.supplier_name}`}
+                </p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                {item.supplier_quoted ? (
+                  <span className="text-sm" style={{ color: S.muted }}>⚠ per quote</span>
+                ) : (
+                  <span className="text-sm font-semibold" style={{ color: S.text }}>
+                    R {item.cost_price?.toFixed(2) ?? '—'}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => startEdit(item)} className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: S.muted }}
+                  onMouseEnter={e => (e.currentTarget.style.background = S.input)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => setConfirmArchiveId(item.id)} className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: S.muted }}
+                  onMouseEnter={e => (e.currentTarget.style.background = S.input)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <Archive size={13} />
+                </button>
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
 
       {/* Add / Edit modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={resetForm}>
-          <div className="rounded-2xl p-6 w-full max-w-lg shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
+          <div className="rounded-2xl p-6 w-full max-w-md shadow-2xl" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-base font-bold" style={{ color: S.text }}>{editingId ? 'Edit Item' : 'Add New Item'}</h3>
               <button onClick={resetForm} style={{ color: S.muted }}><X size={18} /></button>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               {/* Type */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Type</label>
                 <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
                   {(['material','hardware'] as const).map(t => (
-                    <button key={t} onClick={() => setDraft(d => ({ ...d, item_type: t, category: t === 'material' ? 'boards' : 'glass_mirrors' }))}
+                    <button key={t} onClick={() => setDraft(d => ({ ...d, item_type: t }))}
                       className="flex-1 py-2 text-xs font-semibold transition-colors"
                       style={{ background: draft.item_type === t ? S.accent : S.input, color: draft.item_type === t ? '#fff' : S.muted }}>
                       {t === 'material' ? 'Material' : 'Hardware'}
@@ -211,37 +183,30 @@ export function MfgPriceBookClient({ initialItems }: Props) {
                   ))}
                 </div>
               </div>
-              {/* Category */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Category</label>
-                <select value={draft.category ?? ''} onChange={e => setDraft(d => ({ ...d, category: e.target.value as MfgPriceBookCategory }))}
-                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
-                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
-                  {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
               {/* Name */}
-              <div className="col-span-2">
+              <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Name</label>
                 <Input value={draft.name ?? ''} onChange={v => setDraft(d => ({ ...d, name: v }))} placeholder="e.g. Veneer Board — Walnut 18mm" />
               </div>
               {/* Unit */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Unit</label>
-                <select value={draft.unit ?? 'sheet'} onChange={e => setDraft(d => ({ ...d, unit: e.target.value as MfgPriceBookItem['unit'] }))}
-                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
-                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
-                  {UNITS.map(u => <option key={u} value={u}>{u.charAt(0).toUpperCase()+u.slice(1)}</option>)}
-                </select>
-              </div>
-              {draft.unit === 'custom' && (
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Custom Unit</label>
-                  <Input value={draft.unit_custom ?? ''} onChange={v => setDraft(d => ({ ...d, unit_custom: v }))} placeholder="e.g. m²" />
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Unit</label>
+                  <select value={draft.unit ?? 'sheet'} onChange={e => setDraft(d => ({ ...d, unit: e.target.value as MfgPriceBookItem['unit'] }))}
+                    className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
+                    style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
+                    {UNITS.map(u => <option key={u} value={u}>{u.charAt(0).toUpperCase()+u.slice(1)}</option>)}
+                  </select>
                 </div>
-              )}
+                {draft.unit === 'custom' && (
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Custom unit</label>
+                    <Input value={draft.unit_custom ?? ''} onChange={v => setDraft(d => ({ ...d, unit_custom: v }))} placeholder="e.g. m²" />
+                  </div>
+                )}
+              </div>
               {/* Supplier quoted toggle */}
-              <div className="col-span-2 flex items-center gap-3">
+              <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <div onClick={() => setDraft(d => ({ ...d, supplier_quoted: !d.supplier_quoted }))}
                     className="relative rounded-full transition-colors flex-shrink-0"
@@ -266,7 +231,7 @@ export function MfgPriceBookClient({ initialItems }: Props) {
                 </div>
               )}
               {/* Supplier */}
-              <div className="col-span-2">
+              <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Supplier (optional)</label>
                 <Input value={draft.supplier_name ?? ''} onChange={v => setDraft(d => ({ ...d, supplier_name: v }))} placeholder="e.g. Timber City" />
               </div>
