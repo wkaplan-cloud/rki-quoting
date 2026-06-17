@@ -156,7 +156,7 @@ export function MfgQuotePDF(props: MfgPDFProps) {
               {settings?.company_registration_number ? `\nReg No: ${settings.company_registration_number}` : ''}
             </Text>
           </View>
-          <View>
+          <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.docTitle}>{docLabel}</Text>
             <Text style={s.docNum}>{docNumber}{revisionNumber && revisionNumber > 1 ? ` — Revision ${revisionNumber}` : ''}</Text>
             <Text style={s.docMeta}>Date: {fmtDate(date)}</Text>
