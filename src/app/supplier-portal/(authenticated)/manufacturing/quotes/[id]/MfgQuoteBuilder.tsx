@@ -410,8 +410,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               <textarea
                 value={li.description}
                 onChange={e => updateLineItem(liIdx, { description: e.target.value })}
-                placeholder="Describe the item (e.g. Floor-to-ceiling wardrobe unit in walnut veneer with soft-close hinges and LED strip)"
-                rows={2} disabled={isReadOnly}
+                placeholder="Describe the item…"
+                rows={1} disabled={isReadOnly}
                 className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none transition-colors"
                 style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
                 onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
