@@ -291,7 +291,12 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
 
   async function handleArchive() {
     const res = await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}/archive`, { method: 'POST' })
-    if (!res.ok) return
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setError((d as { error?: string }).error ?? 'Archive failed')
+      setConfirmArchive(false)
+      return
+    }
     router.push('/supplier-portal/manufacturing/quotes')
   }
 
@@ -387,7 +392,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
 
   const isReadOnly = currentStatus === 'invoiced' || currentStatus === 'superseded'
   const latestRevision = revisions[revisions.length - 1]
-  const isArchivable = ['draft', 'declined', 'expired', 'superseded'].includes(currentStatus)
+  const isArchivable = ['draft', 'sent', 'accepted', 'declined', 'expired', 'superseded'].includes(currentStatus)
   const [confirmArchive, setConfirmArchive] = useState(false)
 
   function renderLineItem(li: MfgQuoteLineItemDraft, liIdx: number) {

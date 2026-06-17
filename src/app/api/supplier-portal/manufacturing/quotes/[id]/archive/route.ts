@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { resolveMfgAuth } from '@/lib/mfg-auth'
 
-const ARCHIVABLE = ['draft', 'declined', 'expired', 'superseded']
+const ARCHIVABLE = ['draft', 'sent', 'accepted', 'declined', 'expired', 'superseded']
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await resolveMfgAuth()

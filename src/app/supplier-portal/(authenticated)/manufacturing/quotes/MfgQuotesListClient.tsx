@@ -18,7 +18,7 @@ const STATUS_CONFIG = {
 
 type QuoteWithJob = MfgQuote & { job?: { id: string; job_name: string; client?: { id: string; client_name: string } | null } | null }
 
-const ARCHIVABLE_STATUSES = ['draft', 'declined', 'expired', 'superseded']
+const ARCHIVABLE_STATUSES = ['draft', 'sent', 'accepted', 'declined', 'expired', 'superseded']
 
 interface Props {
   initialQuotes: QuoteWithJob[]
@@ -38,6 +38,7 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
   const [creating, setCreating]         = useState(false)
   const [error, setError]               = useState('')
   const [confirmArchive, setConfirmArchive] = useState<string | null>(null)
+  const [archiveError, setArchiveError]     = useState('')
 
   const filtered = quotes.filter(q => {
     if (statusFilter !== 'all' && q.status !== statusFilter) return false
@@ -62,15 +63,25 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
   }
 
   async function handleArchive(id: string) {
+    setArchiveError('')
     const res = await fetch(`/api/supplier-portal/manufacturing/quotes/${id}/archive`, { method: 'POST' })
-    if (!res.ok) return
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setArchiveError((d as { error?: string }).error ?? 'Archive failed')
+      setConfirmArchive(null)
+      return
+    }
     setQuotes(prev => prev.filter(q => q.id !== id))
     setConfirmArchive(null)
   }
 
   async function handleUnarchive(id: string) {
     const res = await fetch(`/api/supplier-portal/manufacturing/quotes/${id}/archive`, { method: 'DELETE' })
-    if (!res.ok) return
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setArchiveError((d as { error?: string }).error ?? 'Restore failed')
+      return
+    }
     setQuotes(prev => prev.filter(q => q.id !== id))
   }
 
@@ -147,6 +158,12 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
             </div>
           </div>
         </div>
+      )}
+
+      {archiveError && (
+        <p className="mb-4 px-4 py-2.5 rounded-xl text-sm" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+          {archiveError} <button className="ml-2 underline text-xs" onClick={() => setArchiveError('')}>Dismiss</button>
+        </p>
       )}
 
       {/* Quote list */}
