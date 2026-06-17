@@ -830,7 +830,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
 
                   {/* Components */}
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Components</p>
                     {li.components.length > 0 && (
                       <div className="rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${S.border}` }}>
                         {li.components.map((c, cIdx) => (
