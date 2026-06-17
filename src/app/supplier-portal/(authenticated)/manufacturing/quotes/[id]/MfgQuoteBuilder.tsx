@@ -38,11 +38,15 @@ function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
     return sum + lineCost * (1 + hwMarkup)
   }, 0)
 
-  const costPerUnit = matCost + hwCost
-  const unitPrice   = markedUpMaterials + hwSelling
-  const lineTotal = unitPrice * li.quantity
+  // Labour — marked up at line item markup %
+  const labourCost    = (li.labour_hours ?? 0) * (li.labour_rate ?? 0)
+  const labourSelling = labourCost * (1 + markup)
+
+  const costPerUnit   = matCost + hwCost + labourCost
+  const unitPrice     = markedUpMaterials + hwSelling + labourSelling
+  const lineTotal     = unitPrice * li.quantity
   const profitPerUnit = unitPrice - costPerUnit
-  const marginPct = unitPrice > 0 ? (profitPerUnit / unitPrice) * 100 : 0
+  const marginPct     = unitPrice > 0 ? (profitPerUnit / unitPrice) * 100 : 0
   return { ...li, cost_per_unit: costPerUnit, unit_price: unitPrice, line_total: lineTotal, profit_per_unit: profitPerUnit, margin_percentage: marginPct }
 }
 
@@ -56,6 +60,7 @@ const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
   unit_price: 0, line_total: 0, markup_percentage: markup,
   cost_per_unit: 0, profit_per_unit: 0, margin_percentage: 0,
   option_label: null,
+  labour_hours: 0, labour_rate: 0,
   materials: [], hardware: [], cost_builder_open: true,
 })
 
@@ -103,7 +108,7 @@ function PriceBookSelect({ items, itemType, onSelect, placeholder }: {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 interface Props {
-  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; show_unit_price: boolean; valid_until: string | null; notes: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; job?: { id: string; job_name: string; client?: { client_name: string; email: string | null } | null } | null }
+  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; show_unit_price: boolean; valid_until: string | null; notes: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; delivery_cost?: number; installation_cost?: number; job?: { id: string; job_name: string; client?: { client_name: string; email: string | null } | null } | null }
   initialLineItems: MfgQuoteLineItemDraft[]
   priceBook: MfgPriceBookItem[]
   settings: MfgSettings | null
@@ -131,6 +136,10 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const isMountRef     = useRef(true)
   const pbTimers       = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const [pbSaved, setPbSaved] = useState<Set<string>>(new Set())
+  const [deliveryCost, setDeliveryCost]         = useState(quote.delivery_cost ?? 0)
+  const [installationCost, setInstallationCost] = useState(quote.installation_cost ?? 0)
+  const deliveryTimerRef  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const deliveryMountRef  = useRef(true)
 
   const PB_UNITS = ['sheet','plank','meter','piece','litre','kg','custom'] as const
   type PbUnit = typeof PB_UNITS[number]
@@ -243,12 +252,13 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const [converting, setConverting] = useState(false)
 
   // Totals
-  const subtotal = lineItems.reduce((s, li) => s + li.line_total, 0)
-  const vatAmt   = applyVat ? subtotal * (vatRate / 100) : 0
-  const total    = subtotal + vatAmt
-  const totalCost   = lineItems.reduce((s, li) => s + li.cost_per_unit * li.quantity, 0)
-  const totalProfit = subtotal - totalCost
-  const totalMargin = subtotal > 0 ? (totalProfit / subtotal) * 100 : 0
+  const itemsSubtotal = lineItems.reduce((s, li) => s + li.line_total, 0)
+  const grossSubtotal = itemsSubtotal + deliveryCost + installationCost
+  const vatAmt        = applyVat ? grossSubtotal * (vatRate / 100) : 0
+  const total         = grossSubtotal + vatAmt
+  const totalCost     = lineItems.reduce((s, li) => s + li.cost_per_unit * li.quantity, 0)
+  const totalProfit   = itemsSubtotal - totalCost
+  const totalMargin   = itemsSubtotal > 0 ? (totalProfit / itemsSubtotal) * 100 : 0
   const hasPendingItems = lineItems.some(hasPending)
 
   // Autosave — 1.5s debounce after any line item change, skip on first render
@@ -260,6 +270,18 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     return () => clearTimeout(autoSaveTimer.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems, applyVat])
+
+  // Autosave delivery & installation — 1s debounce, skip on first render
+  useEffect(() => {
+    if (isReadOnly) return
+    if (deliveryMountRef.current) { deliveryMountRef.current = false; return }
+    clearTimeout(deliveryTimerRef.current)
+    deliveryTimerRef.current = setTimeout(() => {
+      void patchQuoteField({ delivery_cost: deliveryCost, installation_cost: installationCost })
+    }, 1000)
+    return () => clearTimeout(deliveryTimerRef.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryCost, installationCost])
 
   function updateLineItem(idx: number, updates: Partial<MfgQuoteLineItemDraft>) {
     setLineItems(prev => {
@@ -1011,9 +1033,47 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                     )}
                   </div>
 
+                  {/* Labour */}
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Labour</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" min={0} step={0.5} value={li.labour_hours ?? 0}
+                          onChange={e => updateLineItem(liIdx, { labour_hours: parseFloat(e.target.value) || 0 })}
+                          disabled={isReadOnly}
+                          className="w-20 px-2 py-1.5 text-sm rounded-lg outline-none text-center"
+                          style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                        <span className="text-xs" style={{ color: S.muted }}>hrs</span>
+                      </div>
+                      <span className="text-xs" style={{ color: S.muted }}>@</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs" style={{ color: S.muted }}>R</span>
+                        <input type="number" min={0} step={1} value={li.labour_rate ?? 0}
+                          onChange={e => updateLineItem(liIdx, { labour_rate: parseFloat(e.target.value) || 0 })}
+                          disabled={isReadOnly}
+                          className="w-28 px-2 py-1.5 text-sm rounded-lg outline-none"
+                          style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                        <span className="text-xs" style={{ color: S.muted }}>/hr</span>
+                      </div>
+                      {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 ? (
+                        <span className="ml-auto text-xs font-semibold" style={{ color: S.text }}>
+                          = {fmtR((li.labour_hours ?? 0) * (li.labour_rate ?? 0))} at cost
+                        </span>
+                      ) : (
+                        <span className="ml-auto text-xs" style={{ color: S.muted }}>enter hours &amp; rate if applicable</span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Cost summary */}
-                  {(li.materials.length > 0 || li.hardware.length > 0) && (
+                  {(li.materials.length > 0 || li.hardware.length > 0 || (li.labour_hours ?? 0) > 0) && (
                     <div className="rounded-xl p-4 space-y-1.5" style={{ background: '#EFF6FF', border: `1px solid rgba(27,79,138,0.15)` }}>
+                      {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 && (
+                        <div className="flex justify-between text-xs pb-1.5" style={{ borderBottom: `1px dashed rgba(27,79,138,0.15)` }}>
+                          <span style={{ color: S.muted }}>Labour ({li.labour_hours}hr × {fmtR(li.labour_rate ?? 0)})</span>
+                          <span style={{ color: S.text }}>{fmtR((li.labour_hours ?? 0) * (li.labour_rate ?? 0))} at cost</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-xs">
                         <span style={{ color: S.muted }}>Total cost per unit</span>
                         <span style={{ color: S.text }}>{fmtR(li.cost_per_unit)}</span>
@@ -1062,7 +1122,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
           {showInternalView && (
             <>
               <div className="flex justify-between text-xs pb-2" style={{ borderBottom: `1px dashed ${S.border}` }}>
-                <span style={{ color: S.muted }}>Total cost</span>
+                <span style={{ color: S.muted }}>Total cost (line items)</span>
                 <span style={{ color: S.text }}>{fmtR(totalCost)}</span>
               </div>
               <div className="flex justify-between text-xs pb-2" style={{ borderBottom: `1px solid ${S.border}` }}>
@@ -1072,9 +1132,45 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
             </>
           )}
           <div className="flex justify-between text-sm">
-            <span style={{ color: S.muted }}>Subtotal</span>
-            <span style={{ color: S.text }}>{fmtR(subtotal)}</span>
+            <span style={{ color: S.muted }}>Items subtotal</span>
+            <span style={{ color: S.text }}>{fmtR(itemsSubtotal)}</span>
           </div>
+          {/* Delivery */}
+          <div className="flex items-center justify-between text-sm gap-3">
+            <span style={{ color: S.muted }}>Delivery</span>
+            {isReadOnly ? (
+              <span style={{ color: S.text }}>{fmtR(deliveryCost)}</span>
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="text-xs" style={{ color: S.muted }}>R</span>
+                <input type="number" min={0} step={1} value={deliveryCost}
+                  onChange={e => setDeliveryCost(parseFloat(e.target.value) || 0)}
+                  className="w-28 px-2 py-0.5 text-sm rounded-lg outline-none text-right"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+              </div>
+            )}
+          </div>
+          {/* Installation */}
+          <div className="flex items-center justify-between text-sm gap-3">
+            <span style={{ color: S.muted }}>Installation</span>
+            {isReadOnly ? (
+              <span style={{ color: S.text }}>{fmtR(installationCost)}</span>
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="text-xs" style={{ color: S.muted }}>R</span>
+                <input type="number" min={0} step={1} value={installationCost}
+                  onChange={e => setInstallationCost(parseFloat(e.target.value) || 0)}
+                  className="w-28 px-2 py-0.5 text-sm rounded-lg outline-none text-right"
+                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+              </div>
+            )}
+          </div>
+          {(deliveryCost > 0 || installationCost > 0) && (
+            <div className="flex justify-between text-sm pt-1" style={{ borderTop: `1px dashed ${S.border}` }}>
+              <span style={{ color: S.muted }}>Subtotal</span>
+              <span style={{ color: S.text }}>{fmtR(grossSubtotal)}</span>
+            </div>
+          )}
           {applyVat && (
             <div className="flex justify-between text-sm">
               <span style={{ color: S.muted }}>VAT ({vatRate}%)</span>

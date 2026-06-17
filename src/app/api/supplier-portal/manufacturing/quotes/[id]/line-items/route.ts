@@ -40,6 +40,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     profit_per_unit:    li.profit_per_unit ?? 0,
     margin_percentage:  li.margin_percentage ?? 0,
     option_label:       li.option_label ?? null,
+    labour_hours:       li.labour_hours ?? 0,
+    labour_rate:        li.labour_rate ?? 0,
   }))
 
   const { data: savedLineItems, error: liErr } = await supabase
@@ -89,8 +91,24 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (materialRows.length) await supabase.from('mfg_cost_materials').insert(materialRows)
   if (hardwareRows.length) await supabase.from('mfg_cost_hardware').insert(hardwareRows)
 
-  // Recalculate quote totals
+  // Recalculate quote totals (computes subtotal from line items)
   await supabase.rpc('recalculate_mfg_quote_totals', { p_quote_id: quoteId })
+
+  // Re-apply delivery/installation to the computed total
+  const { data: updatedQuote } = await supabase
+    .from('mfg_quotes')
+    .select('subtotal, apply_vat, vat_rate, delivery_cost, installation_cost')
+    .eq('id', quoteId)
+    .single()
+
+  if (updatedQuote) {
+    const taxable  = (updatedQuote.subtotal ?? 0) + (updatedQuote.delivery_cost ?? 0) + (updatedQuote.installation_cost ?? 0)
+    const vatAmt   = updatedQuote.apply_vat ? taxable * ((updatedQuote.vat_rate ?? 15) / 100) : 0
+    await supabase
+      .from('mfg_quotes')
+      .update({ vat_amount: vatAmt, total: taxable + vatAmt })
+      .eq('id', quoteId)
+  }
 
   return NextResponse.json({ ok: true })
 }

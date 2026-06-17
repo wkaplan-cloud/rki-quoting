@@ -163,6 +163,8 @@ export interface MfgQuote {
   total: number
   total_cost: number
   total_profit: number
+  delivery_cost: number
+  installation_cost: number
   archived_at: string | null
   created_at: string
   updated_at: string
@@ -193,6 +195,8 @@ export interface MfgQuoteLineItem {
   profit_per_unit: number
   margin_percentage: number
   option_label: string | null
+  labour_hours: number
+  labour_rate: number
   created_at: string
   updated_at: string
 }

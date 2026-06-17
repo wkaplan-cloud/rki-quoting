@@ -48,6 +48,8 @@ export interface MfgPDFProps {
   total: number
   applyVat: boolean
   vatRate: number
+  deliveryCost?: number
+  installationCost?: number
   // Deposit invoice specifics
   fullProjectTotal?: number
   depositPercentage?: number
@@ -127,6 +129,7 @@ export function MfgQuotePDF(props: MfgPDFProps) {
     clientName, clientType, contactPerson, clientEmail, clientPhone, clientAddress, clientVatNumber,
     jobName, sentByName, sentByEmail, sentByPhone,
     lineItems, subtotal, vatAmount, total, applyVat, vatRate,
+    deliveryCost, installationCost,
     fullProjectTotal, depositPercentage,
     settings, logoBase64, showUnitPrice,
   } = props
@@ -271,36 +274,65 @@ export function MfgQuotePDF(props: MfgPDFProps) {
               {hasOptions && <View style={s.optsDivider} />}
 
               {/* Totals */}
-              <View style={s.totalsWrap} wrap={false}>
-                <View style={s.totalsBox}>
-                  <View style={s.tRow}>
-                    <Text style={s.tLabel}>{hasOptions ? 'Base subtotal' : 'Subtotal'}</Text>
-                    <Text style={s.tVal}>{fmtR(hasOptions ? baseSubtotal : subtotal)}</Text>
+              {(() => {
+                const effectiveDelivery     = deliveryCost ?? 0
+                const effectiveInstallation = installationCost ?? 0
+                const hasExtras = effectiveDelivery > 0 || effectiveInstallation > 0
+                const itemsBase  = hasOptions ? baseSubtotal : subtotal
+                const grossBase  = itemsBase + effectiveDelivery + effectiveInstallation
+                const baseVatAdj = applyVat ? grossBase * (vatRate / 100) : 0
+                const baseGrand  = grossBase + baseVatAdj
+                return (
+                  <View style={s.totalsWrap} wrap={false}>
+                    <View style={s.totalsBox}>
+                      <View style={s.tRow}>
+                        <Text style={s.tLabel}>{hasOptions ? 'Base items subtotal' : (hasExtras ? 'Items subtotal' : 'Subtotal')}</Text>
+                        <Text style={s.tVal}>{fmtR(itemsBase)}</Text>
+                      </View>
+                      {hasOptions && (
+                        <View style={s.tRow}>
+                          <Text style={[s.tLabel, { fontStyle: 'italic' }]}>Options — please select one</Text>
+                          <Text style={[s.tLabel, { fontStyle: 'italic' }]}>see above</Text>
+                        </View>
+                      )}
+                      {effectiveDelivery > 0 && (
+                        <View style={s.tRow}>
+                          <Text style={s.tLabel}>Delivery</Text>
+                          <Text style={s.tVal}>{fmtR(effectiveDelivery)}</Text>
+                        </View>
+                      )}
+                      {effectiveInstallation > 0 && (
+                        <View style={s.tRow}>
+                          <Text style={s.tLabel}>Installation</Text>
+                          <Text style={s.tVal}>{fmtR(effectiveInstallation)}</Text>
+                        </View>
+                      )}
+                      {hasExtras && (
+                        <View style={s.tRow}>
+                          <Text style={[s.tLabel, { fontFamily: 'Helvetica-Bold' }]}>Subtotal</Text>
+                          <Text style={[s.tVal, { fontFamily: 'Helvetica-Bold' }]}>{fmtR(grossBase)}</Text>
+                        </View>
+                      )}
+                      {applyVat && (
+                        <View style={s.tRow}>
+                          <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
+                          <Text style={s.tVal}>{fmtR(hasOptions ? baseVatAdj : vatAmount)}</Text>
+                        </View>
+                      )}
+                      <View style={s.tDivider} />
+                      <View style={s.tBig}>
+                        <Text style={s.tBigLabel}>{hasOptions ? 'BASE TOTAL' : 'TOTAL'}</Text>
+                        <Text style={s.tBigVal}>{fmtR(hasOptions ? baseGrand : total)}</Text>
+                      </View>
+                      {hasOptions && (
+                        <View style={[s.tRow, { marginTop: 6 }]}>
+                          <Text style={[s.tLabel, { fontSize: 7 }]}>+ Add your chosen option total</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                  {hasOptions && (
-                    <View style={s.tRow}>
-                      <Text style={[s.tLabel, { fontStyle: 'italic' }]}>Options — please select one</Text>
-                      <Text style={[s.tLabel, { fontStyle: 'italic' }]}>see above</Text>
-                    </View>
-                  )}
-                  {applyVat && (
-                    <View style={s.tRow}>
-                      <Text style={s.tLabel}>VAT ({vatRate}%)</Text>
-                      <Text style={s.tVal}>{fmtR(hasOptions ? baseVat : vatAmount)}</Text>
-                    </View>
-                  )}
-                  <View style={s.tDivider} />
-                  <View style={s.tBig}>
-                    <Text style={s.tBigLabel}>{hasOptions ? 'BASE TOTAL' : 'TOTAL'}</Text>
-                    <Text style={s.tBigVal}>{fmtR(hasOptions ? baseTotal : total)}</Text>
-                  </View>
-                  {hasOptions && (
-                    <View style={[s.tRow, { marginTop: 6 }]}>
-                      <Text style={[s.tLabel, { fontSize: 7 }]}>+ Add your chosen option total</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+                )
+              })()}
             </>
           )
         })()}

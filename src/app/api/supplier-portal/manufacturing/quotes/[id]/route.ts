@@ -61,11 +61,33 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params
   const body = await req.json()
-  const allowed = ['status','apply_vat','vat_rate','show_unit_price','valid_until','notes','acceptance_date','sent_to_email','sent_by_name','sent_by_email','sent_by_phone','sent_at']
+  const allowed = ['status','apply_vat','vat_rate','show_unit_price','valid_until','notes','acceptance_date','sent_to_email','sent_by_name','sent_by_email','sent_by_phone','sent_at','delivery_cost','installation_cost']
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   for (const key of allowed) { if (key in body) patch[key] = body[key] }
 
   const supabase = await createClient()
+
+  // Recompute total when anything that affects it changes
+  const triggerRecalc = ['apply_vat', 'vat_rate', 'delivery_cost', 'installation_cost'].some(k => k in body)
+  if (triggerRecalc) {
+    const { data: cur } = await supabase
+      .from('mfg_quotes')
+      .select('subtotal, apply_vat, vat_rate, delivery_cost, installation_cost')
+      .eq('id', id)
+      .eq('portal_account_id', auth.portalAccountId)
+      .single()
+    if (cur) {
+      const applyVat         = 'apply_vat'         in patch ? (patch.apply_vat         as boolean) : cur.apply_vat
+      const vatRate          = 'vat_rate'          in patch ? (patch.vat_rate          as number)  : cur.vat_rate
+      const deliveryCost     = 'delivery_cost'     in patch ? (patch.delivery_cost     as number)  : (cur.delivery_cost ?? 0)
+      const installationCost = 'installation_cost' in patch ? (patch.installation_cost as number)  : (cur.installation_cost ?? 0)
+      const taxable          = (cur.subtotal ?? 0) + deliveryCost + installationCost
+      const vatAmt           = applyVat ? taxable * (vatRate / 100) : 0
+      patch.vat_amount = vatAmt
+      patch.total      = taxable + vatAmt
+    }
+  }
+
   const { error } = await supabase
     .from('mfg_quotes')
     .update(patch)
