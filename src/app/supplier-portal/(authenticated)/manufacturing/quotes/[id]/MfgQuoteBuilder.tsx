@@ -83,9 +83,11 @@ interface Props {
   revisions: { id: string; revision_number: number; status: string; created_at: string }[]
 }
 
-export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, templates, revisions }: Props) {
+export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPriceBook, settings, templates, revisions }: Props) {
   const router = useRouter()
   const defaultMarkup = settings?.default_markup_percentage ?? 30
+
+  const [priceBook, setPriceBook] = useState<MfgPriceBookItem[]>(initialPriceBook)
 
   const [lineItems, setLineItems] = useState<MfgQuoteLineItemDraft[]>(
     initialLineItems.length ? initialLineItems.map(li => ({ ...li, cost_builder_open: false })) : []
@@ -151,7 +153,11 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
           supplier_quoted: customForm.supplierQuoted,
         }),
       })
-      if (res.ok) { const saved = await res.json(); pbItemId = saved.id ?? null }
+      if (res.ok) {
+        const saved = await res.json() as MfgPriceBookItem
+        pbItemId = saved.id ?? null
+        setPriceBook(prev => [...prev, saved])
+      }
     }
     const comp: MfgCostComponentDraft = {
       _type:              customForm.pbType,
