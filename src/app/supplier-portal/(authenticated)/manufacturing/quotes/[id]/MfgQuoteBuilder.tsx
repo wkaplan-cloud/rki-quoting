@@ -412,18 +412,20 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 onChange={e => updateLineItem(liIdx, { description: e.target.value })}
                 placeholder="Describe the item…"
                 rows={1} disabled={isReadOnly}
-                className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none transition-colors"
+                className="w-full px-3 py-2 text-sm rounded-lg outline-none resize-none transition-colors overflow-hidden"
                 style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+                onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' }}
                 onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
                 onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
               />
-              <input
+              <textarea
                 value={li.callout_note ?? ''}
                 onChange={e => updateLineItem(liIdx, { callout_note: e.target.value })}
                 placeholder="⚠ Callout note (printed in red on PDF)"
-                disabled={isReadOnly}
-                className="w-full px-3 py-2 text-xs rounded-lg outline-none transition-colors"
+                rows={1} disabled={isReadOnly}
+                className="w-full px-3 py-2 text-xs rounded-lg outline-none resize-none transition-colors overflow-hidden"
                 style={{ background: S.input, border: `1.5px solid ${S.border}`, color: '#DC2626' }}
+                onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' }}
               />
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
