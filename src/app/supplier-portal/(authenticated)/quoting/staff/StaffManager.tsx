@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
+import { calcHourBreakdown, punchesToBreakdown } from '@/lib/sa-overtime'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -102,34 +103,50 @@ function printWeek(
     const totalM = Math.floor((totalMs % 3600000) / 60000)
     const totalStr = totalMs > 0 ? `${totalH}h ${totalM}m` : '—'
 
+    let totalNormalMs = 0, totalOtMs = 0
     const rows = sessions.map(ses => {
       const inDate  = new Date(ses.in.punched_at)
       const outDate = ses.out ? new Date(ses.out.punched_at) : null
-      const durStr  = ses.durMs != null ? (() => { const h = Math.floor(ses.durMs / 3600000); const m = Math.floor((ses.durMs % 3600000) / 60000); return `${h}h ${m}m` })() : '<span class="open">On site</span>'
-      const job     = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
-      const inGps   = ses.in.latitude  ? (geoAddresses[`${ses.in.latitude},${ses.in.longitude}`]   ?? `${ses.in.latitude.toFixed(5)}, ${ses.in.longitude?.toFixed(5)}`)   : '—'
-      const outGps  = ses.out?.latitude ? (geoAddresses[`${ses.out.latitude},${ses.out.longitude}`] ?? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}`) : '—'
+      let normalStr = '—', otStr = '—', durStr = '<span class="open">On site</span>'
+      if (ses.durMs != null && outDate) {
+        const b = calcHourBreakdown(inDate, outDate)
+        totalNormalMs += b.normalMs
+        totalOtMs += b.overtimeMs
+        const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
+        normalStr = fmtMs(b.normalMs)
+        otStr     = b.overtimeMs > 0 ? fmtMs(b.overtimeMs) : '—'
+        durStr    = `<b>${fmtMs(b.totalMs)}</b>`
+      }
+      const job    = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
+      const inGps  = ses.in.latitude  ? (geoAddresses[`${ses.in.latitude},${ses.in.longitude}`]   ?? `${ses.in.latitude.toFixed(5)}, ${ses.in.longitude?.toFixed(5)}`)   : '—'
+      const outGps = ses.out?.latitude ? (geoAddresses[`${ses.out.latitude},${ses.out.longitude}`] ?? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}`) : '—'
       return `<tr>
         <td>${inDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
         <td>${inDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</td>
         <td>${outDate ? outDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : '<span class="open">On site</span>'}</td>
-        <td><b>${durStr}</b></td>
+        <td class="norm">${normalStr}</td>
+        <td class="ot">${otStr}</td>
+        <td>${durStr}</td>
         <td>${job ? `<b>${job.job_number}</b> · ${job.title}` : '—'}</td>
         <td class="gps">${inGps}</td>
         <td class="gps">${outGps}</td>
       </tr>`
     }).join('')
 
+    const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
+    const normStr = totalNormalMs > 0 ? fmtMs(totalNormalMs) : '—'
+    const otStrTotal = totalOtMs > 0 ? fmtMs(totalOtMs) : '—'
+
     staffRows.push(`<div class="staff-section">
       <div class="staff-header">
         <div class="avatar" style="background:${member.color}">${initials}</div>
         <div>
           <div class="staff-name">${member.name}</div>
-          <div class="staff-meta">${member.role} &nbsp;·&nbsp; <b>${totalStr}</b> this week &nbsp;·&nbsp; ${sessions.length} session${sessions.length !== 1 ? 's' : ''}</div>
+          <div class="staff-meta">${member.role} &nbsp;·&nbsp; Normal: <b>${normStr}</b> &nbsp;·&nbsp; OT: <b class="ot-text">${otStrTotal}</b> &nbsp;·&nbsp; Total: <b>${totalStr}</b> &nbsp;·&nbsp; ${sessions.length} session${sessions.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
       <table>
-        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Duration</th><th>Job</th><th>GPS In</th><th>GPS Out</th></tr></thead>
+        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Normal</th><th>OT</th><th>Total</th><th>Job</th><th>GPS In</th><th>GPS Out</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`)
@@ -156,6 +173,9 @@ function printWeek(
     tr:nth-child(even) td{background:#fafafa}
     .open{color:#16a34a;font-weight:600}
     .gps{font-size:10px;color:#71717a}
+    .norm{color:#16a34a}
+    .ot{color:#d9a441;font-weight:600}
+    .ot-text{color:#d9a441}
   </style>
   </head><body>
   <button class="print-btn" onclick="window.print()">🖨 Print</button>
@@ -658,27 +678,32 @@ export function StaffManager({ initialStaff, punches }: Props) {
                   {Object.entries(staffWeekPunches[wk]).map(([staffId, staffPunches]) => {
                     const member = staffMap[staffId]
                     const ins = staffPunches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-                    const outs = staffPunches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-                    let totalMs = 0
-                    ins.forEach((inP, idx) => {
-                      const outP = outs[idx]
-                      if (outP) totalMs += new Date(outP.punched_at).getTime() - new Date(inP.punched_at).getTime()
-                    })
-                    const hours = Math.floor(totalMs / 3600000)
-                    const mins = Math.floor((totalMs % 3600000) / 60000)
+                    const breakdown = punchesToBreakdown(staffPunches)
+                    const { normalMs, overtimeMs, totalMs } = breakdown
+                    const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
                     return (
                       <div key={staffId} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: `1px solid ${S.border}` }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                           style={{ background: member?.color ?? S.accent }}>
                           {member?.name?.slice(0, 2).toUpperCase() ?? '??'}
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold" style={{ color: S.text }}>{member?.name ?? 'Unknown'}</p>
                           <p className="text-xs" style={{ color: S.muted }}>{ins.length} session{ins.length !== 1 ? 's' : ''}</p>
                         </div>
-                        <p className="text-sm font-bold font-mono" style={{ color: totalMs > 0 ? S.accent : S.muted }}>
-                          {totalMs > 0 ? `${hours}h ${mins}m` : '—'}
-                        </p>
+                        {totalMs > 0 ? (
+                          <div className="flex items-center gap-2 flex-wrap justify-end text-xs font-medium flex-shrink-0">
+                            <span style={{ color: S.green }}>Norm: {fmtMs(normalMs)}</span>
+                            {overtimeMs > 0 && (
+                              <span style={{ color: S.gold }}>OT: {fmtMs(overtimeMs)}</span>
+                            )}
+                            <span className="font-bold font-mono text-sm" style={{ color: S.accent }}>
+                              {fmtMs(totalMs)}
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-sm font-bold font-mono flex-shrink-0" style={{ color: S.muted }}>—</p>
+                        )}
                       </div>
                     )
                   })}
@@ -705,20 +730,26 @@ export function StaffManager({ initialStaff, punches }: Props) {
                 const outs = staffPunches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
                 const firstIn = ins[0]
                 const lastOut = outs[outs.length - 1]
-                const duration = firstIn && lastOut
-                  ? fmtDuration(new Date(lastOut.punched_at).getTime() - new Date(firstIn.punched_at).getTime())
-                  : null
+                const breakdown = punchesToBreakdown(staffPunches)
+                const { normalMs, overtimeMs, totalMs } = breakdown
+                const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
                 return (
                   <div key={staffId} className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                           style={{ background: member?.color ?? S.accent }}>
                           {member?.name?.slice(0, 2).toUpperCase() ?? '??'}
                         </div>
                         <div>
                           <p className="text-sm font-semibold" style={{ color: S.text }}>{member?.name ?? 'Unknown'}</p>
-                          {duration && <p className="text-xs" style={{ color: S.muted }}>{duration} total</p>}
+                          {totalMs > 0 && (
+                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                              <span className="text-xs font-medium" style={{ color: S.green }}>Norm: {fmtMs(normalMs)}</span>
+                              {overtimeMs > 0 && <span className="text-xs font-medium" style={{ color: S.gold }}>OT: {fmtMs(overtimeMs)}</span>}
+                              <span className="text-xs font-semibold" style={{ color: S.muted }}>Total: {fmtMs(totalMs)}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       {!lastOut && firstIn && (

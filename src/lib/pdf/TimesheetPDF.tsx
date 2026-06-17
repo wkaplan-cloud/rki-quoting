@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { calcHourBreakdown } from '@/lib/sa-overtime'
 
 const s = StyleSheet.create({
   page: { fontFamily: 'Helvetica', fontSize: 8, color: '#18181B', padding: 28, paddingBottom: 40 },
@@ -19,6 +20,7 @@ const s = StyleSheet.create({
   td: { fontSize: 7.5, color: '#18181B', padding: '4 6' },
   tdMuted: { color: '#71717A' },
   green: { color: '#16A34A', fontFamily: 'Helvetica-Bold' },
+  gold: { color: '#D9A441', fontFamily: 'Helvetica-Bold' },
   footer: { position: 'absolute', bottom: 20, left: 28, right: 28, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.5, borderTopColor: '#E4E4E7', paddingTop: 6 },
   footerText: { fontSize: 7, color: '#94A3B8' },
 })
@@ -65,12 +67,17 @@ export function TimesheetPDF({ companyName, periodLabel, staffData }: Props) {
         {staffData.map(member => {
           const ins = member.punches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
           const outs = member.punches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-          let totalMs = 0
+          let totalNormalMs = 0, totalOtMs = 0, totalMs = 0
           const sessions = ins.map((inP, idx) => {
             const outP = outs[idx] ?? null
-            const durMs = outP ? new Date(outP.punched_at).getTime() - new Date(inP.punched_at).getTime() : null
-            if (durMs) totalMs += durMs
-            return { in: inP, out: outP, durMs }
+            if (outP) {
+              const b = calcHourBreakdown(new Date(inP.punched_at), new Date(outP.punched_at))
+              totalNormalMs += b.normalMs
+              totalOtMs     += b.overtimeMs
+              totalMs       += b.totalMs
+              return { in: inP, out: outP, normalMs: b.normalMs, overtimeMs: b.overtimeMs, totalMs: b.totalMs }
+            }
+            return { in: inP, out: null, normalMs: 0, overtimeMs: 0, totalMs: 0 }
           })
 
           return (
@@ -82,32 +89,41 @@ export function TimesheetPDF({ companyName, periodLabel, staffData }: Props) {
                 <View>
                   <Text style={s.staffName}>{member.name}</Text>
                   <Text style={s.staffMeta}>
-                    Total: {totalMs > 0 ? fmtDur(totalMs) : '—'} · {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                    {totalMs > 0
+                      ? `Normal: ${fmtDur(totalNormalMs)}  ·  OT: ${totalOtMs > 0 ? fmtDur(totalOtMs) : '—'}  ·  Total: ${fmtDur(totalMs)}  ·  ${sessions.length} session${sessions.length !== 1 ? 's' : ''}`
+                      : `${sessions.length} session${sessions.length !== 1 ? 's' : ''} — no completed sessions`}
                   </Text>
                 </View>
               </View>
               <View style={s.table}>
                 <View style={s.thead}>
                   <Text style={[s.th, { flex: 1.2 }]}>Date</Text>
-                  <Text style={[s.th, { flex: 0.8 }]}>Clock In</Text>
-                  <Text style={[s.th, { flex: 0.8 }]}>Clock Out</Text>
-                  <Text style={[s.th, { flex: 0.7 }]}>Duration</Text>
-                  <Text style={[s.th, { flex: 2 }]}>Job</Text>
+                  <Text style={[s.th, { flex: 0.7 }]}>Clock In</Text>
+                  <Text style={[s.th, { flex: 0.7 }]}>Clock Out</Text>
+                  <Text style={[s.th, { flex: 0.6 }]}>Normal</Text>
+                  <Text style={[s.th, { flex: 0.5 }]}>OT</Text>
+                  <Text style={[s.th, { flex: 0.6 }]}>Total</Text>
+                  <Text style={[s.th, { flex: 1.7 }]}>Job</Text>
                 </View>
                 {sessions.map((ses, i) => {
                   const job = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
-                  const durMs = ses.durMs
                   return (
                     <View key={i} style={[s.tr, i % 2 !== 0 ? { backgroundColor: '#FAFAFA' } : {}]}>
                       <Text style={[s.td, { flex: 1.2 }]}>{fmtDate(ses.in.punched_at)}</Text>
-                      <Text style={[s.td, s.green, { flex: 0.8 }]}>{fmtTime(ses.in.punched_at)}</Text>
-                      <Text style={[s.td, { flex: 0.8, color: ses.out ? '#DC2626' : '#16A34A' }]}>
+                      <Text style={[s.td, s.green, { flex: 0.7 }]}>{fmtTime(ses.in.punched_at)}</Text>
+                      <Text style={[s.td, { flex: 0.7, color: ses.out ? '#DC2626' : '#16A34A' }]}>
                         {ses.out ? fmtTime(ses.out.punched_at) : 'On site'}
                       </Text>
-                      <Text style={[s.td, { flex: 0.7, fontFamily: 'Helvetica-Bold' }]}>
-                        {durMs != null ? fmtDur(durMs) : '—'}
+                      <Text style={[s.td, s.green, { flex: 0.6 }]}>
+                        {ses.totalMs > 0 ? fmtDur(ses.normalMs) : '—'}
                       </Text>
-                      <Text style={[s.td, s.tdMuted, { flex: 2 }]}>
+                      <Text style={[s.td, ses.overtimeMs > 0 ? s.gold : s.tdMuted, { flex: 0.5 }]}>
+                        {ses.overtimeMs > 0 ? fmtDur(ses.overtimeMs) : '—'}
+                      </Text>
+                      <Text style={[s.td, { flex: 0.6, fontFamily: 'Helvetica-Bold' }]}>
+                        {ses.totalMs > 0 ? fmtDur(ses.totalMs) : '—'}
+                      </Text>
+                      <Text style={[s.td, s.tdMuted, { flex: 1.7 }]}>
                         {job ? `${job.job_number} · ${job.title}` : '—'}
                       </Text>
                     </View>
