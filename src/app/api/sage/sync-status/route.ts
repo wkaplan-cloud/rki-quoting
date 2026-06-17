@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const { data: orgId } = await supabase.rpc('get_current_org_id')
 
     const [{ data: project }, { data: stages }] = await Promise.all([
-      supabase.from('projects').select('sage_invoice_id').eq('id', projectId).single(),
+      supabase.from('projects').select('sage_invoice_id, project_name, project_number').eq('id', projectId).single(),
       supabase.from('project_stages').select('*').eq('project_id', projectId).maybeSingle(),
     ])
 
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
             org_id: orgId,
             type: 'payment_paid',
             title: 'Invoice paid in full',
-            body: 'The Sage invoice has been marked as fully paid',
+            body: `${project.project_name} (${project.project_number}) has been marked as fully paid`,
             metadata: { project_id: projectId, sage_status: status },
           })
         }
