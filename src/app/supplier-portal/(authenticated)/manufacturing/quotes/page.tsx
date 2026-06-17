@@ -48,6 +48,7 @@ export default async function MfgQuotesPage({ searchParams }: { searchParams: Pr
         <p className="text-sm mt-1" style={{ color: '#71717A' }}>Create, send and manage your quotations.</p>
       </div>
       <MfgQuotesListClient
+        key={showArchived ? 'archived' : 'active'}
         initialQuotes={quotes ?? []}
         clients={clients ?? []}
         defaultMarkup={settings?.default_markup_percentage ?? 30}
