@@ -38,9 +38,10 @@ function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
     return sum + lineCost * (1 + hwMarkup)
   }, 0)
 
-  // Labour — marked up at line item markup %
+  // Labour — uses its own markup percentage
+  const labourMarkup  = (li.labour_markup_percentage ?? li.markup_percentage) / 100
   const labourCost    = (li.labour_hours ?? 0) * (li.labour_rate ?? 0)
-  const labourSelling = labourCost * (1 + markup)
+  const labourSelling = labourCost * (1 + labourMarkup)
 
   const costPerUnit   = matCost + hwCost + labourCost
   const unitPrice     = markedUpMaterials + hwSelling + labourSelling
@@ -60,7 +61,7 @@ const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
   unit_price: 0, line_total: 0, markup_percentage: markup,
   cost_per_unit: 0, profit_per_unit: 0, margin_percentage: 0,
   option_label: null,
-  labour_hours: 0, labour_rate: 0,
+  labour_hours: 0, labour_rate: 0, labour_markup_percentage: 0,
   materials: [], hardware: [], cost_builder_open: true,
 })
 
@@ -1054,6 +1055,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                           className="w-28 px-2 py-1.5 text-sm rounded-lg outline-none"
                           style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
                         <span className="text-xs" style={{ color: S.muted }}>/hr</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <input type="number" min={0} step={1} value={li.labour_markup_percentage ?? 0}
+                          onChange={e => updateLineItem(liIdx, { labour_markup_percentage: parseFloat(e.target.value) || 0 })}
+                          disabled={isReadOnly}
+                          className="w-16 px-2 py-1.5 text-sm rounded-lg outline-none text-center"
+                          style={{ background: (li.labour_markup_percentage ?? 0) !== li.markup_percentage ? '#FEF3C7' : S.input, border: `1.5px solid ${(li.labour_markup_percentage ?? 0) !== li.markup_percentage ? '#FDE68A' : S.border}`, color: S.text }} />
+                        <span className="text-xs" style={{ color: S.muted }}>% markup</span>
                       </div>
                       {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 ? (
                         <span className="ml-auto text-xs font-semibold" style={{ color: S.text }}>

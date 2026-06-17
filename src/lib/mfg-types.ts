@@ -197,6 +197,7 @@ export interface MfgQuoteLineItem {
   option_label: string | null
   labour_hours: number
   labour_rate: number
+  labour_markup_percentage: number
   created_at: string
   updated_at: string
 }

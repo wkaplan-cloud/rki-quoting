@@ -40,8 +40,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     profit_per_unit:    li.profit_per_unit ?? 0,
     margin_percentage:  li.margin_percentage ?? 0,
     option_label:       li.option_label ?? null,
-    labour_hours:       li.labour_hours ?? 0,
-    labour_rate:        li.labour_rate ?? 0,
+    labour_hours:             li.labour_hours ?? 0,
+    labour_rate:              li.labour_rate ?? 0,
+    labour_markup_percentage: li.labour_markup_percentage ?? 0,
   }))
 
   const { data: savedLineItems, error: liErr } = await supabase
