@@ -880,6 +880,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                   </div>
                 )}
               </div>
+              {/* Footer */}
+              <div className="px-5 py-4" style={{ borderTop: `1px solid ${S.border}` }}>
+                <button onClick={() => setCostBuilderModal(null)}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+                  style={{ background: S.accent }}>
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         )
