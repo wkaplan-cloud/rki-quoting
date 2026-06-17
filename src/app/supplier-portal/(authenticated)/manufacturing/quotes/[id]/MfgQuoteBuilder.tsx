@@ -41,13 +41,6 @@ const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
   components: [], cost_builder_open: false,
 })
 
-const OPTION_LABELS = ['Option A', 'Option B', 'Option C', 'Option D']
-const OPTION_COLORS: Record<string, { bg: string; color: string }> = {
-  'Option A': { bg: '#EFF6FF', color: '#1D4ED8' },
-  'Option B': { bg: '#F0FDF4', color: '#15803D' },
-  'Option C': { bg: '#FFF7ED', color: '#C2410C' },
-  'Option D': { bg: '#FAF5FF', color: '#7E22CE' },
-}
 
 const DEFAULT_COMPONENT_CATEGORY = { material: 'boards', hardware: 'hinges_rails' } as const
 
@@ -98,7 +91,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     initialLineItems.length ? initialLineItems.map(li => ({ ...li, cost_builder_open: false })) : []
   )
   const [costBuilderModal, setCostBuilderModal] = useState<number | null>(null)
-  const [confirmingChoose, setConfirmingChoose] = useState<string | null>(null)
   const [showInternalView, setShowInternalView] = useState(false)
   const [applyVat, setApplyVat]     = useState(quote.apply_vat)
   const [showUnitPrice, setShowUnitPrice] = useState(quote.show_unit_price ?? false)
@@ -223,48 +215,19 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
     })
   }
 
-  function addLineItem(optionLabel: string | null = null) {
-    setLineItems(prev => {
-      const newItem = { ...BLANK_LINE(defaultMarkup), option_label: optionLabel }
-      let insertAt: number
-      if (!optionLabel) {
-        const lastUngrouped = prev.reduce((acc, li, i) => !li.option_label ? i : acc, -1)
-        insertAt = lastUngrouped + 1
-      } else {
-        const lastInGroup = prev.reduce((acc, li, i) => li.option_label === optionLabel ? i : acc, -1)
-        insertAt = lastInGroup === -1 ? prev.length : lastInGroup + 1
-      }
-      const next = [...prev.slice(0, insertAt), newItem, ...prev.slice(insertAt)]
-      return next.map((li, i) => ({ ...li, sort_order: i }))
-    })
-  }
-
-  function addOptionGroup() {
-    const used = new Set(lineItems.map(li => li.option_label).filter(Boolean))
-    const next = OPTION_LABELS.find(l => !used.has(l))
-    if (!next) return
+  function addLineItem() {
     setLineItems(prev => [
       ...prev,
-      { ...BLANK_LINE(defaultMarkup), sort_order: prev.length, option_label: next }
+      { ...BLANK_LINE(defaultMarkup), sort_order: prev.length },
     ])
   }
 
-  function removeOptionGroup(label: string) {
+  function toggleOptionItem(idx: number) {
     setLineItems(prev => {
-      const ungrouped  = prev.filter(li => !li.option_label)
-      const fromGroup  = prev.filter(li => li.option_label === label).map(li => ({ ...li, option_label: null as string | null }))
-      const otherGroup = prev.filter(li => li.option_label && li.option_label !== label)
-      return [...ungrouped, ...fromGroup, ...otherGroup].map((li, i) => ({ ...li, sort_order: i }))
+      const next = [...prev]
+      next[idx] = { ...next[idx], option_label: next[idx].option_label ? null : 'Optional' }
+      return next
     })
-  }
-
-  function chooseOptionGroup(label: string) {
-    setLineItems(prev =>
-      prev
-        .filter(li => !li.option_label || li.option_label === label)
-        .map((li, i) => ({ ...li, option_label: null as string | null, sort_order: i }))
-    )
-    setConfirmingChoose(null)
   }
 
   function removeLineItem(idx: number) {
@@ -427,20 +390,11 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   const isArchivable = ['draft', 'declined', 'expired', 'superseded'].includes(currentStatus)
   const [confirmArchive, setConfirmArchive] = useState(false)
 
-  // Grouped rendering
-  const ungroupedItems  = lineItems.map((li, i) => ({ li, i })).filter(({ li }) => !li.option_label)
-  const usedGroupLabels = OPTION_LABELS.filter(l => lineItems.some(li => li.option_label === l))
-  const optionGroups    = usedGroupLabels.map(label => ({
-    label,
-    color: OPTION_COLORS[label] ?? { bg: '#F4F4F5', color: '#71717A' },
-    items: lineItems.map((li, i) => ({ li, i })).filter(({ li }) => li.option_label === label),
-  }))
-  const canAddGroup = usedGroupLabels.length < OPTION_LABELS.length
-
   function renderLineItem(li: MfgQuoteLineItemDraft, liIdx: number) {
     const pending = hasPending(li)
+    const isOption = !!li.option_label
     return (
-      <div key={liIdx} className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${pending ? '#FDE68A' : S.border}`, background: S.card }}>
+      <div key={liIdx} className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${pending ? '#FDE68A' : isOption ? '#D1FAE5' : S.border}`, background: S.card }}>
         <div className="p-5">
           <div className="flex items-start gap-3">
             <span className="text-xs font-bold mt-2 flex-shrink-0 w-6 text-center rounded-full py-0.5"
@@ -518,6 +472,17 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 style={{ color: S.accent, background: '#EFF6FF' }}>
                 Build cost →
               </button>
+              {!isReadOnly && (
+                <button onClick={() => toggleOptionItem(liIdx)}
+                  className="px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors"
+                  style={{
+                    background: isOption ? '#D1FAE5' : S.input,
+                    color: isOption ? '#065F46' : S.muted,
+                    border: `1px solid ${isOption ? '#6EE7B7' : S.border}`,
+                  }}>
+                  {isOption ? '✓ Optional' : 'Option'}
+                </button>
+              )}
               {!isReadOnly && (
                 <>
                   <button onClick={() => duplicateLineItem(liIdx)} title="Duplicate"
@@ -682,10 +647,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
 
       {/* Line Items */}
       <div className="space-y-3 mb-4">
-        {/* Ungrouped items */}
-        {ungroupedItems.map(({ li, i }) => renderLineItem(li, i))}
-
-        {/* Add ungrouped item */}
+        {lineItems.map((li, i) => renderLineItem(li, i))}
         {!isReadOnly && (
           <button onClick={() => addLineItem()}
             className="w-full py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 transition-colors"
@@ -694,79 +656,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
             onMouseLeave={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.color = S.muted }}>
             <Plus size={15} /> Add Line Item
           </button>
-        )}
-
-        {/* Option groups */}
-        {optionGroups.map(({ label, color, items }) => (
-          <div key={label} className="mt-2">
-            {/* Section header */}
-            <div className="flex items-center gap-3 py-2">
-              <div className="flex-1 h-px" style={{ background: color.color, opacity: 0.25 }} />
-              <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full flex-shrink-0"
-                style={{ background: color.bg, color: color.color }}>
-                {label}
-              </span>
-              {!isReadOnly && (
-                <>
-                  {confirmingChoose === label ? (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => chooseOptionGroup(label)}
-                        className="text-xs font-semibold px-2.5 py-1 rounded-lg"
-                        style={{ background: '#16A34A', color: '#fff' }}>
-                        Confirm
-                      </button>
-                      <button onClick={() => setConfirmingChoose(null)}
-                        className="text-xs px-2 py-1 rounded-lg" style={{ color: S.muted }}>
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setConfirmingChoose(label)}
-                      className="text-xs font-medium px-2.5 py-1 rounded-lg flex-shrink-0"
-                      style={{ background: S.input, color: S.muted, border: `1px solid ${S.border}` }}>
-                      Client chose this →
-                    </button>
-                  )}
-                  <button onClick={() => removeOptionGroup(label)}
-                    className="p-1 rounded-lg flex-shrink-0" style={{ color: S.muted }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#DC2626')}
-                    onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
-                    <X size={13} />
-                  </button>
-                </>
-              )}
-              <div className="flex-1 h-px" style={{ background: color.color, opacity: 0.25 }} />
-            </div>
-
-            {/* Items in this group */}
-            <div className="space-y-3 mb-2">
-              {items.map(({ li, i }) => renderLineItem(li, i))}
-            </div>
-
-            {/* Add item to this group */}
-            {!isReadOnly && (
-              <button onClick={() => addLineItem(label)}
-                className="w-full py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
-                style={{ background: color.bg, color: color.color, border: `1px dashed ${color.color}44` }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = '0.75' }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}>
-                <Plus size={12} /> Add line item to {label}
-              </button>
-            )}
-          </div>
-        ))}
-
-        {/* Add option group */}
-        {!isReadOnly && canAddGroup && (
-          <div className="flex justify-center pt-1">
-            <button onClick={addOptionGroup}
-              className="text-xs px-3 py-1.5 rounded-lg transition-colors"
-              style={{ color: S.muted, border: `1px solid ${S.border}` }}
-              onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
-              onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
-              + Add option group
-            </button>
-          </div>
         )}
       </div>
 
