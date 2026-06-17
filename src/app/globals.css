@@ -19,6 +19,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+button, [role="button"], label[for], select { cursor: pointer; }
 html { -webkit-font-smoothing: antialiased; overflow-y: scroll; }
 
 body {
