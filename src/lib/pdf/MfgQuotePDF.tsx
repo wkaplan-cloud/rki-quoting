@@ -249,7 +249,7 @@ export function MfgQuotePDF(props: MfgPDFProps) {
                 return (
                   <View key={label} style={s.optSection} wrap={false}>
                     <View style={s.optHead}>
-                      <Text style={[s.optLabel, { backgroundColor: optBg, color: optAccent }]}>{label.toUpperCase()}</Text>
+                      <Text style={[s.optLabel, { backgroundColor: optBg, color: optAccent }]}>SELECT AN OPTION</Text>
                     </View>
                     {items.map((li, idx) => (
                       <View key={li.id ?? idx} style={[s.row, { backgroundColor: idx % 2 === 0 ? '#FAFAFA' : '#FFFFFF' }]} wrap={false}>
@@ -264,7 +264,7 @@ export function MfgQuotePDF(props: MfgPDFProps) {
                       </View>
                     ))}
                     <View style={s.optSub}>
-                      <Text style={s.optSubLabel}>{label} subtotal</Text>
+                      <Text style={s.optSubLabel}>Option subtotal</Text>
                       <Text style={[s.optSubVal, { color: optAccent }]}>{fmtR(grpSubtotal)}</Text>
                     </View>
                   </View>
