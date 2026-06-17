@@ -67,8 +67,10 @@ export default async function MfgQuoteBuilderPage({ params }: { params: Promise<
 
   const lineItemsFull = (lineItems ?? []).map(li => ({
     ...li,
-    materials: (materials ?? []).filter(m => m.line_item_id === li.id),
-    hardware:  (hardware ?? []).filter(h => h.line_item_id === li.id),
+    components: [
+      ...(materials ?? []).filter(m => m.line_item_id === li.id).map(m => ({ ...m, _type: 'material' as const })),
+      ...(hardware ?? []).filter(h => h.line_item_id === li.id).map(h => ({ ...h, _type: 'hardware' as const })),
+    ].sort((a, b) => a.sort_order - b.sort_order),
     cost_builder_open: false,
   }))
 

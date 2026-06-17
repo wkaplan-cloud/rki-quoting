@@ -197,7 +197,6 @@ export interface MfgQuoteLineItem {
   option_label: string | null
   labour_hours: number
   labour_rate: number
-  labour_markup_percentage: number
   created_at: string
   updated_at: string
 }
@@ -390,9 +389,21 @@ export interface MfgCostHardwareDraft extends Omit<MfgCostHardware, 'id' | 'line
   markup_percentage: number | null
 }
 
+// Unified component (material or hardware) used in the simplified cost builder UI
+export interface MfgCostComponentDraft {
+  id?: string
+  _type: 'material' | 'hardware'
+  price_book_item_id: string | null
+  item_name: string
+  unit: string
+  quantity: number
+  unit_cost: number | null
+  supplier_quoted: boolean
+  sort_order: number
+}
+
 export interface MfgQuoteLineItemDraft extends Omit<MfgQuoteLineItem, 'id' | 'quote_id' | 'created_at' | 'updated_at'> {
   id?: string
-  materials: MfgCostMaterialDraft[]
-  hardware: MfgCostHardwareDraft[]
+  components: MfgCostComponentDraft[]
   cost_builder_open: boolean   // UI state — not persisted
 }

@@ -28,21 +28,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   // Insert line items
   const lineItemRows = line_items.map((li, idx) => ({
-    quote_id:           quoteId,
-    sort_order:         idx,
-    description:        li.description ?? '',
-    callout_note:       li.callout_note ?? null,
-    quantity:           li.quantity ?? 1,
-    unit_price:         li.unit_price ?? 0,
-    line_total:         (li.unit_price ?? 0) * (li.quantity ?? 1),
-    markup_percentage:  li.markup_percentage ?? 30,
-    cost_per_unit:      li.cost_per_unit ?? 0,
-    profit_per_unit:    li.profit_per_unit ?? 0,
-    margin_percentage:  li.margin_percentage ?? 0,
-    option_label:       li.option_label ?? null,
-    labour_hours:             li.labour_hours ?? 0,
-    labour_rate:              li.labour_rate ?? 0,
-    labour_markup_percentage: li.labour_markup_percentage ?? 0,
+    quote_id:          quoteId,
+    sort_order:        idx,
+    description:       li.description ?? '',
+    callout_note:      li.callout_note ?? null,
+    quantity:          li.quantity ?? 1,
+    unit_price:        li.unit_price ?? 0,
+    line_total:        (li.unit_price ?? 0) * (li.quantity ?? 1),
+    markup_percentage: li.markup_percentage ?? 30,
+    cost_per_unit:     li.cost_per_unit ?? 0,
+    profit_per_unit:   li.profit_per_unit ?? 0,
+    margin_percentage: li.margin_percentage ?? 0,
+    option_label:      li.option_label ?? null,
+    labour_hours:      li.labour_hours ?? 0,
+    labour_rate:       li.labour_rate ?? 0,
   }))
 
   const { data: savedLineItems, error: liErr } = await supabase
@@ -52,7 +51,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   if (liErr) return NextResponse.json({ error: liErr.message }, { status: 500 })
 
-  // Insert cost rows
+  // Split unified components back into material/hardware rows for storage
   const materialRows: Record<string, unknown>[] = []
   const hardwareRows: Record<string, unknown>[] = []
 
@@ -60,32 +59,32 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const lineItemId = savedLineItems?.[idx]?.id
     if (!lineItemId) return
 
-    ;(li.materials ?? []).forEach((m: Record<string, unknown>, midx: number) => {
-      materialRows.push({
-        line_item_id:       lineItemId,
-        price_book_item_id: m.price_book_item_id ?? null,
-        item_name:          m.item_name,
-        unit:               m.unit,
-        quantity:           m.quantity ?? 1,
-        unit_cost:          m.unit_cost ?? null,
-        supplier_quoted:    m.supplier_quoted ?? false,
-        sort_order:         midx,
-      })
-    })
-
-    ;(li.hardware ?? []).forEach((h: Record<string, unknown>, hidx: number) => {
-      hardwareRows.push({
-        line_item_id:       lineItemId,
-        price_book_item_id: h.price_book_item_id ?? null,
-        item_name:          h.item_name,
-        unit:               h.unit,
-        quantity:           h.quantity ?? 1,
-        unit_cost:          h.unit_cost ?? null,
-        supplier_quoted:      h.supplier_quoted ?? false,
-        apply_markup:         h.apply_markup ?? false,
-        markup_percentage:    h.markup_percentage ?? null,
-        sort_order:           hidx,
-      })
+    ;(li.components ?? []).forEach((c: Record<string, unknown>, cidx: number) => {
+      if (c._type === 'hardware') {
+        hardwareRows.push({
+          line_item_id:       lineItemId,
+          price_book_item_id: c.price_book_item_id ?? null,
+          item_name:          c.item_name,
+          unit:               c.unit,
+          quantity:           c.quantity ?? 1,
+          unit_cost:          c.unit_cost ?? null,
+          supplier_quoted:    c.supplier_quoted ?? false,
+          apply_markup:       true,
+          markup_percentage:  null,
+          sort_order:         cidx,
+        })
+      } else {
+        materialRows.push({
+          line_item_id:       lineItemId,
+          price_book_item_id: c.price_book_item_id ?? null,
+          item_name:          c.item_name,
+          unit:               c.unit,
+          quantity:           c.quantity ?? 1,
+          unit_cost:          c.unit_cost ?? null,
+          supplier_quoted:    c.supplier_quoted ?? false,
+          sort_order:         cidx,
+        })
+      }
     })
   })
 

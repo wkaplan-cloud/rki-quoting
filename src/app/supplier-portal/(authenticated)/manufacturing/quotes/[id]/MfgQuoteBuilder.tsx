@@ -6,7 +6,7 @@ import {
   Plus, Trash2, ChevronDown, ChevronUp, Check, AlertTriangle, Save,
   Send, FileDown, RefreshCw, ArrowLeft, Eye, EyeOff, Copy, Loader2, Archive
 } from 'lucide-react'
-import type { MfgPriceBookItem, MfgPriceBookCategory, MfgSettings, MfgLineItemTemplateFull, MfgQuoteLineItemDraft, MfgCostMaterialDraft, MfgCostHardwareDraft } from '@/lib/mfg-types'
+import type { MfgPriceBookItem, MfgPriceBookCategory, MfgSettings, MfgLineItemTemplateFull, MfgQuoteLineItemDraft, MfgCostComponentDraft } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5', bg: '#F5F7F9' }
 
@@ -16,35 +16,18 @@ const fmt = fmtR
 
 function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
   const markup = li.markup_percentage / 100
-  // Materials — all marked up at line item markup %
-  const matCost = li.materials.reduce((sum, m) => {
-    if (m.unit_cost === null || m.unit_cost === undefined) return sum
-    return sum + (m.unit_cost * m.quantity)
+  // All components use the single line markup %
+  const compCost    = li.components.reduce((sum, c) => {
+    if (c.unit_cost === null || c.unit_cost === undefined) return sum
+    return sum + (c.unit_cost * c.quantity)
   }, 0)
-  const markedUpMaterials = matCost * (1 + markup)
-
-  // Hardware — each item uses its own markup_percentage if set, otherwise line default
-  const hwCost = li.hardware.reduce((sum, h) => {
-    if (h.unit_cost === null || h.unit_cost === undefined) return sum
-    return sum + (h.unit_cost * h.quantity)
-  }, 0)
-  const hwSelling = li.hardware.reduce((sum, h) => {
-    if (h.unit_cost === null || h.unit_cost === undefined) return sum
-    const lineCost = h.unit_cost * h.quantity
-    if (!h.apply_markup) return sum + lineCost
-    const hwMarkup = h.markup_percentage !== null && h.markup_percentage !== undefined
-      ? h.markup_percentage / 100
-      : markup
-    return sum + lineCost * (1 + hwMarkup)
-  }, 0)
-
-  // Labour — uses its own markup percentage
-  const labourMarkup  = (li.labour_markup_percentage ?? li.markup_percentage) / 100
+  const compSelling = compCost * (1 + markup)
+  // Labour also uses the single line markup %
   const labourCost    = (li.labour_hours ?? 0) * (li.labour_rate ?? 0)
-  const labourSelling = labourCost * (1 + labourMarkup)
+  const labourSelling = labourCost * (1 + markup)
 
-  const costPerUnit   = matCost + hwCost + labourCost
-  const unitPrice     = markedUpMaterials + hwSelling + labourSelling
+  const costPerUnit   = compCost + labourCost
+  const unitPrice     = compSelling + labourSelling
   const lineTotal     = unitPrice * li.quantity
   const profitPerUnit = unitPrice - costPerUnit
   const marginPct     = unitPrice > 0 ? (profitPerUnit / unitPrice) * 100 : 0
@@ -52,8 +35,7 @@ function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
 }
 
 function hasPending(li: MfgQuoteLineItemDraft) {
-  return li.materials.some(m => m.supplier_quoted && (m.unit_cost === null || m.unit_cost === undefined))
-    || li.hardware.some(h => h.supplier_quoted && (h.unit_cost === null || h.unit_cost === undefined))
+  return li.components.some(c => c.supplier_quoted && (c.unit_cost === null || c.unit_cost === undefined))
 }
 
 const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
@@ -61,8 +43,8 @@ const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
   unit_price: 0, line_total: 0, markup_percentage: markup,
   cost_per_unit: 0, profit_per_unit: 0, margin_percentage: 0,
   option_label: null,
-  labour_hours: 0, labour_rate: 0, labour_markup_percentage: 0,
-  materials: [], hardware: [], cost_builder_open: true,
+  labour_hours: 0, labour_rate: 0,
+  components: [], cost_builder_open: true,
 })
 
 const OPTION_LABELS = ['Option A', 'Option B', 'Option C', 'Option D']
@@ -75,14 +57,13 @@ const OPTION_COLORS: Record<string, { bg: string; color: string }> = {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function PriceBookSelect({ items, itemType, onSelect, placeholder }: {
+function PriceBookSelect({ items, onSelect, placeholder }: {
   items: MfgPriceBookItem[]
-  itemType: 'material' | 'hardware'
   onSelect: (item: MfgPriceBookItem) => void
   placeholder: string
 }) {
   const [q, setQ] = useState('')
-  const filtered = items.filter(i => i.item_type === itemType && (i.name.toLowerCase().includes(q.toLowerCase())))
+  const filtered = items.filter(i => i.name.toLowerCase().includes(q.toLowerCase()))
   return (
     <div className="relative">
       <input value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder}
@@ -159,26 +140,27 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   ]
   interface CustomFormState {
     name: string; pbUnit: PbUnit; unitCustom: string; qty: string; cost: string
-    saveToPb: boolean; applyMarkup: boolean; supplierQuoted: boolean
-    category: MfgPriceBookCategory; supplierName: string; supplierContact: string; notes: string; saving: boolean
+    saveToPb: boolean; supplierQuoted: boolean
+    pbType: 'material' | 'hardware'; category: MfgPriceBookCategory
+    supplierName: string; supplierContact: string; notes: string; saving: boolean
   }
-  const BLANK_CUSTOM = (type: 'material' | 'hardware' = 'material'): CustomFormState => ({
+  const BLANK_CUSTOM = (): CustomFormState => ({
     name: '', pbUnit: 'piece', unitCustom: '', qty: '1', cost: '',
-    saveToPb: true, applyMarkup: false, supplierQuoted: false,
-    category: type === 'material' ? 'boards' : 'glass_mirrors',
+    saveToPb: true, supplierQuoted: false,
+    pbType: 'material', category: 'boards',
     supplierName: '', supplierContact: '', notes: '', saving: false,
   })
-  const [showCustomForm, setShowCustomForm] = useState<{ liIdx: number; type: 'material' | 'hardware' } | null>(null)
+  const [showCustomForm, setShowCustomForm] = useState<{ liIdx: number } | null>(null)
   const [customForm, setCustomForm] = useState<CustomFormState>(BLANK_CUSTOM())
 
-  function openCustomForm(liIdx: number, type: 'material' | 'hardware') {
-    setShowCustomForm({ liIdx, type })
-    setCustomForm(BLANK_CUSTOM(type))
+  function openCustomForm(liIdx: number) {
+    setShowCustomForm({ liIdx })
+    setCustomForm(BLANK_CUSTOM())
   }
 
   async function submitCustom() {
     if (!showCustomForm) return
-    const { liIdx, type } = showCustomForm
+    const { liIdx } = showCustomForm
     if (!customForm.name.trim()) return
     if (customForm.pbUnit === 'custom' && !customForm.unitCustom.trim()) return
     setCustomForm(f => ({ ...f, saving: true }))
@@ -191,14 +173,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          item_type:            type,
+          item_type:            customForm.pbType,
           category:             customForm.category,
           name:                 customForm.name.trim(),
           unit:                 customForm.pbUnit,
           unit_custom:          customForm.pbUnit === 'custom' ? customForm.unitCustom.trim() : null,
           cost_price:           customForm.supplierQuoted ? null : (customForm.cost ? parseFloat(customForm.cost) : null),
           supplier_quoted:      customForm.supplierQuoted,
-          apply_markup_default: customForm.applyMarkup,
+          apply_markup_default: false,
           supplier_name:        customForm.supplierName.trim() || null,
           supplier_contact:     customForm.supplierContact.trim() || null,
           notes:                customForm.notes.trim() || null,
@@ -210,35 +192,17 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
       }
     }
 
-    const cost = customForm.supplierQuoted ? null : (customForm.cost ? parseFloat(customForm.cost) : null)
-    const qty  = parseFloat(customForm.qty) || 1
-
-    if (type === 'material') {
-      const mat: MfgCostMaterialDraft = {
-        price_book_item_id: pbItemId,
-        item_name:       customForm.name.trim(),
-        unit:            displayUnit,
-        quantity:        qty,
-        unit_cost:       cost,
-        supplier_quoted: customForm.supplierQuoted,
-        sort_order:      lineItems[liIdx].materials.length,
-      }
-      updateLineItem(liIdx, { materials: [...lineItems[liIdx].materials, mat] })
-    } else {
-      const hw: MfgCostHardwareDraft = {
-        price_book_item_id: pbItemId,
-        item_name:         customForm.name.trim(),
-        unit:              displayUnit,
-        quantity:          qty,
-        unit_cost:         cost,
-        supplier_quoted:   customForm.supplierQuoted,
-        apply_markup:      customForm.applyMarkup,
-        markup_percentage: null,
-        sort_order:        lineItems[liIdx].hardware.length,
-      }
-      updateLineItem(liIdx, { hardware: [...lineItems[liIdx].hardware, hw] })
+    const comp: MfgCostComponentDraft = {
+      _type:              customForm.pbType,
+      price_book_item_id: pbItemId,
+      item_name:          customForm.name.trim(),
+      unit:               displayUnit,
+      quantity:           parseFloat(customForm.qty) || 1,
+      unit_cost:          customForm.supplierQuoted ? null : (customForm.cost ? parseFloat(customForm.cost) : null),
+      supplier_quoted:    customForm.supplierQuoted,
+      sort_order:         lineItems[liIdx].components.length,
     }
-
+    updateLineItem(liIdx, { components: [...lineItems[liIdx].components, comp] })
     setShowCustomForm(null)
   }
   const [currentStatus, setCurrentStatus] = useState(quote.status)
@@ -309,8 +273,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
         id: undefined,
         description: src.description ? `${src.description} (copy)` : '',
         cost_builder_open: false,
-        materials: src.materials.map(m => ({ ...m, id: undefined })),
-        hardware:  src.hardware.map(h => ({ ...h, id: undefined })),
+        components: src.components.map(c => ({ ...c, id: undefined })),
       }
       const next = [...prev]
       next.splice(idx + 1, 0, clone)
@@ -339,78 +302,65 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
   }
 
   function loadTemplate(idx: number, template: MfgLineItemTemplateFull) {
-    const materials: MfgCostMaterialDraft[] = template.materials.map(m => {
-      const pbItem = priceBook.find(p => p.id === m.price_book_item_id)
-      return {
-        price_book_item_id: m.price_book_item_id,
-        item_name: m.item_name,
-        unit: m.unit,
-        quantity: m.quantity,
-        unit_cost: pbItem?.supplier_quoted ? null : (pbItem?.cost_price ?? null),
-        supplier_quoted: pbItem?.supplier_quoted ?? false,
-        sort_order: m.sort_order,
-      }
-    })
-    const hardware: MfgCostHardwareDraft[] = template.hardware.map(h => {
-      const pbItem = priceBook.find(p => p.id === h.price_book_item_id)
-      return {
-        price_book_item_id: h.price_book_item_id,
-        item_name: h.item_name,
-        unit: h.unit,
-        quantity: h.quantity,
-        unit_cost: pbItem?.supplier_quoted ? null : (pbItem?.cost_price ?? null),
-        supplier_quoted: pbItem?.supplier_quoted ?? false,
-        apply_markup: h.apply_markup,
-        markup_percentage: null,
-        sort_order: h.sort_order,
-      }
-    })
+    const components: MfgCostComponentDraft[] = [
+      ...template.materials.map((m, i) => {
+        const pbItem = priceBook.find(p => p.id === m.price_book_item_id)
+        return {
+          _type: 'material' as const,
+          price_book_item_id: m.price_book_item_id,
+          item_name: m.item_name,
+          unit: m.unit,
+          quantity: m.quantity,
+          unit_cost: pbItem?.supplier_quoted ? null : (pbItem?.cost_price ?? null),
+          supplier_quoted: pbItem?.supplier_quoted ?? false,
+          sort_order: i,
+        }
+      }),
+      ...template.hardware.map((h, i) => {
+        const pbItem = priceBook.find(p => p.id === h.price_book_item_id)
+        return {
+          _type: 'hardware' as const,
+          price_book_item_id: h.price_book_item_id,
+          item_name: h.item_name,
+          unit: h.unit,
+          quantity: h.quantity,
+          unit_cost: pbItem?.supplier_quoted ? null : (pbItem?.cost_price ?? null),
+          supplier_quoted: pbItem?.supplier_quoted ?? false,
+          sort_order: template.materials.length + i,
+        }
+      }),
+    ]
     updateLineItem(idx, {
       description: template.description ?? '',
       callout_note: template.callout_note ?? '',
       markup_percentage: template.default_markup_percentage,
-      materials,
-      hardware,
+      components,
     })
   }
 
-  function addMaterial(liIdx: number, item: MfgPriceBookItem) {
-    const mat: MfgCostMaterialDraft = {
+  function addComponent(liIdx: number, item: MfgPriceBookItem) {
+    const comp: MfgCostComponentDraft = {
+      _type: item.item_type,
       price_book_item_id: item.id,
       item_name: item.name,
       unit: item.unit === 'custom' ? (item.unit_custom ?? item.unit) : item.unit,
       quantity: 1,
       unit_cost: item.supplier_quoted ? null : (item.cost_price ?? null),
       supplier_quoted: item.supplier_quoted,
-      sort_order: lineItems[liIdx].materials.length,
+      sort_order: lineItems[liIdx].components.length,
     }
-    updateLineItem(liIdx, { materials: [...lineItems[liIdx].materials, mat] })
-  }
-
-  function addHardware(liIdx: number, item: MfgPriceBookItem) {
-    const hw: MfgCostHardwareDraft = {
-      price_book_item_id: item.id,
-      item_name: item.name,
-      unit: item.unit === 'custom' ? (item.unit_custom ?? item.unit) : item.unit,
-      quantity: 1,
-      unit_cost: item.supplier_quoted ? null : (item.cost_price ?? null),
-      supplier_quoted: item.supplier_quoted,
-      apply_markup: item.apply_markup_default,
-      markup_percentage: null,
-      sort_order: lineItems[liIdx].hardware.length,
-    }
-    updateLineItem(liIdx, { hardware: [...lineItems[liIdx].hardware, hw] })
+    updateLineItem(liIdx, { components: [...lineItems[liIdx].components, comp] })
   }
 
   // Update unit cost and debounce a price book save for non-supplier-quoted items
-  function handleUnitCostChange(liIdx: number, section: 'materials' | 'hardware', itemIdx: number, newCost: number | null) {
-    const arr = section === 'materials' ? [...lineItems[liIdx].materials] : [...lineItems[liIdx].hardware]
-    const item = arr[itemIdx]
-    arr[itemIdx] = { ...item, unit_cost: newCost }
-    updateLineItem(liIdx, { [section]: arr })
+  function handleUnitCostChange(liIdx: number, compIdx: number, newCost: number | null) {
+    const comps = [...lineItems[liIdx].components]
+    const comp = comps[compIdx]
+    comps[compIdx] = { ...comp, unit_cost: newCost }
+    updateLineItem(liIdx, { components: comps })
 
-    if (!item.price_book_item_id || item.supplier_quoted || newCost === null) return
-    const pbId = item.price_book_item_id
+    if (!comp.price_book_item_id || comp.supplier_quoted || newCost === null) return
+    const pbId = comp.price_book_item_id
     clearTimeout(pbTimers.current[pbId])
     pbTimers.current[pbId] = setTimeout(async () => {
       await fetch(`/api/supplier-portal/manufacturing/price-book/${pbId}`, {
@@ -878,158 +828,59 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                     </span>
                   </div>
 
-                  {/* Materials */}
+                  {/* Components */}
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Materials</p>
-                    {li.materials.length > 0 && (
+                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Components</p>
+                    {li.components.length > 0 && (
                       <div className="rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${S.border}` }}>
-                        {li.materials.map((m, mIdx) => (
-                          <div key={mIdx} className="flex items-center gap-2 px-3 py-2 text-xs"
-                            style={{ background: m.supplier_quoted ? '#FFFBEB' : S.card, borderTop: mIdx > 0 ? `1px solid ${S.border}` : undefined }}>
-                            <span className="flex-1 truncate font-medium" style={{ color: S.text }}>{m.item_name}</span>
-                            <input type="number" min={0.01} step={0.01} value={m.quantity}
+                        {li.components.map((c, cIdx) => (
+                          <div key={cIdx} className="flex items-center gap-2 px-3 py-2 text-xs"
+                            style={{ background: c.supplier_quoted ? '#FFFBEB' : S.card, borderTop: cIdx > 0 ? `1px solid ${S.border}` : undefined }}>
+                            <span className="flex-1 truncate font-medium" style={{ color: S.text }}>{c.item_name}</span>
+                            <input type="number" min={0.01} step={0.01} value={c.quantity}
                               onChange={e => {
-                                const mats = [...li.materials]
-                                mats[mIdx] = { ...mats[mIdx], quantity: parseFloat(e.target.value) || 1 }
-                                updateLineItem(liIdx, { materials: mats })
+                                const comps = [...li.components]
+                                comps[cIdx] = { ...comps[cIdx], quantity: parseFloat(e.target.value) || 1 }
+                                updateLineItem(liIdx, { components: comps })
                               }}
                               disabled={isReadOnly}
                               className="w-16 px-2 py-0.5 rounded text-center outline-none"
                               style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                            <span style={{ color: S.muted }}>{m.unit}</span>
+                            <span style={{ color: S.muted }}>{c.unit}</span>
                             <div className="flex items-center gap-1">
                               <span className="text-[10px]" style={{ color: S.muted }}>R</span>
-                              <input type="number" value={m.unit_cost ?? ''} placeholder="price"
-                                onChange={e => handleUnitCostChange(liIdx, 'materials', mIdx, e.target.value === '' ? null : parseFloat(e.target.value))}
+                              <input type="number" value={c.unit_cost ?? ''} placeholder="price"
+                                onChange={e => handleUnitCostChange(liIdx, cIdx, e.target.value === '' ? null : parseFloat(e.target.value))}
                                 disabled={isReadOnly}
                                 className="w-20 px-2 py-0.5 rounded outline-none text-right"
                                 style={{
-                                  background: m.supplier_quoted ? '#FEF3C7' : S.input,
-                                  border: `1px solid ${m.price_book_item_id && pbSaved.has(m.price_book_item_id) ? '#16A34A' : m.supplier_quoted ? '#FDE68A' : S.border}`,
-                                  color: m.supplier_quoted ? '#92400E' : S.text,
+                                  background: c.supplier_quoted ? '#FEF3C7' : S.input,
+                                  border: `1px solid ${c.price_book_item_id && pbSaved.has(c.price_book_item_id) ? '#16A34A' : c.supplier_quoted ? '#FDE68A' : S.border}`,
+                                  color: c.supplier_quoted ? '#92400E' : S.text,
                                 }} />
-                              {m.price_book_item_id && pbSaved.has(m.price_book_item_id) && (
+                              {c.price_book_item_id && pbSaved.has(c.price_book_item_id) && (
                                 <span className="text-[9px]" style={{ color: '#16A34A' }}>✓</span>
                               )}
                             </div>
                             <span className="w-16 text-right font-semibold" style={{ color: S.text }}>
-                              {m.unit_cost ? fmtR(m.unit_cost * m.quantity) : '—'}
+                              {c.unit_cost ? fmtR(c.unit_cost * c.quantity) : '—'}
                             </span>
                             {!isReadOnly && (
-                              <button onClick={() => updateLineItem(liIdx, { materials: li.materials.filter((_, i) => i !== mIdx) })}
-                                style={{ color: S.muted }}><Trash2 size={11} /></button>
-                            )}
-                          </div>
-                        ))}
-                        {/* Materials subtotal + markup */}
-                        <div className="px-3 py-2 border-t space-y-1" style={{ borderColor: S.border, background: '#F8FAFC' }}>
-                          <div className="flex justify-between text-xs">
-                            <span style={{ color: S.muted }}>Materials subtotal</span>
-                            <span style={{ color: S.text }}>{fmtR(li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0))}</span>
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span style={{ color: S.muted }}>Markup {li.markup_percentage}%</span>
-                            <span style={{ color: S.text }}>
-                              {fmtR(li.materials.reduce((s,m) => s + (!m.unit_cost ? 0 : m.unit_cost * m.quantity), 0) * li.markup_percentage / 100)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {!isReadOnly && <PriceBookSelect items={priceBook} itemType="material" onSelect={item => addMaterial(liIdx, item)} placeholder="+ Add material from price book…" />}
-                    {!isReadOnly && (
-                      <button onClick={() => openCustomForm(liIdx, 'material')}
-                        className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
-                        style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
-                        onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
-                        onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
-                        + Add custom material
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Hardware */}
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Hardware & Finishes</p>
-                    {li.hardware.length > 0 && (
-                      <div className="rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${S.border}` }}>
-                        {li.hardware.map((h, hIdx) => (
-                          <div key={hIdx} className="flex items-center gap-2 px-3 py-2 text-xs"
-                            style={{ background: h.supplier_quoted ? '#FFFBEB' : S.card, borderTop: hIdx > 0 ? `1px solid ${S.border}` : undefined }}>
-                            <span className="flex-1 truncate font-medium" style={{ color: S.text }}>{h.item_name}</span>
-                            <input type="number" min={0.01} step={0.01} value={h.quantity}
-                              onChange={e => {
-                                const hws = [...li.hardware]
-                                hws[hIdx] = { ...hws[hIdx], quantity: parseFloat(e.target.value) || 1 }
-                                updateLineItem(liIdx, { hardware: hws })
-                              }}
-                              disabled={isReadOnly}
-                              className="w-16 px-2 py-0.5 rounded text-center outline-none"
-                              style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                            <span style={{ color: S.muted }}>{h.unit}</span>
-                            {/* Markup toggle + per-item % */}
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => {
-                                  const hws = [...li.hardware]
-                                  hws[hIdx] = { ...hws[hIdx], apply_markup: !hws[hIdx].apply_markup }
-                                  updateLineItem(liIdx, { hardware: hws })
-                                }}
-                                disabled={isReadOnly}
-                                className="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors whitespace-nowrap"
-                                style={{ background: h.apply_markup ? '#EFF6FF' : S.input, color: h.apply_markup ? S.accent : S.muted }}>
-                                {h.apply_markup ? 'markup' : 'at cost'}
-                              </button>
-                              {h.apply_markup && (
-                                <div className="flex items-center gap-0.5">
-                                  <input type="number" min={0} max={200} step={1}
-                                    value={h.markup_percentage !== null && h.markup_percentage !== undefined ? h.markup_percentage : ''}
-                                    placeholder={String(li.markup_percentage)}
-                                    onChange={e => {
-                                      const hws = [...li.hardware]
-                                      hws[hIdx] = { ...hws[hIdx], markup_percentage: e.target.value === '' ? null : parseFloat(e.target.value) }
-                                      updateLineItem(liIdx, { hardware: hws })
-                                    }}
-                                    disabled={isReadOnly}
-                                    className="w-10 px-1 py-0.5 rounded outline-none text-center text-[10px]"
-                                    style={{ background: '#EFF6FF', border: `1px solid rgba(27,79,138,0.2)`, color: S.accent }} />
-                                  <span className="text-[10px]" style={{ color: S.accent }}>%</span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[10px]" style={{ color: S.muted }}>R</span>
-                              <input type="number" value={h.unit_cost ?? ''} placeholder="price"
-                                onChange={e => handleUnitCostChange(liIdx, 'hardware', hIdx, e.target.value === '' ? null : parseFloat(e.target.value))}
-                                disabled={isReadOnly}
-                                className="w-20 px-2 py-0.5 rounded outline-none text-right"
-                                style={{
-                                  background: h.supplier_quoted ? '#FEF3C7' : S.input,
-                                  border: `1px solid ${h.price_book_item_id && pbSaved.has(h.price_book_item_id) ? '#16A34A' : h.supplier_quoted ? '#FDE68A' : S.border}`,
-                                  color: h.supplier_quoted ? '#92400E' : S.text,
-                                }} />
-                              {h.price_book_item_id && pbSaved.has(h.price_book_item_id) && (
-                                <span className="text-[9px]" style={{ color: '#16A34A' }}>✓</span>
-                              )}
-                            </div>
-                            <span className="w-16 text-right font-semibold" style={{ color: S.text }}>
-                              {h.unit_cost ? fmtR(h.unit_cost * h.quantity) : '—'}
-                            </span>
-                            {!isReadOnly && (
-                              <button onClick={() => updateLineItem(liIdx, { hardware: li.hardware.filter((_, i) => i !== hIdx) })}
+                              <button onClick={() => updateLineItem(liIdx, { components: li.components.filter((_, i) => i !== cIdx) })}
                                 style={{ color: S.muted }}><Trash2 size={11} /></button>
                             )}
                           </div>
                         ))}
                       </div>
                     )}
-                    {!isReadOnly && <PriceBookSelect items={priceBook} itemType="hardware" onSelect={item => addHardware(liIdx, item)} placeholder="+ Add hardware from price book…" />}
+                    {!isReadOnly && <PriceBookSelect items={priceBook} onSelect={item => addComponent(liIdx, item)} placeholder="+ Search components…" />}
                     {!isReadOnly && (
-                      <button onClick={() => openCustomForm(liIdx, 'hardware')}
+                      <button onClick={() => openCustomForm(liIdx)}
                         className="mt-2 w-full py-2 rounded-lg text-xs font-medium transition-colors"
                         style={{ color: S.muted, background: S.input, border: `1px dashed ${S.border}` }}
                         onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
                         onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
-                        + Add custom hardware
+                        + Add custom component
                       </button>
                     )}
                   </div>
@@ -1056,26 +907,18 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                           style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
                         <span className="text-xs" style={{ color: S.muted }}>/hr</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <input type="number" min={0} step={1} value={li.labour_markup_percentage ?? 0}
-                          onChange={e => updateLineItem(liIdx, { labour_markup_percentage: parseFloat(e.target.value) || 0 })}
-                          disabled={isReadOnly}
-                          className="w-16 px-2 py-1.5 text-sm rounded-lg outline-none text-center"
-                          style={{ background: (li.labour_markup_percentage ?? 0) !== li.markup_percentage ? '#FEF3C7' : S.input, border: `1.5px solid ${(li.labour_markup_percentage ?? 0) !== li.markup_percentage ? '#FDE68A' : S.border}`, color: S.text }} />
-                        <span className="text-xs" style={{ color: S.muted }}>% markup</span>
-                      </div>
                       {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 ? (
                         <span className="ml-auto text-xs font-semibold" style={{ color: S.text }}>
                           = {fmtR((li.labour_hours ?? 0) * (li.labour_rate ?? 0))} at cost
                         </span>
                       ) : (
-                        <span className="ml-auto text-xs" style={{ color: S.muted }}>enter hours &amp; rate if applicable</span>
+                        <span className="ml-auto text-xs" style={{ color: S.muted }}>enter if applicable</span>
                       )}
                     </div>
                   </div>
 
                   {/* Cost summary */}
-                  {(li.materials.length > 0 || li.hardware.length > 0 || (li.labour_hours ?? 0) > 0) && (
+                  {(li.components.length > 0 || (li.labour_hours ?? 0) > 0) && (
                     <div className="rounded-xl p-4 space-y-1.5" style={{ background: '#EFF6FF', border: `1px solid rgba(27,79,138,0.15)` }}>
                       {(li.labour_hours ?? 0) > 0 && (li.labour_rate ?? 0) > 0 && (
                         <div className="flex justify-between text-xs pb-1.5" style={{ borderBottom: `1px dashed rgba(27,79,138,0.15)` }}>
@@ -1256,21 +1099,32 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
         </div>
       )}
 
-      {/* Add Custom Item Modal */}
+      {/* Add Custom Component Modal */}
       {showCustomForm && (() => {
-        const { type } = showCustomForm
-        const cats = type === 'material' ? MATERIAL_CATS : HARDWARE_CATS
+        const allCats = [...MATERIAL_CATS, ...HARDWARE_CATS]
+        const cats = customForm.pbType === 'material' ? MATERIAL_CATS : HARDWARE_CATS
         const canSave = customForm.name.trim() !== '' && !(customForm.pbUnit === 'custom' && !customForm.unitCustom.trim())
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setShowCustomForm(null)}>
             <div className="rounded-2xl p-6 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]" style={{ background: S.card }} onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-bold" style={{ color: S.text }}>
-                  {type === 'material' ? 'Add Custom Material' : 'Add Custom Hardware'}
-                </h3>
+                <h3 className="text-base font-bold" style={{ color: S.text }}>Add Custom Component</h3>
                 <button onClick={() => setShowCustomForm(null)} style={{ color: S.muted }}>✕</button>
               </div>
               <div className="grid grid-cols-2 gap-4">
+                {/* Type toggle (for price book categorisation) */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Type</label>
+                  <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+                    {(['material', 'hardware'] as const).map(t => (
+                      <button key={t} onClick={() => setCustomForm(f => ({ ...f, pbType: t, category: t === 'material' ? 'boards' : 'glass_mirrors' }))}
+                        className="flex-1 py-2 text-xs font-semibold capitalize transition-colors"
+                        style={{ background: customForm.pbType === t ? S.accent : S.card, color: customForm.pbType === t ? '#fff' : S.muted }}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {/* Category */}
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Category</label>
@@ -1284,7 +1138,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Name</label>
                   <input value={customForm.name} onChange={e => setCustomForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder={type === 'material' ? 'e.g. 18mm Oak Veneer MDF' : 'e.g. Soft-close hinge pair'}
+                    placeholder="e.g. 18mm Oak Veneer MDF"
                     autoFocus
                     className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
                     style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
@@ -1347,7 +1201,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 </div>
                 {/* Cost price */}
                 {!customForm.supplierQuoted && (
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Cost Price (R)</label>
                     <input type="number" min={0} step={0.01} value={customForm.cost} onChange={e => setCustomForm(f => ({ ...f, cost: e.target.value }))}
                       placeholder="0.00"
@@ -1355,18 +1209,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                       style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
                   </div>
                 )}
-                {/* Apply markup */}
-                <div className="flex items-end pb-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <div onClick={() => setCustomForm(f => ({ ...f, applyMarkup: !f.applyMarkup }))}
-                      className="relative rounded-full transition-colors flex-shrink-0"
-                      style={{ background: customForm.applyMarkup ? S.accent : S.border, width: 36, height: 20 }}>
-                      <div className="absolute top-0.5 transition-transform rounded-full bg-white shadow"
-                        style={{ width: 16, height: 16, left: 2, transform: customForm.applyMarkup ? 'translateX(16px)' : 'translateX(0)' }} />
-                    </div>
-                    <span className="text-sm" style={{ color: S.text }}>Apply markup by default</span>
-                  </label>
-                </div>
                 {/* Supplier info */}
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Supplier (optional)</label>
@@ -1406,7 +1248,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook, settings, 
                 <button onClick={() => void submitCustom()} disabled={!canSave || customForm.saving}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: S.accent }}>
-                  <Check size={14} /> {customForm.saving ? 'Adding…' : type === 'material' ? 'Add Material' : 'Add Hardware'}
+                  <Check size={14} /> {customForm.saving ? 'Adding…' : 'Add Component'}
                 </button>
                 <button onClick={() => setShowCustomForm(null)} className="px-4 py-2.5 rounded-xl text-sm font-medium" style={{ color: S.muted }}>Cancel</button>
               </div>
