@@ -471,11 +471,11 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 )}
                 {!isReadOnly && (
                   <>
-                    <button onClick={() => duplicateLineItem(liIdx)} title="Duplicate"
-                      className="p-1.5 rounded-lg transition-colors" style={{ color: S.muted }}
+                    <button onClick={() => duplicateLineItem(liIdx)}
+                      className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs transition-colors" style={{ color: S.muted }}
                       onMouseEnter={e => (e.currentTarget.style.color = S.accent)}
                       onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
-                      <Copy size={14} />
+                      <Copy size={12} /> Duplicate
                     </button>
                     <button onClick={() => removeLineItem(liIdx)}
                       className="p-1.5 rounded-lg transition-colors" style={{ color: S.muted }}
