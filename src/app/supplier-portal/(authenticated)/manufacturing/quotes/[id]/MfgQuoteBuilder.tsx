@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { fmtR } from '@/lib/mfg-format'
 import {
   Plus, Trash2, Check, AlertTriangle, Save,
-  Send, FileDown, RefreshCw, ArrowLeft, Eye, EyeOff, Copy, Loader2, Archive, X
+  Send, FileDown, RefreshCw, ArrowLeft, Copy, Loader2, Archive, X
 } from 'lucide-react'
 import type { MfgPriceBookItem, MfgSettings, MfgLineItemTemplateFull, MfgQuoteLineItemDraft, MfgCostComponentDraft } from '@/lib/mfg-types'
 
@@ -93,9 +93,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
     initialLineItems.length ? initialLineItems.map(li => ({ ...li, cost_builder_open: false })) : []
   )
   const [costBuilderModal, setCostBuilderModal] = useState<number | null>(null)
-  const [showInternalView, setShowInternalView] = useState(false)
   const [applyVat, setApplyVat]     = useState(quote.apply_vat)
-  const [showUnitPrice, setShowUnitPrice] = useState(quote.show_unit_price ?? false)
   const [vatRate] = useState(quote.vat_rate)
   const [saving, setSaving]       = useState(false)
   const [sending, setSending]     = useState(false)
@@ -301,11 +299,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
     await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) })
   }
 
-  async function toggleShowUnitPrice() {
-    const next = !showUnitPrice
-    setShowUnitPrice(next)
-    await patchQuoteField({ show_unit_price: next })
-  }
+
 
   const handleSave = useCallback(async (quiet = false) => {
     if (!quiet) setSaving(true)
@@ -447,11 +441,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                     {pending ? '—' : fmt(li.line_total)}
                   </span>
                 </div>
-                {showInternalView && (
-                  <span className="ml-auto text-xs px-2 py-1 rounded-lg" style={{ background: '#F0FDF4', color: '#16A34A' }}>
-                    Margin: {li.margin_percentage.toFixed(1)}% · Profit: {fmt(li.profit_per_unit * li.quantity)}
-                  </span>
-                )}
               </div>
             </div>
             <div className="flex items-center gap-1 flex-shrink-0 mt-1">
@@ -507,6 +496,13 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               )}
             </div>
           </div>
+          {li.margin_percentage > 0 && (
+            <div className="px-5 pb-3 flex items-center gap-2">
+              <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: '#F0FDF4', color: '#16A34A' }}>
+                {li.margin_percentage.toFixed(1)}% margin · {fmt(li.profit_per_unit * li.quantity)} profit
+              </span>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -553,20 +549,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 </button>
               ))}
             </div>
-          )}
-          <button onClick={() => setShowInternalView(v => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-            style={{ background: showInternalView ? '#EFF6FF' : S.input, color: showInternalView ? S.accent : S.muted, border: `1px solid ${S.border}` }}>
-            {showInternalView ? <EyeOff size={12} /> : <Eye size={12} />}
-            {showInternalView ? 'Hide margins' : 'Show margins'}
-          </button>
-          {!isReadOnly && (
-            <button onClick={() => void toggleShowUnitPrice()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ background: showUnitPrice ? '#F0FDF4' : S.input, color: showUnitPrice ? '#16A34A' : S.muted, border: `1px solid ${showUnitPrice ? '#BBF7D0' : S.border}` }}>
-              <FileDown size={12} />
-              {showUnitPrice ? 'Unit price: on' : 'Unit price: off'}
-            </button>
           )}
           {!isReadOnly && (
             <>
@@ -668,7 +650,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
       {/* Totals */}
       <div className="rounded-2xl p-6 mb-8" style={{ background: S.card, border: `1px solid ${S.border}` }}>
         <div className="space-y-2 max-w-sm ml-auto">
-          {showInternalView && (
+          {totalCost > 0 && (
             <>
               <div className="flex justify-between text-xs pb-2" style={{ borderBottom: `1px dashed ${S.border}` }}>
                 <span style={{ color: S.muted }}>Total cost (line items)</span>
@@ -863,7 +845,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                     <span className="text-xs font-semibold" style={{ color: S.text }}>
                       Selling {pending ? '—' : fmt(li.unit_price)}
                     </span>
-                    {showInternalView && li.profit_per_unit > 0 && (
+                    {li.profit_per_unit > 0 && (
                       <>
                         <span className="text-xs" style={{ color: S.border }}>·</span>
                         <span className="text-xs font-semibold" style={{ color: '#16A34A' }}>
