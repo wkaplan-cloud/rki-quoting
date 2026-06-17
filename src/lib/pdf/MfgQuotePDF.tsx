@@ -197,25 +197,18 @@ export function MfgQuotePDF(props: MfgPDFProps) {
 
         {/* Line items */}
         {(() => {
+          const hasOptions  = lineItems.some(li => !!li.option_label)
           const baseItems   = lineItems.filter(li => !li.option_label)
-          const optionItems = lineItems.filter(li => li.option_label)
-          const optionGroups = [...new Set(optionItems.map(li => li.option_label))] as string[]
-          const hasOptions  = optionGroups.length > 0
           const baseSubtotal = baseItems.reduce((s, li) => s + li.line_total, 0)
-          const baseVat      = applyVat ? baseSubtotal * (vatRate / 100) : 0
-          const baseTotal    = baseSubtotal + baseVat
 
-          const ACCENT_COLORS: Record<string, string> = {
-            'Option A': '#1D4ED8',
-            'Option B': '#15803D',
-            'Option C': '#C2410C',
-            'Option D': '#7E22CE',
-          }
-          const ACCENT_BG: Record<string, string> = {
-            'Option A': '#DBEAFE',
-            'Option B': '#DCFCE7',
-            'Option C': '#FFEDD5',
-            'Option D': '#F3E8FF',
+          // Pre-compute subtotal at the end of each contiguous optional block
+          const blockEndSubtotal: Record<number, number> = {}
+          let blockSum = 0
+          let inBlock = false
+          for (let i = 0; i <= lineItems.length; i++) {
+            const isOpt = i < lineItems.length && !!lineItems[i].option_label
+            if (isOpt) { inBlock = true; blockSum += lineItems[i].line_total }
+            else if (inBlock) { blockEndSubtotal[i - 1] = blockSum; blockSum = 0; inBlock = false }
           }
 
           return (
@@ -228,46 +221,37 @@ export function MfgQuotePDF(props: MfgPDFProps) {
                 <Text style={[s.th, { width: showUnitPrice ? 64 : 72, textAlign: 'right' }]}>TOTAL</Text>
               </View>
 
-              {baseItems.map((li, idx) => (
-                <View key={li.id ?? idx} style={[s.row, idx % 2 === 1 ? s.rowAlt : {}]} wrap={false}>
-                  <Text style={s.itemNum}>{idx + 1}</Text>
-                  <View style={s.desc}>
-                    <Text>{li.description}</Text>
-                    {li.callout_note && <Text style={s.callout}>⚠ {li.callout_note}</Text>}
-                  </View>
-                  <Text style={[s.qty, { width: showUnitPrice ? 28 : 36 }]}>{li.quantity}</Text>
-                  {showUnitPrice && <Text style={[s.amt, { width: 64 }]}>{li.unit_price > 0 ? fmtR(li.unit_price) : 'TBC'}</Text>}
-                  <Text style={[s.amt, { width: showUnitPrice ? 64 : 72 }]}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
-                </View>
-              ))}
-
-              {hasOptions && optionGroups.map(label => {
-                const items = optionItems.filter(li => li.option_label === label)
-                const grpSubtotal = items.reduce((s, li) => s + li.line_total, 0)
-                const optAccent = ACCENT_COLORS[label] ?? accent
-                const optBg     = ACCENT_BG[label] ?? '#F4F4F5'
+              {lineItems.map((li, idx) => {
+                const prevIsOpt = idx > 0 && !!lineItems[idx - 1].option_label
+                const isFirstInBlock = !!li.option_label && !prevIsOpt
+                const isLastInBlock  = blockEndSubtotal[idx] !== undefined
+                const baseAltIdx     = baseItems.indexOf(li)
                 return (
-                  <View key={label} style={s.optSection} wrap={false}>
-                    <View style={s.optHead}>
-                      <Text style={[s.optLabel, { backgroundColor: optBg, color: optAccent }]}>SELECT AN OPTION</Text>
-                    </View>
-                    {items.map((li, idx) => (
-                      <View key={li.id ?? idx} style={[s.row, { backgroundColor: idx % 2 === 0 ? '#FAFAFA' : '#FFFFFF' }]} wrap={false}>
-                        <Text style={[s.itemNum, { color: optAccent }]}>{baseItems.length + lineItems.filter(x => x.option_label === label).indexOf(li) + 1}</Text>
-                        <View style={s.desc}>
-                          <Text>{li.description}</Text>
-                          {li.callout_note && <Text style={s.callout}>⚠ {li.callout_note}</Text>}
+                  <React.Fragment key={li.id ?? idx}>
+                    {isFirstInBlock && (
+                      <View style={s.optSection}>
+                        <View style={s.optHead}>
+                          <Text style={[s.optLabel, { backgroundColor: '#DBEAFE', color: accent }]}>SELECT AN OPTION</Text>
                         </View>
-                        <Text style={[s.qty, { width: showUnitPrice ? 28 : 36 }]}>{li.quantity}</Text>
-                        {showUnitPrice && <Text style={[s.amt, { width: 64 }]}>{li.unit_price > 0 ? fmtR(li.unit_price) : 'TBC'}</Text>}
-                        <Text style={[s.amt, { width: showUnitPrice ? 64 : 72 }]}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
                       </View>
-                    ))}
-                    <View style={s.optSub}>
-                      <Text style={s.optSubLabel}>Option subtotal</Text>
-                      <Text style={[s.optSubVal, { color: optAccent }]}>{fmtR(grpSubtotal)}</Text>
+                    )}
+                    <View style={[s.row, li.option_label ? { backgroundColor: '#F0F7FF' } : (baseAltIdx % 2 === 1 ? s.rowAlt : {})]} wrap={false}>
+                      <Text style={[s.itemNum, li.option_label ? { color: accent } : {}]}>{idx + 1}</Text>
+                      <View style={s.desc}>
+                        <Text>{li.description}</Text>
+                        {li.callout_note && <Text style={s.callout}>⚠ {li.callout_note}</Text>}
+                      </View>
+                      <Text style={[s.qty, { width: showUnitPrice ? 28 : 36 }]}>{li.quantity}</Text>
+                      {showUnitPrice && <Text style={[s.amt, { width: 64 }]}>{li.unit_price > 0 ? fmtR(li.unit_price) : 'TBC'}</Text>}
+                      <Text style={[s.amt, { width: showUnitPrice ? 64 : 72 }]}>{li.line_total > 0 ? fmtR(li.line_total) : 'TBC'}</Text>
                     </View>
-                  </View>
+                    {isLastInBlock && (
+                      <View style={s.optSub}>
+                        <Text style={s.optSubLabel}>Option subtotal</Text>
+                        <Text style={[s.optSubVal, { color: accent }]}>{fmtR(blockEndSubtotal[idx])}</Text>
+                      </View>
+                    )}
+                  </React.Fragment>
                 )
               })}
 
