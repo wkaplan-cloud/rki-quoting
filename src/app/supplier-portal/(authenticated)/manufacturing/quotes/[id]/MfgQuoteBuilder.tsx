@@ -443,66 +443,71 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-1 flex-shrink-0 mt-1">
-              {templates.length > 0 && !isReadOnly && (
-                <div className="relative group">
-                  <button className="p-1.5 rounded-lg text-xs flex items-center gap-1"
-                    style={{ color: S.muted, background: S.input }}>
-                    <Copy size={12} /> Template
-                  </button>
-                  <div className="absolute right-0 top-full mt-1 hidden group-hover:block z-50 rounded-xl shadow-lg overflow-hidden min-w-[200px]"
-                    style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                    {templates.map(t => (
-                      <button key={t.id} onClick={() => loadTemplate(liIdx, t)}
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-gray-50 transition-colors"
-                        style={{ color: S.text }}>
-                        {t.template_name}
-                      </button>
-                    ))}
+            <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-1">
+              {/* Top row: template + icon actions */}
+              <div className="flex items-center gap-1">
+                {templates.length > 0 && !isReadOnly && (
+                  <div className="relative group">
+                    <button className="p-1.5 rounded-lg text-xs flex items-center gap-1"
+                      style={{ color: S.muted, background: S.input }}>
+                      <Copy size={12} /> Template
+                    </button>
+                    <div className="absolute right-0 top-full mt-1 hidden group-hover:block z-50 rounded-xl shadow-lg overflow-hidden min-w-[200px]"
+                      style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                      {templates.map(t => (
+                        <button key={t.id} onClick={() => loadTemplate(liIdx, t)}
+                          className="w-full text-left px-4 py-2 text-xs hover:bg-gray-50 transition-colors"
+                          style={{ color: S.text }}>
+                          {t.template_name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-              <button onClick={() => setCostBuilderModal(liIdx)}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                style={{ color: S.accent, background: '#EFF6FF' }}>
-                Build cost →
-              </button>
-              {!isReadOnly && (
-                <button onClick={() => toggleOptionItem(liIdx)}
-                  className="px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors"
-                  style={{
-                    background: isOption ? '#D1FAE5' : S.input,
-                    color: isOption ? '#065F46' : S.muted,
-                    border: `1px solid ${isOption ? '#6EE7B7' : S.border}`,
-                  }}>
-                  {isOption ? '✓ Optional' : 'Option'}
+                )}
+                {!isReadOnly && (
+                  <>
+                    <button onClick={() => duplicateLineItem(liIdx)} title="Duplicate"
+                      className="p-1.5 rounded-lg transition-colors" style={{ color: S.muted }}
+                      onMouseEnter={e => (e.currentTarget.style.color = S.accent)}
+                      onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
+                      <Copy size={14} />
+                    </button>
+                    <button onClick={() => removeLineItem(liIdx)}
+                      className="p-1.5 rounded-lg transition-colors" style={{ color: S.muted }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#DC2626')}
+                      onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
+                      <Trash2 size={14} />
+                    </button>
+                  </>
+                )}
+              </div>
+              {/* Build cost + Option pill */}
+              <div className="flex items-center gap-1">
+                <button onClick={() => setCostBuilderModal(liIdx)}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{ color: S.accent, background: '#EFF6FF' }}>
+                  Build cost →
                 </button>
-              )}
-              {!isReadOnly && (
-                <>
-                  <button onClick={() => duplicateLineItem(liIdx)} title="Duplicate"
-                    className="p-1.5 rounded-lg transition-colors" style={{ color: S.muted }}
-                    onMouseEnter={e => (e.currentTarget.style.color = S.accent)}
-                    onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
-                    <Copy size={14} />
+                {!isReadOnly && (
+                  <button onClick={() => toggleOptionItem(liIdx)}
+                    className="px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors"
+                    style={{
+                      background: isOption ? '#D1FAE5' : S.input,
+                      color: isOption ? '#065F46' : S.muted,
+                      border: `1px solid ${isOption ? '#6EE7B7' : S.border}`,
+                    }}>
+                    {isOption ? '✓ Optional' : 'Option'}
                   </button>
-                  <button onClick={() => removeLineItem(liIdx)}
-                    className="p-1.5 rounded-lg transition-colors" style={{ color: S.muted }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#DC2626')}
-                    onMouseLeave={e => (e.currentTarget.style.color = S.muted)}>
-                    <Trash2 size={14} />
-                  </button>
-                </>
+                )}
+              </div>
+              {/* Margin — sits directly below Build cost + Option */}
+              {li.margin_percentage > 0 && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full self-start" style={{ background: '#F0FDF4', color: '#16A34A' }}>
+                  {li.margin_percentage.toFixed(1)}% · {fmt(li.profit_per_unit * li.quantity)}
+                </span>
               )}
             </div>
           </div>
-          {li.margin_percentage > 0 && (
-            <div className="px-5 pb-3 flex items-center gap-2">
-              <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: '#F0FDF4', color: '#16A34A' }}>
-                {li.margin_percentage.toFixed(1)}% margin · {fmt(li.profit_per_unit * li.quantity)} profit
-              </span>
-            </div>
-          )}
         </div>
       </div>
     )
