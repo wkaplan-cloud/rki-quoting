@@ -19,8 +19,8 @@ const PAGE_SIZE    = 50  // confirmed API max
 const START_YEAR = 2000
 const END_YEAR   = new Date().getFullYear()
 
-// 6s time budget — safe inside Vercel Hobby's 10s hard kill, leaving room for DB writes.
-const TIME_LIMIT_MS = 6_000
+// 50s time budget — safe inside Vercel Hobby's 60s function limit, leaving room for DB writes.
+const TIME_LIMIT_MS = 50_000
 
 function twinbruHeaders() {
   return {
