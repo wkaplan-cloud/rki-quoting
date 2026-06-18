@@ -25,7 +25,7 @@ export default async function NotASupplierPage() {
 
         <div className="flex flex-col gap-3">
           <a
-            href="/api/auth/signout"
+            href="/api/auth/signout?redirect=/supplier-portal/login"
             className="w-full py-2.5 text-sm font-semibold rounded-lg"
             style={{ background: '#18181B', color: '#fff' }}
           >
