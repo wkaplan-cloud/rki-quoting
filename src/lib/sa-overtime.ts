@@ -111,9 +111,15 @@ export function punchesToBreakdown(punches: MinimalPunch[], now = new Date()): H
     if (outP) {
       clockOut = new Date(outP.punched_at)
     } else {
-      // No clock_out yet: cap at 5pm SAST on the day of clock-in
+      // No clock_out yet: cap at 5pm SAST only if clocked in before 5pm
+      // (after-hours clock-ins must not be capped — cutoff is already in the past)
       const cutoff = get5pmSASTCutoff(new Date(inP.punched_at))
-      clockOut = now < cutoff ? now : cutoff
+      const clockInMs = new Date(inP.punched_at).getTime()
+      if (clockInMs < cutoff.getTime()) {
+        clockOut = now < cutoff ? now : cutoff
+      } else {
+        clockOut = now
+      }
     }
     const b = calcHourBreakdown(new Date(inP.punched_at), clockOut)
     normalMs   += b.normalMs

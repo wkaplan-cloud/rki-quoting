@@ -62,11 +62,12 @@ function computeHoursMs(punches: Punch[], staffId?: string): number {
       delete openSessions[p.staff_id]
     }
   }
-  // Add open sessions, capped at 5pm SAST on the day of clock-in
+  // Add open sessions, capped at 5pm SAST only if clocked in before 5pm
   const nowMs = Date.now()
   for (const t of Object.values(openSessions)) {
     const cutoff = get5pmSASTCutoff(new Date(t)).getTime()
-    total += Math.min(nowMs, cutoff) - t
+    const effectiveTo = t < cutoff ? Math.min(nowMs, cutoff) : nowMs
+    total += effectiveTo - t
   }
   return total
 }
@@ -179,8 +180,12 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
         ) : (
           onSite.map((s, i) => {
             const clockedAt  = getClockedInAt(todayPunches, s.id)
-            const elapsedCap = clockedAt ? get5pmSASTCutoff(new Date(clockedAt)).getTime() : 0
-            const elapsed    = clockedAt ? Math.min(Date.now(), elapsedCap) - new Date(clockedAt).getTime() : 0
+            const clockedAtMs  = clockedAt ? new Date(clockedAt).getTime() : 0
+            const elapsedCap   = clockedAt ? get5pmSASTCutoff(new Date(clockedAt)).getTime() : 0
+            const effectiveTo  = clockedAt
+              ? (clockedAtMs < elapsedCap ? Math.min(Date.now(), elapsedCap) : Date.now())
+              : 0
+            const elapsed      = clockedAt ? effectiveTo - clockedAtMs : 0
             const loc        = getLastLocation(todayPunches, s.id)
             return (
               <div key={s.id} className="flex items-center gap-4 px-5 py-4"
