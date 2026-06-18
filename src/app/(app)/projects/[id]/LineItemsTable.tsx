@@ -679,7 +679,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       onBlur={v => saveField(item.id, 'description', v)}
                       placeholder="Description"
                       className={INPUT}
-                      readOnly={locked}
                     />
                     {!locked && item.twinbru_product_id && (
                       <div className="relative mt-0.5">
