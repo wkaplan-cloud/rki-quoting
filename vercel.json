@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/load-catalogue",    "schedule": "0 2 * * *"  },
-    { "path": "/api/cron/sync-prices",       "schedule": "20 2 * * *" }
+    { "path": "/api/cron/sync-prices",       "schedule": "20 2 * * *" },
+    { "path": "/api/cron/auto-clockout",     "schedule": "0 15 * * *" }
   ]
 }
