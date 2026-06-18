@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse, after } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 300
@@ -9,13 +9,18 @@ const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
 const PAGE_SIZE    = 50  // confirmed API max
 
 // Strategy confirmed by Robin (Twinbru):
-// Loop years 2000→current, filter: "status.eq.RN/launch.in(YYYYxx-YYYYxx)"
+// Loop years current→2000 (newest first so recent fabrics are found immediately),
+// filter: "status.eq.RN/launch.in(YYYYxx-YYYYxx)"
 // Each year stays under the 10,000 result hard limit.
 // Pagination via totalPageCount in response.
 // RESUME token: "RESUME:<year>:<page>"
+// Designed for Vercel Hobby (10s function limit) + cron-job.org firing every 10 min.
 
 const START_YEAR = 2000
 const END_YEAR   = new Date().getFullYear()
+
+// 6s time budget — safe inside Vercel Hobby's 10s hard kill, leaving room for DB writes.
+const TIME_LIMIT_MS = 6_000
 
 function twinbruHeaders() {
   return {
@@ -69,6 +74,29 @@ function extractProducts(data: unknown): { items: Record<string, unknown>[], tot
   return { items, totalPageCount }
 }
 
+// Check which product_ids in the batch already exist, then insert only new ones.
+// Much faster than loading all known IDs upfront — only queries what we're about to insert.
+async function insertNewOnly(
+  batch: Record<string, unknown>[],
+  priceListId: string,
+  supabase: ReturnType<typeof createClient>,
+): Promise<number> {
+  if (batch.length === 0) return 0
+  const pids = batch.map(b => b.product_id).filter((p): p is string => typeof p === 'string' && p.length > 0)
+  if (pids.length > 0) {
+    const { data: existing } = await supabase
+      .from('price_list_items')
+      .select('product_id')
+      .eq('price_list_id', priceListId)
+      .in('product_id', pids)
+    const existingSet = new Set((existing ?? []).map((r: { product_id: string }) => r.product_id))
+    batch = batch.filter(b => !b.product_id || !existingSet.has(b.product_id as string))
+  }
+  if (batch.length === 0) return 0
+  await supabase.from('price_list_items').insert(batch)
+  return batch.length
+}
+
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -104,8 +132,10 @@ export async function GET(req: NextRequest) {
 
   try {
     // ── Resolve resume position ───────────────────────────────────────────────
+    // 'manual' trigger always restarts from END_YEAR (full rescan from newest).
+    // 'cron' and 'continue' pick up from the last saved resume token.
     const useResume = triggeredBy === 'cron' || triggeredBy === 'continue'
-    let startYear = START_YEAR
+    let startYear = END_YEAR  // scan newest-first so recent fabrics are found immediately
     let startPage = 1
 
     if (useResume) {
@@ -123,7 +153,6 @@ export async function GET(req: NextRequest) {
         const parts = resumeLog.error_message.slice(7).split(':')
         const year = parseInt(parts[0], 10)
         const page = parseInt(parts[1], 10)
-        // Reject stale/corrupt tokens: year must be a plausible calendar year and page ≤ 1000
         if (!isNaN(year) && year >= 1990 && !isNaN(page) && page >= 1 && page <= 1000) {
           startYear = year
           startPage = page
@@ -131,32 +160,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ── Load existing product_ids to skip duplicates ──────────────────────────
-    const knownIds = new Set<string>()
-    let from = 0
-    while (true) {
-      const { data: existing } = await supabase
-        .from('price_list_items')
-        .select('product_id')
-        .eq('price_list_id', priceListId)
-        .not('product_id', 'is', null)
-        .range(from, from + 999)
-      if (!existing?.length) break
-      for (const r of existing) knownIds.add(r.product_id)
-      if (existing.length < 1000) break
-      from += 1000
-    }
-
-    // ── Year-by-year scan ─────────────────────────────────────────────────────
-    const TIME_LIMIT_MS = 240_000
+    // ── Year-by-year scan (newest → oldest) ──────────────────────────────────
     const startTime     = Date.now()
     let totalFetched    = 0
     let added           = 0
-    const batch: Record<string, unknown>[] = []
+    let batch: Record<string, unknown>[] = []
     let timedOut        = false
     let resumeToken: string | null = null
 
-    for (let year = startYear; year <= END_YEAR; year++) {
+    for (let year = startYear; year >= START_YEAR; year--) {
       const filter = `status.eq.RN/launch.in(${year}00-${year}99)`
       let page           = year === startYear ? startPage : 1
       let totalPageCount = 0
@@ -190,15 +202,12 @@ export async function GET(req: NextRequest) {
         totalFetched += items.length
 
         for (const item of items) {
-          const pid = String(item.productId ?? item.id ?? '').trim()
-          if (!pid || knownIds.has(pid)) continue
-          knownIds.add(pid)
           batch.push({ ...buildRecord(item), price_list_id: priceListId })
-          added++
         }
 
+        // Flush every 500 items — existence check happens here, not upfront
         if (batch.length >= 500) {
-          await supabase.from('price_list_items').insert(batch.splice(0))
+          added += await insertNewOnly(batch.splice(0), priceListId, supabase)
         }
 
         if (!items.length || items.length < PAGE_SIZE) break
@@ -212,9 +221,9 @@ export async function GET(req: NextRequest) {
       if (timedOut) break
     }
 
-    // ── Flush + update counts ─────────────────────────────────────────────────
+    // ── Flush remainder + update counts ──────────────────────────────────────
     if (batch.length > 0) {
-      await supabase.from('price_list_items').insert(batch)
+      added += await insertNewOnly(batch, priceListId, supabase)
     }
 
     if (added > 0) {
@@ -233,22 +242,6 @@ export async function GET(req: NextRequest) {
         items_added: added,
         error_message: resumeToken,
       }).eq('id', logId)
-
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL
-        ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      if (appUrl) {
-        after(async () => {
-          // Await with a short abort so the request is guaranteed sent before this function shuts down.
-          // The abort only cancels our wait — Vercel keeps processing the continue invocation independently.
-          const controller = new AbortController()
-          setTimeout(() => controller.abort(), 8_000)
-          await fetch(`${appUrl}/api/cron/load-catalogue?trigger=continue`, {
-            headers: { Authorization: `Bearer ${process.env.CRON_SECRET ?? ''}` },
-            signal: controller.signal,
-          }).catch(() => undefined)
-        })
-      }
-
       return NextResponse.json({ ok: true, partial: true, checked: totalFetched, added })
     }
 
