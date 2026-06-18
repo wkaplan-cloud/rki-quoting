@@ -45,10 +45,11 @@ const COL = 'px-2 py-1.5'
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
-function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnly, autoFocus }: {
+function AutoTextarea({ value, onChange, onBlur, onFocus, placeholder, className, readOnly, autoFocus }: {
   value: string
   onChange: (v: string) => void
   onBlur: (v: string) => void
+  onFocus?: () => void
   placeholder?: string
   className?: string
   readOnly?: boolean
@@ -76,6 +77,7 @@ function AutoTextarea({ value, onChange, onBlur, placeholder, className, readOnl
       value={value}
       onChange={e => { onChange(e.target.value); resize() }}
       onBlur={e => onBlur(e.target.value)}
+      onFocus={onFocus}
       placeholder={placeholder}
       readOnly={readOnly}
       className={className + ' resize-none overflow-hidden leading-snug'}
@@ -125,6 +127,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   const [newSupplierModal, setNewSupplierModal] = useState<{ name: string; email: string; markup: string; lineItemId: string } | null>(null)
   const lineItemsRef = useRef(lineItems)
   useEffect(() => { lineItemsRef.current = lineItems }, [lineItems])
+  // Tracks description value at focus-time so we can diff before/after for audit
+  const lockedDescFocusRef = useRef<{ id: string; value: string } | null>(null)
 
   const fetchStock = useCallback((lineItemId: string, productId: string, _quantity: number, autoFillLead?: (info: { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null }) => void) => {
     if (stockDebounceRef.current[lineItemId]) clearTimeout(stockDebounceRef.current[lineItemId])
@@ -213,9 +217,26 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     ))
   }, [lineItems, onChange])
 
-  const saveField = useCallback(async (id: string, field: string, value: string | number | null) => {
+  const saveField = useCallback(async (id: string, field: string, value: string | number | null, oldDescriptionValue?: string | null) => {
     await supabase.from('line_items').update({ [field]: value }).eq('id', id)
-  }, [supabase])
+    if (field === 'description' && locked && oldDescriptionValue !== undefined && oldDescriptionValue !== value) {
+      const [{ data: { user } }, { data: orgId }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.rpc('get_current_org_id'),
+      ])
+      const item = lineItemsRef.current.find(i => i.id === id)
+      await supabase.from('audit_logs').insert({
+        org_id: orgId,
+        project_id: projectId,
+        user_email: user?.email ?? null,
+        action: 'updated',
+        table_name: 'line_items',
+        record_id: id,
+        old_data: { description: oldDescriptionValue, item_name: item?.item_name ?? null },
+        new_data: { description: value, item_name: item?.item_name ?? null },
+      })
+    }
+  }, [supabase, locked, projectId])
 
   const handleSupplierChange = useCallback(async (lineItemId: string, supplierId: string, supplierName: string) => {
     const supplier = suppliers.find(s => s.id === supplierId)
@@ -676,7 +697,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     <AutoTextarea
                       value={item.description ?? ''}
                       onChange={v => updateLocal(item.id, 'description', v)}
-                      onBlur={v => saveField(item.id, 'description', v)}
+                      onFocus={locked ? () => { lockedDescFocusRef.current = { id: item.id, value: item.description ?? '' } } : undefined}
+                      onBlur={v => saveField(item.id, 'description', v, locked ? (lockedDescFocusRef.current?.id === item.id ? lockedDescFocusRef.current.value : undefined) : undefined)}
                       placeholder="Description"
                       className={INPUT}
                     />
