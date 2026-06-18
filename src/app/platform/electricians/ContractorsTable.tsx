@@ -302,6 +302,7 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
   const [expanded, setExpanded] = useState<Record<string, ExpandView | null>>({})
   const [activating, setActivating] = useState<string | null>(null)
   const [markingFee, setMarkingFee] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   function toggle(id: string, view: ExpandView) {
     setExpanded(prev => ({
@@ -334,6 +335,14 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
       setRows(prev => prev.map(r => r.id === accountId ? { ...r, setup_fee_paid: paid } : r))
     }
     setMarkingFee(null)
+  }
+
+  async function handleDelete(accountId: string, companyName: string) {
+    if (!confirm(`Permanently delete "${companyName}" and all their data? This cannot be undone.`)) return
+    setDeleting(accountId)
+    const res = await fetch(`/api/platform/elec-accounts/${accountId}`, { method: 'DELETE' })
+    setDeleting(null)
+    if (res.ok) setRows(prev => prev.filter(r => r.id !== accountId))
   }
 
   if (rows.length === 0) {
@@ -454,7 +463,7 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
                 )}
               </div>
 
-              {/* Joined + activate/pause */}
+              {/* Joined + activate/pause + delete */}
               <div className="text-right space-y-1">
                 <p className="text-white/40 text-[10px]">{fmtDate(a.created_at)}</p>
                 {activating === a.id ? (
@@ -476,6 +485,11 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
                     <CheckCircle size={9} /> Pause
                   </button>
                 )}
+                <button onClick={e => { e.stopPropagation(); void handleDelete(a.id, a.company_name) }} disabled={deleting === a.id}
+                  className="p-1 rounded text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50 ml-auto flex items-center justify-end"
+                  title="Delete account">
+                  {deleting === a.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                </button>
               </div>
             </div>
 

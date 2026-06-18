@@ -46,3 +46,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true, account: data })
   } catch (e) { return apiError(e) }
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const user = await requirePlatformAdmin()
+    if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    // Delete portal org members and their auth users
+    const { data: members } = await supabaseAdmin
+      .from('portal_org_members')
+      .select('id, auth_user_id')
+      .eq('portal_account_id', id)
+
+    for (const m of members ?? []) {
+      if (m.auth_user_id) await supabaseAdmin.auth.admin.deleteUser(m.auth_user_id)
+    }
+    await supabaseAdmin.from('portal_org_members').delete().eq('portal_account_id', id)
+
+    // Delete electrician-specific data
+    await supabaseAdmin.from('elec_quotes').delete().eq('portal_account_id', id)
+    await supabaseAdmin.from('elec_job_cards').delete().eq('portal_account_id', id)
+    await supabaseAdmin.from('elec_staff').delete().eq('portal_account_id', id)
+
+    // Fetch account to get auth_user_id before deleting
+    const { data: account } = await supabaseAdmin
+      .from('supplier_portal_accounts')
+      .select('auth_user_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    await supabaseAdmin.from('supplier_portal_accounts').delete().eq('id', id)
+
+    if (account?.auth_user_id) {
+      await supabaseAdmin.auth.admin.deleteUser(account.auth_user_id)
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e) { return apiError(e) }
+}
