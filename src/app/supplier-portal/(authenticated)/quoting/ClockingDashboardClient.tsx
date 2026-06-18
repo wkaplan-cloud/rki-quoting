@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { MapPin, LogIn, LogOut, Users, Clock, CalendarDays, RefreshCw } from 'lucide-react'
+import { get5pmSASTCutoff } from '@/lib/sa-overtime'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -61,10 +62,11 @@ function computeHoursMs(punches: Punch[], staffId?: string): number {
       delete openSessions[p.staff_id]
     }
   }
-  // Add open sessions up to now
-  const now = Date.now()
+  // Add open sessions, capped at 5pm SAST on the day of clock-in
+  const nowMs = Date.now()
   for (const t of Object.values(openSessions)) {
-    total += now - t
+    const cutoff = get5pmSASTCutoff(new Date(t)).getTime()
+    total += Math.min(nowMs, cutoff) - t
   }
   return total
 }
@@ -177,7 +179,8 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
         ) : (
           onSite.map((s, i) => {
             const clockedAt  = getClockedInAt(todayPunches, s.id)
-            const elapsed    = clockedAt ? Date.now() - new Date(clockedAt).getTime() : 0
+            const elapsedCap = clockedAt ? get5pmSASTCutoff(new Date(clockedAt)).getTime() : 0
+            const elapsed    = clockedAt ? Math.min(Date.now(), elapsedCap) - new Date(clockedAt).getTime() : 0
             const loc        = getLastLocation(todayPunches, s.id)
             return (
               <div key={s.id} className="flex items-center gap-4 px-5 py-4"

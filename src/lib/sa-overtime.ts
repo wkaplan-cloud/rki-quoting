@@ -94,15 +94,28 @@ export function calcHourBreakdown(clockIn: Date, clockOut: Date): HourBreakdown 
 
 interface MinimalPunch { punch_type: string; punched_at: string }
 
-export function punchesToBreakdown(punches: MinimalPunch[]): HourBreakdown {
+// SAST is always UTC+2 (no DST). 17:00 SAST = 15:00 UTC.
+export function get5pmSASTCutoff(clockIn: Date): Date {
+  const sa = toSALocal(clockIn)
+  return new Date(Date.UTC(sa.getFullYear(), sa.getMonth(), sa.getDate(), 15, 0, 0, 0))
+}
+
+export function punchesToBreakdown(punches: MinimalPunch[], now = new Date()): HourBreakdown {
   const sorted = [...punches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
   const ins  = sorted.filter(p => p.punch_type === 'clock_in')
   const outs = sorted.filter(p => p.punch_type === 'clock_out')
   let normalMs = 0, overtimeMs = 0, totalMs = 0
   ins.forEach((inP, idx) => {
     const outP = outs[idx]
-    if (!outP) return
-    const b = calcHourBreakdown(new Date(inP.punched_at), new Date(outP.punched_at))
+    let clockOut: Date
+    if (outP) {
+      clockOut = new Date(outP.punched_at)
+    } else {
+      // No clock_out yet: cap at 5pm SAST on the day of clock-in
+      const cutoff = get5pmSASTCutoff(new Date(inP.punched_at))
+      clockOut = now < cutoff ? now : cutoff
+    }
+    const b = calcHourBreakdown(new Date(inP.punched_at), clockOut)
     normalMs   += b.normalMs
     overtimeMs += b.overtimeMs
     totalMs    += b.totalMs
