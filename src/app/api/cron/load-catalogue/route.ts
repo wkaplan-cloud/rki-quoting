@@ -74,29 +74,6 @@ function extractProducts(data: unknown): { items: Record<string, unknown>[], tot
   return { items, totalPageCount }
 }
 
-// Check which product_ids in the batch already exist, then insert only new ones.
-// Much faster than loading all known IDs upfront — only queries what we're about to insert.
-async function insertNewOnly(
-  batch: Record<string, unknown>[],
-  priceListId: string,
-  supabase: ReturnType<typeof createClient>,
-): Promise<number> {
-  if (batch.length === 0) return 0
-  const pids = batch.map(b => b.product_id).filter((p): p is string => typeof p === 'string' && p.length > 0)
-  if (pids.length > 0) {
-    const { data: existing } = await supabase
-      .from('price_list_items')
-      .select('product_id')
-      .eq('price_list_id', priceListId)
-      .in('product_id', pids)
-    const existingSet = new Set((existing ?? []).map((r: { product_id: string }) => r.product_id))
-    batch = batch.filter(b => !b.product_id || !existingSet.has(b.product_id as string))
-  }
-  if (batch.length === 0) return 0
-  await supabase.from('price_list_items').insert(batch)
-  return batch.length
-}
-
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -122,6 +99,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'No global price list found.' }, { status: 400 })
   }
   const priceListId = priceList.id
+
+  // Inline so supabase/priceListId are captured from outer scope — avoids typed-client parameter issues.
+  async function insertNewOnly(items: Record<string, unknown>[]): Promise<number> {
+    if (items.length === 0) return 0
+    const pids = items.map(b => b.product_id).filter((p): p is string => typeof p === 'string' && p.length > 0)
+    let toInsert = items
+    if (pids.length > 0) {
+      const { data: existing } = await supabase
+        .from('price_list_items')
+        .select('product_id')
+        .eq('price_list_id', priceListId)
+        .in('product_id', pids)
+      const existingSet = new Set((existing ?? []).map(r => r.product_id as string))
+      toInsert = items.filter(b => !b.product_id || !existingSet.has(b.product_id as string))
+    }
+    if (toInsert.length === 0) return 0
+    await supabase.from('price_list_items').insert(toInsert as never[])
+    return toInsert.length
+  }
 
   const { data: logRow } = await supabase
     .from('twinbru_sync_log')
@@ -207,7 +203,7 @@ export async function GET(req: NextRequest) {
 
         // Flush every 500 items — existence check happens here, not upfront
         if (batch.length >= 500) {
-          added += await insertNewOnly(batch.splice(0), priceListId, supabase)
+          added += await insertNewOnly(batch.splice(0))
         }
 
         if (!items.length || items.length < PAGE_SIZE) break
@@ -223,7 +219,7 @@ export async function GET(req: NextRequest) {
 
     // ── Flush remainder + update counts ──────────────────────────────────────
     if (batch.length > 0) {
-      added += await insertNewOnly(batch, priceListId, supabase)
+      added += await insertNewOnly(batch)
     }
 
     if (added > 0) {
