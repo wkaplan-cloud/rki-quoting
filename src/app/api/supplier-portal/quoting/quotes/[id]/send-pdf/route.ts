@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const subtotal = (items ?? []).reduce((s, i) => {
       const item = i as ElecQuoteLineItem
-      return s + (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) + (item.labour_rate ?? 0)
+      return s + (item.quoted_quantity ?? 0) * (item.quoted_unit_rate ?? 0) + (item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)
     }, 0)
     const vatRate = quoteRaw.vat_rate != null ? quoteRaw.vat_rate : (settings?.default_vat_rate ?? 0)
     const total = subtotal * (1 + vatRate / 100)

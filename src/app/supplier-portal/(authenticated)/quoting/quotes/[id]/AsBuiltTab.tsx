@@ -24,12 +24,12 @@ interface Props {
 }
 
 function itemContractVal(i: ElecQuoteLineItem): number {
-  return i.quoted_quantity * i.quoted_unit_rate + (i.labour_rate ?? 0)
+  return i.quoted_quantity * i.quoted_unit_rate + i.quoted_quantity * (i.labour_rate ?? 0)
 }
 function itemAsBuiltVal(i: ElecQuoteLineItem): number {
   const qty  = i.as_built_quantity  ?? i.quoted_quantity
   const rate = i.as_built_unit_rate ?? i.quoted_unit_rate
-  return qty * rate + (i.labour_rate ?? 0)
+  return qty * rate + qty * (i.labour_rate ?? 0)
 }
 
 export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTotal, approvedVOTotal, clientEmail }: Props) {

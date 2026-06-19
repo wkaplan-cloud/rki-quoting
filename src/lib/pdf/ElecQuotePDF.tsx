@@ -71,7 +71,7 @@ export interface ElecQuotePDFProps {
 }
 
 function lineTotal(i: ElecQuoteLineItem): number {
-  return (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0) + (i.labour_rate ?? 0)
+  return (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0) + (i.quoted_quantity ?? 0) * (i.labour_rate ?? 0)
 }
 
 export function ElecQuotePDF({ quote, client, sections, items, settings, companyName, companyEmail, logoUrl }: ElecQuotePDFProps) {

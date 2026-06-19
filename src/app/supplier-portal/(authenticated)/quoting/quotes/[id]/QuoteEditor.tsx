@@ -76,7 +76,7 @@ function computeSellRate(item: ItemState): number {
   return item.quoted_unit_rate ?? 0
 }
 function itemTotal(item: ItemState): number {
-  return (item.quoted_quantity ?? 0) * computeSellRate(item) + (item.labour_rate ?? 0)
+  return (item.quoted_quantity ?? 0) * computeSellRate(item) + (item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)
 }
 
 function fmtR(n: number) {
@@ -704,7 +704,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const approvedVOCostTotal = approvedVOs.reduce((s, v) => s + (v.cost_value ?? 0), 0)
   const itemCostTotal = allItems.reduce((s, i) => i.cost_unit_rate != null ? s + (i.quoted_quantity ?? 0) * i.cost_unit_rate : s, 0)
   const costTotal = itemCostTotal + approvedVOCostTotal
-  const labourTotal = allItems.reduce((s, i) => s + (i.labour_rate ?? 0), 0)
+  const labourTotal = allItems.reduce((s, i) => s + (i.quoted_quantity ?? 0) * (i.labour_rate ?? 0), 0)
   const materialProfit = subtotal - labourTotal - itemCostTotal
   const grossProfit = materialProfit + labourTotal  // material profit + labour (all labour is profit — no labour cost tracked)
   const hasCostData = (allItems.length > 0 && allItems.every(i => i.cost_unit_rate != null)) || approvedVOs.some(v => v.cost_value != null)
