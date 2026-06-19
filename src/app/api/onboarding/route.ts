@@ -44,6 +44,13 @@ export async function POST(req: NextRequest) {
 
   if (memberError) return NextResponse.json({ error: memberError.message }, { status: 500 })
 
+  // Force role to admin regardless of any trigger or RPC that may silently override it
+  await supabaseAdmin
+    .from('org_members')
+    .update({ role: 'admin', status: 'active' })
+    .eq('org_id', org.id)
+    .eq('user_id', user.id)
+
   return NextResponse.json({ orgId: org.id })
   } catch (e) {
     return apiError(e)
