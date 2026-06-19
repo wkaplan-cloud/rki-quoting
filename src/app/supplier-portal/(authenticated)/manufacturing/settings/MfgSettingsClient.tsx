@@ -109,6 +109,7 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
   const [markup, setMarkup]             = useState(String(settings?.default_markup_percentage ?? 30))
   const [validity, setValidity]         = useState(String(settings?.quote_validity_days ?? 30))
   const [deposit, setDeposit]           = useState(String(settings?.default_deposit_percentage ?? 50))
+  const [overheadRate, setOverheadRate] = useState(settings?.overhead_rate_per_hour != null ? String(settings.overhead_rate_per_hour) : '')
   const [paymentTerms, setPaymentTerms] = useState(settings?.default_payment_terms ?? '50% deposit on acceptance, balance on completion.')
   const [quotePrefix, setQuotePrefix]     = useState(settings?.quote_prefix ?? 'QUO')
   const [invoicePrefix, setInvoicePrefix] = useState(settings?.invoice_prefix ?? 'INV')
@@ -170,6 +171,7 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
         default_markup_percentage: markup !== '' ? parseFloat(markup) : 30,
         quote_validity_days: validity !== '' ? parseInt(validity) : 30,
         default_deposit_percentage: deposit !== '' ? parseFloat(deposit) : 50,
+        overhead_rate_per_hour: overheadRate !== '' ? parseFloat(overheadRate) : null,
         default_payment_terms: paymentTerms.trim() || null,
         quote_prefix: quotePrefix.trim() || 'QUO',
         invoice_prefix: invoicePrefix.trim() || 'INV',
@@ -180,14 +182,14 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
     setSaving(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setSaveError((d as { error?: string }).error ?? 'Save failed'); return }
     setSaved(true)
-  }, [businessName, logoUrl, address, email, phone, companyReg, vatRegistered, vatNumber, vatRate, bankName, bankHolder, bankAccount, bankBranch, bankType, markup, validity, deposit, paymentTerms, quotePrefix, invoicePrefix, accentColor, tandc])
+  }, [businessName, logoUrl, address, email, phone, companyReg, vatRegistered, vatNumber, vatRate, bankName, bankHolder, bankAccount, bankBranch, bankType, markup, validity, deposit, overheadRate, paymentTerms, quotePrefix, invoicePrefix, accentColor, tandc])
 
   useEffect(() => {
     if (isMountRef.current) { isMountRef.current = false; return }
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { void handleSave() }, 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [businessName, logoUrl, address, email, phone, companyReg, vatRegistered, vatNumber, vatRate, bankName, bankHolder, bankAccount, bankBranch, bankType, markup, validity, deposit, paymentTerms, quotePrefix, invoicePrefix, accentColor, tandc, handleSave])
+  }, [businessName, logoUrl, address, email, phone, companyReg, vatRegistered, vatNumber, vatRate, bankName, bankHolder, bankAccount, bankBranch, bankType, markup, validity, deposit, overheadRate, paymentTerms, quotePrefix, invoicePrefix, accentColor, tandc, handleSave])
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -381,6 +383,9 @@ export function MfgSettingsClient({ portalAccountId, settings, accountEmail, pla
               </Field>
               <Field label="Default Deposit (%)">
                 <NumberInput value={deposit} onChange={setDeposit} placeholder="50" min={0} />
+              </Field>
+              <Field label="Workshop Overhead Rate (R/hour)" hint="Total monthly fixed costs ÷ productive hours/month. Add as a Labour line item on each quote.">
+                <NumberInput value={overheadRate} onChange={setOverheadRate} placeholder="e.g. 206" min={0} />
               </Field>
             </div>
             <Field label="Default Payment Terms">

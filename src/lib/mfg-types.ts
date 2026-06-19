@@ -65,6 +65,7 @@ export interface MfgSettings {
   default_deposit_percentage: number
   default_payment_terms: string | null
   terms_and_conditions: string | null
+  overhead_rate_per_hour: number | null
   quote_prefix: string
   invoice_prefix: string
   quote_number_seed: number
@@ -393,7 +394,7 @@ export interface MfgCostHardwareDraft extends Omit<MfgCostHardware, 'id' | 'line
 // Unified component (material or hardware) used in the simplified cost builder UI
 export interface MfgCostComponentDraft {
   id?: string
-  _type: 'material' | 'hardware'
+  _type: 'material' | 'hardware' | 'labour'
   price_book_item_id: string | null
   item_name: string
   unit: string

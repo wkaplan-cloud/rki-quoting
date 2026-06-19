@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { MFG_SEED_ITEMS } from '@/lib/mfg-seed-items'
 
 export async function POST() {
   try {
@@ -42,6 +43,18 @@ export async function POST() {
     await supabaseAdmin
       .from('mfg_settings')
       .upsert({ portal_account_id: account.id }, { onConflict: 'portal_account_id', ignoreDuplicates: true })
+
+    // Seed default price book items only if the account has none yet
+    const { count } = await supabaseAdmin
+      .from('mfg_price_book_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('portal_account_id', account.id)
+
+    if ((count ?? 0) === 0) {
+      await supabaseAdmin
+        .from('mfg_price_book_items')
+        .insert(MFG_SEED_ITEMS.map(item => ({ ...item, portal_account_id: account.id })))
+    }
 
     return NextResponse.json({ success: true })
   } catch (e) {

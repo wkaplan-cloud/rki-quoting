@@ -40,6 +40,7 @@ export async function PATCH(req: Request) {
     'bank_name', 'bank_account_holder', 'bank_account_number', 'bank_branch_code', 'bank_account_type',
     'default_vat_rate', 'default_markup_percentage', 'quote_validity_days',
     'default_deposit_percentage', 'default_payment_terms', 'terms_and_conditions',
+    'overhead_rate_per_hour',
     'quote_prefix', 'invoice_prefix', 'accent_color',
     'email_template_quote', 'email_template_invoice',
   ]
