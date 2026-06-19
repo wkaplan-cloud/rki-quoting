@@ -35,7 +35,7 @@ interface Props {
 }
 
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })

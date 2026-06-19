@@ -137,8 +137,8 @@ function printWeek(
       const outGps = ses.out?.latitude ? (geoAddresses[`${ses.out.latitude},${ses.out.longitude}`] ?? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}`) : '—'
       return `<tr>
         <td>${inDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-        <td>${inDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}</td>
-        <td>${outDate ? outDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' }) : '<span class="open">On site</span>'}</td>
+        <td>${inDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+        <td>${outDate ? outDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '<span class="open">On site</span>'}</td>
         <td class="norm">${normalStr}</td>
         <td class="ot">${otStr}</td>
         <td>${durStr}</td>
