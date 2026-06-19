@@ -65,20 +65,33 @@ export function TimesheetPDF({ companyName, periodLabel, staffData }: Props) {
         )}
 
         {staffData.map(member => {
-          const ins = member.punches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-          const outs = member.punches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+          // Group by UTC date, then greedy-match within each day to avoid cross-day mispairing
+          const pByDay: Record<string, Punch[]> = {}
+          for (const p of member.punches) {
+            const d = p.punched_at.slice(0, 10)
+            if (!pByDay[d]) pByDay[d] = []
+            pByDay[d].push(p)
+          }
           let totalNormalMs = 0, totalOtMs = 0, totalMs = 0
-          const sessions = ins.map((inP, idx) => {
-            const outP = outs[idx] ?? null
-            if (outP) {
-              const b = calcHourBreakdown(new Date(inP.punched_at), new Date(outP.punched_at))
-              totalNormalMs += b.normalMs
-              totalOtMs     += b.overtimeMs
-              totalMs       += b.totalMs
-              return { in: inP, out: outP, normalMs: b.normalMs, overtimeMs: b.overtimeMs, totalMs: b.totalMs }
+          const sessions: { in: Punch; out: Punch | null; normalMs: number; overtimeMs: number; totalMs: number }[] = []
+          for (const dayKey of Object.keys(pByDay).sort()) {
+            const daySorted = [...pByDay[dayKey]].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+            const dayIns  = daySorted.filter(p => p.punch_type === 'clock_in')
+            const dayOuts = daySorted.filter(p => p.punch_type === 'clock_out')
+            let outIdx = 0
+            for (const inP of dayIns) {
+              const clockInMs = new Date(inP.punched_at).getTime()
+              while (outIdx < dayOuts.length && new Date(dayOuts[outIdx].punched_at).getTime() <= clockInMs) outIdx++
+              if (outIdx < dayOuts.length) {
+                const outP = dayOuts[outIdx++]
+                const b = calcHourBreakdown(new Date(inP.punched_at), new Date(outP.punched_at))
+                totalNormalMs += b.normalMs; totalOtMs += b.overtimeMs; totalMs += b.totalMs
+                sessions.push({ in: inP, out: outP, normalMs: b.normalMs, overtimeMs: b.overtimeMs, totalMs: b.totalMs })
+              } else {
+                sessions.push({ in: inP, out: null, normalMs: 0, overtimeMs: 0, totalMs: 0 })
+              }
             }
-            return { in: inP, out: null, normalMs: 0, overtimeMs: 0, totalMs: 0 }
-          })
+          }
 
           return (
             <View key={member.id} style={s.staffSection} wrap={false}>

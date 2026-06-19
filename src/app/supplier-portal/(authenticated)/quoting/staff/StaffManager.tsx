@@ -754,7 +754,8 @@ export function StaffManager({ initialStaff, punches }: Props) {
                 const ins = staffPunches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
                 const outs = staffPunches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
                 const firstIn = ins[0]
-                const lastOut = outs[outs.length - 1]
+                const allSortedDay = [...staffPunches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+                const isOnSite = allSortedDay[allSortedDay.length - 1]?.punch_type === 'clock_in'
                 const breakdown = punchesToBreakdown(staffPunches)
                 const { normalMs, overtimeMs, totalMs } = breakdown
                 const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
@@ -777,7 +778,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                           )}
                         </div>
                       </div>
-                      {!lastOut && firstIn && (
+                      {isOnSite && firstIn && (
                         <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold"
                           style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>On site</span>
                       )}
