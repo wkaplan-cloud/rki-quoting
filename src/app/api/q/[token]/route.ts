@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
     if (!quoteRaw) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const [{ data: sections }, { data: items }, { data: account }] = await Promise.all([
+    const [{ data: sections }, { data: items }, { data: account }, { data: settings }] = await Promise.all([
       supabaseAdmin
         .from('elec_quote_sections')
         .select('id, title, sort_order')
@@ -30,6 +30,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         .select('company_name, email, logo_url, phone')
         .eq('id', quoteRaw.portal_account_id)
         .single(),
+      supabaseAdmin
+        .from('elec_settings')
+        .select('vat_registration_number, company_registration_number, cidb_registration_number, bank_name, bank_account_number, bank_branch_code, bank_account_type')
+        .eq('portal_account_id', quoteRaw.portal_account_id)
+        .maybeSingle(),
     ])
 
     const client = Array.isArray(quoteRaw.client) ? quoteRaw.client[0] : quoteRaw.client
@@ -56,6 +61,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       sections: sections ?? [],
       items: items ?? [],
       company: account ?? null,
+      settings: settings ?? null,
     })
   } catch (e) {
     return apiError(e)

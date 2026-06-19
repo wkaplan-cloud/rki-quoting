@@ -3,55 +3,56 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Check, ChevronDown, ChevronRight, Loader2, AlertCircle, ThumbsUp, MessageSquare } from 'lucide-react'
 
-const S = {
-  bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
-  text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5',
-  danger: '#DC2626', green: '#16A34A',
-}
+const ACC    = '#3A7CA5'
+const DARK   = '#18181B'
+const MUTED  = '#71717A'
+const BORDER = '#E4E4E7'
+const GOLD   = '#D9A441'
+const GREEN  = '#16A34A'
+const DANGER = '#DC2626'
+const SURF   = '#F8FAFC'
+const SEC_BG = '#EFF6FF'
+const PAGE   = '#F0F2F5'
 
 function fmtR(n: number) {
-  return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-
 function fmt(date: string | null) {
   if (!date) return null
   return new Date(date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+const CONTRACT_LABELS: Record<string, string> = {
+  lump_sum: 'Lump Sum',
+  re_measurement: 'Re-measurement',
+  cost_plus: 'Cost Plus',
+}
+
 interface QuoteData {
   quote: {
-    id: string
-    quote_number: string
-    project_name: string
-    project_address: string | null
-    project_type: string | null
-    contract_type: string
-    status: string
-    vat_rate: number
-    retention_percentage: number
-    payment_terms_days: number
-    notes: string | null
-    quoted_date: string | null
-    expected_completion_date: string | null
-    approved_date: string | null
-    drawing_reference: string | null
+    id: string; quote_number: string; project_name: string; project_address: string | null
+    project_type: string | null; contract_type: string; status: string; vat_rate: number
+    retention_percentage: number; payment_terms_days: number; notes: string | null
+    quoted_date: string | null; expected_completion_date: string | null
+    approved_date: string | null; drawing_reference: string | null
   }
   client: { id: string; client_name: string; company: string | null; email: string | null; contact_number: string | null; address: string | null } | null
   sections: { id: string; title: string; sort_order: number }[]
   items: { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null; sort_order: number }[]
   company: { company_name: string | null; email: string | null; logo_url: string | null; phone: string | null } | null
+  settings: { vat_registration_number: string | null; company_registration_number: string | null; cidb_registration_number: string | null; bank_name: string | null; bank_account_number: string | null; bank_branch_code: string | null; bank_account_type: string | null } | null
 }
 
 export default function QuoteApprovalPage() {
   const { token } = useParams<{ token: string }>()
-  const [data, setData] = useState<QuoteData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [data, setData]         = useState<QuoteData | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState('')
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
-  const [action, setAction] = useState<'approve' | 'request_changes' | null>(null)
-  const [notes, setNotes] = useState('')
+  const [action, setAction]     = useState<'approve' | 'request_changes' | null>(null)
+  const [notes, setNotes]       = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [done, setDone] = useState<'approved' | 'requested' | null>(null)
+  const [done, setDone]         = useState<'approved' | 'requested' | null>(null)
 
   useEffect(() => {
     fetch(`/api/q/${token}`)
@@ -75,37 +76,38 @@ export default function QuoteApprovalPage() {
       body: JSON.stringify({ action, notes }),
     })
     const json = await res.json()
-    if (json.ok) {
-      setDone(action === 'approve' ? 'approved' : 'requested')
-    } else {
-      alert(json.error ?? 'Something went wrong')
-    }
+    if (json.ok) setDone(action === 'approve' ? 'approved' : 'requested')
+    else alert(json.error ?? 'Something went wrong')
     setSubmitting(false)
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: S.bg }}>
-        <Loader2 size={28} className="animate-spin" style={{ color: S.accent }} />
-      </div>
-    )
-  }
+  if (loading) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: PAGE }}>
+      <Loader2 size={28} className="animate-spin" style={{ color: ACC }} />
+    </div>
+  )
 
-  if (error || !data) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3" style={{ background: S.bg }}>
-        <AlertCircle size={32} style={{ color: S.danger }} />
-        <p className="text-sm font-medium" style={{ color: S.text }}>Quote not found or link has expired.</p>
-      </div>
-    )
-  }
+  if (error || !data) return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: PAGE }}>
+      <AlertCircle size={32} style={{ color: DANGER }} />
+      <p style={{ fontSize: 14, fontWeight: 500, color: DARK }}>Quote not found or link has expired.</p>
+    </div>
+  )
 
-  const { quote, client, sections, items, company } = data
-
-  const subtotal = items.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
-  const vatAmt = subtotal * (quote.vat_rate / 100)
-  const total = subtotal + vatAmt
+  const { quote, client, sections, items, company, settings } = data
+  const subtotal  = items.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
+  const vatAmt    = subtotal * (quote.vat_rate / 100)
+  const total     = subtotal + vatAmt
   const retention = subtotal * (quote.retention_percentage / 100)
+  const isAlreadyActioned = done !== null || quote.status === 'approved' || quote.status === 'cancelled'
+
+  const metaParts = [
+    settings?.vat_registration_number  ? `VAT: ${settings.vat_registration_number}`   : null,
+    settings?.company_registration_number ? `Reg: ${settings.company_registration_number}` : null,
+    settings?.cidb_registration_number ? `Lic: ${settings.cidb_registration_number}` : null,
+  ].filter(Boolean).join('  ·  ')
+
+  const hasBanking = !!(settings?.bank_name || settings?.bank_account_number)
 
   const itemsBySection: Record<string, typeof items> = {}
   for (const item of items) {
@@ -114,201 +116,190 @@ export default function QuoteApprovalPage() {
     itemsBySection[key].push(item)
   }
 
-  const isAlreadyActioned = done !== null || quote.status === 'approved' || quote.status === 'cancelled'
-
   return (
-    <div className="min-h-screen py-10 px-4" style={{ background: S.bg }}>
-      <div className="max-w-3xl mx-auto">
+    <div style={{ background: PAGE, minHeight: '100vh', padding: '32px 16px 48px' }}>
+      {/* Responsive helpers */}
+      <style>{`
+        .doc-pad { padding: 48px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .doc-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .totals-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+        @media (max-width: 600px) {
+          .doc-pad { padding: 24px 20px; }
+          .info-grid { grid-template-columns: 1fr; }
+          .doc-header { flex-direction: column; gap: 16px; }
+          .totals-row { flex-direction: column; }
+        }
+      `}</style>
 
-        {/* Header */}
-        <div className="rounded-2xl p-6 mb-4 flex items-start justify-between gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="flex-1 min-w-0">
-            {company?.logo_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={company.logo_url} alt="" className="h-10 mb-3 object-contain" />
-            )}
-            {!company?.logo_url && company?.company_name && (
-              <p className="font-bold text-lg mb-3" style={{ color: S.text }}>{company.company_name}</p>
-            )}
-            <h1 className="text-2xl font-bold mb-1" style={{ color: S.text }}>{quote.project_name}</h1>
-            {quote.project_address && <p className="text-sm" style={{ color: S.muted }}>{quote.project_address}</p>}
+      <div style={{ maxWidth: 820, margin: '0 auto' }}>
+
+        {/* ── Document card ── */}
+        <div className="doc-pad" style={{ background: '#fff', borderRadius: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.10)', marginBottom: 20 }}>
+
+          {/* Header */}
+          <div className="doc-header" style={{ marginBottom: 22 }}>
+            <div style={{ flex: 1, paddingRight: 24 }}>
+              {company?.logo_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={company.logo_url} alt="" style={{ maxWidth: 190, maxHeight: 56, objectFit: 'contain', display: 'block', marginBottom: 6 }} />
+              )}
+              <p style={{ fontSize: 13, fontWeight: 700, color: DARK, marginBottom: 2 }}>{company?.company_name}</p>
+              {company?.email && <p style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>{company.email}</p>}
+              {company?.phone && <p style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>{company.phone}</p>}
+              {metaParts && <p style={{ fontSize: 10, color: MUTED, marginTop: 3 }}>{metaParts}</p>}
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: ACC, letterSpacing: 2, marginBottom: 4, textTransform: 'uppercase' }}>Quotation</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: DARK, lineHeight: 1, marginBottom: 6 }}>{quote.quote_number}</p>
+              {quote.quoted_date && <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Date: {fmt(quote.quoted_date)}</p>}
+              {quote.payment_terms_days > 0 && <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Payment terms: {quote.payment_terms_days} days</p>}
+              {quote.status === 'approved' && (
+                <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: 'rgba(22,163,74,0.1)', color: GREEN }}>
+                  Approved{quote.approved_date ? ` · ${fmt(quote.approved_date)}` : ''}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="font-mono text-sm font-semibold" style={{ color: S.accent }}>{quote.quote_number}</p>
-            {quote.quoted_date && <p className="text-xs mt-1" style={{ color: S.muted }}>{fmt(quote.quoted_date)}</p>}
-            {quote.status === 'approved' && (
-              <span className="inline-block mt-2 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
-                Approved {quote.approved_date ? `· ${fmt(quote.approved_date)}` : ''}
-              </span>
-            )}
-          </div>
-        </div>
 
-        {/* Project details */}
-        <div className="rounded-2xl p-5 mb-4 grid grid-cols-2 gap-x-8 gap-y-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          {client && (
-            <div className="col-span-2 pb-3 mb-1" style={{ borderBottom: `1px solid ${S.border}` }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Prepared for</p>
-              <p className="text-sm font-semibold" style={{ color: S.text }}>{client.client_name}</p>
-              {client.company && <p className="text-xs" style={{ color: S.muted }}>{client.company}</p>}
-            </div>
-          )}
-          {[
-            { label: 'Project Type', value: quote.project_type ? quote.project_type.charAt(0).toUpperCase() + quote.project_type.slice(1) : null },
-            { label: 'Contract Type', value: quote.contract_type === 'lump_sum' ? 'Lump Sum' : quote.contract_type === 're_measurement' ? 'Re-measurement' : 'Cost Plus' },
-            { label: 'Expected Completion', value: fmt(quote.expected_completion_date) },
-            { label: 'Payment Terms', value: quote.payment_terms_days ? `${quote.payment_terms_days} days` : null },
-            { label: 'Retention', value: quote.retention_percentage > 0 ? `${quote.retention_percentage}%` : null },
-            { label: 'Drawing Reference', value: quote.drawing_reference },
-          ].filter(f => f.value).map(f => (
-            <div key={f.label}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{f.label}</p>
-              <p className="text-sm" style={{ color: S.text }}>{f.value}</p>
-            </div>
-          ))}
-          {company && (
-            <div className="col-span-2 pt-3" style={{ borderTop: `1px solid ${S.border}` }}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Submitted by</p>
-              <p className="text-sm font-medium" style={{ color: S.text }}>{company.company_name}</p>
-              {[company.email, company.phone].filter(Boolean).map(v => (
-                <p key={v} className="text-xs" style={{ color: S.muted }}>{v}</p>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Rule */}
+          <div style={{ borderTop: `1px solid ${DARK}`, marginBottom: 22 }} />
 
-        {/* Line items */}
-        <div className="mb-4">
-          <h2 className="text-[10px] font-semibold uppercase tracking-wider mb-3 px-1" style={{ color: S.muted }}>Quote Breakdown</h2>
-
-          {/* Free items (no section) */}
-          {itemsBySection['__free__'] && itemsBySection['__free__'].length > 0 && (
-            <div className="rounded-2xl overflow-hidden mb-2" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              <LineItemsTable items={itemsBySection['__free__']} />
-            </div>
-          )}
-
-          {/* Sections */}
-          {sections.map(sec => {
-            const secItems = itemsBySection[sec.id] ?? []
-            const secTotal = secItems.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
-            const isCollapsed = collapsed[sec.id] ?? false
-            return (
-              <div key={sec.id} className="rounded-2xl overflow-hidden mb-2" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                <button
-                  onClick={() => setCollapsed(c => ({ ...c, [sec.id]: !c[sec.id] }))}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-left"
-                  style={{ background: '#EFF6FF', borderBottom: isCollapsed ? 'none' : `1px solid ${S.border}` }}>
-                  {isCollapsed ? <ChevronRight size={14} style={{ color: S.muted }} /> : <ChevronDown size={14} style={{ color: S.muted }} />}
-                  <span className="flex-1 text-sm font-semibold" style={{ color: S.text }}>{sec.title}</span>
-                  <span className="text-sm font-semibold" style={{ color: S.accent }}>{fmtR(secTotal)}</span>
-                </button>
-                {!isCollapsed && <LineItemsTable items={secItems} />}
+          {/* BILL TO / PROJECT */}
+          <div className="info-grid" style={{ marginBottom: 22 }}>
+            {client ? (
+              <div style={{ border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: ACC, letterSpacing: 1, borderBottom: `0.5px solid ${BORDER}`, paddingBottom: 4, marginBottom: 8 }}>BILL TO</p>
+                <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 2 }}>{client.client_name}</p>
+                {client.company        && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{client.company}</p>}
+                {client.email          && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{client.email}</p>}
+                {client.contact_number && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{client.contact_number}</p>}
+                {client.address        && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{client.address}</p>}
               </div>
-            )
-          })}
-        </div>
+            ) : <div />}
+            <div style={{ border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12 }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: ACC, letterSpacing: 1, borderBottom: `0.5px solid ${BORDER}`, paddingBottom: 4, marginBottom: 8 }}>PROJECT</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 2 }}>{quote.project_name}</p>
+              {quote.project_address         && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{quote.project_address}</p>}
+              <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{CONTRACT_LABELS[quote.contract_type] ?? quote.contract_type}</p>
+              {quote.expected_completion_date && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Est. completion: {fmt(quote.expected_completion_date)}</p>}
+              {quote.drawing_reference        && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>Drawing REF: {quote.drawing_reference}</p>}
+            </div>
+          </div>
 
-        {/* Totals */}
-        <div className="rounded-2xl p-5 mb-6" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <div className="space-y-2 max-w-xs ml-auto">
-            <div className="flex justify-between text-sm">
-              <span style={{ color: S.muted }}>Subtotal (ex VAT)</span>
-              <span className="font-medium" style={{ color: S.text }}>{fmtR(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span style={{ color: S.muted }}>VAT ({quote.vat_rate}%)</span>
-              <span className="font-medium" style={{ color: S.text }}>{fmtR(vatAmt)}</span>
-            </div>
-            <div className="flex justify-between text-base font-bold pt-2" style={{ borderTop: `1px solid ${S.border}` }}>
-              <span style={{ color: S.text }}>Total incl. VAT</span>
-              <span style={{ color: S.accent }}>{fmtR(total)}</span>
-            </div>
-            {retention > 0 && (
-              <div className="flex justify-between text-sm pt-1">
-                <span style={{ color: S.muted }}>Retention ({quote.retention_percentage}%)</span>
-                <span className="font-medium" style={{ color: S.gold }}>{fmtR(retention)}</span>
-              </div>
+          {/* Table */}
+          <div style={{ marginBottom: 20 }}>
+            {(itemsBySection['__free__'] ?? []).length > 0 && (
+              <LineItemsTable items={itemsBySection['__free__'] ?? []} />
             )}
+            {sections.map(sec => {
+              const secItems = itemsBySection[sec.id] ?? []
+              if (secItems.length === 0) return null
+              const secTotal = secItems.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
+              const isCollapsed = collapsed[sec.id] ?? false
+              return (
+                <div key={sec.id} style={{ marginTop: 2 }}>
+                  <button
+                    onClick={() => setCollapsed(c => ({ ...c, [sec.id]: !c[sec.id] }))}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: SEC_BG, border: `0.5px solid ${BORDER}`, borderBottom: isCollapsed ? `0.5px solid ${BORDER}` : 'none', textAlign: 'left', cursor: 'pointer' }}>
+                    {isCollapsed
+                      ? <ChevronRight size={13} style={{ color: ACC, flexShrink: 0 }} />
+                      : <ChevronDown  size={13} style={{ color: ACC, flexShrink: 0 }} />}
+                    <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: ACC }}>{sec.title}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: ACC }}>{fmtR(secTotal)}</span>
+                  </button>
+                  {!isCollapsed && <LineItemsTable items={secItems} indent />}
+                </div>
+              )
+            })}
           </div>
+
+          {/* Totals row */}
+          <div className="totals-row">
+            {hasBanking ? (
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, color: ACC, letterSpacing: 1, marginBottom: 8 }}>BANKING DETAILS</p>
+                {settings?.bank_name           && <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 2 }}>{settings.bank_name}</p>}
+                {settings?.bank_account_number && <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Acc: {settings.bank_account_number}</p>}
+                {settings?.bank_branch_code    && <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>Branch: {settings.bank_branch_code}</p>}
+                {settings?.bank_account_type   && <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>{settings.bank_account_type}</p>}
+              </div>
+            ) : <div style={{ flex: 1 }} />}
+
+            <div style={{ width: 230, border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12, flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span style={{ fontSize: 11, color: MUTED }}>Subtotal (excl. VAT)</span>
+                <span style={{ fontSize: 11, color: DARK }}>{fmtR(subtotal)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span style={{ fontSize: 11, color: MUTED }}>VAT ({quote.vat_rate}%)</span>
+                <span style={{ fontSize: 11, color: DARK }}>{fmtR(vatAmt)}</span>
+              </div>
+              <div style={{ borderTop: `0.5px solid ${BORDER}`, margin: '6px 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: ACC }}>TOTAL</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: ACC }}>{fmtR(total)}</span>
+              </div>
+              {retention > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                  <span style={{ fontSize: 10, color: MUTED }}>Retention ({quote.retention_percentage}%)</span>
+                  <span style={{ fontSize: 10, color: GOLD }}>{fmtR(retention)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Notes */}
+          {quote.notes && (
+            <div style={{ marginTop: 24, paddingTop: 18, borderTop: `0.5px solid ${BORDER}` }}>
+              <p style={{ fontSize: 9, fontWeight: 700, color: ACC, letterSpacing: 1, marginBottom: 6 }}>NOTES</p>
+              <p style={{ fontSize: 11, color: DARK, lineHeight: 1.7 }}>{quote.notes}</p>
+            </div>
+          )}
+
         </div>
 
-        {quote.notes && (
-          <div className="rounded-2xl p-5 mb-6" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>Notes</p>
-            <p className="text-sm" style={{ color: S.text, lineHeight: 1.7 }}>{quote.notes}</p>
-          </div>
-        )}
-
-        {/* Action panel */}
+        {/* ── Approval panel ── */}
         {done === 'approved' ? (
-          <div className="rounded-2xl p-8 text-center" style={{ background: 'rgba(22,163,74,0.06)', border: `1.5px solid ${S.green}` }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'rgba(22,163,74,0.12)' }}>
-              <Check size={24} style={{ color: S.green }} />
+          <div style={{ background: 'rgba(22,163,74,0.06)', border: `1.5px solid ${GREEN}`, borderRadius: 16, padding: 32, textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(22,163,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <Check size={24} style={{ color: GREEN }} />
             </div>
-            <p className="font-bold text-lg mb-1" style={{ color: S.green }}>Quote Approved</p>
-            <p className="text-sm" style={{ color: S.muted }}>
+            <p style={{ fontWeight: 700, fontSize: 18, color: GREEN, marginBottom: 4 }}>Quote Approved</p>
+            <p style={{ fontSize: 13, color: MUTED }}>
               {quote.approved_date ? `Approved on ${fmt(quote.approved_date)}. ` : ''}
               {company?.company_name ?? 'The contractor'} has been notified.
             </p>
           </div>
         ) : done === 'requested' ? (
-          <div className="rounded-2xl p-8 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'rgba(58,124,165,0.1)' }}>
-              <MessageSquare size={24} style={{ color: S.accent }} />
+          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: 32, textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(58,124,165,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <MessageSquare size={24} style={{ color: ACC }} />
             </div>
-            <p className="font-bold text-lg mb-1" style={{ color: S.text }}>Changes Requested</p>
-            <p className="text-sm" style={{ color: S.muted }}>Your feedback has been sent. {company?.company_name ?? 'The contractor'} will be in touch.</p>
+            <p style={{ fontWeight: 700, fontSize: 18, color: DARK, marginBottom: 4 }}>Changes Requested</p>
+            <p style={{ fontSize: 13, color: MUTED }}>Your feedback has been sent. {company?.company_name ?? 'The contractor'} will be in touch.</p>
           </div>
         ) : isAlreadyActioned ? (
-          <div className="rounded-2xl p-5 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <p className="text-sm" style={{ color: S.muted }}>This quote is no longer pending approval.</p>
+          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 20, textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: MUTED }}>This quote is no longer pending approval.</p>
           </div>
         ) : (
-          <div className="rounded-2xl p-6" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <h3 className="font-bold text-base mb-1" style={{ color: S.text }}>Your Response</h3>
-            <p className="text-sm mb-5" style={{ color: S.muted }}>Review the quote above and let us know how you'd like to proceed.</p>
-
-            <div className="flex gap-3 mb-4">
-              <button
-                onClick={() => setAction('approve')}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all"
-                style={{
-                  background: action === 'approve' ? S.green : 'rgba(22,163,74,0.08)',
-                  color: action === 'approve' ? '#fff' : S.green,
-                  border: `1.5px solid ${action === 'approve' ? S.green : 'rgba(22,163,74,0.3)'}`,
-                }}>
-                <ThumbsUp size={16} /> Approve Quote
+          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: 24 }}>
+            <h3 style={{ fontWeight: 700, fontSize: 15, color: DARK, margin: '0 0 4px' }}>Your Response</h3>
+            <p style={{ fontSize: 13, color: MUTED, margin: '0 0 20px' }}>Review the quote above and let us know how you&apos;d like to proceed.</p>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+              <button onClick={() => setAction('approve')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: action === 'approve' ? GREEN : 'rgba(22,163,74,0.08)', color: action === 'approve' ? '#fff' : GREEN, border: `1.5px solid ${action === 'approve' ? GREEN : 'rgba(22,163,74,0.3)'}`, transition: 'all 0.15s' }}>
+                <ThumbsUp size={15} /> Approve Quote
               </button>
-              <button
-                onClick={() => setAction('request_changes')}
-                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all"
-                style={{
-                  background: action === 'request_changes' ? S.accent : 'rgba(58,124,165,0.08)',
-                  color: action === 'request_changes' ? '#fff' : S.accent,
-                  border: `1.5px solid ${action === 'request_changes' ? S.accent : 'rgba(58,124,165,0.3)'}`,
-                }}>
-                <MessageSquare size={16} /> Request Changes
+              <button onClick={() => setAction('request_changes')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: action === 'request_changes' ? ACC : 'rgba(58,124,165,0.08)', color: action === 'request_changes' ? '#fff' : ACC, border: `1.5px solid ${action === 'request_changes' ? ACC : 'rgba(58,124,165,0.3)'}`, transition: 'all 0.15s' }}>
+                <MessageSquare size={15} /> Request Changes
               </button>
             </div>
-
             {action === 'request_changes' && (
-              <textarea
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Describe what you'd like changed…"
-                className="w-full px-3 py-2.5 text-sm rounded-xl outline-none resize-none mb-4"
-                style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}
-              />
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Describe what you'd like changed…" style={{ width: '100%', padding: '10px 12px', fontSize: 13, borderRadius: 12, outline: 'none', resize: 'none', marginBottom: 16, background: '#F4F4F5', border: `1px solid ${BORDER}`, color: DARK, boxSizing: 'border-box' }} />
             )}
-
             {action && (
-              <button
-                onClick={() => void submit()}
-                disabled={submitting || (action === 'request_changes' && !notes.trim())}
-                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ background: action === 'approve' ? S.green : S.accent, color: '#fff' }}>
+              <button onClick={() => void submit()} disabled={submitting || (action === 'request_changes' && !notes.trim())} style={{ width: '100%', padding: 12, borderRadius: 12, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: action === 'approve' ? GREEN : ACC, color: '#fff', cursor: 'pointer', opacity: (submitting || (action === 'request_changes' && !notes.trim())) ? 0.5 : 1, border: 'none', transition: 'opacity 0.15s' }}>
                 {submitting && <Loader2 size={14} className="animate-spin" />}
                 {action === 'approve' ? 'Confirm Approval' : 'Send Feedback'}
               </button>
@@ -316,44 +307,49 @@ export default function QuoteApprovalPage() {
           </div>
         )}
 
-        <p className="text-center text-xs mt-8" style={{ color: S.muted }}>
-          Powered by <span className="font-semibold">QuotingHub</span>
+        <p style={{ textAlign: 'center', fontSize: 11, color: MUTED, marginTop: 20 }}>
+          Powered by <span style={{ fontWeight: 600 }}>QuotingHub</span>
         </p>
       </div>
     </div>
   )
 }
 
-function LineItemsTable({ items }: { items: { description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null }[] }) {
+type Item = { description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null }
+
+function LineItemsTable({ items, indent = false }: { items: Item[]; indent?: boolean }) {
   const hasLabour = items.some(i => (i.labour_rate ?? 0) > 0)
-  const cols = hasLabour ? '1fr 52px 64px 110px 90px 110px' : '1fr 52px 64px 120px 120px'
-  const headers = hasLabour ? ['Description', 'Unit', 'Qty', 'Unit Rate', '+Labour', 'Total'] : ['Description', 'Unit', 'Qty', 'Rate', 'Total']
+  const cols = hasLabour ? '1fr 48px 56px 96px 80px 96px' : '1fr 48px 56px 100px 100px'
+  const headers = hasLabour
+    ? ['Description', 'Unit', 'Qty', 'Unit Rate', '+Labour', 'Total']
+    : ['Description', 'Unit', 'Qty', 'Rate', 'Total']
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <div style={{ minWidth: hasLabour ? 560 : 480 }}>
-        {/* Blue filled header — matches PDF table header */}
-        <div className="grid px-4 py-2.5" style={{ gridTemplateColumns: cols, background: S.accent }}>
-          {headers.map(h => (
-            <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-right first:text-left" style={{ color: '#ffffff' }}>{h}</span>
+        {/* Blue header — matches PDF */}
+        <div style={{ display: 'grid', gridTemplateColumns: cols, padding: '7px 12px', background: ACC }}>
+          {headers.map((h, i) => (
+            <span key={h} style={{ fontSize: 10, fontWeight: 700, color: '#fff', letterSpacing: 0.5, textAlign: i === 0 ? 'left' : 'right' }}>{h}</span>
           ))}
         </div>
         {items.map((item, i) => {
           const lineTotal = item.quoted_quantity * (item.quoted_unit_rate + (item.labour_rate ?? 0))
           return (
-            <div key={i} className="grid px-4 py-3 items-start" style={{ gridTemplateColumns: cols, borderTop: `1px solid ${S.border}`, background: i % 2 === 0 ? 'transparent' : '#F8FAFC' }}>
-              <div className="pr-4">
-                <span className="text-sm" style={{ color: S.text }}>{item.description}</span>
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: cols, padding: '7px 12px', alignItems: 'start', borderBottom: `0.5px solid ${BORDER}`, background: i % 2 === 1 ? SURF : '#fff' }}>
+              <div style={{ paddingLeft: indent ? 10 : 0, paddingRight: 8 }}>
+                <span style={{ fontSize: 12, color: DARK }}>{item.description}</span>
                 {item.is_variation && (
-                  <span className="block text-[10px] font-semibold mt-0.5" style={{ color: S.gold }}>VARIATION ORDER</span>
+                  <span style={{ display: 'block', fontSize: 9, fontWeight: 700, color: GOLD, marginTop: 2 }}>VARIATION ORDER</span>
                 )}
               </div>
-              <span className="text-xs text-right" style={{ color: S.muted }}>{item.unit ?? '—'}</span>
-              <span className="text-sm text-right" style={{ color: S.text }}>{item.quoted_quantity}</span>
-              <span className="text-sm text-right" style={{ color: S.text }}>{fmtR(item.quoted_unit_rate)}</span>
+              <span style={{ fontSize: 11, color: MUTED, textAlign: 'right' }}>{item.unit ?? '—'}</span>
+              <span style={{ fontSize: 12, color: DARK, textAlign: 'right' }}>{item.quoted_quantity}</span>
+              <span style={{ fontSize: 12, color: DARK, textAlign: 'right' }}>{fmtR(item.quoted_unit_rate)}</span>
               {hasLabour && (
-                <span className="text-sm text-right" style={{ color: S.muted }}>{(item.labour_rate ?? 0) > 0 ? fmtR(item.labour_rate ?? 0) : '—'}</span>
+                <span style={{ fontSize: 12, color: MUTED, textAlign: 'right' }}>{(item.labour_rate ?? 0) > 0 ? fmtR(item.labour_rate ?? 0) : '—'}</span>
               )}
-              <span className="text-sm text-right font-semibold" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: DARK, textAlign: 'right' }}>{fmtR(lineTotal)}</span>
             </div>
           )
         })}
