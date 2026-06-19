@@ -59,7 +59,7 @@ function computeVOLineTotal(qty: string, cost: string, markup: string, labour: s
   const c = parseFloat(cost) || 0
   const m = parseFloat(markup) || 0
   const l = parseFloat(labour) || 0
-  return q * c * (1 + m / 100) + l
+  return q * c * (1 + m / 100) + q * l
 }
 
 // ─── Item library autocomplete for VO line items ──────────────────────────────
@@ -605,26 +605,29 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
             {/* Column headers */}
             <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
-              style={{ gridTemplateColumns: '1fr 50px 36px 82px 55px 65px 75px 80px 80px 20px', gap: '4px', color: S.muted }}>
+              style={{ gridTemplateColumns: '1fr 50px 36px 82px 55px 65px 75px 80px 75px 80px 20px', gap: '4px', color: S.muted }}>
               <span>Description</span>
               <span className="text-right">Qty</span>
               <span className="text-center">Unit</span>
               <span className="text-right">Cost</span>
               <span className="text-right">Mkup%</span>
               <span className="text-right">Rate</span>
-              <span className="text-right">Subtotal</span>
-              <span className="text-right">+Labour</span>
-              <span className="text-right">Total</span>
+              <span className="text-right">Mat. Total</span>
+              <span className="text-right">Labour/Unit</span>
+              <span className="text-right">Lab. Total</span>
+              <span className="text-right">Line Total</span>
               <span />
             </div>
 
             {formLineItems.map(li => {
               const rate = (parseFloat(li.cost) || 0) * (1 + (parseFloat(li.markup) || 0) / 100)
-              const subtotal = (parseFloat(li.qty) || 0) * rate
-              const lineTotal = subtotal + (parseFloat(li.labour) || 0)
+              const qty = parseFloat(li.qty) || 0
+              const matTotal = qty * rate
+              const labTotal = qty * (parseFloat(li.labour) || 0)
+              const lineTotal = matTotal + labTotal
               return (
               <div key={li._id} className="grid mb-1.5 items-center"
-                style={{ gridTemplateColumns: '1fr 50px 36px 82px 55px 65px 75px 80px 80px 20px', gap: '4px' }}>
+                style={{ gridTemplateColumns: '1fr 50px 36px 82px 55px 65px 75px 80px 75px 80px 20px', gap: '4px' }}>
                 <VODescriptionInput
                   value={li.description}
                   onChange={v => updateFormItem(li._id, { description: v })}
@@ -646,10 +649,11 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                   placeholder="%" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
                 <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{rate > 0 ? fmtR(rate) : '—'}</div>
-                <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{subtotal > 0 ? fmtR(subtotal) : '—'}</div>
+                <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{matTotal > 0 ? fmtR(matTotal) : '—'}</div>
                 <input type="number" value={li.labour} onChange={e => updateFormItem(li._id, { labour: e.target.value })}
                   placeholder="0" className="px-2 py-1.5 text-sm rounded-lg outline-none text-right"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{labTotal > 0 ? fmtR(labTotal) : '—'}</div>
                 <div className="text-sm font-semibold text-right" style={{ color: lineTotal > 0 ? S.text : S.muted }}>
                   {lineTotal > 0 ? fmtR(lineTotal) : '—'}
                 </div>
@@ -814,14 +818,14 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                           <span>Item</span>
                           <span className="text-center">Unit</span>
                           <span className="text-right">Qty</span>
-                          {hasCost && <><span className="text-right">Cost</span><span className="text-right">Mkup</span><span className="text-right">+Labour</span></>}
+                          {hasCost && <><span className="text-right">Cost</span><span className="text-right">Mkup</span><span className="text-right">Labour/Unit</span></>}
                           <span className="text-right">Total</span>
                           {hasCost && <span className="text-right" style={{ color: S.green }}>Profit</span>}
                         </div>
                         {/* Rows */}
                         {voItems.map((li, idx) => {
-                          const lineTotal = li.quoted_quantity * li.quoted_unit_rate + (li.labour_rate ?? 0)
-                          const lineCost = li.cost_unit_rate != null ? li.quoted_quantity * li.cost_unit_rate + (li.labour_rate ?? 0) : null
+                          const lineTotal = li.quoted_quantity * li.quoted_unit_rate + li.quoted_quantity * (li.labour_rate ?? 0)
+                          const lineCost = li.cost_unit_rate != null ? li.quoted_quantity * li.cost_unit_rate + li.quoted_quantity * (li.labour_rate ?? 0) : null
                           const lineProfit = lineCost != null ? lineTotal - lineCost : null
                           totalSell += lineTotal
                           if (lineCost != null) totalCost += lineCost
@@ -982,7 +986,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                       </div>
                       <div className="grid mb-1 px-1 text-[10px] font-semibold uppercase tracking-wider"
                         style={{ gridTemplateColumns: '1fr 50px 55px 90px 60px 90px 90px 24px', gap: '4px', color: S.muted }}>
-                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">+Labour</span><span className="text-right">Total</span><span />
+                        <span>Description</span><span>Unit</span><span className="text-right">Qty</span><span className="text-right">Cost</span><span className="text-right">Mkup%</span><span className="text-right">Labour/Unit</span><span className="text-right">Line Total</span><span />
                       </div>
                       {editLineItems.map(li => {
                         const lineTotal = computeVOLineTotal(li.qty, li.cost, li.markup, li.labour)

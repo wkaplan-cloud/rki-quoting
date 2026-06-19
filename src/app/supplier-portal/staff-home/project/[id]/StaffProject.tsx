@@ -673,26 +673,29 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                     <div style={{ minWidth: 700 }}>
                       {/* Column headers */}
                       <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
-                        style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 84px 20px', gap: '4px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                        style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 72px 84px 20px', gap: '4px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
                         <span>Description</span>
                         <span className="text-right">Unit</span>
                         <span className="text-right">Qty</span>
                         <span className="text-right">Cost</span>
                         <span className="text-right">Mkup%</span>
                         <span className="text-right">Rate</span>
-                        <span className="text-right">Subtotal</span>
-                        <span className="text-right">+Labour</span>
-                        <span className="text-right">Total</span>
+                        <span className="text-right">Mat. Total</span>
+                        <span className="text-right">Labour/Unit</span>
+                        <span className="text-right">Lab. Total</span>
+                        <span className="text-right">Line Total</span>
                         <span />
                       </div>
                       {voItems.map((li, i) => {
                         const rate = (parseFloat(li.cost) || 0) * (1 + (parseFloat(li.markup) || 0) / 100)
-                        const subtotal = (parseFloat(li.qty) || 0) * rate
-                        const total = subtotal + (parseFloat(li.labour) || 0)
+                        const qty = parseFloat(li.qty) || 0
+                        const subtotal = qty * rate
+                        const labTotal = qty * (parseFloat(li.labour) || 0)
+                        const total = subtotal + labTotal
                         const fmtR = (v: number) => `R ${v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                         return (
                           <div key={li._id} className="grid px-3 py-2 items-center"
-                            style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 84px 20px', gap: '4px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                            style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 72px 84px 20px', gap: '4px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
                             <input value={li.description}
                               onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, description: e.target.value } : it))}
                               placeholder="Description"
@@ -727,6 +730,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                               onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, labour: e.target.value } : it))}
                               className="w-full px-2 py-1.5 rounded-lg text-sm outline-none text-right"
                               style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                            <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{labTotal > 0 ? fmtR(labTotal) : '—'}</div>
                             <div className="text-sm font-bold text-right tabular-nums" style={{ color: total > 0 ? S.text : S.muted }}>{total > 0 ? fmtR(total) : '—'}</div>
                             <button onClick={() => setVOItems(prev => voItems.length > 1 ? prev.filter(it => it._id !== li._id) : prev)}
                               style={{ color: voItems.length > 1 ? S.muted : 'transparent', pointerEvents: voItems.length > 1 ? 'auto' : 'none' }}>
