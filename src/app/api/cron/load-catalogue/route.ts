@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const maxDuration = 300
@@ -8,13 +8,9 @@ const SUB_KEY      = process.env.TWINBRU_SUBSCRIPTION_KEY ?? ''
 const BEARER       = process.env.TWINBRU_BEARER_TOKEN ?? ''
 const PAGE_SIZE    = 50  // confirmed API max
 
-// Strategy confirmed by Robin (Twinbru):
-// Loop years current→2000 (newest first so recent fabrics are found immediately),
-// filter: "status.eq.RN/launch.in(YYYYxx-YYYYxx)"
-// Each year stays under the 10,000 result hard limit.
-// Pagination via totalPageCount in response.
+// One cron-job.org fire per night (trigger=manual) → self-chains via after() until complete.
+// Mirrors the "Load New Fabrics" button: each invocation scans 50s worth then fires the next.
 // RESUME token: "RESUME:<year>:<page>"
-// Designed for Vercel Hobby (10s function limit) + cron-job.org firing every 10 min.
 
 const START_YEAR = 2000
 const END_YEAR   = new Date().getFullYear()
@@ -238,6 +234,23 @@ export async function GET(req: NextRequest) {
         items_added: added,
         error_message: resumeToken,
       }).eq('id', logId)
+
+      // Self-chain: fire the next continue invocation after this response is sent.
+      // Use VERCEL_URL (deployment URL) to avoid the custom domain 307 redirect.
+      const appUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXT_PUBLIC_APP_URL ?? null
+      if (appUrl) {
+        after(async () => {
+          const controller = new AbortController()
+          setTimeout(() => controller.abort(), 8_000)
+          await fetch(`${appUrl}/api/cron/load-catalogue?trigger=continue`, {
+            headers: { Authorization: `Bearer ${process.env.CRON_SECRET ?? ''}` },
+            signal: controller.signal,
+          }).catch(() => undefined)
+        })
+      }
+
       return NextResponse.json({ ok: true, partial: true, checked: totalFetched, added })
     }
 
