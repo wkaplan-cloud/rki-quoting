@@ -6,12 +6,14 @@ import { reverseGeocode } from '@/lib/reverse-geocode'
 
 export async function POST(req: NextRequest) {
   try {
-    const { punch_type, latitude, longitude, job_id, notes } = await req.json() as {
+    const { punch_type, latitude, longitude, job_id, notes, punched_at: clientPunchedAt, idempotency_key } = await req.json() as {
       punch_type: 'clock_in' | 'clock_out'
       latitude?: number
       longitude?: number
       job_id?: string
       notes?: string
+      punched_at?: string
+      idempotency_key?: string
     }
     if (punch_type !== 'clock_in' && punch_type !== 'clock_out') {
       return NextResponse.json({ error: 'Invalid punch_type' }, { status: 400 })
@@ -30,17 +32,37 @@ export async function POST(req: NextRequest) {
 
     if (!staff || !staff.is_active) return NextResponse.json({ error: 'Staff member not found' }, { status: 404 })
 
+    // Validate client-supplied timestamp if present
+    const resolvedPunchedAt = clientPunchedAt && !isNaN(Date.parse(clientPunchedAt))
+      ? clientPunchedAt
+      : new Date().toISOString()
+
+    // If an idempotency_key is provided, check for an existing punch first.
+    // This makes offline queue replays safe — replaying the same punch twice
+    // returns the original row instead of creating a duplicate.
+    if (idempotency_key) {
+      const { data: existing } = await supabaseAdmin
+        .from('elec_time_punches')
+        .select()
+        .eq('idempotency_key', idempotency_key)
+        .maybeSingle()
+      if (existing) {
+        return NextResponse.json({ ok: true, punch: existing, address: null, deduplicated: true })
+      }
+    }
+
     const { data: punch, error } = await supabaseAdmin
       .from('elec_time_punches')
       .insert({
         portal_account_id: staff.portal_account_id,
         staff_id: staff.id,
         punch_type,
-        punched_at: new Date().toISOString(),
+        punched_at: resolvedPunchedAt,
         latitude: latitude ?? null,
         longitude: longitude ?? null,
         job_id: job_id ?? null,
         notes: notes ?? null,
+        idempotency_key: idempotency_key ?? null,
       })
       .select()
       .single()

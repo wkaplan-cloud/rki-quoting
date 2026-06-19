@@ -108,9 +108,10 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
 
   async function refresh() {
     setRefreshing(true)
-    const res = await fetch('/api/supplier-portal/quoting/staff-live')
+    const res = await fetch('/api/supplier-portal/quoting/today-punches')
     if (res.ok) {
-      // Re-fetch today punches via a lightweight API; for now just tick the clock
+      const fresh = await res.json() as Punch[]
+      setTodayPunches(fresh)
     }
     setRefreshing(false)
   }

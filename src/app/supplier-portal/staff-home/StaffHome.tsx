@@ -5,10 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw, Bell, BellOff,
+  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw, Bell, BellOff, WifiOff,
 } from 'lucide-react'
 import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient, ElecJob } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
+import { OfflineSyncBanner } from './OfflineSyncBanner'
+import { enqueue, pendingCount } from '@/lib/offline-punch-queue'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', sidebar: '#1E2A38',
@@ -165,8 +167,20 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   // Sign out
   const [signingOut, setSigningOut] = useState(false)
 
+  const [offlinePending, setOfflinePending] = useState(() => (typeof window !== 'undefined' ? pendingCount() : 0))
+  const [isOnline, setIsOnline] = useState(() => (typeof window !== 'undefined' ? navigator.onLine : true))
+
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true)
+    const goOffline = () => setIsOnline(false)
+    window.addEventListener('online', goOnline)
+    window.addEventListener('offline', goOffline)
+    return () => { window.removeEventListener('online', goOnline); window.removeEventListener('offline', goOffline) }
+  }, [])
+
   async function handlePunch() {
     const punchType = isClockedIn ? 'clock_out' : 'clock_in'
+    const punchedAt = new Date().toISOString()
     setClockStatus('locating')
     setClockMsg('Getting your location…')
 
@@ -203,7 +217,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
       const res = await fetch('/api/supplier-portal/staff/punch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ punch_type: punchType, latitude, longitude }),
+        body: JSON.stringify({ punch_type: punchType, punched_at: punchedAt, latitude, longitude }),
       })
       const data = await res.json() as { ok?: boolean; punch?: ElecTimePunch; address?: string | null; error?: string }
       if (!res.ok || !data.ok) { setClockStatus('error'); setClockMsg(data.error ?? 'Failed'); return }
@@ -215,8 +229,13 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
       setClockMsg((punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓') + locationTag)
       setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     } catch {
-      setClockStatus('error')
-      setClockMsg('Network error — try again')
+      // No internet — save to local queue with the exact timestamp
+      enqueue({ punch_type: punchType, punched_at: punchedAt, latitude, longitude })
+      setOfflinePending(pendingCount())
+      // Optimistically update UI so the worker knows their action was captured
+      setIsClockedIn(punchType === 'clock_in')
+      setClockStatus('done')
+      setClockMsg((punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓') + ' · saved offline')
       setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     }
   }
@@ -312,6 +331,13 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           title="Refresh">
           <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
         </button>
+        {!isOnline && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full flex-shrink-0"
+            style={{ background: 'rgba(217,164,65,0.2)' }}>
+            <WifiOff size={11} style={{ color: S.gold }} />
+            <span className="text-[11px] font-semibold" style={{ color: S.gold }}>Offline</span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full flex-shrink-0"
           style={{ background: isClockedIn ? 'rgba(22,163,74,0.25)' : 'rgba(255,255,255,0.08)' }}>
           <div className="w-1.5 h-1.5 rounded-full" style={{ background: isClockedIn ? S.green : 'rgba(255,255,255,0.3)' }} />
@@ -320,6 +346,9 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           </span>
         </div>
       </div>
+
+      {/* Offline sync banner — shown whenever there are queued punches */}
+      <OfflineSyncBanner onSynced={() => setOfflinePending(0)} />
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto pb-24">

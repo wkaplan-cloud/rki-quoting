@@ -66,8 +66,8 @@ export async function GET(req: NextRequest) {
     for (const sub of subs) {
       const latest = latestToday[sub.staff_id]
       if (type === 'clock_in') {
-        // Remind if no punch today OR last punch was clock_out (not currently on site)
-        if (!latest || latest === 'clock_out') notify.push(sub)
+        // Remind only if they haven't punched at all today (never started)
+        if (!latest) notify.push(sub)
       } else {
         // Remind if currently clocked in (last punch was clock_in)
         if (latest === 'clock_in') notify.push(sub)
