@@ -84,19 +84,34 @@ function printWeek(
     const member = staffMap[staffId]
     if (!member) continue
 
-    const sorted = [...staffPunches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-    const ins  = sorted.filter(p => p.punch_type === 'clock_in')
-    const outs = sorted.filter(p => p.punch_type === 'clock_out')
+    // Group by UTC date, then greedy-match within each day to avoid cross-day mispairing
+    const pByDay: Record<string, ElecTimePunch[]> = {}
+    for (const p of staffPunches) {
+      const d = p.punched_at.slice(0, 10)
+      if (!pByDay[d]) pByDay[d] = []
+      pByDay[d].push(p)
+    }
 
     let totalMs = 0
-    const sessions = ins.map((inP, idx) => {
-      const outP = outs[idx] ?? null
-      const durMs = outP
-        ? new Date(outP.punched_at).getTime() - new Date(inP.punched_at).getTime()
-        : Date.now() - new Date(inP.punched_at).getTime()
-      totalMs += outP ? durMs : 0
-      return { in: inP, out: outP, durMs: outP ? durMs : null }
-    })
+    const sessions: { in: ElecTimePunch; out: ElecTimePunch | null; durMs: number | null }[] = []
+    for (const dayKey of Object.keys(pByDay).sort()) {
+      const daySorted = [...pByDay[dayKey]].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+      const dayIns  = daySorted.filter(p => p.punch_type === 'clock_in')
+      const dayOuts = daySorted.filter(p => p.punch_type === 'clock_out')
+      let outIdx = 0
+      for (const inP of dayIns) {
+        const clockInMs = new Date(inP.punched_at).getTime()
+        while (outIdx < dayOuts.length && new Date(dayOuts[outIdx].punched_at).getTime() <= clockInMs) outIdx++
+        if (outIdx < dayOuts.length) {
+          const outP = dayOuts[outIdx++]
+          const durMs = new Date(outP.punched_at).getTime() - clockInMs
+          totalMs += durMs
+          sessions.push({ in: inP, out: outP, durMs })
+        } else {
+          sessions.push({ in: inP, out: null, durMs: null })
+        }
+      }
+    }
 
     const initials = member.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     const totalH = Math.floor(totalMs / 3600000)
@@ -678,8 +693,18 @@ export function StaffManager({ initialStaff, punches }: Props) {
                   {Object.entries(staffWeekPunches[wk]).map(([staffId, staffPunches]) => {
                     const member = staffMap[staffId]
                     const ins = staffPunches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-                    const breakdown = punchesToBreakdown(staffPunches)
-                    const { normalMs, overtimeMs, totalMs } = breakdown
+                    // Sum per-day breakdowns to prevent cross-day pairing issues
+                    const wkDayBuckets: Record<string, ElecTimePunch[]> = {}
+                    for (const p of staffPunches) {
+                      const d = p.punched_at.slice(0, 10)
+                      if (!wkDayBuckets[d]) wkDayBuckets[d] = []
+                      wkDayBuckets[d].push(p)
+                    }
+                    let normalMs = 0, overtimeMs = 0, totalMs = 0
+                    for (const dp of Object.values(wkDayBuckets)) {
+                      const db = punchesToBreakdown(dp)
+                      normalMs += db.normalMs; overtimeMs += db.overtimeMs; totalMs += db.totalMs
+                    }
                     const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
                     return (
                       <div key={staffId} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: `1px solid ${S.border}` }}>
