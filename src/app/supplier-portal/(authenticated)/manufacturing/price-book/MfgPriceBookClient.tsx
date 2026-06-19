@@ -5,14 +5,16 @@ import type { MfgPriceBookItem, MfgPriceBookItemType } from '@/lib/mfg-types'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5', bg: '#F5F7F9' }
 
-const UNITS = ['sheet','plank','meter','piece','litre','kg','custom']
+const UNITS = ['sheet','plank','meter','sqm','piece','litre','kg','hour','custom']
+const UNIT_LABELS: Record<string, string> = { sqm: 'm²', hour: 'hour' }
+const unitLabel = (u: string, custom?: string | null) => u === 'custom' ? (custom ?? 'custom') : (UNIT_LABELS[u] ?? u)
 
-const DEFAULT_CATEGORY = { material: 'boards', hardware: 'hinges_rails' } as const
+const DEFAULT_CATEGORY = { material: 'boards', hardware: 'hinges_rails', labour: 'labour_services' } as const
 
 const BLANK = (): Partial<MfgPriceBookItem> => ({
   item_type: 'material', name: '', unit: 'sheet',
   unit_custom: '', cost_price: undefined, supplier_quoted: false,
-  supplier_name: '',
+  supplier_name: '', notes: '',
 })
 
 interface Props { initialItems: MfgPriceBookItem[] }
@@ -59,7 +61,7 @@ export function MfgPriceBookClient({ initialItems }: Props) {
     const type = draft.item_type ?? 'material'
     const payload = {
       item_type: type,
-      category: DEFAULT_CATEGORY[type],
+      category: DEFAULT_CATEGORY[type as keyof typeof DEFAULT_CATEGORY],
       name: draft.name?.trim(),
       unit: draft.unit, unit_custom: draft.unit === 'custom' ? draft.unit_custom : null,
       cost_price: draft.supplier_quoted ? null : (draft.cost_price ?? null),
@@ -90,11 +92,11 @@ export function MfgPriceBookClient({ initialItems }: Props) {
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-          {(['all','material','hardware'] as const).map(t => (
+          {(['all','material','hardware','labour'] as const).map(t => (
             <button key={t} onClick={() => setActiveType(t)}
               className="px-4 py-2 text-xs font-semibold transition-colors"
               style={{ background: activeType === t ? S.accent : S.card, color: activeType === t ? '#fff' : S.muted }}>
-              {t === 'all' ? 'All' : t === 'material' ? 'Materials' : 'Hardware'}
+              {t === 'all' ? 'All' : t === 'material' ? 'Materials' : t === 'hardware' ? 'Hardware' : 'Labour'}
             </button>
           ))}
         </div>
@@ -129,7 +131,7 @@ export function MfgPriceBookClient({ initialItems }: Props) {
                   )}
                 </div>
                 <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                  {item.item_type === 'material' ? 'Material' : 'Hardware'} · per {item.unit === 'custom' ? item.unit_custom : item.unit}
+                  {item.item_type === 'material' ? 'Material' : item.item_type === 'hardware' ? 'Hardware' : 'Labour'} · per {unitLabel(item.unit, item.unit_custom)}
                   {item.supplier_name && ` · ${item.supplier_name}`}
                 </p>
               </div>
@@ -174,11 +176,11 @@ export function MfgPriceBookClient({ initialItems }: Props) {
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Type</label>
                 <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-                  {(['material','hardware'] as const).map(t => (
-                    <button key={t} onClick={() => setDraft(d => ({ ...d, item_type: t }))}
+                  {(['material','hardware','labour'] as const).map(t => (
+                    <button key={t} onClick={() => setDraft(d => ({ ...d, item_type: t, unit: t === 'labour' ? 'hour' : d.unit }))}
                       className="flex-1 py-2 text-xs font-semibold transition-colors"
                       style={{ background: draft.item_type === t ? S.accent : S.input, color: draft.item_type === t ? '#fff' : S.muted }}>
-                      {t === 'material' ? 'Material' : 'Hardware'}
+                      {t === 'material' ? 'Material' : t === 'hardware' ? 'Hardware' : 'Labour'}
                     </button>
                   ))}
                 </div>
@@ -195,7 +197,7 @@ export function MfgPriceBookClient({ initialItems }: Props) {
                   <select value={draft.unit ?? 'sheet'} onChange={e => setDraft(d => ({ ...d, unit: e.target.value as MfgPriceBookItem['unit'] }))}
                     className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
                     style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
-                    {UNITS.map(u => <option key={u} value={u}>{u.charAt(0).toUpperCase()+u.slice(1)}</option>)}
+                    {UNITS.map(u => <option key={u} value={u}>{UNIT_LABELS[u] ?? (u.charAt(0).toUpperCase()+u.slice(1))}</option>)}
                   </select>
                 </div>
                 {draft.unit === 'custom' && (

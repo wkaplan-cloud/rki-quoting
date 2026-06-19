@@ -5,8 +5,8 @@
 export type MfgTeamRole = 'admin' | 'team_member'
 export type MfgTeamStatus = 'invited' | 'active' | 'inactive'
 export type MfgClientType = 'individual' | 'company'
-export type MfgPriceBookItemType = 'material' | 'hardware'
-export type MfgPriceBookUnit = 'sheet' | 'plank' | 'meter' | 'piece' | 'litre' | 'kg' | 'custom'
+export type MfgPriceBookItemType = 'material' | 'hardware' | 'labour'
+export type MfgPriceBookUnit = 'sheet' | 'plank' | 'meter' | 'sqm' | 'piece' | 'litre' | 'kg' | 'hour' | 'custom'
 export type MfgQuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'invoiced' | 'superseded'
 export type MfgInvoiceType = 'full' | 'deposit' | 'final'
 export type MfgInvoiceStatus = 'draft' | 'sent' | 'partially_paid' | 'paid' | 'overdue'
@@ -21,8 +21,9 @@ export type MfgHardwareCategory =
   | 'stone_steel'
   | 'finishes_oils'
   | 'lighting'
+export type MfgLabourCategory = 'labour_services'
 
-export type MfgPriceBookCategory = MfgMaterialCategory | MfgHardwareCategory
+export type MfgPriceBookCategory = MfgMaterialCategory | MfgHardwareCategory | MfgLabourCategory
 
 // ─── Team Members ─────────────────────────────────────────────────────────────
 
