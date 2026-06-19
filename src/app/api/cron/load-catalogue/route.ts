@@ -10,6 +10,7 @@ const PAGE_SIZE    = 50  // confirmed API max
 
 // One cron-job.org fire per night (trigger=manual) → self-chains via after() until complete.
 // Mirrors the "Load New Fabrics" button: each invocation scans 50s worth then fires the next.
+// All chained invocations UPDATE the original log row (sessionLogId) with cumulative totals.
 // RESUME token: "RESUME:<year>:<page>"
 
 const START_YEAR = 2000
@@ -76,7 +77,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const triggeredBy = req.nextUrl.searchParams.get('trigger') ?? 'cron'
+  const triggeredBy  = req.nextUrl.searchParams.get('trigger') ?? 'cron'
+  // For continue invocations: reuse the original session log row and accumulate totals
+  const sessionLogId = req.nextUrl.searchParams.get('sessionLogId') ?? null
+  const prevChecked  = parseInt(req.nextUrl.searchParams.get('prevChecked') ?? '0', 10) || 0
+  const prevAdded    = parseInt(req.nextUrl.searchParams.get('prevAdded')   ?? '0', 10) || 0
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -115,12 +120,19 @@ export async function GET(req: NextRequest) {
     return toInsert.length
   }
 
-  const { data: logRow } = await supabase
-    .from('twinbru_sync_log')
-    .insert({ sync_type: 'load', triggered_by: triggeredBy })
-    .select('id')
-    .single()
-  const logId = logRow?.id
+  // continue: reuse the original log row so cumulative totals are always visible on the platform.
+  // manual/cron: create a fresh log row for this session.
+  let logId: string | undefined
+  if (triggeredBy === 'continue' && sessionLogId) {
+    logId = sessionLogId
+  } else {
+    const { data: logRow } = await supabase
+      .from('twinbru_sync_log')
+      .insert({ sync_type: 'load', triggered_by: triggeredBy })
+      .select('id')
+      .single()
+    logId = logRow?.id
+  }
 
   try {
     // ── Resolve resume position ───────────────────────────────────────────────
@@ -226,42 +238,50 @@ export async function GET(req: NextRequest) {
       await supabase.from('price_lists').update({ item_count: count ?? 0 }).eq('id', priceListId)
     }
 
+    const cumulativeChecked = prevChecked + totalFetched
+    const cumulativeAdded   = prevAdded + added
+
     if (timedOut && resumeToken) {
+      // Update the session log row with running cumulative totals + RESUME token
       await supabase.from('twinbru_sync_log').update({
         status: 'ok',
         completed_at: new Date().toISOString(),
-        items_checked: totalFetched,
-        items_added: added,
+        items_checked: cumulativeChecked,
+        items_added: cumulativeAdded,
         error_message: resumeToken,
       }).eq('id', logId)
 
       // Self-chain: fire the next continue invocation after this response is sent.
       // Use VERCEL_URL (deployment URL) to avoid the custom domain 307 redirect.
+      // Pass sessionLogId + cumulative totals so the next chunk updates the same row.
       const appUrl = process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}`
         : process.env.NEXT_PUBLIC_APP_URL ?? null
       if (appUrl) {
+        const nextUrl = `${appUrl}/api/cron/load-catalogue?trigger=continue&sessionLogId=${logId}&prevChecked=${cumulativeChecked}&prevAdded=${cumulativeAdded}`
         after(async () => {
           const controller = new AbortController()
           setTimeout(() => controller.abort(), 8_000)
-          await fetch(`${appUrl}/api/cron/load-catalogue?trigger=continue`, {
+          await fetch(nextUrl, {
             headers: { Authorization: `Bearer ${process.env.CRON_SECRET ?? ''}` },
             signal: controller.signal,
           }).catch(() => undefined)
         })
       }
 
-      return NextResponse.json({ ok: true, partial: true, checked: totalFetched, added })
+      return NextResponse.json({ ok: true, partial: true, checked: cumulativeChecked, added: cumulativeAdded })
     }
 
+    // Complete — clear the RESUME token so the platform shows the final cumulative totals
     await supabase.from('twinbru_sync_log').update({
       status: 'ok',
       completed_at: new Date().toISOString(),
-      items_checked: totalFetched,
-      items_added: added,
+      items_checked: cumulativeChecked,
+      items_added: cumulativeAdded,
+      error_message: null,
     }).eq('id', logId)
 
-    return NextResponse.json({ ok: true, partial: false, checked: totalFetched, added })
+    return NextResponse.json({ ok: true, partial: false, checked: cumulativeChecked, added: cumulativeAdded })
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
