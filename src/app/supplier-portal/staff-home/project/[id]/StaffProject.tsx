@@ -37,11 +37,10 @@ const REPORT_TYPES = [
 
 interface VOItem {
   _id: string; description: string; unit: string; qty: string
-  cost: string; markup: string; labour: string
 }
 
 function newVOItem(): VOItem {
-  return { _id: Math.random().toString(36).slice(2), description: '', unit: 'nr', qty: '1', cost: '', markup: '0', labour: '0' }
+  return { _id: Math.random().toString(36).slice(2), description: '', unit: 'nr', qty: '1' }
 }
 
 interface Props {
@@ -223,9 +222,6 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
           description: i.description.trim(),
           unit: i.unit,
           qty: parseFloat(i.qty) || 1,
-          cost: parseFloat(i.cost) || 0,
-          markup: parseFloat(i.markup) || 0,
-          labour: parseFloat(i.labour) || 0,
         })),
       }),
     })
@@ -667,81 +663,44 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
                     <Plus size={11} /> Add
                   </button>
                 </div>
-                {/* Horizontally scrollable — matches admin VO table exactly */}
                 <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                  <div className="overflow-x-auto">
-                    <div style={{ minWidth: 700 }}>
-                      {/* Column headers */}
-                      <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
-                        style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 72px 84px 20px', gap: '4px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
-                        <span>Description</span>
-                        <span className="text-right">Unit</span>
-                        <span className="text-right">Qty</span>
-                        <span className="text-right">Cost</span>
-                        <span className="text-right">Mkup%</span>
-                        <span className="text-right">Rate</span>
-                        <span className="text-right">Mat. Total</span>
-                        <span className="text-right">Labour/Unit</span>
-                        <span className="text-right">Lab. Total</span>
-                        <span className="text-right">Line Total</span>
-                        <span />
-                      </div>
-                      {voItems.map((li, i) => {
-                        const rate = (parseFloat(li.cost) || 0) * (1 + (parseFloat(li.markup) || 0) / 100)
-                        const qty = parseFloat(li.qty) || 0
-                        const subtotal = qty * rate
-                        const labTotal = qty * (parseFloat(li.labour) || 0)
-                        const total = subtotal + labTotal
-                        const fmtR = (v: number) => `R ${v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        return (
-                          <div key={li._id} className="grid px-3 py-2 items-center"
-                            style={{ gridTemplateColumns: '1fr 50px 50px 72px 60px 72px 80px 72px 72px 84px 20px', gap: '4px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                            <input value={li.description}
-                              onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, description: e.target.value } : it))}
-                              placeholder="Description"
-                              className="w-full px-2 py-1.5 rounded-lg text-sm outline-none"
-                              style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                            <select value={li.unit}
-                              onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, unit: e.target.value } : it))}
-                              className="w-full px-1 py-1.5 rounded-lg text-xs outline-none text-center"
-                              style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }}>
-                              <option value="nr">nr</option>
-                              <option value="m">m</option>
-                              <option value="m²">m²</option>
-                              <option value="hr">hr</option>
-                              <option value="set">set</option>
-                              <option value="lot">lot</option>
-                            </select>
-                            <input type="number" value={li.qty} min="0.01"
-                              onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, qty: e.target.value } : it))}
-                              className="w-full px-2 py-1.5 rounded-lg text-sm outline-none text-right"
-                              style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                            <input type="number" value={li.cost} min="0" placeholder="0"
-                              onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, cost: e.target.value } : it))}
-                              className="w-full px-2 py-1.5 rounded-lg text-sm outline-none text-right"
-                              style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                            <input type="number" value={li.markup} min="0" placeholder="0"
-                              onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, markup: e.target.value } : it))}
-                              className="w-full px-2 py-1.5 rounded-lg text-sm outline-none text-right"
-                              style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                            <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{rate > 0 ? fmtR(rate) : '—'}</div>
-                            <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{subtotal > 0 ? fmtR(subtotal) : '—'}</div>
-                            <input type="number" value={li.labour} min="0" placeholder="0"
-                              onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, labour: e.target.value } : it))}
-                              className="w-full px-2 py-1.5 rounded-lg text-sm outline-none text-right"
-                              style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
-                            <div className="text-xs text-right tabular-nums" style={{ color: S.muted }}>{labTotal > 0 ? fmtR(labTotal) : '—'}</div>
-                            <div className="text-sm font-bold text-right tabular-nums" style={{ color: total > 0 ? S.text : S.muted }}>{total > 0 ? fmtR(total) : '—'}</div>
-                            <button onClick={() => setVOItems(prev => voItems.length > 1 ? prev.filter(it => it._id !== li._id) : prev)}
-                              style={{ color: voItems.length > 1 ? S.muted : 'transparent', pointerEvents: voItems.length > 1 ? 'auto' : 'none' }}>
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>{/* minWidth */}
-                  </div>{/* overflow-x-auto */}
-                </div>{/* card */}
+                  <div className="grid px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ gridTemplateColumns: '1fr 60px 60px 20px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                    <span>Description</span>
+                    <span className="text-center">Unit</span>
+                    <span className="text-right">Qty</span>
+                    <span />
+                  </div>
+                  {voItems.map((li, i) => (
+                    <div key={li._id} className="grid px-3 py-2 items-center"
+                      style={{ gridTemplateColumns: '1fr 60px 60px 20px', gap: '6px', borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                      <input value={li.description}
+                        onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, description: e.target.value } : it))}
+                        placeholder="e.g. Extra conduit run"
+                        className="w-full px-2 py-1.5 rounded-lg text-sm outline-none"
+                        style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                      <select value={li.unit}
+                        onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, unit: e.target.value } : it))}
+                        className="w-full px-1 py-1.5 rounded-lg text-xs outline-none text-center"
+                        style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }}>
+                        <option value="nr">nr</option>
+                        <option value="m">m</option>
+                        <option value="m²">m²</option>
+                        <option value="hr">hr</option>
+                        <option value="set">set</option>
+                        <option value="lot">lot</option>
+                      </select>
+                      <input type="number" value={li.qty} min="0.01"
+                        onChange={e => setVOItems(prev => prev.map(it => it._id === li._id ? { ...it, qty: e.target.value } : it))}
+                        className="w-full px-2 py-1.5 rounded-lg text-sm outline-none text-right"
+                        style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                      <button onClick={() => setVOItems(prev => voItems.length > 1 ? prev.filter(it => it._id !== li._id) : prev)}
+                        style={{ color: voItems.length > 1 ? S.muted : 'transparent', pointerEvents: voItems.length > 1 ? 'auto' : 'none' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>{/* line items section */}
 
               {voError && (
