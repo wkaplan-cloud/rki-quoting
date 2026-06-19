@@ -39,6 +39,7 @@ interface Punch {
   punched_at: string
   latitude: number | null
   longitude: number | null
+  notes: string | null
   staff?: StaffMember | null
 }
 
@@ -294,6 +295,7 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
           {[...todayPunches].sort((a, b) => new Date(b.punched_at).getTime() - new Date(a.punched_at).getTime()).slice(0, 20).map((p, i) => {
             const member = staff.find(s => s.id === p.staff_id)
             const isIn = p.punch_type === 'clock_in'
+            const isAuto = !isIn && p.notes?.toLowerCase().includes('auto clocked out')
             return (
               <div key={p.id} className="flex items-center gap-3 px-5 py-3"
                 style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
@@ -304,9 +306,15 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
                     : <LogOut size={13} style={{ color: S.danger }} />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm" style={{ color: S.text }}>
+                  <p className="text-sm flex items-center gap-2 flex-wrap" style={{ color: S.text }}>
                     <span className="font-semibold">{member?.name ?? 'Unknown'}</span>
-                    {' '}{isIn ? 'clocked in' : 'clocked out'}
+                    {isIn ? 'clocked in' : 'clocked out'}
+                    {isAuto && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                        style={{ background: 'rgba(217,164,65,0.15)', color: S.gold }}>
+                        Auto
+                      </span>
+                    )}
                   </p>
                   {p.latitude && (
                     <a href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
