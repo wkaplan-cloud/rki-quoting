@@ -52,10 +52,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data: items } = await supabaseAdmin
       .from('elec_quote_line_items')
-      .select('quoted_quantity, quoted_unit_rate')
+      .select('quoted_quantity, quoted_unit_rate, labour_rate')
       .eq('quote_id', quoteId)
 
-    const subtotal = (items ?? []).reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+    const subtotal = (items ?? []).reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + ((i.labour_rate as number | null) ?? 0)), 0)
     const vatAmt = subtotal * ((quoteRaw.vat_rate ?? 0) / 100)
     const total = subtotal + vatAmt
 

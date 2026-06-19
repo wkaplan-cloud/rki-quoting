@@ -34,10 +34,11 @@ interface QuoteData {
     quoted_date: string | null
     expected_completion_date: string | null
     approved_date: string | null
+    drawing_reference: string | null
   }
   client: { id: string; client_name: string; company: string | null; email: string | null; contact_number: string | null; address: string | null } | null
   sections: { id: string; title: string; sort_order: number }[]
-  items: { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; sort_order: number }[]
+  items: { id: string; section_id: string | null; description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null; sort_order: number }[]
   company: { company_name: string | null; email: string | null; logo_url: string | null; phone: string | null } | null
 }
 
@@ -58,7 +59,7 @@ export default function QuoteApprovalPage() {
       .then(d => {
         if (d.error) { setError(d.error); setLoading(false); return }
         setData(d)
-        // Pre-set done state if already approved
+        document.title = `${d.quote.quote_number} – ${d.quote.project_name} | QuotingHub`
         if (d.quote.status === 'approved') setDone('approved')
         setLoading(false)
       })
@@ -101,7 +102,7 @@ export default function QuoteApprovalPage() {
 
   const { quote, client, sections, items, company } = data
 
-  const subtotal = items.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+  const subtotal = items.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
   const vatAmt = subtotal * (quote.vat_rate / 100)
   const total = subtotal + vatAmt
   const retention = subtotal * (quote.retention_percentage / 100)
@@ -158,6 +159,7 @@ export default function QuoteApprovalPage() {
             { label: 'Expected Completion', value: fmt(quote.expected_completion_date) },
             { label: 'Payment Terms', value: quote.payment_terms_days ? `${quote.payment_terms_days} days` : null },
             { label: 'Retention', value: quote.retention_percentage > 0 ? `${quote.retention_percentage}%` : null },
+            { label: 'Drawing Reference', value: quote.drawing_reference },
           ].filter(f => f.value).map(f => (
             <div key={f.label}>
               <p className="text-[10px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: S.muted }}>{f.label}</p>
@@ -189,14 +191,14 @@ export default function QuoteApprovalPage() {
           {/* Sections */}
           {sections.map(sec => {
             const secItems = itemsBySection[sec.id] ?? []
-            const secTotal = secItems.reduce((s, i) => s + i.quoted_quantity * i.quoted_unit_rate, 0)
+            const secTotal = secItems.reduce((s, i) => s + i.quoted_quantity * (i.quoted_unit_rate + (i.labour_rate ?? 0)), 0)
             const isCollapsed = collapsed[sec.id] ?? false
             return (
               <div key={sec.id} className="rounded-2xl overflow-hidden mb-2" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                 <button
                   onClick={() => setCollapsed(c => ({ ...c, [sec.id]: !c[sec.id] }))}
                   className="w-full flex items-center gap-2 px-4 py-3 text-left"
-                  style={{ background: 'rgba(58,124,165,0.04)', borderBottom: isCollapsed ? 'none' : `1px solid ${S.border}` }}>
+                  style={{ background: '#EFF6FF', borderBottom: isCollapsed ? 'none' : `1px solid ${S.border}` }}>
                   {isCollapsed ? <ChevronRight size={14} style={{ color: S.muted }} /> : <ChevronDown size={14} style={{ color: S.muted }} />}
                   <span className="flex-1 text-sm font-semibold" style={{ color: S.text }}>{sec.title}</span>
                   <span className="text-sm font-semibold" style={{ color: S.accent }}>{fmtR(secTotal)}</span>
@@ -322,25 +324,36 @@ export default function QuoteApprovalPage() {
   )
 }
 
-function LineItemsTable({ items }: { items: { description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number }[] }) {
-  const cols = '1fr 52px 64px 120px 120px'
+function LineItemsTable({ items }: { items: { description: string; unit: string | null; quoted_quantity: number; quoted_unit_rate: number; labour_rate: number | null; is_variation: boolean | null }[] }) {
+  const hasLabour = items.some(i => (i.labour_rate ?? 0) > 0)
+  const cols = hasLabour ? '1fr 52px 64px 110px 90px 110px' : '1fr 52px 64px 120px 120px'
+  const headers = hasLabour ? ['Description', 'Unit', 'Qty', 'Unit Rate', '+Labour', 'Total'] : ['Description', 'Unit', 'Qty', 'Rate', 'Total']
   return (
     <div style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth: 480 }}>
-        <div className="grid px-4 py-2" style={{ gridTemplateColumns: cols }}>
-          {['Description', 'Unit', 'Qty', 'Rate', 'Total'].map(h => (
-            <span key={h} className="text-[10px] font-semibold uppercase tracking-wider text-right first:text-left" style={{ color: S.muted }}>{h}</span>
+      <div style={{ minWidth: hasLabour ? 560 : 480 }}>
+        {/* Blue filled header — matches PDF table header */}
+        <div className="grid px-4 py-2.5" style={{ gridTemplateColumns: cols, background: S.accent }}>
+          {headers.map(h => (
+            <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-right first:text-left" style={{ color: '#ffffff' }}>{h}</span>
           ))}
         </div>
         {items.map((item, i) => {
-          const lineTotal = item.quoted_quantity * item.quoted_unit_rate
+          const lineTotal = item.quoted_quantity * (item.quoted_unit_rate + (item.labour_rate ?? 0))
           return (
-            <div key={i} className="grid px-4 py-3 items-center" style={{ gridTemplateColumns: cols, borderTop: `1px solid ${S.border}`, background: i % 2 === 0 ? 'transparent' : S.bg }}>
-              <span className="text-sm pr-4" style={{ color: S.text }}>{item.description}</span>
+            <div key={i} className="grid px-4 py-3 items-start" style={{ gridTemplateColumns: cols, borderTop: `1px solid ${S.border}`, background: i % 2 === 0 ? 'transparent' : '#F8FAFC' }}>
+              <div className="pr-4">
+                <span className="text-sm" style={{ color: S.text }}>{item.description}</span>
+                {item.is_variation && (
+                  <span className="block text-[10px] font-semibold mt-0.5" style={{ color: S.gold }}>VARIATION ORDER</span>
+                )}
+              </div>
               <span className="text-xs text-right" style={{ color: S.muted }}>{item.unit ?? '—'}</span>
               <span className="text-sm text-right" style={{ color: S.text }}>{item.quoted_quantity}</span>
               <span className="text-sm text-right" style={{ color: S.text }}>{fmtR(item.quoted_unit_rate)}</span>
-              <span className="text-sm text-right font-medium" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
+              {hasLabour && (
+                <span className="text-sm text-right" style={{ color: S.muted }}>{(item.labour_rate ?? 0) > 0 ? fmtR(item.labour_rate ?? 0) : '—'}</span>
+              )}
+              <span className="text-sm text-right font-semibold" style={{ color: S.text }}>{fmtR(lineTotal)}</span>
             </div>
           )
         })}

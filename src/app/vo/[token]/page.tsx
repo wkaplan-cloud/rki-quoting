@@ -53,6 +53,7 @@ export default function VOApprovalPage() {
       .then(d => {
         if (d.error) { setError(d.error); setLoading(false); return }
         setData(d)
+        document.title = `${d.vo.vo_number} – ${d.project.project_name} | QuotingHub`
         if (d.vo.status === 'approved') setDone('approved')
         if (d.vo.status === 'rejected') setDone('rejected')
         setLoading(false)

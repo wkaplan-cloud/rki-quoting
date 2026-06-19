@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         .order('sort_order'),
       supabaseAdmin
         .from('elec_quote_line_items')
-        .select('id, section_id, description, unit, quoted_quantity, quoted_unit_rate, sort_order')
+        .select('id, section_id, description, unit, quoted_quantity, quoted_unit_rate, labour_rate, is_variation, sort_order')
         .eq('quote_id', quoteRaw.id)
         .order('sort_order'),
       supabaseAdmin
@@ -50,6 +50,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         quoted_date: quoteRaw.quoted_date,
         expected_completion_date: quoteRaw.expected_completion_date,
         approved_date: quoteRaw.approved_date,
+        drawing_reference: quoteRaw.drawing_reference ?? null,
       },
       client: client ?? null,
       sections: sections ?? [],
