@@ -227,7 +227,10 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
         </div>
         {numInput(item.labour_rate, v => {
           set({ labour_rate: v })
-        }, 'Labour', 82)}
+        }, 'Labour/Unit', 82)}
+        <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
+          {(item.labour_rate ?? 0) > 0 ? fmtR((item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)) : '—'}
+        </div>
         <div className="text-sm font-semibold text-right flex-shrink-0" style={{ color: S.text, width: 92 }}>
           {fmtR(itemTotal(item))}
         </div>
@@ -298,9 +301,10 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
               {colHdr('Cost', 82, 'right')}
               {colHdr('Mkup', 65, 'right')}
               {colHdr('Rate', 72, 'right')}
-              {colHdr('Subtotal', 82, 'right')}
-              {colHdr('+Labour', 82, 'right')}
-              {colHdr('Total', 92, 'right')}
+              {colHdr('Mat. Total', 82, 'right')}
+              {colHdr('Labour/Unit', 82, 'right')}
+              {colHdr('Lab. Total', 82, 'right')}
+              {colHdr('Line Total', 92, 'right')}
               <div style={{ width: 28 }} />
             </div>
           )}
@@ -1294,9 +1298,10 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Cost</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 65 }}>Mkup</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Rate</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Subtotal</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>+Labour</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 92 }}>Total</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Mat. Total</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Labour/Unit</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 82 }}>Lab. Total</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 92 }}>Line Total</div>
                 <div style={{ width: 28 }} />
               </div>
               <Droppable droppableId="free" type="ITEM">
