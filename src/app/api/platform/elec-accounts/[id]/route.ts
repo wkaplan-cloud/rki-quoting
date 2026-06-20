@@ -26,6 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       trial_ends_at?: string | null
       setup_fee_paid?: boolean
       admin_notes?: string
+      supplier_category?: string
     }
 
     const patch: Record<string, string | boolean | null> = {}
@@ -34,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.trial_ends_at       !== undefined) patch.trial_ends_at       = body.trial_ends_at
     if (body.setup_fee_paid      !== undefined) patch.setup_fee_paid      = body.setup_fee_paid
     if (body.admin_notes         !== undefined) patch.admin_notes         = body.admin_notes
+    if (body.supplier_category   !== undefined) patch.supplier_category   = body.supplier_category
 
     const { data, error } = await supabaseAdmin
       .from('supplier_portal_accounts')
