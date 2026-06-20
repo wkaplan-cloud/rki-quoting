@@ -145,7 +145,9 @@ export default async function StudiosPage() {
 
   const welcomeSentOrgIds = new Set((welcomeSentData ?? []).map(r => r.org_id))
 
+  const now = new Date()
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000)
+  const GRACE_DAYS = 3
 
   const enriched = (orgs ?? []).map(org => {
     const admin = adminByOrg.get(org.id)
@@ -154,6 +156,10 @@ export default async function StudiosPage() {
     const isPaid = org.subscription_status === 'active'
     const isInternal = (org as any).is_internal ?? false
     const isChurnRisk = isPaid && !isInternal && (!lastActive || new Date(lastActive) < thirtyDaysAgo)
+    const graceEnd = org.trial_ends_at
+      ? new Date(new Date(org.trial_ends_at).getTime() + GRACE_DAYS * 86400000)
+      : null
+    const isLockedOut = org.subscription_status === 'trialing' && graceEnd !== null && graceEnd < now
 
     return {
       ...org,
@@ -165,6 +171,7 @@ export default async function StudiosPage() {
       lastActive,
       isChurnRisk,
       isInternal,
+      isLockedOut,
     }
   })
 
@@ -257,7 +264,10 @@ function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios
             </tr>
           )}
           {studios.map(studio => {
-            const { label: lastActiveLabel, urgent: lastActiveUrgent } = formatLastActive(studio.lastActive)
+            const lockedOut = (studio as any).isLockedOut as boolean
+            const { label: lastActiveLabel, urgent: lastActiveUrgent } = lockedOut
+              ? { label: 'Expired', urgent: false }
+              : formatLastActive(studio.lastActive)
             return (
               <tr key={studio.id} className={`hover:bg-white/5 transition-colors ${studio.isChurnRisk ? 'border-l-2 border-rose-500/40' : ''}`}>
                 <td className="px-5 py-3.5">
@@ -306,7 +316,7 @@ function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios
                 </td>
                 {!archived && (
                   <td className="px-5 py-3.5">
-                    <span className={`text-xs ${lastActiveUrgent ? 'text-rose-400' : 'text-white/40'}`}>{lastActiveLabel}</span>
+                    <span className={`text-xs ${lockedOut ? 'text-red-400 font-medium' : lastActiveUrgent ? 'text-rose-400' : 'text-white/40'}`}>{lastActiveLabel}</span>
                   </td>
                 )}
                 <td className="px-5 py-3.5 text-white/40 text-xs">
