@@ -80,7 +80,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .map(qi => {
         const cli = claimItemMap[qi.id]
         if (!cli) return null
-        const contractValue = (qi as ElecQuoteLineItem).quoted_quantity * (qi as ElecQuoteLineItem).quoted_unit_rate
+        const contractValue = (qi as ElecQuoteLineItem).quoted_quantity * ((qi as ElecQuoteLineItem).quoted_unit_rate + ((qi as ElecQuoteLineItem).labour_rate ?? 0))
         return {
           id: cli.id, description: (qi as ElecQuoteLineItem).description,
           section_id: (qi as ElecQuoteLineItem).section_id,
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .filter((li): li is ClaimLineItemForPDF => li !== null)
 
     const contractTotal = (quoteItems ?? []).reduce(
-      (s, qi) => s + (qi as ElecQuoteLineItem).quoted_quantity * (qi as ElecQuoteLineItem).quoted_unit_rate, 0
+      (s, qi) => s + (qi as ElecQuoteLineItem).quoted_quantity * ((qi as ElecQuoteLineItem).quoted_unit_rate + ((qi as ElecQuoteLineItem).labour_rate ?? 0)), 0
     )
 
     const companyName = account.company_name ?? account.email ?? 'Company'

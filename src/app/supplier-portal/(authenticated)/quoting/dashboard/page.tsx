@@ -122,7 +122,7 @@ export default async function QuotingDashboardPage() {
     const lis: any[] = Array.isArray(q.line_items) ? q.line_items : []
     const vos: any[] = Array.isArray(q.variation_orders) ? q.variation_orders : []
     const contract_value = lis.reduce((s: number, li: any) =>
-      s + (li.quoted_quantity ?? 0) * (li.quoted_unit_rate ?? 0) + (li.labour_rate ?? 0), 0)
+      s + (li.quoted_quantity ?? 0) * ((li.quoted_unit_rate ?? 0) + (li.labour_rate ?? 0)), 0)
     const approved_vo_value = vos.filter((v: any) => v.status === 'approved').reduce((s: number, v: any) => s + (v.value ?? 0), 0)
     const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
     return {

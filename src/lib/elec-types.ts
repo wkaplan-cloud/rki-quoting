@@ -291,7 +291,7 @@ export interface ElecQuoteLineItem {
 
 // Computed helpers (not stored)
 export function lineItemContractValue(item: ElecQuoteLineItem): number {
-  return item.quoted_quantity * item.quoted_unit_rate
+  return item.quoted_quantity * (item.quoted_unit_rate + (item.labour_rate ?? 0))
 }
 
 export function lineItemAsBuiltValue(item: ElecQuoteLineItem): number {

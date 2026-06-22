@@ -95,7 +95,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const cli = claimLineItemMap[qi.id]
         if (!cli) return null
         const qli = qi as ElecQuoteLineItem
-        const contractValue = (qli.quoted_quantity ?? 0) * (qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0)
+        const contractValue = (qli.quoted_quantity ?? 0) * ((qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0))
         return {
           id:             cli.id,
           description:    (qi as ElecQuoteLineItem).description,
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const contractTotal = (quoteItems ?? []).reduce((s, qi) => {
       const qli = qi as ElecQuoteLineItem
-      return s + (qli.quoted_quantity ?? 0) * (qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0)
+      return s + (qli.quoted_quantity ?? 0) * ((qli.quoted_unit_rate ?? 0) + (qli.labour_rate ?? 0))
     }, 0)
 
     const companyName = account.company_name ?? account.email ?? 'Company'
