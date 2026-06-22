@@ -103,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ...(bccEmails.length > 0 && { bcc: bccEmails }),
       subject,
       html: buildPdfEmail({ companyName, companyEmail: account.email, clientName, quote: quoteRaw, total, message }),
-      text: `Hi ${clientName},\n\nThank you for the opportunity — please find your quote for ${quoteRaw.project_name} attached.\n\n${message ? message + '\n\n' : ''}Quote: ${quoteRaw.quote_number}\nTotal (incl. VAT): ${fmtR(total)}\n\nIf you have any questions or would like to discuss anything, don't hesitate to reach out.\n\nKind regards,\n${companyName}\n${account.email}`,
+      text: `Hi ${clientName},\n\nThank you for the opportunity — please find your quote for ${quoteRaw.project_name} attached.\n\n${message ? message + '\n\n' : ''}Quote: ${quoteRaw.quote_number}\n\nIf you have any questions or would like to discuss anything, don't hesitate to reach out.\n\nKind regards,\n${companyName}\n${account.email}`,
       attachments: [{
         filename: `${quoteRaw.quote_number}.pdf`,
         content: Buffer.from(buffer).toString('base64'),
@@ -154,13 +154,9 @@ function buildPdfEmail({ companyName, companyEmail, clientName, quote, total, me
                   <p style="margin:0;font-size:10px;color:#71717A;text-transform:uppercase;letter-spacing:0.06em;">Quote Number</p>
                   <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#3A7CA5;">${quote.quote_number}</p>
                 </td>
-                <td style="padding:16px 20px;border-bottom:1px solid #E4E4E7;border-left:1px solid #E4E4E7;">
-                  <p style="margin:0;font-size:10px;color:#71717A;text-transform:uppercase;letter-spacing:0.06em;">Total (incl. VAT)</p>
-                  <p style="margin:4px 0 0;font-size:14px;font-weight:700;color:#18181B;">${fmtR(total)}</p>
-                </td>
               </tr>
               <tr>
-                <td colspan="2" style="padding:16px 20px;">
+                <td style="padding:16px 20px;">
                   <p style="margin:0;font-size:10px;color:#71717A;text-transform:uppercase;letter-spacing:0.06em;">Project</p>
                   <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#18181B;">${quote.project_name}</p>
                   ${quote.project_address ? `<p style="margin:2px 0 0;font-size:12px;color:#71717A;">${quote.project_address}</p>` : ''}
