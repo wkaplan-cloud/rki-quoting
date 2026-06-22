@@ -470,7 +470,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       )}
                     </td>
                     <td className="w-7 sticky left-6 z-10 bg-[#F5F2EC]" />
-                    <td colSpan={12} className="px-2 py-2 sticky left-[52px] z-10 bg-[#F5F2EC]">
+                    <td colSpan={12} className="px-2 py-2">
                       <div className="flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
                         <input
@@ -478,7 +478,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onChange={e => updateLocal(item.id, 'item_name', e.target.value)}
                           onBlur={e => saveField(item.id, 'item_name', e.target.value)}
                           readOnly={locked}
-                          autoFocus={newlyAddedId === item.id}
+                          ref={(el) => { if (el && newlyAddedId === item.id) el.focus({ preventScroll: true }) }}
                           onFocus={() => { if (newlyAddedId === item.id) setNewlyAddedId(null) }}
                           className="flex-1 bg-transparent outline-none text-xs font-semibold text-[#5A5750] uppercase tracking-widest placeholder-[#C4BFB5] focus:text-[#2C2C2A]"
                           placeholder="Room / Section name…"
