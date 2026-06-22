@@ -455,7 +455,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     onDragOver={!locked ? e => e.preventDefault() : undefined}
                     className="border-b border-[#E0DDD6] bg-[#F5F2EC] group"
                   >
-                    <td className={`px-1.5 py-2 text-[#C4BFB5] sticky left-0 z-10 bg-[#F5F2EC] ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
+                    <td className={`px-1.5 py-2 text-[#C4BFB5] sticky left-0 z-10 bg-[#F5F2EC] border-l-[3px] border-transparent ${!locked ? 'group-hover:text-[#8A877F]' : ''}`}>
                       {!locked && (
                         <div className="relative flex items-center justify-center w-[14px] h-[14px]">
                           <GripVertical size={14} className="group-hover:opacity-0 transition-opacity cursor-grab active:cursor-grabbing" />
