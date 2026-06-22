@@ -469,8 +469,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         </div>
                       )}
                     </td>
-                    <td className="sticky left-6 z-10 bg-[#F5F2EC]" />
-                    <td colSpan={12} className="px-2 py-2">
+                    <td className="w-7 sticky left-6 z-10 bg-[#F5F2EC]" />
+                    <td colSpan={12} className="px-2 py-2 sticky left-[52px] z-10 bg-[#F5F2EC]">
                       <div className="flex items-center gap-2">
                         <div className="w-0.5 h-4 bg-[#9A7B4F] rounded-full flex-shrink-0" />
                         <input
