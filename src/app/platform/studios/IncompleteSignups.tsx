@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, CheckCircle, Clock } from 'lucide-react'
+import { Mail, Clock, Trash2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export type IncompleteSignup = {
   user_id: string
@@ -18,9 +19,12 @@ function timeAgo(iso: string): string {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 function NudgeButton({ signup }: { signup: IncompleteSignup }) {
-  const [sent, setSent] = useState(!!signup.nudge_sent_at)
-  const [sentAt, setSentAt] = useState(signup.nudge_sent_at)
+  const [lastNudgedAt, setLastNudgedAt] = useState(signup.nudge_sent_at)
   const [loading, setLoading] = useState(false)
 
   async function sendNudge() {
@@ -36,34 +40,74 @@ function NudgeButton({ signup }: { signup: IncompleteSignup }) {
     })
     setLoading(false)
     if (res.ok) {
-      setSent(true)
-      setSentAt(new Date().toISOString())
+      setLastNudgedAt(new Date().toISOString())
+      toast.success('Nudge sent')
+    } else {
+      toast.error('Failed to send nudge')
     }
   }
 
-  if (sent && sentAt) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400">
-        <CheckCircle size={12} />
-        Nudge sent {timeAgo(sentAt)}
-      </span>
-    )
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        onClick={sendNudge}
+        disabled={loading}
+        className="inline-flex items-center gap-1.5 text-xs text-[#C4A46B] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer"
+      >
+        <Mail size={12} />
+        {loading ? 'Sending…' : 'Send nudge'}
+      </button>
+      {lastNudgedAt && (
+        <span className="text-xs text-white/30">
+          Last nudged: {formatDate(lastNudgedAt)}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function DeleteSignupButton({ userId, email, onDeleted }: { userId: string; email: string; onDeleted: () => void }) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleDelete() {
+    if (!confirm(`Delete incomplete signup for ${email}? This removes their auth account permanently.`)) return
+    setLoading(true)
+    const res = await fetch('/api/platform/studios/incomplete-signup', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    })
+    setLoading(false)
+    if (res.ok) {
+      toast.success('Signup deleted')
+      onDeleted()
+    } else {
+      const data = await res.json()
+      toast.error(data.error ?? 'Failed to delete')
+    }
   }
 
   return (
     <button
-      onClick={sendNudge}
+      onClick={handleDelete}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 text-xs text-[#C4A46B] hover:text-[#9A7B4F] transition-colors disabled:opacity-50 cursor-pointer"
+      className="inline-flex items-center gap-1.5 text-xs text-red-400/60 hover:text-red-400 transition-colors disabled:opacity-40 cursor-pointer"
+      title="Delete this auth account"
     >
-      <Mail size={12} />
-      {loading ? 'Sending…' : 'Send nudge'}
+      <Trash2 size={12} />
+      {loading ? 'Deleting…' : 'Delete'}
     </button>
   )
 }
 
-export function IncompleteSignups({ signups }: { signups: IncompleteSignup[] }) {
+export function IncompleteSignups({ signups: initial }: { signups: IncompleteSignup[] }) {
+  const [signups, setSignups] = useState(initial)
+
   if (signups.length === 0) return null
+
+  function remove(userId: string) {
+    setSignups(prev => prev.filter(s => s.user_id !== userId))
+  }
 
   return (
     <div className="mt-10">
@@ -81,6 +125,7 @@ export function IncompleteSignups({ signups }: { signups: IncompleteSignup[] }) 
                 <div className="flex items-center gap-1"><Clock size={11} /> Confirmed</div>
               </th>
               <th className="text-left px-5 py-3 text-xs text-white/40 uppercase tracking-wider font-medium">Nudge</th>
+              <th className="px-5 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -91,6 +136,9 @@ export function IncompleteSignups({ signups }: { signups: IncompleteSignup[] }) 
                 <td className="px-5 py-3.5 text-white/40 text-xs">{timeAgo(s.confirmed_at)}</td>
                 <td className="px-5 py-3.5">
                   <NudgeButton signup={s} />
+                </td>
+                <td className="px-5 py-3.5">
+                  <DeleteSignupButton userId={s.user_id} email={s.email} onDeleted={() => remove(s.user_id)} />
                 </td>
               </tr>
             ))}
