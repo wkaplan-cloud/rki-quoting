@@ -761,7 +761,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         value={item.quantity}
                         onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'quantity', v as unknown as number) }}
                         onFocus={e => { if (parseFloat(e.target.value) === 0) { updateLocal(item.id, 'quantity', '' as unknown as number) } }}
-                        onBlur={e => { const v = parseFloat(e.target.value.replace(',', '.')) || 0; saveField(item.id, 'quantity', v) }}
+                        onBlur={e => { const v = parseFloat(e.target.value.replace(',', '.')) || 1; saveField(item.id, 'quantity', v) }}
                         readOnly={locked}
                         className={NUM_INPUT + ' flex-1'}
                       />
