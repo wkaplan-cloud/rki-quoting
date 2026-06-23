@@ -13,7 +13,8 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
   if (focused) return (
     <input
       type="text" inputMode="decimal" autoFocus
-      defaultValue={value}
+      defaultValue={value === 0 ? '' : value}
+      onFocus={e => e.target.select()}
       onChange={e => onChange(parseFloat(e.target.value.replace(',', '.')) || 0)}
       onBlur={e => { setFocused(false); onBlur(parseFloat(e.target.value.replace(',', '.')) || 0) }}
       className={className}
@@ -759,7 +760,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         type="text" inputMode="decimal"
                         value={item.quantity}
                         onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'quantity', v as unknown as number) }}
-                        onBlur={e => saveField(item.id, 'quantity', parseFloat(e.target.value.replace(',', '.')) || 0)}
+                        onFocus={e => { if (parseFloat(e.target.value) === 0) { updateLocal(item.id, 'quantity', '' as unknown as number) } }}
+                        onBlur={e => { const v = parseFloat(e.target.value.replace(',', '.')) || 0; saveField(item.id, 'quantity', v) }}
                         readOnly={locked}
                         className={NUM_INPUT + ' flex-1'}
                       />
@@ -909,7 +911,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       type="text" inputMode="decimal"
                       value={item.markup_percentage}
                       onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'markup_percentage', v as unknown as number) }}
-                      onBlur={e => saveField(item.id, 'markup_percentage', parseFloat(e.target.value.replace(',', '.')) || 0)}
+                      onFocus={e => { if (parseFloat(e.target.value) === 0) { updateLocal(item.id, 'markup_percentage', '' as unknown as number) } }}
+                      onBlur={e => { const v = parseFloat(e.target.value.replace(',', '.')) || 0; saveField(item.id, 'markup_percentage', v) }}
                       readOnly={locked}
                       className={NUM_INPUT}
                     />
