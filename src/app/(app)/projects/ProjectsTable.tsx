@@ -159,7 +159,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#D8D3C8] bg-[#F5F2EC]">
-                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Project #</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider whitespace-nowrap min-w-[100px]">Project #</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Name</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Client</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-[#8A877F] uppercase tracking-wider">Date</th>
