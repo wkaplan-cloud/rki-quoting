@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
           (Array.isArray(invoice.Allocations) ? invoice.Allocations : null) ?? []
 
         if (receipts.length > 0) {
-          const sum = receipts.reduce((acc, r) => {
+          const sum = receipts.reduce((acc: number, r) => {
             const rec = r as Record<string, unknown>
             return acc + (toNum(rec.Amount ?? rec.AllocatedAmount ?? rec.PaidAmount) ?? 0)
           }, 0)
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
           const receiptsData = await sageGet(`/CustomerReceipt/GetByInvoiceId/${project.sage_invoice_id}`).catch(() => null)
           if (receiptsData) {
             const arr: unknown[] = Array.isArray(receiptsData) ? receiptsData : (receiptsData?.Results ?? [])
-            const sum = arr.reduce((acc, r) => {
+            const sum = arr.reduce((acc: number, r) => {
               const rec = r as Record<string, unknown>
               return acc + (toNum(rec.Amount ?? rec.AllocatedAmount) ?? 0)
             }, 0)
