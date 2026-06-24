@@ -465,10 +465,16 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#9A7B4F', '#C4A46B', '#EDE9E1', '#ffffff'] })
         toast.success('Deposit detected in Sage — stage updated')
-      } else if (data.status === 'PAID') {
+      } else if ((data.status ?? '').toUpperCase() === 'PAID') {
         toast.success('Invoice marked as paid — stages updated')
         router.refresh()
       } else {
+        // Ensure local stages reflect deposit_received if Sage already shows partial/full payment
+        const isPartial = /partial/i.test(data.status ?? '')
+        if (isPartial) {
+          const now = new Date().toISOString()
+          setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
+        }
         toast.success(`Sage status: ${data.status}`)
       }
     } catch (e: unknown) {
