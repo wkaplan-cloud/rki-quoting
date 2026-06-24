@@ -132,8 +132,20 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     }
     setNotifState(Notification.permission === 'granted' ? 'granted' : Notification.permission === 'denied' ? 'denied' : 'unknown')
 
-    // Register service worker
+    // Register service worker (Web Push for browser users)
     navigator.serviceWorker.register('/sw.js').catch(() => {})
+
+    // Register FCM token if injected by the native Android app
+    const nativeToken = (window as unknown as { __fcmToken?: string }).__fcmToken
+    if (nativeToken) {
+      fetch('/api/supplier-portal/staff/fcm-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fcm_token: nativeToken }),
+      }).catch(() => {})
+      // Native app handles permission — mark as granted so the banner doesn't show
+      setNotifState('granted')
+    }
   }, [])
 
   async function enableNotifications() {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { getFirebaseMessaging } from '@/lib/firebase-admin'
 
 export const maxDuration = 60
 
@@ -23,96 +24,143 @@ export async function GET(req: NextRequest) {
     const vapidPublic  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
     const vapidPrivate = process.env.VAPID_PRIVATE_KEY
     const vapidSubject = process.env.VAPID_SUBJECT ?? 'mailto:info@quotinghub.co.za'
-    if (!vapidPublic || !vapidPrivate) {
-      return NextResponse.json({ error: 'VAPID keys not configured' }, { status: 500 })
+    if (vapidPublic && vapidPrivate) {
+      webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
     }
-    webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate)
 
-    // Today's date in SAST (UTC+2) — use UTC string and offset
+    // Today's date in SAST (UTC+2)
     const now  = new Date()
     const sast = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-    const todayStr = sast.toISOString().split('T')[0]
+    const todayStr  = sast.toISOString().split('T')[0]
     const todayStart = `${todayStr}T00:00:00+02:00`
     const todayEnd   = `${todayStr}T23:59:59+02:00`
 
-    // All push subscriptions for active staff
-    const { data: subs } = await supabaseAdmin
-      .from('elec_staff_push_subscriptions')
-      .select('staff_id, endpoint, p256dh, auth')
+    // Fetch Web Push subscriptions + FCM token holders in parallel
+    const [{ data: subs }, { data: fcmStaff }] = await Promise.all([
+      supabaseAdmin
+        .from('elec_staff_push_subscriptions')
+        .select('staff_id, endpoint, p256dh, auth'),
+      supabaseAdmin
+        .from('elec_staff')
+        .select('id, fcm_token')
+        .not('fcm_token', 'is', null)
+        .eq('is_active', true),
+    ])
 
-    if (!subs || subs.length === 0) {
-      return NextResponse.json({ ok: true, sent: 0, reason: 'no subscriptions' })
+    const webPushSubs  = subs       ?? []
+    const fcmRows      = fcmStaff   ?? []
+
+    // Union of all staff IDs that need punch-status checking
+    const allStaffIds = [
+      ...new Set([
+        ...webPushSubs.map(s => s.staff_id),
+        ...fcmRows.map(s => s.id),
+      ]),
+    ]
+
+    if (allStaffIds.length === 0) {
+      return NextResponse.json({ ok: true, sent: 0, reason: 'no subscriptions or fcm tokens' })
     }
 
-    // Fetch today's punches for all relevant staff
-    const staffIds = [...new Set(subs.map(s => s.staff_id))]
-
+    // Today's punches for all relevant staff
     const { data: todayPunches } = await supabaseAdmin
       .from('elec_time_punches')
       .select('staff_id, punch_type, punched_at')
-      .in('staff_id', staffIds)
+      .in('staff_id', allStaffIds)
       .gte('punched_at', todayStart)
       .lte('punched_at', todayEnd)
       .order('punched_at', { ascending: false })
 
-    // Build latest punch per staff member for today
-    const latestToday: Record<string, string> = {} // staff_id → punch_type
+    // Latest punch per staff member for today
+    const latestToday: Record<string, string> = {}
     for (const p of todayPunches ?? []) {
       if (!latestToday[p.staff_id]) latestToday[p.staff_id] = p.punch_type
     }
 
-    // Decide who to notify
-    const notify: typeof subs = []
-    for (const sub of subs) {
-      const latest = latestToday[sub.staff_id]
-      if (type === 'clock_in') {
-        // Remind only if they haven't punched at all today (never started)
-        if (!latest) notify.push(sub)
-      } else {
-        // Remind if currently clocked in (last punch was clock_in)
-        if (latest === 'clock_in') notify.push(sub)
-      }
+    function shouldNotify(staffId: string): boolean {
+      const latest = latestToday[staffId]
+      return type === 'clock_in' ? !latest : latest === 'clock_in'
     }
 
-    if (notify.length === 0) {
+    const notifyWebPush = webPushSubs.filter(s => shouldNotify(s.staff_id))
+    const notifyFcm     = fcmRows.filter(s => shouldNotify(s.id))
+
+    if (notifyWebPush.length === 0 && notifyFcm.length === 0) {
       return NextResponse.json({ ok: true, sent: 0, reason: 'everyone already handled' })
     }
 
-    const payload = JSON.stringify(
+    const { title, body, tag } =
       type === 'clock_in'
-        ? { title: '⏰ Clock In Reminder', body: "Don't forget to clock in for today!", tag: 'clock-in-reminder', url: '/supplier-portal/staff-home' }
-        : { title: '🏠 Clock Out Reminder', body: "Time to clock out — don't forget!", tag: 'clock-out-reminder', url: '/supplier-portal/staff-home' }
-    )
+        ? { title: '⏰ Clock In Reminder', body: "Don't forget to clock in for today!", tag: 'clock-in-reminder' }
+        : { title: '🏠 Clock Out Reminder', body: "Time to clock out — don't forget!", tag: 'clock-out-reminder' }
 
-    let sent = 0
+    let webPushSent   = 0
+    let fcmSent       = 0
     const staleEndpoints: string[] = []
 
-    await Promise.allSettled(
-      notify.map(async sub => {
-        try {
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-            payload,
-            { TTL: 3600 }
-          )
-          sent++
-        } catch (err: unknown) {
-          // 410 Gone = subscription expired/unsubscribed — clean it up
-          const status = (err as { statusCode?: number })?.statusCode
-          if (status === 410 || status === 404) staleEndpoints.push(sub.endpoint)
-        }
-      })
-    )
+    // --- Web Push ---
+    if (notifyWebPush.length > 0 && vapidPublic && vapidPrivate) {
+      const payload = JSON.stringify({ title, body, tag, url: '/supplier-portal/staff-home' })
+      await Promise.allSettled(
+        notifyWebPush.map(async sub => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload,
+              { TTL: 3600 },
+            )
+            webPushSent++
+          } catch (err: unknown) {
+            const status = (err as { statusCode?: number })?.statusCode
+            if (status === 410 || status === 404) staleEndpoints.push(sub.endpoint)
+          }
+        }),
+      )
 
-    // Remove stale subscriptions
-    if (staleEndpoints.length > 0) {
-      await supabaseAdmin
-        .from('elec_staff_push_subscriptions')
-        .delete()
-        .in('endpoint', staleEndpoints)
+      if (staleEndpoints.length > 0) {
+        await supabaseAdmin
+          .from('elec_staff_push_subscriptions')
+          .delete()
+          .in('endpoint', staleEndpoints)
+      }
     }
 
-    return NextResponse.json({ ok: true, sent, staleRemoved: staleEndpoints.length })
+    // --- FCM ---
+    if (notifyFcm.length > 0) {
+      const messaging = getFirebaseMessaging()
+      if (messaging) {
+        const tokens = notifyFcm.map(s => s.fcm_token as string)
+        const result = await messaging.sendEachForMulticast({
+          tokens,
+          notification: { title, body },
+          data: { url: '/supplier-portal/staff-home', tag },
+          android: {
+            priority: 'high',
+            notification: { channelId: 'qh_staff_reminders', tag },
+          },
+        })
+        fcmSent = result.successCount
+
+        // Remove stale FCM tokens (invalid / unregistered)
+        const staleTokens: string[] = []
+        result.responses.forEach((r: { success: boolean; error?: { code: string } }, i: number) => {
+          if (!r.success && (
+            r.error?.code === 'messaging/registration-token-not-registered' ||
+            r.error?.code === 'messaging/invalid-registration-token'
+          )) {
+            staleTokens.push(tokens[i])
+          }
+        })
+        if (staleTokens.length > 0) {
+          await supabaseAdmin
+            .from('elec_staff')
+            .update({ fcm_token: null })
+            .in('fcm_token', staleTokens)
+        }
+      }
+    }
+
+    return NextResponse.json({ ok: true, webPushSent, fcmSent, staleRemoved: staleEndpoints.length })
   } catch (e) {
     return apiError(e)
   }
