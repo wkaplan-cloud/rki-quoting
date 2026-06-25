@@ -2,8 +2,10 @@ import type { LineItem, LineItemComputed, ProjectTotals } from './types'
 
 // ─── Per-line calculations ────────────────────────────────────────────────────
 
+const r2 = (n: number) => Math.round(n * 100) / 100
+
 export function computeLineItem(item: LineItem): LineItemComputed {
-  const sale_price = item.sale_price_override ?? item.cost_price * (1 + item.markup_percentage / 100)
+  const sale_price = r2(item.sale_price_override ?? item.cost_price * (1 + item.markup_percentage / 100))
   const total_cost = item.cost_price * item.quantity
   const total_price = sale_price * item.quantity
   const profit = total_price - total_cost
