@@ -41,9 +41,16 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
     }
     const now = new Date().toISOString()
     const dateKey = stageConfig.find(s => s.key === key)!.dateKey
-    const update = {
+    const update: Record<string, boolean | string | null> = {
       [key]: !currentVal,
       [dateKey]: !currentVal ? now : null,
+    }
+
+    // Ticking deposit_received ON also auto-ticks client_approved if not already set
+    const currentStages = localStages[projectId]
+    if (key === 'deposit_received' && !currentVal && !currentStages?.client_approved) {
+      update.client_approved = true
+      update.client_approved_at = now
     }
 
     const { error } = await supabase
@@ -56,6 +63,7 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
       ...(localStages[projectId] ?? {
         id: '', project_id: projectId,
         quote_sent: false, quote_sent_at: null,
+        client_approved: false, client_approved_at: null,
         deposit_received: false, deposit_received_at: null,
         pos_sent: false, pos_sent_at: null,
         fabrics_received: false, fabrics_received_at: null,
@@ -65,7 +73,7 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
         delivered_installed: false, delivered_installed_at: null,
       }),
       ...update,
-    } as ProjectStages
+    } as unknown as ProjectStages
 
     setLocalStages(prev => ({ ...prev, [projectId]: newStages }))
 
