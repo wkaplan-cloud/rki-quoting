@@ -166,9 +166,15 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     setTogglingStage(key)
     const now = new Date().toISOString()
     const stageCfg = STAGE_CONFIG.find(s => s.key === key)!
-    const update = {
+    const update: Record<string, boolean | string | null> = {
       [key]: !currentVal,
       [stageCfg.dateKey]: !currentVal ? now : null,
+    }
+
+    // Ticking deposit_received ON also auto-ticks client_approved if not already set
+    if (key === 'deposit_received' && !currentVal && !stages?.client_approved) {
+      update.client_approved = true
+      update.client_approved_at = now
     }
 
     const { error } = await supabase
@@ -177,7 +183,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
 
     if (error) { toast.error('Failed to update stage'); setTogglingStage(null); return }
 
-    const newStages = { ...(stages ?? { ...EMPTY_STAGES, project_id: project.id }), ...update } as ProjectStages
+    const newStages = { ...(stages ?? { ...EMPTY_STAGES, project_id: project.id }), ...update } as unknown as ProjectStages
     onStagesUpdate(newStages)
 
     // Fire confetti when ticking a stage ON
