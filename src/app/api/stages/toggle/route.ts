@@ -57,7 +57,14 @@ export async function POST(req: NextRequest) {
     let newStatus = project.status
     if (project.status !== 'Cancelled') {
       newStatus = statusFromStages(stages as ProjectStages | null)
-      await supabaseAdmin.from('projects').update({ status: newStatus }).eq('id', projectId)
+      const { error: statusError } = await supabaseAdmin
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', projectId)
+      if (statusError) {
+        console.error('[stages/toggle] projects status update failed:', statusError.message)
+        return NextResponse.json({ error: `Status update failed: ${statusError.message}` }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ success: true, newStatus, stages })
