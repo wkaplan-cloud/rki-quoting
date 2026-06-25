@@ -177,11 +177,13 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
       update.client_approved_at = now
     }
 
-    const { error } = await supabase
-      .from('project_stages')
-      .upsert({ project_id: project.id, ...update }, { onConflict: 'project_id' })
-
-    if (error) { toast.error('Failed to update stage'); setTogglingStage(null); return }
+    const res = await fetch('/api/stages/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: project.id, update }),
+    })
+    const result = await res.json()
+    if (!res.ok) { toast.error(result.error ?? 'Failed to update stage'); setTogglingStage(null); return }
 
     const newStages = { ...(stages ?? { ...EMPTY_STAGES, project_id: project.id }), ...update } as unknown as ProjectStages
     onStagesUpdate(newStages)
@@ -198,11 +200,8 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
       }
     }
 
-    if (project.status !== 'Cancelled') {
-      const { statusFromStages } = await import('@/lib/types')
-      const newStatus = statusFromStages(newStages)
-      await supabase.from('projects').update({ status: newStatus }).eq('id', project.id)
-      onProjectUpdate({ ...project, status: newStatus })
+    if (project.status !== 'Cancelled' && result.newStatus) {
+      onProjectUpdate({ ...project, status: result.newStatus })
     }
 
     setTogglingStage(null)

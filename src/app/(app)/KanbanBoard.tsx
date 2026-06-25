@@ -2,9 +2,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import type { ProjectStages, StageKey, ProjectStatus } from '@/lib/types'
-import { STAGE_CONFIG, statusFromStages } from '@/lib/types'
+import { STAGE_CONFIG } from '@/lib/types'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import toast from 'react-hot-toast'
 import { Check } from 'lucide-react'
@@ -30,7 +29,6 @@ interface Props {
 export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig, sageConnected }: Props) {
   const [localStages, setLocalStages] = useState<Record<string, ProjectStages>>(stagesMap)
   const [localProjects, setLocalProjects] = useState<Project[]>(initialProjects)
-  const supabase = createClient()
   const router = useRouter()
 
   async function toggleStage(projectId: string, key: StageKey, currentVal: boolean) {
@@ -53,11 +51,13 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
       update.client_approved_at = now
     }
 
-    const { error } = await supabase
-      .from('project_stages')
-      .upsert({ project_id: projectId, ...update }, { onConflict: 'project_id' })
-
-    if (error) { toast.error('Failed to update stage'); return }
+    const res = await fetch('/api/stages/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, update }),
+    })
+    const result = await res.json()
+    if (!res.ok) { toast.error(result.error ?? 'Failed to update stage'); return }
 
     const newStages = {
       ...(localStages[projectId] ?? {
@@ -88,12 +88,10 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
       }
     }
 
-    // Auto-update project status
+    // Update local project status from what the server computed
     const proj = localProjects.find(p => p.id === projectId)
-    if (proj && proj.status !== 'Cancelled') {
-      const newStatus = statusFromStages(newStages)
-      await supabase.from('projects').update({ status: newStatus }).eq('id', projectId)
-      setLocalProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: newStatus } : p))
+    if (proj && proj.status !== 'Cancelled' && result.newStatus) {
+      setLocalProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: result.newStatus } : p))
     }
 
     // Refresh server data so summary cards update
