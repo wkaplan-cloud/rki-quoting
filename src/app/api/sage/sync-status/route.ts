@@ -52,8 +52,14 @@ export async function POST(req: NextRequest) {
       depositAmountReceived = actualPaid
       await supabase.from('projects').update({ deposit_amount_received: actualPaid }).eq('id', projectId)
       if (!stages?.deposit_received) {
+        const now = new Date().toISOString()
         await supabase.from('project_stages').upsert(
-          { project_id: projectId, deposit_received: true, deposit_received_at: new Date().toISOString() },
+          {
+            project_id: projectId,
+            deposit_received: true,
+            deposit_received_at: now,
+            ...(!stages?.client_approved ? { client_approved: true, client_approved_at: now } : {}),
+          },
           { onConflict: 'project_id' }
         )
         depositReceivedAuto = true
@@ -108,8 +114,14 @@ export async function POST(req: NextRequest) {
       }
 
       if (!stages?.deposit_received) {
+        const now = new Date().toISOString()
         await supabase.from('project_stages').upsert(
-          { project_id: projectId, deposit_received: true, deposit_received_at: new Date().toISOString() },
+          {
+            project_id: projectId,
+            deposit_received: true,
+            deposit_received_at: now,
+            ...(!stages?.client_approved ? { client_approved: true, client_approved_at: now } : {}),
+          },
           { onConflict: 'project_id' }
         )
         depositReceivedAuto = true

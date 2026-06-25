@@ -73,7 +73,7 @@ export default async function DashboardPage() {
     if (!isCancelled && !isCompleted) {
       acc.activeProjects.push(p)
       if (p.status === 'Draft')   acc.drafts++
-      if (p.status === 'Quote')   acc.openQuotes++
+      if (['Quote', 'Approved', 'Deposit'].includes(p.status)) acc.openQuotes++
       if (p.status === 'Invoice') acc.activeInvoices++
       if (p.status === 'Paid')    acc.paidProjects++
       if (s?.quote_sent && !s?.deposit_received && p.status !== 'Paid') {
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
   const hasClients = (clientCount ?? 0) > 0
   const hasSuppliers = (supplierCount ?? 0) > 0
   const hasProjects = ps.length > 0
-  const hasSentQuote = ps.some(p => stagesMap[p.id]?.quote_sent || ['Quote', 'Invoice', 'Paid', 'Completed'].includes(p.status))
+  const hasSentQuote = ps.some(p => stagesMap[p.id]?.quote_sent || ['Quote', 'Approved', 'Deposit', 'Invoice', 'Paid', 'Completed'].includes(p.status))
 
   const allSummaryCards = [
     { label: 'Active Projects',        value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },

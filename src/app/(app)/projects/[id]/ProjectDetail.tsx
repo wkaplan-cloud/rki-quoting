@@ -122,7 +122,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         }
         if (data.deposit_received_auto) {
           const now = new Date().toISOString()
-          setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
+          setStages(prev => prev ? {
+            ...prev,
+            deposit_received: true,
+            deposit_received_at: prev.deposit_received_at ?? now,
+            ...(!prev.client_approved ? { client_approved: true, client_approved_at: now } : {}),
+          } : prev)
           toast.success('Deposit detected in Sage — stage updated')
         }
         if (data.status && data.status !== initial.sage_invoice_status) {
@@ -411,7 +416,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       setSageInvoiceStatus(data.status)
       setSageModalOpen(false)
       if (data.deposit_received_auto) {
-        setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? new Date().toISOString() } : prev)
+        const now = new Date().toISOString()
+        setStages(prev => prev ? {
+          ...prev,
+          deposit_received: true,
+          deposit_received_at: prev.deposit_received_at ?? now,
+          ...(!prev.client_approved ? { client_approved: true, client_approved_at: now } : {}),
+        } : prev)
         toast.success('Invoice linked — deposit payment detected and stage updated')
       } else {
         toast.success('Invoice linked — status synced from Sage')
@@ -462,7 +473,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       }
       if (data.deposit_received_auto) {
         const now = new Date().toISOString()
-        setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
+        setStages(prev => prev ? {
+          ...prev,
+          deposit_received: true,
+          deposit_received_at: prev.deposit_received_at ?? now,
+          ...(!prev.client_approved ? { client_approved: true, client_approved_at: now } : {}),
+        } : prev)
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.65 }, colors: ['#9A7B4F', '#C4A46B', '#EDE9E1', '#ffffff'] })
         toast.success('Deposit detected in Sage — stage updated')
       } else if ((data.status ?? '').toUpperCase() === 'PAID') {
@@ -473,7 +489,12 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         const isPartial = /partial/i.test(data.status ?? '')
         if (isPartial) {
           const now = new Date().toISOString()
-          setStages(prev => prev ? { ...prev, deposit_received: true, deposit_received_at: prev.deposit_received_at ?? now } : prev)
+          setStages(prev => prev ? {
+            ...prev,
+            deposit_received: true,
+            deposit_received_at: prev.deposit_received_at ?? now,
+            ...(!prev.client_approved ? { client_approved: true, client_approved_at: now } : {}),
+          } : prev)
         }
         toast.success(`Sage status: ${data.status}`)
       }

@@ -8,7 +8,7 @@ import { formatZAR, computeTotals } from '@/lib/quoting'
 import { FolderOpen, ChevronRight, Archive, Trash2, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Invoice', 'Paid', 'Completed', 'Cancelled']
+const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Approved', 'Deposit', 'Invoice', 'Paid', 'Completed', 'Cancelled']
 
 interface Props {
   projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[] })[]

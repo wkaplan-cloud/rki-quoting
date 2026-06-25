@@ -4,6 +4,8 @@ import type { ProjectStatus } from '@/lib/types'
 const styles: Record<ProjectStatus, string> = {
   Draft:     'bg-[#F5F2EC] text-[#8A877F] border border-[#D8D3C8]',
   Quote:     'bg-amber-100 text-amber-800 border border-amber-200',
+  Approved:  'bg-emerald-100 text-emerald-800 border border-emerald-200',
+  Deposit:   'bg-violet-100 text-violet-800 border border-violet-200',
   Invoice:   'bg-blue-100 text-blue-800 border border-blue-200',
   Paid:      'bg-green-100 text-green-800 border border-green-200',
   Completed: 'bg-[#9A7B4F]/10 text-[#7d6340] border border-[#9A7B4F]/30',
@@ -13,6 +15,8 @@ const styles: Record<ProjectStatus, string> = {
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   Draft:     'Draft',
   Quote:     'Quoted',
+  Approved:  'Approved',
+  Deposit:   'Deposit Paid',
   Invoice:   'Invoiced',
   Paid:      'Paid',
   Completed: 'Completed',

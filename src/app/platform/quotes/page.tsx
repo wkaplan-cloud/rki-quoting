@@ -9,6 +9,8 @@ function fmtDate(iso: string) {
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   Draft:     { bg: '#1A1A18', color: '#71717A' },
   Quote:     { bg: '#1C2A3A', color: '#60A5FA' },
+  Approved:  { bg: '#0A2A1A', color: '#6EE7B7' },
+  Deposit:   { bg: '#1E1A2E', color: '#C4B5FD' },
   Invoice:   { bg: '#2A1F0A', color: '#F59E0B' },
   Paid:      { bg: '#0A2A1A', color: '#34D399' },
   Completed: { bg: '#0A2A1A', color: '#34D399' },
@@ -49,7 +51,7 @@ export default async function PlatformQuotesPage() {
     return acc
   }, {})
 
-  const statuses = ['Draft', 'Quote', 'Invoice', 'Paid', 'Completed', 'Cancelled']
+  const statuses = ['Draft', 'Quote', 'Approved', 'Deposit', 'Invoice', 'Paid', 'Completed', 'Cancelled']
 
   return (
     <div className="p-8">

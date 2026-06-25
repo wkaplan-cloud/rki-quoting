@@ -17,12 +17,14 @@ function daysSince(iso: string) {
 }
 
 const PROJECT_STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  Draft:      { label: 'Draft',      bg: '#1A1A18', color: '#71717A' },
-  Quote:      { label: 'Quote',      bg: '#1C2A3A', color: '#60A5FA' },
-  Invoice:    { label: 'Invoice',    bg: '#2A1F0A', color: '#F59E0B' },
-  Paid:       { label: 'Paid',       bg: '#0A2A1A', color: '#34D399' },
-  Completed:  { label: 'Completed',  bg: '#0A2A1A', color: '#34D399' },
-  Cancelled:  { label: 'Cancelled',  bg: '#2A0A0A', color: '#F87171' },
+  Draft:      { label: 'Draft',         bg: '#1A1A18', color: '#71717A' },
+  Quote:      { label: 'Quote',         bg: '#1C2A3A', color: '#60A5FA' },
+  Approved:   { label: 'Approved',      bg: '#0A2A1A', color: '#6EE7B7' },
+  Deposit:    { label: 'Deposit Paid',  bg: '#1E1A2E', color: '#C4B5FD' },
+  Invoice:    { label: 'Invoice',       bg: '#2A1F0A', color: '#F59E0B' },
+  Paid:       { label: 'Paid',          bg: '#0A2A1A', color: '#34D399' },
+  Completed:  { label: 'Completed',     bg: '#0A2A1A', color: '#34D399' },
+  Cancelled:  { label: 'Cancelled',     bg: '#2A0A0A', color: '#F87171' },
 }
 
 const FEE_STATUS: Record<string, { label: string; color: string }> = {

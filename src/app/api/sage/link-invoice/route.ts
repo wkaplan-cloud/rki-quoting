@@ -30,10 +30,16 @@ export async function POST(req: NextRequest) {
     if (invTotal > 0 && invOutstanding > 0 && invOutstanding < invTotal) {
       const actualPaid = parseFloat((invTotal - invOutstanding).toFixed(2))
       await supabase.from('projects').update({ deposit_amount_received: actualPaid }).eq('id', projectId)
-      const { data: stages } = await supabase.from('project_stages').select('deposit_received').eq('project_id', projectId).maybeSingle()
+      const { data: stages } = await supabase.from('project_stages').select('deposit_received, client_approved').eq('project_id', projectId).maybeSingle()
       if (!stages?.deposit_received) {
+        const now = new Date().toISOString()
         await supabase.from('project_stages').upsert(
-          { project_id: projectId, deposit_received: true, deposit_received_at: new Date().toISOString() },
+          {
+            project_id: projectId,
+            deposit_received: true,
+            deposit_received_at: now,
+            ...(!stages?.client_approved ? { client_approved: true, client_approved_at: now } : {}),
+          },
           { onConflict: 'project_id' }
         )
         depositReceivedAuto = true
