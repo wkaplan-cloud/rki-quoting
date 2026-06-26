@@ -46,6 +46,9 @@ const COL = 'px-2 py-1.5'
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
+// leading-snug = 1.375, text-sm = 14px → 3 lines ≈ 57.75px
+const DESC_CLAMP_PX = 14 * 1.375 * 3
+
 function AutoTextarea({ value, onChange, onBlur, onFocus, placeholder, className, readOnly, autoFocus }: {
   value: string
   onChange: (v: string) => void
@@ -57,33 +60,51 @@ function AutoTextarea({ value, onChange, onBlur, onFocus, placeholder, className
   autoFocus?: boolean
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  const [focused, setFocused] = useState(false)
+  const [overflows, setOverflows] = useState(false)
 
-  const resize = useCallback(() => {
+  const applyHeight = useCallback((isFocused: boolean) => {
     const el = ref.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = el.scrollHeight + 'px'
+    const full = el.scrollHeight
+    setOverflows(full > DESC_CLAMP_PX + 2)
+    if (isFocused) {
+      el.style.maxHeight = 'none'
+      el.style.height = full + 'px'
+    } else {
+      el.style.maxHeight = DESC_CLAMP_PX + 'px'
+      el.style.height = Math.min(full, DESC_CLAMP_PX) + 'px'
+    }
   }, [])
 
-  useEffect(() => { resize() }, [value, resize])
+  useEffect(() => { applyHeight(focused) }, [value, focused, applyHeight])
 
   useEffect(() => {
     if (autoFocus) ref.current?.focus()
   }, [autoFocus])
 
   return (
-    <textarea
-      ref={ref}
-      rows={1}
-      value={value}
-      onChange={e => { onChange(e.target.value); resize() }}
-      onBlur={e => onBlur(e.target.value)}
-      onFocus={onFocus}
-      placeholder={placeholder}
-      readOnly={readOnly}
-      className={className + ' resize-none overflow-hidden leading-snug'}
-      style={{ minHeight: '26px' }}
-    />
+    <div className="relative">
+      <textarea
+        ref={ref}
+        rows={1}
+        value={value}
+        onChange={e => { onChange(e.target.value) }}
+        onBlur={e => { setFocused(false); onBlur(e.target.value) }}
+        onFocus={() => { setFocused(true); onFocus?.() }}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        className={className + ' resize-none overflow-hidden leading-snug w-full'}
+        style={{ minHeight: '26px' }}
+      />
+      {!focused && overflows && (
+        <div
+          className="absolute bottom-0 left-0 right-0 h-5 pointer-events-none rounded-b"
+          style={{ background: 'linear-gradient(to top, rgba(253,252,251,0.97), transparent)' }}
+        />
+      )}
+    </div>
   )
 }
 
