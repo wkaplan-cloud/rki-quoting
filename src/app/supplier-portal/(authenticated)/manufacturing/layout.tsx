@@ -1,7 +1,12 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { isActivePlan, planRank } from '@/lib/plan-features'
+
+export const metadata: Metadata = {
+  title: { default: 'QuotingHub', template: '%s | QuotingHub' },
+}
 
 export default async function ManufacturingLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()

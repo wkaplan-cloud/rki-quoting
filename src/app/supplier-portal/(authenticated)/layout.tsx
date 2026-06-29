@@ -1,6 +1,11 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+
+export const metadata: Metadata = {
+  title: { default: 'QuotingHub', template: '%s | QuotingHub' },
+}
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { SupplierPortalShell } from './SupplierPortalShell'
