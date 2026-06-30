@@ -78,16 +78,23 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
   platformContacts?: { supplier_id: string; email: string | null; rep_name?: string | null; rep_email?: string | null }[]
   theme: PdfTheme
 }) {
-  const itemRows = items.filter(i => i.row_type !== 'section')
-  const subtotal = itemRows.reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
-  const vatAmount = subtotal * (vatRate / 100)
-  const grandTotal = subtotal + vatAmount
   const poNumber = `${project.project_number}-${supplier?.supplier_name.slice(0, 3).toUpperCase() ?? 'GEN'}`
 
   const platformContact = supplier?.is_platform ? platformContacts?.find(c => c.supplier_id === supplier.id) : null
   const toEmail = supplier?.is_platform ? supplier.email : (platformContact?.email || supplier?.email)
   const ccEmail = supplier?.is_platform ? platformContact?.email : null
   const repName = platformContact?.rep_name || (supplier as any)?.rep_name
+
+  // Same-supplier linked children should not render as standalone rows — they appear under their parent
+  const sameSupplierChildIds = new Set(
+    items
+      .filter(i => i.parent_item_id && i.row_type === 'item' && items.some(p => p.id === i.parent_item_id))
+      .map(i => i.id)
+  )
+
+  const subtotal = items.filter(i => i.row_type !== 'section' && !sameSupplierChildIds.has(i.id)).reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
+  const vatAmount = subtotal * (vatRate / 100)
+  const grandTotal = subtotal + vatAmount
 
   let itemNumber = 0
 
@@ -160,16 +167,16 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
               )
             }
 
-            // Items with parent_item_id are linked fabrics — they show as their own rows on their supplier's PO
-            // and as linked notes on the parent supplier's PO (via linkedChildren below)
-            // We do NOT skip them here; the pre-filtering by supplier already handles separation
+            // Same-supplier linked children are rendered under their parent, not as standalone rows
+            if (sameSupplierChildIds.has(item.id)) return null
 
             itemNumber++
 
-            // Linked children that belong to other suppliers — show as a compact note under this item
-            const linkedChildren = allItems.filter(
-              li => li.parent_item_id === item.id && li.row_type === 'item' && li.supplier_id !== supplier?.id
-            )
+            // Linked children: same-supplier children (in items) + cross-supplier children (in allItems)
+            const linkedChildren = [
+              ...items.filter(li => li.parent_item_id === item.id && li.row_type === 'item'),
+              ...allItems.filter(li => li.parent_item_id === item.id && li.row_type === 'item' && li.supplier_id !== supplier?.id),
+            ]
 
             return (
               <View key={item.id}>
@@ -209,7 +216,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
                             {child.quantity}{child.unit ? ` ${child.unit}` : ''}
                           </Text>
                         </View>
-                        {childSup ? (
+                        {childSup && child.supplier_id !== supplier?.id ? (
                           <Text style={{ fontSize: 6, color: theme.accent, marginTop: 2 }}>via {childSup.supplier_name}</Text>
                         ) : null}
                       </View>
