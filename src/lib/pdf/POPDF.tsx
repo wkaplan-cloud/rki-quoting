@@ -85,14 +85,14 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
   const ccEmail = supplier?.is_platform ? platformContact?.email : null
   const repName = platformContact?.rep_name || (supplier as any)?.rep_name
 
-  // Same-supplier linked children should not render as standalone rows — they appear under their parent
+  // Same-supplier linked children render under their parent item, not as standalone numbered rows
   const sameSupplierChildIds = new Set(
     items
       .filter(i => i.parent_item_id && i.row_type === 'item' && items.some(p => p.id === i.parent_item_id))
       .map(i => i.id)
   )
 
-  const subtotal = items.filter(i => i.row_type !== 'section' && !sameSupplierChildIds.has(i.id)).reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
+  const subtotal = items.filter(i => i.row_type !== 'section').reduce((sum, i) => sum + i.cost_price * i.quantity, 0)
   const vatAmount = subtotal * (vatRate / 100)
   const grandTotal = subtotal + vatAmount
 
