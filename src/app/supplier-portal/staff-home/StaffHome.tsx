@@ -135,17 +135,29 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     // Register service worker (Web Push for browser users)
     navigator.serviceWorker.register('/sw.js').catch(() => {})
 
-    // Register FCM token if injected by the native Android app
-    const nativeToken = (window as unknown as { __fcmToken?: string }).__fcmToken
-    if (nativeToken) {
+    function registerFcmToken(token: string) {
       fetch('/api/supplier-portal/staff/fcm-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fcm_token: nativeToken }),
+        body: JSON.stringify({ fcm_token: token }),
       }).catch(() => {})
-      // Native app handles permission — mark as granted so the banner doesn't show
       setNotifState('granted')
     }
+
+    // Check immediately — token may already be set before React mounted
+    const immediate = (window as unknown as { __fcmToken?: string }).__fcmToken
+    if (immediate) { registerFcmToken(immediate); return }
+
+    // Poll for up to 4 seconds — Android WebView sometimes injects __fcmToken
+    // slightly after the page finishes mounting
+    let attempts = 0
+    const poll = setInterval(() => {
+      const token = (window as unknown as { __fcmToken?: string }).__fcmToken
+      if (token) { clearInterval(poll); registerFcmToken(token); return }
+      if (++attempts >= 40) clearInterval(poll)
+    }, 100)
+
+    return () => clearInterval(poll)
   }, [])
 
   async function enableNotifications() {
