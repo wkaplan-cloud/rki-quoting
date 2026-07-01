@@ -85,7 +85,7 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, pr
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-40 flex items-center"
-      style={{ background: S.card, borderTop: `1px solid ${S.border}`, paddingBottom: 'env(safe-area-inset-bottom)' }}
+      style={{ background: S.card, borderTop: `1px solid ${S.border}`, paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}
     >
       <NavButton tab="home"     activeTab={activeTab} icon={<Home size={24} />}      label="Home"     onClick={() => go('home')} />
       <NavButton tab="jobs"     activeTab={activeTab} icon={<Briefcase size={24} />} label="Jobs"     badge={jobsBadge}     onClick={() => go('jobs')} />
