@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/load-catalogue", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/sync-catalogue?backfill=true&trigger=cron", "schedule": "0 1 * * *" },
     { "path": "/api/cron/sync-prices", "schedule": "20 2 * * *" }
   ]
 }
