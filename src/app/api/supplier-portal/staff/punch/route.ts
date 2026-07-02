@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { reverseGeocode } from '@/lib/reverse-geocode'
+import { clientIp, ipGeocode } from '@/lib/ip-geocode'
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,11 +70,35 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Reverse-geocode the GPS coordinates (non-blocking — notification still fires even if this fails)
-    const address = latitude && longitude ? await reverseGeocode(latitude, longitude) : null
+    // If no GPS from client, fall back to IP-based approximate location
+    let resolvedLat = latitude
+    let resolvedLng = longitude
+    let locationSource: 'gps' | 'ip' | 'none' = latitude && longitude ? 'gps' : 'none'
+
+    if (!resolvedLat || !resolvedLng) {
+      const ip = clientIp(req)
+      if (ip) {
+        const ipLoc = await ipGeocode(ip)
+        if (ipLoc) {
+          resolvedLat = ipLoc.latitude
+          resolvedLng = ipLoc.longitude
+          locationSource = 'ip'
+          // Update the punch with IP-derived coords
+          await supabaseAdmin
+            .from('elec_time_punches')
+            .update({ latitude: resolvedLat, longitude: resolvedLng })
+            .eq('id', punch.id)
+        }
+      }
+    }
+
+    // Reverse-geocode whichever coordinates we ended up with
+    const address = resolvedLat && resolvedLng ? await reverseGeocode(resolvedLat, resolvedLng) : null
 
     // Create notification for admin
-    const gpsNote = address ? ` · ${address}` : latitude ? ` · GPS captured` : ''
+    const gpsNote = address
+      ? ` · ${address}${locationSource === 'ip' ? ' (approx)' : ''}`
+      : resolvedLat ? ` · GPS captured` : ''
     await supabaseAdmin.from('elec_notifications').insert({
       portal_account_id: staff.portal_account_id,
       type: punch_type,
@@ -82,7 +107,7 @@ export async function POST(req: NextRequest) {
       metadata: { staff_id: staff.id, punch_id: punch.id, job_card_id: job_id ?? null, latitude: latitude ?? null, longitude: longitude ?? null, address: address ?? null },
     })
 
-    return NextResponse.json({ ok: true, punch, address: address ?? null })
+    return NextResponse.json({ ok: true, punch, address: address ?? null, locationSource })
   } catch (e) {
     return apiError(e)
   }

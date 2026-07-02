@@ -295,13 +295,15 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ punch_type: punchType, punched_at: punchedAt, latitude, longitude }),
       })
-      const data = await res.json() as { ok?: boolean; punch?: ElecTimePunch; address?: string | null; error?: string }
+      const data = await res.json() as { ok?: boolean; punch?: ElecTimePunch; address?: string | null; locationSource?: 'gps' | 'ip' | 'none'; error?: string }
       if (!res.ok || !data.ok) { setClockStatus('error'); setClockMsg(data.error ?? 'Failed'); return }
       setIsClockedIn(punchType === 'clock_in')
       if (data.punch) setPunches(prev => [data.punch!, ...prev])
       if (data.address) setLastPunchAddress(data.address)
       setClockStatus('done')
-      const locationTag = data.address ? ` · ${data.address}` : latitude ? ' · GPS ✓' : ' · no GPS'
+      const locationTag = data.address
+        ? ` · ${data.address}${data.locationSource === 'ip' ? ' (approx)' : ''}`
+        : latitude ? ' · GPS ✓' : ' · no GPS'
       setClockMsg((punchType === 'clock_in' ? 'Clocked in ✓' : 'Clocked out ✓') + locationTag)
       setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     } catch {
