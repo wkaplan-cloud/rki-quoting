@@ -405,7 +405,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                     <p className="text-sm font-semibold" style={{ color: S.danger }}>Location access blocked</p>
                     {isIos ? (
                       <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                        Go to <strong>Settings → Privacy &amp; Security → Location Services</strong>, find <strong>QuotingHub</strong> (or this website) and set to <strong>While Using</strong>. Then try again.
+                        Go to <strong>Settings → Privacy &amp; Security → Location Services → Safari Websites</strong> and set to <strong>While Using</strong>. Then try clocking in again.
                       </p>
                     ) : (
                       <p className="text-xs mt-0.5" style={{ color: S.muted }}>
