@@ -89,8 +89,11 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   useEffect(() => {
     fetch('/api/supplier-portal/staff/punch')
       .then(r => r.json())
-      .then((d: { isClockedIn: boolean; lastPunch: { job_id: string | null } | null }) => {
-        if (d.isClockedIn && d.lastPunch?.job_id) setActiveJobCardId(d.lastPunch.job_id)
+      .then((d: { isClockedIn: boolean; punches: { punch_type: string; job_id: string | null }[] }) => {
+        // Find the most recent job-linked punch — if it's a clock_in, that job is active
+        const lastJobPunch = (d.punches ?? []).find(p => p.job_id)
+        if (lastJobPunch?.punch_type === 'clock_in') setActiveJobCardId(lastJobPunch.job_id!)
+        else setActiveJobCardId(null)
       })
       .catch(() => {})
   }, [])

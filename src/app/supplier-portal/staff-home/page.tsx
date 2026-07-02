@@ -65,8 +65,8 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       .order('start_time'),
   ])
 
-  const lastPunch = (punches ?? [])[0] ?? null
-  const isClockedIn = lastPunch?.punch_type === 'clock_in'
+  const lastGlobalPunch = (punches ?? []).find(p => !p.job_id) ?? null
+  const isClockedIn = lastGlobalPunch?.punch_type === 'clock_in'
 
   return (
     <StaffHome

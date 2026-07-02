@@ -109,11 +109,13 @@ export async function GET(req: NextRequest) {
       .gte('punched_at', since)
       .order('punched_at', { ascending: false })
 
-    // Last punch to determine current status
-    const lastPunch = punches?.[0]
-    const isClockedIn = lastPunch?.punch_type === 'clock_in'
+    // Global clock-in status is based only on punches with no job_id attached.
+    // Job card clock-outs must not flip the global "on site" state.
+    const lastGlobalPunch = (punches ?? []).find(p => !p.job_id) ?? null
+    const lastPunch = punches?.[0] ?? null
+    const isClockedIn = lastGlobalPunch?.punch_type === 'clock_in'
 
-    return NextResponse.json({ punches: punches ?? [], isClockedIn, lastPunch: lastPunch ?? null })
+    return NextResponse.json({ punches: punches ?? [], isClockedIn, lastPunch })
   } catch (e) {
     return apiError(e)
   }
