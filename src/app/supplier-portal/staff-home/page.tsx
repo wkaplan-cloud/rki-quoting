@@ -38,8 +38,8 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
     supabaseAdmin
       .from('elec_job_cards')
       .select(`*, client:elec_clients(id,client_name,email)`)
-      .eq('staff_id', staff.id)
       .eq('portal_account_id', staff.portal_account_id)
+      .or(`staff_id.eq.${staff.id},additional_staff_ids.cs.{${staff.id}}`)
       .in('status', ['pending', 'in_progress'])
       .order('scheduled_at', { ascending: true }),
     supabaseAdmin
