@@ -121,6 +121,43 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     setTimeout(() => setRefreshing(false), 1200)
   }
 
+  // GPS permission
+  const [gpsPermState, setGpsPermState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown')
+  const [enablingGps, setEnablingGps] = useState(false)
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGpsPermState('unsupported'); return
+    }
+    if (!navigator.permissions) return // leave as 'unknown' — show Enable button
+    navigator.permissions.query({ name: 'geolocation' }).then(r => {
+      if (r.state === 'granted') setGpsPermState('granted')
+      else if (r.state === 'denied') setGpsPermState('denied')
+      // 'prompt' → leave as 'unknown' so the Enable button shows
+    }).catch(() => {})
+  }, [])
+
+  async function enableGps() {
+    if (enablingGps || !navigator.geolocation) return
+    setEnablingGps(true)
+    try {
+      await new Promise<GeolocationPosition>((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, {
+          enableHighAccuracy: true,
+          timeout: 30000,
+          maximumAge: 0,
+        })
+      )
+      setGpsPermState('granted')
+      setGpsBlocked(false)
+    } catch (err) {
+      const code = (err as GeolocationPositionError).code
+      if (code === 1) setGpsPermState('denied')
+      // timeout/unavailable — don't change state, they can retry
+    }
+    setEnablingGps(false)
+  }
+
   // Push notifications
   const [notifState, setNotifState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown')
   const [enablingNotifs, setEnablingNotifs] = useState(false)
@@ -394,8 +431,25 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         {tab === 'home' && (
           <div className="px-4 pt-4 space-y-4">
 
-            {/* GPS permission banner */}
-            {gpsBlocked && (() => {
+            {/* GPS permission banners */}
+            {gpsPermState === 'unknown' && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                style={{ background: 'rgba(58,124,165,0.06)', border: `1px solid rgba(58,124,165,0.2)` }}>
+                <MapPin size={16} className="flex-shrink-0" style={{ color: S.accent }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold" style={{ color: S.text }}>Enable GPS location</p>
+                  <p className="text-xs mt-0.5" style={{ color: S.muted }}>Captures your location when clocking in/out</p>
+                </div>
+                <button
+                  onClick={() => void enableGps()}
+                  disabled={enablingGps}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                  style={{ background: S.accent, color: '#fff' }}>
+                  {enablingGps ? <Loader2 size={12} className="animate-spin inline" /> : 'Enable'}
+                </button>
+              </div>
+            )}
+            {(gpsPermState === 'denied' || (gpsBlocked && gpsPermState !== 'unknown')) && (() => {
               const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
               return (
                 <div className="flex items-start gap-3 px-4 py-3 rounded-2xl"
@@ -405,7 +459,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                     <p className="text-sm font-semibold" style={{ color: S.danger }}>Location access blocked</p>
                     {isIos ? (
                       <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                        Go to <strong>Settings → Privacy &amp; Security → Location Services → Safari Websites</strong> and set to <strong>While Using</strong>. Then try clocking in again.
+                        Go to <strong>Settings → Privacy &amp; Security → Location Services → Safari Websites</strong> and set to <strong>While Using</strong>. Then try again.
                       </p>
                     ) : (
                       <p className="text-xs mt-0.5" style={{ color: S.muted }}>
