@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import { calcHourBreakdown, punchesToBreakdown } from '@/lib/sa-overtime'
@@ -241,7 +241,8 @@ export function StaffManager({ initialStaff, punches }: Props) {
   const [copied, setCopied] = useState(false)
 
   // Timesheet helpers
-  const [timesheetView, setTimesheetView] = useState<'daily' | 'weekly'>('daily')
+  const [timesheetView, setTimesheetView] = useState<'daily' | 'weekly' | 'by-job'>('daily')
+  const [expandedJobs, setExpandedJobs] = useState<Record<string, boolean>>({})
   const staffMap = Object.fromEntries(staff.map(s => [s.id, s]))
   const dayMap: Record<string, Record<string, ElecTimePunch[]>> = {}
   for (const p of punches) {
@@ -274,6 +275,28 @@ export function StaffManager({ initialStaff, punches }: Props) {
     staffWeekPunches[wk][p.staff_id].push(p)
   }
   const sortedWeeks = Object.keys(staffWeekPunches).sort((a, b) => b.localeCompare(a))
+
+  // By-job grouping: jobKey → staffId → punches[]
+  // jobKey is job_id or '__unlinked__'
+  type JobMeta = { job_number: string; title: string } | null
+  const jobPunchMap: Record<string, { meta: JobMeta; byStaff: Record<string, ElecTimePunch[]> }> = {}
+  for (const p of punches) {
+    const key = p.job_id ?? '__unlinked__'
+    if (!jobPunchMap[key]) {
+      const job = p.job && !Array.isArray(p.job) ? p.job : null
+      jobPunchMap[key] = { meta: p.job_id ? (job as JobMeta) : null, byStaff: {} }
+    }
+    if (!jobPunchMap[key].byStaff[p.staff_id]) jobPunchMap[key].byStaff[p.staff_id] = []
+    jobPunchMap[key].byStaff[p.staff_id].push(p)
+  }
+  // Sort: linked jobs first (by job_number), unlinked last
+  const sortedJobKeys = Object.keys(jobPunchMap).sort((a, b) => {
+    if (a === '__unlinked__') return 1
+    if (b === '__unlinked__') return -1
+    const ma = jobPunchMap[a].meta?.job_number ?? ''
+    const mb = jobPunchMap[b].meta?.job_number ?? ''
+    return ma.localeCompare(mb)
+  })
 
   // Timesheet email modal
   const [emailModal, setEmailModal] = useState<{ weekStart: string } | null>(null)
@@ -653,11 +676,11 @@ export function StaffManager({ initialStaff, punches }: Props) {
         <div className="space-y-4">
           {/* View toggle */}
           <div className="flex items-center gap-1 rounded-xl p-1 self-start" style={{ background: S.bg, border: `1px solid ${S.border}`, display: 'inline-flex' }}>
-            {(['daily', 'weekly'] as const).map(v => (
+            {([['daily', 'Daily'], ['weekly', 'Weekly (Thu–Wed)'], ['by-job', 'By Job']] as const).map(([v, label]) => (
               <button key={v} onClick={() => setTimesheetView(v)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold capitalize"
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold"
                 style={{ background: timesheetView === v ? S.card : 'transparent', color: timesheetView === v ? S.text : S.muted, boxShadow: timesheetView === v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
-                {v === 'weekly' ? 'Weekly (Thu–Wed)' : 'Daily'}
+                {label}
               </button>
             ))}
           </div>
@@ -827,6 +850,110 @@ export function StaffManager({ initialStaff, punches }: Props) {
               })}
             </div>
           ))}
+
+          {/* ── By Job view ── */}
+          {timesheetView === 'by-job' && (
+            <div className="space-y-3">
+              {sortedJobKeys.length === 0 ? (
+                <div className="rounded-2xl py-12 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  <p className="text-sm" style={{ color: S.muted }}>No clock-in activity in the last 30 days.</p>
+                </div>
+              ) : sortedJobKeys.map(jobKey => {
+                const { meta, byStaff } = jobPunchMap[jobKey]
+                const isUnlinked = jobKey === '__unlinked__'
+                const isExpanded = !!expandedJobs[jobKey]
+                const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
+
+                // Total hours across all staff for this job
+                let jobTotalMs = 0
+                const staffRows = Object.entries(byStaff).map(([staffId, staffPunches]) => {
+                  const member = staffMap[staffId]
+                  const { totalMs } = punchesToBreakdown(staffPunches)
+                  jobTotalMs += totalMs
+                  const sorted = [...staffPunches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+                  return { staffId, member, totalMs, sorted }
+                }).sort((a, b) => b.totalMs - a.totalMs)
+
+                return (
+                  <div key={jobKey} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                    {/* Job header — tap to expand */}
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+                      onClick={() => setExpandedJobs(prev => ({ ...prev, [jobKey]: !prev[jobKey] }))}>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: isUnlinked ? 'rgba(113,113,122,0.1)' : 'rgba(58,124,165,0.1)' }}>
+                        <Briefcase size={15} style={{ color: isUnlinked ? S.muted : S.accent }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {isUnlinked ? (
+                          <>
+                            <p className="text-sm font-semibold" style={{ color: S.text }}>Unlinked punches</p>
+                            <p className="text-xs mt-0.5" style={{ color: S.muted }}>Clock-ins not attached to a job card</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-mono font-semibold" style={{ color: S.accent }}>{meta?.job_number}</span>
+                            </div>
+                            <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{meta?.title ?? 'Unnamed job'}</p>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="text-sm font-bold font-mono" style={{ color: S.accent }}>{jobTotalMs > 0 ? fmtMs(jobTotalMs) : '—'}</p>
+                          <p className="text-[10px]" style={{ color: S.muted }}>{staffRows.length} tech{staffRows.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <ChevronDown size={14} style={{ color: S.muted, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                      </div>
+                    </button>
+
+                    {/* Expanded: staff breakdown */}
+                    {isExpanded && staffRows.map(({ staffId, member, totalMs, sorted }) => {
+                      const { normalMs, overtimeMs } = punchesToBreakdown(sorted)
+                      return (
+                        <div key={staffId} className="px-4 py-3" style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                              style={{ background: member?.color ?? S.accent }}>
+                              {member?.name?.slice(0, 2).toUpperCase() ?? '??'}
+                            </div>
+                            <p className="text-xs font-semibold flex-1" style={{ color: S.text }}>{member?.name ?? 'Unknown'}</p>
+                            <div className="flex items-center gap-2 text-xs font-medium">
+                              <span style={{ color: S.green }}>Norm: {fmtMs(normalMs)}</span>
+                              {overtimeMs > 0 && <span style={{ color: S.gold }}>OT: {fmtMs(overtimeMs)}</span>}
+                              <span className="font-bold font-mono" style={{ color: S.accent }}>{totalMs > 0 ? fmtMs(totalMs) : '—'}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {sorted.map(p => (
+                              <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg"
+                                style={{ background: p.punch_type === 'clock_in' ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.08)', border: `1px solid ${p.punch_type === 'clock_in' ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.2)'}` }}>
+                                {p.punch_type === 'clock_in'
+                                  ? <LogIn size={9} style={{ color: S.green }} />
+                                  : <LogOut size={9} style={{ color: S.danger }} />}
+                                <span className="text-[11px] font-semibold" style={{ color: p.punch_type === 'clock_in' ? S.green : S.danger }}>
+                                  {new Date(p.punched_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} {new Date(p.punched_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {p.latitude && p.longitude && (
+                                  <a href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                                    target="_blank" rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    style={{ color: S.accent }}>
+                                    <MapPin size={9} />
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
