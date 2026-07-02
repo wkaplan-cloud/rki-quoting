@@ -162,7 +162,7 @@ export default function StaffGpsPage() {
             }}>
               Retry
             </button>
-            <button onClick={() => history.back()} style={{
+            <button onClick={() => { localStorage.setItem('gps_banner_dismissed', '1'); history.back() }} style={{
               background: 'transparent', color: S.muted, border: 'none',
               padding: '12px', fontSize: '14px', cursor: 'pointer', width: '100%', marginTop: '4px',
             }}>

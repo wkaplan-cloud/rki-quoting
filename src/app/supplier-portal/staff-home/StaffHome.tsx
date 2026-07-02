@@ -128,11 +128,17 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     /iphone|ipad|ipod/i.test(navigator.userAgent) &&
     (navigator as unknown as { standalone?: boolean }).standalone === true
 
-  const [gpsPermState, setGpsPermState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown')
+  const [gpsPermState, setGpsPermState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported' | 'dismissed'>('unknown')
   const [enablingGps, setEnablingGps] = useState(false)
 
+  function dismissGpsBanner() {
+    localStorage.setItem('gps_banner_dismissed', '1')
+    setGpsPermState('dismissed')
+  }
+
   useEffect(() => {
-    if (!isIosStandalone) { setGpsPermState('granted'); return } // non-standalone: no banner needed
+    if (!isIosStandalone) { setGpsPermState('granted'); return }
+    if (localStorage.getItem('gps_banner_dismissed')) { setGpsPermState('dismissed'); return }
     if (!navigator.geolocation) { setGpsPermState('unsupported'); return }
     if (!navigator.permissions) return
     navigator.permissions.query({ name: 'geolocation' }).then(r => {
@@ -450,6 +456,13 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                   className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
                   style={{ background: S.accent, color: '#fff' }}>
                   {enablingGps ? <Loader2 size={12} className="animate-spin inline" /> : 'Enable'}
+                </button>
+                <button
+                  onClick={dismissGpsBanner}
+                  className="flex-shrink-0 p-1 rounded-full"
+                  style={{ color: S.muted, background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  aria-label="Dismiss">
+                  <X size={14} />
                 </button>
               </div>
             )}
