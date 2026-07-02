@@ -137,25 +137,17 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     }).catch(() => {})
   }, [])
 
-  async function enableGps() {
+  function enableGps() {
     if (enablingGps || !navigator.geolocation) return
     setEnablingGps(true)
-    try {
-      await new Promise<GeolocationPosition>((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, {
-          enableHighAccuracy: true,
-          timeout: 30000,
-          maximumAge: 0,
-        })
-      )
-      setGpsPermState('granted')
-      setGpsBlocked(false)
-    } catch (err) {
-      const code = (err as GeolocationPositionError).code
-      if (code === 1) setGpsPermState('denied')
-      // timeout/unavailable — don't change state, they can retry
-    }
-    setEnablingGps(false)
+    // Must use raw callbacks (not async/Promise) so iOS keeps the user-gesture
+    // context intact. Crossing an async boundary loses the gesture and suppresses
+    // the permission dialog on iOS standalone PWA.
+    navigator.geolocation.getCurrentPosition(
+      () => { setGpsPermState('granted'); setGpsBlocked(false); setEnablingGps(false) },
+      (err) => { if (err.code === 1) setGpsPermState('denied'); setEnablingGps(false) },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+    )
   }
 
   // Push notifications
