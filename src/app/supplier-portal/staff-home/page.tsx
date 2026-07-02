@@ -51,7 +51,7 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       .from('elec_quotes')
       .select('id, quote_number, project_name, project_address, status, client:elec_clients(id, client_name)')
       .eq('portal_account_id', staff.portal_account_id)
-      .eq('staff_id', staff.id)
+      .or(`staff_id.eq.${staff.id},additional_staff_ids.cs.{${staff.id}}`)
       .in('status', ['approved', 'in_progress'])
       .order('created_at', { ascending: false }),
     supabaseAdmin
