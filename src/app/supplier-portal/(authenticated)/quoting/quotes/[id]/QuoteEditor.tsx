@@ -1367,6 +1367,25 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
             </div>
           </div>
         )}
+
+        {allItems.length > 0 && !locked && (
+          <div className="mt-2 flex items-center gap-4">
+            <button onClick={addFreeItem}
+              className="flex items-center gap-1.5 text-sm transition-colors cursor-pointer"
+              style={{ color: S.accent }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+              <Plus size={14} /> Add item
+            </button>
+            <button onClick={addSection}
+              className="flex items-center gap-1.5 text-sm transition-colors cursor-pointer"
+              style={{ color: S.muted }}
+              onMouseEnter={e => e.currentTarget.style.color = S.text}
+              onMouseLeave={e => e.currentTarget.style.color = S.muted}>
+              <FolderPlus size={14} /> Add section
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Totals */}
@@ -1639,25 +1658,6 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </div>
       )}
 
-      {/* ── Floating add buttons — always accessible while scrolled down ── */}
-      {activeTab === 'quote' && !locked && (
-        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
-          <button onClick={addSection}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: S.card, border: `1px solid ${S.border}`, color: S.accent, boxShadow: '0 4px 20px rgba(0,0,0,0.12)' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(58,124,165,0.08)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = S.card }}>
-            <FolderPlus size={14} /> Add section
-          </button>
-          <button onClick={addFreeItem}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: S.accent, color: '#fff', boxShadow: '0 4px 20px rgba(58,124,165,0.4)' }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}>
-            <Plus size={14} /> Add item
-          </button>
-        </div>
-      )}
 
       {/* ── Recon / Sign-off Modal ── */}
       {showReconModal && (
