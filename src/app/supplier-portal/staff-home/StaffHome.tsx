@@ -121,21 +121,25 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     setTimeout(() => setRefreshing(false), 1200)
   }
 
-  // GPS permission
+  // GPS permission — only relevant for iOS standalone PWA where the dialog is buggy.
+  // In normal Safari the browser handles GPS natively; no Enable button needed.
+  const isIosStandalone =
+    typeof navigator !== 'undefined' &&
+    /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+
   const [gpsPermState, setGpsPermState] = useState<'unknown' | 'granted' | 'denied' | 'unsupported'>('unknown')
   const [enablingGps, setEnablingGps] = useState(false)
 
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setGpsPermState('unsupported'); return
-    }
-    if (!navigator.permissions) return // leave as 'unknown' — show Enable button
+    if (!isIosStandalone) { setGpsPermState('granted'); return } // non-standalone: no banner needed
+    if (!navigator.geolocation) { setGpsPermState('unsupported'); return }
+    if (!navigator.permissions) return
     navigator.permissions.query({ name: 'geolocation' }).then(r => {
       if (r.state === 'granted') setGpsPermState('granted')
       else if (r.state === 'denied') setGpsPermState('denied')
-      // 'prompt' → leave as 'unknown' so the Enable button shows
     }).catch(() => {})
-  }, [])
+  }, []) // eslint-disable-line
 
   function enableGps() {
     if (enablingGps || !navigator.geolocation) return
