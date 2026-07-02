@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
@@ -585,7 +586,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             const platformSupplier = suppliers.find(s => s.id === item.supplier_id && s.is_platform)
                             const hasAccess = platformSupplier?.price_list_id ? activePriceListIds.includes(platformSupplier.price_list_id) : false
                             if (platformSupplier && !hasAccess) return (
-                              <span className="text-xs text-amber-600 italic">Price list access pending approval</span>
+                              <Link href="/price-lists" className="text-xs text-amber-600 italic underline hover:text-amber-700">
+                                Request price list access
+                              </Link>
                             )
                             if (platformSupplier && hasAccess) return (
                               <FabricSearch
