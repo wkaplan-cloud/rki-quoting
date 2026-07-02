@@ -1369,20 +1369,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         )}
 
         {allItems.length > 0 && !locked && (
-          <div className="mt-2 flex items-center gap-4">
-            <button onClick={addFreeItem}
-              className="flex items-center gap-1.5 text-sm transition-colors cursor-pointer"
-              style={{ color: S.accent }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-              <Plus size={14} /> Add item
+          <div className="mt-2 flex items-center gap-2">
+            <button onClick={addFreeItem} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+              <Plus size={12} /> Add item
             </button>
-            <button onClick={addSection}
-              className="flex items-center gap-1.5 text-sm transition-colors cursor-pointer"
-              style={{ color: S.muted }}
-              onMouseEnter={e => e.currentTarget.style.color = S.text}
-              onMouseLeave={e => e.currentTarget.style.color = S.muted}>
-              <FolderPlus size={14} /> Add section
+            <button onClick={addSection} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+              style={{ color: S.accent, background: 'rgba(58,124,165,0.08)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(58,124,165,0.15)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(58,124,165,0.08)'}>
+              <FolderPlus size={12} /> Add section
             </button>
           </div>
         )}
