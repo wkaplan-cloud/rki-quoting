@@ -140,21 +140,18 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   function enableGps() {
     if (enablingGps || !navigator.geolocation) return
 
-    // On iOS standalone PWA, the permission dialog is routed to a Safari tab by
-    // WebKit (confirmed Apple bug). Open a Safari page that requests GPS there,
-    // where the dialog works correctly. The user grants it, closes the tab, returns.
-    const isIosStandalone =
-      /iphone|ipad|ipod/i.test(navigator.userAgent) &&
-      (navigator as unknown as { standalone?: boolean }).standalone === true
-    if (isIosStandalone) {
-      window.open('/supplier-portal/staff-gps', '_blank')
-      return
-    }
-
     setEnablingGps(true)
     navigator.geolocation.getCurrentPosition(
       () => { setGpsPermState('granted'); setGpsBlocked(false); setEnablingGps(false) },
-      (err) => { if (err.code === 1) setGpsPermState('denied'); setEnablingGps(false) },
+      (err) => {
+        // Permission denied — navigate to the GPS recovery page which explains
+        // how to reset iOS standalone PWA geolocation permission in Settings.
+        if (err.code === 1) {
+          window.location.href = '/supplier-portal/staff-gps'
+          return
+        }
+        setEnablingGps(false)
+      },
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
     )
   }
@@ -439,11 +436,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 <MapPin size={16} className="flex-shrink-0" style={{ color: S.accent }} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold" style={{ color: S.text }}>Enable GPS location</p>
-                  <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                    {(navigator as unknown as { standalone?: boolean }).standalone
-                      ? 'Opens Safari to grant permission — close that tab when done'
-                      : 'Captures your location when clocking in/out'}
-                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: S.muted }}>Captures your location when clocking in/out</p>
                 </div>
                 <button
                   onClick={() => enableGps()}
