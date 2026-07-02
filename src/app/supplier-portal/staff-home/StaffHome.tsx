@@ -211,27 +211,38 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     let latitude: number | undefined
     let longitude: number | undefined
 
-    // iOS standalone PWA blocks high-accuracy GPS requests; Android does not
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
 
     if (!navigator.geolocation) {
       setGpsBlocked(true)
     } else {
       try {
-        const pos = await new Promise<GeolocationPosition>((res, rej) =>
-          navigator.geolocation.getCurrentPosition(res, rej, {
-            timeout: 15000,
-            maximumAge: 60000,
-            enableHighAccuracy: !isIos,
-          })
-        )
+        // iOS requires enableHighAccuracy:true to trigger the permission dialog on first use.
+        // If it times out (common on some iOS devices), fall back to low-accuracy (network-based).
+        const getPosition = (highAccuracy: boolean) =>
+          new Promise<GeolocationPosition>((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, {
+              timeout: highAccuracy ? 10000 : 8000,
+              maximumAge: 60000,
+              enableHighAccuracy: highAccuracy,
+            })
+          )
+
+        let pos: GeolocationPosition
+        try {
+          pos = await getPosition(true)
+        } catch (err) {
+          // On iOS, a TIMEOUT from high-accuracy is expected — fall back silently.
+          // PERMISSION_DENIED (code 1) means we should not retry.
+          if ((err as GeolocationPositionError).code === 1) throw err
+          pos = await getPosition(false)
+        }
+
         latitude = pos.coords.latitude
         longitude = pos.coords.longitude
         setGpsBlocked(false)
       } catch (err) {
         const code = (err as GeolocationPositionError).code
-        // On iOS PWA: any GPS failure (permission denied=1, unavailable=2, timeout=3)
-        // means no location will be captured — surface the banner so the user can act.
         setGpsBlocked(isIos ? true : code === 1)
       }
     }
