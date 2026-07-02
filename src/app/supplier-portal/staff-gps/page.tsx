@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
-type State = 'idle' | 'prompting' | 'granted' | 'denied' | 'error'
+type State = 'idle' | 'switch-to-safari' | 'granted' | 'denied' | 'error'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF',
@@ -13,7 +13,7 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
       <div style={{
-        width: '24px', height: '24px', borderRadius: '50%', background: S.accent,
+        width: '26px', height: '26px', borderRadius: '50%', background: S.accent,
         color: '#fff', fontSize: '12px', fontWeight: '700', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>{n}</div>
@@ -24,15 +24,47 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 
 export default function StaffGpsPage() {
   const [state, setState] = useState<State>('idle')
+  const [countdown, setCountdown] = useState(10)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Must be called directly from a button tap — iOS requires a real user gesture
-  function tryGps() {
+  // When user comes back from Safari after granting, re-check permission
+  useEffect(() => {
+    const onFocus = () => {
+      if (state !== 'switch-to-safari') return
+      navigator.geolocation.getCurrentPosition(
+        () => { clearTimer(); setState('granted') },
+        (err) => { clearTimer(); setState(err.code === 1 ? 'denied' : 'idle') },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
+      )
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [state])
+
+  function clearTimer() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+  }
+
+  // Fire the geolocation request — on iOS standalone the dialog appears in Safari
+  function requestGps() {
     if (!navigator.geolocation) { setState('error'); return }
-    setState('prompting')
+
+    // Start countdown so user knows to switch quickly
+    setCountdown(10)
+    setState('switch-to-safari')
+
+    timerRef.current = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearTimer(); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+
+    // Fire the request — iOS will route the dialog to a Safari tab
     navigator.geolocation.getCurrentPosition(
-      () => setState('granted'),
-      (err) => setState(err.code === 1 ? 'denied' : 'error'),
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 },
+      () => { clearTimer(); setState('granted') },
+      (err) => { clearTimer(); setState(err.code === 1 ? 'denied' : 'idle') },
+      { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 },
     )
   }
 
@@ -48,41 +80,46 @@ export default function StaffGpsPage() {
         boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
       }}>
 
-        {/* Idle — waiting for tap */}
+        {/* Step 1 — explain what to do */}
         {state === 'idle' && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '44px', marginBottom: '12px' }}>📍</div>
-            <h1 style={{ fontSize: '18px', fontWeight: '700', color: S.text, margin: '0 0 8px' }}>
+          <>
+            <div style={{ fontSize: '40px', marginBottom: '12px', textAlign: 'center' }}>📍</div>
+            <h1 style={{ fontSize: '18px', fontWeight: '700', color: S.text, margin: '0 0 6px', textAlign: 'center' }}>
               Enable GPS
             </h1>
-            <p style={{ fontSize: '13px', color: S.muted, lineHeight: '1.6', margin: '0 0 20px' }}>
-              Tap the button below. If iOS shows a location dialog, tap <strong>Allow</strong>.
+            <p style={{ fontSize: '13px', color: S.muted, margin: '0 0 20px', textAlign: 'center', lineHeight: '1.5' }}>
+              Due to an iOS bug, the permission dialog appears in <strong>Safari</strong>, not here. Read the steps first, then tap the button.
             </p>
-            <button onClick={tryGps} style={{
+            <div style={{ padding: '16px', borderRadius: '12px', background: S.bg, marginBottom: '20px' }}>
+              <Step n={1}>Tap <strong>Enable GPS</strong> below</Step>
+              <Step n={2}>Immediately press the <strong>Home button</strong> and open <strong>Safari</strong></Step>
+              <Step n={3}>A location dialog will be showing in Safari — tap <strong>Allow</strong></Step>
+              <Step n={4}>Come back here — GPS will be active</Step>
+            </div>
+            <button onClick={requestGps} style={{
               background: S.accent, color: '#fff', border: 'none', borderRadius: '12px',
               padding: '16px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', width: '100%',
             }}>
               Enable GPS
             </button>
-          </div>
+          </>
         )}
 
-        {/* Prompting */}
-        {state === 'prompting' && (
+        {/* Step 2 — request fired, user needs to switch to Safari */}
+        {state === 'switch-to-safari' && (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '44px', marginBottom: '12px' }}>📍</div>
-            <h1 style={{ fontSize: '18px', fontWeight: '700', color: S.text, margin: '0 0 8px' }}>
-              Waiting…
+            <div style={{ fontSize: '52px', marginBottom: '8px' }}>
+              {countdown > 0 ? countdown : '⏱'}
+            </div>
+            <h1 style={{ fontSize: '20px', fontWeight: '700', color: S.accent, margin: '0 0 8px' }}>
+              Open Safari now!
             </h1>
-            <p style={{ fontSize: '13px', color: S.muted, lineHeight: '1.6', margin: '0 0 20px' }}>
-              If a dialog appeared, tap <strong>Allow</strong>.
+            <p style={{ fontSize: '14px', color: S.text, lineHeight: '1.6', margin: '0 0 6px' }}>
+              Press the <strong>Home button</strong> and open <strong>Safari</strong>.
             </p>
-            <div style={{
-              width: '28px', height: '28px', border: `3px solid ${S.accent}`,
-              borderTopColor: 'transparent', borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite', margin: '0 auto',
-            }} />
-            <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+            <p style={{ fontSize: '13px', color: S.muted, lineHeight: '1.5', margin: 0 }}>
+              The location dialog is waiting there — tap <strong>Allow</strong> then come back here.
+            </p>
           </div>
         )}
 
@@ -103,7 +140,7 @@ export default function StaffGpsPage() {
           </div>
         )}
 
-        {/* Denied — permission is stuck in denied state in iOS storage */}
+        {/* Denied */}
         {state === 'denied' && (
           <>
             <div style={{ fontSize: '44px', marginBottom: '12px', textAlign: 'center' }}>🔒</div>
@@ -111,30 +148,15 @@ export default function StaffGpsPage() {
               Location blocked
             </h1>
             <p style={{ fontSize: '13px', color: S.muted, margin: '0 0 20px', textAlign: 'center', lineHeight: '1.5' }}>
-              iOS has this app&apos;s GPS blocked in storage. Follow one of these steps to fix it.
+              GPS was denied. To reset it, go to:
             </p>
-
-            {/* Option 1 */}
-            <div style={{ marginBottom: '16px', padding: '16px', borderRadius: '12px', background: S.bg }}>
-              <p style={{ fontSize: '11px', fontWeight: '700', color: S.muted, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 12px' }}>
-                Option 1 — Clear website data
-              </p>
-              <Step n={1}>Open <strong>Settings → Safari → Advanced → Website Data</strong></Step>
-              <Step n={2}>Search for <strong>quotinghub</strong> and swipe to delete it</Step>
-              <Step n={3}>Come back here and tap <strong>Retry</strong> below — the GPS dialog should appear</Step>
-            </div>
-
-            {/* Option 2 */}
-            <div style={{ marginBottom: '16px', padding: '16px', borderRadius: '12px', background: '#FFFBEB', border: '1px solid rgba(217,164,65,0.3)' }}>
-              <p style={{ fontSize: '11px', fontWeight: '700', color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 12px' }}>
-                Option 2 — Check Location Services
-              </p>
+            <div style={{ padding: '16px', borderRadius: '12px', background: S.bg, marginBottom: '20px' }}>
               <Step n={1}><strong>Settings → Privacy &amp; Security → Location Services</strong></Step>
-              <Step n={2}>Look for <strong>QuotingHub</strong> or <strong>quotinghub.co.za</strong> in the list</Step>
-              <Step n={3}>If found, set to <strong>While Using</strong> → tap Retry</Step>
+              <Step n={2}>Find <strong>Safari Websites</strong> or <strong>QuotingHub</strong> in the list</Step>
+              <Step n={3}>Set to <strong>While Using App or Website</strong></Step>
+              <Step n={4}>Come back and tap Retry</Step>
             </div>
-
-            <button onClick={tryGps} style={{
+            <button onClick={requestGps} style={{
               background: S.accent, color: '#fff', border: 'none', borderRadius: '12px',
               padding: '14px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', width: '100%',
             }}>
@@ -149,17 +171,15 @@ export default function StaffGpsPage() {
           </>
         )}
 
-        {/* Error */}
+        {/* Error / timed out */}
         {state === 'error' && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '44px', marginBottom: '12px' }}>⚠️</div>
-            <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#D9A441', margin: '0 0 8px' }}>
-              Couldn&apos;t get location
-            </h1>
+            <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#D9A441', margin: '0 0 8px' }}>Timed out</h1>
             <p style={{ fontSize: '13px', color: S.muted, lineHeight: '1.6', margin: '0 0 20px' }}>
-              Make sure Location Services is on in Settings, then try again.
+              The dialog may have expired. Tap Try again and switch to Safari faster.
             </p>
-            <button onClick={tryGps} style={{
+            <button onClick={requestGps} style={{
               background: S.accent, color: '#fff', border: 'none', borderRadius: '12px',
               padding: '14px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', width: '100%',
             }}>
