@@ -43,6 +43,7 @@ const S = {
 export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false }: Props) {
   const isTrades = supplierCategory === 'trades'
   const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
+  const tradesTierRank = isTrades ? ({ starter: 1, professional: 2, business: 3, quoting: 3 }[quotingPlan ?? ''] ?? 0) : 0
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -192,9 +193,8 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
           {isTrades ? (
             <>
               {(() => {
-                const tierRank = { starter: 1, professional: 2, business: 3, quoting: 3 }[quotingPlan ?? ''] ?? 0
-                const isPro = tierRank >= 2
-                const isBiz = tierRank >= 3
+                const isPro = tradesTierRank >= 2
+                const isBiz = tradesTierRank >= 3
                 return (
                   <>
                     <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
@@ -265,6 +265,25 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
               </span>
               <span className={`${labelCls} font-semibold flex-1`} style={{ color: '#93C5FD' }}>
                 Upgrade
+              </span>
+            </Link>
+          )}
+
+          {/* Upgrade CTA — trades accounts on Starter or Professional (Business is the top tier) */}
+          {isTrades && tradesTierRank < 3 && (
+            <Link
+              href={`/supplier-portal/upgrade?current=${quotingPlan ?? 'starter'}`}
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center h-9 mx-2 rounded-lg transition-colors duration-150 ${desktopExpanded ? '' : 'md:justify-center'}`}
+              style={{ background: 'rgba(27,79,138,0.18)', borderLeft: '3px solid transparent' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(27,79,138,0.28)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(27,79,138,0.18)' }}
+            >
+              <span className="flex items-center justify-center w-9 flex-shrink-0">
+                <Zap size={14} style={{ color: '#60A5FA' }} />
+              </span>
+              <span className={`${labelCls} font-semibold flex-1`} style={{ color: '#93C5FD' }}>
+                Upgrade to {tradesTierRank >= 2 ? 'Business' : 'Professional'}
               </span>
             </Link>
           )}
