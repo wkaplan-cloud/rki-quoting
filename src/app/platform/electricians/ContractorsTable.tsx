@@ -1,9 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Zap, Users, Clock, RotateCcw, Trash2,
   CheckCircle, Loader2, Plus, X, AlertCircle, ShieldCheck, Edit2,
-  Receipt, AlertTriangle, BadgeCheck,
+  Receipt, AlertTriangle, BadgeCheck, CreditCard, ExternalLink,
 } from 'lucide-react'
 
 // ── Plan config ────────────────────────────────────────────────────────────────
@@ -294,8 +294,128 @@ function AdminUsersPanel({ accountId, initial }: { accountId: string; initial: A
   )
 }
 
+// ── Billing Panel ────────────────────────────────────────────────────────────────
+interface BillingData {
+  configured: boolean
+  email?: string
+  subscriptionCode?: string
+  status?: string
+  amount?: number
+  nextPaymentDate?: string | null
+  planName?: string | null
+  planInterval?: string | null
+  card?: { brand: string | null; last4: string | null; expMonth: string | null; expYear: string | null; bank: string | null } | null
+  transactions?: { id: number; amount: number; status: string; paid_at: string | null; reference: string }[]
+}
+
+const SUB_BADGE: Record<string, string> = {
+  active:        'bg-emerald-500/15 text-emerald-400',
+  'non-renewing':'bg-amber-500/15 text-amber-400',
+  cancelled:     'bg-red-500/15 text-red-400',
+  attention:     'bg-red-500/15 text-red-400',
+  completed:     'bg-white/10 text-white/40',
+}
+
+function fmtRand(cents: number) { return `R${(cents / 100).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}` }
+
+function BillingPanel({ accountId }: { accountId: string }) {
+  const [data, setData] = useState<BillingData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const res = await fetch(`/api/platform/elec-accounts/${accountId}/billing`)
+      const json = await res.json() as BillingData & { error?: string }
+      if (cancelled) return
+      if (!res.ok) { setError(json.error ?? 'Failed to load billing'); setLoading(false); return }
+      setData(json)
+      setLoading(false)
+    })()
+    return () => { cancelled = true }
+  }, [accountId])
+
+  return (
+    <div className="px-5 py-4 bg-white/2 border-t border-white/5">
+      <div className="flex items-center gap-1.5 mb-3">
+        <CreditCard size={11} className="text-amber-400" />
+        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Billing (Paystack)</p>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-xs text-white/30 py-2">
+          <Loader2 size={12} className="animate-spin" /> Loading from Paystack…
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="flex items-center gap-1.5 text-xs text-red-400 py-2">
+          <AlertCircle size={11} /> {error}
+        </div>
+      )}
+
+      {!loading && data && !data.configured && (
+        <p className="text-xs text-white/30 italic py-1">No Paystack subscription on file for this account yet.</p>
+      )}
+
+      {!loading && data?.configured && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${SUB_BADGE[data.status ?? ''] ?? 'bg-white/10 text-white/40'}`}>
+                {data.status}
+              </span>
+              {data.planName && <span className="text-xs text-white/50">{data.planName}</span>}
+            </div>
+            <p className="text-xs text-white/60">
+              <span className="text-white/30">Amount:</span> {typeof data.amount === 'number' ? fmtRand(data.amount) : '—'}
+              {data.planInterval ? ` / ${data.planInterval}` : ''}
+            </p>
+            <p className="text-xs text-white/60">
+              <span className="text-white/30">Next payment:</span> {data.nextPaymentDate ? fmtDate(data.nextPaymentDate) : '—'}
+            </p>
+            {data.card && (
+              <p className="text-xs text-white/60">
+                <span className="text-white/30">Card:</span> {data.card.brand ?? 'Card'} •••• {data.card.last4 ?? '????'}
+                {data.card.expMonth && data.card.expYear ? ` (exp ${data.card.expMonth}/${data.card.expYear})` : ''}
+              </p>
+            )}
+            <a
+              href={`https://dashboard.paystack.com/#/subscriptions/${data.subscriptionCode}`}
+              target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 transition-colors"
+            >
+              Open in Paystack <ExternalLink size={9} />
+            </a>
+          </div>
+
+          <div>
+            <p className="text-[10px] text-white/40 mb-1.5 uppercase tracking-wider">Recent Transactions</p>
+            {!data.transactions || data.transactions.length === 0 ? (
+              <p className="text-xs text-white/20 italic">No transaction history found.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {data.transactions.map(t => (
+                  <div key={t.id} className="flex items-center justify-between text-xs bg-white/4 rounded-lg px-2.5 py-1.5">
+                    <span className="text-white/50">{t.paid_at ? fmtDate(t.paid_at) : '—'}</span>
+                    <span className="text-white/70 tabular-nums">{fmtRand(t.amount)}</span>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${t.status === 'success' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {t.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Table ──────────────────────────────────────────────────────────────────
-type ExpandView = 'plan' | 'admins'
+type ExpandView = 'plan' | 'admins' | 'billing'
 
 export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] }) {
   const [rows, setRows] = useState(initialRows)
@@ -411,14 +531,16 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
                 </button>
               </div>
 
-              {/* Status */}
+              {/* Status — click to view Paystack billing */}
               <div>
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusInfo.color}`}>
-                  {isTrialExpired ? 'Trial expired' : statusInfo.label}
-                  {a.subscription_status === 'trialing' && !isTrialExpired && trialDaysLeft !== null && (
-                    <span className="ml-1 opacity-70">· {trialDaysLeft}d</span>
-                  )}
-                </span>
+                <button onClick={() => toggle(a.id, 'billing')} className="cursor-pointer group" title="Click to view billing">
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusInfo.color}`}>
+                    {isTrialExpired ? 'Trial expired' : statusInfo.label}
+                    {a.subscription_status === 'trialing' && !isTrialExpired && trialDaysLeft !== null && (
+                      <span className="ml-1 opacity-70">· {trialDaysLeft}d</span>
+                    )}
+                  </span>
+                </button>
               </div>
 
               {/* Quotes */}
@@ -505,6 +627,11 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
             {/* Admin users panel */}
             {openView === 'admins' && (
               <AdminUsersPanel accountId={a.id} initial={a.adminMembers} />
+            )}
+
+            {/* Billing panel */}
+            {openView === 'billing' && (
+              <BillingPanel accountId={a.id} />
             )}
           </div>
         )
