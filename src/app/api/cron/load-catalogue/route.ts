@@ -143,17 +143,21 @@ export async function GET(req: NextRequest) {
     let startPage = 1
 
     if (useResume) {
+      // Look at the MOST RECENT completed run, not the most recent one that happened to
+      // have a resume token — otherwise a stale checkpoint from a past timeout never
+      // clears once later runs start finishing within the time budget, and the scan
+      // gets stuck re-covering the same old years forever instead of restarting at
+      // END_YEAR each cycle.
       const { data: resumeLog } = await supabase
         .from('twinbru_sync_log')
         .select('error_message')
         .eq('sync_type', 'load')
         .eq('status', 'ok')
-        .like('error_message', 'RESUME:%')
         .order('completed_at', { ascending: false })
         .limit(1)
         .single()
 
-      if (resumeLog?.error_message) {
+      if (resumeLog?.error_message?.startsWith('RESUME:')) {
         const parts = resumeLog.error_message.slice(7).split(':')
         const year = parseInt(parts[0], 10)
         const page = parseInt(parts[1], 10)
