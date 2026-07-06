@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { Check, ChevronDown, ChevronRight, Loader2, AlertCircle, ThumbsUp, MessageSquare } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Loader2, AlertCircle, ThumbsUp, MessageSquare, Printer } from 'lucide-react'
 
 const ACC    = '#3A7CA5'
 const DARK   = '#18181B'
@@ -130,12 +130,27 @@ export default function QuoteApprovalPage() {
           .doc-header { flex-direction: column; gap: 16px; }
           .totals-row { flex-direction: column; }
         }
+        @media print {
+          .no-print { display: none !important; }
+          body, .print-page { background: #fff !important; }
+          .doc-card { box-shadow: none !important; border-radius: 0 !important; margin-bottom: 0 !important; }
+          .line-item-row { padding: 4px 12px !important; }
+        }
       `}</style>
 
       <div style={{ maxWidth: 820, margin: '0 auto' }}>
 
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button
+            onClick={() => window.print()}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', color: DARK, border: `1px solid ${BORDER}` }}
+          >
+            <Printer size={14} /> Print Quote
+          </button>
+        </div>
+
         {/* ── Document card ── */}
-        <div className="doc-pad" style={{ background: '#fff', borderRadius: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.10)', marginBottom: 20 }}>
+        <div className="doc-pad doc-card" style={{ background: '#fff', borderRadius: 4, boxShadow: '0 1px 4px rgba(0,0,0,0.10)', marginBottom: 20 }}>
 
           {/* Header */}
           <div className="doc-header" style={{ marginBottom: 22 }}>
@@ -260,6 +275,7 @@ export default function QuoteApprovalPage() {
         </div>
 
         {/* ── Approval panel ── */}
+        <div className="no-print">
         {done === 'approved' ? (
           <div style={{ background: 'rgba(22,163,74,0.06)', border: `1.5px solid ${GREEN}`, borderRadius: 16, padding: 32, textAlign: 'center' }}>
             <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(22,163,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
@@ -306,8 +322,9 @@ export default function QuoteApprovalPage() {
             )}
           </div>
         )}
+        </div>
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: MUTED, marginTop: 20 }}>
+        <p className="no-print" style={{ textAlign: 'center', fontSize: 11, color: MUTED, marginTop: 20 }}>
           Powered by <span style={{ fontWeight: 600 }}>QuotingHub</span>
         </p>
       </div>
@@ -336,7 +353,7 @@ function LineItemsTable({ items, indent = false }: { items: Item[]; indent?: boo
         {items.map((item, i) => {
           const lineTotal = item.quoted_quantity * (item.quoted_unit_rate + (item.labour_rate ?? 0))
           return (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: cols, padding: '7px 12px', alignItems: 'start', borderBottom: `0.5px solid ${BORDER}`, background: i % 2 === 1 ? SURF : '#fff' }}>
+            <div key={i} className="line-item-row" style={{ display: 'grid', gridTemplateColumns: cols, padding: '7px 12px', alignItems: 'start', borderBottom: `0.5px solid ${BORDER}`, background: i % 2 === 1 ? SURF : '#fff' }}>
               <div style={{ paddingLeft: indent ? 10 : 0, paddingRight: 8 }}>
                 <span style={{ fontSize: 12, color: DARK }}>{item.description}</span>
                 {item.is_variation && (
