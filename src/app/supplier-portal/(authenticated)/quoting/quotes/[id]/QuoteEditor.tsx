@@ -514,52 +514,57 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         }
       }
 
-      await Promise.all([
-        deletedSectionIds.length > 0 ? supabase.from('elec_quote_sections').delete().in('id', deletedSectionIds) : Promise.resolve(),
-        deletedItemIds.length > 0    ? supabase.from('elec_quote_line_items').delete().in('id', deletedItemIds)   : Promise.resolve(),
-      ])
+      // Pricing/line-item edits are blocked once a quote is locked (their inputs are
+      // disabled={locked} in the UI) — skip persisting them here too, defensively.
+      const isLocked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
+      if (!isLocked) {
+        await Promise.all([
+          deletedSectionIds.length > 0 ? supabase.from('elec_quote_sections').delete().in('id', deletedSectionIds) : Promise.resolve(),
+          deletedItemIds.length > 0    ? supabase.from('elec_quote_line_items').delete().in('id', deletedItemIds)   : Promise.resolve(),
+        ])
 
-      if (sections.length > 0) {
-        await supabase.from('elec_quote_sections').upsert(
-          sections.map((s, si) => ({ id: s.id, quote_id: q.id, title: s.title, sort_order: si }))
-        )
+        if (sections.length > 0) {
+          await supabase.from('elec_quote_sections').upsert(
+            sections.map((s, si) => ({ id: s.id, quote_id: q.id, title: s.title, sort_order: si }))
+          )
+        }
+
+        const allItemRows = [
+          ...sections.flatMap((s) => s.items.map((item, ii) => ({
+            id: item.id, quote_id: q.id, section_id: s.id, description: item.description,
+            unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
+            subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
+            quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
+            material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
+            markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
+          }))),
+          ...freeItems.map((item, ii) => ({
+            id: item.id, quote_id: q.id, section_id: null, description: item.description,
+            unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
+            subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
+            quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
+            material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
+            markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
+          })),
+        ]
+        if (allItemRows.length > 0) {
+          await supabase.from('elec_quote_line_items').upsert(allItemRows)
+        }
+
+        // Auto-add new items to library (description + unit + markup % only, fire-and-forget)
+        const libraryItems = allItems
+          .filter(i => i.description.trim())
+          .map(i => ({ description: i.description.trim(), unit: i.unit, default_markup_percent: i.markup_percentage }))
+        if (libraryItems.length > 0) {
+          fetch('/api/supplier-portal/quoting/item-library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: libraryItems }),
+          }).catch(() => {})
+        }
+
+        setDeletedSectionIds([]); setDeletedItemIds([])
       }
-
-      const allItemRows = [
-        ...sections.flatMap((s) => s.items.map((item, ii) => ({
-          id: item.id, quote_id: q.id, section_id: s.id, description: item.description,
-          unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
-          subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
-          quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
-          material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
-          markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
-        }))),
-        ...freeItems.map((item, ii) => ({
-          id: item.id, quote_id: q.id, section_id: null, description: item.description,
-          unit: item.unit, item_type: item.item_type, drawing_reference: item.drawing_reference,
-          subcontractor_name: item.subcontractor_name, quoted_quantity: item.quoted_quantity,
-          quoted_unit_rate: item.quoted_unit_rate, labour_rate: item.labour_rate,
-          material_rate: item.material_rate, cost_unit_rate: item.cost_unit_rate,
-          markup_percentage: item.markup_percentage, is_variation: item.is_variation, sort_order: ii,
-        })),
-      ]
-      if (allItemRows.length > 0) {
-        await supabase.from('elec_quote_line_items').upsert(allItemRows)
-      }
-
-      // Auto-add new items to library (description + unit + markup % only, fire-and-forget)
-      const libraryItems = allItems
-        .filter(i => i.description.trim())
-        .map(i => ({ description: i.description.trim(), unit: i.unit, default_markup_percent: i.markup_percentage }))
-      if (libraryItems.length > 0) {
-        fetch('/api/supplier-portal/quoting/item-library', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: libraryItems }),
-        }).catch(() => {})
-      }
-
-      setDeletedSectionIds([]); setDeletedItemIds([])
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2500)
     } catch (e: unknown) {
@@ -574,7 +579,9 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   useEffect(() => {
     if (isMountRef.current) { isMountRef.current = false; return }
-    if (locked) return
+    // Note: header fields (quote date, notes, technicians, etc.) stay editable and
+    // must keep autosaving even when locked — only pricing/line-item edits are
+    // blocked, and those are already prevented via disabled={locked} on their inputs.
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => void handleSave(), 1500)
     return () => clearTimeout(autoSaveTimer.current)
