@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getNextProjectNumber } from '@/lib/projectNumber'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
 import { Combobox } from '@/components/ui/Combobox'
@@ -26,21 +27,9 @@ export function NewProjectForm({ clients }: Props) {
 
   useEffect(() => {
     async function loadNextNumber() {
-      const { data } = await supabase
-        .from('projects')
-        .select('project_number')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (!data?.project_number) return
-      const last = data.project_number
-      // Find trailing digits and increment, preserving prefix and zero-padding
-      const match = last.match(/^(.*?)(\d+)$/)
-      if (!match) return
-      const prefix = match[1]
-      const digits = match[2]
-      const next = String(parseInt(digits) + 1).padStart(digits.length, '0')
-      setForm(f => ({ ...f, project_number: prefix + next }))
+      const next = await getNextProjectNumber(supabase)
+      if (!next) return
+      setForm(f => ({ ...f, project_number: next }))
     }
     loadNextNumber()
   }, [])

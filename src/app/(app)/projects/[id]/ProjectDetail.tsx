@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getNextProjectNumber } from '@/lib/projectNumber'
 import { computeLineItems, computeTotals, formatZAR } from '@/lib/quoting'
 import type { Project, LineItem, ProjectStages } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
@@ -164,10 +165,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const handleDuplicate = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: orgId } = await supabase.rpc('get_current_org_id')
+    const nextNumber = await getNextProjectNumber(supabase)
     const { data: newProject, error } = await supabase.from('projects').insert({
       user_id: user!.id,
       org_id: orgId,
-      project_number: project.project_number + '-COPY',
+      project_number: nextNumber ?? project.project_number + '-COPY',
       project_name: project.project_name + ' (Copy)',
       client_id: project.client_id,
       date: new Date().toISOString().split('T')[0],
