@@ -135,8 +135,11 @@ export default function QuoteApprovalPage() {
           body, .print-page { background: #fff !important; }
           .doc-card { box-shadow: none !important; border-radius: 0 !important; margin-bottom: 0 !important; }
           .line-item-row { padding: 4px 12px !important; }
-          /* #E4E4E7 is too light to survive print rasterization at any border-width — darken for print */
-          .doc-card, .doc-card * { border-color: #A0A0A0 !important; }
+          /* #E4E4E7 is too light to survive print rasterization at any border-width — darken for print.
+             Excludes .doc-rule, the intentionally-bold dark header divider. */
+          .doc-card *:not(.doc-rule) { border-color: #A0A0A0 !important; }
+          .line-item-row, .info-box, .totals-box { break-inside: avoid; }
+          .section-header { break-after: avoid; }
         }
       `}</style>
 
@@ -180,12 +183,12 @@ export default function QuoteApprovalPage() {
           </div>
 
           {/* Rule */}
-          <div style={{ borderTop: `1px solid ${DARK}`, marginBottom: 22 }} />
+          <div className="doc-rule" style={{ borderTop: `1px solid ${DARK}`, marginBottom: 22 }} />
 
           {/* BILL TO / PROJECT */}
           <div className="info-grid" style={{ marginBottom: 22 }}>
             {client ? (
-              <div style={{ border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12 }}>
+              <div className="info-box" style={{ border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12 }}>
                 <p style={{ fontSize: 9, fontWeight: 700, color: ACC, letterSpacing: 1, borderBottom: `0.5px solid ${BORDER}`, paddingBottom: 4, marginBottom: 8 }}>BILL TO</p>
                 <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 2 }}>{client.client_name}</p>
                 {client.company        && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{client.company}</p>}
@@ -194,7 +197,7 @@ export default function QuoteApprovalPage() {
                 {client.address        && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{client.address}</p>}
               </div>
             ) : <div />}
-            <div style={{ border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12 }}>
+            <div className="info-box" style={{ border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12 }}>
               <p style={{ fontSize: 9, fontWeight: 700, color: ACC, letterSpacing: 1, borderBottom: `0.5px solid ${BORDER}`, paddingBottom: 4, marginBottom: 8 }}>PROJECT</p>
               <p style={{ fontSize: 12, fontWeight: 700, color: DARK, marginBottom: 2 }}>{quote.project_name}</p>
               {quote.project_address         && <p style={{ fontSize: 10, color: MUTED, marginTop: 2 }}>{quote.project_address}</p>}
@@ -217,6 +220,7 @@ export default function QuoteApprovalPage() {
               return (
                 <div key={sec.id} style={{ marginTop: 2 }}>
                   <button
+                    className="section-header"
                     onClick={() => setCollapsed(c => ({ ...c, [sec.id]: !c[sec.id] }))}
                     style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: SEC_BG, border: `0.5px solid ${BORDER}`, borderBottom: isCollapsed ? `0.5px solid ${BORDER}` : 'none', textAlign: 'left', cursor: 'pointer' }}>
                     {isCollapsed
@@ -243,7 +247,7 @@ export default function QuoteApprovalPage() {
               </div>
             ) : <div style={{ flex: 1 }} />}
 
-            <div style={{ width: 230, border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12, flexShrink: 0 }}>
+            <div className="totals-box" style={{ width: 230, border: `0.5px solid ${BORDER}`, borderRadius: 3, padding: 12, flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                 <span style={{ fontSize: 11, color: MUTED }}>Subtotal (excl. VAT)</span>
                 <span style={{ fontSize: 11, color: DARK }}>{fmtR(subtotal)}</span>
