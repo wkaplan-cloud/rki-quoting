@@ -135,6 +135,8 @@ export default function QuoteApprovalPage() {
           body, .print-page { background: #fff !important; }
           .doc-card { box-shadow: none !important; border-radius: 0 !important; margin-bottom: 0 !important; }
           .line-item-row { padding: 4px 12px !important; }
+          /* #E4E4E7 is too light to survive print rasterization at any border-width — darken for print */
+          .doc-card, .doc-card * { border-color: #A0A0A0 !important; }
         }
       `}</style>
 
