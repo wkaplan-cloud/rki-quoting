@@ -35,11 +35,19 @@ export async function POST(
   const { data: settings } = await supabaseAdmin.from('settings').select('business_name').eq('org_id', orgId).maybeSingle()
   const orgName = settings?.business_name || org.name
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
+  // Derive from the actual incoming request, not an env var that may not match
+  // the host currently being tested (e.g. a Vercel preview URL) — a mismatch here
+  // sends the magic link to the wrong domain, where a stale admin session can mask
+  // the failure by silently landing back on the platform admin's own dashboard.
+  //
+  // Points at /auth/impersonate-callback (a client page), not /auth/callback (a server
+  // route): admin.generateLink's magiclink redirect carries the session as a URL hash
+  // fragment, which never reaches the server — it must be picked up client-side.
+  const baseUrl = req.nextUrl.origin
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
     email: adminMember.invited_email,
-    options: { redirectTo: `${baseUrl}/auth/callback?next=/dashboard` },
+    options: { redirectTo: `${baseUrl}/auth/impersonate-callback` },
   })
 
   if (linkError || !linkData?.properties?.action_link) {

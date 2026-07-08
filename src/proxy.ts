@@ -56,6 +56,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/set-password') ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/auth/staff-callback') ||
+    pathname.startsWith('/auth/impersonate-callback') ||
     pathname.startsWith('/auth/reset') ||
     pathname.startsWith('/api/auth/set-password') ||
     pathname.startsWith('/api/auth') ||
