@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
@@ -146,6 +146,17 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Map of line item id → stock info
   const [stockMap, setStockMap] = useState<Record<string, { localQty: number | null; transitQty: number | null; transitDate: string | null; maxLeadTimeDate: string | null; weeksUntilAvailable: number | null } | null>>({})
   const stockDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  // Map of line item id → name of the section it currently falls under (nearest preceding section row by sort_order)
+  const sectionNameById = useMemo(() => {
+    const sorted = [...lineItems].sort((a, b) => a.sort_order - b.sort_order)
+    const map = new Map<string, string | null>()
+    let current: string | null = null
+    for (const li of sorted) {
+      if (li.row_type === 'section') { current = li.item_name || null; continue }
+      map.set(li.id, current)
+    }
+    return map
+  }, [lineItems])
   // New supplier mini-form modal (lineItemId = which row triggered it)
   const [newSupplierModal, setNewSupplierModal] = useState<{ name: string; email: string; markup: string; lineItemId: string } | null>(null)
   const lineItemsRef = useRef(lineItems)
@@ -631,29 +642,28 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             className="w-20 bg-transparent outline-none text-xs text-[#8A877F] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 placeholder-[#D8D3C8]"
                           />
                         )}
-                        {!locked && (
-                          <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                        {!locked && (() => {
+                          const parent = isLinked ? lineItems.find(i => i.id === item.parent_item_id) : null
+                          const parentSection = parent ? sectionNameById.get(parent.id) : null
+                          const ownSection = sectionNameById.get(item.id)
+                          const crossSection = isLinked && !!parent && parentSection !== ownSection
+                          const linkTitle = isLinked
+                            ? `Linked to: '${parent?.item_name || 'item'}'${crossSection && parentSection ? ` — ${parentSection}` : ''}`
+                            : 'Link to item above'
+                          return (
                             <button
                               onClick={() => toggleLink(item.id, item.parent_item_id ?? null)}
-                              title={isLinked ? 'Unlink from parent item' : 'Link to item above'}
-                              className={`p-0.5 rounded transition-colors cursor-pointer
+                              title={linkTitle}
+                              className={`p-0.5 rounded transition-colors cursor-pointer flex-shrink-0
                                 ${isLinked
-                                  ? 'text-[#9A7B4F]'
+                                  ? crossSection ? 'text-amber-500' : 'text-[#9A7B4F]'
                                   : 'text-[#A8A39B] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
                                 }`}
                             >
                               {isLinked ? <Unlink2 size={14} strokeWidth={2.5} /> : <Link2 size={14} strokeWidth={2.5} />}
                             </button>
-                            {isLinked && (() => {
-                              const parent = lineItems.find(i => i.id === item.parent_item_id)
-                              return (
-                                <p className="text-[8px] text-[#9A7B4F] font-medium leading-tight text-center whitespace-nowrap">
-                                  linked to<br />'{parent?.item_name || 'item'}'
-                                </p>
-                              )
-                            })()}
-                          </div>
-                        )}
+                          )
+                        })()}
                       </div>
                       {!item.twinbru_product_id && (
                         <div className="flex gap-1 mt-0.5">
