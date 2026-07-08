@@ -144,10 +144,11 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
         <Text style={styles.infoVal}>{project.project_name} ({project.project_number})</Text>
       </View>
 
-      {/* Items */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: theme.accent, borderBottomColor: theme.border }]}>ITEMS TO ORDER</Text>
-        <View style={styles.table}>
+      {/* Items — title and table are siblings, not wrapped in one View, so react-pdf
+          can let the table start filling the current page instead of deferring the
+          whole title+table block to a fresh page when it doesn't fit what's left. */}
+      <Text style={[styles.sectionLabel, { color: theme.accent, borderBottomColor: theme.border, marginBottom: 20 }]}>ITEMS TO ORDER</Text>
+      <View style={styles.table}>
           <View style={[styles.tableHeader, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
             <Text style={[styles.th, { width: 20 }]}>#</Text>
             <Text style={[styles.th, { flex: 2 }]}>ITEM</Text>
@@ -234,7 +235,6 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
             )
           })}
         </View>
-      </View>
 
       {/* PO Total */}
       <View style={styles.totalsContainer}>
