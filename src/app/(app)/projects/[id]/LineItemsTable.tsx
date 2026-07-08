@@ -651,17 +651,22 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             ? `Linked to: '${parent?.item_name || 'item'}'${crossSection && parentSection ? ` — ${parentSection}` : ''}`
                             : 'Link to item above'
                           return (
-                            <button
-                              onClick={() => toggleLink(item.id, item.parent_item_id ?? null)}
-                              title={linkTitle}
-                              className={`p-0.5 rounded transition-colors cursor-pointer flex-shrink-0
-                                ${isLinked
-                                  ? crossSection ? 'text-amber-500' : 'text-[#9A7B4F]'
-                                  : 'text-[#A8A39B] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
-                                }`}
-                            >
-                              {isLinked ? <Unlink2 size={14} strokeWidth={2.5} /> : <Link2 size={14} strokeWidth={2.5} />}
-                            </button>
+                            <div className="relative group/link flex-shrink-0">
+                              <button
+                                onClick={() => toggleLink(item.id, item.parent_item_id ?? null)}
+                                className={`p-0.5 rounded transition-colors cursor-pointer
+                                  ${isLinked
+                                    ? crossSection ? 'text-amber-500' : 'text-[#9A7B4F]'
+                                    : 'text-[#A8A39B] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F]'
+                                  }`}
+                              >
+                                {isLinked ? <Unlink2 size={14} strokeWidth={2.5} /> : <Link2 size={14} strokeWidth={2.5} />}
+                              </button>
+                              {/* Custom tooltip — appears instantly on hover, no native browser delay */}
+                              <div className="pointer-events-none absolute left-1/2 bottom-full mb-1.5 -translate-x-1/2 z-30 opacity-0 group-hover/link:opacity-100 whitespace-nowrap rounded bg-[#2C2C2A] px-2 py-1 text-[10px] text-white shadow-lg">
+                                {linkTitle}
+                              </div>
+                            </div>
                           )
                         })()}
                       </div>
