@@ -40,10 +40,15 @@ export async function POST(
   // sends the magic link to the wrong domain, where a stale admin session can mask
   // the failure by silently landing back on the platform admin's own dashboard.
   //
+  // www.quotinghub.co.za redirects to quotinghub.co.za, but Supabase's redirect
+  // allow-list only recognises the bare apex domain — requesting a www redirectTo
+  // gets silently dropped to the Site URL default (the marketing homepage). Normalise
+  // to apex so the redirect is always honoured regardless of which host served the request.
+  //
   // Points at /auth/impersonate-callback (a client page), not /auth/callback (a server
   // route): admin.generateLink's magiclink redirect carries the session as a URL hash
   // fragment, which never reaches the server — it must be picked up client-side.
-  const baseUrl = req.nextUrl.origin
+  const baseUrl = req.nextUrl.origin.replace(/^(https?:\/\/)www\./, '$1')
   const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
     email: adminMember.invited_email,
