@@ -5,6 +5,7 @@ import { Menu, AlertTriangle } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { SessionGuard } from '@/components/auth/SessionGuard'
 import { FeedbackModal } from '@/components/FeedbackModal'
+import { ImpersonationBanner } from './ImpersonationBanner'
 import Link from 'next/link'
 
 export function AppLayout({
@@ -22,6 +23,7 @@ export function AppLayout({
   trialDaysLeft,
   trialExpired,
   graceDaysLeft,
+  impersonation,
 }: {
   children: React.ReactNode
   isAdmin: boolean
@@ -37,6 +39,7 @@ export function AppLayout({
   trialDaysLeft: number | null
   trialExpired: boolean
   graceDaysLeft: number | null
+  impersonation: { targetEmail: string; orgName: string; adminEmail: string } | null
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopExpanded, setDesktopExpanded] = useState(true)
@@ -101,6 +104,15 @@ export function AppLayout({
       </div>
 
       <main className={`${desktopExpanded ? 'md:ml-44' : 'md:ml-12'} flex-1 flex flex-col min-h-screen min-w-0 overflow-x-clip pt-16 md:pt-0 md:transition-[margin-left] md:duration-200`}>
+        {/* ── Impersonation banner ── shown when a platform admin is viewing as another user */}
+        {impersonation && (
+          <ImpersonationBanner
+            targetEmail={impersonation.targetEmail}
+            orgName={impersonation.orgName}
+            adminEmail={impersonation.adminEmail}
+          />
+        )}
+
         {/* ── Grace-period banner ── shown when trial has expired, before account is locked */}
         {showGraceBanner && (
           <div className="bg-red-600 text-white px-4 py-3 flex items-center justify-center gap-3 text-sm flex-wrap">

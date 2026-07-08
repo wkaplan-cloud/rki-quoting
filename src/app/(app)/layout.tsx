@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { getImpersonationStash } from '@/lib/impersonation'
 
 const GRACE_DAYS = 3
 
@@ -88,6 +89,13 @@ export default async function Layout({ children }: { children: React.ReactNode }
   const capitalHotelsEnabled = settings?.capital_hotels_enabled ?? false
   const capitalBadge = capitalBadgeCount ?? 0
 
+  // Only trust the impersonation stash if it actually matches who's currently logged in —
+  // guards against a stale cookie surviving a normal (non-impersonated) login as the same user.
+  const impersonationStash = await getImpersonationStash()
+  const impersonation = impersonationStash && impersonationStash.targetUserId === user.id
+    ? { targetEmail: impersonationStash.targetEmail, orgName: impersonationStash.orgName, adminEmail: impersonationStash.adminEmail }
+    : null
+
   return (
     <AppLayout
       isAdmin={membership?.role === 'admin'}
@@ -103,6 +111,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       trialDaysLeft={trialDaysLeft}
       trialExpired={trialExpired}
       graceDaysLeft={graceDaysLeft}
+      impersonation={impersonation}
     >
       {children}
     </AppLayout>

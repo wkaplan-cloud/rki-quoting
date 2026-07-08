@@ -7,6 +7,7 @@ import { SubscriptionPanel } from './SubscriptionPanel'
 import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
 import { StudioNotes } from './StudioNotes'
 import { BrandingPanel } from './BrandingPanel'
+import { ImpersonateButton } from './ImpersonateButton'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -89,6 +90,9 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {org.status !== 'archived' && (
+            <ImpersonateButton orgId={id} studioName={settings?.business_name || org.name} adminEmail={adminMember?.invited_email ?? null} />
+          )}
           {org.status === 'archived' ? (
             <>
               <RestoreStudioButton orgId={id} studioName={settings?.business_name || org.name} />
