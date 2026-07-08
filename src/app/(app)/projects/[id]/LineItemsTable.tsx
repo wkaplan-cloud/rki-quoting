@@ -400,7 +400,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     if (currentParentId) {
       // Unlink: clear parent and remove indent
       onChange(lineItems.map(item => item.id === id ? { ...item, parent_item_id: null, indent_level: 0 } : item))
-      await supabase.from('line_items').update({ parent_item_id: null, indent_level: 0 }).eq('id', id)
+      const { error } = await supabase.from('line_items').update({ parent_item_id: null, indent_level: 0 }).eq('id', id)
+      if (error) {
+        toast.error('Failed to unlink item')
+        onChange(lineItems.map(item => item.id === id ? { ...item, parent_item_id: currentParentId, indent_level: item.indent_level } : item))
+      }
     } else {
       // Link: find nearest non-linked item above by sort_order
       const thisItem = lineItems.find(i => i.id === id)
@@ -410,7 +414,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
         .sort((a, b) => b.sort_order - a.sort_order)[0]
       if (!above) return
       onChange(lineItems.map(item => item.id === id ? { ...item, parent_item_id: above.id, indent_level: 1 } : item))
-      await supabase.from('line_items').update({ parent_item_id: above.id, indent_level: 1 }).eq('id', id)
+      const { error } = await supabase.from('line_items').update({ parent_item_id: above.id, indent_level: 1 }).eq('id', id)
+      if (error) {
+        toast.error('Failed to link item')
+        onChange(lineItems.map(item => item.id === id ? { ...item, parent_item_id: null, indent_level: 0 } : item))
+      }
     }
   }, [lineItems, onChange, supabase])
 
