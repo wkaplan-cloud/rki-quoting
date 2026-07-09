@@ -3,22 +3,23 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
+// Platform-admin-only: supplier portal accounts are global (one account can
+// serve many studios), so no single org's admin may modify or delete them.
+async function requirePlatformAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (user.email?.toLowerCase() !== process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase()) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ accountId: string }> }) {
   try {
     const { accountId } = await params
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data: orgId } = await supabase.rpc('get_current_org_id')
-    const { data: member } = await supabaseAdmin
-      .from('org_members')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('org_id', orgId)
-      .maybeSingle()
-
-    if (member?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const denied = await requirePlatformAdmin()
+    if (denied) return denied
 
     const body = await req.json() as { supplier_category?: string }
     if (!body.supplier_category) return NextResponse.json({ error: 'supplier_category required' }, { status: 400 })
@@ -38,19 +39,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ac
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ accountId: string }> }) {
   try {
     const { accountId } = await params
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    const { data: orgId } = await supabase.rpc('get_current_org_id')
-    const { data: member } = await supabaseAdmin
-      .from('org_members')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('org_id', orgId)
-      .maybeSingle()
-
-    if (member?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const denied = await requirePlatformAdmin()
+    if (denied) return denied
 
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
