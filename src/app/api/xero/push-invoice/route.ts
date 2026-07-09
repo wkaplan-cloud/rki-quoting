@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/server'
 import { xeroGet, xeroPost } from '@/lib/xero'
 import { computeLineItems } from '@/lib/quoting'
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const invoiceDate = new Date().toISOString().split('T')[0]
+    const invoiceDate = todaySA()
     const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     const invoicePayload: Record<string, unknown> = {

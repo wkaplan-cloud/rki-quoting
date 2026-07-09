@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
     // Lock quoted_date on first PDF generation — never overwrite if already set
     let quotedDate = project.quoted_date as string | null
     if (!quotedDate) {
-      const today = new Date().toISOString().split('T')[0]
+      const today = todaySA()
       await supabase.from('projects').update({ quoted_date: today }).eq('id', projectId)
       quotedDate = today
     }

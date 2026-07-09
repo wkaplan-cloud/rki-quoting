@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { Resend } from 'resend'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (body.action === 'approve') {
       await supabaseAdmin
         .from('elec_variation_orders')
-        .update({ status: 'approved', approved_date: new Date().toISOString().split('T')[0] })
+        .update({ status: 'approved', approved_date: todaySA() })
         .eq('id', vo.id)
     } else {
       await supabaseAdmin

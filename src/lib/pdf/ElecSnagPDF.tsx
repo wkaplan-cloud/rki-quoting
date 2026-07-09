@@ -1,4 +1,5 @@
 import React from 'react'
+import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecQuote, ElecClient, ElecSettings, ElecSnagItem } from '@/lib/elec-types'
 
@@ -94,7 +95,7 @@ export function ElecSnagPDF({ quote, client, settings, snags, companyName, compa
             <Text style={s.docTitle}>SNAG LIST</Text>
             <Text style={s.docSub}>{quote.project_name}</Text>
             {quote.project_address && <Text style={s.docMeta}>{quote.project_address}</Text>}
-            <Text style={s.docMeta}>Printed: {fmtDate(new Date().toISOString().split('T')[0])}</Text>
+            <Text style={s.docMeta}>Printed: {fmtDate(todaySA())}</Text>
           </View>
         </View>
 

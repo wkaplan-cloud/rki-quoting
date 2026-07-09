@@ -1,4 +1,5 @@
 import React from 'react'
+import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecQuote, ElecClient, ElecSettings, ElecVariationOrder } from '@/lib/elec-types'
 
@@ -96,7 +97,7 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, co
             <Text style={s.docTitle}>VARIATION ORDERS</Text>
             <Text style={s.docSub}>{quote.project_name}</Text>
             {quote.project_address && <Text style={s.docMeta}>{quote.project_address}</Text>}
-            <Text style={s.docMeta}>Printed: {fmtDate(new Date().toISOString().split('T')[0])}</Text>
+            <Text style={s.docMeta}>Printed: {fmtDate(todaySA())}</Text>
           </View>
         </View>
 

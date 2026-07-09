@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { todaySA } from '@/lib/dates'
 const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
@@ -332,7 +333,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
   const [clients, setClients] = useState(existingClients)
   const [projectId, setProjectId] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
-  const [newProjectForm, setNewProjectForm] = useState({ project_name: '', project_number: '', date: new Date().toISOString().split('T')[0], design_fee: '20' })
+  const [newProjectForm, setNewProjectForm] = useState({ project_name: '', project_number: '', date: todaySA(), design_fee: '20' })
   const [newProjectClientId, setNewProjectClientId] = useState('')
   const [newProjectClientName, setNewProjectClientName] = useState('')
   const [savingProject, setSavingProject] = useState(false)

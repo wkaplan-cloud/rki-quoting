@@ -1,5 +1,6 @@
 'use client'
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { todaySA } from '@/lib/dates'
 const NO_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -172,7 +173,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
       project_number: nextNumber ?? project.project_number + '-COPY',
       project_name: project.project_name + ' (Copy)',
       client_id: project.client_id,
-      date: new Date().toISOString().split('T')[0],
+      date: todaySA(),
       status: 'Quote',
       design_fee: project.design_fee,
       notes: project.notes,

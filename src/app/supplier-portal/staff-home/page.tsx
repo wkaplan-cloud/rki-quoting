@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
+import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { StaffHome } from './StaffHome'
@@ -27,7 +28,7 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
 
   // Last 30 days punches + assigned job cards + clients + today's scheduled jobs
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todaySA()
   const [{ data: punches }, { data: jobCards }, { data: clients }, { data: projects }, { data: scheduledToday }] = await Promise.all([
     supabaseAdmin
       .from('elec_time_punches')

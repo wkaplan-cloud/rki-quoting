@@ -1,4 +1,5 @@
 import React from 'react'
+import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 
@@ -100,7 +101,7 @@ export function ElecReconPDF({ quote, client, sections, items, settings, company
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.title}>INSPECTION / RECON SHEET</Text>
             <Text style={s.docNum}>{quote.quote_number}</Text>
-            <Text style={[s.docNum, { marginTop: 2 }]}>Date: {fmtDate(quote.quoted_date ?? new Date().toISOString().split('T')[0])}</Text>
+            <Text style={[s.docNum, { marginTop: 2 }]}>Date: {fmtDate(quote.quoted_date ?? todaySA())}</Text>
           </View>
         </View>
 

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { todaySA } from '@/lib/dates'
 import { Check, Loader2, AlertCircle, Download, Printer, Send, X, CheckCircle2 } from 'lucide-react'
 import type { ElecCOC } from '@/lib/elec-types'
 
@@ -30,7 +31,7 @@ export function COCTab({ quoteId, initialCOC, cocPrefix, companyCode, projectAdd
     quote_id: quoteId, job_card_id: null, portal_account_id: null,
     coc_number: '', certificate_type: 'initial',
     supplement_no: null, to_initial_cert_no: null, initial_cert_date: null,
-    issue_date: new Date().toISOString().split('T')[0],
+    issue_date: todaySA(),
     regulation_type: 'a',
     installation_address: projectAddress ?? null, name_of_building: null,
     suburb_township: null, district_town_city: null, gps_coordinates: null,

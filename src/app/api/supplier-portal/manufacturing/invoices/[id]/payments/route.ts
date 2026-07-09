@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/server'
 import { resolveMfgAuth } from '@/lib/mfg-auth'
 
@@ -24,7 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .insert({
       invoice_id:     id,
       amount:         body.amount,
-      payment_date:   body.payment_date ?? new Date().toISOString().split('T')[0],
+      payment_date:   body.payment_date ?? todaySA(),
       payment_method: body.payment_method ?? 'eft',
       reference:      body.reference ?? null,
       notes:          body.notes ?? null,

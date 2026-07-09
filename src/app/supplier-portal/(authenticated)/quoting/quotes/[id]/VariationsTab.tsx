@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Check, FileText, AlertCircle, Download, Printer, Send, Mail, Loader2, CheckCircle, ChevronDown, ChevronUp, Trash2, Pencil } from 'lucide-react'
 import type { ElecVariationOrder, ElecVOStatus, ElecClaim, ElecClaimLineItem, ElecQuoteSection, ElecQuoteLineItem, ElecClient } from '@/lib/elec-types'
@@ -148,7 +149,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   const [error, setError] = useState('')
 
   // VO invoice form state
-  const [voClaimDate, setVOClaimDate] = useState(new Date().toISOString().split('T')[0])
+  const [voClaimDate, setVOClaimDate] = useState(todaySA())
   const [voSentToName, setVOSentToName] = useState(client?.client_name ?? '')
   const [voSentToEmail, setVOSentToEmail] = useState(client?.email ?? '')
   const [voNotes, setVONotes] = useState('')
@@ -393,7 +394,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
   async function updateStatus(voId: string, status: ElecVOStatus) {
     const patch: Partial<ElecVariationOrder> = { status }
-    if (status === 'approved') patch.approved_date = new Date().toISOString().split('T')[0]
+    if (status === 'approved') patch.approved_date = todaySA()
     await supabase.from('elec_variation_orders').update(patch).eq('id', voId)
     setVOs(prev => {
       const next = prev.map(v => v.id === voId ? { ...v, ...patch } : v)
@@ -455,7 +456,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
       setVOClaims(prev => [...prev, { id: fullClaim.id, claim_number: fullClaim.claim_number, status: fullClaim.status, variation_order_id: vo.id }])
       onClaimCreated(fullClaim)
       setInvoicingVoId(null)
-      setVOClaimDate(new Date().toISOString().split('T')[0])
+      setVOClaimDate(todaySA())
       setVOSentToName(client?.client_name ?? '')
       setVOSentToEmail(client?.email ?? '')
       setVONotes('')

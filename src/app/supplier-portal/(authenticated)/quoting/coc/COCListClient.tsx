@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { todaySA } from '@/lib/dates'
 import {
   FileCheck, Download, Loader2, Search, CheckCircle2, Plus, X,
   Check, AlertCircle, Send, Printer, FileX,
@@ -730,7 +731,7 @@ export function COCListClient({ completedProjects, completedJobCards, cocByQuote
       coc_number: '',   // ECA number — blank, electrician assigns
       certificate_type: 'initial',
       supplement_no: null, to_initial_cert_no: null, initial_cert_date: null,
-      issue_date: new Date().toISOString().split('T')[0],
+      issue_date: todaySA(),
       regulation_type: 'a',
       installation_address: address, name_of_building: null,
       suburb_township: null, district_town_city: null,

@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { todaySA } from '@/lib/dates'
 import { Receipt, CheckCircle, AlertCircle, Plus, Trash2, X, Send, Check } from 'lucide-react'
 import type { MfgInvoice } from '@/lib/mfg-types'
 
@@ -66,7 +67,7 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
   }
 
   function openPaymentModal(invoiceId: string, balance: number) {
-    setPaymentForm({ amount: balance.toFixed(2), payment_date: new Date().toISOString().split('T')[0], payment_method: 'eft', reference: '' })
+    setPaymentForm({ amount: balance.toFixed(2), payment_date: todaySA(), payment_method: 'eft', reference: '' })
     setAddingPayment(invoiceId)
   }
 
@@ -78,7 +79,7 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount: parseFloat(paymentForm.amount),
-        payment_date: paymentForm.payment_date || new Date().toISOString().split('T')[0],
+        payment_date: paymentForm.payment_date || todaySA(),
         payment_method: paymentForm.payment_method || 'eft',
         reference: paymentForm.reference || null,
       }),

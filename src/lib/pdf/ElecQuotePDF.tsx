@@ -1,4 +1,5 @@
 import React from 'react'
+import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings } from '@/lib/elec-types'
 
@@ -132,7 +133,7 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={s.docTitle}>QUOTATION</Text>
             <Text style={s.docNum}>{quote.quote_number}</Text>
-            <Text style={s.docMeta}>Date: {fmtDate(quote.quoted_date ?? new Date().toISOString().split('T')[0])}</Text>
+            <Text style={s.docMeta}>Date: {fmtDate(quote.quoted_date ?? todaySA())}</Text>
             {quote.payment_terms_days > 0 && (
               <Text style={s.docMeta}>Payment terms: {quote.payment_terms_days} days</Text>
             )}

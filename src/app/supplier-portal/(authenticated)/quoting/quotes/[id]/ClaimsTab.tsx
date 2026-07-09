@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { todaySA } from '@/lib/dates'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, ChevronLeft, ChevronRight, AlertCircle, Download, Printer, Send, FileText, Check as CheckIcon, Loader2 } from 'lucide-react'
 import type { ElecClaim, ElecClaimLineItem, ElecQuoteLineItem, ElecQuoteSection, ElecClaimStatus, ElecContractType, ElecClient } from '@/lib/elec-types'
@@ -61,7 +62,7 @@ function NewClaimForm({ quoteId, portalAccountId, claims, items, sections, contr
   onCancel: () => void
 }) {
   const supabase = createClient()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todaySA()
   const thisMonth = today.slice(0, 7)
 
   const [periodMonth, setPeriodMonth] = useState(thisMonth)
@@ -402,7 +403,7 @@ function NewRetentionForm({ quoteId, portalAccountId, retentionHeld, onCreated, 
   onCreated: (claim: ClaimWithItems) => void
   onCancel: () => void
 }) {
-  const today = new Date().toISOString().split('T')[0]
+  const today = todaySA()
   const [claimDate, setClaimDate] = useState(today)
   const [sentToName, setSentToName] = useState('')
   const [sentToEmail, setSentToEmail] = useState('')

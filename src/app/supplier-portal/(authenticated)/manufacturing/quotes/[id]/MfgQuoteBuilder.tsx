@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { todaySA } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { fmtR } from '@/lib/mfg-format'
 import {
@@ -363,7 +364,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
 
   async function handleMarkAccepted() {
     setMarkingAccepted(true)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todaySA()
     await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'accepted', acceptance_date: today }) })
     setMarkingAccepted(false)
     setCurrentStatus('accepted')

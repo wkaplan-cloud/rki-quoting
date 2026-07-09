@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { todaySA } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -454,7 +455,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         setSendStatus('sent')
         // Update local status to quoted if it was draft
         if (q.status === 'draft') {
-          setQ(p => ({ ...p, status: 'quoted', quoted_date: new Date().toISOString().split('T')[0] }))
+          setQ(p => ({ ...p, status: 'quoted', quoted_date: todaySA() }))
         }
         setTimeout(() => setShowSendModal(false), 1800)
       } else {
@@ -738,7 +739,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {saveStatus === 'saved'  && <span className="text-xs" style={{ color: S.green }}>Saved</span>}
           {saveStatus === 'error'  && <span className="text-xs" style={{ color: S.danger }}>{saveError}</span>}
           {q.status === 'quoted' && (
-            <button onClick={() => void transition('in_progress', { approved_date: new Date().toISOString().split('T')[0] })}
+            <button onClick={() => void transition('in_progress', { approved_date: todaySA() })}
               disabled={transitioning}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
               style={{ background: S.green, color: '#fff' }}>

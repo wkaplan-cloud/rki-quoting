@@ -1,4 +1,5 @@
 import React from 'react'
+import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSettings, ElecMaterialRequest } from '@/lib/elec-types'
 
@@ -185,7 +186,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
             <Text style={s.docTitle}>AS-BUILT SCHEDULE</Text>
             <Text style={s.docSub}>{quote.project_name}</Text>
             {quote.project_address && <Text style={s.docMeta}>{quote.project_address}</Text>}
-            <Text style={s.docMeta}>Ref: {quote.quote_number}   ·   Printed: {fmtDate(new Date().toISOString().split('T')[0])}</Text>
+            <Text style={s.docMeta}>Ref: {quote.quote_number}   ·   Printed: {fmtDate(todaySA())}</Text>
           </View>
         </View>
 
@@ -207,7 +208,7 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
           </View>
           <View style={s.infoCellLast}>
             <Text style={s.infoLbl}>DATE</Text>
-            <Text style={s.infoBold}>{fmtDate(new Date().toISOString().split('T')[0])}</Text>
+            <Text style={s.infoBold}>{fmtDate(todaySA())}</Text>
           </View>
         </View>
 

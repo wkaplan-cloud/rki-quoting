@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { todaySA } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNextProjectNumber } from '@/lib/projectNumber'
@@ -62,7 +63,7 @@ export function NewProjectForm({ clients }: Props) {
       user_id: user!.id,
       org_id: orgId,
       client_id: clientId || null,
-      date: new Date().toISOString().split('T')[0],
+      date: todaySA(),
       status: 'Draft',
       design_fee: parseFloat(form.design_fee) || 0,
     }).select().single()

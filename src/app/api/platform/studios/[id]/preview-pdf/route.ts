@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { createElement } from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createClient } from '@/lib/supabase/server'
@@ -15,7 +16,7 @@ const MOCK_PROJECT: Project = {
   project_number: 'QT-PREVIEW',
   project_name: 'Hillside Residence',
   client_id: 'preview-client',
-  date: new Date().toISOString().split('T')[0],
+  date: todaySA(),
   status: 'Quote',
   design_fee: 15,
   vat_rate: 15,
@@ -29,7 +30,7 @@ const MOCK_PROJECT: Project = {
   sage_customer_id: null,
   sage_customer_name: null,
   deposit_amount_received: null,
-  quoted_date: new Date().toISOString().split('T')[0],
+  quoted_date: todaySA(),
   archived_at: null,
   assigned_to: null,
 }

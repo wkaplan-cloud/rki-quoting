@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'invoice', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', vatRate: (project as any).vat_rate ?? (settings as any)?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, quotedDate: project.quoted_date ?? new Date().toISOString().split('T')[0], paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null }) as any
+      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'invoice', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', vatRate: (project as any).vat_rate ?? (settings as any)?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, quotedDate: project.quoted_date ?? todaySA(), paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null }) as any
     )
 
     return new NextResponse(new Uint8Array(buffer), {

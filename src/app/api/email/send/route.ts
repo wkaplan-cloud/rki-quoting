@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { Resend } from 'resend'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createElement } from 'react'
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   // Lock quoted_date on first email send — never overwrite if already set
   let quotedDate = (project as any).quoted_date as string | null
   if (!quotedDate && type === 'quote') {
-    const today = new Date().toISOString().split('T')[0]
+    const today = todaySA()
     await supabase.from('projects').update({ quoted_date: today }).eq('id', projectId)
     quotedDate = today
   }
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
         bankBranch: settings?.bank_branch_code,
         footerText: settings?.footer_text,
         termsConditions: settings?.terms_conditions,
-        quotedDate: quotedDate ?? (project as any).quoted_date ?? new Date().toISOString().split('T')[0],
+        quotedDate: quotedDate ?? (project as any).quoted_date ?? todaySA(),
         validityDays: (settings as any)?.quote_validity_days ?? 30,
         paymentTerms: (settings as any)?.payment_terms ?? null,
         leadTime: (settings as any)?.lead_time ?? null,

@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, Image } from '@react-pdf/renderer'
+import { todaySA } from '@/lib/dates'
 import { computeLineItems, computeTotals, formatZAR } from '@/lib/quoting'
 import type { TemplateProps } from './types'
 
@@ -20,7 +21,7 @@ function addDays(iso: string, days: number): string {
 export function BoldTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime }: TemplateProps) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
-  const issuedDate = quotedDate ?? new Date().toISOString().split('T')[0]
+  const issuedDate = quotedDate ?? todaySA()
   const validUntil = (type === 'quote' && validityDays) ? addDays(issuedDate, validityDays) : null
 
   return (

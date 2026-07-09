@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { todaySA } from '@/lib/dates'
 import { Resend } from 'resend'
 import { createElement } from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (quoteRaw.status === 'draft') {
       await supabaseAdmin
         .from('elec_quotes')
-        .update({ status: 'quoted', quoted_date: new Date().toISOString().split('T')[0] })
+        .update({ status: 'quoted', quoted_date: todaySA() })
         .eq('id', quoteId)
     }
 
