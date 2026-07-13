@@ -13,8 +13,9 @@ import { ExportRunner } from './ExportRunner'
 export interface EditorShellProps {
   boardId: string
   orgId: string
-  projectId: string
-  projectName: string
+  clientId: string
+  clientName: string
+  boardName: string
   businessName: string
   logoUrl: string | null
   slides: StudioSlide[]
@@ -115,13 +116,16 @@ export default function EditorShell(props: EditorShellProps) {
       {/* Header */}
       <div className="flex items-center gap-3 h-12 px-3 bg-[#1A1A18] flex-shrink-0">
         <Link
-          href="/studio"
+          href={`/studio/client/${props.clientId}`}
           className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs transition-colors"
         >
-          <ArrowLeft size={14} /> Studio
+          <ArrowLeft size={14} /> Boards
         </Link>
         <div className="w-px h-4 bg-white/15" />
-        <span className="text-sm text-white truncate">{props.projectName}</span>
+        <span className="text-sm text-white truncate">
+          {props.clientName}
+          <span className="text-white/40"> · {props.boardName}</span>
+        </span>
 
         <span className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider">
           {saveState === 'saving' ? (

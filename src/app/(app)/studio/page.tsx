@@ -21,36 +21,36 @@ export default async function StudioPage() {
 
   if (!settings?.studio_enabled) redirect('/dashboard')
 
-  const [{ data: projects }, { data: boards }] = await Promise.all([
-    supabase
-      .from('projects')
-      .select('id, project_number, project_name, status, created_at, clients(client_name)')
-      .is('archived_at', null)
-      .order('created_at', { ascending: false }),
-    supabase.from('studio_boards').select('project_id, updated_at'),
+  const [{ data: clients }, { data: boards }] = await Promise.all([
+    supabase.from('clients').select('id, client_name, company').order('client_name'),
+    supabase.from('studio_boards').select('client_id, updated_at'),
   ])
 
-  const boardByProject = new Map((boards ?? []).map(b => [b.project_id, b.updated_at]))
-  const rows = (projects ?? []).map(p => {
-    const client = Array.isArray(p.clients) ? p.clients[0] : p.clients
-    return {
-      id: p.id as string,
-      projectNumber: p.project_number as string,
-      projectName: p.project_name as string,
-      status: p.status as string,
-      clientName: (client?.client_name as string) ?? '',
-      boardUpdatedAt: (boardByProject.get(p.id) as string) ?? null,
-    }
-  })
+  const boardStats = new Map<string, { count: number; lastEdited: string }>()
+  for (const b of boards ?? []) {
+    const prev = boardStats.get(b.client_id)
+    boardStats.set(b.client_id, {
+      count: (prev?.count ?? 0) + 1,
+      lastEdited: prev && prev.lastEdited > b.updated_at ? prev.lastEdited : b.updated_at,
+    })
+  }
+
+  const rows = (clients ?? []).map(c => ({
+    id: c.id as string,
+    clientName: c.client_name as string,
+    company: (c.company as string | null) ?? '',
+    boardCount: boardStats.get(c.id)?.count ?? 0,
+    lastEdited: boardStats.get(c.id)?.lastEdited ?? null,
+  }))
 
   return (
     <div>
       <PageHeader
         title="Studio"
-        subtitle="Client presentation boards — pick a project to start designing"
+        subtitle="Client presentation boards — pick a client to start designing"
       />
       <div className="p-6 lg:p-8">
-        <StudioHome projects={rows} />
+        <StudioHome clients={rows} />
       </div>
     </div>
   )

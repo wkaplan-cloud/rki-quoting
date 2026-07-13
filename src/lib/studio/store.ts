@@ -18,8 +18,9 @@ export interface Viewport {
 interface InitProps {
   boardId: string
   orgId: string
-  projectId: string
-  projectName: string
+  clientId: string
+  clientName: string
+  boardName: string
   businessName: string
   logoUrl: string | null
   slides: StudioSlide[]
@@ -29,8 +30,9 @@ interface InitProps {
 interface StudioState {
   boardId: string
   orgId: string
-  projectId: string
-  projectName: string
+  clientId: string
+  clientName: string
+  boardName: string
   businessName: string
   logoUrl: string | null
 
@@ -149,8 +151,9 @@ export function newId() {
 export const useStudioStore = create<StudioState>((set, get) => ({
   boardId: '',
   orgId: '',
-  projectId: '',
-  projectName: '',
+  clientId: '',
+  clientName: '',
+  boardName: '',
   businessName: '',
   logoUrl: null,
   slides: [],
@@ -176,8 +179,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({
       boardId: props.boardId,
       orgId: props.orgId,
-      projectId: props.projectId,
-      projectName: props.projectName,
+      clientId: props.clientId,
+      clientName: props.clientName,
+      boardName: props.boardName,
       businessName: props.businessName,
       logoUrl: props.logoUrl,
       slides: props.slides,

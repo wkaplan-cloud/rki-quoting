@@ -7,7 +7,7 @@ import { useKonvaImage } from '@/lib/studio/images'
 // editor, thumbnails, presentation and PDF export, so all four match exactly.
 // These elements are not canvas objects: they can't be selected or moved.
 export function MasterGroup({
-  projectName,
+  title,
   heading,
   pageNumber,
   pageCount,
@@ -16,7 +16,7 @@ export function MasterGroup({
   onHeadingDblClick,
   hideHeading = false,
 }: {
-  projectName: string
+  title: string
   heading: string
   pageNumber: number
   pageCount: number
@@ -43,7 +43,7 @@ export function MasterGroup({
       <Text
         x={MASTER_SIDE}
         y={20}
-        text={projectName.toUpperCase()}
+        text={title.toUpperCase()}
         fontSize={11}
         fontFamily="Helvetica"
         fill={COLORS.muted}

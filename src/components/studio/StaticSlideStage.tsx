@@ -24,7 +24,7 @@ export function StaticSlideStage({
   width: number
   stageRef?: RefObject<Konva.Stage | null>
 }) {
-  const projectName = useStudioStore(s => s.projectName)
+  const clientName = useStudioStore(s => s.clientName)
   const logoUrl = useStudioStore(s => s.logoUrl)
   const scale = width / PAGE_W
 
@@ -43,7 +43,7 @@ export function StaticSlideStage({
           <ObjectNode key={obj.id} obj={obj} interactive={false} />
         ))}
         <MasterGroup
-          projectName={projectName}
+          title={clientName}
           heading={slide.heading}
           pageNumber={pageNumber}
           pageCount={pageCount}

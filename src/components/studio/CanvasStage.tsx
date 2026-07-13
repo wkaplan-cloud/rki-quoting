@@ -29,7 +29,7 @@ export function CanvasStage({
   const setViewport = useStudioStore(s => s.setViewport)
   const slides = useStudioStore(s => s.slides)
   const currentSlideId = useStudioStore(s => s.currentSlideId)
-  const projectName = useStudioStore(s => s.projectName)
+  const clientName = useStudioStore(s => s.clientName)
   const logoUrl = useStudioStore(s => s.logoUrl)
   const cropTargetId = useStudioStore(s => s.cropTargetId)
   const editingHeading = useStudioStore(s => s.editingHeading)
@@ -101,7 +101,7 @@ export function CanvasStage({
           <ObjectNode key={obj.id} obj={obj} interactive />
         ))}
         <MasterGroup
-          projectName={projectName}
+          title={clientName}
           heading={slide.heading}
           pageNumber={slideIndex + 1}
           pageCount={slides.length}

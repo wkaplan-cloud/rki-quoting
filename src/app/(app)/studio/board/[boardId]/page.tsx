@@ -5,8 +5,8 @@ import { redirect, notFound } from 'next/navigation'
 import { StudioEditorLoader } from './StudioEditorLoader'
 import { slideFromRow, type StudioSlideRow, type BoardLastState } from '@/lib/studio/types'
 
-export default async function StudioBoardPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = await params
+export default async function StudioBoardPage({ params }: { params: Promise<{ boardId: string }> }) {
+  const { boardId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -22,45 +22,14 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ pr
 
   if (!settings?.studio_enabled) redirect('/dashboard')
 
-  const { data: project } = await supabase
-    .from('projects')
-    .select('id, project_name, project_number')
-    .eq('id', projectId)
-    .maybeSingle()
-  if (!project) notFound()
-
-  // Get or create this project's board (one board per project in Sprint 1)
-  let { data: board } = await supabase
+  const { data: board } = await supabase
     .from('studio_boards')
-    .select('id, last_state')
-    .eq('project_id', projectId)
+    .select('id, name, last_state, client_id, clients(client_name)')
+    .eq('id', boardId)
     .maybeSingle()
+  if (!board) notFound()
 
-  if (!board) {
-    const { data: created, error } = await supabase
-      .from('studio_boards')
-      .insert({ org_id: orgId, project_id: projectId })
-      .select('id, last_state')
-      .single()
-    if (error || !created) {
-      // A concurrent open may have created it — re-read before giving up
-      const { data: existing } = await supabase
-        .from('studio_boards')
-        .select('id, last_state')
-        .eq('project_id', projectId)
-        .maybeSingle()
-      if (!existing) throw new Error(error?.message ?? 'Could not create board')
-      board = existing
-    } else {
-      board = created
-      await supabase.from('studio_slides').insert({
-        board_id: created.id,
-        org_id: orgId,
-        name: 'Slide 1',
-        sort_order: 0,
-      })
-    }
-  }
+  const client = Array.isArray(board.clients) ? board.clients[0] : board.clients
 
   const { data: slideRows } = await supabase
     .from('studio_slides')
@@ -74,8 +43,9 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ pr
     <StudioEditorLoader
       boardId={board.id}
       orgId={orgId}
-      projectId={projectId}
-      projectName={project.project_name}
+      clientId={board.client_id}
+      clientName={client?.client_name ?? ''}
+      boardName={board.name}
       businessName={settings.business_name ?? ''}
       logoUrl={settings.logo_url ?? null}
       slides={slides.length ? slides : [{ id: crypto.randomUUID(), name: 'Slide 1', heading: '', sortOrder: 0, objects: [] }]}

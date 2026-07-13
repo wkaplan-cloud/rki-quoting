@@ -20,7 +20,7 @@ export function ExportRunner({ onDone }: { onDone: () => void }) {
     if (startedRef.current) return
     startedRef.current = true
 
-    const { slides, logoUrl, projectName, flushSave } = useStudioStore.getState()
+    const { slides, logoUrl, clientName, boardName, flushSave } = useStudioStore.getState()
     const toastId = toast.loading('Preparing export…')
 
     ;(async () => {
@@ -34,7 +34,7 @@ export function ExportRunner({ onDone }: { onDone: () => void }) {
             rejectRef.current = reject
             setRenderIndex(i)
           }),
-        `${projectName || 'Presentation'} – Presentation.pdf`,
+        `${clientName || 'Client'} – ${boardName || 'Presentation'}.pdf`,
         (done, total) => toast.loading(`Rendering slide ${done} of ${total}…`, { id: toastId })
       )
       toast.success('PDF exported', { id: toastId })

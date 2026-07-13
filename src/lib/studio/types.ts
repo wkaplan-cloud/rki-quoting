@@ -83,7 +83,8 @@ export interface BoardLastState {
 export interface StudioBoardRow {
   id: string
   org_id: string
-  project_id: string
+  client_id: string
+  project_id: string | null // optional link, used by future quote/procurement sprints
   name: string
   last_state: BoardLastState | null
 }
