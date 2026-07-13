@@ -2,7 +2,7 @@
 // document: slides + objects + assets + master layout. This is the foundation
 // for duplication, export, backup and sharing in later phases. Keep this
 // format additive: bump `version` on breaking changes.
-import type { StudioSlide, StudioAsset, MasterLayoutConfig } from './types'
+import type { StudioSlide, StudioAsset, StudioSpec, MasterLayoutConfig } from './types'
 
 export const STUDIO_PACKAGE_FORMAT = 'quotinghub-studio-board'
 export const STUDIO_PACKAGE_VERSION = 1
@@ -20,12 +20,14 @@ export interface StudioPackage {
   }
   slides: StudioSlide[]
   assets: StudioAsset[]
+  specs: StudioSpec[]
 }
 
 export function buildStudioPackage(input: {
   board: StudioPackage['board']
   slides: StudioSlide[]
   assets: StudioAsset[]
+  specs?: StudioSpec[]
 }): StudioPackage {
   return {
     format: STUDIO_PACKAGE_FORMAT,
@@ -34,6 +36,7 @@ export function buildStudioPackage(input: {
     board: input.board,
     slides: [...input.slides].sort((a, b) => a.sortOrder - b.sortOrder),
     assets: input.assets,
+    specs: input.specs ?? [],
   }
 }
 

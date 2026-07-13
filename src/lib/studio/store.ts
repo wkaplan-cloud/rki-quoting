@@ -1,7 +1,15 @@
 'use client'
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
-import type { StudioObject, StudioSlide, BoardLastState, StudioAsset, MasterLayoutConfig } from './types'
+import type {
+  StudioObject,
+  StudioSlide,
+  BoardLastState,
+  StudioAsset,
+  MasterLayoutConfig,
+  StudioSpec,
+  SpecSupplierOption,
+} from './types'
 import { DEFAULT_MASTER_LAYOUT } from './types'
 import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE } from './constants'
 
@@ -26,6 +34,8 @@ interface InitProps {
   logoUrl: string | null
   slides: StudioSlide[]
   assets: StudioAsset[]
+  specs: StudioSpec[]
+  suppliers: SpecSupplierOption[]
   masterLayout: MasterLayoutConfig
   lastState: BoardLastState | null
 }
@@ -40,6 +50,13 @@ interface StudioState {
   logoUrl: string | null
   assets: StudioAsset[]
   masterLayout: MasterLayoutConfig
+  suppliers: SpecSupplierOption[]
+
+  // Specs Engine: one spec per object, keyed by object id. Specs follow
+  // their object through delete/undo/duplicate — see flushSave lifecycle.
+  specs: Record<string, StudioSpec>
+  specPanelObjectId: string | null
+  dirtySpecIds: string[]
 
   slides: StudioSlide[]
   currentSlideId: string
@@ -69,6 +86,8 @@ interface StudioState {
   setGuides: (g: { v: number[]; h: number[] }) => void
   setPresenting: (on: boolean) => void
   addAsset: (asset: StudioAsset) => void
+  openSpecs: (objectId: string | null) => void
+  updateSpec: (objectId: string, patch: Partial<StudioSpec>) => void
 
   commit: (mutate: (slides: StudioSlide[]) => StudioSlide[]) => void
   // Object helpers (all operate on the current slide unless a slideId is given)
@@ -102,6 +121,11 @@ let retryTimer: ReturnType<typeof setTimeout> | null = null
 // REVISION_INTERVAL of active editing. No UI yet — restore comes later.
 const REVISION_INTERVAL = 5 * 60 * 1000
 const lastRevisionAt = new Map<string, number>()
+
+// Which spec object_ids currently have a row in the DB. Drives the spec
+// lifecycle: deleting an object deletes its row (client copy is kept so undo
+// can restore it — the next flush simply re-upserts).
+const savedSpecObjectIds = new Set<string>()
 
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
@@ -167,6 +191,30 @@ export function newId() {
   return crypto.randomUUID()
 }
 
+// Duplicating an object duplicates its spec (new spec id, new object id)
+function copySpecsForDuplicates(idMap: [oldId: string, newId: string][]) {
+  const { specs } = useStudioStore.getState()
+  const additions: Record<string, StudioSpec> = {}
+  const dirty: string[] = []
+  for (const [oldId, dupId] of idMap) {
+    const src = specs[oldId]
+    if (!src) continue
+    additions[dupId] = {
+      ...src,
+      id: newId(),
+      objectId: dupId,
+      materials: src.materials.map(m => ({ ...m, id: newId() })),
+    }
+    dirty.push(dupId)
+  }
+  if (!dirty.length) return
+  useStudioStore.setState(s => ({
+    specs: { ...s.specs, ...additions },
+    dirtySpecIds: Array.from(new Set([...s.dirtySpecIds, ...dirty])),
+  }))
+  scheduleSave()
+}
+
 export const useStudioStore = create<StudioState>((set, get) => ({
   boardId: '',
   orgId: '',
@@ -177,6 +225,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   logoUrl: null,
   assets: [],
   masterLayout: DEFAULT_MASTER_LAYOUT,
+  suppliers: [],
+  specs: {},
+  specPanelObjectId: null,
+  dirtySpecIds: [],
   slides: [],
   currentSlideId: '',
   selectedIds: [],
@@ -207,6 +259,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       logoUrl: props.logoUrl,
       assets: props.assets,
       masterLayout: props.masterLayout,
+      suppliers: props.suppliers,
+      specs: Object.fromEntries(props.specs.map(sp => [sp.objectId, sp])),
+      specPanelObjectId: null,
+      dirtySpecIds: (() => {
+        savedSpecObjectIds.clear()
+        props.specs.forEach(sp => savedSpecObjectIds.add(sp.objectId))
+        return []
+      })(),
       slides: props.slides,
       currentSlideId: slideExists ? restored!.slideId! : (props.slides[0]?.id ?? ''),
       viewport: restored ? { zoom: restored.zoom, x: restored.panX, y: restored.panY } : { zoom: 1, x: 0, y: 0 },
@@ -241,6 +301,43 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const { assets } = get()
     if (assets.some(a => a.id === asset.id || a.hash === asset.hash)) return
     set({ assets: [asset, ...assets] })
+  },
+
+  openSpecs: objectId => set({ specPanelObjectId: objectId }),
+
+  updateSpec: (objectId, patch) => {
+    const { specs, slides, currentSlideId } = get()
+    const existing = specs[objectId]
+    const slideId =
+      slides.find(sl => sl.objects.some(o => o.id === objectId))?.id ??
+      existing?.slideId ??
+      currentSlideId
+    const next: StudioSpec = existing
+      ? { ...existing, ...patch, slideId }
+      : {
+          id: newId(),
+          objectId,
+          slideId,
+          specName: '',
+          description: '',
+          notes: '',
+          supplierId: null,
+          supplierName: '',
+          category: '',
+          quantity: '',
+          unit: '',
+          width: '',
+          depth: '',
+          height: '',
+          materials: [],
+          status: 'draft',
+          ...patch,
+        }
+    set({
+      specs: { ...specs, [objectId]: next },
+      dirtySpecIds: Array.from(new Set([...get().dirtySpecIds, objectId])),
+    })
+    scheduleSave()
   },
 
   commit: mutate => {
@@ -298,11 +395,17 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const { currentSlideId, selectedIds, slides } = get()
     const slide = slides.find(sl => sl.id === currentSlideId)
     if (!slide) return
+    const idMap: [string, string][] = []
     const copies = slide.objects
       .filter(o => selectedIds.includes(o.id))
-      .map(o => ({ ...o, id: newId(), x: o.x + 12, y: o.y + 12, locked: false }))
+      .map(o => {
+        const dupId = newId()
+        idMap.push([o.id, dupId])
+        return { ...o, id: dupId, x: o.x + 12, y: o.y + 12, locked: false }
+      })
     if (copies.length === 0) return
     get().addObjects(copies)
+    copySpecsForDuplicates(idMap)
   },
 
   bringForward: objId => {
@@ -344,8 +447,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   paste: () => {
     const { clipboard } = get()
     if (!clipboard.length) return
-    const copies = clipboard.map(o => ({ ...o, id: newId(), x: o.x + 16, y: o.y + 16, locked: false }))
+    const idMap: [string, string][] = []
+    const copies = clipboard.map(o => {
+      const dupId = newId()
+      idMap.push([o.id, dupId])
+      return { ...o, id: dupId, x: o.x + 16, y: o.y + 16, locked: false }
+    })
     get().addObjects(copies)
+    copySpecsForDuplicates(idMap)
   },
 
   addSlide: name => {
@@ -367,6 +476,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   duplicateSlide: id => {
     const newSlideId = newId()
+    const idMap: [string, string][] = []
     get().commit(slides => {
       const i = slides.findIndex(sl => sl.id === id)
       if (i < 0) return slides
@@ -375,12 +485,17 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         ...src,
         id: newSlideId,
         name: `${src.name} copy`,
-        objects: src.objects.map(o => ({ ...o, id: newId() })),
+        objects: src.objects.map(o => {
+          const dupId = newId()
+          idMap.push([o.id, dupId])
+          return { ...o, id: dupId }
+        }),
       }
       const next = [...slides.slice(0, i + 1), copy, ...slides.slice(i + 1)]
       return next.map((sl, idx) => (sl.sortOrder === idx ? sl : { ...sl, sortOrder: idx }))
     })
     set({ currentSlideId: newSlideId, selectedIds: [] })
+    copySpecsForDuplicates(idMap)
   },
 
   deleteSlide: id => {
@@ -448,13 +563,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   flushSave: async () => {
     const s = get()
-    if (!s.boardId || s.dirtySlideIds.length === 0) return
+    if (!s.boardId || (s.dirtySlideIds.length === 0 && s.dirtySpecIds.length === 0)) return
     if (saveTimer) {
       clearTimeout(saveTimer)
       saveTimer = null
     }
     const dirty = s.dirtySlideIds
-    set({ saveState: 'saving', dirtySlideIds: [] })
+    const dirtySpecs = s.dirtySpecIds
+    set({ saveState: 'saving', dirtySlideIds: [], dirtySpecIds: [] })
     const supabase = createClient()
 
     const currentIds = new Set(s.slides.map(sl => sl.id))
@@ -482,10 +598,69 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       if (error) failed = true
     }
 
+    // ── Specs lifecycle ──────────────────────────────────────────────────
+    // Save specs whose object exists and which are dirty OR missing from the
+    // DB (an undo just restored their object); delete rows whose object is
+    // gone, keeping the client copy so a later undo can bring them back.
+    const fresh = get()
+    const liveObjectIds = new Set(fresh.slides.flatMap(sl => sl.objects.map(o => o.id)))
+    if (!failed) {
+      const specsToSave = Object.values(fresh.specs).filter(
+        sp =>
+          liveObjectIds.has(sp.objectId) &&
+          (dirtySpecs.includes(sp.objectId) || !savedSpecObjectIds.has(sp.objectId))
+      )
+      if (specsToSave.length) {
+        const specRows = specsToSave.map(sp => ({
+          id: sp.id,
+          board_id: fresh.boardId,
+          org_id: fresh.orgId,
+          slide_id:
+            fresh.slides.find(sl => sl.objects.some(o => o.id === sp.objectId))?.id ?? sp.slideId,
+          object_id: sp.objectId,
+          spec_name: sp.specName,
+          description: sp.description,
+          notes: sp.notes,
+          supplier_id: sp.supplierId,
+          supplier_name: sp.supplierName,
+          category: sp.category,
+          quantity: sp.quantity,
+          unit: sp.unit,
+          width: sp.width,
+          depth: sp.depth,
+          height: sp.height,
+          materials: sp.materials,
+          status: sp.status,
+          updated_at: new Date().toISOString(),
+        }))
+        const { error } = await supabase
+          .from('studio_specs')
+          .upsert(specRows, { onConflict: 'object_id' })
+        if (error) failed = true
+        else specsToSave.forEach(sp => savedSpecObjectIds.add(sp.objectId))
+      }
+      if (!failed) {
+        const orphaned = Array.from(savedSpecObjectIds).filter(oid => !liveObjectIds.has(oid))
+        if (orphaned.length) {
+          const { error } = await supabase
+            .from('studio_specs')
+            .delete()
+            .eq('board_id', fresh.boardId)
+            .in('object_id', orphaned)
+          if (error) failed = true
+          else orphaned.forEach(oid => savedSpecObjectIds.delete(oid))
+        }
+      }
+    }
+
     if (failed) {
       // Re-mark and retry automatically — a dropped connection must not
       // silently lose work
-      set({ saveState: 'error', dirtySlideIds: mergeDirty(get().dirtySlideIds, dirty) })
+      set({
+        saveState: 'error',
+        dirtySlideIds: mergeDirty(get().dirtySlideIds, dirty),
+        dirtySpecIds: Array.from(new Set([...get().dirtySpecIds, ...dirtySpecs])),
+      })
       scheduleRetry()
       return
     }
@@ -510,9 +685,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         .then(() => {}) // best-effort: history must never block or fail a save
     }
 
-    // New edits may have arrived while saving — they re-marked dirtySlideIds themselves
-    set({ saveState: get().dirtySlideIds.length ? 'saving' : 'saved' })
-    if (get().dirtySlideIds.length) scheduleSave()
+    // New edits may have arrived while saving — they re-marked dirty ids themselves
+    const stillDirty = get().dirtySlideIds.length > 0 || get().dirtySpecIds.length > 0
+    set({ saveState: stillDirty ? 'saving' : 'saved' })
+    if (stillDirty) scheduleSave()
   },
 }))
 

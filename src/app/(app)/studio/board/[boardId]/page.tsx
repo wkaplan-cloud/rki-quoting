@@ -6,9 +6,11 @@ import { StudioEditorLoader } from './StudioEditorLoader'
 import {
   slideFromRow,
   assetFromRow,
+  specFromRow,
   masterLayoutFromJson,
   type StudioSlideRow,
   type StudioAssetRow,
+  type StudioSpecRow,
   type BoardLastState,
 } from '@/lib/studio/types'
 
@@ -38,21 +40,34 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
 
   const client = Array.isArray(board.clients) ? board.clients[0] : board.clients
 
-  const [{ data: slideRows }, { data: assetRows }] = await Promise.all([
-    supabase
-      .from('studio_slides')
-      .select('id, board_id, org_id, name, heading, sort_order, objects')
-      .eq('board_id', board.id)
-      .order('sort_order'),
-    supabase
-      .from('studio_assets')
-      .select('id, board_id, org_id, url, hash, natural_width, natural_height, file_size, created_at')
-      .eq('board_id', board.id)
-      .order('created_at', { ascending: false }),
-  ])
+  const [{ data: slideRows }, { data: assetRows }, { data: specRows }, { data: supplierRows }] =
+    await Promise.all([
+      supabase
+        .from('studio_slides')
+        .select('id, board_id, org_id, name, heading, sort_order, objects')
+        .eq('board_id', board.id)
+        .order('sort_order'),
+      supabase
+        .from('studio_assets')
+        .select('id, board_id, org_id, url, hash, natural_width, natural_height, file_size, created_at')
+        .eq('board_id', board.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('studio_specs')
+        .select(
+          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, status'
+        )
+        .eq('board_id', board.id),
+      supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
+    ])
 
   const slides = ((slideRows ?? []) as StudioSlideRow[]).map(slideFromRow)
   const assets = ((assetRows ?? []) as StudioAssetRow[]).map(assetFromRow)
+  const specs = ((specRows ?? []) as StudioSpecRow[]).map(specFromRow)
+  const suppliers = (supplierRows ?? []).map(su => ({
+    id: su.id as string,
+    name: su.supplier_name as string,
+  }))
 
   return (
     <StudioEditorLoader
@@ -65,6 +80,8 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
       logoUrl={settings.logo_url ?? null}
       slides={slides.length ? slides : [{ id: crypto.randomUUID(), name: 'Slide 1', heading: '', sortOrder: 0, objects: [] }]}
       assets={assets}
+      specs={specs}
+      suppliers={suppliers}
       masterLayout={masterLayoutFromJson(board.master_layout)}
       lastState={(board.last_state as BoardLastState | null) ?? null}
     />

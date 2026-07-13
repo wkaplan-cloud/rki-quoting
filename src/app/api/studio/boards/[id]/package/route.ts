@@ -5,9 +5,11 @@ import { buildStudioPackage } from '@/lib/studio/package'
 import {
   slideFromRow,
   assetFromRow,
+  specFromRow,
   masterLayoutFromJson,
   type StudioSlideRow,
   type StudioAssetRow,
+  type StudioSpecRow,
 } from '@/lib/studio/types'
 
 // GET /api/studio/boards/[id]/package — the board as one complete package
@@ -28,7 +30,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       .maybeSingle()
     if (!board) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const [{ data: slides }, { data: assets }] = await Promise.all([
+    const [{ data: slides }, { data: assets }, { data: specs }] = await Promise.all([
       supabase
         .from('studio_slides')
         .select('id, board_id, org_id, name, heading, sort_order, objects')
@@ -39,6 +41,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         .select('id, board_id, org_id, url, hash, natural_width, natural_height, file_size, created_at')
         .eq('board_id', boardId)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('studio_specs')
+        .select(
+          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, status'
+        )
+        .eq('board_id', boardId),
     ])
 
     const pkg = buildStudioPackage({
@@ -51,6 +59,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
       slides: ((slides ?? []) as StudioSlideRow[]).map(slideFromRow),
       assets: ((assets ?? []) as StudioAssetRow[]).map(assetFromRow),
+      specs: ((specs ?? []) as StudioSpecRow[]).map(specFromRow),
     })
 
     return new NextResponse(JSON.stringify(pkg, null, 2), {

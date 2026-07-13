@@ -10,6 +10,7 @@ import { ObjectNode } from './objects/ObjectNode'
 import { SelectionTransformer } from './SelectionTransformer'
 import { SmartGuides } from './SmartGuides'
 import { CropOverlay } from './CropOverlay'
+import { SpecIndicators } from './SpecIndicators'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
@@ -112,6 +113,7 @@ export function CanvasStage({
         />
       </Layer>
       <Layer>
+        <SpecIndicators />
         <SmartGuides />
         <SelectionTransformer />
         <CropOverlay />

@@ -116,6 +116,85 @@ export function assetFromRow(row: StudioAssetRow): StudioAsset {
   }
 }
 
+// ── Specs Engine ────────────────────────────────────────────────────────────
+// One spec per canvas object (keyed by object id). Future phases connect
+// specs to quote line items and a product library via lineItemId/productId.
+
+export interface MaterialEntry {
+  id: string
+  type: string // Fabric, Timber, Stone, Metal, Paint, Glass, Leather, Wallpaper…
+  description: string
+}
+
+export type SpecStatus = 'draft' | 'approved'
+
+export interface StudioSpec {
+  id: string
+  objectId: string
+  slideId: string
+  specName: string
+  description: string
+  notes: string
+  supplierId: string | null
+  supplierName: string
+  category: string
+  quantity: string
+  unit: string
+  width: string
+  depth: string
+  height: string
+  materials: MaterialEntry[]
+  status: SpecStatus
+}
+
+export interface StudioSpecRow {
+  id: string
+  board_id: string
+  org_id: string
+  slide_id: string
+  object_id: string
+  spec_name: string
+  description: string
+  notes: string
+  supplier_id: string | null
+  supplier_name: string
+  category: string
+  quantity: string
+  unit: string
+  width: string
+  depth: string
+  height: string
+  materials: MaterialEntry[]
+  status: SpecStatus
+}
+
+export function specFromRow(row: StudioSpecRow): StudioSpec {
+  return {
+    id: row.id,
+    objectId: row.object_id,
+    slideId: row.slide_id,
+    specName: row.spec_name,
+    description: row.description,
+    notes: row.notes,
+    supplierId: row.supplier_id,
+    supplierName: row.supplier_name,
+    category: row.category,
+    quantity: row.quantity,
+    unit: row.unit,
+    width: row.width,
+    depth: row.depth,
+    height: row.height,
+    materials: Array.isArray(row.materials) ? row.materials : [],
+    status: row.status === 'approved' ? 'approved' : 'draft',
+  }
+}
+
+// Suppliers offered in the spec panel (reuses the org's existing suppliers)
+export interface SpecSupplierOption {
+  id: string
+  name: string
+}
+
 // Per-board master layout configuration. Defaults live here; no UI yet —
 // future phases let designers customise what the master shows.
 export interface MasterLayoutConfig {

@@ -3,11 +3,19 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
-import type { StudioSlide, BoardLastState, StudioAsset, MasterLayoutConfig } from '@/lib/studio/types'
+import type {
+  StudioSlide,
+  BoardLastState,
+  StudioAsset,
+  MasterLayoutConfig,
+  StudioSpec,
+  SpecSupplierOption,
+} from '@/lib/studio/types'
 import type { StudioObject } from '@/lib/studio/types'
 import { SlidePanel } from './SlidePanel'
 import { CanvasArea } from './CanvasArea'
 import { AssetPanel } from './AssetPanel'
+import { SpecsPanel } from './SpecsPanel'
 import { PresentationMode } from './PresentationMode'
 import { ExportRunner } from './ExportRunner'
 
@@ -21,6 +29,8 @@ export interface EditorShellProps {
   logoUrl: string | null
   slides: StudioSlide[]
   assets: StudioAsset[]
+  specs: StudioSpec[]
+  suppliers: SpecSupplierOption[]
   masterLayout: MasterLayoutConfig
   lastState: BoardLastState | null
 }
@@ -197,6 +207,7 @@ export default function EditorShell(props: EditorShellProps) {
         <SlidePanel />
         <CanvasArea />
         {showAssets && <AssetPanel />}
+        <SpecsPanel />
       </div>
 
       {presenting && <PresentationMode />}

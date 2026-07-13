@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, type RefObject } from 'react'
 import type Konva from 'konva'
-import { Unlock, Copy, Trash2, Check, X } from 'lucide-react'
+import { Unlock, Copy, Trash2, Check, X, ClipboardList } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { TBtn, TDivider } from './toolbars/atoms'
 import { ImageToolbar } from './toolbars/ImageToolbar'
@@ -31,6 +31,7 @@ export function FloatingToolbar({
   const viewport = useStudioStore(s => s.viewport)
   const cropTargetId = useStudioStore(s => s.cropTargetId)
   const editingTextId = useStudioStore(s => s.editingTextId)
+  const specsMap = useStudioStore(s => s.specs)
 
   const [bbox, setBbox] = useState<Bbox | null>(null)
 
@@ -127,13 +128,22 @@ export function FloatingToolbar({
           }
         />
       ) : single ? (
-        single.type === 'image' ? (
-          <ImageToolbar obj={single} />
-        ) : single.type === 'text' ? (
-          <TextToolbar obj={single} />
-        ) : (
-          <ShapeToolbar obj={single} />
-        )
+        <>
+          <TBtn
+            icon={ClipboardList}
+            label="Specs"
+            active={!!specsMap[single.id]}
+            onClick={() => store.getState().openSpecs(single.id)}
+          />
+          <TDivider />
+          {single.type === 'image' ? (
+            <ImageToolbar obj={single} />
+          ) : single.type === 'text' ? (
+            <TextToolbar obj={single} />
+          ) : (
+            <ShapeToolbar obj={single} />
+          )}
+        </>
       ) : (
         <>
           <TBtn icon={Copy} label="Duplicate (⌘D)" onClick={() => store.getState().duplicateSelected()} />
