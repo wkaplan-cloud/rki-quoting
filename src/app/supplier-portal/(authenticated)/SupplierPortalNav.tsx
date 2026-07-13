@@ -272,7 +272,7 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
           {/* Upgrade CTA — trades accounts on Starter or Professional (Business is the top tier) */}
           {isTrades && tradesTierRank < 3 && (
             <Link
-              href={`/supplier-portal/upgrade?current=${quotingPlan ?? 'starter'}`}
+              href={quotingPlan ? `/supplier-portal/upgrade?current=${quotingPlan}` : '/supplier-portal/upgrade'}
               onClick={() => setMobileOpen(false)}
               className={`flex items-center h-9 mx-2 rounded-lg transition-colors duration-150 ${desktopExpanded ? '' : 'md:justify-center'}`}
               style={{ background: 'rgba(27,79,138,0.18)', borderLeft: '3px solid transparent' }}

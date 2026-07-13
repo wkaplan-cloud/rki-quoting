@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, Zap, ChevronRight, Users, Briefcase, FolderOpen } from 'lucide-react'
 import { Suspense } from 'react'
-import { PLANS } from '@/lib/plan-features'
+import { PLANS, planRank } from '@/lib/plan-features'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -19,7 +19,12 @@ function UpgradeContent() {
   const searchParams = useSearchParams()
   const paymentFailed = searchParams.get('payment') === 'failed'
   const currentPlan = searchParams.get('current') ?? null
-  const [selected, setSelected] = useState<string>(currentPlan === 'starter' ? 'professional' : currentPlan === 'professional' ? 'business' : 'professional')
+  const currentRank = planRank(currentPlan)
+  const [selected, setSelected] = useState<string>(
+    currentRank > 0
+      ? (PLANS.find(p => planRank(p.id) > currentRank)?.id ?? 'business')
+      : 'professional'
+  )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(paymentFailed ? 'Payment was not completed — please try again.' : '')
 
@@ -57,7 +62,7 @@ function UpgradeContent() {
             <Zap size={11} />
             QuotingHub for Electricians
           </div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: S.text }}>Choose your plan</h1>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: S.text }}>{currentRank > 0 ? 'Upgrade your plan' : 'Choose your plan'}</h1>
           <p className="text-sm" style={{ color: S.muted }}>
             All plans include 2 admin users and up to 20 staff. Cancel anytime.
           </p>
@@ -69,17 +74,26 @@ function UpgradeContent() {
             const Icon = TIER_ICON[plan.id as keyof typeof TIER_ICON] ?? Zap
             const color = TIER_COLOR[plan.id as keyof typeof TIER_COLOR] ?? S.accent
             const bg    = TIER_BG[plan.id as keyof typeof TIER_BG] ?? 'rgba(58,124,165,0.08)'
-            const isSelected = selected === plan.id
-            const isPopular = plan.id === 'professional'
+            const isCurrent = currentRank > 0 && planRank(plan.id) === currentRank
+            const isDisabled = currentRank > 0 && planRank(plan.id) <= currentRank
+            const isSelected = selected === plan.id && !isDisabled
+            const isPopular = plan.id === 'professional' && !isDisabled
 
             return (
-              <button key={plan.id} onClick={() => setSelected(plan.id)}
-                className="relative rounded-2xl p-5 text-left transition-all duration-150"
+              <button key={plan.id} onClick={() => setSelected(plan.id)} disabled={isDisabled}
+                className="relative rounded-2xl p-5 text-left transition-all duration-150 disabled:cursor-not-allowed"
                 style={{
-                  background: isSelected ? S.card : S.card,
+                  background: S.card,
                   border: `2px solid ${isSelected ? color : S.border}`,
                   boxShadow: isSelected ? `0 4px 20px ${color}22` : '0 1px 4px rgba(0,0,0,0.06)',
+                  opacity: isDisabled ? 0.55 : 1,
                 }}>
+                {isCurrent && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-1 rounded-full text-white whitespace-nowrap"
+                    style={{ background: S.muted }}>
+                    Your current plan
+                  </span>
+                )}
                 {isPopular && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-1 rounded-full text-white"
                     style={{ background: S.gold }}>
@@ -150,12 +164,14 @@ function UpgradeContent() {
           </div>
         )}
 
-        <button onClick={handleUpgrade} disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-white text-sm font-bold disabled:opacity-50"
+        <button onClick={handleUpgrade} disabled={loading || planRank(selectedPlan.id) <= currentRank}
+          className="w-full flex items-center justify-center gap-2 py-4 rounded-xl text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ background: TIER_COLOR[selectedPlan.id as keyof typeof TIER_COLOR] ?? S.accent }}>
-          {loading ? 'Redirecting to checkout…' : (
+          {loading ? 'Redirecting to checkout…' : planRank(selectedPlan.id) <= currentRank ? (
+            'You’re already on the top plan'
+          ) : (
             <>
-              Subscribe to {selectedPlan.label} — R{selectedPlan.price.toLocaleString()}/mo
+              {currentRank > 0 ? 'Upgrade' : 'Subscribe'} to {selectedPlan.label} — R{selectedPlan.price.toLocaleString()}/mo
               <ChevronRight size={16} />
             </>
           )}
