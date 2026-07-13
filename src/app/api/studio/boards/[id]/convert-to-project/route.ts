@@ -6,10 +6,15 @@ import type { StudioObject, MaterialEntry } from '@/lib/studio/types'
 
 // POST /api/studio/boards/[id]/convert-to-project
 // Pulls the board into a new quoting project: one section row per slide
-// (its heading), one line item per APPROVED spec, in deck order. Draft
-// specs are skipped. Items land unpriced (cost 0) — pricing happens in
-// the project. Each spec is linked back to its line item, and the board
-// to the project, so a board converts once.
+// (its heading), one line item per APPROVED spec, and one child line item
+// per material/finish entry (fabric, stone, glass…) indented under its
+// item — all in deck order. Draft specs are skipped. Everything lands
+// unpriced (cost 0) — pricing happens in the project. Each spec is linked
+// back to its line item, and the board to the project, so a board
+// converts once. Every row also stores studio_slide_id (+ studio_object_id
+// on item rows) — hidden breadcrumbs so a future feature can jump from a
+// quote line straight back to the object in Studio
+// (supabase/migrations/studio_line_item_links.sql).
 
 interface ConvertSpecRow {
   id: string
@@ -127,19 +132,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       for (const su of sups ?? []) markupBySupplier.set(su.id, su.markup_percentage ?? 0)
     }
 
-    // Build rows in deck order: section per slide, items beneath.
-    // Only specs whose object still exists on a slide count — spec rows for
-    // deleted objects are cleaned up lazily and must not become line items.
+    // Build rows in deck order: section per slide, items beneath, and each
+    // item's materials as child rows directly under it. Only specs whose
+    // object still exists on a slide count — spec rows for deleted objects
+    // are cleaned up lazily and must not become line items.
+    // Materials need parent_item_id, which only exists after the parent is
+    // inserted — so parents carry pre-assigned sort_orders with gaps their
+    // children fill in a second insert.
     type Row = Record<string, unknown>
-    const rows: Row[] = []
-    const specIdForRow: (string | null)[] = []
+    const parents: Row[] = []
+    const parentMeta: { specId: string | null; materials: Row[] }[] = []
     let itemCount = 0
+    let sortOrder = 0
     ;((slides ?? []) as SlideRow[]).forEach((slide, i) => {
       const objects = Array.isArray(slide.objects) ? slide.objects : []
       const specced = objects.filter(o => specByObject.has(o.id))
       if (!specced.length) return
 
-      rows.push({
+      parents.push({
         item_name: slide.heading.trim() || slide.name.trim() || `Slide ${i + 1}`,
         description: '',
         quantity: 0,
@@ -147,8 +157,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         markup_percentage: 0,
         row_type: 'section',
         indent_level: 0,
+        sort_order: sortOrder++,
+        studio_slide_id: slide.id,
       })
-      specIdForRow.push(null)
+      parentMeta.push({ specId: null, materials: [] })
 
       for (const obj of specced) {
         const sp = specByObject.get(obj.id)!
@@ -159,12 +171,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ]
           .filter(Boolean)
           .join(' × ')
-        const materials = (Array.isArray(sp.materials) ? sp.materials : [])
-          .map(m => (m.type && m.description ? `${m.type}: ${m.description}` : m.description || m.type))
-          .filter(Boolean)
-          .join('; ')
 
-        rows.push({
+        parents.push({
           item_name: sp.spec_name.trim() || 'Untitled item',
           description: [sp.description.trim(), sp.notes.trim()].filter(Boolean).join('\n') || null,
           quantity: parseFloat(sp.quantity) || 1,
@@ -174,12 +182,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           cost_price: 0,
           markup_percentage: sp.supplier_id ? (markupBySupplier.get(sp.supplier_id) ?? 0) : 0,
           dimensions: dimensions || null,
-          colour_finish: materials || null,
           row_type: 'item',
           indent_level: 0,
+          sort_order: sortOrder++,
+          studio_slide_id: slide.id,
+          studio_object_id: obj.id,
         })
-        specIdForRow.push(sp.id)
         itemCount++
+
+        // Fabric/stone/glass etc. become their own line items under the
+        // item — quoted and procured separately, like manually linked rows
+        const materials = (Array.isArray(sp.materials) ? sp.materials : [])
+          .map(m => ({
+            item_name: [m.type.trim(), m.description.trim()].filter(Boolean).join(' — ') || 'Material',
+            description: null,
+            quantity: 1,
+            cost_price: 0,
+            markup_percentage: 0,
+            row_type: 'item',
+            indent_level: 1,
+            sort_order: sortOrder++,
+            studio_slide_id: slide.id,
+            studio_object_id: obj.id,
+          }))
+        parentMeta.push({ specId: sp.id, materials })
       }
     })
 
@@ -206,28 +232,41 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: projErr?.message ?? 'Failed to create project' }, { status: 500 })
     }
 
-    const withProject = rows.map((r, i) => ({ ...r, project_id: project.id, sort_order: i }))
+    // Pass 1: sections + items — returned in insert order, giving us ids
+    const parentRows = parents.map(r => ({ ...r, project_id: project.id }))
     const { data: inserted, error: liErr } = await supabase
       .from('line_items')
-      .insert(withProject)
+      .insert(parentRows)
       .select('id')
-    if (liErr || !inserted || inserted.length !== withProject.length) {
+    if (liErr || !inserted || inserted.length !== parentRows.length) {
       // Don't leave a half-built project behind
       await supabase.from('projects').delete().eq('id', project.id)
       return NextResponse.json({ error: liErr?.message ?? 'Failed to create line items' }, { status: 500 })
     }
 
+    // Pass 2: material children, now that their parents have ids
+    const childRows = parentMeta.flatMap((meta, i) =>
+      meta.materials.map(m => ({ ...m, project_id: project.id, parent_item_id: inserted[i].id }))
+    )
+    if (childRows.length) {
+      const { error: childErr } = await supabase.from('line_items').insert(childRows)
+      if (childErr) {
+        await supabase.from('projects').delete().eq('id', project.id)
+        return NextResponse.json({ error: childErr.message }, { status: 500 })
+      }
+    }
+
     // Link each spec to its line item, and the board to the project
     await Promise.all(
-      specIdForRow.map((specId, i) =>
-        specId
-          ? supabase.from('studio_specs').update({ line_item_id: inserted[i].id }).eq('id', specId)
+      parentMeta.map((meta, i) =>
+        meta.specId
+          ? supabase.from('studio_specs').update({ line_item_id: inserted[i].id }).eq('id', meta.specId)
           : Promise.resolve(null)
       )
     )
     await supabase.from('studio_boards').update({ project_id: project.id }).eq('id', boardId)
 
-    return NextResponse.json({ projectId: project.id, itemCount })
+    return NextResponse.json({ projectId: project.id, itemCount, materialCount: childRows.length })
   } catch (e) {
     return apiError(e)
   }

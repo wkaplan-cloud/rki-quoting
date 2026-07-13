@@ -39,7 +39,9 @@ export function ConvertToQuoteModal({
         setCreating(false)
         return
       }
-      toast.success(`Quote created — ${json.itemCount} items`)
+      toast.success(
+        `Quote created — ${json.itemCount} items${json.materialCount ? ` + ${json.materialCount} materials` : ''}`
+      )
       router.push(`/projects/${json.projectId}`)
     } catch {
       toast.error('Failed to create quote')
