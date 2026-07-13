@@ -19,9 +19,17 @@ export default function LandingPage() {
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
             {/* Text side */}
             <div className="flex-1 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 rounded-full px-4 py-1.5 mb-8">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#C4A46B]" />
-                <span className="text-xs font-medium text-[#9A7B4F] tracking-wide">Built for interior designers in South Africa</span>
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-3 gap-y-2 mb-8">
+                <div className="inline-flex items-center gap-2 bg-[#9A7B4F]/10 border border-[#9A7B4F]/25 rounded-full px-4 py-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#C4A46B]" />
+                  <span className="text-xs font-medium text-[#9A7B4F] tracking-wide">Built for interior designers in South Africa</span>
+                </div>
+                <Link
+                  href="/trades/electrician"
+                  className="text-xs font-medium text-[#9A7B4F] tracking-wide underline underline-offset-2 hover:text-[#C4A46B] transition-colors"
+                >
+                  Electricians click here
+                </Link>
               </div>
 
               <h1 className="font-serif text-5xl md:text-6xl text-[#1A1A18] leading-[1.05] tracking-tight mb-4">
