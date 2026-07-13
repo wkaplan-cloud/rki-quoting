@@ -3,7 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import { StudioEditorLoader } from './StudioEditorLoader'
-import { slideFromRow, type StudioSlideRow, type BoardLastState } from '@/lib/studio/types'
+import {
+  slideFromRow,
+  assetFromRow,
+  masterLayoutFromJson,
+  type StudioSlideRow,
+  type StudioAssetRow,
+  type BoardLastState,
+} from '@/lib/studio/types'
 
 export default async function StudioBoardPage({ params }: { params: Promise<{ boardId: string }> }) {
   const { boardId } = await params
@@ -24,20 +31,28 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
 
   const { data: board } = await supabase
     .from('studio_boards')
-    .select('id, name, last_state, client_id, clients(client_name)')
+    .select('id, name, last_state, client_id, master_layout, clients(client_name)')
     .eq('id', boardId)
     .maybeSingle()
   if (!board) notFound()
 
   const client = Array.isArray(board.clients) ? board.clients[0] : board.clients
 
-  const { data: slideRows } = await supabase
-    .from('studio_slides')
-    .select('id, board_id, org_id, name, heading, sort_order, objects')
-    .eq('board_id', board.id)
-    .order('sort_order')
+  const [{ data: slideRows }, { data: assetRows }] = await Promise.all([
+    supabase
+      .from('studio_slides')
+      .select('id, board_id, org_id, name, heading, sort_order, objects')
+      .eq('board_id', board.id)
+      .order('sort_order'),
+    supabase
+      .from('studio_assets')
+      .select('id, board_id, org_id, url, hash, natural_width, natural_height, file_size, created_at')
+      .eq('board_id', board.id)
+      .order('created_at', { ascending: false }),
+  ])
 
   const slides = ((slideRows ?? []) as StudioSlideRow[]).map(slideFromRow)
+  const assets = ((assetRows ?? []) as StudioAssetRow[]).map(assetFromRow)
 
   return (
     <StudioEditorLoader
@@ -49,6 +64,8 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
       businessName={settings.business_name ?? ''}
       logoUrl={settings.logo_url ?? null}
       slides={slides.length ? slides : [{ id: crypto.randomUUID(), name: 'Slide 1', heading: '', sortOrder: 0, objects: [] }]}
+      assets={assets}
+      masterLayout={masterLayoutFromJson(board.master_layout)}
       lastState={(board.last_state as BoardLastState | null) ?? null}
     />
   )

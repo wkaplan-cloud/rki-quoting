@@ -1,7 +1,8 @@
 'use client'
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
-import type { StudioObject, StudioSlide, BoardLastState } from './types'
+import type { StudioObject, StudioSlide, BoardLastState, StudioAsset, MasterLayoutConfig } from './types'
+import { DEFAULT_MASTER_LAYOUT } from './types'
 import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE } from './constants'
 
 interface Snapshot {
@@ -24,6 +25,8 @@ interface InitProps {
   businessName: string
   logoUrl: string | null
   slides: StudioSlide[]
+  assets: StudioAsset[]
+  masterLayout: MasterLayoutConfig
   lastState: BoardLastState | null
 }
 
@@ -35,6 +38,8 @@ interface StudioState {
   boardName: string
   businessName: string
   logoUrl: string | null
+  assets: StudioAsset[]
+  masterLayout: MasterLayoutConfig
 
   slides: StudioSlide[]
   currentSlideId: string
@@ -63,6 +68,7 @@ interface StudioState {
   setViewport: (v: Viewport) => void
   setGuides: (g: { v: number[]; h: number[] }) => void
   setPresenting: (on: boolean) => void
+  addAsset: (asset: StudioAsset) => void
 
   commit: (mutate: (slides: StudioSlide[]) => StudioSlide[]) => void
   // Object helpers (all operate on the current slide unless a slideId is given)
@@ -91,6 +97,11 @@ interface StudioState {
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 let stateTimer: ReturnType<typeof setTimeout> | null = null
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+// Version-history foundation: one revision snapshot per slide, at most every
+// REVISION_INTERVAL of active editing. No UI yet — restore comes later.
+const REVISION_INTERVAL = 5 * 60 * 1000
+const lastRevisionAt = new Map<string, number>()
 
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer)
@@ -98,6 +109,14 @@ function scheduleSave() {
     saveTimer = null
     void useStudioStore.getState().flushSave()
   }, SAVE_DEBOUNCE)
+}
+
+function scheduleRetry() {
+  if (retryTimer) return
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    void useStudioStore.getState().flushSave()
+  }, 4000)
 }
 
 function scheduleStateSave() {
@@ -156,6 +175,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   boardName: '',
   businessName: '',
   logoUrl: null,
+  assets: [],
+  masterLayout: DEFAULT_MASTER_LAYOUT,
   slides: [],
   currentSlideId: '',
   selectedIds: [],
@@ -184,6 +205,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       boardName: props.boardName,
       businessName: props.businessName,
       logoUrl: props.logoUrl,
+      assets: props.assets,
+      masterLayout: props.masterLayout,
       slides: props.slides,
       currentSlideId: slideExists ? restored!.slideId! : (props.slides[0]?.id ?? ''),
       viewport: restored ? { zoom: restored.zoom, x: restored.panX, y: restored.panY } : { zoom: 1, x: 0, y: 0 },
@@ -213,6 +236,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
   setGuides: g => set({ guides: g }),
   setPresenting: on => set({ presenting: on, selectedIds: [], editingTextId: null, cropTargetId: null }),
+
+  addAsset: asset => {
+    const { assets } = get()
+    if (assets.some(a => a.id === asset.id || a.hash === asset.hash)) return
+    set({ assets: [asset, ...assets] })
+  },
 
   commit: mutate => {
     const { slides, currentSlideId, past } = get()
@@ -454,10 +483,33 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     }
 
     if (failed) {
-      // Re-mark so the next change retries
+      // Re-mark and retry automatically — a dropped connection must not
+      // silently lose work
       set({ saveState: 'error', dirtySlideIds: mergeDirty(get().dirtySlideIds, dirty) })
+      scheduleRetry()
       return
     }
+
+    // Version-history snapshots (fire-and-forget, throttled per slide)
+    const now = Date.now()
+    const revisionRows = rows
+      .filter(r => now - (lastRevisionAt.get(r.id) ?? 0) > REVISION_INTERVAL)
+      .map(r => ({
+        board_id: r.board_id,
+        org_id: r.org_id,
+        slide_id: r.id,
+        name: r.name,
+        heading: r.heading,
+        objects: r.objects,
+      }))
+    if (revisionRows.length) {
+      revisionRows.forEach(r => lastRevisionAt.set(r.slide_id, now))
+      void supabase
+        .from('studio_slide_revisions')
+        .insert(revisionRows)
+        .then(() => {}) // best-effort: history must never block or fail a save
+    }
+
     // New edits may have arrived while saving — they re-marked dirtySlideIds themselves
     set({ saveState: get().dirtySlideIds.length ? 'saving' : 'saved' })
     if (get().dirtySlideIds.length) scheduleSave()

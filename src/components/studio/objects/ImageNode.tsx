@@ -56,6 +56,7 @@ export const ImageNode = memo(function ImageNode({
       width={obj.width}
       height={obj.height}
       crop={obj.crop}
+      perfectDrawEnabled={false}
       stroke={obj.borderWidth ? (obj.borderColor ?? '#2C2C2A') : undefined}
       strokeWidth={obj.borderWidth ?? 0}
       onTransformEnd={onTransformEnd}

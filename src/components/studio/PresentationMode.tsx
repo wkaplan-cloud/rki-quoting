@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PAGE_W, PAGE_H } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
+import { loadImage } from '@/lib/studio/images'
 import { StaticSlideStage } from './StaticSlideStage'
 
 // Fullscreen, chrome-free presentation. Arrow keys / space navigate; Escape
@@ -27,6 +28,16 @@ export function PresentationMode() {
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     }
   }, [])
+
+  // Preload the neighbouring slides' images so arrow-key navigation is
+  // instant even on 100+ slide boards
+  useEffect(() => {
+    for (const neighbour of [slides[index + 1], slides[index - 1]]) {
+      neighbour?.objects.forEach(o => {
+        if (o.type === 'image') void loadImage(o.url).catch(() => {})
+      })
+    }
+  }, [index, slides])
 
   useEffect(() => {
     const measure = () => setSize({ w: window.innerWidth, h: window.innerHeight })

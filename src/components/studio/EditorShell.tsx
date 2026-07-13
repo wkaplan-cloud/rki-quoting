@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
-import type { StudioSlide, BoardLastState } from '@/lib/studio/types'
+import type { StudioSlide, BoardLastState, StudioAsset, MasterLayoutConfig } from '@/lib/studio/types'
 import type { StudioObject } from '@/lib/studio/types'
 import { SlidePanel } from './SlidePanel'
 import { CanvasArea } from './CanvasArea'
+import { AssetPanel } from './AssetPanel'
 import { PresentationMode } from './PresentationMode'
 import { ExportRunner } from './ExportRunner'
 
@@ -19,14 +20,21 @@ export interface EditorShellProps {
   businessName: string
   logoUrl: string | null
   slides: StudioSlide[]
+  assets: StudioAsset[]
+  masterLayout: MasterLayoutConfig
   lastState: BoardLastState | null
 }
 
 export default function EditorShell(props: EditorShellProps) {
   const [ready, setReady] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showAssets, setShowAssets] = useState(false)
   const presenting = useStudioStore(s => s.presenting)
   const saveState = useStudioStore(s => s.saveState)
+
+  useEffect(() => {
+    setShowAssets(localStorage.getItem('studio-assets-open') === 'true')
+  }, [])
 
   // Initialise the store from server data once
   useEffect(() => {
@@ -35,7 +43,8 @@ export default function EditorShell(props: EditorShellProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.boardId])
 
-  // Flush pending saves when the tab hides or the editor unmounts
+  // Autosave reliability: flush when the tab hides / unmounts, when the
+  // connection comes back, and on a 30s safety interval while dirty
   useEffect(() => {
     const flush = () => {
       void useStudioStore.getState().flushSave()
@@ -43,11 +52,17 @@ export default function EditorShell(props: EditorShellProps) {
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush()
     }
+    const interval = setInterval(() => {
+      if (useStudioStore.getState().dirtySlideIds.length) flush()
+    }, 30000)
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pagehide', flush)
+    window.addEventListener('online', flush)
     return () => {
+      clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', flush)
+      window.removeEventListener('online', flush)
       flush()
     }
   }, [])
@@ -147,6 +162,21 @@ export default function EditorShell(props: EditorShellProps) {
 
         <button
           type="button"
+          onClick={() =>
+            setShowAssets(v => {
+              localStorage.setItem('studio-assets-open', String(!v))
+              return !v
+            })
+          }
+          className={`flex items-center gap-1.5 h-8 px-3 text-xs rounded-lg transition-colors cursor-pointer ${
+            showAssets ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+          }`}
+          title="Project asset library"
+        >
+          <Images size={13} /> Assets
+        </button>
+        <button
+          type="button"
           onClick={() => void startPresent()}
           className="flex items-center gap-1.5 h-8 px-3 text-xs text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
         >
@@ -166,6 +196,7 @@ export default function EditorShell(props: EditorShellProps) {
       <div className="flex-1 flex min-h-0">
         <SlidePanel />
         <CanvasArea />
+        {showAssets && <AssetPanel />}
       </div>
 
       {presenting && <PresentationMode />}

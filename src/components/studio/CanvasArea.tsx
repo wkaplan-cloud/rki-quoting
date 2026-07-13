@@ -4,7 +4,8 @@ import type Konva from 'konva'
 import toast from 'react-hot-toast'
 import { PAGE_W, PAGE_H } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
-import { extractImageFiles, importImageFiles } from '@/lib/studio/images'
+import { extractImageFiles, importImageFiles, addAssetToSlide } from '@/lib/studio/images'
+import { ASSET_DRAG_TYPE } from './AssetPanel'
 import { CanvasStage } from './CanvasStage'
 import { FloatingToolbar } from './FloatingToolbar'
 import { InsertBar } from './InsertBar'
@@ -96,6 +97,16 @@ export function CanvasArea() {
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
+    // Asset Library drag — the file is already stored, just place it
+    const assetData = e.dataTransfer.getData(ASSET_DRAG_TYPE)
+    if (assetData) {
+      try {
+        addAssetToSlide(JSON.parse(assetData), pagePointFromClient(e.clientX, e.clientY))
+      } catch {
+        // malformed drag payload — ignore
+      }
+      return
+    }
     const files = extractImageFiles(e.dataTransfer)
     if (!files.length) return
     const at = pagePointFromClient(e.clientX, e.clientY)
@@ -111,7 +122,9 @@ export function CanvasArea() {
       ref={containerRef}
       className="relative flex-1 min-w-0 overflow-hidden bg-[#EDE9E1]"
       onDragOver={e => {
-        if (e.dataTransfer.types.includes('Files')) {
+        if (e.dataTransfer.types.includes(ASSET_DRAG_TYPE)) {
+          e.preventDefault() // allow the drop without the "drop files" chrome
+        } else if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault()
           setDragOver(true)
         }

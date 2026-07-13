@@ -1,10 +1,19 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
+import type Konva from 'konva'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { Plus, Copy, Trash2, Pencil } from 'lucide-react'
+import { PAGE_W, PAGE_H } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
+import { loadImage } from '@/lib/studio/images'
 import type { StudioSlide } from '@/lib/studio/types'
 import { StaticSlideStage } from './StaticSlideStage'
+
+// Thumbnail bitmap cache. Slides are immutable (every edit produces a new
+// object), so a WeakMap keyed on the slide reference invalidates itself; the
+// key string catches page-number changes from reordering. With this, 100+
+// slides show cached <img> thumbnails instead of 100 live canvases.
+const thumbCache = new WeakMap<StudioSlide, { key: string; url: string }>()
 
 const MIN_W = 148
 const MAX_W = 320
@@ -143,6 +152,113 @@ function NewSlideInput({ onDone }: { onDone: (name: string) => void }) {
   )
 }
 
+// Shows the cached bitmap when available; otherwise waits until the
+// thumbnail scrolls near the viewport, renders it once in a small live
+// stage, snapshots it and caches the result.
+function ThumbPreview({
+  slide,
+  index,
+  count,
+  width,
+}: {
+  slide: StudioSlide
+  index: number
+  count: number
+  width: number
+}) {
+  const key = `${index + 1}/${count}/${Math.round(width)}`
+  const [, bump] = useReducer((x: number) => x + 1, 0)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      entries => {
+        if (entries.some(entry => entry.isIntersecting)) setVisible(true)
+      },
+      { rootMargin: '400px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  const cached = thumbCache.get(slide)
+  const height = (width * PAGE_H) / PAGE_W
+
+  return (
+    <div ref={boxRef} style={{ width, height }} className="bg-white">
+      {cached?.key === key ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={cached.url} alt="" width={width} height={height} draggable={false} />
+      ) : visible ? (
+        <ThumbSnapshot
+          slide={slide}
+          index={index}
+          count={count}
+          width={width}
+          onDone={url => {
+            thumbCache.set(slide, { key, url })
+            bump()
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function ThumbSnapshot({
+  slide,
+  index,
+  count,
+  width,
+  onDone,
+}: {
+  slide: StudioSlide
+  index: number
+  count: number
+  width: number
+  onDone: (url: string) => void
+}) {
+  const stageRef = useRef<Konva.Stage | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const urls = slide.objects.flatMap(o => (o.type === 'image' ? [o.url] : []))
+    const logoUrl = useStudioStore.getState().logoUrl
+    if (logoUrl) urls.push(logoUrl)
+    Promise.allSettled(urls.map(loadImage)).then(() => {
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (cancelled) return
+          const stage = stageRef.current
+          if (!stage) return
+          try {
+            onDone(stage.toDataURL({ pixelRatio: 2 }))
+          } catch {
+            // snapshot failed — the live stage stays visible, no harm done
+          }
+        })
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slide, index, count, width])
+
+  return (
+    <StaticSlideStage
+      slide={slide}
+      pageNumber={index + 1}
+      pageCount={count}
+      width={width}
+      stageRef={stageRef}
+    />
+  )
+}
+
 function SlideThumbnail({
   slide,
   index,
@@ -189,7 +305,7 @@ function SlideThumbnail({
         ${isDragging ? 'shadow-xl' : ''}`}
     >
       <div className="rounded overflow-hidden border border-[#D8D3C8] bg-white pointer-events-none">
-        <StaticSlideStage slide={slide} pageNumber={index + 1} pageCount={count} width={width - 12} />
+        <ThumbPreview slide={slide} index={index} count={count} width={width - 12} />
       </div>
       <div className="flex items-center gap-1 mt-1 min-h-[20px]">
         <span className="text-[10px] text-[#8A877F] w-4 text-center flex-shrink-0">{index + 1}</span>

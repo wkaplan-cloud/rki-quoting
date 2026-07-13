@@ -2,6 +2,7 @@
 import { Group, Text, Image as KonvaImage } from 'react-konva'
 import { PAGE_W, PAGE_H, MASTER_SIDE, COLORS } from '@/lib/studio/constants'
 import { useTrimmedLogo } from '@/lib/studio/images'
+import { useStudioStore } from '@/lib/studio/store'
 
 // Logo sizing: the TRIMMED content (whitespace removed) fits this box, so
 // every org's logo carries the same quiet visual weight bottom-right,
@@ -32,7 +33,9 @@ export function MasterGroup({
   onHeadingDblClick?: () => void
   hideHeading?: boolean
 }) {
-  const logo = useTrimmedLogo(logoUrl)
+  // Per-board master layout config (defaults show everything; no UI yet)
+  const config = useStudioStore(s => s.masterLayout)
+  const logo = useTrimmedLogo(config.showLogo ? logoUrl : null)
 
   let logoW = 0
   let logoH = 0
@@ -46,17 +49,19 @@ export function MasterGroup({
 
   return (
     <Group listening={interactive}>
-      <Text
-        x={MASTER_SIDE}
-        y={20}
-        text={title.toUpperCase()}
-        fontSize={11}
-        fontFamily="Helvetica"
-        fill={COLORS.muted}
-        letterSpacing={2}
-        listening={false}
-      />
-      {!hideHeading && (
+      {config.showTitle && (
+        <Text
+          x={MASTER_SIDE}
+          y={20}
+          text={title.toUpperCase()}
+          fontSize={11}
+          fontFamily="Helvetica"
+          fill={COLORS.muted}
+          letterSpacing={2}
+          listening={false}
+        />
+      )}
+      {config.showHeading && !hideHeading && (
         <Text
           x={MASTER_SIDE}
           y={36}
@@ -70,15 +75,17 @@ export function MasterGroup({
           onDblTap={onHeadingDblClick}
         />
       )}
-      <Text
-        x={MASTER_SIDE}
-        y={PAGE_H - 30}
-        text={`${pageNumber} / ${pageCount}`}
-        fontSize={10}
-        fontFamily="Helvetica"
-        fill={COLORS.muted}
-        listening={false}
-      />
+      {config.showPageNumber && (
+        <Text
+          x={MASTER_SIDE}
+          y={PAGE_H - 30}
+          text={`${pageNumber} / ${pageCount}`}
+          fontSize={10}
+          fontFamily="Helvetica"
+          fill={COLORS.muted}
+          listening={false}
+        />
+      )}
       {logo && (
         <KonvaImage
           image={logo.image}

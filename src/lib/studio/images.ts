@@ -2,16 +2,38 @@
 import { useEffect, useState } from 'react'
 import { useStudioStore, newId } from './store'
 import { gridPlacements } from './autoLayout'
-import type { ImageObject } from './types'
+import { assetFromRow, type ImageObject, type StudioAssetRow } from './types'
 
 // ── Image element cache ─────────────────────────────────────────────────────
 // Shared by editor nodes, thumbnails, presentation and export. crossOrigin is
 // mandatory — without it stage.toDataURL() throws on a tainted canvas.
+// LRU-capped so a 2,000-image board doesn't pin every bitmap in memory —
+// evicted entries simply reload on demand.
+const CACHE_MAX = 400
 const cache = new Map<string, HTMLImageElement>()
 const pending = new Map<string, Promise<HTMLImageElement>>()
 
+function cachePut(url: string, img: HTMLImageElement) {
+  cache.delete(url)
+  cache.set(url, img)
+  if (cache.size > CACHE_MAX) {
+    const oldest = cache.keys().next().value
+    if (oldest) cache.delete(oldest)
+  }
+}
+
+function cacheGet(url: string): HTMLImageElement | undefined {
+  const img = cache.get(url)
+  if (img) {
+    // Bump recency
+    cache.delete(url)
+    cache.set(url, img)
+  }
+  return img
+}
+
 export function loadImage(url: string): Promise<HTMLImageElement> {
-  const cached = cache.get(url)
+  const cached = cacheGet(url)
   if (cached) return Promise.resolve(cached)
   const inflight = pending.get(url)
   if (inflight) return inflight
@@ -19,7 +41,7 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      cache.set(url, img)
+      cachePut(url, img)
       pending.delete(url)
       resolve(img)
     }
@@ -34,13 +56,13 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 export function useKonvaImage(url: string | null): HTMLImageElement | undefined {
-  const [img, setImg] = useState<HTMLImageElement | undefined>(() => (url ? cache.get(url) : undefined))
+  const [img, setImg] = useState<HTMLImageElement | undefined>(() => (url ? cacheGet(url) : undefined))
   useEffect(() => {
     if (!url) {
       setImg(undefined)
       return
     }
-    const cached = cache.get(url)
+    const cached = cacheGet(url)
     if (cached) {
       setImg(cached)
       return
@@ -235,7 +257,13 @@ function decodeToCanvas(src: Blob, name: string): Promise<HTMLCanvasElement> {
   })
 }
 
-async function pdfFirstPageToJpeg(file: File): Promise<File> {
+interface PreparedImage {
+  file: File
+  width: number
+  height: number
+}
+
+async function pdfFirstPageToJpeg(file: File): Promise<PreparedImage> {
   const pdfjs = await import('pdfjs-dist')
   pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs'
   const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() })
@@ -253,13 +281,13 @@ async function pdfFirstPageToJpeg(file: File): Promise<File> {
     ctx.fillStyle = '#FFFFFF'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     await page.render({ canvasContext: ctx, canvas, viewport }).promise
-    return await canvasToJpegFile(canvas, file.name)
+    return { file: await canvasToJpegFile(canvas, file.name), width: canvas.width, height: canvas.height }
   } finally {
     void loadingTask.destroy()
   }
 }
 
-async function prepareImageFile(file: File): Promise<File> {
+async function prepareImageFile(file: File): Promise<PreparedImage> {
   if (file.size > MAX_INPUT_MB * 1024 * 1024) {
     throw new Error(`${file.name} is too large — please keep files under ${MAX_INPUT_MB}MB`)
   }
@@ -268,14 +296,14 @@ async function prepareImageFile(file: File): Promise<File> {
   }
   try {
     const canvas = await decodeToCanvas(file, file.name)
-    return await canvasToJpegFile(canvas, file.name)
+    return { file: await canvasToJpegFile(canvas, file.name), width: canvas.width, height: canvas.height }
   } catch (err) {
     // HEIC/HEIF photos can't be decoded by most browsers — convert first
     if (looksLikeHeic(file)) {
       const heic2any = (await import('heic2any')).default
       const converted = (await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })) as Blob
       const canvas = await decodeToCanvas(converted, file.name)
-      return canvasToJpegFile(canvas, file.name)
+      return { file: await canvasToJpegFile(canvas, file.name), width: canvas.width, height: canvas.height }
     }
     throw err instanceof Error ? err : new Error(`Couldn't read ${file.name}`)
   }
@@ -283,19 +311,47 @@ async function prepareImageFile(file: File): Promise<File> {
 
 // ── Upload pipeline ─────────────────────────────────────────────────────────
 
+async function sha256Hex(buf: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 async function uploadFile(file: File): Promise<{ url: string; width: number; height: number }> {
-  const { boardId } = useStudioStore.getState()
+  const store = useStudioStore.getState()
   // Normalise/compress in the browser, then upload through the API route —
   // storage buckets in this app only accept writes via supabaseAdmin
   const prepared = await prepareImageFile(file)
+
+  // Instant client-side dedupe: an identical file already in this board's
+  // asset library skips the network round-trip entirely
+  const hash = await sha256Hex(await prepared.file.arrayBuffer())
+  const existing = store.assets.find(a => a.hash === hash)
+  if (existing) {
+    void loadImage(existing.url).catch(() => {})
+    return {
+      url: existing.url,
+      width: existing.naturalWidth || prepared.width,
+      height: existing.naturalHeight || prepared.height,
+    }
+  }
+
   const formData = new FormData()
-  formData.append('files', prepared)
-  const res = await fetch(`/api/studio/boards/${boardId}/images`, { method: 'POST', body: formData })
+  formData.append('files', prepared.file)
+  formData.append('widths', String(prepared.width))
+  formData.append('heights', String(prepared.height))
+  const res = await fetch(`/api/studio/boards/${store.boardId}/images`, { method: 'POST', body: formData })
   const data = await res.json().catch(() => ({}))
   if (!res.ok || !data.urls?.[0]) throw new Error(data.error ?? 'Upload failed')
   const url: string = data.urls[0]
-  const img = await loadImage(url)
-  return { url, width: img.naturalWidth, height: img.naturalHeight }
+
+  // Register in the board's asset library (server deduplicates by hash)
+  const assetRow = (data.assets?.[0] ?? null) as StudioAssetRow | null
+  if (assetRow) useStudioStore.getState().addAsset(assetFromRow(assetRow))
+
+  void loadImage(url).catch(() => {})
+  return { url, width: prepared.width, height: prepared.height }
 }
 
 // Import one or more image files onto the current slide. Multiple images are
@@ -330,6 +386,29 @@ export async function importImageFiles(files: File[], at?: { x: number; y: numbe
   })
 
   store.addObjects(objects)
+}
+
+// Place an existing library asset onto the current slide (drag from the
+// Asset Library or double-click) — no upload, the file is already stored.
+export function addAssetToSlide(asset: { url: string; naturalWidth: number; naturalHeight: number }, at?: { x: number; y: number }): void {
+  const width = asset.naturalWidth || 800
+  const height = asset.naturalHeight || 600
+  const [p] = gridPlacements([{ width, height }])
+  const obj: ImageObject = {
+    id: newId(),
+    type: 'image',
+    x: at ? at.x - p.width / 2 : p.x,
+    y: at ? at.y - p.height / 2 : p.y,
+    width: p.width,
+    height: p.height,
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    url: asset.url,
+    naturalWidth: width,
+    naturalHeight: height,
+  }
+  useStudioStore.getState().addObjects([obj])
 }
 
 // Replace the image inside an existing object's frame: contain-fit the new

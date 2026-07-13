@@ -80,6 +80,63 @@ export interface BoardLastState {
   panY: number
 }
 
+// Every image imported into a board is registered as an asset (deduplicated
+// by content hash). Future phases attach specs/quotes to these.
+export interface StudioAsset {
+  id: string
+  url: string
+  hash: string
+  naturalWidth: number
+  naturalHeight: number
+  fileSize: number
+  createdAt: string
+}
+
+export interface StudioAssetRow {
+  id: string
+  board_id: string
+  org_id: string
+  url: string
+  hash: string
+  natural_width: number
+  natural_height: number
+  file_size: number
+  created_at: string
+}
+
+export function assetFromRow(row: StudioAssetRow): StudioAsset {
+  return {
+    id: row.id,
+    url: row.url,
+    hash: row.hash,
+    naturalWidth: row.natural_width,
+    naturalHeight: row.natural_height,
+    fileSize: row.file_size,
+    createdAt: row.created_at,
+  }
+}
+
+// Per-board master layout configuration. Defaults live here; no UI yet —
+// future phases let designers customise what the master shows.
+export interface MasterLayoutConfig {
+  showTitle: boolean
+  showHeading: boolean
+  showPageNumber: boolean
+  showLogo: boolean
+}
+
+export const DEFAULT_MASTER_LAYOUT: MasterLayoutConfig = {
+  showTitle: true,
+  showHeading: true,
+  showPageNumber: true,
+  showLogo: true,
+}
+
+export function masterLayoutFromJson(json: unknown): MasterLayoutConfig {
+  const j = (json ?? {}) as Partial<MasterLayoutConfig>
+  return { ...DEFAULT_MASTER_LAYOUT, ...j }
+}
+
 export interface StudioBoardRow {
   id: string
   org_id: string
