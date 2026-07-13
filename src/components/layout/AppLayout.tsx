@@ -16,6 +16,7 @@ export function AppLayout({
   sourcingBadge,
   capitalHotelsEnabled,
   capitalBadge,
+  studioEnabled = false,
   userEmail,
   userName,
   plan,
@@ -32,6 +33,7 @@ export function AppLayout({
   sourcingBadge: number
   capitalHotelsEnabled: boolean
   capitalBadge: number
+  studioEnabled?: boolean
   userEmail: string
   userName: string
   plan: string
@@ -63,6 +65,7 @@ export function AppLayout({
         sourcingBadge={sourcingBadge}
         capitalHotelsEnabled={capitalHotelsEnabled}
         capitalBadge={capitalBadge}
+        studioEnabled={studioEnabled}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onContactClick={() => setFeedbackOpen(true)}

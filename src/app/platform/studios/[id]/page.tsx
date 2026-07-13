@@ -7,6 +7,7 @@ import { SubscriptionPanel } from './SubscriptionPanel'
 import { ArchiveStudioButton, RestoreStudioButton, DeleteStudioButton } from './DeleteStudioButton'
 import { StudioNotes } from './StudioNotes'
 import { BrandingPanel } from './BrandingPanel'
+import { FeatureTogglesPanel } from './FeatureTogglesPanel'
 import { ImpersonateButton } from './ImpersonateButton'
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -195,6 +196,9 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
           currentTheme={settings?.pdf_color_theme ?? null}
         />
       )}
+
+      {/* Feature toggles */}
+      <FeatureTogglesPanel orgId={id} studioEnabled={(settings as any)?.studio_enabled ?? false} />
 
       {/* Internal notes */}
       <StudioNotes orgId={id} initial={(org as any).platform_notes ?? null} />

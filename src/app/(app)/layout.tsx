@@ -75,7 +75,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
 
   const [{ data: membership }, { data: settings }, { data: sourcingBadgeData }, { count: capitalBadgeCount }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
-    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled').eq('org_id', orgId).maybeSingle(),
+    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled').eq('org_id', orgId).maybeSingle(),
     orgId
       ? supabaseAdmin.rpc('get_sourcing_badge_count', { p_org_id: orgId })
       : Promise.resolve({ data: 0, error: null }),
@@ -87,6 +87,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
   // Sourcing badge: supplier responses waiting for designer to review
   const sourcingBadge = (sourcingBadgeData as number) ?? 0
   const capitalHotelsEnabled = settings?.capital_hotels_enabled ?? false
+  const studioEnabled = settings?.studio_enabled ?? false
   const capitalBadge = capitalBadgeCount ?? 0
 
   // Only trust the impersonation stash if it actually matches who's currently logged in —
@@ -104,6 +105,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       sourcingBadge={sourcingBadge}
       capitalHotelsEnabled={capitalHotelsEnabled}
       capitalBadge={capitalBadge}
+      studioEnabled={studioEnabled}
       userEmail={user.email ?? ''}
       userName={membership?.full_name ?? ''}
       plan={org?.plan ?? 'trial'}
