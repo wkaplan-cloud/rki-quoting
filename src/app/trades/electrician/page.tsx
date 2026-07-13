@@ -19,7 +19,13 @@ export const metadata: Metadata = {
     title: 'Quoting Software for South African Electricians | QuotingHub',
     description: 'Quotes, claims, COCs, job cards, and GPS clock-in — the complete business system for South African electricians.',
     url: 'https://quotinghub.co.za/trades/electrician',
-    images: [{ url: 'https://quotinghub.co.za/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: 'https://quotinghub.co.za/og-electrician.png', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Quoting Software for South African Electricians | QuotingHub',
+    description: 'Quotes, claims, COCs, job cards, and GPS clock-in — the complete business system for South African electricians.',
+    images: ['https://quotinghub.co.za/og-electrician.png'],
   },
 }
 
