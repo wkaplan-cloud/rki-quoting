@@ -1,15 +1,18 @@
 'use client'
 import { useRef } from 'react'
 import toast from 'react-hot-toast'
-import { Crop, RotateCw, ImageUp, Copy, ArrowUp, ArrowDown, Lock, Trash2 } from 'lucide-react'
+import { Crop, RotateCw, ImageUp, Copy, ArrowUp, ArrowDown, Lock, Trash2, Wand2, Undo2, Loader2 } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { replaceImage } from '@/lib/studio/images'
+import { removeBackground, restoreOriginal, isBgRemoved } from '@/lib/studio/bgRemoval'
 import type { ImageObject } from '@/lib/studio/types'
 import { TBtn, TDivider, ColorControl } from './atoms'
 
 export function ImageToolbar({ obj }: { obj: ImageObject }) {
   const store = useStudioStore
   const fileRef = useRef<HTMLInputElement>(null)
+  const bgState = useStudioStore(s => s.bgRemoval[obj.id])
+  const bgRemoved = isBgRemoved(obj)
 
   async function onReplaceFile(file: File | undefined) {
     if (!file) return
@@ -33,6 +36,19 @@ export function ImageToolbar({ obj }: { obj: ImageObject }) {
         onClick={() => store.getState().updateObject(obj.id, { rotation: (obj.rotation + 90) % 360 })}
       />
       <TBtn icon={ImageUp} label="Replace image" onClick={() => fileRef.current?.click()} />
+      {bgRemoved ? (
+        <TBtn icon={Undo2} label="Restore original" onClick={() => restoreOriginal(obj.id)} />
+      ) : (
+        <TBtn
+          icon={bgState === 'processing' ? Loader2 : Wand2}
+          label={bgState === 'error' ? 'Remove background — retry' : 'Remove background'}
+          active={bgState === 'processing'}
+          spin={bgState === 'processing'}
+          onClick={() => {
+            if (bgState !== 'processing') void removeBackground(obj.id)
+          }}
+        />
+      )}
       <input
         ref={fileRef}
         type="file"

@@ -22,6 +22,12 @@ export interface ImageObject extends StudioObjectBase {
   crop?: { x: number; y: number; width: number; height: number }
   borderColor?: string
   borderWidth?: number
+  // Background removal (Phase 5). `url` always points at the ACTIVE variant;
+  // both variants are kept so the user can toggle freely without reprocessing.
+  // The processed file has the same pixel dimensions as the original, so
+  // crop/naturalWidth/naturalHeight stay valid for both.
+  originalUrl?: string // pre-removal image, set on first successful removal
+  processedUrl?: string // transparent-background result (cached)
 }
 
 export interface TextObject extends StudioObjectBase {

@@ -8,11 +8,13 @@ export function TBtn({
   label,
   onClick,
   active = false,
+  spin = false,
 }: {
   icon: LucideIcon
   label: string
   onClick: () => void
   active?: boolean
+  spin?: boolean
 }) {
   return (
     <button
@@ -25,7 +27,7 @@ export function TBtn({
         ${active ? 'bg-[#9A7B4F]/15 text-[#9A7B4F]' : 'text-[#2C2C2A] hover:bg-[#EDE9E1]'}
         focus-visible:outline-2 focus-visible:outline-[#9A7B4F] active:scale-95`}
     >
-      <Icon size={15} />
+      <Icon size={15} className={spin ? 'animate-spin' : undefined} />
     </button>
   )
 }

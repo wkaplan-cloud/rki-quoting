@@ -58,6 +58,12 @@ interface StudioState {
   specPanelObjectId: string | null
   dirtySpecIds: string[]
 
+  // Background removal: transient per-object status. Never persisted and
+  // never part of undo snapshots — the durable result lives on the object
+  // itself (originalUrl/processedUrl/url).
+  bgRemoval: Record<string, 'processing' | 'error'>
+  setBgRemoval: (objId: string, state: 'processing' | 'error' | null) => void
+
   slides: StudioSlide[]
   currentSlideId: string
   selectedIds: string[]
@@ -229,6 +235,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   specs: {},
   specPanelObjectId: null,
   dirtySpecIds: [],
+  bgRemoval: {},
   slides: [],
   currentSlideId: '',
   selectedIds: [],
@@ -278,8 +285,17 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       saveState: 'saved',
       presenting: false,
       exporting: false,
+      bgRemoval: {},
     })
   },
+
+  setBgRemoval: (objId, state) =>
+    set(s => {
+      const next = { ...s.bgRemoval }
+      if (state) next[objId] = state
+      else delete next[objId]
+      return { bgRemoval: next }
+    }),
 
   setCurrentSlide: id => {
     if (id === get().currentSlideId) return

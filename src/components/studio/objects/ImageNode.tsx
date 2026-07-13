@@ -1,6 +1,6 @@
 'use client'
 import { memo } from 'react'
-import { Image as KonvaImage, Rect } from 'react-konva'
+import { Image as KonvaImage, Rect, Group, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { useStudioStore } from '@/lib/studio/store'
 import { useKonvaImage } from '@/lib/studio/images'
@@ -17,6 +17,11 @@ export const ImageNode = memo(function ImageNode({
   const interaction = useObjectInteraction(obj, interactive)
   const image = useKonvaImage(obj.url)
   const cropping = useStudioStore(s => s.cropTargetId === obj.id)
+  // 0 = not processing; otherwise the current zoom, for zoom-independent
+  // overlay text. One selector so idle images never re-render on zoom.
+  const processingZoom = useStudioStore(s =>
+    s.bgRemoval[obj.id] === 'processing' ? s.viewport.zoom : 0
+  )
 
   function onTransformEnd(e: KonvaEventObject<Event>) {
     const node = e.target
@@ -50,17 +55,40 @@ export const ImageNode = memo(function ImageNode({
   }
 
   return (
-    <KonvaImage
-      {...interaction}
-      image={image}
-      width={obj.width}
-      height={obj.height}
-      crop={obj.crop}
-      perfectDrawEnabled={false}
-      stroke={obj.borderWidth ? (obj.borderColor ?? '#2C2C2A') : undefined}
-      strokeWidth={obj.borderWidth ?? 0}
-      onTransformEnd={onTransformEnd}
-      onDblClick={interactive ? () => useStudioStore.getState().setCropTarget(obj.id) : undefined}
-    />
+    <>
+      <KonvaImage
+        {...interaction}
+        image={image}
+        width={obj.width}
+        height={obj.height}
+        crop={obj.crop}
+        perfectDrawEnabled={false}
+        stroke={obj.borderWidth ? (obj.borderColor ?? '#2C2C2A') : undefined}
+        strokeWidth={obj.borderWidth ?? 0}
+        onTransformEnd={onTransformEnd}
+        onDblClick={interactive ? () => useStudioStore.getState().setCropTarget(obj.id) : undefined}
+      />
+      {/* Subtle veil while the background is being removed — editor-only,
+          never blocks interaction (listening false), never exported */}
+      {interactive && processingZoom > 0 && (
+        <Group
+          x={obj.x}
+          y={obj.y}
+          rotation={obj.rotation}
+          listening={false}
+          opacity={obj.opacity}
+        >
+          <Rect width={obj.width} height={obj.height} fill="#FFFFFF" opacity={0.45} />
+          <Text
+            text="Removing background…"
+            width={obj.width}
+            y={obj.height / 2 - 6 / processingZoom}
+            align="center"
+            fontSize={11 / processingZoom}
+            fill="#2C2C2A"
+          />
+        </Group>
+      )}
+    </>
   )
 })
