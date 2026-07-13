@@ -131,7 +131,7 @@ export function CanvasArea() {
       {dragOver && (
         <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-[#9A7B4F] bg-[#9A7B4F]/5 flex items-center justify-center">
           <span className="bg-white text-[#2C2C2A] text-sm px-4 py-2 rounded-full shadow-lg">
-            Drop images to add them to this slide
+            Drop images or PDFs to add them to this slide
           </span>
         </div>
       )}

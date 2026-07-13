@@ -36,7 +36,7 @@ export function ImageToolbar({ obj }: { obj: ImageObject }) {
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.pdf,.heic,.heif"
         className="hidden"
         onChange={e => {
           void onReplaceFile(e.target.files?.[0])

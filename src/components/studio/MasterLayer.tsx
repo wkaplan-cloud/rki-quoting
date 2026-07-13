@@ -1,7 +1,14 @@
 'use client'
 import { Group, Text, Image as KonvaImage } from 'react-konva'
 import { PAGE_W, PAGE_H, MASTER_SIDE, COLORS } from '@/lib/studio/constants'
-import { useKonvaImage } from '@/lib/studio/images'
+import { useTrimmedLogo } from '@/lib/studio/images'
+
+// Logo sizing: the TRIMMED content (whitespace removed) fits this box, so
+// every org's logo carries the same quiet visual weight bottom-right,
+// whatever its file dimensions or padding.
+const LOGO_MAX_W = 110
+const LOGO_MAX_H = 26
+const LOGO_BOTTOM = 20
 
 // Master layout drawn INSIDE the Konva stage — the same group renders in the
 // editor, thumbnails, presentation and PDF export, so all four match exactly.
@@ -25,15 +32,14 @@ export function MasterGroup({
   onHeadingDblClick?: () => void
   hideHeading?: boolean
 }) {
-  const logo = useKonvaImage(logoUrl)
+  const logo = useTrimmedLogo(logoUrl)
 
-  // Fit logo into a 140×36 box, bottom-right
   let logoW = 0
   let logoH = 0
   if (logo) {
-    const scale = Math.min(140 / logo.naturalWidth, 36 / logo.naturalHeight)
-    logoW = logo.naturalWidth * scale
-    logoH = logo.naturalHeight * scale
+    const scale = Math.min(LOGO_MAX_W / logo.crop.width, LOGO_MAX_H / logo.crop.height)
+    logoW = logo.crop.width * scale
+    logoH = logo.crop.height * scale
   }
 
   const showPlaceholder = interactive && !heading
@@ -75,11 +81,13 @@ export function MasterGroup({
       />
       {logo && (
         <KonvaImage
-          image={logo}
+          image={logo.image}
+          crop={logo.crop}
           x={PAGE_W - MASTER_SIDE - logoW}
-          y={PAGE_H - 18 - logoH}
+          y={PAGE_H - LOGO_BOTTOM - logoH}
           width={logoW}
           height={logoH}
+          opacity={0.92}
           listening={false}
         />
       )}

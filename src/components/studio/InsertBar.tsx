@@ -99,7 +99,7 @@ export function InsertBar() {
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.pdf,.heic,.heif"
         multiple
         className="hidden"
         onChange={e => {

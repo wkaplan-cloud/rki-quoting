@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { compressImage } from '@/lib/compressImage'
 import { useStudioStore, newId } from './store'
 import { gridPlacements } from './autoLayout'
 import type { ImageObject } from './types'
@@ -61,15 +60,234 @@ export function useKonvaImage(url: string | null): HTMLImageElement | undefined 
   return img
 }
 
+// ── Logo whitespace trimming ────────────────────────────────────────────────
+// Org logos arrive with wildly different padding and aspect ratios. Trimming
+// the transparent/near-white border once (cached per URL) lets the master
+// layout size every logo by its actual visible content, so all presentations
+// carry the same visual weight bottom-right.
+
+export interface TrimmedLogo {
+  image: HTMLImageElement
+  crop: { x: number; y: number; width: number; height: number }
+}
+
+const trimCache = new Map<string, TrimmedLogo>()
+
+function computeContentCrop(img: HTMLImageElement): TrimmedLogo['crop'] {
+  const full = { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }
+  try {
+    // Analyse at a reduced size — plenty for finding the content box
+    const scale = Math.min(1, 400 / Math.max(img.naturalWidth, img.naturalHeight))
+    const w = Math.max(1, Math.round(img.naturalWidth * scale))
+    const h = Math.max(1, Math.round(img.naturalHeight * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return full
+    ctx.drawImage(img, 0, 0, w, h)
+    const { data } = ctx.getImageData(0, 0, w, h)
+
+    let minX = w
+    let minY = h
+    let maxX = -1
+    let maxY = -1
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4
+        const a = data[i + 3]
+        if (a < 16) continue // transparent
+        if (data[i] > 245 && data[i + 1] > 245 && data[i + 2] > 245) continue // near-white
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+    }
+    if (maxX < 0 || maxY < 0) return full // blank/all-white logo
+
+    // Small breathing room around the content
+    const pad = Math.max(1, Math.round(Math.max(w, h) * 0.02))
+    minX = Math.max(0, minX - pad)
+    minY = Math.max(0, minY - pad)
+    maxX = Math.min(w - 1, maxX + pad)
+    maxY = Math.min(h - 1, maxY + pad)
+
+    return {
+      x: minX / scale,
+      y: minY / scale,
+      width: (maxX - minX + 1) / scale,
+      height: (maxY - minY + 1) / scale,
+    }
+  } catch {
+    return full // tainted canvas or decode oddity — use the full image
+  }
+}
+
+export function useTrimmedLogo(url: string | null): TrimmedLogo | undefined {
+  const img = useKonvaImage(url)
+  const [trimmed, setTrimmed] = useState<TrimmedLogo | undefined>(() =>
+    url ? trimCache.get(url) : undefined
+  )
+  useEffect(() => {
+    if (!url || !img) {
+      setTrimmed(undefined)
+      return
+    }
+    const cached = trimCache.get(url)
+    if (cached) {
+      setTrimmed(cached)
+      return
+    }
+    const result = { image: img, crop: computeContentCrop(img) }
+    trimCache.set(url, result)
+    setTrimmed(result)
+  }, [url, img])
+  return trimmed
+}
+
+// ── File conversion ─────────────────────────────────────────────────────────
+// Anything a designer drops should just work: any picture format the browser
+// can decode, HEIC iPhone photos (converted via heic2any) and PDFs (first
+// page rendered via pdf.js). Everything is normalised to a bounded JPEG
+// before upload, so the input size cap can be generous.
+
+const MAX_INPUT_MB = 25
+const MAX_DIM = 2400
+const JPEG_QUALITY = 0.82
+
+function looksLikePdf(file: File) {
+  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+}
+
+function looksLikeHeic(file: File) {
+  return /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name)
+}
+
+function looksLikeImage(file: File) {
+  return (
+    file.type.startsWith('image/') ||
+    /\.(jpe?g|png|webp|gif|bmp|avif|svg|tiff?|hei[cf])$/i.test(file.name)
+  )
+}
+
+export function isImportableFile(file: File) {
+  return looksLikeImage(file) || looksLikePdf(file)
+}
+
+export function extractImageFiles(dt: DataTransfer | null): File[] {
+  if (!dt) return []
+  return Array.from(dt.files).filter(isImportableFile)
+}
+
+function canvasToJpegFile(canvas: HTMLCanvasElement, name: string): Promise<File> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      blob => {
+        if (!blob) {
+          reject(new Error('Could not process image'))
+          return
+        }
+        resolve(new File([blob], name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }))
+      },
+      'image/jpeg',
+      JPEG_QUALITY
+    )
+  })
+}
+
+// Decode any browser-supported image into a white-backed, size-capped canvas
+function decodeToCanvas(src: Blob, name: string): Promise<HTMLCanvasElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(src)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      // SVGs can report 0 intrinsic dimensions — default to a sensible size
+      let width = img.naturalWidth || 800
+      let height = img.naturalHeight || 600
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const ratio = Math.min(MAX_DIM / width, MAX_DIM / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Could not process image'))
+        return
+      }
+      // White base so transparency doesn't turn black in JPEG
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillRect(0, 0, width, height)
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error(`Couldn't read ${name}`))
+    }
+    img.src = url
+  })
+}
+
+async function pdfFirstPageToJpeg(file: File): Promise<File> {
+  const pdfjs = await import('pdfjs-dist')
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs'
+  const loadingTask = pdfjs.getDocument({ data: await file.arrayBuffer() })
+  try {
+    const doc = await loadingTask.promise
+    const page = await doc.getPage(1)
+    const base = page.getViewport({ scale: 1 })
+    const scale = Math.min(MAX_DIM / base.width, MAX_DIM / base.height, 4)
+    const viewport = page.getViewport({ scale })
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.ceil(viewport.width)
+    canvas.height = Math.ceil(viewport.height)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Could not process PDF')
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    await page.render({ canvasContext: ctx, canvas, viewport }).promise
+    return await canvasToJpegFile(canvas, file.name)
+  } finally {
+    void loadingTask.destroy()
+  }
+}
+
+async function prepareImageFile(file: File): Promise<File> {
+  if (file.size > MAX_INPUT_MB * 1024 * 1024) {
+    throw new Error(`${file.name} is too large — please keep files under ${MAX_INPUT_MB}MB`)
+  }
+  if (looksLikePdf(file)) {
+    return pdfFirstPageToJpeg(file)
+  }
+  try {
+    const canvas = await decodeToCanvas(file, file.name)
+    return await canvasToJpegFile(canvas, file.name)
+  } catch (err) {
+    // HEIC/HEIF photos can't be decoded by most browsers — convert first
+    if (looksLikeHeic(file)) {
+      const heic2any = (await import('heic2any')).default
+      const converted = (await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })) as Blob
+      const canvas = await decodeToCanvas(converted, file.name)
+      return canvasToJpegFile(canvas, file.name)
+    }
+    throw err instanceof Error ? err : new Error(`Couldn't read ${file.name}`)
+  }
+}
+
 // ── Upload pipeline ─────────────────────────────────────────────────────────
 
 async function uploadFile(file: File): Promise<{ url: string; width: number; height: number }> {
   const { boardId } = useStudioStore.getState()
-  // Compress in the browser, then upload through the API route — storage
-  // buckets in this app only accept writes via supabaseAdmin (see route)
-  const compressed = await compressImage(file)
+  // Normalise/compress in the browser, then upload through the API route —
+  // storage buckets in this app only accept writes via supabaseAdmin
+  const prepared = await prepareImageFile(file)
   const formData = new FormData()
-  formData.append('files', compressed)
+  formData.append('files', prepared)
   const res = await fetch(`/api/studio/boards/${boardId}/images`, { method: 'POST', body: formData })
   const data = await res.json().catch(() => ({}))
   if (!res.ok || !data.urls?.[0]) throw new Error(data.error ?? 'Upload failed')
@@ -78,20 +296,11 @@ async function uploadFile(file: File): Promise<{ url: string; width: number; hei
   return { url, width: img.naturalWidth, height: img.naturalHeight }
 }
 
-function isImportableImage(file: File) {
-  return ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'].includes(file.type)
-}
-
-export function extractImageFiles(dt: DataTransfer | null): File[] {
-  if (!dt) return []
-  return Array.from(dt.files).filter(isImportableImage)
-}
-
 // Import one or more image files onto the current slide. Multiple images are
 // auto-arranged into a neat grid; a single image lands at `at` (page coords)
 // or centred. The whole import is one undo step.
 export async function importImageFiles(files: File[], at?: { x: number; y: number }): Promise<void> {
-  const images = files.filter(isImportableImage)
+  const images = files.filter(isImportableFile)
   if (images.length === 0) return
 
   const uploaded = await Promise.all(images.map(uploadFile))
@@ -124,7 +333,7 @@ export async function importImageFiles(files: File[], at?: { x: number; y: numbe
 // Replace the image inside an existing object's frame: contain-fit the new
 // source into the old width/height, clear any crop, keep position/rotation/lock.
 export async function replaceImage(objId: string, file: File): Promise<void> {
-  if (!isImportableImage(file)) throw new Error('Please choose an image file')
+  if (!isImportableFile(file)) throw new Error('Please choose an image or PDF file')
   const uploaded = await uploadFile(file)
   const store = useStudioStore.getState()
   const slide = store.slides.find(sl => sl.id === store.currentSlideId)
