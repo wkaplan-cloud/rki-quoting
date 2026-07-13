@@ -153,8 +153,10 @@ export function useTrimmedLogo(url: string | null): TrimmedLogo | undefined {
 // before upload, so the input size cap can be generous.
 
 const MAX_INPUT_MB = 25
-const MAX_DIM = 2400
-const JPEG_QUALITY = 0.82
+// 3600px longest side keeps a FULL-BLEED image on A3 at ~218dpi effective
+// (grid-sized images land at 300dpi+). Don't lower this — boards are printed.
+const MAX_DIM = 3600
+const JPEG_QUALITY = 0.85
 
 function looksLikePdf(file: File) {
   return file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
