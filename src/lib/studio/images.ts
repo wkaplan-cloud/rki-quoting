@@ -1,10 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { compressImage } from '@/lib/compressImage'
 import { useStudioStore, newId } from './store'
 import { gridPlacements } from './autoLayout'
-import { STORAGE_BUCKET } from './constants'
 import type { ImageObject } from './types'
 
 // ── Image element cache ─────────────────────────────────────────────────────
@@ -66,18 +64,18 @@ export function useKonvaImage(url: string | null): HTMLImageElement | undefined 
 // ── Upload pipeline ─────────────────────────────────────────────────────────
 
 async function uploadFile(file: File): Promise<{ url: string; width: number; height: number }> {
-  const { orgId, boardId } = useStudioStore.getState()
+  const { boardId } = useStudioStore.getState()
+  // Compress in the browser, then upload through the API route — storage
+  // buckets in this app only accept writes via supabaseAdmin (see route)
   const compressed = await compressImage(file)
-  const ext = compressed.type === 'image/png' ? 'png' : 'jpg'
-  const path = `${orgId}/${boardId}/${newId()}.${ext}`
-  const supabase = createClient()
-  const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(path, compressed, { contentType: compressed.type })
-  if (error) throw new Error(error.message)
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
-  const img = await loadImage(data.publicUrl)
-  return { url: data.publicUrl, width: img.naturalWidth, height: img.naturalHeight }
+  const formData = new FormData()
+  formData.append('files', compressed)
+  const res = await fetch(`/api/studio/boards/${boardId}/images`, { method: 'POST', body: formData })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.urls?.[0]) throw new Error(data.error ?? 'Upload failed')
+  const url: string = data.urls[0]
+  const img = await loadImage(url)
+  return { url, width: img.naturalWidth, height: img.naturalHeight }
 }
 
 function isImportableImage(file: File) {
