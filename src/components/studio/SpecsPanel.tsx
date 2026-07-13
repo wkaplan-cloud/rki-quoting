@@ -132,7 +132,13 @@ export function SpecsPanel() {
           </Field>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Quantity">
-              <TextInput value={spec.quantity} onChange={v => update({ quantity: v })} placeholder="2" />
+              {/* Number-only: this pulls straight into quote line item quantity */}
+              <TextInput
+                value={spec.quantity}
+                onChange={v => update({ quantity: v.replace(/[^0-9.]/g, '') })}
+                placeholder="2"
+                inputMode="decimal"
+              />
             </Field>
             <Field label="Unit">
               <TextInput value={spec.unit} onChange={v => update({ unit: v })} placeholder="each" />
@@ -247,11 +253,13 @@ function TextInput({
   onChange,
   placeholder,
   list,
+  inputMode,
 }: {
   value: string
   onChange: (v: string) => void
   placeholder?: string
   list?: string
+  inputMode?: 'decimal'
 }) {
   return (
     <input
@@ -259,6 +267,7 @@ function TextInput({
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       list={list}
+      inputMode={inputMode}
       className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
     />
   )

@@ -1,7 +1,9 @@
 'use client'
-import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight } from 'lucide-react'
+import { useState } from 'react'
+import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, FileText } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
+import { ConvertToQuoteModal } from './ConvertToQuoteModal'
 
 // Board-wide specs overview: every spec'd object across all slides, grouped
 // by slide in deck order. Clicking an entry jumps to its slide, selects the
@@ -10,6 +12,7 @@ import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
 export function SpecsListPanel() {
   const slides = useStudioStore(s => s.slides)
   const specs = useStudioStore(s => s.specs)
+  const [converting, setConverting] = useState(false)
 
   // Only specs whose object is still live on a slide — deleted objects keep
   // their spec in memory for undo, but shouldn't appear in the overview
@@ -66,6 +69,28 @@ export function SpecsListPanel() {
             </div>
           ))}
         </div>
+      )}
+
+      {total > 0 && (
+        <div className="flex-shrink-0 p-2 border-t border-[#D8D3C8]">
+          <button
+            type="button"
+            onClick={() => setConverting(true)}
+            disabled={approved === 0}
+            title="Pull approved specs into a new quoting project"
+            className="w-full flex items-center justify-center gap-1.5 h-8 text-xs font-medium bg-[#C4A46B] text-[#1A1A18] rounded-lg hover:bg-[#D4B47B] transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <FileText size={13} /> Create quote
+          </button>
+        </div>
+      )}
+
+      {converting && (
+        <ConvertToQuoteModal
+          approvedCount={approved}
+          draftCount={total - approved}
+          onClose={() => setConverting(false)}
+        />
       )}
     </div>
   )
