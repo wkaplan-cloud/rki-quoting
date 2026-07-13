@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images, ClipboardList } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type {
   StudioSlide,
@@ -16,6 +16,7 @@ import { SlidePanel } from './SlidePanel'
 import { CanvasArea } from './CanvasArea'
 import { AssetPanel } from './AssetPanel'
 import { SpecsPanel } from './SpecsPanel'
+import { SpecsListPanel } from './SpecsListPanel'
 import { PresentationMode } from './PresentationMode'
 import { ExportRunner } from './ExportRunner'
 
@@ -39,12 +40,30 @@ export default function EditorShell(props: EditorShellProps) {
   const [ready, setReady] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [showAssets, setShowAssets] = useState(false)
+  const [showSpecs, setShowSpecs] = useState(false)
   const presenting = useStudioStore(s => s.presenting)
   const saveState = useStudioStore(s => s.saveState)
+  // The board-wide specs list yields to the per-object spec editor while
+  // it's open, and comes back when the editor closes
+  const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
 
   useEffect(() => {
-    setShowAssets(localStorage.getItem('studio-assets-open') === 'true')
+    // One right-hand panel at a time — if both were somehow stored open,
+    // Assets wins
+    const assets = localStorage.getItem('studio-assets-open') === 'true'
+    setShowAssets(assets)
+    setShowSpecs(!assets && localStorage.getItem('studio-specs-open') === 'true')
   }, [])
+
+  function togglePanel(panel: 'assets' | 'specs') {
+    const next = panel === 'assets' ? !showAssets : !showSpecs
+    const assets = panel === 'assets' ? next : false
+    const specs = panel === 'specs' ? next : false
+    setShowAssets(assets)
+    setShowSpecs(specs)
+    localStorage.setItem('studio-assets-open', String(assets))
+    localStorage.setItem('studio-specs-open', String(specs))
+  }
 
   // Initialise the store from server data once
   useEffect(() => {
@@ -172,18 +191,23 @@ export default function EditorShell(props: EditorShellProps) {
 
         <button
           type="button"
-          onClick={() =>
-            setShowAssets(v => {
-              localStorage.setItem('studio-assets-open', String(!v))
-              return !v
-            })
-          }
+          onClick={() => togglePanel('assets')}
           className={`flex items-center gap-1.5 h-8 px-3 text-xs rounded-lg transition-colors cursor-pointer ${
             showAssets ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
           }`}
           title="Project asset library"
         >
           <Images size={13} /> Assets
+        </button>
+        <button
+          type="button"
+          onClick={() => togglePanel('specs')}
+          className={`flex items-center gap-1.5 h-8 px-3 text-xs rounded-lg transition-colors cursor-pointer ${
+            showSpecs ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+          }`}
+          title="All specs on this board"
+        >
+          <ClipboardList size={13} /> Specs
         </button>
         <button
           type="button"
@@ -207,6 +231,7 @@ export default function EditorShell(props: EditorShellProps) {
         <SlidePanel />
         <CanvasArea />
         {showAssets && <AssetPanel />}
+        {showSpecs && !specEditorOpen && <SpecsListPanel />}
         <SpecsPanel />
       </div>
 
