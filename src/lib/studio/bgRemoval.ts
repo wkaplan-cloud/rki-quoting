@@ -16,6 +16,44 @@ import type { ImageObject, StudioObject, StudioSlide } from './types'
 //   position, size, rotation, layer order and specs are untouched.
 // - Every swap goes through store.commit → one undo step + autosave.
 
+// Silent model warm-up, called when a board opens. The ONNX model downloads
+// ONCE PER DEVICE (browser-cached; ~40MB) — not per board, not per removal —
+// so after the first board this completes instantly and nothing is shown.
+// onProgress receives 0..1 while downloading, then null when done/failed.
+let preloadStarted = false
+export function preloadBgRemovalAssets(onProgress: (fraction: number | null) => void): void {
+  if (preloadStarted) {
+    onProgress(null)
+    return
+  }
+  preloadStarted = true
+  const perFile = new Map<string, { current: number; total: number }>()
+  void (async () => {
+    try {
+      const { preload } = await import('@imgly/background-removal')
+      await preload({
+        progress: (key: string, current: number, total: number) => {
+          perFile.set(key, { current, total })
+          let cur = 0
+          let tot = 0
+          perFile.forEach(v => {
+            cur += v.current
+            tot += v.total
+          })
+          onProgress(tot > 0 ? Math.min(1, cur / tot) : 0)
+        },
+      })
+    } catch {
+      // Silent by design — if the warm-up fails (offline, CDN hiccup), the
+      // first Remove Background click retries the download and surfaces
+      // its own error. Allow the next board open to try warming up again.
+      preloadStarted = false
+    } finally {
+      onProgress(null)
+    }
+  })()
+}
+
 function findObject(objId: string): { slide: StudioSlide; obj: ImageObject } | null {
   for (const slide of useStudioStore.getState().slides) {
     const obj = slide.objects.find(o => o.id === objId)

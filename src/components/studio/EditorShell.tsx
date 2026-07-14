@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images, ClipboardList } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
+import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
 import type {
   StudioSlide,
   BoardLastState,
@@ -53,6 +54,18 @@ export default function EditorShell(props: EditorShellProps) {
     const assets = localStorage.getItem('studio-assets-open') === 'true'
     setShowAssets(assets)
     setShowSpecs(!assets && localStorage.getItem('studio-specs-open') === 'true')
+  }, [])
+
+  // Warm up the background-removal model silently while the user works.
+  // Only surfaces the "Refining canvas" bar if there's a real download
+  // happening (first visit on this device) — cached opens show nothing.
+  const [refining, setRefining] = useState<number | null>(null)
+  useEffect(() => {
+    const started = Date.now()
+    preloadBgRemovalAssets(fraction => {
+      if (fraction === null) setRefining(null)
+      else if (Date.now() - started > 500) setRefining(fraction)
+    })
   }, [])
 
   function togglePanel(panel: 'assets' | 'specs') {
@@ -188,6 +201,20 @@ export default function EditorShell(props: EditorShellProps) {
         </span>
 
         <div className="flex-1" />
+
+        {refining !== null && (
+          <span className="flex items-center gap-2 mr-1" title="Preparing image tools (one-time download)">
+            <span className="text-[10px] text-white/40 uppercase tracking-wider whitespace-nowrap">
+              Refining canvas
+            </span>
+            <span className="w-20 h-1 rounded-full bg-white/10 overflow-hidden">
+              <span
+                className="block h-full bg-[#C4A46B] rounded-full origin-left transition-transform duration-300"
+                style={{ transform: `scaleX(${refining})` }}
+              />
+            </span>
+          </span>
+        )}
 
         <button
           type="button"
