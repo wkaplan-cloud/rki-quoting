@@ -1,25 +1,57 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Search, Presentation, ArrowRight, UserPlus } from 'lucide-react'
+import { Search, Presentation, Plus, UserPlus } from 'lucide-react'
+import { NewBoardModal } from './NewBoardModal'
 
-interface ClientRow {
+interface ClientOption {
   id: string
   clientName: string
   company: string
-  boardCount: number
-  lastEdited: string | null
 }
 
-export function StudioHome({ clients }: { clients: ClientRow[] }) {
+interface BoardRow {
+  id: string
+  name: string
+  updatedAt: string
+  clientId: string
+  clientName: string
+  company: string
+}
+
+const RECENT_COUNT = 6
+
+export function StudioHome({
+  orgId,
+  logoUrl,
+  clients,
+  boards,
+}: {
+  orgId: string
+  logoUrl: string | null
+  clients: ClientOption[]
+  boards: BoardRow[]
+}) {
   const [query, setQuery] = useState('')
+  const [creating, setCreating] = useState(false)
 
   const q = query.trim().toLowerCase()
   const filtered = q
-    ? clients.filter(
-        c => c.clientName.toLowerCase().includes(q) || c.company.toLowerCase().includes(q)
+    ? boards.filter(
+        b =>
+          b.name.toLowerCase().includes(q) ||
+          b.clientName.toLowerCase().includes(q) ||
+          b.company.toLowerCase().includes(q)
       )
-    : clients
+    : boards
+
+  // boards already arrives sorted by updated_at desc from the server
+  const { recent, rest, showSplit } = useMemo(() => {
+    if (q || filtered.length <= RECENT_COUNT) {
+      return { recent: [] as BoardRow[], rest: filtered, showSplit: false }
+    }
+    return { recent: filtered.slice(0, RECENT_COUNT), rest: filtered.slice(RECENT_COUNT), showSplit: true }
+  }, [filtered, q])
 
   return (
     <div>
@@ -29,7 +61,7 @@ export function StudioHome({ clients }: { clients: ClientRow[] }) {
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search clients…"
+            placeholder="Search boards or clients…"
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
           />
         </div>
@@ -39,46 +71,67 @@ export function StudioHome({ clients }: { clients: ClientRow[] }) {
         >
           <UserPlus size={13} /> New client
         </Link>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="flex items-center gap-1.5 text-xs font-medium px-4 py-2.5 rounded-lg bg-[#1A1A18] text-white hover:bg-[#9A7B4F] transition-colors cursor-pointer"
+        >
+          <Plus size={13} /> New board
+        </button>
       </div>
 
       {filtered.length === 0 ? (
         <div className="text-center py-16">
           <Presentation size={32} className="mx-auto text-[#D8D3C8] mb-3" />
           <p className="text-sm text-[#8A877F]">
-            {clients.length === 0 ? 'Add your first client to start a presentation board' : 'No clients match your search'}
+            {boards.length === 0 ? 'Create your first presentation board' : 'No boards match your search'}
           </p>
         </div>
+      ) : showSplit ? (
+        <>
+          <SectionHeading>Recent</SectionHeading>
+          <BoardGrid boards={recent} />
+          <div className="h-px bg-[#D8D3C8] my-6" />
+          <SectionHeading>All boards</SectionHeading>
+          <BoardGrid boards={rest} />
+        </>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(c => (
-            <Link
-              key={c.id}
-              href={`/studio/client/${c.id}`}
-              className="group bg-white rounded-xl border border-[#D8D3C8] p-5 hover:border-[#9A7B4F] transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="text-sm font-medium text-[#1A1A18] truncate">{c.clientName}</h3>
-                  {c.company && <p className="text-xs text-[#8A877F] mt-0.5 truncate">{c.company}</p>}
-                </div>
-                <ArrowRight
-                  size={15}
-                  className="flex-shrink-0 mt-1 text-[#D8D3C8] group-hover:text-[#9A7B4F] group-hover:translate-x-0.5 transition-all"
-                />
-              </div>
-              <p className="text-[11px] text-[#8A877F] mt-4">
-                {c.boardCount === 0
-                  ? 'No boards yet'
-                  : `${c.boardCount} board${c.boardCount > 1 ? 's' : ''}${
-                      c.lastEdited
-                        ? ` · edited ${new Date(c.lastEdited).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`
-                        : ''
-                    }`}
-              </p>
-            </Link>
-          ))}
-        </div>
+        <BoardGrid boards={rest} />
       )}
+
+      {creating && (
+        <NewBoardModal orgId={orgId} logoUrl={logoUrl} clients={clients} onClose={() => setCreating(false)} />
+      )}
+    </div>
+  )
+}
+
+function SectionHeading({ children }: { children: string }) {
+  return (
+    <h2 className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest mb-3">{children}</h2>
+  )
+}
+
+function BoardGrid({ boards }: { boards: BoardRow[] }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {boards.map(b => (
+        <Link
+          key={b.id}
+          href={`/studio/board/${b.id}`}
+          className="group bg-white rounded-xl border border-[#D8D3C8] p-5 hover:border-[#9A7B4F] transition-colors"
+        >
+          <h3 className="text-sm font-medium text-[#1A1A18] truncate">{b.name}</h3>
+          <p className="text-xs text-[#8A877F] mt-0.5 truncate">
+            {b.clientName}
+            {b.company && ` — ${b.company}`}
+          </p>
+          <p className="text-[11px] text-[#8A877F] mt-4">
+            Edited{' '}
+            {new Date(b.updatedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
+        </Link>
+      ))}
     </div>
   )
 }

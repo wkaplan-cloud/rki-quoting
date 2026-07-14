@@ -44,7 +44,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
     await Promise.all([
       supabase
         .from('studio_slides')
-        .select('id, board_id, org_id, name, heading, sort_order, objects')
+        .select('id, board_id, org_id, name, heading, sort_order, objects, is_cover')
         .eq('board_id', board.id)
         .order('sort_order'),
       supabase
@@ -78,7 +78,11 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
       boardName={board.name}
       businessName={settings.business_name ?? ''}
       logoUrl={settings.logo_url ?? null}
-      slides={slides.length ? slides : [{ id: crypto.randomUUID(), name: 'Slide 1', heading: '', sortOrder: 0, objects: [] }]}
+      slides={
+        slides.length
+          ? slides
+          : [{ id: crypto.randomUUID(), name: 'Slide 1', heading: '', sortOrder: 0, objects: [], isCover: false }]
+      }
       assets={assets}
       specs={specs}
       suppliers={suppliers}

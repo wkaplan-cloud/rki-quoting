@@ -101,16 +101,18 @@ export function CanvasStage({
         {slide.objects.map(obj => (
           <ObjectNode key={obj.id} obj={obj} interactive />
         ))}
-        <MasterGroup
-          title={clientName}
-          heading={slide.heading}
-          pageNumber={slideIndex + 1}
-          pageCount={slides.length}
-          logoUrl={logoUrl}
-          interactive
-          hideHeading={editingHeading}
-          onHeadingDblClick={() => useStudioStore.getState().setEditingHeading(true)}
-        />
+        {!slide.isCover && (
+          <MasterGroup
+            title={clientName}
+            heading={slide.heading}
+            pageNumber={slideIndex + 1}
+            pageCount={slides.length}
+            logoUrl={logoUrl}
+            interactive
+            hideHeading={editingHeading}
+            onHeadingDblClick={() => useStudioStore.getState().setEditingHeading(true)}
+          />
+        )}
       </Layer>
       <Layer>
         <SpecIndicators />

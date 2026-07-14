@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Plus, Presentation, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { createStudioBoard } from '@/lib/studio/createBoard'
 
 interface BoardRow {
   id: string
@@ -14,10 +15,14 @@ interface BoardRow {
 export function ClientBoards({
   orgId,
   clientId,
+  clientName,
+  logoUrl,
   initialBoards,
 }: {
   orgId: string
   clientId: string
+  clientName: string
+  logoUrl: string | null
   initialBoards: BoardRow[]
 }) {
   const router = useRouter()
@@ -26,22 +31,15 @@ export function ClientBoards({
   const [busy, setBusy] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
 
-  // Creating a board asks for one thing only: its name
+  // Creating a board asks for one thing only: its name — the cover slide
+  // (logo + client name + this name centred) and first content slide are
+  // composed automatically
   async function createBoard(name: string) {
     setCreating(false)
     if (!name.trim()) return
     setBusy(true)
-    const supabase = createClient()
     try {
-      const boardId = crypto.randomUUID()
-      const { error } = await supabase
-        .from('studio_boards')
-        .insert({ id: boardId, org_id: orgId, client_id: clientId, name: name.trim() })
-      if (error) throw new Error(error.message)
-      const { error: slideError } = await supabase
-        .from('studio_slides')
-        .insert({ board_id: boardId, org_id: orgId, name: 'Slide 1', sort_order: 0 })
-      if (slideError) throw new Error(slideError.message)
+      const boardId = await createStudioBoard({ orgId, clientId, clientName, boardName: name.trim(), logoUrl })
       router.push(`/studio/board/${boardId}`)
     } catch (e) {
       toast.error((e as Error).message || 'Could not create board')

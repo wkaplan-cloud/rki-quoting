@@ -480,8 +480,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   addSlide: name => {
     const id = newId()
     get().commit(slides => [
+      // The "new slide" input is the only name a user gives this slide —
+      // it becomes the visible heading too, so the sidebar label isn't the
+      // only place it appears
       ...slides,
-      { id, name, heading: '', sortOrder: slides.length, objects: [] },
+      { id, name, heading: name, sortOrder: slides.length, objects: [], isCover: false },
     ])
     set({ currentSlideId: id, selectedIds: [] })
   },
@@ -491,7 +494,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
 
   setHeading: (id, heading) => {
-    get().commit(slides => slides.map(sl => (sl.id === id ? { ...sl, heading } : sl)))
+    // Keep the sidebar label in step with the heading the user actually
+    // edits on the canvas — otherwise it stays "Slide 2" forever. Only
+    // syncs on a non-empty heading so clearing it doesn't blank the label.
+    get().commit(slides =>
+      slides.map(sl =>
+        sl.id === id ? { ...sl, heading, name: heading.trim() ? heading : sl.name } : sl
+      )
+    )
   },
 
   duplicateSlide: id => {
@@ -612,6 +622,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         heading: sl.heading,
         sort_order: sl.sortOrder,
         objects: sl.objects,
+        is_cover: sl.isCover,
         updated_at: new Date().toISOString(),
       }))
     const toDelete = dirty.filter(id => !currentIds.has(id))

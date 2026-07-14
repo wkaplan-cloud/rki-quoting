@@ -77,6 +77,10 @@ export interface StudioSlide {
   heading: string
   sortOrder: number
   objects: StudioObject[]
+  // The board's title slide — logo/client name/project detail are composed
+  // as ordinary objects, so the editor skips the standard master layout
+  // (heading/title/page number/corner logo) here to avoid a visual clash.
+  isCover: boolean
 }
 
 export interface BoardLastState {
@@ -211,7 +215,9 @@ export interface MasterLayoutConfig {
 }
 
 export const DEFAULT_MASTER_LAYOUT: MasterLayoutConfig = {
-  showTitle: true,
+  // The small client-name label on every slide is redundant now that boards
+  // open on a dedicated cover slide with the client's name front and centre
+  showTitle: false,
   showHeading: true,
   showPageNumber: true,
   showLogo: true,
@@ -239,6 +245,7 @@ export interface StudioSlideRow {
   heading: string
   sort_order: number
   objects: StudioObject[]
+  is_cover?: boolean
 }
 
 export function slideFromRow(row: StudioSlideRow): StudioSlide {
@@ -248,5 +255,6 @@ export function slideFromRow(row: StudioSlideRow): StudioSlide {
     heading: row.heading,
     sortOrder: row.sort_order,
     objects: Array.isArray(row.objects) ? row.objects : [],
+    isCover: row.is_cover ?? false,
   }
 }

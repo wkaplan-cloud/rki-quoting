@@ -1,15 +1,18 @@
 'use client'
-import { Group, Text, Image as KonvaImage } from 'react-konva'
+import { Group, Text, Rect, Image as KonvaImage } from 'react-konva'
 import { PAGE_W, PAGE_H, MASTER_SIDE, COLORS } from '@/lib/studio/constants'
 import { useTrimmedLogo } from '@/lib/studio/images'
 import { useStudioStore } from '@/lib/studio/store'
 
 // Logo sizing: the TRIMMED content (whitespace removed) fits this box, so
 // every org's logo carries the same quiet visual weight bottom-right,
-// whatever its file dimensions or padding.
-const LOGO_MAX_W = 110
-const LOGO_MAX_H = 26
-const LOGO_BOTTOM = 20
+// whatever its file dimensions or padding. Sized up from the original
+// 110×26 and given a translucent white backing plate — at the old size and
+// opacity it disappeared entirely against busy photo backgrounds.
+const LOGO_MAX_W = 160
+const LOGO_MAX_H = 40
+const LOGO_BOTTOM = 22
+const LOGO_PAD = 10
 
 // Master layout drawn INSIDE the Konva stage — the same group renders in the
 // editor, thumbnails, presentation and PDF export, so all four match exactly.
@@ -87,16 +90,29 @@ export function MasterGroup({
         />
       )}
       {logo && (
-        <KonvaImage
-          image={logo.image}
-          crop={logo.crop}
-          x={PAGE_W - MASTER_SIDE - logoW}
-          y={PAGE_H - LOGO_BOTTOM - logoH}
-          width={logoW}
-          height={logoH}
-          opacity={0.92}
-          listening={false}
-        />
+        <Group listening={false}>
+          <Rect
+            x={PAGE_W - MASTER_SIDE - logoW - LOGO_PAD}
+            y={PAGE_H - LOGO_BOTTOM - logoH - LOGO_PAD}
+            width={logoW + LOGO_PAD * 2}
+            height={logoH + LOGO_PAD * 2}
+            fill="#FFFFFF"
+            opacity={0.82}
+            cornerRadius={6}
+            shadowColor="rgba(26,26,24,0.18)"
+            shadowBlur={10}
+            shadowOffsetY={2}
+          />
+          <KonvaImage
+            image={logo.image}
+            crop={logo.crop}
+            x={PAGE_W - MASTER_SIDE - logoW}
+            y={PAGE_H - LOGO_BOTTOM - logoH}
+            width={logoW}
+            height={logoH}
+            listening={false}
+          />
+        </Group>
       )}
     </Group>
   )

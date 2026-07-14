@@ -95,7 +95,7 @@ export interface TrimmedLogo {
 
 const trimCache = new Map<string, TrimmedLogo>()
 
-function computeContentCrop(img: HTMLImageElement): TrimmedLogo['crop'] {
+export function computeContentCrop(img: HTMLImageElement): TrimmedLogo['crop'] {
   const full = { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }
   try {
     // Analyse at a reduced size — plenty for finding the content box
