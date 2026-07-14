@@ -136,11 +136,21 @@ export function computeContentCrop(img: HTMLImageElement): TrimmedLogo['crop'] {
     maxX = Math.min(w - 1, maxX + pad)
     maxY = Math.min(h - 1, maxY + pad)
 
+    // Sanity check: a real logo mark rarely occupies less than a quarter of
+    // its canvas on both axes. A smaller result usually means the near-white
+    // cutoff above excluded genuine content (a lighter/thinner stroke read as
+    // "background"), leaving only the boldest fragment — e.g. one bold
+    // monogram letter surviving while the rest of a wordmark got trimmed
+    // away. Safer to show the whole logo than a wrong sliver of it.
+    const cropW = maxX - minX + 1
+    const cropH = maxY - minY + 1
+    if (cropW < w * 0.25 && cropH < h * 0.25) return full
+
     return {
       x: minX / scale,
       y: minY / scale,
-      width: (maxX - minX + 1) / scale,
-      height: (maxY - minY + 1) / scale,
+      width: cropW / scale,
+      height: cropH / scale,
     }
   } catch {
     return full // tainted canvas or decode oddity — use the full image
