@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { X, Plus, Trash2, ClipboardList } from 'lucide-react'
 import { useStudioStore, newId } from '@/lib/studio/store'
+import { createClient } from '@/lib/supabase/client'
 import type { StudioSpec, MaterialEntry, SpecSupplierOption } from '@/lib/studio/types'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
@@ -36,6 +37,7 @@ export function SpecsPanel() {
   const activePriceListIds = useStudioStore(s => s.activePriceListIds)
   const slides = useStudioStore(s => s.slides)
   const currentSlideId = useStudioStore(s => s.currentSlideId)
+  const assets = useStudioStore(s => s.assets)
 
   if (!objectId) return null
   // The panel follows its object — if the object left the current slide
@@ -44,11 +46,27 @@ export function SpecsPanel() {
   const obj = slide?.objects.find(o => o.id === objectId)
   if (!obj) return null
 
+  // The image's Asset Library name and this spec's name are the same idea
+  // for the same object — no reason to type it twice. A brand-new spec
+  // starts pre-filled from the asset's name (still freely editable after);
+  // typing a spec name for an asset that has none yet names the asset too,
+  // so it becomes searchable without a separate trip to the Assets panel.
+  const matchingAsset = obj.type === 'image' ? assets.find(a => a.url === obj.url) : undefined
   const spec: Omit<StudioSpec, 'id' | 'slideId'> & { id?: string } =
-    specs[objectId] ?? { ...EMPTY_SPEC, objectId }
+    specs[objectId] ?? { ...EMPTY_SPEC, objectId, specName: matchingAsset?.label ?? '' }
 
   const update = (patch: Partial<StudioSpec>) =>
     useStudioStore.getState().updateSpec(objectId, patch)
+
+  function setSpecName(name: string) {
+    update({ specName: name })
+    const trimmed = name.trim()
+    if (matchingAsset && !matchingAsset.label && trimmed) {
+      useStudioStore.getState().renameAsset(matchingAsset.id, trimmed)
+      const supabase = createClient()
+      void supabase.from('studio_assets').update({ label: trimmed }).eq('id', matchingAsset.id)
+    }
+  }
 
   function setSupplier(name: string) {
     const match = suppliers.find(su => su.name.toLowerCase() === name.trim().toLowerCase())
@@ -99,7 +117,7 @@ export function SpecsPanel() {
         {/* General */}
         <Section title="General">
           <Field label="Spec name">
-            <TextInput value={spec.specName} onChange={v => update({ specName: v })} placeholder="e.g. Lounge armchair" />
+            <TextInput value={spec.specName} onChange={setSpecName} placeholder="e.g. Lounge armchair" />
           </Field>
           <Field label="Description">
             <TextArea value={spec.description} onChange={v => update({ description: v })} rows={2} />
