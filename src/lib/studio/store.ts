@@ -32,6 +32,8 @@ interface InitProps {
   boardName: string
   businessName: string
   logoUrl: string | null
+  studioLogoUrl: string | null
+  orgLogoUrl: string | null
   slides: StudioSlide[]
   assets: StudioAsset[]
   specs: StudioSpec[]
@@ -49,6 +51,9 @@ interface StudioState {
   boardName: string
   businessName: string
   logoUrl: string | null
+  studioLogoUrl: string | null
+  orgLogoUrl: string | null
+  setStudioLogoUrl: (url: string | null) => void
   assets: StudioAsset[]
   masterLayout: MasterLayoutConfig
   suppliers: SpecSupplierOption[]
@@ -260,6 +265,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   boardName: '',
   businessName: '',
   logoUrl: null,
+  studioLogoUrl: null,
+  orgLogoUrl: null,
+  setStudioLogoUrl: url => set(s => ({ studioLogoUrl: url, logoUrl: url ?? s.orgLogoUrl })),
   assets: [],
   masterLayout: DEFAULT_MASTER_LAYOUT,
   suppliers: [],
@@ -296,6 +304,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       boardName: props.boardName,
       businessName: props.businessName,
       logoUrl: props.logoUrl,
+      studioLogoUrl: props.studioLogoUrl,
+      orgLogoUrl: props.orgLogoUrl,
       assets: props.assets,
       masterLayout: props.masterLayout,
       suppliers: props.suppliers,

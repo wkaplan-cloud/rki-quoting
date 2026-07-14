@@ -30,6 +30,8 @@ export interface EditorShellProps {
   boardName: string
   businessName: string
   logoUrl: string | null
+  studioLogoUrl: string | null
+  orgLogoUrl: string | null
   slides: StudioSlide[]
   assets: StudioAsset[]
   specs: StudioSpec[]

@@ -25,7 +25,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
 
   const { data: settings } = await supabaseAdmin
     .from('settings')
-    .select('studio_enabled, logo_url, business_name')
+    .select('studio_enabled, logo_url, studio_logo_url, business_name')
     .eq('org_id', orgId)
     .maybeSingle()
 
@@ -81,7 +81,9 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
       clientName={client?.client_name ?? ''}
       boardName={board.name}
       businessName={settings.business_name ?? ''}
-      logoUrl={settings.logo_url ?? null}
+      logoUrl={settings.studio_logo_url ?? settings.logo_url ?? null}
+      studioLogoUrl={settings.studio_logo_url ?? null}
+      orgLogoUrl={settings.logo_url ?? null}
       slides={
         slides.length
           ? slides

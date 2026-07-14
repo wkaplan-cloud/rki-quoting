@@ -1,5 +1,7 @@
 'use client'
-import { Palette } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Palette, Loader2, X } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useStudioStore } from '@/lib/studio/store'
 import { MASTER_THEMES } from '@/lib/studio/masterThemes'
 import { CONTENT_FONTS } from '@/lib/studio/contentFonts'
@@ -17,6 +19,42 @@ const MAX_BINDING_MM = 60
 export function MasterThemePanel() {
   const masterLayout = useStudioStore(s => s.masterLayout)
   const setMasterLayout = useStudioStore(s => s.setMasterLayout)
+  const studioLogoUrl = useStudioStore(s => s.studioLogoUrl)
+  const setStudioLogoUrl = useStudioStore(s => s.setStudioLogoUrl)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function uploadLogo(file: File | undefined) {
+    if (!file) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/studio/settings/logo', { method: 'POST', body: formData })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Upload failed')
+      setStudioLogoUrl(data.url)
+      toast.success('Studio logo updated')
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not upload logo')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function removeLogo() {
+    setUploading(true)
+    try {
+      const res = await fetch('/api/studio/settings/logo', { method: 'DELETE' })
+      if (!res.ok) throw new Error('Could not remove logo')
+      setStudioLogoUrl(null)
+      toast.success('Reverted to your organisation logo')
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not remove logo')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
     <div className="flex-shrink-0 w-[280px] h-full flex flex-col bg-[#F5F2EC] border-l border-[#D8D3C8]">
@@ -73,6 +111,57 @@ export function MasterThemePanel() {
             label="Show Company Logo"
           />
         </Row>
+
+        <div>
+          {studioLogoUrl ? (
+            <div className="flex items-center gap-2 rounded-lg border border-[#D8D3C8] bg-white px-2.5 py-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={studioLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain flex-shrink-0" />
+              <span className="flex-1 min-w-0 text-[10px] text-[#8A877F] truncate">Studio logo</span>
+              <button
+                type="button"
+                onClick={() => void removeLogo()}
+                disabled={uploading}
+                title="Remove — revert to your organisation logo"
+                className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <p className="text-[10px] text-[#8A877F] leading-relaxed">
+              Currently using your organisation logo. If it's not clear or high-res enough for print, upload a
+              dedicated one for Studio below.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="mt-1.5 flex items-center justify-center gap-1.5 w-full h-8 text-xs font-medium border border-[#D8D3C8] rounded-lg text-[#2C2C2A] hover:border-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {uploading ? (
+              <>
+                <Loader2 size={12} className="animate-spin" /> Uploading…
+              </>
+            ) : studioLogoUrl ? (
+              'Replace Studio logo'
+            ) : (
+              'Upload Studio logo'
+            )}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={e => {
+              void uploadLogo(e.target.files?.[0])
+              e.target.value = ''
+            }}
+          />
+        </div>
+
         <Row label="Show Page Numbers" disabled={!masterLayout.showFooter}>
           <Switch
             checked={masterLayout.showPageNumber}

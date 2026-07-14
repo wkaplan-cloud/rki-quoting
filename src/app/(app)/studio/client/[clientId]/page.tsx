@@ -18,7 +18,7 @@ export default async function StudioClientPage({ params }: { params: Promise<{ c
 
   const { data: settings } = await supabaseAdmin
     .from('settings')
-    .select('studio_enabled, logo_url')
+    .select('studio_enabled, logo_url, studio_logo_url')
     .eq('org_id', orgId)
     .maybeSingle()
 
@@ -56,7 +56,7 @@ export default async function StudioClientPage({ params }: { params: Promise<{ c
           orgId={orgId}
           clientId={clientId}
           clientName={client.client_name}
-          logoUrl={settings.logo_url ?? null}
+          logoUrl={settings.studio_logo_url ?? settings.logo_url ?? null}
           initialBoards={(boards ?? []).map(b => ({
             id: b.id as string,
             name: b.name as string,

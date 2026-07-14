@@ -15,7 +15,7 @@ export default async function StudioPage() {
 
   const { data: settings } = await supabaseAdmin
     .from('settings')
-    .select('studio_enabled, logo_url')
+    .select('studio_enabled, logo_url, studio_logo_url')
     .eq('org_id', orgId)
     .maybeSingle()
 
@@ -52,7 +52,12 @@ export default async function StudioPage() {
     <div>
       <PageHeader title="Studio" subtitle="Presentation boards for your clients" />
       <div className="p-6 lg:p-8">
-        <StudioHome orgId={orgId} logoUrl={settings.logo_url ?? null} clients={clientRows} boards={boardRows} />
+        <StudioHome
+          orgId={orgId}
+          logoUrl={settings.studio_logo_url ?? settings.logo_url ?? null}
+          clients={clientRows}
+          boards={boardRows}
+        />
       </div>
     </div>
   )
