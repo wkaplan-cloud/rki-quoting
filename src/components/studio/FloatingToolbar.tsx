@@ -84,7 +84,13 @@ export function FloatingToolbar({
   // Page → screen
   const screenX = viewport.x + (bbox.x + bbox.width / 2) * viewport.zoom
   const screenTop = viewport.y + bbox.y * viewport.zoom
-  const top = screenTop < 64 ? viewport.y + (bbox.y + bbox.height) * viewport.zoom + 16 : screenTop - 52
+  // Konva's rotate handle floats above the selection's top-center, offset by
+  // rotateAnchorOffset (24 page points — see SelectionTransformer.tsx) scaled
+  // by the current zoom. At typical fit-to-screen zoom (~0.6-0.7x) the old
+  // fixed 52px gap put the toolbar's own body right on top of that handle,
+  // hiding it entirely. Scaling the gap with zoom keeps it clear at any zoom.
+  const clearance = Math.max(52, 30 * viewport.zoom + 52)
+  const top = screenTop < clearance + 24 ? viewport.y + (bbox.y + bbox.height) * viewport.zoom + 16 : screenTop - clearance
   const left = Math.min(Math.max(screenX, 140), Math.max(containerSize.w - 140, 140))
 
   const single = objs.length === 1 ? objs[0] : null
