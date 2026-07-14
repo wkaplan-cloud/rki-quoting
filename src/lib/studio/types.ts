@@ -249,10 +249,15 @@ export interface MasterLayoutConfig {
   showLogo: boolean
   showPageNumber: boolean
   bindingMarginMm: number
+  // Board-wide font (contentFonts.ts) — overrides every text object's own
+  // font on every slide, so the whole board reads as one consistent brand.
+  // Does not affect the master heading/footer, which stay theme-controlled.
+  contentFontId: string
 }
 
 export const DEFAULT_MASTER_LAYOUT: MasterLayoutConfig = {
   themeId: 'minimal-white',
+  contentFontId: 'inter',
   showBorder: true,
   showHeader: true,
   showFooter: true,

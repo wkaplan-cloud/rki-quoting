@@ -3,6 +3,8 @@ import { memo } from 'react'
 import { Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { useStudioStore } from '@/lib/studio/store'
+import { getContentFont } from '@/lib/studio/contentFonts'
+import { useContentFont } from '@/lib/studio/masterFonts'
 import type { TextObject } from '@/lib/studio/types'
 import { useObjectInteraction } from './ObjectNode'
 
@@ -15,6 +17,10 @@ export const TextNode = memo(function TextNode({
 }) {
   const interaction = useObjectInteraction(obj, interactive)
   const editing = useStudioStore(s => s.editingTextId === obj.id)
+  // Board-wide font overrides every object's own choice (obj.fontFamily is
+  // kept only as a harmless placeholder while the real one loads)
+  const contentFontId = useStudioStore(s => s.masterLayout.contentFontId)
+  const { ready, family } = useContentFont(getContentFont(contentFontId).cssVar)
 
   function onTransformEnd(e: KonvaEventObject<Event>) {
     const node = e.target
@@ -35,7 +41,7 @@ export const TextNode = memo(function TextNode({
       text={obj.text}
       width={obj.width}
       fontSize={obj.fontSize}
-      fontFamily={obj.fontFamily}
+      fontFamily={ready ? family : obj.fontFamily}
       fontStyle={obj.fontStyle}
       textDecoration={obj.textDecoration}
       fill={obj.fill}

@@ -1,15 +1,17 @@
 'use client'
 import { PAGE_W, PAGE_H } from './constants'
 import { loadImage } from './images'
-import { ensureMasterFontsLoaded } from './masterFonts'
+import { ensureMasterFontsLoaded, ensureFontFamilyLoaded } from './masterFonts'
+import { getContentFont } from './contentFonts'
+import { useStudioStore } from './store'
 import type { StudioSlide } from './types'
 
 // Preload every image referenced by the board (plus the org logo) into the
 // shared cache so export stages render complete on first paint. Also force
-// -loads the Master Page's Playfair/Inter fonts — without this,
-// `document.fonts.ready` below is a no-op on this route (nothing else here
-// ever triggers Playfair Display's @font-face fetch), and the export could
-// silently rasterize the header in a fallback serif.
+// -loads the Master Page's Playfair/Inter fonts and the board's chosen
+// content font — without this, `document.fonts.ready` below is a no-op on
+// this route (nothing else here ever triggers these @font-face fetches),
+// and the export could silently rasterize text in a fallback font.
 export async function preloadBoardImages(slides: StudioSlide[], logoUrl: string | null): Promise<void> {
   const urls = new Set<string>()
   if (logoUrl) urls.add(logoUrl)
@@ -19,7 +21,8 @@ export async function preloadBoardImages(slides: StudioSlide[], logoUrl: string 
     }
   }
   await Promise.all(Array.from(urls).map(url => loadImage(url).catch(() => null)))
-  await ensureMasterFontsLoaded()
+  const contentFont = getContentFont(useStudioStore.getState().masterLayout.contentFontId)
+  await Promise.all([ensureMasterFontsLoaded(), ensureFontFamilyLoaded(contentFont.cssVar)])
   await document.fonts.ready
 }
 

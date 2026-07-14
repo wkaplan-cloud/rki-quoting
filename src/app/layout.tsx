@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Playfair_Display, Inter } from 'next/font/google'
+import { Playfair_Display, Inter, Roboto, Montserrat, Lato } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
@@ -15,6 +15,30 @@ const inter = Inter({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600'],
   variable: '--font-inter',
+  display: 'swap',
+})
+
+// Studio's board-wide "content font" choices (src/lib/studio/contentFonts.ts)
+// — the 4 most popular free Google Fonts, applied to every text object on
+// every slide of a board.
+const roboto = Roboto({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-roboto',
+  display: 'swap',
+})
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-montserrat',
+  display: 'swap',
+})
+
+const lato = Lato({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-lato',
   display: 'swap',
 })
 
@@ -166,7 +190,10 @@ const webApplicationSchema = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-ZA" className={`h-full antialiased ${playfair.variable} ${inter.variable}`}>
+    <html
+      lang="en-ZA"
+      className={`h-full antialiased ${playfair.variable} ${inter.variable} ${roboto.variable} ${montserrat.variable} ${lato.variable}`}
+    >
       <head>
         <script
           type="application/ld+json"

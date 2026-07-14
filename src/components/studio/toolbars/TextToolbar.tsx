@@ -1,12 +1,13 @@
 'use client'
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Copy, Lock, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
-import { FONT_FAMILIES } from '@/lib/studio/constants'
 import type { TextObject } from '@/lib/studio/types'
 import { TBtn, TDivider, ColorControl } from './atoms'
 
 const SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64, 80]
 
+// Font FAMILY is a board-wide choice (Master Theme panel → Font), applied to
+// every text object — no per-object font picker here on purpose.
 export function TextToolbar({ obj }: { obj: TextObject }) {
   const store = useStudioStore
   const bold = obj.fontStyle.includes('bold')
@@ -19,19 +20,6 @@ export function TextToolbar({ obj }: { obj: TextObject }) {
 
   return (
     <>
-      <select
-        title="Font"
-        aria-label="Font"
-        value={obj.fontFamily}
-        onChange={e => store.getState().updateObject(obj.id, { fontFamily: e.target.value } as Partial<TextObject>)}
-        className="h-8 text-xs rounded-md border border-[#D8D3C8] bg-white px-1 cursor-pointer text-[#2C2C2A] max-w-[110px]"
-      >
-        {FONT_FAMILIES.map(f => (
-          <option key={f} value={f} style={{ fontFamily: f }}>
-            {f}
-          </option>
-        ))}
-      </select>
       <select
         title="Font size"
         aria-label="Font size"

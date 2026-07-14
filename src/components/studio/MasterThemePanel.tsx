@@ -2,6 +2,7 @@
 import { Palette } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { MASTER_THEMES } from '@/lib/studio/masterThemes'
+import { CONTENT_FONTS } from '@/lib/studio/contentFonts'
 import { Switch } from '@/components/ui/Switch'
 import { Select } from '@/components/ui/Select'
 
@@ -37,6 +38,21 @@ export function MasterThemePanel() {
             </option>
           ))}
         </Select>
+
+        <div>
+          <Select
+            label="Font"
+            value={masterLayout.contentFontId}
+            onChange={e => setMasterLayout({ contentFontId: e.target.value })}
+          >
+            {CONTENT_FONTS.map(font => (
+              <option key={font.id} value={font.id} style={{ fontFamily: `var(${font.cssVar})` }}>
+                {font.name}
+              </option>
+            ))}
+          </Select>
+          <p className="text-[10px] text-[#8A877F] mt-1">Applies to every piece of text on every slide of this board.</p>
+        </div>
 
         <div className="h-px bg-[#D8D3C8]" />
 
