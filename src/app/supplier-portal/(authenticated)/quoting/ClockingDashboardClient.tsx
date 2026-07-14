@@ -40,6 +40,7 @@ interface Punch {
   latitude: number | null
   longitude: number | null
   notes: string | null
+  job_id?: string | null
   staff?: StaffMember | null
 }
 
@@ -73,9 +74,13 @@ function computeHoursMs(punches: Punch[], staffId?: string): number {
   return total
 }
 
+// On-site status only looks at global punches (no job_id) — job-card punches
+// track time against a specific job, not overall attendance. Must match
+// /api/supplier-portal/staff/punch, the worker's own clocked-in status.
 function getOnSite(punches: Punch[], staff: StaffMember[]): StaffMember[] {
   const latestPerStaff: Record<string, Punch> = {}
   for (const p of punches) {
+    if (p.job_id) continue
     if (!latestPerStaff[p.staff_id] || new Date(p.punched_at) > new Date(latestPerStaff[p.staff_id].punched_at)) {
       latestPerStaff[p.staff_id] = p
     }
@@ -84,13 +89,13 @@ function getOnSite(punches: Punch[], staff: StaffMember[]): StaffMember[] {
 }
 
 function getClockedInAt(punches: Punch[], staffId: string): string | null {
-  const staffPunches = punches.filter(p => p.staff_id === staffId && p.punch_type === 'clock_in')
+  const staffPunches = punches.filter(p => p.staff_id === staffId && p.punch_type === 'clock_in' && !p.job_id)
   if (!staffPunches.length) return null
   return staffPunches.sort((a, b) => new Date(b.punched_at).getTime() - new Date(a.punched_at).getTime())[0].punched_at
 }
 
 function getLastLocation(punches: Punch[], staffId: string): { lat: number; lng: number } | null {
-  const p = punches.filter(p => p.staff_id === staffId && p.punch_type === 'clock_in' && p.latitude)
+  const p = punches.filter(p => p.staff_id === staffId && p.punch_type === 'clock_in' && !p.job_id && p.latitude)
     .sort((a, b) => new Date(b.punched_at).getTime() - new Date(a.punched_at).getTime())[0]
   if (!p?.latitude) return null
   return { lat: p.latitude, lng: p.longitude! }

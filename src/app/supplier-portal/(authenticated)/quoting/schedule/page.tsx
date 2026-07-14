@@ -59,7 +59,7 @@ export default async function SchedulePage() {
       .limit(50),
     supabaseAdmin
       .from('elec_time_punches')
-      .select('staff_id, punch_type, punched_at, latitude, longitude')
+      .select('staff_id, punch_type, punched_at, latitude, longitude, job_id')
       .eq('portal_account_id', account.id)
       .gte('punched_at', todayStart.toISOString())
       .order('punched_at', { ascending: false }),
@@ -84,9 +84,12 @@ export default async function SchedulePage() {
       .limit(100),
   ])
 
-  // Build initial live statuses server-side
+  // Build initial live statuses server-side.
+  // Job-card punches are excluded — they track time against a specific job,
+  // not overall attendance. Must match /api/supplier-portal/quoting/staff-live.
   const latestPunch = new Map<string, { punch_type: string; punched_at: string; latitude: number | null; longitude: number | null }>()
   for (const p of (punches ?? [])) {
+    if (p.job_id) continue
     if (!latestPunch.has(p.staff_id)) latestPunch.set(p.staff_id, p)
   }
   const initialLiveStatuses: StaffLiveStatus[] = (staff ?? []).map(s => {

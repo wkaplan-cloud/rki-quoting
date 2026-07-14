@@ -18,7 +18,7 @@ export async function GET() {
 
     const { data: punches, error } = await supabaseAdmin
       .from('elec_time_punches')
-      .select('id, staff_id, punch_type, punched_at, latitude, longitude, notes')
+      .select('id, staff_id, punch_type, punched_at, latitude, longitude, notes, job_id')
       .eq('portal_account_id', account.id)
       .gte('punched_at', todayStart.toISOString())
       .order('punched_at', { ascending: false })

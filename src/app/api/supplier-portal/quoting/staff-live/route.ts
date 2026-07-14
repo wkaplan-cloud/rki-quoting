@@ -41,7 +41,7 @@ export async function GET() {
         .eq('is_active', true),
       supabaseAdmin
         .from('elec_time_punches')
-        .select('staff_id, punch_type, punched_at, latitude, longitude')
+        .select('staff_id, punch_type, punched_at, latitude, longitude, job_id')
         .eq('portal_account_id', account.id)
         .gte('punched_at', todayStart.toISOString())
         .order('punched_at', { ascending: false }),
@@ -59,12 +59,16 @@ export async function GET() {
         .not('staff_id', 'is', null),
     ])
 
-    // Latest punch per staff (punches already ordered DESC)
+    // Latest punch per staff (punches already ordered DESC).
+    // Job-card punches are excluded — they track time against a specific job,
+    // not overall attendance. Matches the worker's own clocked-in status
+    // (see /api/supplier-portal/staff/punch), which is global-punch-only.
     const latestPunch = new Map<string, {
       punch_type: string; punched_at: string
       latitude: number | null; longitude: number | null
     }>()
     for (const p of (punches ?? [])) {
+      if (p.job_id) continue
       if (!latestPunch.has(p.staff_id)) latestPunch.set(p.staff_id, p)
     }
 

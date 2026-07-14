@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
-import { calcHourBreakdown, punchesToBreakdown } from '@/lib/sa-overtime'
+import { calcHourBreakdown, punchesToBreakdown, type HourBreakdown } from '@/lib/sa-overtime'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -55,6 +55,25 @@ function fmtDuration(ms: number) {
   const h = Math.floor(ms / 3600000)
   const m = Math.floor((ms % 3600000) / 60000)
   return `${h}h ${m}m`
+}
+
+// punchesToBreakdown pairs the nth clock_in with the nth clock_out by index.
+// A punch set spanning multiple days must be bucketed by day first, or a single
+// missing/extra punch on one day shifts every pairing after it and silently
+// corrupts totals for the rest of the range.
+function dayBucketedBreakdown(punches: ElecTimePunch[]): HourBreakdown {
+  const buckets: Record<string, ElecTimePunch[]> = {}
+  for (const p of punches) {
+    const d = p.punched_at.slice(0, 10)
+    if (!buckets[d]) buckets[d] = []
+    buckets[d].push(p)
+  }
+  let normalMs = 0, overtimeMs = 0, totalMs = 0
+  for (const dayPunches of Object.values(buckets)) {
+    const b = punchesToBreakdown(dayPunches)
+    normalMs += b.normalMs; overtimeMs += b.overtimeMs; totalMs += b.totalMs
+  }
+  return { normalMs, overtimeMs, totalMs }
 }
 
 interface FormState {
@@ -332,8 +351,12 @@ export function StaffManager({ initialStaff, punches }: Props) {
     setEmailSending(false)
   }
 
+  // On-site status only looks at global punches (no job_id) — job-card punches
+  // track time against a specific job, not overall attendance. Must match
+  // /api/supplier-portal/staff/punch, the worker's own clocked-in status.
   const lastPunchPerStaff: Record<string, ElecTimePunch> = {}
   for (const p of punches) {
+    if (p.job_id) continue
     if (!lastPunchPerStaff[p.staff_id]) lastPunchPerStaff[p.staff_id] = p
   }
   const onSiteStaff = Object.values(lastPunchPerStaff).filter(p => p.punch_type === 'clock_in')
@@ -718,18 +741,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                   {Object.entries(staffWeekPunches[wk]).map(([staffId, staffPunches]) => {
                     const member = staffMap[staffId]
                     const ins = staffPunches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-                    // Sum per-day breakdowns to prevent cross-day pairing issues
-                    const wkDayBuckets: Record<string, ElecTimePunch[]> = {}
-                    for (const p of staffPunches) {
-                      const d = p.punched_at.slice(0, 10)
-                      if (!wkDayBuckets[d]) wkDayBuckets[d] = []
-                      wkDayBuckets[d].push(p)
-                    }
-                    let normalMs = 0, overtimeMs = 0, totalMs = 0
-                    for (const dp of Object.values(wkDayBuckets)) {
-                      const db = punchesToBreakdown(dp)
-                      normalMs += db.normalMs; overtimeMs += db.overtimeMs; totalMs += db.totalMs
-                    }
+                    const { normalMs, overtimeMs, totalMs } = dayBucketedBreakdown(staffPunches)
                     const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
                     return (
                       <div key={staffId} className="flex items-center gap-3 px-4 py-3" style={{ borderTop: `1px solid ${S.border}` }}>
@@ -870,7 +882,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                 let jobTotalMs = 0
                 const staffRows = Object.entries(byStaff).map(([staffId, staffPunches]) => {
                   const member = staffMap[staffId]
-                  const { totalMs } = punchesToBreakdown(staffPunches)
+                  const { totalMs } = dayBucketedBreakdown(staffPunches)
                   jobTotalMs += totalMs
                   const sorted = [...staffPunches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
                   return { staffId, member, totalMs, sorted }
@@ -912,7 +924,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
 
                     {/* Expanded: staff breakdown */}
                     {isExpanded && staffRows.map(({ staffId, member, totalMs, sorted }) => {
-                      const { normalMs, overtimeMs } = punchesToBreakdown(sorted)
+                      const { normalMs, overtimeMs } = dayBucketedBreakdown(sorted)
                       return (
                         <div key={staffId} className="px-4 py-3" style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
                           <div className="flex items-center gap-2 mb-2">
