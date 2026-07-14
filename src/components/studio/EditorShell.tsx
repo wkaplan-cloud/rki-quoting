@@ -52,6 +52,17 @@ export default function EditorShell(props: EditorShellProps) {
   // The board-wide specs list yields to the per-object spec editor while
   // it's open, and comes back when the editor closes
   const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
+  const selectedIds = useStudioStore(s => s.selectedIds)
+
+  // With the Specs list open, selecting a single object on canvas jumps
+  // straight to its spec editor; deselecting (or multi-select) returns to
+  // the list. Doesn't interfere with opening specs via the toolbar/dot
+  // indicator when the list isn't open.
+  useEffect(() => {
+    if (!showSpecs) return
+    useStudioStore.getState().openSpecs(selectedIds.length === 1 ? selectedIds[0] : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSpecs, selectedIds.join(',')])
 
   useEffect(() => {
     // One right-hand panel at a time — if more than one were somehow stored

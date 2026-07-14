@@ -43,7 +43,15 @@ export function MasterGroup({
   useEffect(() => {
     const node = logoRef.current
     if (node && logo) {
-      node.cache()
+      // Konva's .cache() rasterizes the node ONCE, at its current on-screen
+      // size, and every later scale-up (editor zoom, or the export's
+      // pixelRatio 3–4 toDataURL snapshot) just stretches that one bitmap —
+      // it never redraws from the source image. Left at the default, the
+      // footer logo (a small ~20pt box, often further shrunk by editor
+      // zoom-to-fit) got cached as a tiny, blurry raster that then got
+      // magnified for both on-screen viewing and the PDF export. Forcing a
+      // high pixelRatio here bakes in enough resolution for both.
+      node.cache({ pixelRatio: 6 })
       node.filters([Konva.Filters.Grayscale])
       node.getLayer()?.batchDraw()
     }
