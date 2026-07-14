@@ -169,26 +169,70 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
   )
 }
 
+// ─── Numeric rate/qty input ────────────────────────────────────────────────────
+// Uses an uncontrolled <input> while focused (defaultValue set once on focus) so that
+// parent re-renders triggered by onChange never stomp on what the user is mid-typing.
+// A controlled input here would redisplay "0" the instant the field is cleared,
+// forcing users to type in front of/behind a "0" that keeps reappearing.
+function RateInput({ value, onChange, placeholder = '0', width = 90, locked, decimals = false }: {
+  value: number | null; onChange: (n: number) => void
+  placeholder?: string; width?: number; locked?: boolean; decimals?: boolean
+}) {
+  const [focused, setFocused] = useState(false)
+  const display = value != null && value !== 0 ? (decimals ? value.toFixed(2) : String(value)) : ''
+
+  if (focused) {
+    return (
+      <input
+        type="text" inputMode="decimal" autoFocus
+        defaultValue={display}
+        onFocus={e => e.target.select()}
+        onChange={e => onChange(parseFloat(e.target.value.replace(',', '.')) || 0)}
+        onBlur={e => { setFocused(false); onChange(parseFloat(e.target.value.replace(',', '.')) || 0) }}
+        placeholder={placeholder}
+        className="px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
+        style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text, width }}
+      />
+    )
+  }
+  return (
+    <button type="button" disabled={locked}
+      onClick={() => !locked && setFocused(true)}
+      className="px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
+      style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: display ? S.text : '#A1A1AA', width, cursor: locked ? 'default' : 'text' }}>
+      {display || placeholder}
+    </button>
+  )
+}
+
 // ─── Line item row ────────────────────────────────────────────────────────────
-function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHandleProps }: {
+function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId, locked, dragHandleProps }: {
   item: ItemState; onChange: (u: ItemState) => void
-  onDelete: () => void; portalAccountId: string; locked?: boolean
+  onDelete: () => void; onInsertBelow?: () => void; portalAccountId: string; locked?: boolean
   dragHandleProps?: DraggableProvidedDragHandleProps | null
 }) {
   function set(patch: Partial<ItemState>) { onChange({ ...item, ...patch }) }
 
-  const numInput = (val: number | null, cb: (n: number) => void, placeholder = '0', w = 90) => (
-    <input type="number" value={val ?? ''} onChange={e => cb(parseFloat(e.target.value) || 0)}
-      disabled={locked} placeholder={placeholder}
-      className="px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
-      style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, width: w }} />
+  const numInput = (val: number | null, cb: (n: number) => void, placeholder = '0', w = 90, decimals = false) => (
+    <RateInput value={val} onChange={cb} placeholder={placeholder} width={w} locked={locked} decimals={decimals} />
   )
 
   return (
-    <div className="rounded-xl mb-1.5" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+    <div className="rounded-xl mb-1.5 group" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
       <div className="flex items-center gap-2 p-2">
-        <div {...(dragHandleProps ?? {})} style={{ flexShrink: 0, display: 'flex', cursor: locked ? 'default' : 'grab' }}>
-          <GripVertical size={14} style={{ color: S.border }} />
+        <div className="relative flex items-center justify-center" style={{ flexShrink: 0, width: 14, height: 14 }}>
+          <div {...(dragHandleProps ?? {})}
+            className="transition-opacity group-hover:opacity-0"
+            style={{ display: 'flex', cursor: locked ? 'default' : 'grab' }}>
+            <GripVertical size={14} style={{ color: S.border }} />
+          </div>
+          {!locked && onInsertBelow && (
+            <button type="button" onClick={onInsertBelow} title="Insert row below"
+              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ color: S.accent }}>
+              <Plus size={12} />
+            </button>
+          )}
         </div>
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
           onSelect={s => {
@@ -210,7 +254,7 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
         {numInput(item.cost_unit_rate, v => {
           const sell = v * (1 + (item.markup_percentage ?? 0) / 100)
           set({ cost_unit_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
-        }, 'Cost', 82)}
+        }, 'Cost', 82, true)}
         {numInput(item.markup_percentage, v => {
           const sell = (item.cost_unit_rate ?? 0) * (1 + v / 100)
           set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
@@ -221,14 +265,14 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
             ? Math.round(((v / item.cost_unit_rate - 1) * 100) * 10) / 10
             : item.markup_percentage
           set({ quoted_unit_rate: v, markup_percentage: newMarkup ?? item.markup_percentage })
-        }, 'Rate', 72)}
+        }, 'Rate', 72, true)}
         {/* Material subtotal = qty × sell rate */}
         <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
           {fmtR((item.quoted_quantity ?? 0) * computeSellRate(item))}
         </div>
         {numInput(item.labour_rate, v => {
           set({ labour_rate: v })
-        }, 'Labour/Unit', 82)}
+        }, 'Labour/Unit', 82, true)}
         <div className="text-sm text-right flex-shrink-0" style={{ color: S.muted, width: 82 }}>
           {(item.labour_rate ?? 0) > 0 ? fmtR((item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)) : '—'}
         </div>
@@ -248,9 +292,9 @@ function LineItemRow({ item, onChange, onDelete, portalAccountId, locked, dragHa
 }
 
 // ─── Section block ────────────────────────────────────────────────────────────
-function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, portalAccountId, locked, dragHandleProps }: {
+function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, onDeleteItem, portalAccountId, locked, dragHandleProps }: {
   section: SectionState; onChange: (s: SectionState) => void
-  onDelete: () => void; onAddItem: () => void
+  onDelete: () => void; onAddItem: () => void; onInsertItemAt: (index: number) => void
   onDeleteItem: (id: string) => void; portalAccountId: string; locked?: boolean
   dragHandleProps?: DraggableProvidedDragHandleProps | null
 }) {
@@ -319,6 +363,7 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onDeleteItem, po
                         <LineItemRow item={item}
                           onChange={u => onChange({ ...section, items: section.items.map(i => i.id === u.id ? u : i) })}
                           onDelete={() => onDeleteItem(item.id)}
+                          onInsertBelow={() => onInsertItemAt(idx)}
                           portalAccountId={portalAccountId} locked={locked}
                           dragHandleProps={dragProvided.dragHandleProps} />
                       </div>
@@ -619,6 +664,21 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   function addSection() { setSections(ss => [...ss, newSection(q.id, ss.length)]) }
   function addFreeItem() { setFreeItems(items => [...items, newItem(q.id, null, items.length)]) }
+  function insertFreeItemAt(index: number) {
+    setFreeItems(items => {
+      const next = [...items]
+      next.splice(index + 1, 0, newItem(q.id, null, index + 1))
+      return next
+    })
+  }
+  function insertSectionItemAt(sectionId: string, index: number) {
+    setSections(ss => ss.map(s => {
+      if (s.id !== sectionId) return s
+      const next = [...s.items]
+      next.splice(index + 1, 0, newItem(q.id, s.id, index + 1))
+      return { ...s, items: next }
+    }))
+  }
 
   function deleteSection(sectionId: string) {
     const section = sections.find(s => s.id === sectionId)
@@ -1322,6 +1382,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                             <LineItemRow item={item}
                               onChange={u => setFreeItems(items => items.map(i => i.id === u.id ? u : i))}
                               onDelete={() => deleteFreeItem(item.id)}
+                              onInsertBelow={() => insertFreeItemAt(idx)}
                               portalAccountId={portalAccountId} locked={locked}
                               dragHandleProps={dragProvided.dragHandleProps} />
                           </div>
@@ -1347,6 +1408,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                           onDelete={() => deleteSection(section.id)}
                           onAddItem={() => setSections(ss => ss.map(s => s.id === section.id
                             ? { ...s, items: [...s.items, newItem(q.id, s.id, s.items.length)] } : s))}
+                          onInsertItemAt={index => insertSectionItemAt(section.id, index)}
                           onDeleteItem={itemId => deleteSectionItem(section.id, itemId)}
                           portalAccountId={portalAccountId} locked={locked}
                           dragHandleProps={dragProvided.dragHandleProps} />
