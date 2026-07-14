@@ -48,12 +48,17 @@ export async function POST(req: NextRequest) {
     const staff = await resolveStaff(user.id)
     if (!staff) return NextResponse.json({ error: 'Staff not found' }, { status: 403 })
 
-    const { client_name } = await req.json() as { client_name: string }
+    const { client_name, email, contact_number } = await req.json() as { client_name: string; email?: string | null; contact_number?: string | null }
     if (!client_name?.trim()) return NextResponse.json({ error: 'client_name required' }, { status: 400 })
 
     const { data, error } = await supabaseAdmin
       .from('elec_clients')
-      .insert({ portal_account_id: staff.portal_account_id, client_name: client_name.trim() })
+      .insert({
+        portal_account_id: staff.portal_account_id,
+        client_name: client_name.trim(),
+        email: email?.trim() || null,
+        contact_number: contact_number?.trim() || null,
+      })
       .select('id, client_name, company, email')
       .single()
 

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, FileText, X, ChevronRight, Calendar, User, Archive, RotateCcw, Trash2, CheckSquare, Square } from 'lucide-react'
+import { Plus, Search, FileText, X, ChevronRight, Calendar, User, Archive, RotateCcw, Trash2, CheckSquare, Square, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { ElecQuote, ElecClient, ElecQuoteStatus } from '@/lib/elec-types'
 
@@ -148,6 +148,7 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
   const [projectName, setProjectName] = useState('')
   const [clientId, setClientId] = useState<string | null>(null)
   const [projectType, setProjectType] = useState('')
+  const [isQuickJob, setIsQuickJob] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -163,7 +164,7 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
     const res = await fetch('/api/supplier-portal/quoting/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_name: projectName.trim(), client_id: clientId, project_type: projectType || null }),
+      body: JSON.stringify({ project_name: projectName.trim(), client_id: clientId, project_type: projectType || null, is_quick_job: isQuickJob }),
     })
     const data = await res.json() as { id?: string; error?: string }
     if (!res.ok || !data.id) { setError(data.error ?? 'Failed to create quote'); setLoading(false); return }
@@ -214,6 +215,24 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
               {PROJECT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
+          <button onClick={() => setIsQuickJob(v => !v)}
+            className="w-full flex items-start gap-3 px-3.5 py-3 rounded-lg text-left"
+            style={{
+              background: isQuickJob ? 'rgba(217,164,65,0.08)' : S.input,
+              border: `1.5px solid ${isQuickJob ? '#D9A441' : S.border}`,
+            }}>
+            {isQuickJob
+              ? <CheckSquare size={16} className="mt-0.5 flex-shrink-0" style={{ color: '#D9A441' }} />
+              : <Square size={16} className="mt-0.5 flex-shrink-0" style={{ color: S.muted }} />}
+            <span>
+              <span className="block text-sm font-semibold" style={{ color: isQuickJob ? '#B8860B' : S.text }}>
+                <Zap size={12} className="inline mr-1 -mt-0.5" style={{ color: '#D9A441' }} />Quick job
+              </span>
+              <span className="block text-xs mt-0.5" style={{ color: S.muted }}>
+                Short-timeline job — quote it, send for approval, do the work. Same flow, faster turnaround.
+              </span>
+            </span>
+          </button>
           {error && <p className="text-sm px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>{error}</p>}
         </div>
         <div className="flex justify-end gap-3 px-6 py-4" style={{ borderTop: `1px solid ${S.border}` }}>
@@ -237,7 +256,7 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
   const [quotes, setQuotes] = useState(initialQuotes)
   const [archivedQuotes, setArchivedQuotes] = useState(initialArchivedQuotes)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ElecQuoteStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ElecQuoteStatus | 'all' | 'not_invoiced'>('all')
   const [showNewModal, setShowNewModal] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [unarchiving, setUnarchiving] = useState<string | null>(null)
@@ -276,12 +295,16 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
       q.project_name.toLowerCase().includes(search.toLowerCase()) ||
       q.quote_number.toLowerCase().includes(search.toLowerCase()) ||
       (q.client?.client_name ?? '').toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || q.status === statusFilter
+    const matchesStatus = statusFilter === 'all'
+      || (statusFilter === 'not_invoiced'
+        ? q.status === 'completed' && !q.invoiced
+        : q.status === statusFilter)
     return matchesSearch && matchesStatus
   })
 
   const counts: Record<string, number> = { all: quotes.length }
   quotes.forEach(q => { counts[q.status] = (counts[q.status] ?? 0) + 1 })
+  counts.not_invoiced = quotes.filter(q => q.status === 'completed' && !q.invoiced).length
 
   function fmtDate(iso: string) {
     return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -304,8 +327,8 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
 
       {/* Status tabs */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-        {(['all', 'draft', 'quoted', 'approved', 'in_progress', 'completed'] as const).map(s => {
-          const cfg = s === 'all' ? null : STATUS_CONFIG[s]
+        {(['all', 'draft', 'quoted', 'approved', 'in_progress', 'completed', 'not_invoiced'] as const).map(s => {
+          const label = s === 'all' ? 'All' : s === 'not_invoiced' ? 'Not invoiced' : STATUS_CONFIG[s].label
           const active = statusFilter === s
           return (
             <button key={s} onClick={() => setStatusFilter(s)}
@@ -315,7 +338,7 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
                 color: active ? '#fff' : S.muted,
                 border: `1px solid ${active ? S.accent : S.border}`,
               }}>
-              {s === 'all' ? 'All' : cfg!.label}
+              {label}
               <span className="text-[10px] opacity-70">{counts[s] ?? 0}</span>
             </button>
           )
@@ -362,6 +385,12 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
                     <span className="text-xs font-mono" style={{ color: S.muted }}>{q.quote_number}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
                       style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                    {q.is_quick_job && (
+                      <span className="flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: 'rgba(217,164,65,0.12)', color: '#B8860B' }}>
+                        <Zap size={9} />Quick job
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{q.project_name}</p>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">

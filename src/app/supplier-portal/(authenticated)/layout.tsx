@@ -10,6 +10,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { SupplierPortalShell } from './SupplierPortalShell'
 import { isActivePlan, planRank } from '@/lib/plan-features'
+import { NumberInputAutoSelect } from '@/components/NumberInputAutoSelect'
 
 export default async function SupplierPortalLayout({
   children,
@@ -71,6 +72,7 @@ export default async function SupplierPortalLayout({
       accountCreatedAt={accountCreatedAt ?? undefined}
       receivePriceRequests={account.receive_price_requests}
     >
+      <NumberInputAutoSelect />
       {children}
     </SupplierPortalShell>
   )

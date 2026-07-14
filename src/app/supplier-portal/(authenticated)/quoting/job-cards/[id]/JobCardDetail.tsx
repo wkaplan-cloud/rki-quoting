@@ -1529,6 +1529,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           location={card.location}
           clientName={card.client_name ?? ((!Array.isArray(card.client) && card.client) ? card.client.client_name : null)}
           clientEmail={card.client_email ?? ((!Array.isArray(card.client) && card.client) ? card.client.email : null)}
+          jobTitle={`${card.job_number} — ${card.title}`}
         />
       )}
 

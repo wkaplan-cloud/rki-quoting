@@ -219,6 +219,7 @@ export interface ElecQuote {
   practical_completion_date: string | null
   archived_at: string | null
   invoiced: boolean | null
+  is_quick_job: boolean | null
   share_token: string | null
   share_token_created_at: string | null
   created_by_name: string | null
@@ -462,12 +463,19 @@ export interface ElecCOC {
   phase_rotation: string | null
   linked_doc_number: string | null
   notes: string | null
+  // ── Photos ────────────────────────────────────────────────────────────────────
+  photos?: COCPhoto[] | null
   // ── Email / sharing ──────────────────────────────────────────────────────────
   sent_to_name: string | null
   sent_to_email: string | null
   sent_at: string | null
   share_token: string | null
   created_at: string
+}
+
+export interface COCPhoto {
+  url: string
+  description: string | null
 }
 
 // ─── Org Members (additional admins) ─────────────────────────────────────────

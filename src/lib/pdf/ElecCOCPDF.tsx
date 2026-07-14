@@ -854,6 +854,31 @@ export function ElecCOCPDF({ coc, quote, client, settings, companyName }: Props)
         </View>
       </Page>
 
+      {/* ── Photos page(s) ── */}
+      {(coc.photos?.length ?? 0) > 0 && (
+        <Page size="A4" style={s.page}>
+          <View style={s.outer}>
+            <View style={s.secStrip}><Text style={s.secStripText}>INSTALLATION PHOTOS</Text></View>
+            <View style={{ padding: 10, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+              {coc.photos!.map((p, i) => (
+                <View key={i} wrap={false} style={{ width: '48%', marginBottom: 10, borderWidth: 0.75, borderColor: LG, padding: 5 }}>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <Image src={p.url} style={{ width: '100%', maxHeight: 200, objectFit: 'contain' }} />
+                  <Text style={{ fontSize: 7, marginTop: 4 }}>
+                    {`Photo ${i + 1}${p.description ? ` — ${p.description}` : ''}`}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={s.footer} fixed>
+            <Text style={s.footerTx}>Certificate of Compliance — Annexure 1 — Occupational Health and Safety Act, 1993</Text>
+            <Text style={s.footerTx} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          </View>
+        </Page>
+      )}
+
     </Document>
   )
 }

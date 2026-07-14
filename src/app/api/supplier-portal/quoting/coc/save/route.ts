@@ -26,10 +26,19 @@ export async function POST(req: NextRequest) {
       if (!jc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const { error } = await supabaseAdmin.from('elec_coc').upsert({
+    let { error } = await supabaseAdmin.from('elec_coc').upsert({
       ...body,
       portal_account_id: account.id,
     })
+
+    // Fallback while the photos migration hasn't been run yet
+    if (error?.code === '42703') {
+      const { photos: _skip, ...withoutPhotos } = body
+      ;({ error } = await supabaseAdmin.from('elec_coc').upsert({
+        ...withoutPhotos,
+        portal_account_id: account.id,
+      }))
+    }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

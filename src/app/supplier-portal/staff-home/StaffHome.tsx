@@ -114,6 +114,9 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   const [clientSearch, setClientSearch] = useState('')
   const [clientFocused, setClientFocused] = useState(false)
   const [creatingClient, setCreatingClient] = useState(false)
+  const [addingClientName, setAddingClientName] = useState<string | null>(null)
+  const [newClientEmail, setNewClientEmail] = useState('')
+  const [newClientPhone, setNewClientPhone] = useState('')
 
   // Refresh
   const [refreshing, setRefreshing] = useState(false)
@@ -356,13 +359,17 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   }
 
   async function createAndSelectClient() {
-    const name = clientSearch.trim()
+    const name = addingClientName?.trim()
     if (!name || creatingClient) return
     setCreatingClient(true)
     const res = await fetch('/api/supplier-portal/staff/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_name: name }),
+      body: JSON.stringify({
+        client_name: name,
+        email: newClientEmail.trim() || null,
+        contact_number: newClientPhone.trim() || null,
+      }),
     })
     if (res.ok) {
       const c = await res.json() as ClientItem
@@ -371,6 +378,8 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
       setNewClientName(c.client_name)
       setClientSearch('')
       setClientFocused(false)
+      setAddingClientName(null)
+      setNewClientEmail(''); setNewClientPhone('')
     }
     setCreatingClient(false)
   }
@@ -380,6 +389,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     setNewTitle(''); setNewType('callout'); setNewLocation('')
     setCreateError('')
     setNewClientId(null); setNewClientName(''); setClientSearch(''); setClientFocused(false)
+    setAddingClientName(null); setNewClientEmail(''); setNewClientPhone('')
   }
 
   // Timesheet data
@@ -886,6 +896,43 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                       <X size={15} />
                     </button>
                   </div>
+                ) : addingClientName !== null ? (
+                  <div className="rounded-xl p-3.5 space-y-2.5" style={{ background: 'rgba(58,124,165,0.06)', border: `1.5px solid ${S.accent}` }}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold" style={{ color: S.text }}>New client: {addingClientName}</p>
+                      <button onClick={() => { setAddingClientName(null); setNewClientEmail(''); setNewClientPhone('') }}
+                        className="p-1" style={{ color: S.muted }}>
+                        <X size={15} />
+                      </button>
+                    </div>
+                    <input
+                      value={newClientEmail}
+                      onChange={e => setNewClientEmail(e.target.value)}
+                      placeholder="Email (optional)"
+                      type="email"
+                      inputMode="email"
+                      autoCapitalize="none"
+                      className="w-full px-3.5 py-3 rounded-xl outline-none"
+                      style={{ background: S.card, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
+                    />
+                    <input
+                      value={newClientPhone}
+                      onChange={e => setNewClientPhone(e.target.value)}
+                      placeholder="Contact number (optional)"
+                      type="tel"
+                      inputMode="tel"
+                      className="w-full px-3.5 py-3 rounded-xl outline-none"
+                      style={{ background: S.card, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
+                    />
+                    <button
+                      onClick={() => void createAndSelectClient()}
+                      disabled={creatingClient}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                      style={{ background: S.accent }}>
+                      {creatingClient ? <Loader2 size={14} className="animate-spin inline mr-1.5" /> : null}
+                      {creatingClient ? 'Adding…' : 'Add client'}
+                    </button>
+                  </div>
                 ) : (
                   <div>
                     <input
@@ -924,15 +971,12 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                           {clientSearch.trim() && !exactMatch && (
                             <button
                               onMouseDown={e => e.preventDefault()}
-                              onClick={() => void createAndSelectClient()}
-                              disabled={creatingClient}
+                              onClick={() => { setAddingClientName(clientSearch.trim()); setClientFocused(false) }}
                               className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
                               style={{ borderTop: filtered.length > 0 ? `1px solid ${S.border}` : undefined }}>
-                              {creatingClient
-                                ? <Loader2 size={14} className="animate-spin" style={{ color: S.accent }} />
-                                : <Plus size={14} style={{ color: S.accent }} />}
+                              <Plus size={14} style={{ color: S.accent }} />
                               <span className="text-sm font-medium" style={{ color: S.accent }}>
-                                {creatingClient ? 'Adding…' : `Add "${clientSearch.trim()}" as new client`}
+                                {`Add "${clientSearch.trim()}" as new client`}
                               </span>
                             </button>
                           )}

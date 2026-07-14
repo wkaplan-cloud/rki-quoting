@@ -173,7 +173,8 @@ function printWeek(
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#18181b;padding:32px;background:#fff}
     .print-btn{position:fixed;top:20px;right:20px;background:#3a7ca5;color:#fff;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
-    @media print{.print-btn{display:none}}
+    .back-btn{position:fixed;top:20px;left:20px;background:#fff;color:#1e2a38;border:1.5px solid #d4d4d8;padding:9px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+    @media print{.print-btn,.back-btn{display:none}}
     .doc-header{margin-bottom:24px;padding-bottom:14px;border-bottom:2px solid #1e2a38;display:flex;justify-content:space-between;align-items:flex-end}
     .doc-title{font-size:18px;font-weight:700;color:#1e2a38}
     .doc-period{font-size:12px;color:#71717a;margin-top:3px}
@@ -193,6 +194,7 @@ function printWeek(
     .ot-text{color:#d9a441}
   </style>
   </head><body>
+  <button class="back-btn" onclick="window.close();setTimeout(function(){history.back()},100)">← Back</button>
   <button class="print-btn" onclick="window.print()">🖨 Print</button>
   <div class="doc-header">
     <div><div class="doc-title">Weekly Timesheet</div><div class="doc-period">${periodStr}</div></div>
