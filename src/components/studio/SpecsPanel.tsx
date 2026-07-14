@@ -47,10 +47,11 @@ export function SpecsPanel() {
   if (!obj) return null
 
   // The image's Asset Library name and this spec's name are the same idea
-  // for the same object — no reason to type it twice. A brand-new spec
-  // starts pre-filled from the asset's name (still freely editable after);
-  // typing a spec name for an asset that has none yet names the asset too,
-  // so it becomes searchable without a separate trip to the Assets panel.
+  // for the same object — kept in lockstep both ways, so they always match
+  // exactly. A brand-new spec starts pre-filled from the asset's name;
+  // after that, editing either one here pushes the same value onto the
+  // asset's label (AssetPanel.tsx does the same back onto any spec that
+  // shares that asset's image).
   const matchingAsset = obj.type === 'image' ? assets.find(a => a.url === obj.url) : undefined
   const spec: Omit<StudioSpec, 'id' | 'slideId'> & { id?: string } =
     specs[objectId] ?? { ...EMPTY_SPEC, objectId, specName: matchingAsset?.label ?? '' }
@@ -60,12 +61,12 @@ export function SpecsPanel() {
 
   function setSpecName(name: string) {
     update({ specName: name })
-    const trimmed = name.trim()
-    if (matchingAsset && !matchingAsset.label && trimmed) {
-      useStudioStore.getState().renameAsset(matchingAsset.id, trimmed)
-      const supabase = createClient()
-      void supabase.from('studio_assets').update({ label: trimmed }).eq('id', matchingAsset.id)
-    }
+    if (!matchingAsset) return
+    const next = name.trim() || null
+    if (next === matchingAsset.label) return
+    useStudioStore.getState().renameAsset(matchingAsset.id, next)
+    const supabase = createClient()
+    void supabase.from('studio_assets').update({ label: next }).eq('id', matchingAsset.id)
   }
 
   function setSupplier(name: string) {

@@ -228,9 +228,21 @@ function AssetThumb({ asset }: { asset: StudioAsset }) {
     const trimmed = value.trim()
     const next = trimmed || null
     if (next === asset.label) return
-    useStudioStore.getState().renameAsset(asset.id, next)
+    const store = useStudioStore.getState()
+    store.renameAsset(asset.id, next)
     const supabase = createClient()
     await supabase.from('studio_assets').update({ label: next }).eq('id', asset.id)
+
+    // Push the same name onto any spec that already exists for an object
+    // using this exact image, so the two never drift apart (the reverse of
+    // what SpecsPanel.tsx does when a spec name is edited)
+    for (const slide of store.slides) {
+      for (const obj of slide.objects) {
+        if (obj.type === 'image' && obj.url === asset.url && store.specs[obj.id]) {
+          store.updateSpec(obj.id, { specName: next ?? '' })
+        }
+      }
+    }
   }
 
   return (
