@@ -15,6 +15,10 @@ interface MasterGroupProps {
   interactive?: boolean
   onHeadingDblClick?: () => void
   hideHeading?: boolean
+  // Cover slides get the theme's border only — their heading/logo/page
+  // number are the custom centred composition built in coverSlide.ts, not
+  // the regular header/footer, so those stay suppressed here
+  borderOnly?: boolean
 }
 
 // Master layout drawn INSIDE the Konva stage — the same group renders in the
@@ -31,12 +35,13 @@ export function MasterGroup({
   interactive = false,
   onHeadingDblClick,
   hideHeading = false,
+  borderOnly = false,
 }: MasterGroupProps) {
   const config = useStudioStore(s => s.masterLayout)
   const businessName = useStudioStore(s => s.businessName)
   const theme = getMasterTheme(config.themeId)
   const margin = getMasterMarginRect(config)
-  const logo = useTrimmedLogo(config.showLogo ? logoUrl : null)
+  const logo = useTrimmedLogo(!borderOnly && config.showLogo ? logoUrl : null)
   const { ready, playfair, inter } = useMasterFonts()
   const logoRef = useRef<Konva.Image>(null)
 
@@ -91,7 +96,7 @@ export function MasterGroup({
         />
       )}
 
-      {config.showHeader && !hideHeading && ready && (
+      {!borderOnly && config.showHeader && !hideHeading && ready && (
         <>
           <Text
             x={margin.left}
@@ -120,7 +125,7 @@ export function MasterGroup({
         </>
       )}
 
-      {config.showFooter && (
+      {!borderOnly && config.showFooter && (
         <>
           {theme.footer.ruleAbove && (
             <Rect

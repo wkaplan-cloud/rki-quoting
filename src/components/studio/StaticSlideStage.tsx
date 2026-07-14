@@ -44,9 +44,12 @@ export function StaticSlideStage({
         {slide.objects.map(obj => (
           <ObjectNode key={obj.id} obj={obj} interactive={false} />
         ))}
-        {!slide.isCover && (
-          <MasterGroup heading={slide.heading} pageNumber={pageNumber} logoUrl={logoUrl} />
-        )}
+        <MasterGroup
+          heading={slide.heading}
+          pageNumber={pageNumber}
+          logoUrl={logoUrl}
+          borderOnly={slide.isCover}
+        />
       </Layer>
     </Stage>
   )
