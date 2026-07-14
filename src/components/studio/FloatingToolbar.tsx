@@ -129,13 +129,17 @@ export function FloatingToolbar({
         />
       ) : single ? (
         <>
-          <TBtn
-            icon={ClipboardList}
-            label="Specs"
-            active={!!specsMap[single.id]}
-            onClick={() => store.getState().openSpecs(single.id)}
-          />
-          <TDivider />
+          {single.type === 'image' && (
+            <>
+              <TBtn
+                icon={ClipboardList}
+                label="Specs"
+                active={!!specsMap[single.id]}
+                onClick={() => store.getState().openSpecs(single.id)}
+              />
+              <TDivider />
+            </>
+          )}
           {single.type === 'image' ? (
             <ImageToolbar obj={single} />
           ) : single.type === 'text' ? (

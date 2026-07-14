@@ -54,13 +54,18 @@ export default function EditorShell(props: EditorShellProps) {
   const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
   const selectedIds = useStudioStore(s => s.selectedIds)
 
-  // With the Specs list open, selecting a single object on canvas jumps
-  // straight to its spec editor; deselecting (or multi-select) returns to
-  // the list. Doesn't interfere with opening specs via the toolbar/dot
+  // With the Specs list open, selecting a single IMAGE on canvas jumps
+  // straight to its spec editor (specs only make sense on images — a photo
+  // stands in for a physical product; text/shapes never get one);
+  // deselecting, multi-select, or selecting a non-image returns to the
+  // list. Doesn't interfere with opening specs via the toolbar/dot
   // indicator when the list isn't open.
   useEffect(() => {
     if (!showSpecs) return
-    useStudioStore.getState().openSpecs(selectedIds.length === 1 ? selectedIds[0] : null)
+    const store = useStudioStore.getState()
+    const slide = store.slides.find(sl => sl.id === store.currentSlideId)
+    const obj = selectedIds.length === 1 ? slide?.objects.find(o => o.id === selectedIds[0]) : null
+    store.openSpecs(obj?.type === 'image' ? obj.id : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showSpecs, selectedIds.join(',')])
 
@@ -127,6 +132,10 @@ export default function EditorShell(props: EditorShellProps) {
     localStorage.setItem('studio-assets-open', String(assets))
     localStorage.setItem('studio-specs-open', String(specs))
     localStorage.setItem('studio-theme-open', String(theme))
+    // Closing Specs from the header must also close whichever per-object
+    // spec editor is open — otherwise clicking Specs again to close it
+    // leaves that panel lingering (it isn't gated by showSpecs itself)
+    if (panel === 'specs' && !specs) useStudioStore.getState().openSpecs(null)
   }
 
   // Initialise the store from server data once
