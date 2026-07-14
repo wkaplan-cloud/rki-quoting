@@ -91,7 +91,9 @@ export interface BoardLastState {
 }
 
 // Every image imported into a board is registered as an asset (deduplicated
-// by content hash). Future phases attach specs/quotes to these.
+// by content hash). `label` is a designer-chosen name (e.g. "Sofa", "Oak
+// wood") — optional, picked from a dropdown of names already used across the
+// org where possible, powering the cross-board asset search.
 export interface StudioAsset {
   id: string
   url: string
@@ -100,6 +102,7 @@ export interface StudioAsset {
   naturalHeight: number
   fileSize: number
   createdAt: string
+  label: string | null
 }
 
 export interface StudioAssetRow {
@@ -112,6 +115,7 @@ export interface StudioAssetRow {
   natural_height: number
   file_size: number
   created_at: string
+  label?: string | null
 }
 
 export function assetFromRow(row: StudioAssetRow): StudioAsset {
@@ -123,6 +127,7 @@ export function assetFromRow(row: StudioAssetRow): StudioAsset {
     naturalHeight: row.natural_height,
     fileSize: row.file_size,
     createdAt: row.created_at,
+    label: row.label ?? null,
   }
 }
 

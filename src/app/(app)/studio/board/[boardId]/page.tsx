@@ -49,7 +49,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
         .order('sort_order'),
       supabase
         .from('studio_assets')
-        .select('id, board_id, org_id, url, hash, natural_width, natural_height, file_size, created_at')
+        .select('id, board_id, org_id, url, hash, natural_width, natural_height, file_size, created_at, label')
         .eq('board_id', board.id)
         .order('created_at', { ascending: false }),
       supabase

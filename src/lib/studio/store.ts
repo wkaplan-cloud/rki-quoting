@@ -100,6 +100,7 @@ interface StudioState {
   setMasterLayout: (patch: Partial<MasterLayoutConfig>) => void
   setPresenting: (on: boolean) => void
   addAsset: (asset: StudioAsset) => void
+  renameAsset: (id: string, label: string | null) => void
   openSpecs: (objectId: string | null) => void
   updateSpec: (objectId: string, patch: Partial<StudioSpec>) => void
 
@@ -364,6 +365,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const { assets } = get()
     if (assets.some(a => a.id === asset.id || a.hash === asset.hash)) return
     set({ assets: [asset, ...assets] })
+  },
+
+  renameAsset: (id, label) => {
+    set({ assets: get().assets.map(a => (a.id === id ? { ...a, label } : a)) })
   },
 
   openSpecs: objectId => set({ specPanelObjectId: objectId }),
