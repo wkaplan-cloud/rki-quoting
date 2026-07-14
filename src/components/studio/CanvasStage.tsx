@@ -6,6 +6,7 @@ import type { KonvaEventObject } from 'konva/lib/Node'
 import { PAGE_W, PAGE_H } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
 import { MasterGroup } from './MasterLayer'
+import { getMasterTheme } from '@/lib/studio/masterThemes'
 import { ObjectNode } from './objects/ObjectNode'
 import { SelectionTransformer } from './SelectionTransformer'
 import { SmartGuides } from './SmartGuides'
@@ -35,9 +36,11 @@ export function CanvasStage({
   const logoUrl = useStudioStore(s => s.logoUrl)
   const cropTargetId = useStudioStore(s => s.cropTargetId)
   const editingHeading = useStudioStore(s => s.editingHeading)
+  const masterLayout = useStudioStore(s => s.masterLayout)
 
   const slideIndex = slides.findIndex(sl => sl.id === currentSlideId)
   const slide = slides[slideIndex]
+  const pageBackground = masterLayout.enabled ? getMasterTheme(masterLayout.themeId).background : '#FFFFFF'
 
   function onWheel(e: KonvaEventObject<WheelEvent>) {
     e.evt.preventDefault()
@@ -94,7 +97,7 @@ export function CanvasStage({
           y={0}
           width={PAGE_W}
           height={PAGE_H}
-          fill="#FFFFFF"
+          fill={pageBackground}
           shadowColor="rgba(26,26,24,0.25)"
           shadowBlur={24}
           shadowOffsetY={6}

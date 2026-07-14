@@ -1,32 +1,21 @@
 'use client'
+import { useEffect, useRef } from 'react'
+import Konva from 'konva'
 import { Group, Text, Rect, Image as KonvaImage } from 'react-konva'
 import { PAGE_W, PAGE_H, MASTER_SIDE, COLORS } from '@/lib/studio/constants'
 import { useTrimmedLogo } from '@/lib/studio/images'
 import { useStudioStore } from '@/lib/studio/store'
+import { getMasterTheme, getMasterMarginRect, mmToPt } from '@/lib/studio/masterThemes'
+import { useMasterFonts } from '@/lib/studio/masterFonts'
+import type { MasterLayoutConfig } from '@/lib/studio/types'
 
-// Logo sizing: the TRIMMED content (whitespace removed) fits this box, so
-// every org's logo carries the same quiet visual weight bottom-right,
-// whatever its file dimensions or padding. Sized up from the original
-// 110×26 and given a translucent white backing plate — at the old size and
-// opacity it disappeared entirely against busy photo backgrounds.
-const LOGO_MAX_W = 160
-const LOGO_MAX_H = 40
-const LOGO_BOTTOM = 22
-const LOGO_PAD = 10
+// Legacy corner-logo sizing (LegacyMasterGroup only — frozen, do not change).
+const LEGACY_LOGO_MAX_W = 160
+const LEGACY_LOGO_MAX_H = 40
+const LEGACY_LOGO_BOTTOM = 22
+const LEGACY_LOGO_PAD = 10
 
-// Master layout drawn INSIDE the Konva stage — the same group renders in the
-// editor, thumbnails, presentation and PDF export, so all four match exactly.
-// These elements are not canvas objects: they can't be selected or moved.
-export function MasterGroup({
-  title,
-  heading,
-  pageNumber,
-  pageCount,
-  logoUrl,
-  interactive = false,
-  onHeadingDblClick,
-  hideHeading = false,
-}: {
+interface MasterGroupProps {
   title: string
   heading: string
   pageNumber: number
@@ -35,15 +24,45 @@ export function MasterGroup({
   interactive?: boolean
   onHeadingDblClick?: () => void
   hideHeading?: boolean
-}) {
-  // Per-board master layout config (defaults show everything; no UI yet)
+}
+
+// Master layout drawn INSIDE the Konva stage — the same group renders in the
+// editor, thumbnails, presentation and PDF export, so all four match exactly.
+// These elements are not canvas objects: they can't be selected or moved.
+//
+// `masterLayout.enabled` is a permanent fork, not a migration flag: every
+// board created before the Master Page system keeps rendering through
+// LegacyMasterGroup, frozen, forever — flipping Enabled in the Theme panel
+// is itself the one-time opt-in into ThemedMasterGroup, nothing else
+// migrates or changes underneath a board that hasn't opted in.
+export function MasterGroup(props: MasterGroupProps) {
   const config = useStudioStore(s => s.masterLayout)
+  const businessName = useStudioStore(s => s.businessName)
+  if (!config.enabled) return <LegacyMasterGroup {...props} config={config} />
+  return <ThemedMasterGroup {...props} config={config} businessName={businessName} />
+}
+
+// Today's exact heading/logo treatment, byte-for-byte — only field names
+// were renamed to match the new config shape (showHeading→showHeader). The
+// small client-name label this used to gate behind `showTitle` is gone from
+// the type entirely, but that's not a behaviour change: it already
+// defaulted off with no UI ever able to turn it on, for every board.
+function LegacyMasterGroup({
+  heading,
+  pageNumber,
+  pageCount,
+  logoUrl,
+  interactive = false,
+  onHeadingDblClick,
+  hideHeading = false,
+  config,
+}: MasterGroupProps & { config: MasterLayoutConfig }) {
   const logo = useTrimmedLogo(config.showLogo ? logoUrl : null)
 
   let logoW = 0
   let logoH = 0
   if (logo) {
-    const scale = Math.min(LOGO_MAX_W / logo.crop.width, LOGO_MAX_H / logo.crop.height)
+    const scale = Math.min(LEGACY_LOGO_MAX_W / logo.crop.width, LEGACY_LOGO_MAX_H / logo.crop.height)
     logoW = logo.crop.width * scale
     logoH = logo.crop.height * scale
   }
@@ -52,19 +71,7 @@ export function MasterGroup({
 
   return (
     <Group listening={interactive}>
-      {config.showTitle && (
-        <Text
-          x={MASTER_SIDE}
-          y={20}
-          text={title.toUpperCase()}
-          fontSize={11}
-          fontFamily="Helvetica"
-          fill={COLORS.muted}
-          letterSpacing={2}
-          listening={false}
-        />
-      )}
-      {config.showHeading && !hideHeading && (
+      {config.showHeader && !hideHeading && (
         <Text
           x={MASTER_SIDE}
           y={36}
@@ -92,10 +99,10 @@ export function MasterGroup({
       {logo && (
         <Group listening={false}>
           <Rect
-            x={PAGE_W - MASTER_SIDE - logoW - LOGO_PAD}
-            y={PAGE_H - LOGO_BOTTOM - logoH - LOGO_PAD}
-            width={logoW + LOGO_PAD * 2}
-            height={logoH + LOGO_PAD * 2}
+            x={PAGE_W - MASTER_SIDE - logoW - LEGACY_LOGO_PAD}
+            y={PAGE_H - LEGACY_LOGO_BOTTOM - logoH - LEGACY_LOGO_PAD}
+            width={logoW + LEGACY_LOGO_PAD * 2}
+            height={logoH + LEGACY_LOGO_PAD * 2}
             fill="#FFFFFF"
             opacity={0.82}
             cornerRadius={6}
@@ -107,12 +114,132 @@ export function MasterGroup({
             image={logo.image}
             crop={logo.crop}
             x={PAGE_W - MASTER_SIDE - logoW}
-            y={PAGE_H - LOGO_BOTTOM - logoH}
+            y={PAGE_H - LEGACY_LOGO_BOTTOM - logoH}
             width={logoW}
             height={logoH}
             listening={false}
           />
         </Group>
+      )}
+    </Group>
+  )
+}
+
+// Minimal White (and future themes) — border, header, footer, all derived
+// from the active theme + the board's own binding margin. Content margins
+// double as the auto-layout safe area (see masterThemes.getMasterContentArea)
+// so imported images and the master chrome can never overlap.
+function ThemedMasterGroup({
+  heading,
+  pageNumber,
+  logoUrl,
+  interactive = false,
+  onHeadingDblClick,
+  hideHeading = false,
+  config,
+  businessName,
+}: MasterGroupProps & { config: MasterLayoutConfig; businessName: string }) {
+  const theme = getMasterTheme(config.themeId)
+  const margin = getMasterMarginRect(config)
+  const logo = useTrimmedLogo(config.showLogo ? logoUrl : null)
+  const { ready, playfair, inter } = useMasterFonts()
+  const logoRef = useRef<Konva.Image>(null)
+
+  useEffect(() => {
+    const node = logoRef.current
+    if (node && logo) {
+      node.cache()
+      node.filters([Konva.Filters.Grayscale])
+      node.getLayer()?.batchDraw()
+    }
+  }, [logo?.image, logo?.crop.x, logo?.crop.y, logo?.crop.width, logo?.crop.height])
+
+  const borderInset = mmToPt(theme.border.insetMm)
+  const footerBaselineY = PAGE_H - margin.bottom
+  const showPlaceholder = interactive && !heading
+
+  let logoW = 0
+  const logoH = theme.footer.logoMaxHeightPt
+  if (logo) {
+    const safeAreaW = PAGE_W - margin.left - margin.right
+    logoW = Math.min((logo.crop.width / logo.crop.height) * logoH, safeAreaW * 0.5)
+  }
+
+  return (
+    <Group listening={interactive}>
+      {config.showBorder && (
+        <Rect
+          x={borderInset}
+          y={borderInset}
+          width={PAGE_W - borderInset * 2}
+          height={PAGE_H - borderInset * 2}
+          stroke={theme.border.color}
+          strokeWidth={theme.border.widthPt}
+          cornerRadius={theme.border.cornerRadius}
+          listening={false}
+        />
+      )}
+
+      {config.showHeader && !hideHeading && ready && (
+        <Text
+          x={margin.left}
+          y={margin.top}
+          width={PAGE_W - margin.left - margin.right}
+          text={showPlaceholder ? 'Double-click to add heading' : heading}
+          fontSize={theme.header.fontSizePt}
+          fontFamily={playfair}
+          fontStyle="normal"
+          fill={showPlaceholder ? '#C9C4B8' : theme.header.color}
+          listening={interactive}
+          onDblClick={onHeadingDblClick}
+          onDblTap={onHeadingDblClick}
+        />
+      )}
+
+      {config.showFooter && (
+        <>
+          {config.showLogo &&
+            (logo ? (
+              <KonvaImage
+                ref={logoRef}
+                image={logo.image}
+                crop={logo.crop}
+                x={margin.left}
+                y={footerBaselineY - logoH}
+                width={logoW}
+                height={logoH}
+                listening={false}
+              />
+            ) : (
+              ready && (
+                <Text
+                  x={margin.left}
+                  y={footerBaselineY - theme.footer.fontSizePt * 1.2}
+                  text={businessName}
+                  fontSize={theme.footer.fontSizePt}
+                  fontFamily={inter}
+                  fontStyle="normal"
+                  fill={theme.footer.textColor}
+                  listening={false}
+                />
+              )
+            ))}
+
+          {config.showPageNumber && ready && (
+            <Text
+              x={PAGE_W - margin.right - 40}
+              y={footerBaselineY - theme.footer.fontSizePt * 1.2}
+              width={40}
+              align="right"
+              text={String(pageNumber).padStart(2, '0')}
+              fontSize={theme.footer.fontSizePt}
+              fontFamily={inter}
+              fontStyle="normal"
+              fill={theme.footer.textColor}
+              listening={false}
+            />
+          )}
+        </>
       )}
     </Group>
   )

@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
 import type {
@@ -18,6 +18,7 @@ import { CanvasArea } from './CanvasArea'
 import { AssetPanel } from './AssetPanel'
 import { SpecsPanel } from './SpecsPanel'
 import { SpecsListPanel } from './SpecsListPanel'
+import { MasterThemePanel } from './MasterThemePanel'
 import { PresentationMode } from './PresentationMode'
 import { ExportRunner } from './ExportRunner'
 
@@ -43,6 +44,7 @@ export default function EditorShell(props: EditorShellProps) {
   const [exporting, setExporting] = useState(false)
   const [showAssets, setShowAssets] = useState(false)
   const [showSpecs, setShowSpecs] = useState(false)
+  const [showTheme, setShowTheme] = useState(false)
   const presenting = useStudioStore(s => s.presenting)
   const saveState = useStudioStore(s => s.saveState)
   // The board-wide specs list yields to the per-object spec editor while
@@ -50,11 +52,13 @@ export default function EditorShell(props: EditorShellProps) {
   const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
 
   useEffect(() => {
-    // One right-hand panel at a time — if both were somehow stored open,
-    // Assets wins
+    // One right-hand panel at a time — if more than one were somehow stored
+    // open, Assets wins, then Specs
     const assets = localStorage.getItem('studio-assets-open') === 'true'
+    const specs = !assets && localStorage.getItem('studio-specs-open') === 'true'
     setShowAssets(assets)
-    setShowSpecs(!assets && localStorage.getItem('studio-specs-open') === 'true')
+    setShowSpecs(specs)
+    setShowTheme(!assets && !specs && localStorage.getItem('studio-theme-open') === 'true')
   }, [])
 
   // Connectivity light. Edits keep working offline — everything stays in
@@ -98,14 +102,18 @@ export default function EditorShell(props: EditorShellProps) {
     })
   }, [])
 
-  function togglePanel(panel: 'assets' | 'specs') {
-    const next = panel === 'assets' ? !showAssets : !showSpecs
+  function togglePanel(panel: 'assets' | 'specs' | 'theme') {
+    const current = panel === 'assets' ? showAssets : panel === 'specs' ? showSpecs : showTheme
+    const next = !current
     const assets = panel === 'assets' ? next : false
     const specs = panel === 'specs' ? next : false
+    const theme = panel === 'theme' ? next : false
     setShowAssets(assets)
     setShowSpecs(specs)
+    setShowTheme(theme)
     localStorage.setItem('studio-assets-open', String(assets))
     localStorage.setItem('studio-specs-open', String(specs))
+    localStorage.setItem('studio-theme-open', String(theme))
   }
 
   // Initialise the store from server data once
@@ -278,6 +286,16 @@ export default function EditorShell(props: EditorShellProps) {
         </button>
         <button
           type="button"
+          onClick={() => togglePanel('theme')}
+          className={`flex items-center gap-1.5 h-8 px-3 text-xs rounded-lg transition-colors cursor-pointer ${
+            showTheme ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+          }`}
+          title="Master Page theme settings"
+        >
+          <Palette size={13} /> Theme
+        </button>
+        <button
+          type="button"
           onClick={() => void startPresent()}
           className="flex items-center gap-1.5 h-8 px-3 text-xs text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
         >
@@ -299,6 +317,7 @@ export default function EditorShell(props: EditorShellProps) {
         <CanvasArea />
         {showAssets && <AssetPanel />}
         {showSpecs && !specEditorOpen && <SpecsListPanel />}
+        {showTheme && <MasterThemePanel />}
         <SpecsPanel />
       </div>
 

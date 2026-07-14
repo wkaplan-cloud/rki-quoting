@@ -6,6 +6,7 @@ import { Plus, Copy, Trash2, Pencil } from 'lucide-react'
 import { PAGE_W, PAGE_H } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
 import { loadImage } from '@/lib/studio/images'
+import { ensureMasterFontsLoaded } from '@/lib/studio/masterFonts'
 import type { StudioSlide } from '@/lib/studio/types'
 import { StaticSlideStage } from './StaticSlideStage'
 
@@ -228,7 +229,7 @@ function ThumbSnapshot({
     const urls = slide.objects.flatMap(o => (o.type === 'image' ? [o.url] : []))
     const logoUrl = useStudioStore.getState().logoUrl
     if (logoUrl) urls.push(logoUrl)
-    Promise.allSettled(urls.map(loadImage)).then(() => {
+    Promise.allSettled([...urls.map(loadImage), ensureMasterFontsLoaded()]).then(() => {
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           if (cancelled) return

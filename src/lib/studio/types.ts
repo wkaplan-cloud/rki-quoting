@@ -236,22 +236,35 @@ export interface SpecSupplierOption {
   priceListId: string | null
 }
 
-// Per-board master layout configuration. Defaults live here; no UI yet —
-// future phases let designers customise what the master shows.
+// Per-board master page configuration, backing the "Master Theme" settings
+// panel. `enabled` is a permanent fork, not a migration flag: false renders
+// today's legacy heading/logo treatment verbatim (see LegacyMasterGroup in
+// MasterLayer.tsx); true renders the theme-driven Master Page (see
+// masterThemes.ts). Only bindingMarginMm is board-adjustable — the other
+// margins are fixed per theme.
 export interface MasterLayoutConfig {
-  showTitle: boolean
-  showHeading: boolean
-  showPageNumber: boolean
+  enabled: boolean
+  themeId: string
+  showBorder: boolean
+  showHeader: boolean
+  showFooter: boolean
   showLogo: boolean
+  showPageNumber: boolean
+  bindingMarginMm: number
 }
 
+// Legacy/unconfigured boards (stored master_layout is null) resolve here —
+// enabled:false, so every existing board keeps looking exactly as it does
+// today until someone explicitly opts it into the Master Page in the panel.
 export const DEFAULT_MASTER_LAYOUT: MasterLayoutConfig = {
-  // The small client-name label on every slide is redundant now that boards
-  // open on a dedicated cover slide with the client's name front and centre
-  showTitle: false,
-  showHeading: true,
-  showPageNumber: true,
+  enabled: false,
+  themeId: 'minimal-white',
+  showBorder: true,
+  showHeader: true,
+  showFooter: true,
   showLogo: true,
+  showPageNumber: true,
+  bindingMarginMm: 35,
 }
 
 export function masterLayoutFromJson(json: unknown): MasterLayoutConfig {

@@ -7,6 +7,7 @@ import { useStudioStore } from '@/lib/studio/store'
 import type { StudioSlide } from '@/lib/studio/types'
 import { MasterGroup } from './MasterLayer'
 import { ObjectNode } from './objects/ObjectNode'
+import { getMasterTheme } from '@/lib/studio/masterThemes'
 
 // Read-only rendering of one slide, used by thumbnails, presentation mode and
 // PDF export. Renders the identical component tree the editor uses (objects +
@@ -26,7 +27,9 @@ export function StaticSlideStage({
 }) {
   const clientName = useStudioStore(s => s.clientName)
   const logoUrl = useStudioStore(s => s.logoUrl)
+  const masterLayout = useStudioStore(s => s.masterLayout)
   const scale = width / PAGE_W
+  const pageBackground = masterLayout.enabled ? getMasterTheme(masterLayout.themeId).background : '#FFFFFF'
 
   return (
     <Stage
@@ -38,7 +41,7 @@ export function StaticSlideStage({
       listening={false}
     >
       <Layer listening={false}>
-        <Rect x={0} y={0} width={PAGE_W} height={PAGE_H} fill="#FFFFFF" />
+        <Rect x={0} y={0} width={PAGE_W} height={PAGE_H} fill={pageBackground} />
         {slide.objects.map(obj => (
           <ObjectNode key={obj.id} obj={obj} interactive={false} />
         ))}

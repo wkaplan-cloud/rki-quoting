@@ -1,10 +1,15 @@
 'use client'
 import { PAGE_W, PAGE_H } from './constants'
 import { loadImage } from './images'
+import { ensureMasterFontsLoaded } from './masterFonts'
 import type { StudioSlide } from './types'
 
 // Preload every image referenced by the board (plus the org logo) into the
-// shared cache so export stages render complete on first paint.
+// shared cache so export stages render complete on first paint. Also force
+// -loads the Master Page's Playfair/Inter fonts — without this,
+// `document.fonts.ready` below is a no-op on this route (nothing else here
+// ever triggers Playfair Display's @font-face fetch), and the export could
+// silently rasterize the header in a fallback serif.
 export async function preloadBoardImages(slides: StudioSlide[], logoUrl: string | null): Promise<void> {
   const urls = new Set<string>()
   if (logoUrl) urls.add(logoUrl)
@@ -14,6 +19,7 @@ export async function preloadBoardImages(slides: StudioSlide[], logoUrl: string 
     }
   }
   await Promise.all(Array.from(urls).map(url => loadImage(url).catch(() => null)))
+  await ensureMasterFontsLoaded()
   await document.fonts.ready
 }
 

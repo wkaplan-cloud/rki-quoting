@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react'
 import { MASTER_SIDE, PAGE_W } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
+import { getMasterTheme, getMasterMarginRect } from '@/lib/studio/masterThemes'
 import type { TextObject } from '@/lib/studio/types'
 
 // Konva can't edit text in-canvas — this HTML textarea sits exactly over the
@@ -84,6 +85,7 @@ export function HeadingEditOverlay() {
   const currentSlideId = useStudioStore(s => s.currentSlideId)
   const slides = useStudioStore(s => s.slides)
   const viewport = useStudioStore(s => s.viewport)
+  const masterLayout = useStudioStore(s => s.masterLayout)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const slide = slides.find(sl => sl.id === currentSlideId)
@@ -101,6 +103,17 @@ export function HeadingEditOverlay() {
     store.setEditingHeading(false)
   }
 
+  // Mirrors whichever branch MasterGroup is currently rendering (legacy vs.
+  // themed) so this HTML edit box never visually drifts from the canvas text
+  const theme = getMasterTheme(masterLayout.themeId)
+  const margin = masterLayout.enabled ? getMasterMarginRect(masterLayout) : null
+  const left = margin ? margin.left : MASTER_SIDE
+  const top = margin ? margin.top : 34
+  const width = margin ? PAGE_W - margin.left - margin.right : (PAGE_W - MASTER_SIDE * 2) * 0.6
+  const fontSize = margin ? theme.header.fontSizePt : 26
+  const fontFamily = margin ? 'var(--font-playfair)' : 'Georgia'
+  const color = margin ? theme.header.color : '#1A1A18'
+
   return (
     <input
       ref={inputRef}
@@ -116,12 +129,12 @@ export function HeadingEditOverlay() {
       }}
       className="absolute z-30 bg-transparent outline-none border-b border-dashed border-[#9A7B4F]"
       style={{
-        left: viewport.x + MASTER_SIDE * viewport.zoom,
-        top: viewport.y + 34 * viewport.zoom,
-        width: (PAGE_W - MASTER_SIDE * 2) * 0.6 * viewport.zoom,
-        fontSize: 26 * viewport.zoom,
-        fontFamily: 'Georgia',
-        color: '#1A1A18',
+        left: viewport.x + left * viewport.zoom,
+        top: viewport.y + top * viewport.zoom,
+        width: width * viewport.zoom,
+        fontSize: fontSize * viewport.zoom,
+        fontFamily,
+        color,
       }}
     />
   )

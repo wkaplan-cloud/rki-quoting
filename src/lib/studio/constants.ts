@@ -20,6 +20,7 @@ export const MAX_HISTORY = 50
 // Autosave debounce (ms)
 export const SAVE_DEBOUNCE = 800
 export const STATE_SAVE_DEBOUNCE = 2000
+export const MASTER_LAYOUT_SAVE_DEBOUNCE = 600
 
 // Editor chrome palette (matches app conventions)
 export const COLORS = {

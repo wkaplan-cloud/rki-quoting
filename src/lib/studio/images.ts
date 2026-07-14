@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useStudioStore, newId } from './store'
 import { gridPlacements } from './autoLayout'
+import { getMasterContentArea } from './masterThemes'
 import { assetFromRow, type ImageObject, type StudioAssetRow } from './types'
 
 // ── Image element cache ─────────────────────────────────────────────────────
@@ -364,7 +365,8 @@ export async function importImageFiles(files: File[], at?: { x: number; y: numbe
   const uploaded = await Promise.all(images.map(uploadFile))
   const store = useStudioStore.getState()
 
-  const placements = gridPlacements(uploaded.map(u => ({ width: u.width, height: u.height })))
+  const area = getMasterContentArea(store.masterLayout)
+  const placements = gridPlacements(uploaded.map(u => ({ width: u.width, height: u.height })), area)
   const objects: ImageObject[] = uploaded.map((u, i) => {
     const p = placements[i]
     const x = uploaded.length === 1 && at ? at.x - p.width / 2 : p.x
@@ -393,7 +395,8 @@ export async function importImageFiles(files: File[], at?: { x: number; y: numbe
 export function addAssetToSlide(asset: { url: string; naturalWidth: number; naturalHeight: number }, at?: { x: number; y: number }): void {
   const width = asset.naturalWidth || 800
   const height = asset.naturalHeight || 600
-  const [p] = gridPlacements([{ width, height }])
+  const area = getMasterContentArea(useStudioStore.getState().masterLayout)
+  const [p] = gridPlacements([{ width, height }], area)
   const obj: ImageObject = {
     id: newId(),
     type: 'image',

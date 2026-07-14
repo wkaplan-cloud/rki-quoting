@@ -11,7 +11,7 @@ import type {
   SpecSupplierOption,
 } from './types'
 import { DEFAULT_MASTER_LAYOUT } from './types'
-import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE } from './constants'
+import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE, MASTER_LAYOUT_SAVE_DEBOUNCE } from './constants'
 
 interface Snapshot {
   slides: StudioSlide[]
@@ -92,6 +92,7 @@ interface StudioState {
   setCropTarget: (id: string | null) => void
   setViewport: (v: Viewport) => void
   setGuides: (g: { v: number[]; h: number[] }) => void
+  setMasterLayout: (patch: Partial<MasterLayoutConfig>) => void
   setPresenting: (on: boolean) => void
   addAsset: (asset: StudioAsset) => void
   openSpecs: (objectId: string | null) => void
@@ -125,6 +126,7 @@ interface StudioState {
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 let stateTimer: ReturnType<typeof setTimeout> | null = null
 let retryTimer: ReturnType<typeof setTimeout> | null = null
+let masterLayoutTimer: ReturnType<typeof setTimeout> | null = null
 // Version-history foundation: one revision snapshot per slide, at most every
 // REVISION_INTERVAL of active editing. No UI yet — restore comes later.
 const REVISION_INTERVAL = 5 * 60 * 1000
@@ -176,6 +178,29 @@ async function saveLastState() {
       .eq('id', s.boardId)
   } catch {
     // Cosmetic state (zoom/pan/slide) — never worth surfacing offline noise
+  }
+}
+
+function scheduleMasterLayoutSave() {
+  if (masterLayoutTimer) clearTimeout(masterLayoutTimer)
+  masterLayoutTimer = setTimeout(() => {
+    masterLayoutTimer = null
+    void saveMasterLayout()
+  }, MASTER_LAYOUT_SAVE_DEBOUNCE)
+}
+
+async function saveMasterLayout() {
+  const s = useStudioStore.getState()
+  if (!s.boardId) return
+  try {
+    const supabase = createClient()
+    await supabase
+      .from('studio_boards')
+      .update({ master_layout: s.masterLayout, updated_at: new Date().toISOString() })
+      .eq('id', s.boardId)
+  } catch {
+    // Best-effort, same tier as saveLastState — the in-memory value driving
+    // the live preview is already correct regardless of save success
   }
 }
 
@@ -319,6 +344,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     scheduleStateSave()
   },
   setGuides: g => set({ guides: g }),
+  setMasterLayout: patch => {
+    set(s => ({ masterLayout: { ...s.masterLayout, ...patch } }))
+    scheduleMasterLayoutSave()
+  },
   setPresenting: on => set({ presenting: on, selectedIds: [], editingTextId: null, cropTargetId: null }),
 
   addAsset: asset => {

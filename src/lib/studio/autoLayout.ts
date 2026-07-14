@@ -1,4 +1,4 @@
-import { PAGE_W, PAGE_H, MASTER_TOP, MASTER_BOTTOM, MASTER_SIDE } from './constants'
+import { PAGE_W } from './constants'
 
 const GUTTER = 16
 
@@ -9,15 +9,24 @@ export interface CellPlacement {
   height: number
 }
 
+export interface ContentArea {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 // Arrange n images into a neat grid inside the usable page area (the master
-// layout bands stay clear). Each image is contain-fitted to its cell and
-// centred. Deterministic — one undo step for a whole multi-import.
-export function gridPlacements(sizes: { width: number; height: number }[]): CellPlacement[] {
+// layout/theme's safe content area, passed in by the caller so placement
+// always matches whichever margins are actually active for that board).
+// Each image is contain-fitted to its cell and centred. Deterministic — one
+// undo step for a whole multi-import.
+export function gridPlacements(sizes: { width: number; height: number }[], area: ContentArea): CellPlacement[] {
   const n = sizes.length
-  const areaX = MASTER_SIDE
-  const areaY = MASTER_TOP
-  const areaW = PAGE_W - MASTER_SIDE * 2
-  const areaH = PAGE_H - MASTER_TOP - MASTER_BOTTOM
+  const areaX = area.x
+  const areaY = area.y
+  const areaW = area.width
+  const areaH = area.height
 
   if (n === 1) {
     // Single image: fit within 40% of page width (or full usable height)
