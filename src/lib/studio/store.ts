@@ -166,11 +166,15 @@ async function saveLastState() {
     panX: s.viewport.x,
     panY: s.viewport.y,
   }
-  const supabase = createClient()
-  await supabase
-    .from('studio_boards')
-    .update({ last_state: lastState, updated_at: new Date().toISOString() })
-    .eq('id', s.boardId)
+  try {
+    const supabase = createClient()
+    await supabase
+      .from('studio_boards')
+      .update({ last_state: lastState, updated_at: new Date().toISOString() })
+      .eq('id', s.boardId)
+  } catch {
+    // Cosmetic state (zoom/pan/slide) — never worth surfacing offline noise
+  }
 }
 
 // Which slide ids need persisting after `slides` changed from `prev` to `next`.
@@ -584,6 +588,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       clearTimeout(saveTimer)
       saveTimer = null
     }
+    // Definitely offline — skip the doomed network round-trip, keep every
+    // change marked dirty and let the retry loop / reconnect listener flush.
+    // Editing continues normally in memory the whole time.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      set({ saveState: 'error' })
+      scheduleRetry()
+      return
+    }
     const dirty = s.dirtySlideIds
     const dirtySpecs = s.dirtySpecIds
     set({ saveState: 'saving', dirtySlideIds: [], dirtySpecIds: [] })
@@ -604,7 +616,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       }))
     const toDelete = dirty.filter(id => !currentIds.has(id))
 
+    // Everything network-touching sits inside try/catch: supabase-js can
+    // reject outright on a dropped connection, and an uncaught throw here
+    // would strand saveState on 'saving' with the dirty lists already
+    // cleared — silently losing the offline edits.
     let failed = false
+    try {
     if (rows.length) {
       const { error } = await supabase.from('studio_slides').upsert(rows)
       if (error) failed = true
@@ -668,6 +685,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         }
       }
     }
+    } catch {
+      failed = true
+    }
 
     if (failed) {
       // Re-mark and retry automatically — a dropped connection must not
@@ -698,7 +718,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       void supabase
         .from('studio_slide_revisions')
         .insert(revisionRows)
-        .then(() => {}) // best-effort: history must never block or fail a save
+        .then(() => {}, () => {}) // best-effort: history must never block or fail a save
     }
 
     // New edits may have arrived while saving — they re-marked dirty ids themselves

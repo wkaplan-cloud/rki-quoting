@@ -56,6 +56,35 @@ export default function EditorShell(props: EditorShellProps) {
     setShowSpecs(!assets && localStorage.getItem('studio-specs-open') === 'true')
   }, [])
 
+  // Connectivity light. Edits keep working offline — everything stays in
+  // memory, marked dirty, and syncs automatically on reconnect.
+  const [online, setOnline] = useState(true)
+  useEffect(() => {
+    setOnline(navigator.onLine)
+    const up = () => setOnline(true)
+    const down = () => setOnline(false)
+    window.addEventListener('online', up)
+    window.addEventListener('offline', down)
+    return () => {
+      window.removeEventListener('online', up)
+      window.removeEventListener('offline', down)
+    }
+  }, [])
+
+  // Unsaved work (typically while offline) — ask before leaving the page,
+  // since unsynced changes live only in this tab
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      const st = useStudioStore.getState()
+      if (st.dirtySlideIds.length || st.dirtySpecIds.length || st.saveState !== 'saved') {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
+
   // Warm up the background-removal model silently while the user works.
   // Only surfaces the "Refining canvas" bar if there's a real download
   // happening (first visit on this device) — cached opens show nothing.
@@ -191,13 +220,23 @@ export default function EditorShell(props: EditorShellProps) {
             </span>
           ) : saveState === 'error' ? (
             <span className="flex items-center gap-1 text-amber-400">
-              <AlertTriangle size={10} /> Not saved
+              <AlertTriangle size={10} /> {online ? 'Not saved' : 'Will sync when online'}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-white/30">
               <Check size={10} /> Saved
             </span>
           )}
+        </span>
+
+        <span
+          className="ml-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider"
+          title={online ? 'Connected — changes save automatically' : 'Offline — keep this tab open; changes sync when the connection returns'}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}`} />
+          <span className={online ? 'text-white/30' : 'text-red-400'}>
+            {online ? 'Online' : 'Offline'}
+          </span>
         </span>
 
         <div className="flex-1" />
