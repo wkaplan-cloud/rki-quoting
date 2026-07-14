@@ -11,6 +11,7 @@ import { SelectionTransformer } from './SelectionTransformer'
 import { SmartGuides } from './SmartGuides'
 import { CropOverlay } from './CropOverlay'
 import { SpecIndicators } from './SpecIndicators'
+import { LowResIndicators } from './LowResIndicators'
 
 const MIN_ZOOM = 0.1
 const MAX_ZOOM = 4
@@ -116,6 +117,7 @@ export function CanvasStage({
       </Layer>
       <Layer>
         <SpecIndicators />
+        <LowResIndicators />
         <SmartGuides />
         <SelectionTransformer />
         <CropOverlay />
