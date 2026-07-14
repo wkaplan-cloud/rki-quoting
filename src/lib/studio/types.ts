@@ -237,13 +237,11 @@ export interface SpecSupplierOption {
 }
 
 // Per-board master page configuration, backing the "Master Theme" settings
-// panel. `enabled` is a permanent fork, not a migration flag: false renders
-// today's legacy heading/logo treatment verbatim (see LegacyMasterGroup in
-// MasterLayer.tsx); true renders the theme-driven Master Page (see
-// masterThemes.ts). Only bindingMarginMm is board-adjustable — the other
-// margins are fixed per theme.
+// panel. Every board has one active theme (see masterThemes.ts) — there's no
+// "off" switch, just a choice of theme and which of its elements to show.
+// Only bindingMarginMm is board-adjustable — the other margins are fixed
+// per theme.
 export interface MasterLayoutConfig {
-  enabled: boolean
   themeId: string
   showBorder: boolean
   showHeader: boolean
@@ -253,11 +251,7 @@ export interface MasterLayoutConfig {
   bindingMarginMm: number
 }
 
-// Legacy/unconfigured boards (stored master_layout is null) resolve here —
-// enabled:false, so every existing board keeps looking exactly as it does
-// today until someone explicitly opts it into the Master Page in the panel.
 export const DEFAULT_MASTER_LAYOUT: MasterLayoutConfig = {
-  enabled: false,
   themeId: 'minimal-white',
   showBorder: true,
   showHeader: true,

@@ -32,7 +32,6 @@ export function CanvasStage({
   const setViewport = useStudioStore(s => s.setViewport)
   const slides = useStudioStore(s => s.slides)
   const currentSlideId = useStudioStore(s => s.currentSlideId)
-  const clientName = useStudioStore(s => s.clientName)
   const logoUrl = useStudioStore(s => s.logoUrl)
   const cropTargetId = useStudioStore(s => s.cropTargetId)
   const editingHeading = useStudioStore(s => s.editingHeading)
@@ -40,7 +39,7 @@ export function CanvasStage({
 
   const slideIndex = slides.findIndex(sl => sl.id === currentSlideId)
   const slide = slides[slideIndex]
-  const pageBackground = masterLayout.enabled ? getMasterTheme(masterLayout.themeId).background : '#FFFFFF'
+  const pageBackground = getMasterTheme(masterLayout.themeId).background
 
   function onWheel(e: KonvaEventObject<WheelEvent>) {
     e.evt.preventDefault()
@@ -107,10 +106,8 @@ export function CanvasStage({
         ))}
         {!slide.isCover && (
           <MasterGroup
-            title={clientName}
             heading={slide.heading}
             pageNumber={slideIndex + 1}
-            pageCount={slides.length}
             logoUrl={logoUrl}
             interactive
             hideHeading={editingHeading}

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef } from 'react'
-import { MASTER_SIDE, PAGE_W } from '@/lib/studio/constants'
+import { PAGE_W } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
 import { getMasterTheme, getMasterMarginRect } from '@/lib/studio/masterThemes'
 import type { TextObject } from '@/lib/studio/types'
@@ -103,16 +103,11 @@ export function HeadingEditOverlay() {
     store.setEditingHeading(false)
   }
 
-  // Mirrors whichever branch MasterGroup is currently rendering (legacy vs.
-  // themed) so this HTML edit box never visually drifts from the canvas text
+  // Mirrors exactly what MasterGroup renders for the heading so this HTML
+  // edit box never visually drifts from the canvas text
   const theme = getMasterTheme(masterLayout.themeId)
-  const margin = masterLayout.enabled ? getMasterMarginRect(masterLayout) : null
-  const left = margin ? margin.left : MASTER_SIDE
-  const top = margin ? margin.top : 34
-  const width = margin ? PAGE_W - margin.left - margin.right : (PAGE_W - MASTER_SIDE * 2) * 0.6
-  const fontSize = margin ? theme.header.fontSizePt : 26
-  const fontFamily = margin ? 'var(--font-playfair)' : 'Georgia'
-  const color = margin ? theme.header.color : '#1A1A18'
+  const margin = getMasterMarginRect(masterLayout)
+  const width = PAGE_W - margin.left - margin.right
 
   return (
     <input
@@ -129,12 +124,15 @@ export function HeadingEditOverlay() {
       }}
       className="absolute z-30 bg-transparent outline-none border-b border-dashed border-[#9A7B4F]"
       style={{
-        left: viewport.x + left * viewport.zoom,
-        top: viewport.y + top * viewport.zoom,
+        left: viewport.x + margin.left * viewport.zoom,
+        top: viewport.y + margin.top * viewport.zoom,
         width: width * viewport.zoom,
-        fontSize: fontSize * viewport.zoom,
-        fontFamily,
-        color,
+        fontSize: theme.header.fontSizePt * viewport.zoom,
+        fontFamily: theme.header.fontVar === '--font-playfair' ? 'var(--font-playfair)' : 'var(--font-inter)',
+        fontStyle: theme.header.fontStyle,
+        letterSpacing: theme.header.uppercase ? theme.header.letterSpacing : undefined,
+        textTransform: theme.header.uppercase ? 'uppercase' : undefined,
+        color: theme.header.color,
       }}
     />
   )

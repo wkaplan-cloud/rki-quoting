@@ -25,11 +25,10 @@ export function StaticSlideStage({
   width: number
   stageRef?: RefObject<Konva.Stage | null>
 }) {
-  const clientName = useStudioStore(s => s.clientName)
   const logoUrl = useStudioStore(s => s.logoUrl)
   const masterLayout = useStudioStore(s => s.masterLayout)
   const scale = width / PAGE_W
-  const pageBackground = masterLayout.enabled ? getMasterTheme(masterLayout.themeId).background : '#FFFFFF'
+  const pageBackground = getMasterTheme(masterLayout.themeId).background
 
   return (
     <Stage
@@ -46,13 +45,7 @@ export function StaticSlideStage({
           <ObjectNode key={obj.id} obj={obj} interactive={false} />
         ))}
         {!slide.isCover && (
-          <MasterGroup
-            title={clientName}
-            heading={slide.heading}
-            pageNumber={pageNumber}
-            pageCount={pageCount}
-            logoUrl={logoUrl}
-          />
+          <MasterGroup heading={slide.heading} pageNumber={pageNumber} logoUrl={logoUrl} />
         )}
       </Layer>
     </Stage>

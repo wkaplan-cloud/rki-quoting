@@ -1,21 +1,6 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
 import { buildCoverSlideObjects } from './coverSlide'
-import type { MasterLayoutConfig } from './types'
-
-// New boards explicitly opt into the Master Page (Minimal White) — existing
-// boards keep looking exactly as they do today (DEFAULT_MASTER_LAYOUT in
-// types.ts stays enabled:false) until someone turns it on via the Theme panel.
-const NEW_BOARD_MASTER_LAYOUT: MasterLayoutConfig = {
-  enabled: true,
-  themeId: 'minimal-white',
-  showBorder: true,
-  showHeader: true,
-  showFooter: true,
-  showLogo: true,
-  showPageNumber: true,
-  bindingMarginMm: 35,
-}
 
 // Shared by every board-creation entry point (the client's board list, and
 // the Studio landing page's New board flow) so the cover-slide composition
@@ -38,13 +23,7 @@ export async function createStudioBoard({
 
   const { error: boardError } = await supabase
     .from('studio_boards')
-    .insert({
-      id: boardId,
-      org_id: orgId,
-      client_id: clientId,
-      name: boardName,
-      master_layout: NEW_BOARD_MASTER_LAYOUT,
-    })
+    .insert({ id: boardId, org_id: orgId, client_id: clientId, name: boardName })
   if (boardError) throw new Error(boardError.message)
 
   const coverObjects = await buildCoverSlideObjects({
