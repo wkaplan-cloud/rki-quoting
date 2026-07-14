@@ -116,21 +116,27 @@ function BoardGrid({ boards }: { boards: BoardRow[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {boards.map(b => (
-        <Link
+        <div
           key={b.id}
-          href={`/studio/board/${b.id}`}
-          className="group bg-white rounded-xl border border-[#D8D3C8] p-5 hover:border-[#9A7B4F] transition-colors"
+          className="group relative bg-white rounded-xl border border-[#D8D3C8] p-5 hover:border-[#9A7B4F] transition-colors"
         >
+          {/* Stretched link: clicking anywhere on the card opens the board.
+              The client name below sits above it (relative + z-10) so its
+              own click goes to the client's board list instead. */}
+          <Link href={`/studio/board/${b.id}`} className="absolute inset-0 rounded-xl" aria-label={b.name} />
           <h3 className="text-sm font-medium text-[#1A1A18] truncate">{b.name}</h3>
-          <p className="text-xs text-[#8A877F] mt-0.5 truncate">
+          <Link
+            href={`/studio/client/${b.clientId}`}
+            className="relative z-10 inline-block max-w-full text-xs text-[#8A877F] hover:text-[#9A7B4F] hover:underline mt-0.5 truncate transition-colors"
+          >
             {b.clientName}
             {b.company && ` — ${b.company}`}
-          </p>
+          </Link>
           <p className="text-[11px] text-[#8A877F] mt-4">
             Edited{' '}
             {new Date(b.updatedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
-        </Link>
+        </div>
       ))}
     </div>
   )
