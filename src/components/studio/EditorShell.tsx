@@ -54,20 +54,21 @@ export default function EditorShell(props: EditorShellProps) {
   const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
   const selectedIds = useStudioStore(s => s.selectedIds)
 
-  // With the Specs list open, selecting a single IMAGE on canvas jumps
-  // straight to its spec editor (specs only make sense on images — a photo
-  // stands in for a physical product; text/shapes never get one);
-  // deselecting, multi-select, or selecting a non-image returns to the
-  // list. Doesn't interfere with opening specs via the toolbar/dot
-  // indicator when the list isn't open.
+  // Whenever any specs UI is visible — the board-wide list, OR a per-object
+  // editor already open from an earlier click (which can happen even while
+  // Assets or Theme is the active side panel, since that editor isn't part
+  // of the same show/hide toggle) — selecting a single IMAGE on canvas
+  // jumps straight to its spec editor. Specs only make sense on images (a
+  // photo stands in for a physical product; text/shapes never get one), so
+  // deselecting, multi-select, or selecting a non-image closes it instead.
   useEffect(() => {
-    if (!showSpecs) return
+    if (!showSpecs && !specEditorOpen) return
     const store = useStudioStore.getState()
     const slide = store.slides.find(sl => sl.id === store.currentSlideId)
     const obj = selectedIds.length === 1 ? slide?.objects.find(o => o.id === selectedIds[0]) : null
     store.openSpecs(obj?.type === 'image' ? obj.id : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSpecs, selectedIds.join(',')])
+  }, [showSpecs, specEditorOpen, selectedIds.join(',')])
 
   useEffect(() => {
     // One right-hand panel at a time — if more than one were somehow stored
