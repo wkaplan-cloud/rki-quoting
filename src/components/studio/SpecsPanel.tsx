@@ -1,7 +1,10 @@
 'use client'
+import Link from 'next/link'
 import { X, Plus, Trash2, ClipboardList } from 'lucide-react'
 import { useStudioStore, newId } from '@/lib/studio/store'
-import type { StudioSpec, MaterialEntry } from '@/lib/studio/types'
+import type { StudioSpec, MaterialEntry, SpecSupplierOption } from '@/lib/studio/types'
+import { Combobox } from '@/components/ui/Combobox'
+import { FabricSearch } from '@/components/ui/FabricSearch'
 
 const MATERIAL_TYPES = [
   'Fabric', 'Timber', 'Stone', 'Metal', 'Paint', 'Glass', 'Leather', 'Wallpaper',
@@ -30,6 +33,7 @@ export function SpecsPanel() {
   const objectId = useStudioStore(s => s.specPanelObjectId)
   const specs = useStudioStore(s => s.specs)
   const suppliers = useStudioStore(s => s.suppliers)
+  const activePriceListIds = useStudioStore(s => s.activePriceListIds)
   const slides = useStudioStore(s => s.slides)
   const currentSlideId = useStudioStore(s => s.currentSlideId)
 
@@ -127,9 +131,6 @@ export function SpecsPanel() {
 
         {/* Product */}
         <Section title="Product">
-          <Field label="Category">
-            <TextInput value={spec.category} onChange={v => update({ category: v })} placeholder="e.g. Seating" />
-          </Field>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Quantity">
               {/* Number-only: this pulls straight into quote line item quantity */}
@@ -168,7 +169,22 @@ export function SpecsPanel() {
             <button
               type="button"
               onClick={() =>
-                update({ materials: [...spec.materials, { id: newId(), type: 'Fabric', description: '' }] })
+                update({
+                  materials: [
+                    ...spec.materials,
+                    {
+                      id: newId(),
+                      type: 'Fabric',
+                      description: '',
+                      supplierId: null,
+                      supplierName: '',
+                      twinbruProductId: null,
+                      colour: null,
+                      imageUrl: null,
+                      widthCm: null,
+                    },
+                  ],
+                })
               }
               title="Add material"
               className="w-5 h-5 flex items-center justify-center rounded text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#EDE9E1] transition-colors cursor-pointer"
@@ -180,31 +196,16 @@ export function SpecsPanel() {
           {spec.materials.length === 0 ? (
             <p className="text-[11px] text-[#8A877F]">No materials yet — add fabric, timber, stone…</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {spec.materials.map(m => (
-                <div key={m.id} className="flex items-start gap-1.5">
-                  <input
-                    value={m.type}
-                    onChange={e => setMaterial(m.id, { type: e.target.value })}
-                    list="studio-spec-material-types"
-                    placeholder="Type"
-                    className="w-[88px] flex-shrink-0 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
-                  />
-                  <input
-                    value={m.description}
-                    onChange={e => setMaterial(m.id, { description: e.target.value })}
-                    placeholder="e.g. Romo Linara Pebble"
-                    className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => update({ materials: spec.materials.filter(x => x.id !== m.id) })}
-                    title="Remove"
-                    className="w-6 h-6 mt-0.5 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
-                  >
-                    <Trash2 size={11} />
-                  </button>
-                </div>
+                <MaterialRow
+                  key={m.id}
+                  material={m}
+                  suppliers={suppliers}
+                  activePriceListIds={activePriceListIds}
+                  onChange={patch => setMaterial(m.id, patch)}
+                  onRemove={() => update({ materials: spec.materials.filter(x => x.id !== m.id) })}
+                />
               ))}
             </div>
           )}
@@ -215,6 +216,118 @@ export function SpecsPanel() {
           </datalist>
         </Section>
       </div>
+    </div>
+  )
+}
+
+// One material/finish entry. Fabric is the one type that can be sourced from
+// the platform catalogue — same supplier-dropdown + fabric-search pairing as
+// the line items table: pick a supplier, and if it's a platform supplier the
+// org has price-list access to, the description box becomes a live fabric
+// search. No price is pulled here — convert-to-quote fetches the current
+// price when the board is actually turned into a quote.
+function MaterialRow({
+  material,
+  suppliers,
+  activePriceListIds,
+  onChange,
+  onRemove,
+}: {
+  material: MaterialEntry
+  suppliers: SpecSupplierOption[]
+  activePriceListIds: string[]
+  onChange: (patch: Partial<MaterialEntry>) => void
+  onRemove: () => void
+}) {
+  const isFabric = material.type.trim().toLowerCase() === 'fabric'
+  const platformSupplier = isFabric ? suppliers.find(s => s.id === material.supplierId && s.isPlatform) : undefined
+  const hasAccess = platformSupplier?.priceListId
+    ? activePriceListIds.includes(platformSupplier.priceListId)
+    : false
+
+  function handleFabricSelect(fabric: {
+    colour: string | null
+    brand: string | null
+    collection: string | null
+    product_id: string | null
+    image_url: string | null
+    useable_width_cm: number | null
+  }) {
+    onChange({
+      description: [fabric.brand, fabric.collection].filter(Boolean).join(' · '),
+      colour: fabric.colour ?? null,
+      twinbruProductId: fabric.product_id ? parseInt(fabric.product_id, 10) || null : null,
+      imageUrl: fabric.image_url ?? null,
+      widthCm: fabric.useable_width_cm ?? null,
+    })
+  }
+
+  const descriptionInputClass =
+    'w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]'
+
+  return (
+    <div className="pb-2.5 border-b border-[#EDE9E1] last:border-0 last:pb-0 space-y-1.5">
+      <div className="flex items-start gap-1.5">
+        <input
+          value={material.type}
+          onChange={e => onChange({ type: e.target.value })}
+          list="studio-spec-material-types"
+          placeholder="Type"
+          className="w-[88px] flex-shrink-0 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
+        />
+        {!isFabric && (
+          <input
+            value={material.description}
+            onChange={e => onChange({ description: e.target.value })}
+            placeholder="e.g. Romo Linara Pebble"
+            className={`flex-1 min-w-0 ${descriptionInputClass}`}
+          />
+        )}
+        <button
+          type="button"
+          onClick={onRemove}
+          title="Remove"
+          className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
+        >
+          <Trash2 size={11} />
+        </button>
+      </div>
+
+      {isFabric && (
+        <>
+          <Combobox
+            options={suppliers.map(s => ({ id: s.id, label: s.name, isPlatform: s.isPlatform }))}
+            value={material.supplierId ?? ''}
+            inputValue={material.supplierName}
+            onChange={(id, label) => onChange({ supplierId: id || null, supplierName: label })}
+            placeholder="Fabric supplier…"
+          />
+          {platformSupplier && !hasAccess ? (
+            <Link
+              href="/price-lists"
+              className="block text-[10px] text-amber-600 italic underline hover:text-amber-700"
+            >
+              Request price list access
+            </Link>
+          ) : platformSupplier && hasAccess ? (
+            <FabricSearch
+              value={material.description}
+              onChange={v => onChange({ description: v })}
+              onBlur={v => onChange({ description: v })}
+              onSelect={handleFabricSelect}
+              placeholder="Search fabric…"
+              className={descriptionInputClass}
+            />
+          ) : (
+            <input
+              value={material.description}
+              onChange={e => onChange({ description: e.target.value })}
+              placeholder="e.g. Romo Linara Pebble"
+              className={descriptionInputClass}
+            />
+          )}
+        </>
+      )}
     </div>
   )
 }

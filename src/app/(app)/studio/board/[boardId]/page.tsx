@@ -40,7 +40,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
 
   const client = Array.isArray(board.clients) ? board.clients[0] : board.clients
 
-  const [{ data: slideRows }, { data: assetRows }, { data: specRows }, { data: supplierRows }] =
+  const [{ data: slideRows }, { data: assetRows }, { data: specRows }, { data: supplierRows }, { data: accessRows }] =
     await Promise.all([
       supabase
         .from('studio_slides')
@@ -58,7 +58,8 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
           'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, status'
         )
         .eq('board_id', board.id),
-      supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
+      supabase.from('suppliers').select('id, supplier_name, is_platform, price_list_id').order('supplier_name'),
+      supabaseAdmin.from('price_list_access').select('price_list_id').eq('org_id', orgId).eq('status', 'active'),
     ])
 
   const slides = ((slideRows ?? []) as StudioSlideRow[]).map(slideFromRow)
@@ -67,7 +68,10 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
   const suppliers = (supplierRows ?? []).map(su => ({
     id: su.id as string,
     name: su.supplier_name as string,
+    isPlatform: !!su.is_platform,
+    priceListId: (su.price_list_id as string | null) ?? null,
   }))
+  const activePriceListIds = (accessRows ?? []).map(a => a.price_list_id as string)
 
   return (
     <StudioEditorLoader
@@ -86,6 +90,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
       assets={assets}
       specs={specs}
       suppliers={suppliers}
+      activePriceListIds={activePriceListIds}
       masterLayout={masterLayoutFromJson(board.master_layout)}
       lastState={(board.last_state as BoardLastState | null) ?? null}
     />

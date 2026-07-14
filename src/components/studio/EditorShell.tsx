@@ -33,6 +33,7 @@ export interface EditorShellProps {
   assets: StudioAsset[]
   specs: StudioSpec[]
   suppliers: SpecSupplierOption[]
+  activePriceListIds: string[]
   masterLayout: MasterLayoutConfig
   lastState: BoardLastState | null
 }

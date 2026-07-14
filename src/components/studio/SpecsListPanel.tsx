@@ -110,7 +110,7 @@ function SpecEntry({
   spec: StudioSpec
 }) {
   const approved = spec.status === 'approved'
-  const subtitle = [spec.supplierName.trim(), spec.category.trim()].filter(Boolean).join(' · ')
+  const subtitle = spec.supplierName.trim()
 
   function open() {
     const store = useStudioStore.getState()

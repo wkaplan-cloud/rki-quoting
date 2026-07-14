@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { apiError } from '@/lib/api-error'
 import { todaySA } from '@/lib/dates'
-import type { StudioObject, MaterialEntry } from '@/lib/studio/types'
+import { normalizeMaterial, type StudioObject, type MaterialEntry } from '@/lib/studio/types'
 
 // POST /api/studio/boards/[id]/convert-to-project
 // Pulls the board into a new quoting project: one section row per slide
@@ -115,13 +115,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ])
 
     const specByObject = new Map(
-      ((specs ?? []) as ConvertSpecRow[]).filter(s => s.status === 'approved').map(s => [s.object_id, s])
+      ((specs ?? []) as ConvertSpecRow[])
+        .filter(s => s.status === 'approved')
+        .map(s => [s.object_id, { ...s, materials: (s.materials ?? []).map(normalizeMaterial) }])
     )
 
-    // Supplier default markups — mirrors what picking a supplier in the
-    // line items table does, so pricing behaves the same once costs go in
+    // Supplier default markups — mirrors what picking a supplier in the line
+    // items table does, so pricing behaves the same once costs go in. Covers
+    // both the spec's own supplier and any supplier chosen on a material.
     const supplierIds = [
-      ...new Set([...specByObject.values()].map(s => s.supplier_id).filter((v): v is string => !!v)),
+      ...new Set(
+        [...specByObject.values()].flatMap(s => [
+          s.supplier_id,
+          ...s.materials.map(m => m.supplierId),
+        ]).filter((v): v is string => !!v)
+      ),
     ]
     const markupBySupplier = new Map<string, number>()
     if (supplierIds.length) {
@@ -130,6 +138,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .select('id, markup_percentage')
         .in('id', supplierIds)
       for (const su of sups ?? []) markupBySupplier.set(su.id, su.markup_percentage ?? 0)
+    }
+
+    // Live fabric pricing: a spec can sit in draft for weeks before a board
+    // is quoted, so price is never stored on the material — fetch the
+    // CURRENT price list price right now, at the moment of quoting.
+    const productIds = [
+      ...new Set(
+        [...specByObject.values()]
+          .flatMap(s => s.materials.map(m => m.twinbruProductId))
+          .filter((v): v is number => v != null)
+      ),
+    ]
+    const priceByProductId = new Map<string, { price: number | null; imageUrl: string | null; widthCm: number | null }>()
+    if (productIds.length) {
+      const { data: items } = await supabase
+        .from('price_list_items')
+        .select('product_id, price_zar, image_url, useable_width_cm')
+        .in('product_id', productIds.map(String))
+      for (const it of items ?? []) {
+        priceByProductId.set(it.product_id as string, {
+          price: (it.price_zar as number | null) ?? null,
+          imageUrl: (it.image_url as string | null) ?? null,
+          widthCm: (it.useable_width_cm as number | null) ?? null,
+        })
+      }
     }
 
     // Build rows in deck order: section per slide, items beneath, and each
@@ -191,20 +224,34 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         itemCount++
 
         // Fabric/stone/glass etc. become their own line items under the
-        // item — quoted and procured separately, like manually linked rows
+        // item — quoted and procured separately, like manually linked rows.
+        // A fabric material carries its supplier's markup and a LIVE price
+        // looked up just now, never whatever the price list showed when the
+        // spec was drafted.
         const materials = (Array.isArray(sp.materials) ? sp.materials : [])
-          .map(m => ({
-            item_name: [m.type.trim(), m.description.trim()].filter(Boolean).join(' — ') || 'Material',
-            description: null,
-            quantity: 1,
-            cost_price: 0,
-            markup_percentage: 0,
-            row_type: 'item',
-            indent_level: 1,
-            sort_order: sortOrder++,
-            studio_slide_id: slide.id,
-            studio_object_id: obj.id,
-          }))
+          .map(m => {
+            const live = m.twinbruProductId != null ? priceByProductId.get(String(m.twinbruProductId)) : undefined
+            return {
+              item_name: [m.type.trim(), m.description.trim()].filter(Boolean).join(' — ') || 'Material',
+              description: null,
+              quantity: 1,
+              unit: m.twinbruProductId != null ? 'm' : null,
+              supplier_id: m.supplierId,
+              supplier_name: m.supplierName.trim() || null,
+              cost_price: live?.price ?? 0,
+              markup_percentage: m.supplierId ? (markupBySupplier.get(m.supplierId) ?? 0) : 0,
+              colour_finish: m.colour,
+              fabric_image_url: live?.imageUrl ?? m.imageUrl,
+              twinbru_product_id: m.twinbruProductId,
+              twinbru_cost_price: live?.price ?? null,
+              fabric_width_cm: live?.widthCm ?? m.widthCm,
+              row_type: 'item',
+              indent_level: 1,
+              sort_order: sortOrder++,
+              studio_slide_id: slide.id,
+              studio_object_id: obj.id,
+            }
+          })
         parentMeta.push({ specId: sp.id, materials })
       }
     })

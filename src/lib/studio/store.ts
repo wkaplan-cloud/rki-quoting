@@ -36,6 +36,7 @@ interface InitProps {
   assets: StudioAsset[]
   specs: StudioSpec[]
   suppliers: SpecSupplierOption[]
+  activePriceListIds: string[]
   masterLayout: MasterLayoutConfig
   lastState: BoardLastState | null
 }
@@ -51,6 +52,7 @@ interface StudioState {
   assets: StudioAsset[]
   masterLayout: MasterLayoutConfig
   suppliers: SpecSupplierOption[]
+  activePriceListIds: string[]
 
   // Specs Engine: one spec per object, keyed by object id. Specs follow
   // their object through delete/undo/duplicate — see flushSave lifecycle.
@@ -236,6 +238,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   assets: [],
   masterLayout: DEFAULT_MASTER_LAYOUT,
   suppliers: [],
+  activePriceListIds: [],
   specs: {},
   specPanelObjectId: null,
   dirtySpecIds: [],
@@ -271,6 +274,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       assets: props.assets,
       masterLayout: props.masterLayout,
       suppliers: props.suppliers,
+      activePriceListIds: props.activePriceListIds,
       specs: Object.fromEntries(props.specs.map(sp => [sp.objectId, sp])),
       specPanelObjectId: null,
       dirtySpecIds: (() => {

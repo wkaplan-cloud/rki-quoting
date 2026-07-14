@@ -134,6 +134,33 @@ export interface MaterialEntry {
   id: string
   type: string // Fabric, Timber, Stone, Metal, Paint, Glass, Leather, Wallpaper…
   description: string
+  // Fabric materials only: the supplier chosen for THIS material (may differ
+  // from the spec's own supplier) and, when picked from the platform fabric
+  // catalogue, its product identity. Deliberately no price here — the
+  // convert-to-quote step looks up the CURRENT price at that moment, so a
+  // spec drafted weeks earlier never quotes a stale number.
+  supplierId: string | null
+  supplierName: string
+  twinbruProductId: number | null
+  colour: string | null
+  imageUrl: string | null
+  widthCm: number | null
+}
+
+// Materials saved before the fabric-supplier fields existed are missing them
+// in the stored JSON — default them so old boards render without crashing.
+export function normalizeMaterial(m: Partial<MaterialEntry> & { id: string; type: string; description: string }): MaterialEntry {
+  return {
+    id: m.id,
+    type: m.type,
+    description: m.description,
+    supplierId: m.supplierId ?? null,
+    supplierName: m.supplierName ?? '',
+    twinbruProductId: m.twinbruProductId ?? null,
+    colour: m.colour ?? null,
+    imageUrl: m.imageUrl ?? null,
+    widthCm: m.widthCm ?? null,
+  }
 }
 
 export type SpecStatus = 'draft' | 'approved'
@@ -194,15 +221,19 @@ export function specFromRow(row: StudioSpecRow): StudioSpec {
     width: row.width,
     depth: row.depth,
     height: row.height,
-    materials: Array.isArray(row.materials) ? row.materials : [],
+    materials: Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : [],
     status: row.status === 'approved' ? 'approved' : 'draft',
   }
 }
 
-// Suppliers offered in the spec panel (reuses the org's existing suppliers)
+// Suppliers offered in the spec panel (reuses the org's existing suppliers).
+// isPlatform/priceListId drive the fabric-catalogue search on Fabric
+// materials — same gating logic as the line items table.
 export interface SpecSupplierOption {
   id: string
   name: string
+  isPlatform: boolean
+  priceListId: string | null
 }
 
 // Per-board master layout configuration. Defaults live here; no UI yet —
