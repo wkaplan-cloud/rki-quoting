@@ -1,11 +1,15 @@
 'use client'
 import Link from 'next/link'
+import { useRef } from 'react'
 import { X, Plus, Trash2, ClipboardList } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useStudioStore, newId } from '@/lib/studio/store'
 import { createClient } from '@/lib/supabase/client'
 import type { StudioSpec, MaterialEntry, SpecSupplierOption } from '@/lib/studio/types'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
+
+const ASSET_LABEL_SYNC_DEBOUNCE = 500
 
 const MATERIAL_TYPES = [
   'Fabric', 'Timber', 'Stone', 'Metal', 'Paint', 'Glass', 'Leather', 'Wallpaper',
@@ -38,6 +42,7 @@ export function SpecsPanel() {
   const slides = useStudioStore(s => s.slides)
   const currentSlideId = useStudioStore(s => s.currentSlideId)
   const assets = useStudioStore(s => s.assets)
+  const assetLabelSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   if (!objectId) return null
   // The panel follows its object — if the object left the current slide
@@ -64,9 +69,28 @@ export function SpecsPanel() {
     if (!matchingAsset) return
     const next = name.trim() || null
     if (next === matchingAsset.label) return
-    useStudioStore.getState().renameAsset(matchingAsset.id, next)
-    const supabase = createClient()
-    void supabase.from('studio_assets').update({ label: next }).eq('id', matchingAsset.id)
+    const assetId = matchingAsset.id
+    const prevLabel = matchingAsset.label
+    useStudioStore.getState().renameAsset(assetId, next)
+
+    // Debounced: TextInput fires this on every keystroke, and un-debounced
+    // concurrent writes to the same row can resolve out of order, leaving a
+    // stale/partial value as the final saved label even though the UI shows
+    // the right one. Only the last keystroke's value actually reaches the DB.
+    if (assetLabelSaveTimer.current) clearTimeout(assetLabelSaveTimer.current)
+    assetLabelSaveTimer.current = setTimeout(() => {
+      const supabase = createClient()
+      supabase
+        .from('studio_assets')
+        .update({ label: next })
+        .eq('id', assetId)
+        .then(({ error }) => {
+          if (error) {
+            useStudioStore.getState().renameAsset(assetId, prevLabel)
+            toast.error('Could not save name — please try again')
+          }
+        })
+    }, ASSET_LABEL_SYNC_DEBOUNCE)
   }
 
   function setSupplier(name: string) {

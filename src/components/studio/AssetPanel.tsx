@@ -228,10 +228,16 @@ function AssetThumb({ asset }: { asset: StudioAsset }) {
     const trimmed = value.trim()
     const next = trimmed || null
     if (next === asset.label) return
+    const prevLabel = asset.label
     const store = useStudioStore.getState()
     store.renameAsset(asset.id, next)
     const supabase = createClient()
-    await supabase.from('studio_assets').update({ label: next }).eq('id', asset.id)
+    const { error } = await supabase.from('studio_assets').update({ label: next }).eq('id', asset.id)
+    if (error) {
+      store.renameAsset(asset.id, prevLabel)
+      toast.error('Could not save name — please try again')
+      return
+    }
 
     // Push the same name onto any spec that already exists for an object
     // using this exact image, so the two never drift apart (the reverse of
