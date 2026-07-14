@@ -76,8 +76,7 @@ export function SpecsListPanel() {
           <button
             type="button"
             onClick={() => setConverting(true)}
-            disabled={approved === 0}
-            title="Pull approved specs into a new quoting project"
+            title="Pull all specs into a new quoting project"
             className="w-full flex items-center justify-center gap-1.5 h-8 text-xs font-medium bg-[#C4A46B] text-[#1A1A18] rounded-lg hover:bg-[#D4B47B] transition-colors cursor-pointer disabled:opacity-50"
           >
             <FileText size={13} /> Create quote

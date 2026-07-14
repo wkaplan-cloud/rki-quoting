@@ -5,9 +5,9 @@ import { X, FileText, AlertTriangle, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore } from '@/lib/studio/store'
 
-// Confirm step for pulling a board into a new quoting project. Only
-// approved specs convert — if drafts remain, this is the "is everything
-// approved for quoting?" checkpoint before anything is created.
+// Confirm step for pulling a board into a new quoting project. Every spec
+// converts regardless of draft/approved status — this is just the "is
+// everything approved for quoting?" heads-up when drafts remain, not a gate.
 export function ConvertToQuoteModal({
   approvedCount,
   draftCount,
@@ -17,6 +17,7 @@ export function ConvertToQuoteModal({
   draftCount: number
   onClose: () => void
 }) {
+  const totalCount = approvedCount + draftCount
   const router = useRouter()
   const boardId = useStudioStore(s => s.boardId)
   const boardName = useStudioStore(s => s.boardName)
@@ -79,9 +80,9 @@ export function ConvertToQuoteModal({
           </label>
 
           <p className="text-[11px] text-[#2C2C2A] leading-relaxed">
-            {approvedCount} approved spec{approvedCount === 1 ? '' : 's'} will become line items,
-            grouped under this board&apos;s slide headings. Items come in unpriced — costs and
-            markup are set in the project.
+            {totalCount} spec{totalCount === 1 ? '' : 's'} will become line items, grouped under
+            this board&apos;s slide headings. Items come in unpriced — costs and markup are set in
+            the project.
           </p>
 
           {draftCount > 0 && (
@@ -89,7 +90,7 @@ export function ConvertToQuoteModal({
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5 text-amber-600" />
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 Is everything approved for quoting? {draftCount} spec{draftCount === 1 ? ' is' : 's are'} still
-                draft and will <span className="font-medium">not</span> be included.
+                draft — they&apos;ll be included too, so double-check they&apos;re actually ready.
               </p>
             </div>
           )}
@@ -107,7 +108,7 @@ export function ConvertToQuoteModal({
           <button
             type="button"
             onClick={() => void create()}
-            disabled={creating || approvedCount === 0}
+            disabled={creating || totalCount === 0}
             className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium bg-[#C4A46B] text-[#1A1A18] rounded-lg hover:bg-[#D4B47B] transition-colors cursor-pointer disabled:opacity-50"
           >
             {creating ? (
@@ -115,7 +116,7 @@ export function ConvertToQuoteModal({
                 <Loader2 size={13} className="animate-spin" /> Creating…
               </>
             ) : (
-              <>Create quote · {approvedCount}</>
+              <>Create quote · {totalCount}</>
             )}
           </button>
         </div>

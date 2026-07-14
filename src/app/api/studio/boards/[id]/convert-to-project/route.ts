@@ -6,15 +6,15 @@ import { normalizeMaterial, type StudioObject, type MaterialEntry } from '@/lib/
 
 // POST /api/studio/boards/[id]/convert-to-project
 // Pulls the board into a new quoting project: one section row per slide
-// (its heading), one line item per APPROVED spec, and one child line item
-// per material/finish entry (fabric, stone, glass…) indented under its
-// item — all in deck order. Draft specs are skipped. Everything lands
-// unpriced (cost 0) — pricing happens in the project. Each spec is linked
-// back to its line item, and the board to the project, so a board
-// converts once. Every row also stores studio_slide_id (+ studio_object_id
-// on item rows) — hidden breadcrumbs so a future feature can jump from a
-// quote line straight back to the object in Studio
-// (supabase/migrations/studio_line_item_links.sql).
+// (its heading), one line item per spec (draft or approved — status only
+// warns in the confirm modal, it never blocks conversion), and one child
+// line item per material/finish entry (fabric, stone, glass…) indented
+// under its item — all in deck order. Everything lands unpriced (cost 0)
+// — pricing happens in the project. Each spec is linked back to its line
+// item, and the board to the project, so a board converts once. Every row
+// also stores studio_slide_id (+ studio_object_id on item rows) — hidden
+// breadcrumbs so a future feature can jump from a quote line straight back
+// to the object in Studio (supabase/migrations/studio_line_item_links.sql).
 
 interface ConvertSpecRow {
   id: string
@@ -114,10 +114,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .eq('board_id', boardId),
     ])
 
+    // Status is a heads-up, not a gate — the confirm modal warns when drafts
+    // remain, but every spec converts regardless of draft/approved
     const specByObject = new Map(
-      ((specs ?? []) as ConvertSpecRow[])
-        .filter(s => s.status === 'approved')
-        .map(s => [s.object_id, { ...s, materials: (s.materials ?? []).map(normalizeMaterial) }])
+      ((specs ?? []) as ConvertSpecRow[]).map(s => [
+        s.object_id,
+        { ...s, materials: (s.materials ?? []).map(normalizeMaterial) },
+      ])
     )
 
     // Supplier default markups — mirrors what picking a supplier in the line
@@ -257,7 +260,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     })
 
     if (!itemCount) {
-      return NextResponse.json({ error: 'No approved specs to convert' }, { status: 400 })
+      return NextResponse.json({ error: 'No specs to convert' }, { status: 400 })
     }
 
     const projectNumber = (await nextProjectNumber(supabase)) ?? '001'
