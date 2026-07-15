@@ -89,5 +89,22 @@ export async function GET() {
     fileCount += count
   }
 
+  // ── 4. Studio moodboard images ────────────────────────────────────────
+  // Dedupe by URL: "pull into this board" (cross-board asset reuse) inserts
+  // a new studio_assets row pointing at the SAME storage object rather than
+  // uploading a copy, so summing raw rows would double-count actual bytes.
+  const { data: studioAssets } = await supabaseAdmin
+    .from('studio_assets')
+    .select('url, file_size')
+    .eq('org_id', orgId)
+
+  const seenUrls = new Set<string>()
+  for (const a of studioAssets ?? []) {
+    if (seenUrls.has(a.url)) continue
+    seenUrls.add(a.url)
+    totalBytes += a.file_size ?? 0
+    fileCount++
+  }
+
   return NextResponse.json({ totalBytes, fileCount })
 }

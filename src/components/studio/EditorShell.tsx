@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
@@ -53,6 +53,12 @@ export default function EditorShell(props: EditorShellProps) {
   // it's open, and comes back when the editor closes
   const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
   const selectedIds = useStudioStore(s => s.selectedIds)
+  const boardAssets = useStudioStore(s => s.assets)
+  const boardSizeLabel = useMemo(() => {
+    const bytes = boardAssets.reduce((sum, a) => sum + a.fileSize, 0)
+    if (bytes === 0) return null
+    return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }, [boardAssets])
 
   // Whenever any specs UI is visible — the board-wide list, OR a per-object
   // editor already open from an earlier click (which can happen even while
@@ -244,6 +250,11 @@ export default function EditorShell(props: EditorShellProps) {
           {props.clientName}
           <span className="text-white/40"> · {props.boardName}</span>
         </span>
+        {boardSizeLabel && (
+          <span className="text-[10px] text-white/30 whitespace-nowrap" title="Total size of images on this board">
+            {boardSizeLabel}
+          </span>
+        )}
 
         <span className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider">
           {saveState === 'saving' ? (

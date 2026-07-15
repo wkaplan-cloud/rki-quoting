@@ -17,6 +17,11 @@ interface BoardRow {
   clientId: string
   clientName: string
   company: string
+  sizeBytes: number
+}
+
+function formatSize(bytes: number): string {
+  return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 const RECENT_COUNT = 6
@@ -135,6 +140,7 @@ function BoardGrid({ boards }: { boards: BoardRow[] }) {
           <p className="text-[11px] text-[#8A877F] mt-4">
             Edited{' '}
             {new Date(b.updatedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {b.sizeBytes > 0 && <> · {formatSize(b.sizeBytes)}</>}
           </p>
         </div>
       ))}
