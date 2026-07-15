@@ -104,8 +104,8 @@ export function StaffInspection({ jobCard, initialCOC, jobsBadge, projectsBadge 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coc])
 
-  async function handleSave() {
-    if (!hasEditedRef.current) return
+  async function handleSave(force = false): Promise<boolean> {
+    if (!hasEditedRef.current && !force) return true
     setSaveStatus('saving')
     try {
       const res = await fetch('/api/supplier-portal/quoting/coc/save', {
@@ -115,7 +115,30 @@ export function StaffInspection({ jobCard, initialCOC, jobsBadge, projectsBadge 
       if (!res.ok) throw new Error()
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2000)
-    } catch { setSaveStatus('error') }
+      return true
+    } catch { setSaveStatus('error'); return false }
+  }
+
+  // Mark complete — force-saves the COC, then completes the underlying job
+  // card, which triggers the existing admin notification + auto clock-out
+  // (same mechanism StaffJobCard uses for "Mark Job as Complete").
+  const [completing, setCompleting] = useState(false)
+  const [completeMsg, setCompleteMsg] = useState('')
+
+  async function handleMarkComplete() {
+    if (completing) return
+    setCompleting(true); setCompleteMsg('')
+    try {
+      const saved = await handleSave(true)
+      if (!saved) { setCompleteMsg('Save failed — try again'); setCompleting(false); return }
+      await fetch(`/api/supplier-portal/quoting/job-cards/${jobCard.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed', completed_at: new Date().toISOString() }),
+      })
+      setCompleteMsg('Inspection complete ✓ — returning…')
+      setTimeout(() => router.push('/supplier-portal/staff-home?tab=inspect'), 1200)
+    } catch { setCompleteMsg('Error — try again') }
+    setCompleting(false)
   }
 
   // Materials
@@ -406,11 +429,21 @@ export function StaffInspection({ jobCard, initialCOC, jobsBadge, projectsBadge 
                 {photoUploading ? 'Uploading…' : 'Add Photos'}
               </button>
             </div>
-            <button onClick={() => void handleSave()}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white"
-              style={{ background: S.green }}>
-              <CheckCircle2 size={16} /> Save Inspection
-            </button>
+            <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <p className="text-xs mb-3" style={{ color: S.muted }}>
+                Marking complete saves everything and notifies the office this inspection is ready to review.
+              </p>
+              {completeMsg ? (
+                <p className="text-sm font-semibold text-center py-2" style={{ color: completeMsg.startsWith('Inspection') ? S.green : S.danger }}>{completeMsg}</p>
+              ) : (
+                <button onClick={() => void handleMarkComplete()} disabled={completing}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                  style={{ background: S.green }}>
+                  {completing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                  {completing ? 'Saving…' : 'Mark Inspection Complete'}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
