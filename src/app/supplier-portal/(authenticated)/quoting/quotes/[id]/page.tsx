@@ -99,7 +99,6 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       claims={(claims ?? []) as (ElecClaim & { line_items: ElecClaimLineItem[] })[]}
       staff={(staff ?? []) as Pick<ElecStaff, 'id' | 'name' | 'color' | 'role'>[]}
       voPrefix={settings?.vo_prefix ?? 'VO'}
-      cocPrefix={settings?.coc_prefix ?? 'COC'}
       companyCode={companyCode}
       sageConnected={!!(settings?.sage_company_id)}
     />

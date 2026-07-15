@@ -402,7 +402,6 @@ interface Props {
   coc: ElecCOC | null
   claims: (ElecClaim & { line_items: ElecClaimLineItem[] })[]
   voPrefix: string
-  cocPrefix: string
   companyCode: string
   sageConnected?: boolean
 }
@@ -410,7 +409,7 @@ interface Props {
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, cocPrefix, companyCode, sageConnected = false }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, companyCode, sageConnected = false }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -1058,7 +1057,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
       )}
       {tabAccessible.coc && (
         <div style={{ display: activeTab === 'coc' ? undefined : 'none' }}>
-          <COCTab quoteId={q.id} initialCOC={coc} cocPrefix={cocPrefix} companyCode={companyCode}
+          <COCTab quoteId={q.id} initialCOC={coc}
             projectAddress={q.project_address ?? null}
             clientName={q.client?.client_name ?? null}
             clientEmail={q.client?.email ?? null} />
