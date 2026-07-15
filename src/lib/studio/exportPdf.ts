@@ -30,25 +30,32 @@ export async function preloadBoardImages(slides: StudioSlide[], logoUrl: string 
 // must resolve to a JPEG data URL of the full page (provided by ExportRunner,
 // which renders each slide into a hidden Konva stage). Slides are rendered
 // sequentially — high-DPI rasters are ~64MB of RGBA each.
+//
+// `slideIndices` is the board's own slide indices to include, in order (not
+// necessarily 0..N-1 or contiguous) — this is what lets a caller print only a
+// selected subset while `renderSlide(i)` still renders each one at its
+// original position, so the footer page number ("12 / 40") always reflects
+// where that slide actually sits in the full board, not its position within
+// the subset. Returns the assembled document — saving to disk vs. opening it
+// for printing is the caller's call, not this function's.
 export async function assemblePdf(
-  slideCount: number,
+  slideIndices: number[],
   renderSlide: (index: number) => Promise<string>,
-  fileName: string,
   onProgress?: (done: number, total: number) => void
-): Promise<void> {
+) {
   const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a3' })
   const pageW = pdf.internal.pageSize.getWidth()
   const pageH = pdf.internal.pageSize.getHeight()
 
-  for (let i = 0; i < slideCount; i++) {
-    if (i > 0) pdf.addPage('a3', 'landscape')
-    const dataUrl = await renderSlide(i)
+  for (let n = 0; n < slideIndices.length; n++) {
+    if (n > 0) pdf.addPage('a3', 'landscape')
+    const dataUrl = await renderSlide(slideIndices[n])
     pdf.addImage(dataUrl, 'JPEG', 0, 0, pageW, pageH)
-    onProgress?.(i + 1, slideCount)
+    onProgress?.(n + 1, slideIndices.length)
   }
 
-  pdf.save(fileName)
+  return pdf
 }
 
 // Render a Konva stage to a high-resolution JPEG. pixelRatio 4 on the

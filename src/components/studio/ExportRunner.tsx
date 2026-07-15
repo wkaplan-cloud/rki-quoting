@@ -9,7 +9,21 @@ import { StaticSlideStage } from './StaticSlideStage'
 
 // Renders each slide into a hidden full-size stage, rasterises it at high DPI
 // and assembles the PDF — sequentially, to keep peak memory at one slide.
-export function ExportRunner({ onDone }: { onDone: () => void }) {
+//
+// `slideIds` restricts the run to a subset (in board order) — omit it to
+// include every slide. `mode: 'print'` opens the assembled PDF in a new tab
+// and requests the system print dialog instead of downloading it; page
+// numbers still reflect each slide's original position in the full board
+// (see assemblePdf), not its position within the printed subset.
+export function ExportRunner({
+  onDone,
+  slideIds,
+  mode = 'download',
+}: {
+  onDone: () => void
+  slideIds?: string[]
+  mode?: 'download' | 'print'
+}) {
   const [renderIndex, setRenderIndex] = useState(-1)
   const stageRef = useRef<Konva.Stage | null>(null)
   const resolveRef = useRef<((dataUrl: string) => void) | null>(null)
@@ -21,28 +35,53 @@ export function ExportRunner({ onDone }: { onDone: () => void }) {
     startedRef.current = true
 
     const { slides, logoUrl, clientName, boardName, flushSave } = useStudioStore.getState()
-    const toastId = toast.loading('Preparing export…')
+    const indices = slideIds
+      ? slides.reduce<number[]>((acc, s, i) => (slideIds.includes(s.id) ? [...acc, i] : acc), [])
+      : slides.map((_, i) => i)
+    const toastId = toast.loading(mode === 'print' ? 'Preparing print…' : 'Preparing export…')
 
     ;(async () => {
       await flushSave()
       await preloadBoardImages(slides, logoUrl)
-      await assemblePdf(
-        slides.length,
+      const pdf = await assemblePdf(
+        indices,
         i =>
           new Promise<string>((resolve, reject) => {
             resolveRef.current = resolve
             rejectRef.current = reject
             setRenderIndex(i)
           }),
-        `${clientName || 'Client'} – ${boardName || 'Presentation'}.pdf`,
         (done, total) => toast.loading(`Rendering slide ${done} of ${total}…`, { id: toastId })
       )
-      toast.success('PDF exported', { id: toastId })
+      if (mode === 'print') {
+        const blobUrl = pdf.output('bloburl') as unknown as string
+        const win = window.open(blobUrl, '_blank')
+        if (win) {
+          toast.success("Opened print preview — press ⌘/Ctrl+P if the dialog doesn't appear", { id: toastId })
+          // The PDF viewer inside the new tab loads asynchronously — give it a
+          // moment before requesting print; some browsers block/ignore this
+          // scripted call anyway, which is why the toast above is the actual
+          // fallback instruction, not this.
+          setTimeout(() => {
+            try {
+              win.print()
+            } catch {
+              // ignored — user still has the tab open to print manually
+            }
+          }, 700)
+        } else {
+          toast.error('Pop-up blocked — allow pop-ups for this site to print', { id: toastId })
+        }
+      } else {
+        pdf.save(`${clientName || 'Client'} – ${boardName || 'Presentation'}.pdf`)
+        toast.success('PDF exported', { id: toastId })
+      }
     })()
       .catch((err: Error) => {
-        toast.error(err.message || 'Export failed', { id: toastId })
+        toast.error(err.message || (mode === 'print' ? 'Print failed' : 'Export failed'), { id: toastId })
       })
       .finally(onDone)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onDone])
 
   // After the hidden stage paints the requested slide, snapshot it.

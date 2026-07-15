@@ -15,7 +15,7 @@ import { StaticSlideStage } from './StaticSlideStage'
 // object), so a WeakMap keyed on the slide reference invalidates itself; the
 // key string catches page-number changes from reordering. With this, 100+
 // slides show cached <img> thumbnails instead of 100 live canvases.
-const thumbCache = new WeakMap<StudioSlide, { key: string; url: string }>()
+export const thumbCache = new WeakMap<StudioSlide, { key: string; url: string }>()
 
 const MIN_W = 148
 const MAX_W = 320

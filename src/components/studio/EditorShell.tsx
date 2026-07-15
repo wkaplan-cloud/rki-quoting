@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
 import type {
@@ -21,6 +21,7 @@ import { SpecsListPanel } from './SpecsListPanel'
 import { MasterThemePanel } from './MasterThemePanel'
 import { PresentationMode } from './PresentationMode'
 import { ExportRunner } from './ExportRunner'
+import { PrintSlidesModal } from './PrintSlidesModal'
 
 export interface EditorShellProps {
   boardId: string
@@ -44,6 +45,8 @@ export interface EditorShellProps {
 export default function EditorShell(props: EditorShellProps) {
   const [ready, setReady] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [printPicker, setPrintPicker] = useState(false)
+  const [printJob, setPrintJob] = useState<string[] | null>(null)
   const [showAssets, setShowAssets] = useState(false)
   const [showSpecs, setShowSpecs] = useState(false)
   const [showTheme, setShowTheme] = useState(false)
@@ -337,6 +340,14 @@ export default function EditorShell(props: EditorShellProps) {
         </button>
         <button
           type="button"
+          onClick={() => setPrintPicker(true)}
+          disabled={exporting || printJob !== null}
+          className="flex items-center gap-1.5 h-8 px-3 text-xs text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <Printer size={13} /> Print
+        </button>
+        <button
+          type="button"
           onClick={() => setExporting(true)}
           disabled={exporting}
           className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium bg-[#C4A46B] text-[#1A1A18] rounded-lg hover:bg-[#D4B47B] transition-colors cursor-pointer disabled:opacity-50"
@@ -356,6 +367,16 @@ export default function EditorShell(props: EditorShellProps) {
       </div>
 
       {presenting && <PresentationMode />}
+      {printPicker && (
+        <PrintSlidesModal
+          onCancel={() => setPrintPicker(false)}
+          onPrint={ids => {
+            setPrintPicker(false)
+            setPrintJob(ids)
+          }}
+        />
+      )}
+      {printJob && <ExportRunner mode="print" slideIds={printJob} onDone={() => setPrintJob(null)} />}
       {exporting && <ExportRunner onDone={() => setExporting(false)} />}
     </div>
   )
