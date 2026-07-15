@@ -242,6 +242,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
 
   // Sign out
   const [signingOut, setSigningOut] = useState(false)
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
 
   const [offlinePending, setOfflinePending] = useState(() => (typeof window !== 'undefined' ? pendingCount() : 0))
   const [isOnline, setIsOnline] = useState(() => (typeof window !== 'undefined' ? navigator.onLine : true))
@@ -436,7 +437,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
         </button>
         <button
-          onClick={() => void handleSignOut()}
+          onClick={() => setShowSignOutConfirm(true)}
           disabled={signingOut}
           className="p-2 rounded-lg disabled:opacity-50"
           style={{ background: 'rgba(220,38,38,0.15)', color: '#F87171' }}
@@ -987,6 +988,33 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 style={{ background: S.accent }}>
                 {creatingInspection ? <Loader2 size={16} className="animate-spin inline mr-2" /> : null}
                 {creatingInspection ? 'Creating…' : 'Start Inspection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sign out confirm */}
+      {showSignOutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowSignOutConfirm(false) }}>
+          <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: S.card }}>
+            <p className="font-bold text-base mb-1.5" style={{ color: S.text }}>Sign out?</p>
+            <p className="text-sm mb-5" style={{ color: S.muted }}>You'll need to log in again to clock in or access your jobs.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSignOutConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ border: `1px solid ${S.border}`, color: S.text }}>
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowSignOutConfirm(false); void handleSignOut() }}
+                disabled={signingOut}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: S.danger }}>
+                {signingOut ? <Loader2 size={14} className="animate-spin inline mr-1.5" /> : null}
+                Sign out
               </button>
             </div>
           </div>
