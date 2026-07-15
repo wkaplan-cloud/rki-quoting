@@ -15,7 +15,7 @@ export function PrintSlidesModal({
   onPrint,
 }: {
   onCancel: () => void
-  onPrint: (slideIds: string[]) => void
+  onPrint: (slideIds: string[], printWindow: Window | null) => void
 }) {
   const slides = useStudioStore(s => s.slides)
   const [selected, setSelected] = useState<Set<string>>(() => new Set(slides.map(s => s.id)))
@@ -101,7 +101,23 @@ export function PrintSlidesModal({
           </button>
           <button
             type="button"
-            onClick={() => onPrint(slides.filter(s => selected.has(s.id)).map(s => s.id))}
+            onClick={() => {
+              // Open the tab synchronously, right inside the click handler —
+              // this is the one moment the browser trusts as "a real user
+              // action" and won't block. Everything after this (rendering
+              // slides, assembling the PDF) is async and takes seconds; a
+              // window.open() fired after all that would get silently
+              // blocked as an unsolicited popup. We navigate this same
+              // already-open tab to the finished PDF once it's ready.
+              const win = window.open('', '_blank')
+              if (win) {
+                win.document.title = 'Preparing print…'
+                win.document.body.style.cssText =
+                  'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font:14px system-ui;color:#8A877F;background:#F5F2EC'
+                win.document.body.textContent = 'Preparing your PDF for printing…'
+              }
+              onPrint(slides.filter(s => selected.has(s.id)).map(s => s.id), win)
+            }}
             disabled={selected.size === 0}
             className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
           >

@@ -46,7 +46,7 @@ export default function EditorShell(props: EditorShellProps) {
   const [ready, setReady] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [printPicker, setPrintPicker] = useState(false)
-  const [printJob, setPrintJob] = useState<string[] | null>(null)
+  const [printJob, setPrintJob] = useState<{ slideIds: string[]; win: Window | null } | null>(null)
   const [showAssets, setShowAssets] = useState(false)
   const [showSpecs, setShowSpecs] = useState(false)
   const [showTheme, setShowTheme] = useState(false)
@@ -370,13 +370,20 @@ export default function EditorShell(props: EditorShellProps) {
       {printPicker && (
         <PrintSlidesModal
           onCancel={() => setPrintPicker(false)}
-          onPrint={ids => {
+          onPrint={(ids, win) => {
             setPrintPicker(false)
-            setPrintJob(ids)
+            setPrintJob({ slideIds: ids, win })
           }}
         />
       )}
-      {printJob && <ExportRunner mode="print" slideIds={printJob} onDone={() => setPrintJob(null)} />}
+      {printJob && (
+        <ExportRunner
+          mode="print"
+          slideIds={printJob.slideIds}
+          printWindow={printJob.win}
+          onDone={() => setPrintJob(null)}
+        />
+      )}
       {exporting && <ExportRunner onDone={() => setExporting(false)} />}
     </div>
   )

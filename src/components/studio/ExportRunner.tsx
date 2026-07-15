@@ -11,18 +11,26 @@ import { StaticSlideStage } from './StaticSlideStage'
 // and assembles the PDF — sequentially, to keep peak memory at one slide.
 //
 // `slideIds` restricts the run to a subset (in board order) — omit it to
-// include every slide. `mode: 'print'` opens the assembled PDF in a new tab
-// and requests the system print dialog instead of downloading it; page
-// numbers still reflect each slide's original position in the full board
-// (see assemblePdf), not its position within the printed subset.
+// include every slide. `mode: 'print'` navigates the assembled PDF into
+// `printWindow` and requests the system print dialog instead of downloading
+// it; page numbers still reflect each slide's original position in the full
+// board (see assemblePdf), not its position within the printed subset.
+//
+// `printWindow` must already be open (via window.open() called synchronously
+// inside the triggering click, before any of this component's async work
+// starts) — opening it here, after preloading/rendering has finished, would
+// fire long after the user gesture that's supposed to authorize it, and
+// browsers silently block that as an unsolicited popup.
 export function ExportRunner({
   onDone,
   slideIds,
   mode = 'download',
+  printWindow,
 }: {
   onDone: () => void
   slideIds?: string[]
   mode?: 'download' | 'print'
+  printWindow?: Window | null
 }) {
   const [renderIndex, setRenderIndex] = useState(-1)
   const stageRef = useRef<Konva.Stage | null>(null)
@@ -54,23 +62,23 @@ export function ExportRunner({
         (done, total) => toast.loading(`Rendering slide ${done} of ${total}…`, { id: toastId })
       )
       if (mode === 'print') {
-        const blobUrl = pdf.output('bloburl') as unknown as string
-        const win = window.open(blobUrl, '_blank')
-        if (win) {
+        if (!printWindow || printWindow.closed) {
+          toast.error('Print tab was closed — please try again', { id: toastId })
+        } else {
+          const blobUrl = pdf.output('bloburl') as unknown as string
+          printWindow.location.href = blobUrl
           toast.success("Opened print preview — press ⌘/Ctrl+P if the dialog doesn't appear", { id: toastId })
-          // The PDF viewer inside the new tab loads asynchronously — give it a
+          // The PDF viewer inside the tab loads asynchronously — give it a
           // moment before requesting print; some browsers block/ignore this
           // scripted call anyway, which is why the toast above is the actual
           // fallback instruction, not this.
           setTimeout(() => {
             try {
-              win.print()
+              printWindow.print()
             } catch {
               // ignored — user still has the tab open to print manually
             }
           }, 700)
-        } else {
-          toast.error('Pop-up blocked — allow pop-ups for this site to print', { id: toastId })
         }
       } else {
         pdf.save(`${clientName || 'Client'} – ${boardName || 'Presentation'}.pdf`)
