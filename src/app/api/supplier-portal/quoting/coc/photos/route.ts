@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { resolvePortalAccount } from '@/lib/portal-account'
+import { resolveAccountOrStaff } from '@/lib/portal-account'
 import { apiError } from '@/lib/api-error'
 
 // Uploads a COC photo and returns its public URL. The photo list itself is
@@ -12,15 +12,16 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const account = await resolvePortalAccount(user.id)
-    if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
+    const resolved = await resolveAccountOrStaff(user.id)
+    if (!resolved) return NextResponse.json({ error: 'No account' }, { status: 404 })
+    const { accountId } = resolved
 
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
     const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `coc/${account.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const path = `coc/${accountId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
     const buffer = Buffer.from(await file.arrayBuffer())
 
     const { error: uploadError } = await supabaseAdmin.storage

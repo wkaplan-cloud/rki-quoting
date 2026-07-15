@@ -5,11 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import {
   MapPin, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle,
-  ClipboardList, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw, Bell, BellOff, WifiOff,
+  ClipboardList, ClipboardCheck, ChevronRight, Calendar, Clock, X, LogOut as SignOutIcon, Plus, FolderOpen, RefreshCw, Bell, BellOff, WifiOff,
 } from 'lucide-react'
-import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecClient, ElecJob } from '@/lib/elec-types'
+import type { ElecStaff, ElecTimePunch, ElecJobCard, ElecJobCardType, ElecJob } from '@/lib/elec-types'
 import { StaffBottomNav } from './StaffBottomNav'
 import { OfflineSyncBanner } from './OfflineSyncBanner'
+import { ClientPicker, type ClientItem } from './ClientPicker'
 import { enqueue, pendingCount } from '@/lib/offline-punch-queue'
 
 const S = {
@@ -46,9 +47,7 @@ const JOB_TYPES: { value: ElecJobCardType; label: string }[] = [
   { value: 'once_off',    label: 'Once-Off' },
 ]
 
-type Tab = 'home' | 'jobs' | 'projects' | 'history' | 'more'
-
-type ClientItem = Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>
+type Tab = 'home' | 'jobs' | 'projects' | 'history' | 'inspect'
 
 interface Props {
   staff: Pick<ElecStaff, 'id' | 'name' | 'role' | 'color'>
@@ -111,12 +110,14 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   const [clients, setClients] = useState<ClientItem[]>(initialClients)
   const [newClientId, setNewClientId] = useState<string | null>(null)
   const [newClientName, setNewClientName] = useState('')
-  const [clientSearch, setClientSearch] = useState('')
-  const [clientFocused, setClientFocused] = useState(false)
-  const [creatingClient, setCreatingClient] = useState(false)
-  const [addingClientName, setAddingClientName] = useState<string | null>(null)
-  const [newClientEmail, setNewClientEmail] = useState('')
-  const [newClientPhone, setNewClientPhone] = useState('')
+
+  // New Inspection modal
+  const [showNewInspection, setShowNewInspection] = useState(false)
+  const [inspClientId, setInspClientId] = useState<string | null>(null)
+  const [inspClientName, setInspClientName] = useState('')
+  const [inspLocation, setInspLocation] = useState('')
+  const [creatingInspection, setCreatingInspection] = useState(false)
+  const [inspectionError, setInspectionError] = useState('')
 
   // Refresh
   const [refreshing, setRefreshing] = useState(false)
@@ -358,38 +359,44 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     router.push('/supplier-portal/login')
   }
 
-  async function createAndSelectClient() {
-    const name = addingClientName?.trim()
-    if (!name || creatingClient) return
-    setCreatingClient(true)
-    const res = await fetch('/api/supplier-portal/staff/clients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_name: name,
-        email: newClientEmail.trim() || null,
-        contact_number: newClientPhone.trim() || null,
-      }),
-    })
-    if (res.ok) {
-      const c = await res.json() as ClientItem
-      setClients(prev => [...prev, c].sort((a, b) => a.client_name.localeCompare(b.client_name)))
-      setNewClientId(c.id)
-      setNewClientName(c.client_name)
-      setClientSearch('')
-      setClientFocused(false)
-      setAddingClientName(null)
-      setNewClientEmail(''); setNewClientPhone('')
-    }
-    setCreatingClient(false)
+  function addClient(c: ClientItem) {
+    setClients(prev => [...prev, c].sort((a, b) => a.client_name.localeCompare(b.client_name)))
   }
 
   function resetModalState() {
     setShowNewJob(false)
     setNewTitle(''); setNewType('callout'); setNewLocation('')
     setCreateError('')
-    setNewClientId(null); setNewClientName(''); setClientSearch(''); setClientFocused(false)
-    setAddingClientName(null); setNewClientEmail(''); setNewClientPhone('')
+    setNewClientId(null); setNewClientName('')
+  }
+
+  function resetInspectionModalState() {
+    setShowNewInspection(false)
+    setInspClientId(null); setInspClientName(''); setInspLocation('')
+    setInspectionError('')
+  }
+
+  async function handleCreateInspection() {
+    if (!inspClientId && !inspClientName.trim()) { setInspectionError('Pick or add a client'); return }
+    if (creatingInspection) return
+    setCreatingInspection(true); setInspectionError('')
+    const res = await fetch('/api/supplier-portal/quoting/job-cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: `Inspection — ${inspClientName.trim()}`,
+        job_type: 'inspection',
+        location: inspLocation.trim() || null,
+        client_id: inspClientId || null,
+        client_name: inspClientName.trim() || null,
+      }),
+    })
+    const data = await res.json() as ElecJobCard & { error?: string }
+    if (!res.ok || data.error) { setInspectionError(data.error ?? 'Failed to create'); setCreatingInspection(false); return }
+    setJobCards(prev => [data, ...prev])
+    resetInspectionModalState()
+    setCreatingInspection(false)
+    router.push(`/supplier-portal/staff-home/inspection/${data.id}`)
   }
 
   // Timesheet data
@@ -427,6 +434,14 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
           title="Refresh">
           <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+        </button>
+        <button
+          onClick={() => void handleSignOut()}
+          disabled={signingOut}
+          className="p-2 rounded-lg disabled:opacity-50"
+          style={{ background: 'rgba(220,38,38,0.15)', color: '#F87171' }}
+          title="Sign out">
+          {signingOut ? <Loader2 size={15} className="animate-spin" /> : <SignOutIcon size={15} />}
         </button>
         {!isOnline && (
           <div className="flex items-center gap-1 px-2 py-1 rounded-full flex-shrink-0"
@@ -799,26 +814,54 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           </div>
         )}
 
-        {/* ── MORE TAB ── */}
-        {tab === 'more' && (
+        {/* ── INSPECT TAB ── */}
+        {tab === 'inspect' && (
           <div className="px-4 pt-4">
-            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-              <button
-                onClick={() => void handleSignOut()}
-                disabled={signingOut}
-                className="w-full flex items-center gap-3 px-4 py-4 text-left"
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(220,38,38,0.08)' }}>
-                  {signingOut
-                    ? <Loader2 size={18} className="animate-spin" style={{ color: S.danger }} />
-                    : <SignOutIcon size={18} style={{ color: S.danger }} />}
+            {(() => {
+              const inspections = jobCards.filter(j => j.job_type === 'inspection')
+              return (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setShowNewInspection(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white"
+                    style={{ background: S.accent }}>
+                    <Plus size={15} /> New Inspection
+                  </button>
+                  {inspections.length === 0 ? (
+                    <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                      <ClipboardCheck size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
+                      <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No inspections yet</p>
+                      <p className="text-xs" style={{ color: S.muted }}>Start a COC inspection while you're on site</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                      {inspections.map((j, i) => {
+                        const ss = STATUS_STYLE[j.status] ?? STATUS_STYLE.pending
+                        const client = !Array.isArray(j.client) ? j.client : null
+                        return (
+                          <button key={j.id}
+                            onClick={() => router.push(`/supplier-portal/staff-home/inspection/${j.id}`)}
+                            className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
+                            style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: ss.bg }}>
+                              <ClipboardCheck size={16} style={{ color: ss.color }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: ss.bg, color: ss.color }}>{ss.label}</span>
+                              </div>
+                              <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{client?.client_name ?? j.client_name ?? j.title}</p>
+                              {j.location && <p className="text-xs mt-0.5 flex items-center gap-0.5" style={{ color: S.muted }}><MapPin size={9} />{j.location}</p>}
+                            </div>
+                            <ChevronRight size={15} style={{ color: S.muted }} />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-                <span className="text-sm font-semibold" style={{ color: S.danger }}>
-                  {signingOut ? 'Signing out…' : 'Sign out'}
-                </span>
-              </button>
-            </div>
+              )
+            })()}
           </div>
         )}
       </div>
@@ -881,111 +924,13 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
               </div>
 
               {/* Client picker */}
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Client (optional)</label>
-                {newClientId ? (
-                  <div className="flex items-center gap-3 px-3.5 py-3 rounded-xl"
-                    style={{ background: 'rgba(58,124,165,0.08)', border: `1.5px solid ${S.accent}` }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                      style={{ background: 'rgba(58,124,165,0.15)', color: S.accent }}>
-                      {newClientName.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="flex-1 text-sm font-semibold" style={{ color: S.text }}>{newClientName}</span>
-                    <button onClick={() => { setNewClientId(null); setNewClientName(''); setClientSearch('') }}
-                      className="p-1" style={{ color: S.muted }}>
-                      <X size={15} />
-                    </button>
-                  </div>
-                ) : addingClientName !== null ? (
-                  <div className="rounded-xl p-3.5 space-y-2.5" style={{ background: 'rgba(58,124,165,0.06)', border: `1.5px solid ${S.accent}` }}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold" style={{ color: S.text }}>New client: {addingClientName}</p>
-                      <button onClick={() => { setAddingClientName(null); setNewClientEmail(''); setNewClientPhone('') }}
-                        className="p-1" style={{ color: S.muted }}>
-                        <X size={15} />
-                      </button>
-                    </div>
-                    <input
-                      value={newClientEmail}
-                      onChange={e => setNewClientEmail(e.target.value)}
-                      placeholder="Email (optional)"
-                      type="email"
-                      inputMode="email"
-                      autoCapitalize="none"
-                      className="w-full px-3.5 py-3 rounded-xl outline-none"
-                      style={{ background: S.card, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
-                    />
-                    <input
-                      value={newClientPhone}
-                      onChange={e => setNewClientPhone(e.target.value)}
-                      placeholder="Contact number (optional)"
-                      type="tel"
-                      inputMode="tel"
-                      className="w-full px-3.5 py-3 rounded-xl outline-none"
-                      style={{ background: S.card, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
-                    />
-                    <button
-                      onClick={() => void createAndSelectClient()}
-                      disabled={creatingClient}
-                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-                      style={{ background: S.accent }}>
-                      {creatingClient ? <Loader2 size={14} className="animate-spin inline mr-1.5" /> : null}
-                      {creatingClient ? 'Adding…' : 'Add client'}
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <input
-                      value={clientSearch}
-                      onChange={e => setClientSearch(e.target.value)}
-                      onFocus={() => setClientFocused(true)}
-                      onBlur={() => setTimeout(() => setClientFocused(false), 150)}
-                      placeholder="Search or add client…"
-                      className="w-full px-3.5 py-3 rounded-xl outline-none"
-                      style={{ background: S.bg, border: `1.5px solid ${clientFocused ? S.accent : S.border}`, color: S.text, fontSize: '16px' }}
-                    />
-                    {(clientFocused || clientSearch.trim()) && (() => {
-                      const filtered = clientSearch.trim()
-                        ? clients.filter(c => c.client_name.toLowerCase().includes(clientSearch.toLowerCase())).slice(0, 6)
-                        : clients.slice(0, 5)
-                      const exactMatch = clients.some(c => c.client_name.toLowerCase() === clientSearch.trim().toLowerCase())
-                      if (!filtered.length && !clientSearch.trim()) return null
-                      return (
-                        <div className="mt-1 rounded-xl overflow-hidden" style={{ border: `1px solid ${S.border}`, background: S.card, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                          {filtered.map((c, i) => (
-                            <button key={c.id}
-                              onMouseDown={e => e.preventDefault()}
-                              onClick={() => { setNewClientId(c.id); setNewClientName(c.client_name); setClientSearch(''); setClientFocused(false) }}
-                              className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
-                              style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                                style={{ background: 'rgba(58,124,165,0.1)', color: S.accent }}>
-                                {c.client_name.charAt(0).toUpperCase()}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium" style={{ color: S.text }}>{c.client_name}</p>
-                                {c.company && <p className="text-xs truncate" style={{ color: S.muted }}>{c.company}</p>}
-                              </div>
-                            </button>
-                          ))}
-                          {clientSearch.trim() && !exactMatch && (
-                            <button
-                              onMouseDown={e => e.preventDefault()}
-                              onClick={() => { setAddingClientName(clientSearch.trim()); setClientFocused(false) }}
-                              className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
-                              style={{ borderTop: filtered.length > 0 ? `1px solid ${S.border}` : undefined }}>
-                              <Plus size={14} style={{ color: S.accent }} />
-                              <span className="text-sm font-medium" style={{ color: S.accent }}>
-                                {`Add "${clientSearch.trim()}" as new client`}
-                              </span>
-                            </button>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                )}
-              </div>
+              <ClientPicker
+                clients={clients}
+                selectedId={newClientId}
+                selectedName={newClientName}
+                onSelect={(id, name) => { setNewClientId(id); setNewClientName(name) }}
+                onClientCreated={addClient}
+              />
 
               {createError && (
                 <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>{createError}</p>
@@ -997,6 +942,51 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 style={{ background: S.accent }}>
                 {creating ? <Loader2 size={16} className="animate-spin inline mr-2" /> : null}
                 {creating ? 'Creating…' : 'Create Job Card'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Inspection modal */}
+      {showNewInspection && (
+        <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) resetInspectionModalState() }}>
+          <div className="w-full rounded-t-3xl" style={{ background: S.card, paddingBottom: 'env(safe-area-inset-bottom)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="flex items-center justify-between px-5 py-4 sticky top-0 z-10" style={{ background: S.card, borderBottom: `1px solid ${S.border}` }}>
+              <h2 className="font-bold text-base" style={{ color: S.text }}>New Inspection</h2>
+              <button onClick={() => resetInspectionModalState()} style={{ color: S.muted }}><X size={18} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <ClientPicker
+                label="Client *"
+                clients={clients}
+                selectedId={inspClientId}
+                selectedName={inspClientName}
+                onSelect={(id, name) => { setInspClientId(id); setInspClientName(name) }}
+                onClientCreated={addClient}
+              />
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Installation Address (optional)</label>
+                <input
+                  value={inspLocation}
+                  onChange={e => setInspLocation(e.target.value)}
+                  placeholder="e.g. 12 Oak Ave, Sandton"
+                  className="w-full px-3.5 py-3 rounded-xl outline-none"
+                  style={{ background: S.bg, border: `1.5px solid ${S.border}`, color: S.text, fontSize: '16px' }}
+                />
+              </div>
+
+              {inspectionError && (
+                <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>{inspectionError}</p>
+              )}
+              <button
+                onClick={() => void handleCreateInspection()}
+                disabled={(!inspClientId && !inspClientName.trim()) || creatingInspection}
+                className="w-full py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+                style={{ background: S.accent }}>
+                {creatingInspection ? <Loader2 size={16} className="animate-spin inline mr-2" /> : null}
+                {creatingInspection ? 'Creating…' : 'Start Inspection'}
               </button>
             </div>
           </div>

@@ -1,10 +1,10 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { Home, Briefcase, Plus, FolderOpen, Menu } from 'lucide-react'
+import { Home, Briefcase, Plus, FolderOpen, ClipboardCheck } from 'lucide-react'
 
 const S = { card: '#FFFFFF', accent: '#3A7CA5', muted: '#A1A1AA', border: '#E4E4E7' }
 
-export type NavTab = 'home' | 'jobs' | 'projects' | 'history' | 'more'
+export type NavTab = 'home' | 'jobs' | 'projects' | 'history' | 'inspect'
 
 interface Props {
   activeTab?: NavTab
@@ -71,7 +71,7 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, pr
         jobs: '/supplier-portal/staff-home?tab=jobs',
         projects: '/supplier-portal/staff-home?tab=projects',
         history: '/supplier-portal/staff-home?tab=history',
-        more: '/supplier-portal/staff-home?tab=more',
+        inspect: '/supplier-portal/staff-home?tab=inspect',
       }
       router.push(map[tab] ?? '/supplier-portal/staff-home')
     }
@@ -100,8 +100,8 @@ export function StaffBottomNav({ activeTab, onTabChange, onNewJob, jobsBadge, pr
         </button>
       </div>
 
-      <NavButton tab="projects" activeTab={activeTab} icon={<FolderOpen size={24} />} label="Projects" badge={projectsBadge} onClick={() => go('projects')} />
-      <NavButton tab="more"     activeTab={activeTab} icon={<Menu size={24} />}       label="More"     onClick={() => go('more')} />
+      <NavButton tab="projects" activeTab={activeTab} icon={<FolderOpen size={24} />}      label="Projects" badge={projectsBadge} onClick={() => go('projects')} />
+      <NavButton tab="inspect"  activeTab={activeTab} icon={<ClipboardCheck size={24} />}  label="Inspect"  onClick={() => go('inspect')} />
     </div>
   )
 }

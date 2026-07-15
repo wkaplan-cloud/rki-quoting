@@ -41,3 +41,26 @@ export const resolvePortalAccount = cache(async (userId: string): Promise<Portal
 
   return memberAccount ?? null
 })
+
+export type ResolvedAccount = { accountId: string; staffId: string | null; staffName: string | null }
+
+// Resolves a portal_account_id for owner, org-member, OR elec_staff logins.
+// Use this (instead of resolvePortalAccount) in any API route that staff-mobile
+// sessions also need to call — resolvePortalAccount only covers owner/org-member.
+export const resolveAccountOrStaff = cache(async (userId: string): Promise<ResolvedAccount | null> => {
+  const { data: own } = await supabaseAdmin
+    .from('supplier_portal_accounts').select('id').eq('auth_user_id', userId).maybeSingle()
+  if (own) return { accountId: own.id, staffId: null, staffName: null }
+
+  const { data: mem } = await supabaseAdmin
+    .from('portal_org_members').select('portal_account_id')
+    .eq('auth_user_id', userId).not('accepted_at', 'is', null).maybeSingle()
+  if (mem) return { accountId: mem.portal_account_id, staffId: null, staffName: null }
+
+  const { data: staff } = await supabaseAdmin
+    .from('elec_staff').select('id, name, portal_account_id')
+    .eq('auth_user_id', userId).eq('is_active', true).maybeSingle()
+  if (staff) return { accountId: staff.portal_account_id, staffId: staff.id, staffName: staff.name }
+
+  return null
+})

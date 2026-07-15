@@ -637,7 +637,7 @@ export interface ElecDashboardSummary {
 
 // ─── Job Cards ────────────────────────────────────────────────────────────────
 
-export type ElecJobCardType   = 'maintenance' | 'repair' | 'once_off' | 'callout'
+export type ElecJobCardType   = 'maintenance' | 'repair' | 'once_off' | 'callout' | 'inspection'
 export type ElecJobCardStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 
 export interface ElecJobCard {

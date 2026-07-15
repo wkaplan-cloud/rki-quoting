@@ -80,7 +80,7 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       initialClients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>[]}
       assignedProjects={(projects ?? []) as unknown as { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]}
       scheduledToday={(scheduledToday ?? []) as ElecJob[]}
-      initialTab={(initialTab as 'home' | 'jobs' | 'projects' | 'history' | 'more') ?? 'home'}
+      initialTab={(initialTab as 'home' | 'jobs' | 'projects' | 'history' | 'inspect') ?? 'home'}
     />
   )
 }
