@@ -22,6 +22,7 @@ const TYPE_LABEL: Record<string, string> = {
   repair:      'Repair',
   once_off:    'Once-Off',
   callout:     'Callout',
+  coc:         'C.O.C',
 }
 
 const s = StyleSheet.create({

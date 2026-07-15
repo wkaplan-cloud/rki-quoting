@@ -463,6 +463,8 @@ export interface ElecCOC {
   phase_rotation: string | null
   linked_doc_number: string | null
   notes: string | null
+  // ── Report — staff discoveries (line items) ──────────────────────────────────
+  report_items?: COCReportItem[] | null
   // ── Photos ────────────────────────────────────────────────────────────────────
   photos?: COCPhoto[] | null
   // ── Email / sharing ──────────────────────────────────────────────────────────
@@ -476,6 +478,11 @@ export interface ElecCOC {
 export interface COCPhoto {
   url: string
   description: string | null
+}
+
+export interface COCReportItem {
+  id: string
+  description: string
 }
 
 // ─── Org Members (additional admins) ─────────────────────────────────────────
@@ -637,7 +644,7 @@ export interface ElecDashboardSummary {
 
 // ─── Job Cards ────────────────────────────────────────────────────────────────
 
-export type ElecJobCardType   = 'maintenance' | 'repair' | 'once_off' | 'callout' | 'inspection'
+export type ElecJobCardType   = 'maintenance' | 'repair' | 'once_off' | 'callout' | 'coc'
 export type ElecJobCardStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 
 export interface ElecJobCard {

@@ -13,7 +13,7 @@ const S = {
   danger: '#DC2626', green: '#16A34A',
 }
 
-type Tab = 'cert' | 'supply' | 'circuits' | 'tests' | 'decl' | 'photos'
+type Tab = 'cert' | 'supply' | 'circuits' | 'tests' | 'decl' | 'report' | 'photos'
 
 // ── Default test report ───────────────────────────────────────────────────────
 
@@ -102,6 +102,7 @@ export function newCOC(
     contractor_email: settings?.contractor_email ?? null,
     recipient_name: null, recipient_date: null,
     test_report: { ...DEFAULT_TR },
+    report_items: [],
     photos: [],
     // Legacy fields
     installation_description: '', installation_type: null, work_type: null,
@@ -274,6 +275,7 @@ export function COCModal({ coc: initial, title, onClose, onSaved }: {
   const [sendError, setSendError] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const [newFinding, setNewFinding] = useState('')
 
   const hasEditedRef = useRef(false)
   const saveDataRef = useRef(coc)
@@ -383,12 +385,24 @@ export function COCModal({ coc: initial, title, onClose, onSaved }: {
     set({ photos: (coc.photos ?? []).filter((_, i) => i !== idx) })
   }
 
+  function addFinding() {
+    const description = newFinding.trim()
+    if (!description) return
+    set({ report_items: [...(coc.report_items ?? []), { id: crypto.randomUUID(), description }] })
+    setNewFinding('')
+  }
+
+  function removeFinding(id: string) {
+    set({ report_items: (coc.report_items ?? []).filter(r => r.id !== id) })
+  }
+
   const TABS: { id: Tab; label: string }[] = [
     { id: 'cert', label: 'Certificate & Location' },
     { id: 'supply', label: 'Supply System' },
     { id: 'circuits', label: 'Circuits' },
     { id: 'tests', label: 'Tests' },
     { id: 'decl', label: 'Declarations' },
+    { id: 'report', label: `Report${(coc.report_items?.length ?? 0) > 0 ? ` (${coc.report_items!.length})` : ''}` },
     { id: 'photos', label: `Photos${(coc.photos?.length ?? 0) > 0 ? ` (${coc.photos!.length})` : ''}` },
   ]
 
@@ -715,11 +729,54 @@ export function COCModal({ coc: initial, title, onClose, onSaved }: {
             </>
           )}
 
+          {/* ── Tab: Report (staff discoveries) ── */}
+          {tab === 'report' && (
+            <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white" style={{ background: S.accent }}>L</div>
+                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: S.text }}>Report — Discoveries</h3>
+              </div>
+              <p className="text-xs mb-4" style={{ color: S.muted }}>
+                Line-item findings from the on-site inspection — what was discovered and needs to be fixed.
+              </p>
+
+              <div className="space-y-2 mb-4">
+                {(coc.report_items ?? []).map((item, i) => (
+                  <div key={item.id} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5"
+                      style={{ background: 'rgba(58,124,165,0.12)', color: S.accent }}>{i + 1}</span>
+                    <p className="flex-1 text-sm" style={{ color: S.text }}>{item.description}</p>
+                    <button onClick={() => removeFinding(item.id)}
+                      className="flex-shrink-0 p-1 rounded-md" style={{ color: S.danger }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+                {(coc.report_items ?? []).length === 0 && (
+                  <p className="text-xs py-4 text-center" style={{ color: S.muted }}>No findings logged yet</p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <input value={newFinding} onChange={e => setNewFinding(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFinding() } }}
+                  placeholder="Describe a finding — e.g. Damaged DB cover in kitchen"
+                  className="flex-1 px-3 py-2.5 text-sm rounded-xl outline-none"
+                  style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                <button onClick={addFinding} disabled={!newFinding.trim()}
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ background: S.accent }}>
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ── Tab: Photos ── */}
           {tab === 'photos' && (
             <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white" style={{ background: S.accent }}>L</div>
+                <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white" style={{ background: S.accent }}>M</div>
                 <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: S.text }}>Installation Photos</h3>
               </div>
               <p className="text-xs mb-4" style={{ color: S.muted }}>

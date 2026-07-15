@@ -1,10 +1,11 @@
 'use client'
 import { useState } from 'react'
 import {
-  FileCheck, Download, Loader2, Search, CheckCircle2, Plus, FileX,
+  FileCheck, Download, Loader2, Search, CheckCircle2, Plus, FileX, X,
 } from 'lucide-react'
-import type { ElecCOC, ElecSettings } from '@/lib/elec-types'
+import type { ElecCOC, ElecJobCard, ElecSettings } from '@/lib/elec-types'
 import { COCModal, newCOC } from './COCModal'
+import { ClientCombobox } from '../ClientCombobox'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -29,6 +30,8 @@ interface Props {
   cocByQuoteId: Record<string, ElecCOC>
   cocByJobCardId: Record<string, ElecCOC>
   settings: ElecSettings | null
+  clients: { id: string; client_name: string; company: string | null; email: string | null }[]
+  portalAccountId: string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -41,12 +44,56 @@ function fmtDate(iso: string | null | undefined) {
 
 // ── Main list ─────────────────────────────────────────────────────────────────
 
-export function COCListClient({ completedProjects, completedJobCards, cocByQuoteId: initCBQ, cocByJobCardId: initCBJ, settings }: Props) {
+export function COCListClient({ completedProjects, completedJobCards, cocByQuoteId: initCBQ, cocByJobCardId: initCBJ, settings, clients: initialClients, portalAccountId }: Props) {
   const [cocByQuoteId, setCocByQuoteId]     = useState(initCBQ)
   const [cocByJobCardId, setCocByJobCardId] = useState(initCBJ)
   const [search, setSearch]                 = useState('')
   const [editing, setEditing]               = useState<{ coc: ElecCOC; title: string; onSaved: (c: ElecCOC) => void } | null>(null)
   const [downloadingId, setDownloadingId]   = useState<string | null>(null)
+
+  // Manually-created COC job cards (job_type: 'coc') — these don't come from
+  // the server's completed-only fetch, so we track them client-side.
+  const [manualJobCards, setManualJobCards] = useState<CompletedJobCard[]>([])
+  const [clients, setClients]               = useState(initialClients)
+  const [showNewCOC, setShowNewCOC]         = useState(false)
+  const [newClientId, setNewClientId]       = useState<string | null>(null)
+  const [newClientName, setNewClientName]   = useState('')
+  const [newLocation, setNewLocation]       = useState('')
+  const [creating, setCreating]             = useState(false)
+  const [createError, setCreateError]       = useState('')
+
+  async function handleCreateCOC() {
+    if (creating) return
+    setCreating(true); setCreateError('')
+    try {
+      const client = clients.find(c => c.id === newClientId)
+      const res = await fetch('/api/supplier-portal/quoting/job-cards', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newClientName.trim() ? `COC — ${newClientName.trim()}` : 'COC',
+          job_type: 'coc',
+          location: newLocation.trim() || null,
+          client_id: newClientId || null,
+          client_name: newClientName.trim() || null,
+          client_email: client?.email ?? null,
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed to create')
+      const created = await res.json() as ElecJobCard
+      const jc: CompletedJobCard = {
+        id: created.id, job_number: created.job_number, title: created.title,
+        location: created.location, client_name: created.client_name, client_email: created.client_email,
+      }
+      setManualJobCards(prev => [jc, ...prev])
+      setShowNewCOC(false)
+      setNewClientId(null); setNewClientName(''); setNewLocation('')
+      openJobCard(jc)
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : 'Failed to create')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   function openProject(p: CompletedProject) {
     const existing = cocByQuoteId[p.id]
@@ -80,7 +127,7 @@ export function COCListClient({ completedProjects, completedJobCards, cocByQuote
     (jc.client_name ?? '').toLowerCase().includes(search.toLowerCase())
 
   const filteredProjects  = completedProjects.filter(matchProject)
-  const filteredJobCards  = completedJobCards.filter(matchJobCard)
+  const filteredJobCards  = [...manualJobCards, ...completedJobCards].filter(matchJobCard)
 
   function ProjectRow({ p }: { p: CompletedProject }) {
     const coc = cocByQuoteId[p.id]
@@ -179,14 +226,21 @@ export function COCListClient({ completedProjects, completedJobCards, cocByQuote
 
   return (
     <div className="space-y-6 pb-16">
-      <div className="flex items-center gap-3">
-        <FileCheck size={20} style={{ color: S.accent }} />
-        <div>
-          <h1 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>COC</h1>
-          <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-            {completedProjects.length + completedJobCards.length} completed · {totalWithCOC} have COC · {(completedProjects.length + completedJobCards.length) - totalWithCOC} outstanding
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <FileCheck size={20} style={{ color: S.accent }} />
+          <div>
+            <h1 className="font-bold text-sm uppercase tracking-widest" style={{ color: S.muted }}>COC</h1>
+            <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+              {completedProjects.length + completedJobCards.length} completed · {totalWithCOC} have COC · {(completedProjects.length + completedJobCards.length) - totalWithCOC} outstanding
+            </p>
+          </div>
         </div>
+        <button onClick={() => setShowNewCOC(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white flex-shrink-0"
+          style={{ background: S.accent }}>
+          <Plus size={15} /> New COC
+        </button>
       </div>
 
       <div className="relative">
@@ -232,6 +286,52 @@ export function COCListClient({ completedProjects, completedJobCards, cocByQuote
           onClose={() => setEditing(null)}
           onSaved={updated => { editing.onSaved(updated); setEditing(prev => prev ? { ...prev, coc: updated } : null) }}
         />
+      )}
+
+      {/* New COC modal — creates a job card (job_type: coc) and opens it */}
+      {showNewCOC && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowNewCOC(false) }}>
+          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: S.card }}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold" style={{ color: S.text }}>New COC</h2>
+              <button onClick={() => setShowNewCOC(false)} style={{ color: S.muted }}><X size={18} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Client</label>
+                <ClientCombobox
+                  clientId={newClientId}
+                  displayName={newClientName}
+                  clients={clients}
+                  portalAccountId={portalAccountId}
+                  onChange={(id, name) => { setNewClientId(id); setNewClientName(name) }}
+                  onNewClient={c => setClients(prev => [...prev, { ...c, email: null }].sort((a, b) => a.client_name.localeCompare(b.client_name)))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Installation Address</label>
+                <input value={newLocation} onChange={e => setNewLocation(e.target.value)}
+                  placeholder="Site address"
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{ border: `1px solid ${S.border}`, color: S.text }} />
+              </div>
+            </div>
+            {createError && <p className="mt-3 text-xs" style={{ color: S.danger }}>{createError}</p>}
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowNewCOC(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                Cancel
+              </button>
+              <button onClick={() => void handleCreateCOC()} disabled={creating}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: S.accent }}>
+                {creating ? 'Creating…' : 'Create COC'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

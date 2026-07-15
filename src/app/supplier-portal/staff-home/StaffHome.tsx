@@ -45,6 +45,7 @@ const JOB_TYPES: { value: ElecJobCardType; label: string }[] = [
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'repair',      label: 'Repair' },
   { value: 'once_off',    label: 'Once-Off' },
+  { value: 'coc',         label: 'C.O.C' },
 ]
 
 type Tab = 'home' | 'jobs' | 'projects' | 'history' | 'inspect'
@@ -386,7 +387,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: `Inspection — ${inspClientName.trim()}`,
-        job_type: 'inspection',
+        job_type: 'coc',
         location: inspLocation.trim() || null,
         client_id: inspClientId || null,
         client_name: inspClientName.trim() || null,
@@ -819,7 +820,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
         {tab === 'inspect' && (
           <div className="px-4 pt-4">
             {(() => {
-              const inspections = jobCards.filter(j => j.job_type === 'inspection')
+              const inspections = jobCards.filter(j => j.job_type === 'coc')
               return (
                 <div className="space-y-3">
                   <button

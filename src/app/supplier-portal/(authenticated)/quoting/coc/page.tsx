@@ -23,6 +23,7 @@ export default async function COCPage() {
     { data: completedJobCards },
     { data: existingCOCs },
     { data: settings },
+    { data: clients },
   ] = await Promise.all([
     // All completed projects
     supabaseAdmin
@@ -55,6 +56,13 @@ export default async function COCPage() {
       .select('coc_prefix, company_code')
       .eq('portal_account_id', account.id)
       .maybeSingle(),
+
+    // Clients for the "New COC" creation modal
+    supabaseAdmin
+      .from('elec_clients')
+      .select('id, client_name, company, email')
+      .eq('portal_account_id', account.id)
+      .order('client_name', { ascending: true }),
   ])
 
   // Also fetch COCs by quote_id for projects that existed before the migration backfill
@@ -90,6 +98,8 @@ export default async function COCPage() {
       cocByQuoteId={Object.fromEntries(cocByQuoteId) as Record<string, ElecCOC>}
       cocByJobCardId={Object.fromEntries(cocByJobCardId) as Record<string, ElecCOC>}
       settings={(settings ?? null) as ElecSettings | null}
+      clients={(clients ?? []) as { id: string; client_name: string; company: string | null; email: string | null }[]}
+      portalAccountId={account.id}
     />
   )
 }

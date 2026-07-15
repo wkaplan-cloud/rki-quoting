@@ -107,7 +107,7 @@ const JC_STATUS_CFG: Record<string, { label: string; bg: string; color: string }
 }
 
 const JC_TYPE_LABEL: Record<string, string> = {
-  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout',
+  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout', coc: 'C.O.C',
 }
 
 // ── Financial Strip ───────────────────────────────────────────────────────────
