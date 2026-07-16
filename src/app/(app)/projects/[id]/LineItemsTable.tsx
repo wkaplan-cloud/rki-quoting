@@ -602,14 +602,15 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         )}
                         <div className="flex-1 min-w-0">
                           {(() => {
-                            const platformSupplier = suppliers.find(s => s.id === item.supplier_id && s.is_platform)
-                            const hasAccess = platformSupplier?.price_list_id ? activePriceListIds.includes(platformSupplier.price_list_id) : false
-                            if (platformSupplier && !hasAccess) return (
+                            const supplier = suppliers.find(s => s.id === item.supplier_id)
+                            const hasAccess = supplier?.is_platform && supplier.price_list_id ? activePriceListIds.includes(supplier.price_list_id) : false
+                            if (supplier?.is_platform && !hasAccess) return (
                               <Link href="/price-lists" className="text-xs text-amber-600 italic underline hover:text-amber-700">
                                 Request price list access
                               </Link>
                             )
-                            if (platformSupplier && hasAccess) return (
+                            // Platform supplier with access, or an org supplier linked to one of the org's own price lists
+                            if (supplier?.price_list_id && (!supplier.is_platform || hasAccess)) return (
                               <FabricSearch
                                 value={item.item_name}
                                 onChange={v => updateLocal(item.id, 'item_name', v)}
@@ -617,6 +618,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                                 onSelect={fabric => handleFabricSelect(item.id, fabric)}
                                 placeholder="Search fabric…"
                                 className={INPUT}
+                                priceListId={supplier.price_list_id}
                               />
                             )
                             return (
@@ -1051,7 +1053,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       {!locked && (
         <>
           <p className="mt-2 text-xs text-[#9A7B4F]/80 leading-relaxed">
-            To search for fabrics and pull in live pricing, select a fabric house in the Supplier column of the line item first — the Item field will then become a live fabric search.
+            To search for fabrics and pull in live pricing, select a supplier with a linked price list in the Supplier column first — the Item field will then become a live product search. Link your own price lists to suppliers under Price Lists.
           </p>
           <div className="mt-1 flex items-center gap-4">
             <button

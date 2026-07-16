@@ -7,8 +7,16 @@ import { PageHeader } from '@/components/layout/PageHeader'
 export default async function SupplierPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
+
+  // The org's own price lists, linkable to a supplier to enable fabric search
+  const { data: orgPriceLists } = await supabase
+    .from('price_lists')
+    .select('id, name')
+    .eq('is_global', false)
+    .order('name')
+
   if (id === 'new') {
-    return <div><PageHeader title="New Supplier" /><div className="p-6 lg:p-8"><SupplierForm supplier={null} platformContact={null} /></div></div>
+    return <div><PageHeader title="New Supplier" /><div className="p-6 lg:p-8"><SupplierForm supplier={null} platformContact={null} orgPriceLists={orgPriceLists ?? []} /></div></div>
   }
   const { data: supplier } = await supabase.from('suppliers').select('*').eq('id', id).single()
   if (!supplier) notFound()
@@ -26,7 +34,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
   return (
     <div>
       <PageHeader title={supplier.supplier_name} subtitle={supplier.category ?? undefined} />
-      <div className="p-6 lg:p-8"><SupplierForm supplier={supplier} platformContact={platformContact} /></div>
+      <div className="p-6 lg:p-8"><SupplierForm supplier={supplier} platformContact={platformContact} orgPriceLists={orgPriceLists ?? []} /></div>
     </div>
   )
 }

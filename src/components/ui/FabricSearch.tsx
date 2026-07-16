@@ -23,6 +23,7 @@ interface Props {
   onSelect: (fabric: FabricResult) => void
   placeholder?: string
   className?: string
+  priceListId?: string | null
 }
 
 interface DropdownPos {
@@ -45,7 +46,7 @@ function Thumb({ url }: { url: string | null }) {
   )
 }
 
-export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, className }: Props) {
+export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, className, priceListId }: Props) {
   const [results, setResults] = useState<FabricResult[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -71,7 +72,7 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/fabric-search?q=${encodeURIComponent(q)}`)
+        const res = await fetch(`/api/fabric-search?q=${encodeURIComponent(q)}${priceListId ? `&priceListId=${priceListId}` : ''}`)
         const data = await res.json()
         setResults(data ?? [])
         setPos(calcPos())
@@ -80,7 +81,7 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
         setLoading(false)
       }
     }, 250)
-  }, [calcPos])
+  }, [calcPos, priceListId])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, BookOpen, Trash2, Upload, X, ChevronRight, AlertCircle, Globe, Lock, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import toast from 'react-hot-toast'
 
 interface AccessRecord {
   price_list_id: string
@@ -191,6 +192,11 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
       }
 
       setShowImport(false)
+      if (createData.supplier === 'created') {
+        toast.success(`Supplier "${supplierName.trim()}" created and linked — selecting it on a line item enables fabric search from this list`, { duration: 6000 })
+      } else if (createData.supplier === 'linked') {
+        toast.success(`Linked to your existing supplier "${supplierName.trim()}" — selecting it on a line item enables fabric search from this list`, { duration: 6000 })
+      }
       resetForm()
       router.push(`${basePath}/${createData.id}`)
     } catch (err) {
@@ -360,10 +366,15 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
               />
               <Input
                 label="Supplier"
-                placeholder="Home Fabrics"
+                placeholder={isPlatformContext ? 'Home Fabrics' : 'e.g. Hertex'}
                 value={supplierName}
                 onChange={e => setSupplierName(e.target.value)}
               />
+              {!isPlatformContext && (
+                <p className="text-xs text-[#8A877F] -mt-2">
+                  We&apos;ll link this price list to your supplier of the same name (or create one) so line items get live fabric search.
+                </p>
+              )}
 
               {basePath === '/platform/price-lists' && (
                 <label className="flex items-start gap-3 cursor-pointer select-none">

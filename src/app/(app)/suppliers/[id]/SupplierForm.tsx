@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { Select } from '@/components/ui/Select'
 import type { Supplier } from '@/lib/types'
 import { Globe, X } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -47,7 +48,7 @@ interface PlatformContact {
   markup_percentage: number | null
 }
 
-export function SupplierForm({ supplier, platformContact }: { supplier: Supplier | null; platformContact: PlatformContact | null }) {
+export function SupplierForm({ supplier, platformContact, orgPriceLists = [] }: { supplier: Supplier | null; platformContact: PlatformContact | null; orgPriceLists?: { id: string; name: string }[] }) {
   const router = useRouter()
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
@@ -95,6 +96,7 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
     delivery_contact_number: supplier?.delivery_contact_number ?? '',
     markup_percentage: String(supplier?.markup_percentage ?? 0),
     notes: (supplier as any)?.notes ?? '',
+    price_list_id: supplier?.price_list_id ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -112,6 +114,7 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
       supplier_name: toTitleCase(form.supplier_name),
       markup_percentage: parseFloat(form.markup_percentage) || 0,
       category: JSON.stringify(specialities),
+      price_list_id: form.price_list_id || null,
     }
     if (supplier) {
       const { error } = await supabase.from('suppliers').update(payload).eq('id', supplier.id)
@@ -236,6 +239,18 @@ export function SupplierForm({ supplier, platformContact }: { supplier: Supplier
           </div>
 
           <Input label="Supplier Name" value={form.supplier_name} onChange={e => set('supplier_name', e.target.value)} required />
+
+          {orgPriceLists.length > 0 && (
+            <div>
+              <Select label="Linked Price List" value={form.price_list_id} onChange={e => set('price_list_id', e.target.value)}>
+                <option value="">None</option>
+                {orgPriceLists.map(pl => (
+                  <option key={pl.id} value={pl.id}>{pl.name}</option>
+                ))}
+              </Select>
+              <p className="text-xs text-[#8A877F] mt-1">Linking a price list turns the Item field into a live product search when this supplier is selected on a line item.</p>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-[#8A877F] block mb-2">Specialities</label>

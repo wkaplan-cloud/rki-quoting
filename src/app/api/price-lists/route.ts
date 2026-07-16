@@ -49,7 +49,31 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ id: data.id })
+
+  // Auto-link the org's supplier of the same name (creating it if needed) so
+  // line items get live fabric search for this list without extra setup
+  let supplier: 'linked' | 'created' | null = null
+  const supName = (supplier_name ?? '').trim()
+  if (supName) {
+    const { data: matches } = await supabase
+      .from('suppliers')
+      .select('id, is_platform')
+      .ilike('supplier_name', supName)
+      .limit(5)
+    const own = (matches ?? []).find(s => !s.is_platform)
+    if (own) {
+      const { error: linkError } = await supabase.from('suppliers').update({ price_list_id: data.id }).eq('id', own.id)
+      if (!linkError) supplier = 'linked'
+    } else {
+      const titleCased = supName.replace(/\b\w/g, (c: string) => c.toUpperCase())
+      const { error: createError } = await supabase
+        .from('suppliers')
+        .insert({ supplier_name: titleCased, org_id: orgId, user_id: user.id, price_list_id: data.id })
+      if (!createError) supplier = 'created'
+    }
+  }
+
+  return NextResponse.json({ id: data.id, supplier })
   } catch (e) {
     return apiError(e)
   }
@@ -101,6 +125,7 @@ export async function DELETE(req: NextRequest) {
   if (isPlatformAdmin(user.email)) {
     const { error } = await supabaseAdmin.from('price_lists').delete().eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    await supabaseAdmin.from('suppliers').update({ price_list_id: null }).eq('price_list_id', id)
     return NextResponse.json({ ok: true })
   }
 
@@ -111,6 +136,9 @@ export async function DELETE(req: NextRequest) {
   const { data, error } = await supabase.from('price_lists').delete().eq('id', id).select('id')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data?.length) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Unlink any of the org's suppliers that pointed at this list
+  await supabase.from('suppliers').update({ price_list_id: null }).eq('price_list_id', id)
   return NextResponse.json({ ok: true })
   } catch (e) {
     return apiError(e)

@@ -283,10 +283,15 @@ function MaterialRow({
   onRemove: () => void
 }) {
   const isFabric = material.type.trim().toLowerCase() === 'fabric'
-  const platformSupplier = isFabric ? suppliers.find(s => s.id === material.supplierId && s.isPlatform) : undefined
+  const selectedSupplier = isFabric ? suppliers.find(s => s.id === material.supplierId) : undefined
+  const platformSupplier = selectedSupplier?.isPlatform ? selectedSupplier : undefined
   const hasAccess = platformSupplier?.priceListId
     ? activePriceListIds.includes(platformSupplier.priceListId)
     : false
+  // Platform supplier with access, or an org supplier linked to one of the org's own price lists
+  const searchListId = selectedSupplier?.priceListId && (!selectedSupplier.isPlatform || hasAccess)
+    ? selectedSupplier.priceListId
+    : null
 
   function handleFabricSelect(fabric: {
     colour: string | null
@@ -352,7 +357,7 @@ function MaterialRow({
             >
               Request price list access
             </Link>
-          ) : platformSupplier && hasAccess ? (
+          ) : searchListId ? (
             <FabricSearch
               value={material.description}
               onChange={v => onChange({ description: v })}
@@ -360,6 +365,7 @@ function MaterialRow({
               onSelect={handleFabricSelect}
               placeholder="Search fabric…"
               className={descriptionInputClass}
+              priceListId={searchListId}
             />
           ) : (
             <input

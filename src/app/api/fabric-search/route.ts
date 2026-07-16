@@ -14,6 +14,11 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('price_list_items')
     .select('id, brand, collection, design, colour, sku, product_id, price_zar, image_url, useable_width_cm')
+
+  // Scope to one price list when the supplier is linked to one (RLS still guards visibility)
+  const priceListId = req.nextUrl.searchParams.get('priceListId')
+  if (priceListId) query = query.eq('price_list_id', priceListId)
+
   for (const word of words) {
     query = query.or(`design.ilike.%${word}%,colour.ilike.%${word}%,collection.ilike.%${word}%,sku.ilike.%${word}%,brand.ilike.%${word}%`)
   }
