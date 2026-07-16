@@ -99,7 +99,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                 All Projects
               </button>
             </div>
-            <span className="text-[#D8D3C8] text-xs">|</span>
+            <span className="text-[#D8D3C8] text-xs mx-2">|</span>
             {(['All', ...STATUSES] as const).map(s => (
               <button
                 key={s}
