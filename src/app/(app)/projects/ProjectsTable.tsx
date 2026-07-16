@@ -49,7 +49,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
   const filtered = (showArchived ? archived : active)
     .filter(p => {
       const matchStatus = showArchived || statusFilter === 'All' || p.status === statusFilter
-      const matchMine = showArchived || !myProjects || p.assigned_to === currentUserId
+      const matchMine = showArchived || !myProjects || (p.assigned_to ?? p.user_id) === currentUserId
       const q = search.toLowerCase()
       const matchSearch = !q ||
         p.project_name.toLowerCase().includes(q) ||
