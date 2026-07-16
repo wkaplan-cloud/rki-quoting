@@ -108,10 +108,10 @@ export default async function DashboardPage() {
   const hasSentQuote = ps.some(p => stagesMap[p.id]?.quote_sent || ['Quote', 'Approved', 'Deposit', 'Invoice', 'Paid', 'Completed'].includes(p.status))
 
   const allSummaryCards = [
-    { label: 'Active Projects',        value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false, href: undefined as string | undefined },
+    { label: 'Active Projects',        value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false, href: '/projects?filter=active' },
     { label: 'Awaiting Deposit',       value: awaitingDeposit.toString(),       sub: 'Quote sent — deposit not yet received',              alert: awaitingDeposit > 0, href: '/projects?filter=awaiting-deposit' },
-    { label: 'Stale Quotes',           value: staleQuotes.toString(),           sub: `Past ${validityDays}-day validity — no deposit yet`, alert: staleQuotes > 0, href: undefined as string | undefined },
-    { label: 'In Production',          value: inProduction.toString(),          sub: 'Deposit received, not yet delivered',                alert: false, href: undefined as string | undefined },
+    { label: 'Stale Quotes',           value: staleQuotes.toString(),           sub: `Past ${validityDays}-day validity — no deposit yet`, alert: staleQuotes > 0, href: `/projects?filter=stale-quotes&days=${validityDays}` },
+    { label: 'In Production',          value: inProduction.toString(),          sub: 'Deposit received, not yet delivered',                alert: false, href: '/projects?filter=in-production' },
     { label: 'Ready to Invoice',       value: readyToInvoice.toString(),        sub: 'Fabrics in — balance invoice not yet sent',          alert: readyToInvoice > 0, href: undefined as string | undefined },
     { label: 'Balance Due',            value: invoicesOutstanding.toString(),   sub: 'Final invoice sent — balance not yet paid',          alert: invoicesOutstanding > 0, href: undefined as string | undefined },
   ]

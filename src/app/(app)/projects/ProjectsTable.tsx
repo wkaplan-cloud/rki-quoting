@@ -10,6 +10,30 @@ import { createClient } from '@/lib/supabase/client'
 
 const STATUSES: ProjectStatus[] = ['Draft', 'Quote', 'Approved', 'Deposit', 'Invoice', 'Paid', 'Completed', 'Cancelled']
 
+type DashboardFilterKey = 'awaiting-deposit' | 'active' | 'in-production' | 'stale-quotes'
+const DASHBOARD_FILTER_KEYS: DashboardFilterKey[] = ['awaiting-deposit', 'active', 'in-production', 'stale-quotes']
+const DASHBOARD_FILTER_LABELS: Record<DashboardFilterKey, string> = {
+  'awaiting-deposit': 'Awaiting Deposit',
+  'active': 'Active Projects',
+  'in-production': 'In Production',
+  'stale-quotes': 'Stale Quotes',
+}
+
+function matchesDashboardFilter(p: Project, key: DashboardFilterKey, staleDays: number): boolean {
+  switch (key) {
+    case 'awaiting-deposit': return p.status === 'Quote' || p.status === 'Approved'
+    case 'active': return p.status !== 'Cancelled' && p.status !== 'Completed'
+    case 'in-production': return p.status === 'Deposit' || p.status === 'Paid'
+    case 'stale-quotes': {
+      if (p.status !== 'Quote' && p.status !== 'Approved') return false
+      if (!p.quoted_date) return false
+      const expiry = new Date(p.quoted_date)
+      expiry.setDate(expiry.getDate() + staleDays)
+      return expiry < new Date()
+    }
+  }
+}
+
 interface Props {
   projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[] })[]
   userEmailMap: Record<string, string>
@@ -18,13 +42,15 @@ interface Props {
 
 export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) {
   const searchParams = useSearchParams()
-  const isAwaitingDepositLink = searchParams.get('filter') === 'awaiting-deposit'
+  const rawFilter = searchParams.get('filter')
+  const dashboardFilterKey = DASHBOARD_FILTER_KEYS.find(k => k === rawFilter) ?? null
+  const staleDays = parseInt(searchParams.get('days') ?? '30', 10) || 30
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
   const [showArchived, setShowArchived] = useState(false)
-  const [myProjects, setMyProjects] = useState(!isAwaitingDepositLink)
-  const [awaitingDepositFilter, setAwaitingDepositFilter] = useState(isAwaitingDepositLink)
+  const [myProjects, setMyProjects] = useState(!dashboardFilterKey)
+  const [activeDashboardFilter, setActiveDashboardFilter] = useState(dashboardFilterKey)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const router = useRouter()
@@ -38,8 +64,8 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
     setRestoringId(null)
   }
 
-  function clearAwaitingDepositFilter() {
-    setAwaitingDepositFilter(false)
+  function clearDashboardFilter() {
+    setActiveDashboardFilter(null)
     router.replace('/projects')
   }
 
@@ -58,7 +84,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
   const filtered = (showArchived ? archived : active)
     .filter(p => {
       const matchStatus = showArchived
-        || (awaitingDepositFilter ? (p.status === 'Quote' || p.status === 'Approved') : (statusFilter === 'All' || p.status === statusFilter))
+        || (activeDashboardFilter ? matchesDashboardFilter(p, activeDashboardFilter, staleDays) : (statusFilter === 'All' || p.status === statusFilter))
       const matchMine = showArchived || !myProjects || (p.assigned_to ?? p.user_id) === currentUserId
       const q = search.toLowerCase()
       const matchSearch = !q ||
@@ -110,12 +136,12 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
               </button>
             </div>
             <span className="text-[#D8D3C8] text-xs mx-2">|</span>
-            {awaitingDepositFilter ? (
+            {activeDashboardFilter ? (
               <button
-                onClick={clearAwaitingDepositFilter}
+                onClick={clearDashboardFilter}
                 className="px-3 py-1.5 text-xs rounded font-medium bg-[#9A7B4F] text-white cursor-pointer"
               >
-                Awaiting Deposit ✕
+                {DASHBOARD_FILTER_LABELS[activeDashboardFilter]} ✕
               </button>
             ) : (
               (['All', ...STATUSES] as const).map(s => (
