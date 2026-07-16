@@ -49,7 +49,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
   const filtered = (showArchived ? archived : active)
     .filter(p => {
       const matchStatus = showArchived || statusFilter === 'All' || p.status === statusFilter
-      const matchMine = showArchived || !myProjects || (p.assigned_to ?? p.user_id) === currentUserId
+      const matchMine = showArchived || !myProjects || p.assigned_to === currentUserId
       const q = search.toLowerCase()
       const matchSearch = !q ||
         p.project_name.toLowerCase().includes(q) ||
@@ -77,16 +77,28 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
         />
         {!showArchived && (
           <div className="flex items-center gap-1 flex-wrap">
-            <button
-              onClick={() => setMyProjects(v => !v)}
-              className={`px-3 py-1.5 text-xs rounded font-medium transition-colors cursor-pointer border ${
-                myProjects
-                  ? 'bg-[#9A7B4F] text-white border-[#9A7B4F]'
-                  : 'bg-white border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
-              }`}
-            >
-              My Projects
-            </button>
+            <div className="flex items-center rounded border border-[#D8D3C8] overflow-hidden">
+              <button
+                onClick={() => setMyProjects(true)}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  myProjects
+                    ? 'bg-[#9A7B4F] text-white'
+                    : 'bg-white text-[#8A877F] hover:text-[#2C2C2A]'
+                }`}
+              >
+                Assigned to Me
+              </button>
+              <button
+                onClick={() => setMyProjects(false)}
+                className={`px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer border-l border-[#D8D3C8] ${
+                  !myProjects
+                    ? 'bg-[#9A7B4F] text-white'
+                    : 'bg-white text-[#8A877F] hover:text-[#2C2C2A]'
+                }`}
+              >
+                All Projects
+              </button>
+            </div>
             <span className="text-[#D8D3C8] text-xs">|</span>
             {(['All', ...STATUSES] as const).map(s => (
               <button
