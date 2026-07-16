@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown, Smartphone, Download } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import { calcHourBreakdown, punchesToBreakdown, type HourBreakdown } from '@/lib/sa-overtime'
@@ -489,6 +489,27 @@ export function StaffManager({ initialStaff, punches }: Props) {
             <Plus size={14} /> Add Member
           </button>
         )}
+      </div>
+
+      {/* Staff app download */}
+      <div className="rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 flex-wrap"
+        style={{ background: 'rgba(37,99,235,0.05)', border: `1px solid ${S.border}` }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: S.accent }}>
+          <Smartphone size={16} className="text-white" />
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <div className="text-sm font-semibold" style={{ color: S.text }}>QuotingHub Staff App</div>
+          <div className="text-xs" style={{ color: S.muted }}>
+            Here&apos;s the link to the app for your staff&apos;s Android phones — send it to them so they can clock in/out and see their timesheets.
+          </div>
+        </div>
+        <a
+          href="/downloads/quotinghub-staff.apk"
+          download
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white shrink-0"
+          style={{ background: S.accent }}>
+          <Download size={14} /> Download APK
+        </a>
       </div>
 
       {/* ── Staff tab ── */}
