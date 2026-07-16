@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown, Smartphone, Download } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown, Smartphone, Download, MessageCircle } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
 import { calcHourBreakdown, punchesToBreakdown, type HourBreakdown } from '@/lib/sa-overtime'
@@ -260,6 +260,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [newCredentials, setNewCredentials] = useState<{ username: string; pin: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [apkLinkCopied, setApkLinkCopied] = useState(false)
 
   // Timesheet helpers
   const [timesheetView, setTimesheetView] = useState<'daily' | 'weekly' | 'by-job'>('daily')
@@ -503,13 +504,38 @@ export function StaffManager({ initialStaff, punches }: Props) {
             Here&apos;s the link to the app for your staff&apos;s Android phones — send it to them so they can clock in/out and see their timesheets.
           </div>
         </div>
-        <a
-          href="/downloads/quotinghub-staff.apk"
-          download
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white shrink-0"
-          style={{ background: S.accent }}>
-          <Download size={14} /> Download APK
-        </a>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/downloads/quotinghub-staff.apk`
+              const text = `Hi! Here's the link to download the QuotingHub Staff app for your Android phone, so you can clock in/out and see your timesheet:\n${url}`
+              window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
+            }}
+            className="flex items-center justify-center w-9 h-9 rounded-xl text-white"
+            style={{ background: '#25D366' }}
+            title="Share via WhatsApp">
+            <MessageCircle size={16} />
+          </button>
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/downloads/quotinghub-staff.apk`
+              void navigator.clipboard.writeText(url)
+              setApkLinkCopied(true)
+              setTimeout(() => setApkLinkCopied(false), 2000)
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: S.card, border: `1px solid ${S.border}`, color: apkLinkCopied ? S.green : S.text }}>
+            {apkLinkCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+            {apkLinkCopied ? 'Copied' : 'Copy Link'}
+          </button>
+          <a
+            href="/downloads/quotinghub-staff.apk"
+            download
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+            style={{ background: S.accent }}>
+            <Download size={14} /> Download APK
+          </a>
+        </div>
       </div>
 
       {/* ── Staff tab ── */}
