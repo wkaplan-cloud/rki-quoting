@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
 
       await resend.emails.send({
         from: 'QuotingHub <noreply@quotinghub.co.za>',
+        replyTo: 'hello@quotinghub.co.za',
         to: notifyEmail,
         subject: `[Capital Hotel] New request from ${hotel.name}`,
         html: `

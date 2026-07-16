@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
 
     await resend.emails.send({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
+      replyTo: account.email,
       to,
       subject: `Timesheet: ${periodLabel} — ${companyName}`,
       html: `<p>Please find the timesheet for <strong>${periodLabel}</strong> attached.</p>${message ? `<p>${message}</p>` : ''}<p style="color:#888;font-size:12px;">Sent via QuotingHub</p>`,

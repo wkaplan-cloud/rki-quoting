@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       await resend.emails.send({
         from: 'QuotingHub <noreply@quotinghub.co.za>',
+        replyTo: 'hello@quotinghub.co.za',
         to: notifyEmail,
         subject: `[QuotingHub] Letterhead uploaded — ${studioName}`,
         html: `

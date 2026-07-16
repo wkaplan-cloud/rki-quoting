@@ -38,6 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const subject = `Price list access approved — ${priceList.name}`
         await resend.emails.send({
           from: 'QuotingHub <noreply@quotinghub.co.za>',
+          replyTo: 'hello@quotinghub.co.za',
           to: adminEmails,
           subject,
           text: `Your request to access the ${priceList.name} price list (${priceList.supplier_name}) has been approved.\n\nYou can now search and retrieve prices from this supplier when creating quotes.\n\nLog in at: https://quotinghub.co.za`,

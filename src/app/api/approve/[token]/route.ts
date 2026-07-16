@@ -95,6 +95,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         try {
           await resend.emails.send({
             from: `QuotingHub <noreply@quotinghub.co.za>`,
+            replyTo: 'hello@quotinghub.co.za',
             to: notifyEmail,
             subject,
             html: buildNotificationEmail({ decision, comment, clientName: client_name, projectName: project.project_name, projectNumber: project.project_number, studioName }),

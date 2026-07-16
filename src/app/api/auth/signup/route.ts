@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY)
   const { error: emailError } = await resend.emails.send({
     from: 'QuotingHub <noreply@quotinghub.co.za>',
+    replyTo: 'hello@quotinghub.co.za',
     to: email.toLowerCase().trim(),
     subject: 'Confirm your QuotingHub account',
     text: `Hi ${firstName},\n\nWelcome to QuotingHub! Please confirm your email address to activate your account:\n\n${confirmUrl}\n\nThis link expires in 24 hours.\n\nIf you didn't sign up for QuotingHub, you can safely ignore this email.\n\nThe QuotingHub Team`,

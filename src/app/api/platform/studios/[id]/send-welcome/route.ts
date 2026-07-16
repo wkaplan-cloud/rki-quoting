@@ -41,6 +41,7 @@ export async function POST(
     const { error: resendError } = await resend.emails.send({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
       to: admin.invited_email,
+      replyTo: 'hello@quotinghub.co.za',
       subject: 'Getting Started with QuotingHub',
       html,
     })

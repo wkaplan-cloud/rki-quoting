@@ -7,26 +7,26 @@ import { randomUUID } from 'crypto'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-async function resolveAccountOrStaff(userId: string): Promise<{ accountId: string; companyName: string } | null> {
+async function resolveAccountOrStaff(userId: string): Promise<{ accountId: string; companyName: string; email: string | undefined } | null> {
   const { data: own } = await supabaseAdmin
-    .from('supplier_portal_accounts').select('id, company_name').eq('auth_user_id', userId).maybeSingle()
-  if (own) return { accountId: own.id, companyName: own.company_name ?? '' }
+    .from('supplier_portal_accounts').select('id, company_name, email').eq('auth_user_id', userId).maybeSingle()
+  if (own) return { accountId: own.id, companyName: own.company_name ?? '', email: own.email ?? undefined }
 
   const { data: mem } = await supabaseAdmin
     .from('portal_org_members').select('portal_account_id')
     .eq('auth_user_id', userId).not('accepted_at', 'is', null).maybeSingle()
   if (mem) {
     const { data: acc } = await supabaseAdmin
-      .from('supplier_portal_accounts').select('id, company_name').eq('id', mem.portal_account_id).maybeSingle()
-    if (acc) return { accountId: acc.id, companyName: acc.company_name ?? '' }
+      .from('supplier_portal_accounts').select('id, company_name, email').eq('id', mem.portal_account_id).maybeSingle()
+    if (acc) return { accountId: acc.id, companyName: acc.company_name ?? '', email: acc.email ?? undefined }
   }
 
   const { data: staff } = await supabaseAdmin
     .from('elec_staff').select('portal_account_id').eq('auth_user_id', userId).eq('is_active', true).maybeSingle()
   if (staff) {
     const { data: acc } = await supabaseAdmin
-      .from('supplier_portal_accounts').select('id, company_name').eq('id', staff.portal_account_id).maybeSingle()
-    if (acc) return { accountId: acc.id, companyName: acc.company_name ?? '' }
+      .from('supplier_portal_accounts').select('id, company_name, email').eq('id', staff.portal_account_id).maybeSingle()
+    if (acc) return { accountId: acc.id, companyName: acc.company_name ?? '', email: acc.email ?? undefined }
   }
   return null
 }
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     await resend.emails.send({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
+      replyTo: account.email,
       to: email,
       subject: `Please sign job card ${card.job_number} — ${card.title}`,
       html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
