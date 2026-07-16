@@ -502,6 +502,11 @@ export function StaffManager({ initialStaff, punches }: Props) {
           <div className="text-sm font-semibold" style={{ color: S.text }}>QuotingHub Staff App</div>
           <div className="text-xs" style={{ color: S.muted }}>
             Here&apos;s the link to the app for your staff&apos;s Android phones — send it to them so they can clock in/out and see their timesheets.
+            {' '}On iPhone, or without installing anything, staff can log in the same way at{' '}
+            <a href="https://www.quotinghub.co.za/supplier-portal/login" target="_blank" rel="noopener noreferrer"
+              className="font-semibold underline" style={{ color: S.accent }}>
+              quotinghub.co.za/supplier-portal/login
+            </a>{' '}using their Username + PIN.
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
