@@ -86,7 +86,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                     : 'bg-white text-[#8A877F] hover:text-[#2C2C2A]'
                 }`}
               >
-                Assigned to Me
+                My Projects
               </button>
               <button
                 onClick={() => setMyProjects(false)}
