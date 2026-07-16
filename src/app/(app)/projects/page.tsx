@@ -31,7 +31,7 @@ export default async function ProjectsPage() {
     <div className="flex flex-col h-full">
       <PageHeader
         title="Projects"
-        count={projects?.length ?? 0}
+        count={projects?.filter(p => !p.archived_at).length ?? 0}
         actions={
           <Link
             href="/projects/new"
