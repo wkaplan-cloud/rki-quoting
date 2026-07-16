@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { SessionExpiredHandler } from '@/components/SessionExpiredHandler'
 import {
   LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut,
   ArrowLeftRight, Store, FolderOpen, Activity, BadgeDollarSign,
@@ -82,6 +83,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
 
   return (
     <div className="min-h-screen bg-[#0F0F0D] text-white flex">
+      <SessionExpiredHandler loginPath="/login?from=platform" />
       {/* Sidebar */}
       <aside className="w-52 flex-shrink-0 bg-[#1A1A18] flex flex-col h-screen fixed left-0 top-0 border-r border-white/10">
         <div className="px-5 py-5 border-b border-white/10 flex flex-col items-center">

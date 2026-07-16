@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { SessionExpiredHandler } from '@/components/SessionExpiredHandler'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { getImpersonationStash } from '@/lib/impersonation'
 
@@ -115,6 +116,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       graceDaysLeft={graceDaysLeft}
       impersonation={impersonation}
     >
+      <SessionExpiredHandler loginPath="/login" />
       {children}
     </AppLayout>
   )
