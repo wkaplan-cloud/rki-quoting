@@ -19,7 +19,7 @@ export default async function PlatformPriceListDetailPage({ params }: { params: 
         <h1 className="text-xl font-semibold text-white">{priceList.name}</h1>
         <p className="text-sm text-white/50 mt-0.5">{priceList.supplier_name} · {priceList.item_count.toLocaleString()} items</p>
       </div>
-      <PriceListView priceListId={id} />
+      <PriceListView priceListId={id} canEdit isGlobal={!!priceList.is_global} />
     </div>
   )
 }

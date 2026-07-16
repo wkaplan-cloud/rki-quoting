@@ -17,6 +17,7 @@ interface PriceList {
   item_count: number
   created_at: string
   is_global: boolean
+  org_id?: string | null
 }
 
 interface ParsedItem {
@@ -81,12 +82,24 @@ function mapHeaders(headers: string[]): (keyof ParsedItem | null)[] {
   return headers.map(h => COLUMN_MAP[h.toLowerCase().trim()] ?? null)
 }
 
-export function PriceListsManager({ priceLists, canManage, basePath = '/price-lists', accessRecords = [] }: { priceLists: PriceList[]; canManage: boolean; basePath?: string; accessRecords?: AccessRecord[] }) {
+const REQUIRED_COLUMNS: { key: keyof ParsedItem; label: string }[] = [
+  { key: 'brand', label: 'Brand' },
+  { key: 'collection', label: 'Collection' },
+  { key: 'design', label: 'Design' },
+  { key: 'colour', label: 'Colour' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'price_zar', label: 'Price (ZAR)' },
+]
+
+const CSV_TEMPLATE = 'Brand,Collection,Design,Colour,SKU,Product ID,Price (ZAR),Image URL\nExample Brand,Spring 2026,Linen Weave,Natural,LW-001,,450.00,https://example.com/linen-weave.jpg\n'
+
+export function PriceListsManager({ priceLists, canManage, basePath = '/price-lists', accessRecords = [], currentOrgId = null }: { priceLists: PriceList[]; canManage: boolean; basePath?: string; accessRecords?: AccessRecord[]; currentOrgId?: string | null }) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
+  const isPlatformContext = basePath === '/platform/price-lists'
   const [showImport, setShowImport] = useState(false)
   const [name, setName] = useState('')
-  const [supplierName, setSupplierName] = useState('Home Fabrics')
+  const [supplierName, setSupplierName] = useState(isPlatformContext ? 'Home Fabrics' : '')
   const [isGlobal, setIsGlobal] = useState(false)
   const [parsedItems, setParsedItems] = useState<ParsedItem[] | null>(null)
   const [parseError, setParseError] = useState('')
@@ -111,10 +124,20 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
       const { headers, rows } = parseCSV(text)
       const colMap = mapHeaders(headers)
 
-      const mapped = colMap.filter(Boolean)
-      if (mapped.length < 3) {
-        setParseError('Could not detect expected columns. Make sure the CSV has the Home Fabrics format.')
-        return
+      if (isPlatformContext) {
+        const mapped = colMap.filter(Boolean)
+        if (mapped.length < 3) {
+          setParseError('Could not detect expected columns. Make sure the CSV has the Home Fabrics format.')
+          return
+        }
+      } else {
+        // Studio uploads must match the designed column format
+        const mappedSet = new Set(colMap.filter(Boolean))
+        const missing = REQUIRED_COLUMNS.filter(c => !mappedSet.has(c.key))
+        if (missing.length > 0) {
+          setParseError(`Your CSV is missing required column${missing.length > 1 ? 's' : ''}: ${missing.map(c => c.label).join(', ')}. Download the template below to see the expected format.`)
+          return
+        }
       }
 
       const items: ParsedItem[] = rows
@@ -198,7 +221,7 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
 
   function resetForm() {
     setName('')
-    setSupplierName('Home Fabrics')
+    setSupplierName(isPlatformContext ? 'Home Fabrics' : '')
     setIsGlobal(false)
     setParsedItems(null)
     setParseError('')
@@ -242,6 +265,11 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                       {pl.is_global && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#9A7B4F] bg-[#9A7B4F]/10 px-2 py-0.5 rounded-full flex-shrink-0">
                           <Globe size={9} /> Platform
+                        </span>
+                      )}
+                      {!pl.is_global && pl.org_id && pl.org_id === currentOrgId && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#2C2C2A] bg-[#EDE9E1] px-2 py-0.5 rounded-full flex-shrink-0">
+                          Your studio
                         </span>
                       )}
                     </div>
@@ -289,9 +317,10 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                       }
                     }
                     // Active access, platform admin view, or non-global
+                    const canDelete = isPlatformContext || (!pl.is_global && !!pl.org_id && pl.org_id === currentOrgId)
                     return (
                       <>
-                        {canManage && !(pl.is_global && basePath === '/price-lists') && (
+                        {canManage && canDelete && (
                           <Button size="sm" variant="ghost" onClick={() => setDeleteId(pl.id)} className="opacity-0 group-hover:opacity-100">
                             <Trash2 size={13} />
                           </Button>
@@ -363,13 +392,34 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                 </button>
                 {showFormatHint && (
                   <div className="mt-2 bg-[#F5F2EC] border border-[#D8D3C8] rounded-lg p-3 space-y-2">
-                    <p className="text-xs text-[#8A877F]">Your CSV header row must include at least 3 of the following column names (case-insensitive):</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {['Brand','Collection','Design','Colour / Color','SKU','Product ID','Price (ZAR) / Price','Image URL / Image'].map(col => (
-                        <span key={col} className="text-[10px] font-mono bg-white border border-[#D8D3C8] rounded px-2 py-0.5 text-[#2C2C2A]">{col}</span>
-                      ))}
-                    </div>
-                    <p className="text-xs text-[#8A877F]">Extra columns are ignored. The Home Fabrics export CSV works out of the box.</p>
+                    {isPlatformContext ? (
+                      <>
+                        <p className="text-xs text-[#8A877F]">Your CSV header row must include at least 3 of the following column names (case-insensitive):</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {['Brand','Collection','Design','Colour / Color','SKU','Product ID','Price (ZAR) / Price','Image URL / Image'].map(col => (
+                            <span key={col} className="text-[10px] font-mono bg-white border border-[#D8D3C8] rounded px-2 py-0.5 text-[#2C2C2A]">{col}</span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-[#8A877F]">Extra columns are ignored. The Home Fabrics export CSV works out of the box.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-[#8A877F]">Your CSV header row must include all of these columns (case-insensitive):</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {['Brand','Collection','Design','Colour','SKU','Price (ZAR)'].map(col => (
+                            <span key={col} className="text-[10px] font-mono bg-white border border-[#D8D3C8] rounded px-2 py-0.5 text-[#2C2C2A]">{col}</span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-[#8A877F]">Optional columns: <span className="font-mono">Product ID</span>, <span className="font-mono">Image URL</span>. Extra columns are ignored — cells may be left empty.</p>
+                        <a
+                          href={`data:text/csv;charset=utf-8,${encodeURIComponent(CSV_TEMPLATE)}`}
+                          download="price-list-template.csv"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#9A7B4F] hover:text-[#7d6340] transition-colors"
+                        >
+                          <Upload size={11} className="rotate-180" /> Download CSV template
+                        </a>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

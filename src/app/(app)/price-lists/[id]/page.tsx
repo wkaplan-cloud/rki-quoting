@@ -20,6 +20,19 @@ export default async function PriceListDetailPage({ params }: { params: Promise<
 
   if (!priceList) notFound()
 
+  // Org admins can edit their own studio's lists; the platform admin can edit any
+  const isPlatformAdmin = !!(user && process.env.PLATFORM_ADMIN_EMAIL && user.email === process.env.PLATFORM_ADMIN_EMAIL)
+  let canEdit = isPlatformAdmin
+  if (!canEdit && user && priceList.org_id && priceList.org_id === orgId) {
+    const { data: membership } = await supabaseAdmin
+      .from('org_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+    canEdit = membership?.role === 'admin'
+  }
+
   // For global price lists, check the org has active access
   if (priceList.is_global && orgId) {
     const access = (accessRows ?? []).find(r => r.org_id === orgId) ?? null
@@ -54,7 +67,7 @@ export default async function PriceListDetailPage({ params }: { params: Promise<
         title={priceList.name}
         subtitle={`${priceList.supplier_name} · ${priceList.item_count.toLocaleString()} items`}
       />
-      <PriceListView priceListId={id} />
+      <PriceListView priceListId={id} canEdit={canEdit} isGlobal={!!priceList.is_global} />
     </div>
   )
 }
