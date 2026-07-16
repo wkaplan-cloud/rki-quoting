@@ -10,7 +10,7 @@ export default async function ProjectsPage() {
   const supabase = await createClient()
   const [{ data: projects }, { data: orgIdResult }] = await Promise.all([
     supabase.from('projects')
-      .select('*, client:clients(client_name, company), line_items(id, row_type, cost_price, markup_percentage, quantity, sale_price_override)')
+      .select('*, client:clients(client_name, company), line_items(id, row_type, cost_price, markup_percentage, quantity, sale_price_override), stages:project_stages(*)')
       .order('created_at', { ascending: false })
       .order('archived_at', { ascending: false, nullsFirst: true }),
     supabase.rpc('get_current_org_id'),

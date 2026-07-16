@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
-import type { Project, ProjectStatus, LineItem } from '@/lib/types'
+import type { Project, ProjectStatus, LineItem, ProjectStages } from '@/lib/types'
 import { formatZAR, computeTotals } from '@/lib/quoting'
 import { FolderOpen, ChevronRight, Archive, Trash2, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -19,13 +19,20 @@ const DASHBOARD_FILTER_LABELS: Record<DashboardFilterKey, string> = {
   'stale-quotes': 'Stale Quotes',
 }
 
-function matchesDashboardFilter(p: Project, key: DashboardFilterKey, staleDays: number): boolean {
+// Mirrors the dashboard's tile logic exactly (src/app/(app)/dashboard/page.tsx) so a
+// project counted in a tile always shows up here — status alone can drift from the
+// underlying stage checkboxes on older/imported records, so we read stages directly.
+function matchesDashboardFilter(p: Project, stage: ProjectStages | null, key: DashboardFilterKey, staleDays: number): boolean {
+  const isCancelled = p.status === 'Cancelled'
+  const isCompleted = p.status === 'Completed'
+  if (isCancelled || isCompleted) return false
+
   switch (key) {
-    case 'awaiting-deposit': return p.status === 'Quote' || p.status === 'Approved'
-    case 'active': return p.status !== 'Cancelled' && p.status !== 'Completed'
-    case 'in-production': return p.status === 'Deposit' || p.status === 'Paid'
+    case 'active': return true
+    case 'awaiting-deposit': return !!stage?.quote_sent && !stage?.deposit_received && p.status !== 'Paid'
+    case 'in-production': return !!stage?.deposit_received && !stage?.delivered_installed
     case 'stale-quotes': {
-      if (p.status !== 'Quote' && p.status !== 'Approved') return false
+      if (!stage?.quote_sent || stage?.deposit_received || p.status === 'Paid') return false
       if (!p.quoted_date) return false
       const expiry = new Date(p.quoted_date)
       expiry.setDate(expiry.getDate() + staleDays)
@@ -35,7 +42,7 @@ function matchesDashboardFilter(p: Project, key: DashboardFilterKey, staleDays: 
 }
 
 interface Props {
-  projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[] })[]
+  projects: (Project & { client: { client_name: string; company: string | null } | null; line_items: LineItem[]; stages?: ProjectStages | ProjectStages[] | null })[]
   userEmailMap: Record<string, string>
   currentUserId: string
 }
@@ -83,8 +90,9 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
 
   const filtered = (showArchived ? archived : active)
     .filter(p => {
+      const stage = Array.isArray(p.stages) ? (p.stages[0] ?? null) : (p.stages ?? null)
       const matchStatus = showArchived
-        || (activeDashboardFilter ? matchesDashboardFilter(p, activeDashboardFilter, staleDays) : (statusFilter === 'All' || p.status === statusFilter))
+        || (activeDashboardFilter ? matchesDashboardFilter(p, stage, activeDashboardFilter, staleDays) : (statusFilter === 'All' || p.status === statusFilter))
       const matchMine = showArchived || !myProjects || (p.assigned_to ?? p.user_id) === currentUserId
       const q = search.toLowerCase()
       const matchSearch = !q ||
