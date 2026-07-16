@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { StatusBadge, STATUS_LABELS } from '@/components/ui/StatusBadge'
 import type { Project, ProjectStatus, LineItem } from '@/lib/types'
 import { formatZAR, computeTotals } from '@/lib/quoting'
@@ -17,10 +17,14 @@ interface Props {
 }
 
 export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) {
+  const searchParams = useSearchParams()
+  const isAwaitingDepositLink = searchParams.get('filter') === 'awaiting-deposit'
+
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All')
   const [showArchived, setShowArchived] = useState(false)
-  const [myProjects, setMyProjects] = useState(true)
+  const [myProjects, setMyProjects] = useState(!isAwaitingDepositLink)
+  const [awaitingDepositFilter, setAwaitingDepositFilter] = useState(isAwaitingDepositLink)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const router = useRouter()
@@ -32,6 +36,11 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
     if (error) { alert(error.message); setRestoringId(null); return }
     router.refresh()
     setRestoringId(null)
+  }
+
+  function clearAwaitingDepositFilter() {
+    setAwaitingDepositFilter(false)
+    router.replace('/projects')
   }
 
   async function handleDelete(id: string, name: string) {
@@ -48,7 +57,8 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
 
   const filtered = (showArchived ? archived : active)
     .filter(p => {
-      const matchStatus = showArchived || statusFilter === 'All' || p.status === statusFilter
+      const matchStatus = showArchived
+        || (awaitingDepositFilter ? (p.status === 'Quote' || p.status === 'Approved') : (statusFilter === 'All' || p.status === statusFilter))
       const matchMine = showArchived || !myProjects || (p.assigned_to ?? p.user_id) === currentUserId
       const q = search.toLowerCase()
       const matchSearch = !q ||
@@ -100,19 +110,28 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
               </button>
             </div>
             <span className="text-[#D8D3C8] text-xs mx-2">|</span>
-            {(['All', ...STATUSES] as const).map(s => (
+            {awaitingDepositFilter ? (
               <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1.5 text-xs rounded font-medium transition-colors cursor-pointer
-                  ${statusFilter === s
-                    ? 'bg-[#2C2C2A] text-white'
-                    : 'bg-white border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
-                  }`}
+                onClick={clearAwaitingDepositFilter}
+                className="px-3 py-1.5 text-xs rounded font-medium bg-[#9A7B4F] text-white cursor-pointer"
               >
-                {s === 'All' ? 'All' : STATUS_LABELS[s]}
+                Awaiting Deposit ✕
               </button>
-            ))}
+            ) : (
+              (['All', ...STATUSES] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-3 py-1.5 text-xs rounded font-medium transition-colors cursor-pointer
+                    ${statusFilter === s
+                      ? 'bg-[#2C2C2A] text-white'
+                      : 'bg-white border border-[#D8D3C8] text-[#8A877F] hover:border-[#2C2C2A] hover:text-[#2C2C2A]'
+                    }`}
+                >
+                  {s === 'All' ? 'All' : STATUS_LABELS[s]}
+                </button>
+              ))
+            )}
           </div>
         )}
         <button

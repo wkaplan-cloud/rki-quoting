@@ -108,12 +108,12 @@ export default async function DashboardPage() {
   const hasSentQuote = ps.some(p => stagesMap[p.id]?.quote_sent || ['Quote', 'Approved', 'Deposit', 'Invoice', 'Paid', 'Completed'].includes(p.status))
 
   const allSummaryCards = [
-    { label: 'Active Projects',        value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false },
-    { label: 'Awaiting Deposit',       value: awaitingDeposit.toString(),       sub: 'Quote sent — deposit not yet received',              alert: awaitingDeposit > 0 },
-    { label: 'Stale Quotes',           value: staleQuotes.toString(),           sub: `Past ${validityDays}-day validity — no deposit yet`, alert: staleQuotes > 0 },
-    { label: 'In Production',          value: inProduction.toString(),          sub: 'Deposit received, not yet delivered',                alert: false },
-    { label: 'Ready to Invoice',       value: readyToInvoice.toString(),        sub: 'Fabrics in — balance invoice not yet sent',          alert: readyToInvoice > 0 },
-    { label: 'Balance Due',            value: invoicesOutstanding.toString(),   sub: 'Final invoice sent — balance not yet paid',          alert: invoicesOutstanding > 0 },
+    { label: 'Active Projects',        value: activeProjects.length.toString(), sub: `${drafts} drafts · ${openQuotes} quotes · ${activeInvoices} invoiced${paidProjects > 0 ? ` · ${paidProjects} paid` : ''}`, alert: false, href: undefined as string | undefined },
+    { label: 'Awaiting Deposit',       value: awaitingDeposit.toString(),       sub: 'Quote sent — deposit not yet received',              alert: awaitingDeposit > 0, href: '/projects?filter=awaiting-deposit' },
+    { label: 'Stale Quotes',           value: staleQuotes.toString(),           sub: `Past ${validityDays}-day validity — no deposit yet`, alert: staleQuotes > 0, href: undefined as string | undefined },
+    { label: 'In Production',          value: inProduction.toString(),          sub: 'Deposit received, not yet delivered',                alert: false, href: undefined as string | undefined },
+    { label: 'Ready to Invoice',       value: readyToInvoice.toString(),        sub: 'Fabrics in — balance invoice not yet sent',          alert: readyToInvoice > 0, href: undefined as string | undefined },
+    { label: 'Balance Due',            value: invoicesOutstanding.toString(),   sub: 'Final invoice sent — balance not yet paid',          alert: invoicesOutstanding > 0, href: undefined as string | undefined },
   ]
   // Solo: show the 3 most actionable tiles
   const summaryCards = isSolo
@@ -144,13 +144,21 @@ export default async function DashboardPage() {
         <div>
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-3">Overview</h2>
           <div data-tour="dashboard-cards" className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
-            {summaryCards.map(({ label, value, sub, alert }) => (
-              <div key={label} className={`bg-white border rounded p-3 md:p-4 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'}`}>
-                <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider leading-tight">{label}</p>
-                <p className={`font-serif text-xl md:text-2xl mt-2 ${alert ? 'text-[#9A7B4F]' : 'text-[#1A1A18]'}`}>{value}</p>
-                {sub && <p className="text-xs text-[#8A877F] mt-1 hidden sm:block">{sub}</p>}
-              </div>
-            ))}
+            {summaryCards.map(({ label, value, sub, alert, href }) => {
+              const cardClassName = `bg-white border rounded p-3 md:p-4 ${alert ? 'border-[#9A7B4F]/50 bg-[#9A7B4F]/5' : 'border-[#D8D3C8]'} ${href ? 'block transition-colors hover:border-[#9A7B4F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A7B4F]' : ''}`
+              const cardContent = (
+                <>
+                  <p className="text-xs font-medium text-[#8A877F] uppercase tracking-wider leading-tight">{label}</p>
+                  <p className={`font-serif text-xl md:text-2xl mt-2 ${alert ? 'text-[#9A7B4F]' : 'text-[#1A1A18]'}`}>{value}</p>
+                  {sub && <p className="text-xs text-[#8A877F] mt-1 hidden sm:block">{sub}</p>}
+                </>
+              )
+              return href ? (
+                <Link key={label} href={href} className={cardClassName}>{cardContent}</Link>
+              ) : (
+                <div key={label} className={cardClassName}>{cardContent}</div>
+              )
+            })}
           </div>
         </div>
 
