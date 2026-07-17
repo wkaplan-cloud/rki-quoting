@@ -27,5 +27,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: 'https://quotinghub.co.za/blog/purchase-orders-for-interior-designers-south-africa', changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://quotinghub.co.za/blog/how-to-start-interior-design-business-south-africa', changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://quotinghub.co.za/blog/programa-vs-quotinghub-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/quotinghub-for-south-african-interior-designers', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/houzz-pro-vs-quotinghub-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/designfiles-vs-quotinghub-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/programa-alternatives-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/how-to-invoice-clients-interior-design-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/interior-design-invoice-template-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/interior-design-contract-template-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/how-to-open-trade-accounts-with-sa-furniture-suppliers', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/best-fabric-and-furniture-suppliers-for-interior-designers-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/how-to-manage-supplier-lead-times-south-africa', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/south-african-interior-design-industry-statistics-2026', changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://quotinghub.co.za/blog/interior-design-courses-south-africa', changeFrequency: 'monthly', priority: 0.8 },
   ]
 }
