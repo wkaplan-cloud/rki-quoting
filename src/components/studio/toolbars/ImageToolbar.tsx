@@ -25,9 +25,12 @@ export function ImageToolbar({ obj }: { obj: ImageObject }) {
     const srcW = obj.crop?.width ?? obj.naturalWidth
     const srcH = obj.crop?.height ?? obj.naturalHeight
     if (!srcW || !srcH || !obj.width || !obj.height) return
+    // Aim a touch above the low-res floor — landing exactly ON it leaves the
+    // result a rounding error below threshold, keeping the warning dot lit
+    const targetDpi = LOW_RES_DPI_THRESHOLD * 1.03
     const sDpi = Math.min(
-      (srcW * 72) / (LOW_RES_DPI_THRESHOLD * obj.width),
-      (srcH * 72) / (LOW_RES_DPI_THRESHOLD * obj.height)
+      (srcW * 72) / (targetDpi * obj.width),
+      (srcH * 72) / (targetDpi * obj.height)
     )
     const sArea = Math.min(area.width / obj.width, area.height / obj.height)
     const s = Math.min(sDpi, sArea)
