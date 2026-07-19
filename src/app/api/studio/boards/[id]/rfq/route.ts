@@ -78,9 +78,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const specByObject = new Map((specRows ?? []).map(r => [(r as StudioSpecRow).object_id, r as StudioSpecRow]))
     const imageUrlByObject = new Map<string, string>()
+    // Room/area = the heading of the slide the object actually sits on
+    const areaByObject = new Map<string, string>()
     for (const slide of (slideRows ?? []) as StudioSlideRow[]) {
+      const area = (slide.heading || slide.name || '').trim()
       for (const obj of Array.isArray(slide.objects) ? slide.objects : []) {
         if (obj.type === 'image') imageUrlByObject.set(obj.id, obj.url)
+        areaByObject.set(obj.id, area)
       }
     }
 
@@ -104,6 +108,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (!row) continue
         items.push({
           name: row.spec_name || '',
+          area: areaByObject.get(objectId) ?? '',
           imageUrl: imageUrlByObject.get(objectId) ?? null,
           description: row.description ?? '',
           category: row.category ?? '',

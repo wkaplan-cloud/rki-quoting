@@ -7,6 +7,7 @@ import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/render
 
 export interface RfqPdfItem {
   name: string
+  area: string // room/area — the slide heading the item sits on
   imageUrl: string | null
   description: string
   category: string
@@ -45,18 +46,19 @@ const s = StyleSheet.create({
   itemHeader: { fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   itemName: { fontSize: 14, fontFamily: 'Helvetica-Bold', marginBottom: 10 },
   // A4 portrait is 595pt wide; with 40pt page padding the content column is
-  // ~515pt — the image fills it, specs sit underneath. Everything below is
-  // budgeted so ONE item always fits ONE page (see maxLines clamps + the
-  // wrap={false} on the item Page).
+  // ~515pt — the image fills it (fixed height so it can never squeeze the
+  // specs), specs sit underneath IN FULL. Long specs flow onto a follow-on
+  // page with a fixed "— continued" header so it reads as one item.
   imageBox: { width: '100%', height: 300, borderWidth: 1, borderColor: '#D8D3C8', padding: 4, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   image: { maxWidth: 505, maxHeight: 290, objectFit: 'contain' },
   specs: { width: '100%' },
   specRow: { flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   specLabel: { width: 80, fontSize: 8, color: '#8A877F' },
-  specValue: { flex: 1, fontSize: 9, maxLines: 2, textOverflow: 'ellipsis' },
-  longText: { flex: 1, fontSize: 9, maxLines: 5, textOverflow: 'ellipsis' },
+  specValue: { flex: 1, fontSize: 9 },
   sectionHead: { fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1, marginTop: 12, marginBottom: 4 },
-  notes: { fontSize: 9, lineHeight: 1.5, color: '#4A4A47', maxLines: 5, textOverflow: 'ellipsis' },
+  notes: { fontSize: 9, lineHeight: 1.5, color: '#4A4A47' },
+  contHeader: { position: 'absolute', top: 22, left: 40, right: 40, fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1 },
+  area: { fontSize: 9, color: '#9A7B4F', marginBottom: 10, marginTop: -8 },
   priceBox: { marginTop: 16, borderWidth: 1, borderColor: '#D8D3C8', padding: 10 },
   priceLine: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   footer: { position: 'absolute', bottom: 24, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: '#8A877F' },
@@ -117,36 +119,44 @@ export function RfqPDF(props: RfqPdfProps) {
 
       {/* One page per item */}
       {items.map((item, i) => (
-        // wrap={false}: an item never spills onto a second page — long text
-        // is clamped with "…" instead (full specs always live in Studio)
-        <Page key={i} size="A4" style={s.itemPage} wrap={false}>
+        <Page key={i} size="A4" style={s.itemPage}>
+          {/* Only visible on this item's overflow pages, so a spilled spec
+              clearly reads as a continuation, not a new item */}
+          <Text
+            fixed
+            style={s.contHeader}
+            render={({ subPageNumber }) =>
+              subPageNumber > 1 ? `Item ${i + 1} — ${item.name || `Item ${i + 1}`} (continued)` : ''
+            }
+          />
           <Text style={s.itemHeader}>Item {i + 1} of {items.length}</Text>
           <Text style={s.itemName}>{item.name || `Item ${i + 1}`}</Text>
+          {item.area.trim() ? <Text style={s.area}>{item.area}</Text> : null}
           <View style={s.imageBox}>
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             {item.imageUrl ? <Image src={item.imageUrl} style={s.image} /> : <Text style={s.muted}>No image</Text>}
           </View>
           <View style={s.specs}>
               {item.description.trim() ? (
-                <View style={s.specRow}>
+                <View style={s.specRow} wrap={false}>
                   <Text style={s.specLabel}>Description</Text>
-                  <Text style={s.longText}>{item.description}</Text>
+                  <Text style={s.specValue}>{item.description}</Text>
                 </View>
               ) : null}
               {item.category.trim() ? (
-                <View style={s.specRow}>
+                <View style={s.specRow} wrap={false}>
                   <Text style={s.specLabel}>Category</Text>
                   <Text style={s.specValue}>{item.category}</Text>
                 </View>
               ) : null}
               {item.quantity.trim() ? (
-                <View style={s.specRow}>
+                <View style={s.specRow} wrap={false}>
                   <Text style={s.specLabel}>Quantity</Text>
                   <Text style={s.specValue}>{item.quantity}{item.unit.trim() ? ` ${item.unit}` : ''}</Text>
                 </View>
               ) : null}
               {dims(item) ? (
-                <View style={s.specRow}>
+                <View style={s.specRow} wrap={false}>
                   <Text style={s.specLabel}>Dimensions</Text>
                   <Text style={s.specValue}>{dims(item)}</Text>
                 </View>
@@ -154,9 +164,9 @@ export function RfqPDF(props: RfqPdfProps) {
 
               {item.materials.length > 0 ? (
                 <>
-                  <Text style={s.sectionHead}>Materials</Text>
-                  {item.materials.slice(0, 8).map((m, j) => (
-                    <View key={j} style={s.specRow}>
+                  <Text style={s.sectionHead} minPresenceAhead={30}>Materials</Text>
+                  {item.materials.map((m, j) => (
+                    <View key={j} style={s.specRow} wrap={false}>
                       <Text style={s.specLabel}>{m.type || 'Material'}</Text>
                       <Text style={s.specValue}>
                         {[m.description, m.colour, m.supplierName ? `via ${m.supplierName}` : '']
@@ -165,22 +175,17 @@ export function RfqPDF(props: RfqPdfProps) {
                       </Text>
                     </View>
                   ))}
-                  {item.materials.length > 8 ? (
-                    <Text style={[s.muted, { fontSize: 8, marginTop: 2 }]}>
-                      + {item.materials.length - 8} more material{item.materials.length - 8 === 1 ? '' : 's'} — ask for the full spec if needed
-                    </Text>
-                  ) : null}
                 </>
               ) : null}
 
               {item.notes.trim() ? (
                 <>
-                  <Text style={s.sectionHead}>Notes</Text>
+                  <Text style={s.sectionHead} minPresenceAhead={30}>Notes</Text>
                   <Text style={s.notes}>{item.notes}</Text>
                 </>
               ) : null}
 
-              <View style={s.priceBox}>
+              <View style={s.priceBox} wrap={false}>
                 <Text style={[s.sectionHead, { marginTop: 0 }]}>For supplier completion</Text>
                 <View style={[s.priceLine, { borderBottomWidth: 0 }]}>
                   <Text style={s.muted}>Unit price (excl. VAT)</Text>
