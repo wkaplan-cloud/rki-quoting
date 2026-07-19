@@ -70,14 +70,18 @@ export default function EditorShell(props: EditorShellProps) {
   // jumps straight to its spec editor. Specs only make sense on images (a
   // photo stands in for a physical product; text/shapes never get one), so
   // deselecting, multi-select, or selecting a non-image closes it instead.
+  // Reacts to SELECTION and panel-toggle changes only — deliberately not to
+  // the editor's own open state. With that in the deps, clicking the spec
+  // editor's ✕ (openSpecs(null)) re-ran this effect, which saw the image
+  // still selected and reopened the editor immediately — the ✕ appeared dead.
   useEffect(() => {
-    if (!showSpecs && !specEditorOpen) return
     const store = useStudioStore.getState()
+    if (!showSpecs && !store.specPanelObjectId) return
     const slide = store.slides.find(sl => sl.id === store.currentSlideId)
     const obj = selectedIds.length === 1 ? slide?.objects.find(o => o.id === selectedIds[0]) : null
     store.openSpecs(obj?.type === 'image' ? obj.id : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSpecs, specEditorOpen, selectedIds.join(',')])
+  }, [showSpecs, selectedIds.join(',')])
 
   useEffect(() => {
     // One right-hand panel at a time — if more than one were somehow stored
