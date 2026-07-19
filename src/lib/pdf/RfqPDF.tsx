@@ -33,15 +33,27 @@ export interface RfqPdfProps {
 }
 
 const s = StyleSheet.create({
+  // ── Cover ──
+  cover: { padding: 56, paddingBottom: 64, fontFamily: 'Helvetica', fontSize: 9, color: '#2C2C2A', backgroundColor: '#FFFFFF' },
+  kicker: { fontSize: 9, color: '#9A7B4F', textTransform: 'uppercase', letterSpacing: 3, fontFamily: 'Helvetica-Bold' },
+  logo: { height: 40, objectFit: 'contain' },
+  bizTop: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#1A1A18' },
+  coverTitle: { fontSize: 30, fontFamily: 'Helvetica-Bold', color: '#1A1A18', letterSpacing: 0.2, lineHeight: 1.15 },
+  coverClient: { fontSize: 13, color: '#8A877F', marginTop: 8 },
+  goldRule: { width: 48, height: 3, backgroundColor: '#C4A46B', marginTop: 20 },
+  metaGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 40 },
+  metaCell: { width: '33.33%', marginBottom: 22, paddingRight: 12 },
+  messagePanel: { backgroundColor: '#F5F2EC', borderWidth: 1, borderColor: '#E5E0D6', borderRadius: 6, padding: 16, marginTop: 6 },
+  refNote: { fontSize: 8, color: '#8A877F', lineHeight: 1.6, marginTop: 14 },
+  thumb: { width: 84, height: 84, objectFit: 'cover', borderWidth: 1, borderColor: '#D8D3C8', marginRight: 8, borderRadius: 4 },
+  thumbEmpty: { width: 84, height: 84, borderWidth: 1, borderColor: '#D8D3C8', marginRight: 8, borderRadius: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F2EC' },
+  thumbMore: { width: 84, height: 84, borderWidth: 1, borderColor: '#D8D3C8', marginRight: 8, borderRadius: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A1A18' },
+  // ── Shared / item pages ──
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 9, color: '#2C2C2A' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  logo: { height: 36, objectFit: 'contain', alignSelf: 'flex-start' },
-  title: { fontSize: 18, fontFamily: 'Helvetica-Bold', letterSpacing: 0.5 },
   muted: { color: '#8A877F' },
-  metaLabel: { fontSize: 7, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 },
-  metaValue: { fontSize: 10 },
-  rule: { borderBottomWidth: 1, borderBottomColor: '#D8D3C8', marginVertical: 12 },
-  message: { fontSize: 9, lineHeight: 1.5, color: '#4A4A47' },
+  metaLabel: { fontSize: 7, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3 },
+  metaValue: { fontSize: 11, color: '#1A1A18' },
+  message: { fontSize: 10, lineHeight: 1.6, color: '#4A4A47' },
   itemPage: { padding: 40, fontFamily: 'Helvetica', fontSize: 9, color: '#2C2C2A' },
   itemHeader: { fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   itemName: { fontSize: 14, fontFamily: 'Helvetica-Bold', marginBottom: 10 },
@@ -74,43 +86,86 @@ export function RfqPDF(props: RfqPdfProps) {
   const { businessName, logoUrl, boardName, clientName, supplierName, message, replyTo, printDate, items } = props
   return (
     <Document>
-      {/* Cover / letter page */}
-      <Page size="A4" style={s.page}>
-        <View style={s.headerRow}>
+      {/* Cover — the supplier's first impression of the studio, so it gets
+          letterhead treatment: kicker + logo, big title block, airy meta
+          grid, message panel, and a thumbnail strip of what's inside */}
+      <Page size="A4" style={s.cover}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View>
-            <Text style={s.title}>Request for Quote</Text>
-            <Text style={[s.muted, { marginTop: 4 }]}>{businessName}</Text>
+            <Text style={s.kicker}>Request for Quote</Text>
+            {logoUrl ? <Text style={[s.bizTop, { marginTop: 6 }]}>{businessName}</Text> : null}
           </View>
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
-          {logoUrl ? <Image src={logoUrl} style={s.logo} /> : null}
+          {logoUrl ? <Image src={logoUrl} style={s.logo} /> : <Text style={s.bizTop}>{businessName}</Text>}
         </View>
-        <View style={s.rule} />
-        <View style={{ flexDirection: 'row', gap: 32, marginBottom: 12 }}>
-          <View>
-            <Text style={s.metaLabel}>To</Text>
+
+        <View style={{ marginTop: 72 }}>
+          <Text style={s.coverTitle}>{boardName}</Text>
+          {clientName ? <Text style={s.coverClient}>for {clientName}</Text> : null}
+          <View style={s.goldRule} />
+        </View>
+
+        <View style={s.metaGrid}>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Prepared for</Text>
             <Text style={s.metaValue}>{supplierName}</Text>
           </View>
-          <View>
-            <Text style={s.metaLabel}>Project</Text>
-            <Text style={s.metaValue}>{boardName}{clientName ? ` — ${clientName}` : ''}</Text>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>From</Text>
+            <Text style={s.metaValue}>{businessName}</Text>
           </View>
-          <View>
+          <View style={s.metaCell}>
             <Text style={s.metaLabel}>Date</Text>
             <Text style={s.metaValue}>{printDate}</Text>
           </View>
-          <View>
-            <Text style={s.metaLabel}>Items</Text>
+          <View style={s.metaCell}>
+            <Text style={s.metaLabel}>Items to price</Text>
             <Text style={s.metaValue}>{String(items.length)}</Text>
           </View>
+          {replyTo ? (
+            <View style={[s.metaCell, { width: '66.66%' }]}>
+              <Text style={s.metaLabel}>Send pricing to</Text>
+              <Text style={s.metaValue}>{replyTo}</Text>
+            </View>
+          ) : null}
         </View>
-        {message ? <Text style={s.message}>{message}</Text> : null}
-        <Text style={[s.message, { marginTop: 10 }]}>
+
+        {message ? (
+          <View style={s.messagePanel}>
+            <Text style={s.metaLabel}>Message</Text>
+            <Text style={s.message}>{message}</Text>
+          </View>
+        ) : null}
+        <Text style={s.refNote}>
           Please note: images may be reference pictures or drawings of custom pieces — quote per the
           specifications given for each item on the following pages.
         </Text>
-        {replyTo ? (
-          <Text style={[s.message, { marginTop: 10 }]}>Please send your pricing to {replyTo} (or simply reply to the email this document arrived with).</Text>
-        ) : null}
+
+        <View style={{ flexGrow: 1 }} />
+
+        <View>
+          <Text style={s.metaLabel}>In this request</Text>
+          <View style={{ flexDirection: 'row', marginTop: 6 }}>
+            {items.slice(0, 5).map((item, j) =>
+              item.imageUrl ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Image key={j} src={item.imageUrl} style={s.thumb} />
+              ) : (
+                <View key={j} style={s.thumbEmpty}>
+                  <Text style={[s.muted, { fontSize: 7 }]}>No image</Text>
+                </View>
+              )
+            )}
+            {items.length > 5 ? (
+              <View style={s.thumbMore}>
+                <Text style={{ fontSize: 12, color: '#FFFFFF', fontFamily: 'Helvetica-Bold' }}>
+                  +{items.length - 5}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
         <View style={s.footer} fixed>
           <Text>{businessName} — Request for Quote</Text>
           <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
