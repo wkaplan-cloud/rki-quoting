@@ -4,8 +4,8 @@ import type Konva from 'konva'
 import toast from 'react-hot-toast'
 import { PAGE_W, PAGE_H, OBJECT_DEFAULTS, DEFAULT_FONT, STUDIO_CLIPBOARD_PREFIX } from '@/lib/studio/constants'
 import { useStudioStore, newId } from '@/lib/studio/store'
-import type { StudioObject } from '@/lib/studio/types'
-import { extractImageFiles, importImageFiles, importImageFromUrl, addAssetToSlide } from '@/lib/studio/images'
+import type { StudioObject, StudioAsset } from '@/lib/studio/types'
+import { extractImageFiles, importImageFiles, importImageFromUrl, addAssetToSlide, registerAssetsOnBoard } from '@/lib/studio/images'
 import { ASSET_DRAG_TYPE } from './AssetPanel'
 import { CanvasStage } from './CanvasStage'
 import { FloatingToolbar } from './FloatingToolbar'
@@ -84,8 +84,14 @@ export function CanvasArea() {
       } else if (text.startsWith(STUDIO_CLIPBOARD_PREFIX)) {
         e.preventDefault()
         try {
-          const objs = JSON.parse(text.slice(STUDIO_CLIPBOARD_PREFIX.length)) as StudioObject[]
-          useStudioStore.getState().pasteObjects(objs)
+          const raw = JSON.parse(text.slice(STUDIO_CLIPBOARD_PREFIX.length)) as
+            | StudioObject[]
+            | { objects: StudioObject[]; assets?: StudioAsset[] }
+          const payload = Array.isArray(raw) ? { objects: raw, assets: undefined } : raw
+          useStudioStore.getState().pasteObjects(payload.objects)
+          // Cross-board paste: register the images in this board's asset
+          // library too (background, non-blocking)
+          if (payload.assets?.length) void registerAssetsOnBoard(payload.assets)
         } catch {
           useStudioStore.getState().paste()
         }

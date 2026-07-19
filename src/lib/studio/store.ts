@@ -518,12 +518,20 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (!copied.length) return
     set({ clipboard: copied })
     // Mirror to the OS clipboard so the copy can be pasted into another
-    // board/tab (CanvasArea's paste handler recognises the prefix). Best
-    // effort — the in-memory clipboard above keeps same-board paste working
-    // even if this write is blocked.
+    // board/tab (CanvasArea's paste handler recognises the prefix). The
+    // copied images' asset-library entries ride along so the target board's
+    // Asset panel picks them up too. Best effort — the in-memory clipboard
+    // above keeps same-board paste working even if this write is blocked.
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      const urls = new Set<string>()
+      for (const o of copied) {
+        if (o.type !== 'image') continue
+        urls.add(o.url)
+        if (o.originalUrl) urls.add(o.originalUrl)
+      }
+      const assets = get().assets.filter(a => urls.has(a.url))
       void navigator.clipboard
-        .writeText(STUDIO_CLIPBOARD_PREFIX + JSON.stringify(copied))
+        .writeText(STUDIO_CLIPBOARD_PREFIX + JSON.stringify({ objects: copied, assets }))
         .catch(() => {})
     }
   },

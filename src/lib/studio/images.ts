@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { useStudioStore, newId } from './store'
 import { gridPlacements } from './autoLayout'
 import { getMasterContentArea } from './masterThemes'
-import { assetFromRow, type ImageObject, type StudioAssetRow } from './types'
+import { createClient } from '@/lib/supabase/client'
+import { assetFromRow, type ImageObject, type StudioAsset, type StudioAssetRow } from './types'
 
 // ── Image element cache ─────────────────────────────────────────────────────
 // Shared by editor nodes, thumbnails, presentation and export. crossOrigin is
@@ -421,6 +422,33 @@ export async function importImageFiles(files: File[], at?: { x: number; y: numbe
   })
 
   store.addObjects(objects)
+}
+
+// Cross-board paste: make sure the pasted images' asset-library entries
+// (labels included) exist on THIS board too, so they appear in its Asset
+// panel and the org-wide search. Rows only — the stored file is already
+// shared by hash, nothing is re-uploaded.
+export async function registerAssetsOnBoard(assets: StudioAsset[]): Promise<void> {
+  const supabase = createClient()
+  for (const asset of assets) {
+    const store = useStudioStore.getState()
+    if (store.assets.some(a => a.hash === asset.hash)) continue
+    const { data, error } = await supabase
+      .from('studio_assets')
+      .insert({
+        org_id: store.orgId,
+        board_id: store.boardId,
+        url: asset.url,
+        hash: asset.hash,
+        natural_width: asset.naturalWidth,
+        natural_height: asset.naturalHeight,
+        file_size: asset.fileSize,
+        label: asset.label,
+      })
+      .select('*')
+      .single()
+    if (!error && data) store.addAsset(assetFromRow(data as StudioAssetRow))
+  }
 }
 
 // Place an existing library asset onto the current slide (drag from the
