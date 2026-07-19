@@ -9,6 +9,7 @@ import type {
   MasterLayoutConfig,
   StudioSpec,
   SpecSupplierOption,
+  RfqRecipientStamp,
 } from './types'
 import { DEFAULT_MASTER_LAYOUT } from './types'
 import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE, MASTER_LAYOUT_SAVE_DEBOUNCE, STUDIO_CLIPBOARD_PREFIX } from './constants'
@@ -63,6 +64,8 @@ interface StudioState {
   // their object through delete/undo/duplicate — see flushSave lifecycle.
   specs: Record<string, StudioSpec>
   specPanelObjectId: string | null
+  // Object ids queued for the Request Quotes modal (null = modal closed)
+  rfqObjectIds: string[] | null
   dirtySpecIds: string[]
 
   // Background removal: transient per-object status. Never persisted and
@@ -103,6 +106,8 @@ interface StudioState {
   renameAsset: (id: string, label: string | null) => void
   removeAsset: (id: string) => void
   openSpecs: (objectId: string | null) => void
+  openRfq: (objectIds: string[] | null) => void
+  markSpecsRfqSent: (stamps: { objectId: string; at: string; recipients: RfqRecipientStamp[] }[]) => void
   updateSpec: (objectId: string, patch: Partial<StudioSpec>) => void
 
   commit: (mutate: (slides: StudioSlide[]) => StudioSlide[]) => void
@@ -277,6 +282,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   activePriceListIds: [],
   specs: {},
   specPanelObjectId: null,
+  rfqObjectIds: null,
   dirtySpecIds: [],
   bgRemoval: {},
   slides: [],
@@ -315,6 +321,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       activePriceListIds: props.activePriceListIds,
       specs: Object.fromEntries(props.specs.map(sp => [sp.objectId, sp])),
       specPanelObjectId: null,
+      rfqObjectIds: null,
       dirtySpecIds: (() => {
         savedSpecObjectIds.clear()
         props.specs.forEach(sp => savedSpecObjectIds.add(sp.objectId))
@@ -379,6 +386,26 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   openSpecs: objectId => set({ specPanelObjectId: objectId }),
 
+  openRfq: objectIds => set({ rfqObjectIds: objectIds }),
+
+  // Memory-only: the RFQ route already stamped the DB rows, so this must NOT
+  // mark the specs dirty (a client flush would not include the rfq columns,
+  // but there's no reason to rewrite untouched rows either)
+  markSpecsRfqSent: stamps => {
+    const { specs } = get()
+    const next = { ...specs }
+    for (const s of stamps) {
+      const spec = next[s.objectId]
+      if (!spec) continue
+      next[s.objectId] = {
+        ...spec,
+        rfqSentAt: s.at,
+        rfqSentTo: [...spec.rfqSentTo, ...s.recipients],
+      }
+    }
+    set({ specs: next })
+  },
+
   updateSpec: (objectId, patch) => {
     const { specs, slides, currentSlideId } = get()
     const existing = specs[objectId]
@@ -405,6 +432,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           height: '',
           materials: [],
           status: 'draft',
+          rfqSentAt: null,
+          rfqSentTo: [],
           ...patch,
         }
     set({

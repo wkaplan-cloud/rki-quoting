@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, type RefObject } from 'react'
 import type Konva from 'konva'
-import { Unlock, Copy, Trash2, Check, X, ClipboardList } from 'lucide-react'
+import { Unlock, Copy, Trash2, Check, X, ClipboardList, Send } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { TBtn, TDivider } from './toolbars/atoms'
 import { ImageToolbar } from './toolbars/ImageToolbar'
@@ -154,6 +154,13 @@ export function FloatingToolbar({
               >
                 <ClipboardList size={15} />
               </button>
+              {specsMap[single.id] && (
+                <TBtn
+                  icon={Send}
+                  label="Request a quote for this item"
+                  onClick={() => store.getState().openRfq([single.id])}
+                />
+              )}
               <TDivider />
             </>
           )}
@@ -167,6 +174,16 @@ export function FloatingToolbar({
         </>
       ) : (
         <>
+          {objs.some(o => o.type === 'image') && (
+            <>
+              <TBtn
+                icon={Send}
+                label="Request quotes for the selected items"
+                onClick={() => store.getState().openRfq(objs.filter(o => o.type === 'image').map(o => o.id))}
+              />
+              <TDivider />
+            </>
+          )}
           <TBtn icon={Copy} label="Duplicate (⌘D)" onClick={() => store.getState().duplicateSelected()} />
           <TDivider />
           <TBtn icon={Trash2} label="Delete" onClick={() => store.getState().deleteSelected()} />

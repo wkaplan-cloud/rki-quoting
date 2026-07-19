@@ -18,6 +18,7 @@ import { CanvasArea } from './CanvasArea'
 import { AssetPanel } from './AssetPanel'
 import { SpecsPanel } from './SpecsPanel'
 import { SpecsListPanel } from './SpecsListPanel'
+import { RequestQuotesModal } from './RequestQuotesModal'
 import { MasterThemePanel } from './MasterThemePanel'
 import { PresentationMode } from './PresentationMode'
 import { ExportRunner } from './ExportRunner'
@@ -371,6 +372,7 @@ export default function EditorShell(props: EditorShellProps) {
       </div>
 
       {presenting && <PresentationMode />}
+      <RequestQuotesModal />{/* self-gates on store.rfqObjectIds */}
       {printPicker && (
         <PrintSlidesModal
           onCancel={() => setPrintPicker(false)}

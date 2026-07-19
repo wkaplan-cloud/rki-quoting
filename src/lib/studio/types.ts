@@ -183,6 +183,14 @@ export function normalizeMaterial(m: Partial<MaterialEntry> & { id: string; type
 
 export type SpecStatus = 'draft' | 'approved'
 
+// One RFQ email recipient (a spec can be sent to several suppliers for
+// price comparison — each gets their own email, never CC'd together)
+export interface RfqRecipientStamp {
+  supplierName: string
+  email: string
+  at: string // ISO timestamp
+}
+
 export interface StudioSpec {
   id: string
   objectId: string
@@ -200,6 +208,9 @@ export interface StudioSpec {
   height: string
   materials: MaterialEntry[]
   status: SpecStatus
+  // RFQ tracking — stamped server-side when quote-request emails go out
+  rfqSentAt: string | null
+  rfqSentTo: RfqRecipientStamp[]
 }
 
 export interface StudioSpecRow {
@@ -221,6 +232,8 @@ export interface StudioSpecRow {
   height: string
   materials: MaterialEntry[]
   status: SpecStatus
+  rfq_sent_at?: string | null
+  rfq_sent_to?: RfqRecipientStamp[]
 }
 
 export function specFromRow(row: StudioSpecRow): StudioSpec {
@@ -241,6 +254,8 @@ export function specFromRow(row: StudioSpecRow): StudioSpec {
     height: row.height,
     materials: Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : [],
     status: row.status === 'approved' ? 'approved' : 'draft',
+    rfqSentAt: row.rfq_sent_at ?? null,
+    rfqSentTo: Array.isArray(row.rfq_sent_to) ? row.rfq_sent_to : [],
   }
 }
 

@@ -30,6 +30,8 @@ const EMPTY_SPEC: Omit<StudioSpec, 'id' | 'objectId' | 'slideId'> = {
   height: '',
   materials: [],
   status: 'draft',
+  rfqSentAt: null,
+  rfqSentTo: [],
 }
 
 // Specs Engine panel — slides in from the right when an object's Specs are

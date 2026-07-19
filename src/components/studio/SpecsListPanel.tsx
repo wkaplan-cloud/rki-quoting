@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, X, FileText } from 'lucide-react'
+import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, X, FileText, Send } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
 import { ConvertToQuoteModal } from './ConvertToQuoteModal'
@@ -13,6 +13,8 @@ export function SpecsListPanel() {
   const slides = useStudioStore(s => s.slides)
   const specs = useStudioStore(s => s.specs)
   const [converting, setConverting] = useState(false)
+  // Ticked items for "Request quotes" (RFQ) — object ids
+  const [checked, setChecked] = useState<Set<string>>(new Set())
 
   // Only specs whose object is still live on a slide — deleted objects keep
   // their spec in memory for undo, but shouldn't appear in the overview
@@ -31,6 +33,18 @@ export function SpecsListPanel() {
     (n, g) => n + g.entries.filter(e => e.spec.status === 'approved').length,
     0
   )
+
+  const liveIds = groups.flatMap(g => g.entries.map(e => e.obj.id))
+  const checkedCount = liveIds.filter(id => checked.has(id)).length
+
+  function toggle(id: string) {
+    setChecked(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   return (
     <div className="flex-shrink-0 w-[280px] h-full flex flex-col bg-[#F5F2EC] border-l border-[#D8D3C8]">
@@ -58,13 +72,30 @@ export function SpecsListPanel() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto py-2">
+          <div className="flex items-center justify-between px-3 pb-1">
+            <span className="text-[10px] text-[#8A877F]">Tick items to request quotes</span>
+            <button
+              type="button"
+              onClick={() => setChecked(checkedCount === liveIds.length ? new Set() : new Set(liveIds))}
+              className="text-[10px] text-[#9A7B4F] hover:underline cursor-pointer"
+            >
+              {checkedCount === liveIds.length ? 'None' : 'All'}
+            </button>
+          </div>
           {groups.map(g => (
             <div key={g.slide.id} className="mb-2">
               <div className="px-3 py-1 text-[10px] font-medium text-[#8A877F] uppercase tracking-widest truncate">
                 {slideLabel(g.slide, g.index)}
               </div>
               {g.entries.map(({ obj, spec }) => (
-                <SpecEntry key={obj.id} slideId={g.slide.id} obj={obj} spec={spec} />
+                <SpecEntry
+                  key={obj.id}
+                  slideId={g.slide.id}
+                  obj={obj}
+                  spec={spec}
+                  checked={checked.has(obj.id)}
+                  onToggle={() => toggle(obj.id)}
+                />
               ))}
             </div>
           ))}
@@ -72,7 +103,16 @@ export function SpecsListPanel() {
       )}
 
       {total > 0 && (
-        <div className="flex-shrink-0 p-2 border-t border-[#D8D3C8]">
+        <div className="flex-shrink-0 p-2 border-t border-[#D8D3C8] space-y-1.5">
+          <button
+            type="button"
+            onClick={() => useStudioStore.getState().openRfq(liveIds.filter(id => checked.has(id)))}
+            disabled={checkedCount === 0}
+            title="Email suppliers a PDF of the ticked items with their specs"
+            className="w-full flex items-center justify-center gap-1.5 h-8 text-xs font-medium bg-[#1A1A18] text-white rounded-lg hover:bg-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-40"
+          >
+            <Send size={13} /> Request quotes{checkedCount > 0 ? ` · ${checkedCount}` : ''}
+          </button>
           <button
             type="button"
             onClick={() => setConverting(true)}
@@ -103,13 +143,22 @@ function SpecEntry({
   slideId,
   obj,
   spec,
+  checked,
+  onToggle,
 }: {
   slideId: string
   obj: StudioObject
   spec: StudioSpec
+  checked: boolean
+  onToggle: () => void
 }) {
   const approved = spec.status === 'approved'
   const subtitle = spec.supplierName.trim()
+  const rfqLine = spec.rfqSentAt
+    ? `RFQ sent · ${new Set(spec.rfqSentTo.map(r => r.email)).size || 1} supplier${
+        (new Set(spec.rfqSentTo.map(r => r.email)).size || 1) === 1 ? '' : 's'
+      } · ${new Date(spec.rfqSentAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`
+    : null
 
   function open() {
     const store = useStudioStore.getState()
@@ -119,27 +168,44 @@ function SpecEntry({
   }
 
   return (
-    <button
-      type="button"
-      onClick={open}
-      title="Open spec"
-      className="w-full flex items-center gap-2.5 px-3 py-1.5 text-left hover:bg-[#EDE9E1] active:bg-[#E5E0D6] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#9A7B4F]"
-    >
-      <ObjectThumb obj={obj} />
-      <span className="flex-1 min-w-0">
-        <span className="block text-[11px] text-[#2C2C2A] truncate">
-          {spec.specName.trim() || 'Untitled spec'}
-        </span>
-        {subtitle && (
-          <span className="block text-[10px] text-[#8A877F] truncate">{subtitle}</span>
-        )}
-      </span>
-      <span
-        title={approved ? 'Approved' : 'Draft'}
-        className="flex-shrink-0 w-2 h-2 rounded-full"
-        style={{ backgroundColor: approved ? '#059669' : '#34D399' }}
+    <div className="flex items-center gap-2 pl-3 pr-1 hover:bg-[#EDE9E1] transition-colors">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        aria-label={`Include ${spec.specName.trim() || 'untitled spec'} in quote request`}
+        className="flex-shrink-0 w-3.5 h-3.5 accent-[#9A7B4F] cursor-pointer"
       />
-    </button>
+      <button
+        type="button"
+        onClick={open}
+        title="Open spec"
+        className="flex-1 min-w-0 flex items-center gap-2.5 py-1.5 pr-2 text-left active:bg-[#E5E0D6] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#9A7B4F]"
+      >
+        <ObjectThumb obj={obj} />
+        <span className="flex-1 min-w-0">
+          <span className="block text-[11px] text-[#2C2C2A] truncate">
+            {spec.specName.trim() || 'Untitled spec'}
+          </span>
+          {subtitle && (
+            <span className="block text-[10px] text-[#8A877F] truncate">{subtitle}</span>
+          )}
+          {rfqLine && (
+            <span
+              className="block text-[9px] text-[#9A7B4F] truncate"
+              title={spec.rfqSentTo.map(r => `${r.supplierName || r.email} — ${r.email}`).join('\n')}
+            >
+              {rfqLine}
+            </span>
+          )}
+        </span>
+        <span
+          title={approved ? 'Approved' : 'Draft'}
+          className="flex-shrink-0 w-2 h-2 rounded-full"
+          style={{ backgroundColor: approved ? '#059669' : '#34D399' }}
+        />
+      </button>
+    </div>
   )
 }
 
