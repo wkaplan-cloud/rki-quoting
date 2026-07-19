@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type Konva from 'konva'
 import toast from 'react-hot-toast'
-import { PAGE_W, PAGE_H } from '@/lib/studio/constants'
-import { useStudioStore } from '@/lib/studio/store'
+import { PAGE_W, PAGE_H, OBJECT_DEFAULTS, DEFAULT_FONT, STUDIO_CLIPBOARD_PREFIX } from '@/lib/studio/constants'
+import { useStudioStore, newId } from '@/lib/studio/store'
+import type { StudioObject } from '@/lib/studio/types'
 import { extractImageFiles, importImageFiles, addAssetToSlide } from '@/lib/studio/images'
 import { ASSET_DRAG_TYPE } from './AssetPanel'
 import { CanvasStage } from './CanvasStage'
@@ -61,7 +62,9 @@ export function CanvasArea() {
     }
   }, [])
 
-  // Paste: image files import; otherwise internal object paste
+  // Paste, in priority order: image files import; studio objects copied on
+  // this or another board (prefixed JSON — see copySelection); any other
+  // text becomes a text object; otherwise the in-memory object clipboard.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const t = e.target as HTMLElement
@@ -70,6 +73,7 @@ export function CanvasArea() {
         .filter(item => item.kind === 'file')
         .map(item => item.getAsFile())
         .filter((f): f is File => !!f)
+      const text = e.clipboardData?.getData('text/plain') ?? ''
       if (files.length) {
         e.preventDefault()
         void toast.promise(importImageFiles(files), {
@@ -77,6 +81,35 @@ export function CanvasArea() {
           success: 'Image added',
           error: (err: Error) => err.message || 'Paste failed',
         })
+      } else if (text.startsWith(STUDIO_CLIPBOARD_PREFIX)) {
+        e.preventDefault()
+        try {
+          const objs = JSON.parse(text.slice(STUDIO_CLIPBOARD_PREFIX.length)) as StudioObject[]
+          useStudioStore.getState().pasteObjects(objs)
+        } catch {
+          useStudioStore.getState().paste()
+        }
+      } else if (text.trim()) {
+        e.preventDefault()
+        useStudioStore.getState().addObjects([
+          {
+            id: newId(),
+            type: 'text',
+            x: PAGE_W / 2 - 150,
+            y: PAGE_H / 2 - 16,
+            rotation: 0,
+            opacity: 1,
+            locked: false,
+            width: 300,
+            text: text.trim(),
+            fontSize: OBJECT_DEFAULTS.fontSize,
+            fontFamily: DEFAULT_FONT,
+            fontStyle: 'normal',
+            textDecoration: '',
+            fill: OBJECT_DEFAULTS.textFill,
+            align: 'left',
+          },
+        ])
       } else {
         useStudioStore.getState().paste()
       }

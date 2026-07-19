@@ -11,7 +11,7 @@ import type {
   SpecSupplierOption,
 } from './types'
 import { DEFAULT_MASTER_LAYOUT } from './types'
-import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE, MASTER_LAYOUT_SAVE_DEBOUNCE } from './constants'
+import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE, MASTER_LAYOUT_SAVE_DEBOUNCE, STUDIO_CLIPBOARD_PREFIX } from './constants'
 
 interface Snapshot {
   slides: StudioSlide[]
@@ -115,6 +115,7 @@ interface StudioState {
   sendBack: (objId: string) => void
   copySelection: () => void
   paste: () => void
+  pasteObjects: (objs: StudioObject[]) => void
   // Slide helpers
   addSlide: (name: string) => void
   renameSlide: (id: string, name: string) => void
@@ -509,14 +510,28 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const slide = slides.find(sl => sl.id === currentSlideId)
     if (!slide) return
     const copied = slide.objects.filter(o => selectedIds.includes(o.id))
-    if (copied.length) set({ clipboard: copied })
+    if (!copied.length) return
+    set({ clipboard: copied })
+    // Mirror to the OS clipboard so the copy can be pasted into another
+    // board/tab (CanvasArea's paste handler recognises the prefix). Best
+    // effort — the in-memory clipboard above keeps same-board paste working
+    // even if this write is blocked.
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      void navigator.clipboard
+        .writeText(STUDIO_CLIPBOARD_PREFIX + JSON.stringify(copied))
+        .catch(() => {})
+    }
   },
 
   paste: () => {
     const { clipboard } = get()
-    if (!clipboard.length) return
+    if (clipboard.length) get().pasteObjects(clipboard)
+  },
+
+  pasteObjects: objs => {
+    if (!objs.length) return
     const idMap: [string, string][] = []
-    const copies = clipboard.map(o => {
+    const copies = objs.map(o => {
       const dupId = newId()
       idMap.push([o.id, dupId])
       return { ...o, id: dupId, x: o.x + 16, y: o.y + 16, locked: false }

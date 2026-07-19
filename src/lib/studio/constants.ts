@@ -48,5 +48,9 @@ export const SWATCHES = [
   '#7A8B7F', '#5B7086', '#8A5B5B', '#B08968', '#4A4E58', '#D9C7B2',
 ]
 
+// ⌘C mirrors selected objects onto the OS clipboard as prefixed JSON so ⌘V
+// works across boards/tabs, not just within one editor's in-memory clipboard
+export const STUDIO_CLIPBOARD_PREFIX = 'quotinghub-studio-objects:'
+
 export const STORAGE_BUCKET = 'studio-images'
 export const THUMB_W = 184
