@@ -101,6 +101,7 @@ interface StudioState {
   setPresenting: (on: boolean) => void
   addAsset: (asset: StudioAsset) => void
   renameAsset: (id: string, label: string | null) => void
+  removeAsset: (id: string) => void
   openSpecs: (objectId: string | null) => void
   updateSpec: (objectId: string, patch: Partial<StudioSpec>) => void
 
@@ -370,6 +371,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   renameAsset: (id, label) => {
     set({ assets: get().assets.map(a => (a.id === id ? { ...a, label } : a)) })
+  },
+
+  removeAsset: id => {
+    set({ assets: get().assets.filter(a => a.id !== id) })
   },
 
   openSpecs: objectId => set({ specPanelObjectId: objectId }),

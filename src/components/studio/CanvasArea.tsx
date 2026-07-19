@@ -111,7 +111,40 @@ export function CanvasArea() {
           },
         ])
       } else {
-        useStudioStore.getState().paste()
+        // Nothing the sync clipboard API could read. Native apps (Keynote,
+        // Preview…) often put images on the clipboard in Apple formats the
+        // paste event doesn't surface — the async API converts those to PNG
+        // where the browser can, so try it before giving up.
+        void (async () => {
+          try {
+            const items = await navigator.clipboard.read()
+            const pasted: File[] = []
+            for (const item of items) {
+              const type = item.types.find(ty => ty.startsWith('image/'))
+              if (!type) continue
+              const blob = await item.getType(type)
+              pasted.push(new File([blob], `pasted.${type.split('/')[1] ?? 'png'}`, { type }))
+            }
+            if (pasted.length) {
+              await toast.promise(importImageFiles(pasted), {
+                loading: 'Pasting image…',
+                success: 'Image added',
+                error: (err: Error) => err.message || 'Paste failed',
+              })
+              return
+            }
+          } catch {
+            // Permission denied or API unavailable — fall through
+          }
+          const { clipboard } = useStudioStore.getState()
+          if (clipboard.length) {
+            useStudioStore.getState().paste()
+          } else {
+            toast.error(
+              'Nothing pasteable on the clipboard — if copying from an app like Keynote, try dragging the image in instead'
+            )
+          }
+        })()
       }
     }
     window.addEventListener('paste', onPaste)

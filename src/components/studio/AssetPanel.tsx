@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { Images, Search, X, Loader2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Images, Search, X, Loader2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore } from '@/lib/studio/store'
 import { addAssetToSlide } from '@/lib/studio/images'
@@ -25,7 +25,24 @@ interface CrossBoardResult {
 // fabric") from one client's board on another's.
 export function AssetPanel() {
   const assets = useStudioStore(s => s.assets)
+  const slides = useStudioStore(s => s.slides)
   const [query, setQuery] = useState('')
+
+  // Every image URL currently placed on any slide of this board, including
+  // the inactive background-removal variant — an asset with none of its
+  // variants placed gets the "not placed" badge (and is safe to remove)
+  const usedUrls = useMemo(() => {
+    const used = new Set<string>()
+    for (const slide of slides) {
+      for (const obj of slide.objects) {
+        if (obj.type !== 'image') continue
+        used.add(obj.url)
+        if (obj.originalUrl) used.add(obj.originalUrl)
+        if (obj.processedUrl) used.add(obj.processedUrl)
+      }
+    }
+    return used
+  }, [slides])
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState<CrossBoardResult[]>([])
 
@@ -153,7 +170,7 @@ export function AssetPanel() {
         ) : results.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
             <Search size={22} className="text-[#D8D3C8] mb-2" />
-            <p className="text-[11px] text-[#8A877F] leading-relaxed">No named assets match "{query}"</p>
+            <p className="text-[11px] text-[#8A877F] leading-relaxed">No named assets match &ldquo;{query}&rdquo;</p>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-2 grid grid-cols-2 gap-2 content-start">
@@ -172,7 +189,7 @@ export function AssetPanel() {
       ) : (
         <div className="flex-1 overflow-y-auto p-2 grid grid-cols-2 gap-2 content-start">
           {assets.map(asset => (
-            <AssetThumb key={asset.id} asset={asset} />
+            <AssetThumb key={asset.id} asset={asset} used={usedUrls.has(asset.url)} />
           ))}
         </div>
       )}
@@ -207,10 +224,28 @@ function CrossBoardThumb({ result, onAdd }: { result: CrossBoardResult; onAdd: (
   )
 }
 
-function AssetThumb({ asset }: { asset: StudioAsset }) {
+function AssetThumb({ asset, used }: { asset: StudioAsset; used: boolean }) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(asset.label ?? '')
   const [labels, setLabels] = useState<string[]>([])
+
+  async function remove() {
+    const name = asset.label ? `"${asset.label}"` : 'this image'
+    const message = used
+      ? `${name} is still placed on a slide — the placed copies stay, but it will leave this board's asset library. Remove it?`
+      : `Remove ${name} from this board's asset library?`
+    if (!confirm(message)) return
+    const store = useStudioStore.getState()
+    store.removeAsset(asset.id)
+    // Only this board's library row is deleted — the stored image file is
+    // shared by hash across boards (and by placed copies), so it stays.
+    const supabase = createClient()
+    const { error } = await supabase.from('studio_assets').delete().eq('id', asset.id)
+    if (error) {
+      store.addAsset(asset)
+      toast.error('Could not remove — please try again')
+    }
+  }
 
   async function startRename() {
     setValue(asset.label ?? '')
@@ -252,7 +287,7 @@ function AssetThumb({ asset }: { asset: StudioAsset }) {
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 group relative">
       <button
         type="button"
         draggable
@@ -272,6 +307,22 @@ function AssetThumb({ asset }: { asset: StudioAsset }) {
           draggable={false}
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
+        {!used && (
+          <span
+            title="Not placed on any slide — safe to remove"
+            className="absolute bottom-1 left-1 px-1 py-px rounded bg-white/90 text-[8px] uppercase tracking-wider text-amber-600 pointer-events-none"
+          >
+            Not placed
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => void remove()}
+        title="Remove from this board's asset library"
+        className="absolute top-1 right-1 w-5 h-5 hidden group-hover:flex items-center justify-center rounded bg-white/90 text-[#8A877F] hover:text-red-600 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#9A7B4F]"
+      >
+        <Trash2 size={11} />
       </button>
 
       {editing ? (
