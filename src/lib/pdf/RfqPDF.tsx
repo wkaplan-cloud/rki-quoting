@@ -44,10 +44,11 @@ const s = StyleSheet.create({
   itemPage: { padding: 40, fontFamily: 'Helvetica', fontSize: 9, color: '#2C2C2A' },
   itemHeader: { fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   itemName: { fontSize: 14, fontFamily: 'Helvetica-Bold', marginBottom: 10 },
-  body: { flexDirection: 'row', gap: 16 },
-  imageBox: { width: 250, height: 300, borderWidth: 1, borderColor: '#D8D3C8', padding: 4, justifyContent: 'center' },
-  image: { maxWidth: 240, maxHeight: 290, objectFit: 'contain' },
-  specs: { flex: 1 },
+  // A4 portrait is 595pt wide; with 40pt page padding the content column is
+  // ~515pt — the image fills it, specs sit underneath
+  imageBox: { width: '100%', height: 320, borderWidth: 1, borderColor: '#D8D3C8', padding: 4, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  image: { maxWidth: 505, maxHeight: 310, objectFit: 'contain' },
+  specs: { width: '100%' },
   specRow: { flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   specLabel: { width: 80, fontSize: 8, color: '#8A877F' },
   specValue: { flex: 1, fontSize: 9 },
@@ -116,12 +117,11 @@ export function RfqPDF(props: RfqPdfProps) {
         <Page key={i} size="A4" style={s.itemPage}>
           <Text style={s.itemHeader}>Item {i + 1} of {items.length}</Text>
           <Text style={s.itemName}>{item.name || `Item ${i + 1}`}</Text>
-          <View style={s.body}>
-            <View style={s.imageBox}>
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              {item.imageUrl ? <Image src={item.imageUrl} style={s.image} /> : <Text style={s.muted}>No image</Text>}
-            </View>
-            <View style={s.specs}>
+          <View style={s.imageBox}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
+            {item.imageUrl ? <Image src={item.imageUrl} style={s.image} /> : <Text style={s.muted}>No image</Text>}
+          </View>
+          <View style={s.specs}>
               {item.description.trim() ? (
                 <View style={s.specRow}>
                   <Text style={s.specLabel}>Description</Text>
@@ -172,21 +172,12 @@ export function RfqPDF(props: RfqPdfProps) {
 
               <View style={s.priceBox}>
                 <Text style={[s.sectionHead, { marginTop: 0 }]}>For supplier completion</Text>
-                <View style={s.priceLine}>
-                  <Text style={s.muted}>Unit price (excl. VAT)</Text>
-                  <Text>R ____________</Text>
-                </View>
-                <View style={s.priceLine}>
-                  <Text style={s.muted}>Lead time</Text>
-                  <Text>____________</Text>
-                </View>
                 <View style={[s.priceLine, { borderBottomWidth: 0 }]}>
-                  <Text style={s.muted}>Valid until</Text>
-                  <Text>____________</Text>
+                  <Text style={s.muted}>Unit price (excl. VAT)</Text>
+                  <Text>R ____________________</Text>
                 </View>
               </View>
             </View>
-          </View>
           <View style={s.footer} fixed>
             <Text>{businessName} — {boardName}</Text>
             <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />

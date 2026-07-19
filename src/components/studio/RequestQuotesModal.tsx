@@ -31,8 +31,13 @@ interface Group {
   label: string
   objectIds: string[]
   specs: StudioSpec[]
-  defaultSupplierId: string | null
+  defaultSupplierIds: string[]
 }
+
+// 'by-supplier': items split per the supplier on their spec — each supplier
+// gets an email with only their items. 'combined': everything in ONE
+// document, sent whole to whichever supplier(s) are chosen (price the lot).
+type RfqMode = 'by-supplier' | 'combined'
 
 let recipientSeq = 0
 
@@ -41,6 +46,7 @@ export function RequestQuotesModal() {
   const specsMap = useStudioStore(s => s.specs)
   const boardId = useStudioStore(s => s.boardId)
 
+  const [mode, setMode] = useState<RfqMode>('by-supplier')
   const [suppliers, setSuppliers] = useState<OrgSupplier[] | null>(null)
   const [recipients, setRecipients] = useState<Record<string, Recipient[]>>({})
   const [message, setMessage] = useState('')
@@ -51,8 +57,23 @@ export function RequestQuotesModal() {
   const withSpec = objectIds.filter(id => specsMap[id])
   const withoutSpec = objectIds.length - withSpec.length
 
-  // Group selected items by the supplier on their spec
   const groups = useMemo<Group[]>(() => {
+    if (mode === 'combined') {
+      if (!withSpec.length) return []
+      const specs = withSpec.map(id => specsMap[id])
+      return [
+        {
+          key: 'all',
+          label: 'All selected items — one document',
+          objectIds: [...withSpec],
+          specs,
+          // Suppliers already named on the specs are pre-added as recipients
+          // (removable) — each one chosen gets EVERY item below
+          defaultSupplierIds: [...new Set(specs.map(sp => sp.supplierId).filter((v): v is string => !!v))],
+        },
+      ]
+    }
+    // Split by the supplier on each item's spec
     const map = new Map<string, Group>()
     for (const objectId of withSpec) {
       const spec = specsMap[objectId]
@@ -64,7 +85,7 @@ export function RequestQuotesModal() {
           label: spec.supplierName.trim() || 'No supplier on spec',
           objectIds: [],
           specs: [],
-          defaultSupplierId: spec.supplierId,
+          defaultSupplierIds: spec.supplierId ? [spec.supplierId] : [],
         }
         map.set(key, g)
       }
@@ -73,7 +94,7 @@ export function RequestQuotesModal() {
     }
     return Array.from(map.values())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [withSpec.join(','), specsMap])
+  }, [withSpec.join(','), specsMap, mode])
 
   // Load org suppliers (for default recipient emails + the add-recipient list)
   useEffect(() => {
@@ -91,26 +112,23 @@ export function RequestQuotesModal() {
     }
   }, [])
 
-  // Seed each group's default recipient once suppliers are known
+  // Seed each group's default recipients once suppliers are known. Keyed per
+  // group, so switching modes back and forth keeps what was already set up.
   useEffect(() => {
     if (!suppliers) return
     setRecipients(prev => {
       const next = { ...prev }
       for (const g of groups) {
         if (next[g.key]) continue
-        if (g.defaultSupplierId) {
-          const sup = suppliers.find(s => s.id === g.defaultSupplierId)
-          next[g.key] = [
-            {
-              key: `r${recipientSeq++}`,
-              supplierId: g.defaultSupplierId,
-              supplierName: sup?.supplier_name ?? g.label,
-              email: sup?.email ?? '',
-            },
-          ]
-        } else {
-          next[g.key] = []
-        }
+        next[g.key] = g.defaultSupplierIds.map(sid => {
+          const sup = suppliers.find(s => s.id === sid)
+          return {
+            key: `r${recipientSeq++}`,
+            supplierId: sid,
+            supplierName: sup?.supplier_name ?? g.label,
+            email: sup?.email ?? '',
+          }
+        })
       }
       return next
     })
@@ -214,6 +232,33 @@ export function RequestQuotesModal() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          <div>
+            <div className="flex rounded-lg border border-[#D8D3C8] overflow-hidden">
+              {(
+                [
+                  ['by-supplier', 'Split by item’s supplier'],
+                  ['combined', 'All items together'],
+                ] as [RfqMode, string][]
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMode(value)}
+                  className={`flex-1 h-8 text-[11px] font-medium transition-colors cursor-pointer ${
+                    mode === value ? 'bg-[#1A1A18] text-white' : 'bg-white text-[#8A877F] hover:text-[#2C2C2A]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[10px] text-[#8A877F] leading-relaxed">
+              {mode === 'by-supplier'
+                ? 'Each supplier gets an email with only their own items.'
+                : 'One document with every item — each supplier you add below receives ALL of them, in one email.'}
+            </p>
+          </div>
+
           {withoutSpec > 0 && (
             <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5 text-amber-600" />
