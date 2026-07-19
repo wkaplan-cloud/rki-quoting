@@ -45,15 +45,18 @@ const s = StyleSheet.create({
   itemHeader: { fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   itemName: { fontSize: 14, fontFamily: 'Helvetica-Bold', marginBottom: 10 },
   // A4 portrait is 595pt wide; with 40pt page padding the content column is
-  // ~515pt — the image fills it, specs sit underneath
-  imageBox: { width: '100%', height: 320, borderWidth: 1, borderColor: '#D8D3C8', padding: 4, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  image: { maxWidth: 505, maxHeight: 310, objectFit: 'contain' },
+  // ~515pt — the image fills it, specs sit underneath. Everything below is
+  // budgeted so ONE item always fits ONE page (see maxLines clamps + the
+  // wrap={false} on the item Page).
+  imageBox: { width: '100%', height: 300, borderWidth: 1, borderColor: '#D8D3C8', padding: 4, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  image: { maxWidth: 505, maxHeight: 290, objectFit: 'contain' },
   specs: { width: '100%' },
   specRow: { flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   specLabel: { width: 80, fontSize: 8, color: '#8A877F' },
-  specValue: { flex: 1, fontSize: 9 },
+  specValue: { flex: 1, fontSize: 9, maxLines: 2, textOverflow: 'ellipsis' },
+  longText: { flex: 1, fontSize: 9, maxLines: 5, textOverflow: 'ellipsis' },
   sectionHead: { fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1, marginTop: 12, marginBottom: 4 },
-  notes: { fontSize: 9, lineHeight: 1.5, color: '#4A4A47' },
+  notes: { fontSize: 9, lineHeight: 1.5, color: '#4A4A47', maxLines: 5, textOverflow: 'ellipsis' },
   priceBox: { marginTop: 16, borderWidth: 1, borderColor: '#D8D3C8', padding: 10 },
   priceLine: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   footer: { position: 'absolute', bottom: 24, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: '#8A877F' },
@@ -114,7 +117,9 @@ export function RfqPDF(props: RfqPdfProps) {
 
       {/* One page per item */}
       {items.map((item, i) => (
-        <Page key={i} size="A4" style={s.itemPage}>
+        // wrap={false}: an item never spills onto a second page — long text
+        // is clamped with "…" instead (full specs always live in Studio)
+        <Page key={i} size="A4" style={s.itemPage} wrap={false}>
           <Text style={s.itemHeader}>Item {i + 1} of {items.length}</Text>
           <Text style={s.itemName}>{item.name || `Item ${i + 1}`}</Text>
           <View style={s.imageBox}>
@@ -125,7 +130,7 @@ export function RfqPDF(props: RfqPdfProps) {
               {item.description.trim() ? (
                 <View style={s.specRow}>
                   <Text style={s.specLabel}>Description</Text>
-                  <Text style={s.specValue}>{item.description}</Text>
+                  <Text style={s.longText}>{item.description}</Text>
                 </View>
               ) : null}
               {item.category.trim() ? (
@@ -150,7 +155,7 @@ export function RfqPDF(props: RfqPdfProps) {
               {item.materials.length > 0 ? (
                 <>
                   <Text style={s.sectionHead}>Materials</Text>
-                  {item.materials.map((m, j) => (
+                  {item.materials.slice(0, 8).map((m, j) => (
                     <View key={j} style={s.specRow}>
                       <Text style={s.specLabel}>{m.type || 'Material'}</Text>
                       <Text style={s.specValue}>
@@ -160,6 +165,11 @@ export function RfqPDF(props: RfqPdfProps) {
                       </Text>
                     </View>
                   ))}
+                  {item.materials.length > 8 ? (
+                    <Text style={[s.muted, { fontSize: 8, marginTop: 2 }]}>
+                      + {item.materials.length - 8} more material{item.materials.length - 8 === 1 ? '' : 's'} — ask for the full spec if needed
+                    </Text>
+                  ) : null}
                 </>
               ) : null}
 
