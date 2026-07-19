@@ -34,6 +34,7 @@ export function SelectionTransformer() {
 
   const isText = single?.type === 'text'
   const isImage = single?.type === 'image'
+  const isLine = single?.type === 'line' || single?.type === 'arrow'
 
   return (
     <Transformer
@@ -41,7 +42,7 @@ export function SelectionTransformer() {
       rotateEnabled
       keepRatio={isImage}
       enabledAnchors={
-        isText
+        isText || isLine
           ? ['middle-left', 'middle-right']
           : ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right']
       }
@@ -52,7 +53,14 @@ export function SelectionTransformer() {
       borderStroke="#9A7B4F"
       rotateAnchorOffset={24}
       flipEnabled={false}
-      boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8 ? oldBox : newBox)}
+      boundBoxFunc={(oldBox, newBox) => {
+        // Rotation keeps the box size — always allow it. Blocking on size here
+        // froze rotation AND resize for lines, whose box is only ~2pt tall.
+        if (newBox.rotation !== oldBox.rotation) return newBox
+        const shrunkW = newBox.width < 8 && newBox.width < oldBox.width
+        const shrunkH = newBox.height < 8 && newBox.height < oldBox.height
+        return shrunkW || shrunkH ? oldBox : newBox
+      }}
     />
   )
 }

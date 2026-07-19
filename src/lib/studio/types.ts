@@ -36,10 +36,14 @@ export interface TextObject extends StudioObjectBase {
   width: number // wrap width; height is auto
   fontSize: number
   fontFamily: string
+  // Per-object font choice (textFonts.ts id). Undefined = follow the
+  // board-wide content font, which keeps old boards rendering unchanged.
+  fontId?: string
   fontStyle: 'normal' | 'bold' | 'italic' | 'bold italic'
   textDecoration: '' | 'underline'
   fill: string
   align: 'left' | 'center' | 'right'
+  lineHeight?: number // multiplier; undefined = 1.3 (pre-existing boards)
 }
 
 export interface RectObject extends StudioObjectBase {
@@ -69,7 +73,16 @@ export interface LineObject extends StudioObjectBase {
   strokeWidth: number
 }
 
-export type StudioObject = ImageObject | TextObject | RectObject | EllipseObject | LineObject
+// An ✕ mark spanning its width × height box — two crossing strokes
+export interface CrossObject extends StudioObjectBase {
+  type: 'cross'
+  width: number
+  height: number
+  stroke: string
+  strokeWidth: number
+}
+
+export type StudioObject = ImageObject | TextObject | RectObject | EllipseObject | LineObject | CrossObject
 
 export interface StudioSlide {
   id: string

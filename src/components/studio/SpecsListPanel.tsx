@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, FileText } from 'lucide-react'
+import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, X, FileText } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
 import { ConvertToQuoteModal } from './ConvertToQuoteModal'
@@ -164,6 +164,7 @@ function ObjectThumb({ obj }: { obj: StudioObject }) {
     : obj.type === 'rect' ? Square
     : obj.type === 'ellipse' ? Circle
     : obj.type === 'arrow' ? MoveUpRight
+    : obj.type === 'cross' ? X
     : Minus
   return (
     <span className="flex-shrink-0 w-9 h-9 rounded-md border border-[#D8D3C8] bg-white flex items-center justify-center text-[#8A877F]">

@@ -1,12 +1,13 @@
 'use client'
 import { Copy, Lock, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
-import type { RectObject, EllipseObject, LineObject } from '@/lib/studio/types'
+import type { RectObject, EllipseObject, LineObject, CrossObject } from '@/lib/studio/types'
 import { TBtn, TDivider, ColorControl } from './atoms'
 
-export function ShapeToolbar({ obj }: { obj: RectObject | EllipseObject | LineObject }) {
+export function ShapeToolbar({ obj }: { obj: RectObject | EllipseObject | LineObject | CrossObject }) {
   const store = useStudioStore
-  const isLine = obj.type === 'line' || obj.type === 'arrow'
+  // Stroke-only shapes: no fill control, "Line colour"/width labelling
+  const isLine = obj.type === 'line' || obj.type === 'arrow' || obj.type === 'cross'
 
   return (
     <>

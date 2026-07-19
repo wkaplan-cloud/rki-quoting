@@ -3,7 +3,7 @@ import { memo } from 'react'
 import { Group, Rect, Ellipse, Line, Arrow } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { useStudioStore } from '@/lib/studio/store'
-import type { RectObject, EllipseObject, LineObject } from '@/lib/studio/types'
+import type { RectObject, EllipseObject, LineObject, CrossObject } from '@/lib/studio/types'
 import { useObjectInteraction } from './ObjectNode'
 
 // Rect + ellipse share a Group root so both rotate/resize around the same
@@ -55,6 +55,47 @@ export const ShapeNode = memo(function ShapeNode({
           listening={interactive}
         />
       )}
+    </Group>
+  )
+})
+
+// ✕ mark: two strokes across the object's width × height box, resizing like
+// a rect so it can be squashed or stretched over whatever it's marking.
+export const CrossNode = memo(function CrossNode({
+  obj,
+  interactive,
+}: {
+  obj: CrossObject
+  interactive: boolean
+}) {
+  const interaction = useObjectInteraction(obj, interactive)
+
+  function onTransformEnd(e: KonvaEventObject<Event>) {
+    const node = e.currentTarget
+    const scaleX = node.scaleX()
+    const scaleY = node.scaleY()
+    node.scale({ x: 1, y: 1 })
+    useStudioStore.getState().updateObject(obj.id, {
+      x: node.x(),
+      y: node.y(),
+      rotation: node.rotation(),
+      width: Math.max(8, obj.width * scaleX),
+      height: Math.max(8, obj.height * scaleY),
+    })
+  }
+
+  const common = {
+    stroke: obj.stroke,
+    strokeWidth: obj.strokeWidth,
+    lineCap: 'round' as const,
+    hitStrokeWidth: 16,
+    listening: interactive,
+  }
+
+  return (
+    <Group {...interaction} onTransformEnd={onTransformEnd}>
+      <Line {...common} points={[0, 0, obj.width, obj.height]} />
+      <Line {...common} points={[obj.width, 0, 0, obj.height]} />
     </Group>
   )
 })

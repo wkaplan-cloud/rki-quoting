@@ -8,7 +8,7 @@ import { SNAP_THRESHOLD } from '@/lib/studio/constants'
 import type { StudioObject } from '@/lib/studio/types'
 import { ImageNode } from './ImageNode'
 import { TextNode } from './TextNode'
-import { ShapeNode, LineNode } from './ShapeNode'
+import { ShapeNode, LineNode, CrossNode } from './ShapeNode'
 
 export interface ObjectNodeProps {
   obj: StudioObject
@@ -139,6 +139,8 @@ export function ObjectNode({ obj, interactive }: ObjectNodeProps) {
     case 'line':
     case 'arrow':
       return <LineNode obj={obj} interactive={interactive} />
+    case 'cross':
+      return <CrossNode obj={obj} interactive={interactive} />
     default:
       return null
   }

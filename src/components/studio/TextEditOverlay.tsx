@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import { PAGE_W } from '@/lib/studio/constants'
 import { useStudioStore } from '@/lib/studio/store'
 import { getMasterTheme, getMasterMarginRect } from '@/lib/studio/masterThemes'
-import { getContentFont } from '@/lib/studio/contentFonts'
+import { textObjectCssFamily } from '@/lib/studio/textFonts'
 import type { TextObject } from '@/lib/studio/types'
 
 // Konva can't edit text in-canvas — this HTML textarea sits exactly over the
@@ -26,7 +26,8 @@ export function TextEditOverlay() {
 function TextEditor({ obj, zoom, panX, panY }: { obj: TextObject; zoom: number; panX: number; panY: number }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const contentFontId = useStudioStore(s => s.masterLayout.contentFontId)
-  const contentFontVar = getContentFont(contentFontId).cssVar
+  const fontFamily = textObjectCssFamily(obj.fontId, contentFontId)
+  const lineHeight = obj.lineHeight ?? 1.3
 
   useEffect(() => {
     const el = ref.current
@@ -68,15 +69,15 @@ function TextEditor({ obj, zoom, panX, panY }: { obj: TextObject; zoom: number; 
         left: panX + obj.x * zoom,
         top: panY + obj.y * zoom,
         width: Math.max(40, obj.width * zoom + 8),
-        minHeight: obj.fontSize * 1.3 * zoom + 8,
+        minHeight: obj.fontSize * lineHeight * zoom + 8,
         fontSize: obj.fontSize * zoom,
-        fontFamily: `var(${contentFontVar})`,
+        fontFamily,
         fontWeight: obj.fontStyle.includes('bold') ? 700 : 400,
         fontStyle: obj.fontStyle.includes('italic') ? 'italic' : 'normal',
         textDecoration: obj.textDecoration,
         color: obj.fill,
         textAlign: obj.align,
-        lineHeight: 1.3,
+        lineHeight,
       }}
     />
   )

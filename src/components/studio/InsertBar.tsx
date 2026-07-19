@@ -1,7 +1,7 @@
 'use client'
 import { useRef } from 'react'
 import toast from 'react-hot-toast'
-import { Type, Square, Circle, Minus, MoveUpRight, ImagePlus } from 'lucide-react'
+import { Type, Square, Circle, Minus, MoveUpRight, X, ImagePlus } from 'lucide-react'
 import { useStudioStore, newId } from '@/lib/studio/store'
 import { importImageFiles } from '@/lib/studio/images'
 import { PAGE_W, PAGE_H, OBJECT_DEFAULTS, DEFAULT_FONT } from '@/lib/studio/constants'
@@ -71,6 +71,16 @@ const makers: Record<string, () => StudioObject> = {
     stroke: OBJECT_DEFAULTS.shapeStroke,
     strokeWidth: OBJECT_DEFAULTS.strokeWidth,
   }),
+  cross: () => ({
+    ...base(),
+    type: 'cross',
+    x: CX - 60,
+    y: CY - 60,
+    width: 120,
+    height: 120,
+    stroke: OBJECT_DEFAULTS.shapeStroke,
+    strokeWidth: OBJECT_DEFAULTS.strokeWidth,
+  }),
 }
 
 // Fixed insert toolbar at the top of the canvas area
@@ -94,6 +104,7 @@ export function InsertBar() {
       <TBtn icon={Circle} label="Circle" onClick={() => insert('ellipse')} />
       <TBtn icon={Minus} label="Line" onClick={() => insert('line')} />
       <TBtn icon={MoveUpRight} label="Arrow" onClick={() => insert('arrow')} />
+      <TBtn icon={X} label="Cross" onClick={() => insert('cross')} />
       <TDivider />
       <TBtn icon={ImagePlus} label="Add images" onClick={() => fileRef.current?.click()} />
       <input

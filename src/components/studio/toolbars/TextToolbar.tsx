@@ -2,16 +2,17 @@
 import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Copy, Lock, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { TextObject } from '@/lib/studio/types'
+import { TEXT_FONTS } from '@/lib/studio/textFonts'
 import { TBtn, TDivider, ColorControl } from './atoms'
 
 const SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64, 80]
+const LINE_HEIGHTS = [1, 1.15, 1.3, 1.5, 1.8, 2]
 
-// Font FAMILY is a board-wide choice (Master Theme panel → Font), applied to
-// every text object — no per-object font picker here on purpose.
 export function TextToolbar({ obj }: { obj: TextObject }) {
   const store = useStudioStore
   const bold = obj.fontStyle.includes('bold')
   const italic = obj.fontStyle.includes('italic')
+  const lineHeight = obj.lineHeight ?? 1.3
 
   function setStyle(nextBold: boolean, nextItalic: boolean) {
     const fontStyle = nextBold && nextItalic ? 'bold italic' : nextBold ? 'bold' : nextItalic ? 'italic' : 'normal'
@@ -20,6 +21,22 @@ export function TextToolbar({ obj }: { obj: TextObject }) {
 
   return (
     <>
+      <select
+        title="Font"
+        aria-label="Font"
+        value={obj.fontId ?? ''}
+        onChange={e =>
+          store.getState().updateObject(obj.id, { fontId: e.target.value || undefined } as Partial<TextObject>)
+        }
+        className="h-8 max-w-28 text-xs rounded-md border border-[#D8D3C8] bg-white px-1 cursor-pointer text-[#2C2C2A]"
+      >
+        <option value="">Board font</option>
+        {TEXT_FONTS.map(f => (
+          <option key={f.id} value={f.id}>
+            {f.name}
+          </option>
+        ))}
+      </select>
       <select
         title="Font size"
         aria-label="Font size"
@@ -30,6 +47,19 @@ export function TextToolbar({ obj }: { obj: TextObject }) {
         {(SIZES.includes(obj.fontSize) ? SIZES : [...SIZES, obj.fontSize].sort((a, b) => a - b)).map(s => (
           <option key={s} value={s}>
             {s}
+          </option>
+        ))}
+      </select>
+      <select
+        title="Line spacing"
+        aria-label="Line spacing"
+        value={lineHeight}
+        onChange={e => store.getState().updateObject(obj.id, { lineHeight: Number(e.target.value) } as Partial<TextObject>)}
+        className="h-8 text-xs rounded-md border border-[#D8D3C8] bg-white px-1 cursor-pointer text-[#2C2C2A]"
+      >
+        {(LINE_HEIGHTS.includes(lineHeight) ? LINE_HEIGHTS : [...LINE_HEIGHTS, lineHeight].sort((a, b) => a - b)).map(lh => (
+          <option key={lh} value={lh}>
+            ↕ {lh}
           </option>
         ))}
       </select>
