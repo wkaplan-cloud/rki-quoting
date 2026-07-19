@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createElement } from 'react'
+import sharp from 'sharp'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { createClient } from '@/lib/supabase/server'
 import { RfqPDF, type RfqPdfItem } from '@/lib/pdf/RfqPDF'
@@ -30,6 +31,28 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function slug(v: string) {
   return v.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'RFQ'
+}
+
+// Images embedded in the RFQ PDF only — the stored originals are untouched.
+// Boards store up to 3600px; an A4 content column (~505pt ≈ 7in) is
+// print-crisp at ~170dpi with 1200px, so this cuts a photo-heavy 50-item
+// PDF from ~20MB to a few MB with no visible difference to the supplier.
+const PDF_IMAGE_MAX_PX = 1200
+
+async function downscaleForPdf(url: string): Promise<string> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return url
+    const out = await sharp(Buffer.from(await res.arrayBuffer()))
+      .rotate() // honour EXIF orientation
+      .resize(PDF_IMAGE_MAX_PX, PDF_IMAGE_MAX_PX, { fit: 'inside', withoutEnlargement: true })
+      .flatten({ background: '#ffffff' }) // bg-removed PNGs land on paper white
+      .jpeg({ quality: 80 })
+      .toBuffer()
+    return `data:image/jpeg;base64,${out.toString('base64')}`
+  } catch {
+    return url // never break a send over a resize — fall back to the original
+  }
 }
 
 // POST /api/studio/boards/[id]/rfq — email quote-request PDFs to suppliers.
@@ -88,6 +111,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
+    // Downscale each unique image once, shared across groups/recipients
+    const uniquePdfUrls = [
+      ...new Set(allObjectIds.map(id => imageUrlByObject.get(id)).filter((u): u is string => !!u)),
+    ]
+    const pdfImageByUrl = new Map<string, string>()
+    await Promise.all(
+      uniquePdfUrls.map(async u => {
+        pdfImageByUrl.set(u, await downscaleForPdf(u))
+      })
+    )
+
     const clientRel = (board as { clients?: { client_name: string } | { client_name: string }[] }).clients
     const clientName = (Array.isArray(clientRel) ? clientRel[0]?.client_name : clientRel?.client_name) ?? ''
     const businessName = settings?.business_name ?? 'Your Studio'
@@ -106,10 +140,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       for (const objectId of group.objectIds) {
         const row = specByObject.get(objectId)
         if (!row) continue
+        const originalUrl = imageUrlByObject.get(objectId)
         items.push({
           name: row.spec_name || '',
           area: areaByObject.get(objectId) ?? '',
-          imageUrl: imageUrlByObject.get(objectId) ?? null,
+          imageUrl: originalUrl ? pdfImageByUrl.get(originalUrl) ?? originalUrl : null,
           description: row.description ?? '',
           category: row.category ?? '',
           quantity: row.quantity ?? '',
