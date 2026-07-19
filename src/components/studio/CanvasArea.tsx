@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { PAGE_W, PAGE_H, OBJECT_DEFAULTS, DEFAULT_FONT, STUDIO_CLIPBOARD_PREFIX } from '@/lib/studio/constants'
 import { useStudioStore, newId } from '@/lib/studio/store'
 import type { StudioObject } from '@/lib/studio/types'
-import { extractImageFiles, importImageFiles, addAssetToSlide } from '@/lib/studio/images'
+import { extractImageFiles, importImageFiles, importImageFromUrl, addAssetToSlide } from '@/lib/studio/images'
 import { ASSET_DRAG_TYPE } from './AssetPanel'
 import { CanvasStage } from './CanvasStage'
 import { FloatingToolbar } from './FloatingToolbar'
@@ -133,15 +133,24 @@ export function CanvasArea() {
               })
               return
             }
-          } catch {
-            // Permission denied or API unavailable — fall through
+          } catch (err) {
+            if ((err as DOMException)?.name === 'NotAllowedError') {
+              toast.error(
+                'Clipboard access is blocked for this site — click the padlock in the address bar, allow Clipboard, then paste again'
+              )
+              return
+            }
+            // API unavailable / unreadable clipboard — fall through
           }
           const { clipboard } = useStudioStore.getState()
           if (clipboard.length) {
             useStudioStore.getState().paste()
           } else {
+            // Apps like Keynote copy in Apple-only formats the browser can't
+            // read at all — a clipboard screenshot always works instead
             toast.error(
-              'Nothing pasteable on the clipboard — if copying from an app like Keynote, try dragging the image in instead'
+              'Couldn’t read an image from the clipboard. Tip: screenshot it with ctrl+shift+cmd+4, then paste again',
+              { duration: 6000 }
             )
           }
         })()
@@ -174,12 +183,28 @@ export function CanvasArea() {
       return
     }
     const files = extractImageFiles(e.dataTransfer)
-    if (!files.length) return
     const at = pagePointFromClient(e.clientX, e.clientY)
-    void toast.promise(importImageFiles(files, at), {
-      loading: files.length > 1 ? `Importing ${files.length} images…` : 'Importing image…',
-      success: files.length > 1 ? 'Images arranged on slide' : 'Image added',
-      error: (err: Error) => err.message || 'Import failed',
+    if (files.length) {
+      void toast.promise(importImageFiles(files, at), {
+        loading: files.length > 1 ? `Importing ${files.length} images…` : 'Importing image…',
+        success: files.length > 1 ? 'Images arranged on slide' : 'Image added',
+        error: (err: Error) => err.message || 'Import failed',
+      })
+      return
+    }
+    // No file — an image dragged from a web page arrives as HTML/URL data
+    const html = e.dataTransfer.getData('text/html')
+    const htmlSrc = html
+      ? new DOMParser().parseFromString(html, 'text/html').querySelector('img')?.src ?? ''
+      : ''
+    const firstUri = (e.dataTransfer.getData('text/uri-list').split('\n')[0] ?? '').trim()
+    const url = htmlSrc || (/^(https?:|data:image\/)/i.test(firstUri) ? firstUri : '')
+    if (!url) return
+    void toast.promise(importImageFromUrl(url, at), {
+      loading: 'Importing image…',
+      success: 'Image added',
+      error: () =>
+        'That site doesn’t allow direct import — save the image first, then drag the file in',
     })
   }
 
@@ -190,7 +215,11 @@ export function CanvasArea() {
       onDragOver={e => {
         if (e.dataTransfer.types.includes(ASSET_DRAG_TYPE)) {
           e.preventDefault() // allow the drop without the "drop files" chrome
-        } else if (e.dataTransfer.types.includes('Files')) {
+        } else if (
+          e.dataTransfer.types.includes('Files') ||
+          e.dataTransfer.types.includes('text/uri-list') ||
+          e.dataTransfer.types.includes('text/html')
+        ) {
           e.preventDefault()
           setDragOver(true)
         }

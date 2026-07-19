@@ -215,6 +215,29 @@ export function extractImageFiles(dt: DataTransfer | null): File[] {
   return Array.from(dt.files).filter(isImportableFile)
 }
 
+// Image dragged from a web page (or any app that hands over a URL rather
+// than a file): download it client-side and run the normal import. Sites
+// without permissive CORS will make fetch throw — callers surface that.
+export async function importImageFromUrl(url: string, at?: { x: number; y: number }) {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('Could not download that image')
+  const blob = await res.blob()
+  if (!blob.type.startsWith('image/') && blob.type !== 'application/pdf') {
+    throw new Error('That link is not an image')
+  }
+  let name = 'image'
+  try {
+    name = decodeURIComponent(new URL(url).pathname.split('/').pop() || 'image')
+  } catch {
+    // data: URLs etc. — keep the fallback name
+  }
+  const ext = (blob.type.split('/')[1] ?? 'png').split('+')[0]
+  const file = new File([blob], /\.[a-z0-9]{2,5}$/i.test(name) ? name : `${name}.${ext}`, {
+    type: blob.type,
+  })
+  return importImageFiles([file], at)
+}
+
 function canvasToJpegFile(canvas: HTMLCanvasElement, name: string): Promise<File> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
