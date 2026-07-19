@@ -137,12 +137,23 @@ export function FloatingToolbar({
         <>
           {single.type === 'image' && (
             <>
-              <TBtn
-                icon={ClipboardList}
-                label="Specs"
-                active={!!specsMap[single.id]}
+              {/* Deliberately louder than the other buttons — specs are the
+                  step designers forget, so it gets the gold treatment.
+                  Filled spec = deep gold + white, none yet = bright gold. */}
+              <button
+                type="button"
+                title={specsMap[single.id] ? 'Specs — added' : 'Add specs'}
+                aria-label="Specs"
+                onMouseDown={e => e.preventDefault()}
                 onClick={() => store.getState().openSpecs(single.id)}
-              />
+                className={`w-8 h-8 flex items-center justify-center rounded-md transition-colors cursor-pointer active:scale-95 focus-visible:outline-2 focus-visible:outline-[#9A7B4F] ${
+                  specsMap[single.id]
+                    ? 'bg-[#9A7B4F] text-white hover:bg-[#8A6B3F]'
+                    : 'bg-[#C4A46B] text-[#1A1A18] hover:bg-[#D4B47B]'
+                }`}
+              >
+                <ClipboardList size={15} />
+              </button>
               <TDivider />
             </>
           )}

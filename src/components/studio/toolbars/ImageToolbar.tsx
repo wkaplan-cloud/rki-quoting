@@ -1,10 +1,12 @@
 'use client'
 import { useRef } from 'react'
 import toast from 'react-hot-toast'
-import { Crop, RotateCw, ImageUp, Copy, ArrowUp, ArrowDown, Lock, Trash2, Wand2, Undo2, Loader2 } from 'lucide-react'
+import { Crop, RotateCw, ImageUp, Copy, ArrowUp, ArrowDown, Lock, Trash2, Wand2, Undo2, Loader2, Maximize2 } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { replaceImage } from '@/lib/studio/images'
 import { removeBackground, restoreOriginal, isBgRemoved } from '@/lib/studio/bgRemoval'
+import { getMasterContentArea } from '@/lib/studio/masterThemes'
+import { LOW_RES_DPI_THRESHOLD } from '@/lib/studio/printQuality'
 import type { ImageObject } from '@/lib/studio/types'
 import { TBtn, TDivider, ColorControl } from './atoms'
 
@@ -13,6 +15,33 @@ export function ImageToolbar({ obj }: { obj: ImageObject }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const bgState = useStudioStore(s => s.bgRemoval[obj.id])
   const bgRemoved = isBgRemoved(obj)
+
+  // Largest on-page size at which this image still prints sharp: grow (or
+  // shrink) uniformly until effective resolution hits the low-res floor,
+  // capped to the master content area, keeping the image centred where it is.
+  function maxPrintSize() {
+    const { masterLayout } = store.getState()
+    const area = getMasterContentArea(masterLayout)
+    const srcW = obj.crop?.width ?? obj.naturalWidth
+    const srcH = obj.crop?.height ?? obj.naturalHeight
+    if (!srcW || !srcH || !obj.width || !obj.height) return
+    const sDpi = Math.min(
+      (srcW * 72) / (LOW_RES_DPI_THRESHOLD * obj.width),
+      (srcH * 72) / (LOW_RES_DPI_THRESHOLD * obj.height)
+    )
+    const sArea = Math.min(area.width / obj.width, area.height / obj.height)
+    const s = Math.min(sDpi, sArea)
+    const width = obj.width * s
+    const height = obj.height * s
+    const cx = obj.x + obj.width / 2
+    const cy = obj.y + obj.height / 2
+    const x = Math.min(Math.max(cx - width / 2, area.x), area.x + area.width - width)
+    const y = Math.min(Math.max(cy - height / 2, area.y), area.y + area.height - height)
+    store.getState().updateObject(obj.id, { x, y, width, height })
+    if (sArea < sDpi) toast.success('Sized to fill the page — still sharp for print')
+    else if (s < 1) toast.success('Reduced to its maximum sharp print size')
+    else toast.success('Enlarged to its maximum sharp print size')
+  }
 
   async function onReplaceFile(file: File | undefined) {
     if (!file) return
@@ -35,6 +64,7 @@ export function ImageToolbar({ obj }: { obj: ImageObject }) {
         label="Rotate 90°"
         onClick={() => store.getState().updateObject(obj.id, { rotation: (obj.rotation + 90) % 360 })}
       />
+      <TBtn icon={Maximize2} label="Max print size — as large as it can go and still print sharp" onClick={maxPrintSize} />
       <TBtn icon={ImageUp} label="Replace image" onClick={() => fileRef.current?.click()} />
       {bgRemoved ? (
         <TBtn icon={Undo2} label="Restore original" onClick={() => restoreOriginal(obj.id)} />
