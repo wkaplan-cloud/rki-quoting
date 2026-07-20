@@ -138,6 +138,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // Drops popover: which line item id is open, and form values
   const [dropsOpen, setDropsOpen] = useState<string | null>(null)
   const [dropsForm, setDropsForm] = useState<{ drops: string; height: string }>({ drops: '', height: '' })
+  // "Set cost as % off sale" quick-entry — only relevant while Sale is overridden
+  const [discountOpen, setDiscountOpen] = useState<string | null>(null)
+  const [discountValue, setDiscountValue] = useState('')
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null)
   // Map of twinbru_product_id → current catalogue price (for stale price detection)
   const [cataloguePrices, setCataloguePrices] = useState<Record<number, number | null>>({})
@@ -271,6 +274,31 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       })
     }
   }, [supabase, locked, projectId])
+
+  // When Sale is overridden, Cost and Mkup% both derive from it — editing Cost
+  // (directly or via the "% off sale" quick-entry) recomputes the exact markup
+  // so the field never shows a stale number. Mirrors the reverse (Sale-edit → markup)
+  // logic below in the Sale cell's onBlur.
+  const handleCostChange = useCallback(async (id: string, cost_price: number) => {
+    const current = lineItemsRef.current.find(i => i.id === id)
+    if (current?.sale_price_override != null) {
+      const markup_percentage = cost_price > 0
+        ? Math.round((current.sale_price_override / cost_price - 1) * 10000) / 100
+        : 0
+      onChange(lineItemsRef.current.map(li => li.id === id ? { ...li, cost_price, markup_percentage } : li))
+      await supabase.from('line_items').update({ cost_price, markup_percentage }).eq('id', id)
+    } else {
+      onChange(lineItemsRef.current.map(li => li.id === id ? { ...li, cost_price } : li))
+      await supabase.from('line_items').update({ cost_price }).eq('id', id)
+    }
+  }, [onChange, supabase])
+
+  const applyCostDiscount = useCallback((id: string, discountPct: number) => {
+    const current = lineItemsRef.current.find(i => i.id === id)
+    if (!current || current.sale_price_override == null) return
+    const cost_price = Math.round(current.sale_price_override * (1 - discountPct / 100) * 100) / 100
+    handleCostChange(id, cost_price)
+  }, [handleCostChange])
 
   const handleSupplierChange = useCallback(async (lineItemId: string, supplierId: string, supplierName: string) => {
     const supplier = suppliers.find(s => s.id === supplierId)
@@ -937,7 +965,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           <CurrencyInput
                             value={item.cost_price}
                             onChange={v => updateLocal(item.id, 'cost_price', v)}
-                            onBlur={v => saveField(item.id, 'cost_price', v)}
+                            onBlur={v => handleCostChange(item.id, v)}
                             className={NUM_INPUT}
                           />
                           {priceChanged && (
@@ -949,6 +977,33 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                               <span className="text-[9px] font-semibold leading-none">Price updated</span>
                             </div>
                           )}
+                          {!locked && item.sale_price_override !== null && (
+                            discountOpen === item.id ? (
+                              <div className="flex items-center gap-1 mt-0.5 justify-end">
+                                <input
+                                  type="text" inputMode="decimal" autoFocus
+                                  value={discountValue}
+                                  onChange={e => setDiscountValue(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+                                  onFocus={e => e.target.select()}
+                                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                  onBlur={() => {
+                                    const pct = parseFloat(discountValue)
+                                    if (!isNaN(pct)) applyCostDiscount(item.id, pct)
+                                    setDiscountOpen(null)
+                                    setDiscountValue('')
+                                  }}
+                                  placeholder="0"
+                                  className="w-10 text-xs bg-[#F5F2EC] border border-[#D8D3C8] rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-[#9A7B4F] text-right"
+                                />
+                                <span className="text-[9px] text-[#8A877F] whitespace-nowrap">% off sale</span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => { setDiscountOpen(item.id); setDiscountValue('') }}
+                                className="block ml-auto text-[9px] text-[#C4BFB5] hover:text-[#9A7B4F] transition-colors cursor-pointer mt-0.5"
+                              >% off sale…</button>
+                            )
+                          )}
                         </div>
                       )
                     })()}
@@ -958,7 +1013,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   <td className={COL}>
                     <input
                       type="text" inputMode="decimal"
-                      value={item.markup_percentage}
+                      value={item.sale_price_override !== null && item.cost_price <= 0 ? '' : item.markup_percentage}
                       onChange={e => { const v = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'); updateLocal(item.id, 'markup_percentage', v as unknown as number) }}
                       onFocus={e => { if (parseFloat(e.target.value) === 0) { updateLocal(item.id, 'markup_percentage', '' as unknown as number) } }}
                       onBlur={e => { const v = parseFloat(e.target.value.replace(',', '.')) || 0; saveField(item.id, 'markup_percentage', v) }}
@@ -979,7 +1034,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                           onBlur={v => {
                             const impliedMarkup = item.cost_price > 0
                               ? Math.round((v / item.cost_price - 1) * 10000) / 100
-                              : item.markup_percentage
+                              : 0
                             onChange(lineItems.map(li =>
                               li.id === item.id ? { ...li, sale_price_override: v, markup_percentage: impliedMarkup } : li
                             ))
