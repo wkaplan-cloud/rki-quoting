@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, X, Pencil, Trash2, ImagePlus, Tag, ArrowRight,
+  Plus, X, Pencil, Trash2, ImagePlus, ReceiptText, ArrowRight,
   Loader2, ChevronLeft, ChevronRight, LayoutGrid, PackageOpen,
 } from 'lucide-react'
 import { CATEGORIES, CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 import { createClient } from '@/lib/supabase/client'
+import { CategorySpecFields } from '@/components/shared/CategorySpecFields'
 
 interface Piece {
   id: string
@@ -258,41 +259,14 @@ function PieceModal({
             <div className="space-y-2">
               <label className={LABEL}>Specifications <span className="normal-case font-normal text-[#C4BFB5] tracking-normal">— fill in what you know</span></label>
               <div className="grid grid-cols-2 gap-2">
-                {CATEGORY_FIELDS[category].map(field => {
-                  const val = specValues[field.key] ?? ''
-                  if (field.type === 'select') return (
-                    <div key={field.key}>
-                      <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
-                      <select value={val} onChange={e => setSpec(field.key, e.target.value)} className={INPUT}>
-                        <option value="">—</option>
-                        {field.options!.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </div>
-                  )
-                  if (field.type === 'textarea') return (
-                    <div key={field.key} className="col-span-2">
-                      <label className="block text-[10px] text-[#8A877F] mb-0.5">{field.label}</label>
-                      <textarea value={val} onChange={e => setSpec(field.key, e.target.value)} rows={2}
-                        placeholder={field.placeholder} className={`${INPUT} resize-none`} />
-                    </div>
-                  )
-                  return (
-                    <div key={field.key}>
-                      <label className="block text-[10px] text-[#8A877F] mb-0.5">
-                        {field.label}{field.unit && <span className="text-[#C4BFB5] ml-1">({field.unit})</span>}
-                      </label>
-                      <input
-                        type={field.type === 'number' ? 'number' : 'text'}
-                        min={field.type === 'number' ? '0' : undefined}
-                        step={field.type === 'number' ? 'any' : undefined}
-                        value={val}
-                        onChange={e => setSpec(field.key, e.target.value)}
-                        placeholder={field.placeholder ?? (field.unit ? 'e.g. 600' : '')}
-                        className={INPUT}
-                      />
-                    </div>
-                  )
-                })}
+                <CategorySpecFields
+                  category={category}
+                  values={specValues}
+                  onChange={setSpec}
+                  inputClassName={INPUT}
+                  labelClassName="block text-[10px] text-[#8A877F] mb-0.5"
+                  textareaWrapperClassName="col-span-2"
+                />
               </div>
             </div>
           )}
@@ -502,63 +476,75 @@ function AddToQuoteModal({
   )
 }
 
-// ---- Price Request Modal ----
-function PriceRequestModal({ piece, onClose }: { piece: Piece; onClose: () => void }) {
-  const router = useRouter()
-  const [sessions, setSessions] = useState<{ id: string; title: string; request_number: number | null; status: string }[] | null>(null)
-  const [adding, setAdding] = useState<string | null>(null)
-  const [creating, setCreating] = useState(false)
+// ---- Log Price Modal ----
+// Replaces the old in-app Price Request flow (which created a Sourcing
+// session). Pieces don't request prices themselves any more — that happens
+// from Studio when a piece is placed on a board and sent for a quote. This
+// just records a price you already have (from an email, a call, wherever)
+// directly against the piece, the same way accepting a Sourcing price used
+// to update base_price/last_priced_at — just a manual action now.
+function LogPriceModal({
+  piece,
+  suppliers,
+  onClose,
+  onSaved,
+}: {
+  piece: Piece
+  suppliers: Props['suppliers']
+  onClose: () => void
+  onSaved: (p: Piece) => void
+}) {
+  const [price, setPrice] = useState(piece.base_price?.toString() ?? '')
+  const [supplierId, setSupplierId] = useState(piece.supplier_id ?? '')
+  const [supplierName, setSupplierName] = useState(piece.supplier_name ?? '')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase
-      .from('sourcing_sessions')
-      .select('id, title, request_number, status')
-      .not('archived', 'eq', true)
-      .in('status', ['draft', 'sent', 'in_progress'])
-      .order('created_at', { ascending: false })
-      .limit(20)
-      .then(({ data }) => setSessions(data ?? []))
-  }, [])
-
-  async function handleAddToSession(sessionId: string) {
-    setAdding(sessionId)
-    try {
-      const isGeneral = !piece.category || piece.category === 'general'
-      const res = await fetch(`/api/sourcing/sessions/${sessionId}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: piece.name,
-          category: piece.category ?? 'general',
-          work_type: isGeneral ? (piece.work_type ?? null) : null,
-          specifications: piece.description ?? null,
-          item_quantity: 1,
-          dimensions: isGeneral ? (piece.dimensions ?? null) : null,
-          colour_finish: isGeneral ? (piece.colour_finish ?? null) : null,
-          item_specs: !isGeneral ? (piece.item_specs ?? null) : null,
-          ref_image_urls: piece.image_urls?.length ? piece.image_urls : null,
-          piece_id: piece.id,
-        }),
-      })
-      if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
-      router.push(`/sourcing/${sessionId}`)
-    } catch (err: any) {
-      alert(err.message)
-      setAdding(null)
-    }
+  function handleSupplierSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const s = suppliers.find(s => s.id === e.target.value)
+    setSupplierId(s?.id ?? '')
+    setSupplierName(s?.supplier_name ?? '')
   }
 
-  async function handleCreateNew() {
-    setCreating(true)
+  async function handleSave() {
+    if (!price.trim()) return
+    setSaving(true)
+    setError(null)
     try {
-      const res = await fetch(`/api/pieces/${piece.id}/send-for-pricing`, { method: 'POST' })
+      const res = await fetch(`/api/pieces/${piece.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_price: Number(price),
+          supplier_id: supplierId || null,
+          supplier_name: supplierId ? supplierName : (supplierName.trim() || null),
+        }),
+      })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      router.push(`/sourcing/${json.session_id}`)
+
+      // Also lands in the org-wide Quotes list, same as anything logged from Studio
+      const supabase = createClient()
+      const { data: orgId } = await supabase.rpc('get_current_org_id')
+      if (orgId) {
+        await supabase.from('spec_quotes').insert({
+          org_id: orgId,
+          piece_id: piece.id,
+          supplier_id: supplierId || null,
+          supplier_name: supplierId ? supplierName : (supplierName.trim() || ''),
+          price: Number(price),
+          notes: notes.trim(),
+          source: 'manual',
+        })
+      }
+
+      onSaved(json.data)
+      onClose()
     } catch (err: any) {
-      alert(err.message)
-      setCreating(false)
+      setError(err.message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -567,62 +553,62 @@ function PriceRequestModal({ piece, onClose }: { piece: Piece; onClose: () => vo
       <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#EDE9E1]">
           <div>
-            <h2 className="text-base font-bold text-[#2C2C2A]">Price request</h2>
+            <h2 className="text-base font-bold text-[#2C2C2A]">Log price</h2>
             <p className="text-xs text-[#8A877F] mt-0.5">{piece.name}</p>
           </div>
           <button onClick={onClose} className="text-[#8A877F] hover:text-[#2C2C2A] transition-colors"><X size={18} /></button>
         </div>
 
-        <div className="px-6 py-5 space-y-3">
-          {/* Create new */}
-          <button
-            onClick={handleCreateNew}
-            disabled={creating}
-            className="w-full flex items-center gap-3 px-4 py-3 border-2 border-dashed border-[#D4CFC7] rounded-xl text-left hover:border-[#C4A46B] hover:bg-[#FEFDF9] transition-colors disabled:opacity-50"
-          >
-            <div className="w-9 h-9 rounded-lg border-2 border-dashed border-[#D4CFC7] flex items-center justify-center shrink-0 text-[#8A877F]">
-              {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className={LABEL}>Price (cost excl. VAT) <span className="text-red-400 normal-case tracking-normal">*</span></label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#8A877F]">R</span>
+              <input
+                autoFocus
+                type="number"
+                min="0"
+                step="0.01"
+                value={price}
+                onChange={e => setPrice(e.target.value)}
+                className={`${INPUT} pl-7`}
+              />
             </div>
-            <div>
-              <p className="text-sm font-medium text-[#2C2C2A]">Create new price request</p>
-              <p className="text-xs text-[#8A877F]">Starts a fresh request with this piece</p>
-            </div>
-          </button>
+          </div>
 
-          {/* Existing open sessions */}
-          {sessions === null ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 size={16} className="animate-spin text-[#C4BFB5]" />
-            </div>
-          ) : sessions.length > 0 ? (
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-2">Add to existing request</p>
-              <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                {sessions.map(s => {
-                  const ref = s.request_number ? `PR-${String(s.request_number).padStart(3, '0')}` : null
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => handleAddToSession(s.id)}
-                      disabled={!!adding || creating}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 bg-[#F5F2EC] rounded-xl hover:bg-[#EDE9E1] transition-colors text-left disabled:opacity-50"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#2C2C2A] truncate">{s.title}</p>
-                        {ref && (
-                          <p className="text-xs text-[#8A877F]">{ref} · {s.status.replace('_', ' ')}</p>
-                        )}
-                      </div>
-                      {adding === s.id
-                        ? <Loader2 size={13} className="animate-spin text-[#8A877F] shrink-0" />
-                        : <ArrowRight size={13} className="text-[#C4BFB5] shrink-0" />
-                      }
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
+          <div>
+            <label className={LABEL}>Supplier</label>
+            <select value={supplierId} onChange={handleSupplierSelect} className={INPUT}>
+              <option value="">No supplier selected</option>
+              {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplier_name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className={LABEL}>Notes</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={2}
+              className={`${INPUT} resize-none`}
+              placeholder="Lead time, terms…"
+            />
+          </div>
+
+          {error && <p className="text-xs text-red-500">{error}</p>}
+
+          <div className="flex gap-2">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 text-sm text-[#8A877F] border border-[#D4CFC7] rounded-xl hover:border-[#8A877F] transition-colors">
+              Cancel
+            </button>
+            <button onClick={() => void handleSave()} disabled={saving || !price.trim()}
+              className="flex-1 py-2.5 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
+              style={{ background: '#2C2C2A', color: '#F5F2EC' }}>
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <ReceiptText size={14} />}
+              {saving ? 'Saving…' : 'Log price'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -642,13 +628,13 @@ function PieceCard({
   onEdit,
   onDelete,
   onAddToQuote,
-  onSendForPricing,
+  onLogPrice,
 }: {
   piece: Piece
   onEdit: () => void
   onDelete: () => void
   onAddToQuote: () => void
-  onSendForPricing: () => void
+  onLogPrice: () => void
 }) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null)
   const mainImage = piece.image_urls?.[0]
@@ -758,9 +744,9 @@ function PieceCard({
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg border border-[#D4CFC7] text-[#2C2C2A] hover:border-[#C4A46B] hover:text-[#C4A46B] transition-colors">
             <ArrowRight size={11} /> Add to quote
           </button>
-          <button onClick={onSendForPricing}
+          <button onClick={onLogPrice}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-lg border border-[#D4CFC7] text-[#2C2C2A] hover:border-[#2C2C2A] transition-colors">
-            <Tag size={11} /> Price request
+            <ReceiptText size={11} /> Log price
           </button>
         </div>
       </div>
@@ -806,7 +792,7 @@ export function PiecesClient({ initialPieces, suppliers, projects }: Props) {
     }
   }
 
-  function handleSendForPricing(piece: Piece) {
+  function handleLogPrice(piece: Piece) {
     setPricingModal(piece)
   }
 
@@ -861,15 +847,20 @@ export function PiecesClient({ initialPieces, suppliers, projects }: Props) {
               onEdit={() => setEditingPiece(p)}
               onDelete={() => handleDelete(p)}
               onAddToQuote={() => setAddToQuote(p)}
-              onSendForPricing={() => handleSendForPricing(p)}
+              onLogPrice={() => handleLogPrice(p)}
             />
           ))}
         </div>
       )}
 
-      {/* Price request modal */}
+      {/* Log price modal */}
       {pricingModal && (
-        <PriceRequestModal piece={pricingModal} onClose={() => setPricingModal(null)} />
+        <LogPriceModal
+          piece={pricingModal}
+          suppliers={suppliers}
+          onClose={() => setPricingModal(null)}
+          onSaved={updated => setPieces(prev => prev.map(p => (p.id === updated.id ? updated : p)))}
+        />
       )}
 
       {/* Modals */}

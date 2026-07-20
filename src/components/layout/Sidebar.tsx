@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
-  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, BookOpen, X, MessageSquare, Calculator, Tag, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel, Presentation,
+  LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, BookOpen, X, MessageSquare, Calculator, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel, Presentation, ReceiptText,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 
@@ -18,13 +18,12 @@ const secondaryLinks = [
   { href: '/clients',     label: 'Clients',     icon: Users,     tourId: 'nav-clients' },
   { href: '/suppliers',   label: 'Suppliers',   icon: Truck,     tourId: 'nav-suppliers' },
   { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
+  { href: '/quotes',      label: 'Quotes',      icon: ReceiptText },
 ]
 
 interface Props {
   isAdmin?: boolean
   businessName: string
-  sourcingEnabled: boolean
-  sourcingBadge?: number
   capitalHotelsEnabled?: boolean
   capitalBadge?: number
   studioEnabled?: boolean
@@ -38,7 +37,7 @@ interface Props {
   onDesktopToggle: () => void
 }
 
-export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge = 0, capitalHotelsEnabled = false, capitalBadge = 0, studioEnabled = false, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft, desktopExpanded, onDesktopToggle }: Props) {
+export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, capitalBadge = 0, studioEnabled = false, isOpen, onClose, onContactClick, plan, subscriptionStatus, trialDaysLeft, desktopExpanded, onDesktopToggle }: Props) {
   const path = usePathname()
   const isActive = (href: string) =>
     href === '/dashboard' ? path === '/dashboard' : path.startsWith(href)
@@ -200,32 +199,6 @@ export function Sidebar({ isAdmin, businessName, sourcingEnabled, sourcingBadge 
             </Link>
           )}
 
-          {sourcingEnabled && (
-            <>
-              <div className="border-t border-white/10 my-2 mx-2" />
-              <Link
-                href="/sourcing"
-                onClick={onClose}
-
-                className={`flex items-center h-9 rounded mx-1 transition-colors duration-150
-                  ${isActive('/sourcing')
-                    ? 'bg-[#9A7B4F]/20 text-white'
-                    : 'text-white/70 hover:text-white hover:bg-white/5'}`}
-              >
-                <span className="flex items-center justify-center w-10 flex-shrink-0">
-                  <Tag size={15} className={isActive('/sourcing') ? 'text-[#C4A46B]' : 'opacity-60'} />
-                </span>
-                <span className={`text-sm whitespace-nowrap transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
-                  Price Request
-                </span>
-                {sourcingBadge > 0 && (
-                  <span className={`transition-opacity duration-150 ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center bg-orange-500 text-white ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
-                    {sourcingBadge > 99 ? '99+' : sourcingBadge}
-                  </span>
-                )}
-              </Link>
-            </>
-          )}
 
           {studioEnabled && (
             <>

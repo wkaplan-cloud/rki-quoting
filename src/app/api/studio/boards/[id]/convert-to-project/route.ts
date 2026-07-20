@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { apiError } from '@/lib/api-error'
 import { todaySA } from '@/lib/dates'
 import { normalizeMaterial, type StudioObject, type MaterialEntry } from '@/lib/studio/types'
+import { formatCategorySpecs } from '@/lib/specFormatting'
 
 // POST /api/studio/boards/[id]/convert-to-project
 // Pulls the board into a new quoting project: one section row per slide
@@ -31,6 +32,8 @@ interface ConvertSpecRow {
   height: string
   materials: MaterialEntry[]
   status: string
+  category: string
+  item_specs: Record<string, string> | null
 }
 
 interface SlideRow {
@@ -109,7 +112,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       supabase
         .from('studio_specs')
         .select(
-          'id, object_id, spec_name, description, notes, supplier_id, supplier_name, quantity, unit, width, depth, height, materials, status'
+          'id, object_id, spec_name, description, notes, supplier_id, supplier_name, quantity, unit, width, depth, height, materials, status, category, item_specs'
         )
         .eq('board_id', boardId),
     ])
@@ -200,7 +203,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
       for (const obj of specced) {
         const sp = specByObject.get(obj.id)!
-        const dimensions = [
+        const genericDimensions = [
           sp.width.trim() && `W ${sp.width.trim()}`,
           sp.depth.trim() && `D ${sp.depth.trim()}`,
           sp.height.trim() && `H ${sp.height.trim()}`,
@@ -208,16 +211,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           .filter(Boolean)
           .join(' × ')
 
+        // Category-specific fields (from Pieces or filled in directly on the
+        // spec) take priority for size/colour when present; the generic
+        // Dimensions section on the spec panel is the fallback. Everything
+        // else in the category fields — seat height, wood type, etc. — has
+        // nowhere structured to live on a line item, so it's appended into
+        // the description instead (see specFormatting.ts).
+        const { dimensions: categoryDimensions, colourFinish, extraText } = formatCategorySpecs(sp.category, sp.item_specs)
+        const dimensions = categoryDimensions || genericDimensions || null
+        const description =
+          [sp.description.trim(), sp.notes.trim(), extraText].filter(Boolean).join('\n') || null
+
         parents.push({
           item_name: sp.spec_name.trim() || 'Untitled item',
-          description: [sp.description.trim(), sp.notes.trim()].filter(Boolean).join('\n') || null,
+          description,
           quantity: parseFloat(sp.quantity) || 1,
           unit: sp.unit.trim() || null,
           supplier_id: sp.supplier_id,
           supplier_name: sp.supplier_name.trim() || null,
           cost_price: 0,
           markup_percentage: sp.supplier_id ? (markupBySupplier.get(sp.supplier_id) ?? 0) : 0,
-          dimensions: dimensions || null,
+          dimensions,
+          colour_finish: colourFinish,
           row_type: 'item',
           indent_level: 0,
           sort_order: sortOrder++,

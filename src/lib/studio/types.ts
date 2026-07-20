@@ -211,6 +211,12 @@ export interface StudioSpec {
   // RFQ tracking — stamped server-side when quote-request emails go out
   rfqSentAt: string | null
   rfqSentTo: RfqRecipientStamp[]
+  // Set when this spec was placed from the Pieces catalog. item_specs is a
+  // SNAPSHOT taken at placement time (same shape as pieces.item_specs) —
+  // editing it here never writes back to the catalog piece, and re-pulling
+  // is a deliberate, manual "refresh from piece" action, never automatic.
+  pieceId: string | null
+  itemSpecs: Record<string, string>
 }
 
 export interface StudioSpecRow {
@@ -234,6 +240,8 @@ export interface StudioSpecRow {
   status: SpecStatus
   rfq_sent_at?: string | null
   rfq_sent_to?: RfqRecipientStamp[]
+  piece_id?: string | null
+  item_specs?: Record<string, string> | null
 }
 
 export function specFromRow(row: StudioSpecRow): StudioSpec {
@@ -256,6 +264,8 @@ export function specFromRow(row: StudioSpecRow): StudioSpec {
     status: row.status === 'approved' ? 'approved' : 'draft',
     rfqSentAt: row.rfq_sent_at ?? null,
     rfqSentTo: Array.isArray(row.rfq_sent_to) ? row.rfq_sent_to : [],
+    pieceId: row.piece_id ?? null,
+    itemSpecs: row.item_specs ?? {},
   }
 }
 

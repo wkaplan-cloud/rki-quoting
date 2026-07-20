@@ -12,8 +12,6 @@ export function AppLayout({
   children,
   isAdmin,
   businessName,
-  sourcingEnabled,
-  sourcingBadge,
   capitalHotelsEnabled,
   capitalBadge,
   studioEnabled = false,
@@ -29,8 +27,6 @@ export function AppLayout({
   children: React.ReactNode
   isAdmin: boolean
   businessName: string
-  sourcingEnabled: boolean
-  sourcingBadge: number
   capitalHotelsEnabled: boolean
   capitalBadge: number
   studioEnabled?: boolean
@@ -61,8 +57,6 @@ export function AppLayout({
       <Sidebar
         isAdmin={isAdmin}
         businessName={businessName}
-        sourcingEnabled={sourcingEnabled}
-        sourcingBadge={sourcingBadge}
         capitalHotelsEnabled={capitalHotelsEnabled}
         capitalBadge={capitalBadge}
         studioEnabled={studioEnabled}

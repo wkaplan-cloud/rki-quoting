@@ -76,8 +76,6 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/faq') ||
     pathname.startsWith('/terms') ||
     pathname.startsWith('/privacy') ||
-    pathname.startsWith('/sourcing/respond') ||
-    pathname.startsWith('/api/sourcing/respond') ||
     pathname.startsWith('/job/') ||
     pathname.startsWith('/api/job/') ||
     pathname.startsWith('/api/paystack/subscription-callback') ||
@@ -130,7 +128,7 @@ export async function proxy(request: NextRequest) {
       .select('id')
       .eq('auth_user_id', user.id)
       .maybeSingle()
-    const dest = supplierAccount ? '/supplier-portal/price-requests' : '/dashboard'
+    const dest = supplierAccount ? '/supplier-portal/home' : '/dashboard'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 

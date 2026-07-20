@@ -2,12 +2,11 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Home, Inbox, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap } from 'lucide-react'
+import { Home, Tag, LogOut, User, Menu, X, PanelLeft, PanelLeftClose, FileText, Settings, Users, LayoutDashboard, HardHat, CalendarDays, Bell, ClipboardList, BookOpen, ShoppingCart, FileCheck, Receipt, Library, Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   companyName: string
-  pendingCount: number
   hasQuoting: boolean
   quotingPlan?: string | null
   supplierCategory?: string
@@ -40,7 +39,7 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
-export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false }: Props) {
+export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false }: Props) {
   const isTrades = supplierCategory === 'trades'
   const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
   const tradesTierRank = isTrades ? ({ starter: 1, professional: 2, business: 3, quoting: 3 }[quotingPlan ?? ''] ?? 0) : 0
@@ -173,7 +172,6 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
                   <div className="pt-1 mx-2 mt-1" style={{ borderTop: `1px solid ${S.sidebarBorder}` }} />
                   <p className={`text-[9px] font-bold uppercase tracking-widest px-3 pt-2 pb-1 transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ color: S.textMuted }}>Supplier</p>
                   <NavLink href="/supplier-portal/home"           label="Home"           icon={Home}  />
-                  <NavLink href="/supplier-portal/price-requests" label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
                   <NavLink href="/supplier-portal/price-list"     label="My Price List"  icon={Tag}   />
                 </>
               )}
@@ -184,7 +182,6 @@ export function SupplierPortalNav({ companyName, pendingCount, hasQuoting, quoti
           {!isTrades && !isManufacturing && (
             <>
               <NavLink href="/supplier-portal/home"          label="Home"           icon={Home}  />
-              <NavLink href="/supplier-portal/price-requests" label="Price Requests" icon={Inbox} pendingBadge={pendingCount} />
               <NavLink href="/supplier-portal/price-list"    label="My Price List"  icon={Tag}   />
             </>
           )}

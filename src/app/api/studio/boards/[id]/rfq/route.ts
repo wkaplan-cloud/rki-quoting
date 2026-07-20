@@ -156,6 +156,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             type: m.type, description: m.description, supplierName: m.supplierName, colour: m.colour,
           })),
           notes: row.notes ?? '',
+          itemSpecs: row.item_specs ?? {},
         })
       }
       if (!items.length) continue

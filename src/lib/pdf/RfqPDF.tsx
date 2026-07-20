@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
+import { CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 
 // Request-for-quote document sent to a supplier from a Studio moodboard.
 // One page per item: image on the left, spec details on the right. Prices are
@@ -18,6 +19,10 @@ export interface RfqPdfItem {
   height: string
   materials: { type: string; description: string; supplierName: string; colour: string | null }[]
   notes: string
+  // Category-specific fields (seat height, wood type, IP rating, etc.) —
+  // the supplier needs these to price accurately, not just a photo and
+  // rough dimensions.
+  itemSpecs: Record<string, string>
 }
 
 export interface RfqPdfProps {
@@ -215,6 +220,22 @@ export function RfqPDF(props: RfqPdfProps) {
                   <Text style={s.specLabel}>Dimensions</Text>
                   <Text style={s.specValue}>{dims(item)}</Text>
                 </View>
+              ) : null}
+
+              {(CATEGORY_FIELDS[item.category as CategoryKey] ?? []).some(f => item.itemSpecs[f.key]?.trim()) ? (
+                <>
+                  <Text style={s.sectionHead} minPresenceAhead={30}>Specifications</Text>
+                  {(CATEGORY_FIELDS[item.category as CategoryKey] ?? [])
+                    .filter(f => item.itemSpecs[f.key]?.trim())
+                    .map(f => (
+                      <View key={f.key} style={s.specRow} wrap={false}>
+                        <Text style={s.specLabel}>{f.label}</Text>
+                        <Text style={s.specValue}>
+                          {item.itemSpecs[f.key]}{f.unit ? ` ${f.unit}` : ''}
+                        </Text>
+                      </View>
+                    ))}
+                </>
               ) : null}
 
               {item.materials.length > 0 ? (

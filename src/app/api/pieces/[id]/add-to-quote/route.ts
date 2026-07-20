@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { apiError } from '@/lib/api-error'
+import { formatCategorySpecs } from '@/lib/specFormatting'
 
 // POST /api/pieces/[id]/add-to-quote
 // Body: { project_id, markup_percentage?, quantity? }
@@ -53,19 +54,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const sort_order = (lastItem?.sort_order ?? -1) + 1
     const markup = markup_percentage ?? 0
 
+    // 'general' pieces keep their own free-text dimensions/colour_finish;
+    // category pieces derive them from item_specs, with anything left over
+    // (seat height, wood type, etc.) appended into the description — see
+    // formatCategorySpecs for the per-category size/colour mapping.
+    const isGeneral = !piece.category || piece.category === 'general'
+    const { dimensions, colourFinish, extraText } = isGeneral
+      ? { dimensions: piece.dimensions ?? null, colourFinish: piece.colour_finish ?? null, extraText: null }
+      : formatCategorySpecs(piece.category, piece.item_specs)
+    const description = [piece.description?.trim(), extraText].filter(Boolean).join('\n') || null
+
     const { data: lineItem, error } = await supabase
       .from('line_items')
       .insert({
         project_id,
         item_name: piece.name,
-        description: piece.description ?? null,
+        description,
         quantity: quantity ?? 1,
         cost_price: piece.base_price ?? 0,
         markup_percentage: markup,
         supplier_id: piece.supplier_id ?? null,
         supplier_name: piece.supplier_name ?? null,
-        dimensions: piece.dimensions ?? null,
-        colour_finish: piece.colour_finish ?? null,
+        dimensions,
+        colour_finish: colourFinish,
         delivery_address: deliveryAddress,
         sort_order,
         row_type: 'item',

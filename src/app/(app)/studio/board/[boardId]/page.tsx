@@ -55,7 +55,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
       supabase
         .from('studio_specs')
         .select(
-          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, status'
+          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, status, piece_id, item_specs'
         )
         .eq('board_id', board.id),
       supabase.from('suppliers').select('id, supplier_name, is_platform, price_list_id').order('supplier_name'),

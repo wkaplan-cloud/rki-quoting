@@ -17,7 +17,6 @@ interface Props {
 
 export function SupplierPortalShell({ children, companyName, hasQuoting = false, quotingPlan = null, supplierCategory = 'manufacturer', setupFeePaid = true, staffCount = 0, accountCreatedAt, receivePriceRequests = false }: Props) {
   const [desktopExpanded, setDesktopExpanded] = useState(true)
-  const [pendingCount, setPendingCount] = useState(0)
   const [notificationCount, setNotificationCount] = useState(0)
   const [pendingMaterialsCount, setPendingMaterialsCount] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -26,13 +25,6 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
   useEffect(() => {
     const saved = localStorage.getItem('supplier-sidebar-expanded')
     if (saved !== null) setDesktopExpanded(saved === 'true')
-  }, [])
-
-  useEffect(() => {
-    fetch('/api/supplier-portal/pending-count')
-      .then(r => r.json())
-      .then(d => setPendingCount(d.count ?? 0))
-      .catch(() => {})
   }, [])
 
   useVisiblePoll(() => {
@@ -85,7 +77,6 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
 
       <SupplierPortalNav
         companyName={companyName}
-        pendingCount={pendingCount}
         hasQuoting={hasQuoting}
         quotingPlan={quotingPlan}
         supplierCategory={supplierCategory}

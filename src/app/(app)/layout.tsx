@@ -28,7 +28,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
     }
     // resolvePortalAccount checks supplier_portal_accounts (owners) + portal_org_members (members)
     const portalAccount = await resolvePortalAccount(user.id)
-    if (portalAccount) redirect('/supplier-portal/dashboard')
+    if (portalAccount) redirect('/supplier-portal/home')
 
     // Electrician / trades staff have no portal account — send to staff home
     const { data: staffMember } = await supabaseAdmin
@@ -74,19 +74,14 @@ export default async function Layout({ children }: { children: React.ReactNode }
       ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000))
       : null
 
-  const [{ data: membership }, { data: settings }, { data: sourcingBadgeData }, { count: capitalBadgeCount }] = await Promise.all([
+  const [{ data: membership }, { data: settings }, { count: capitalBadgeCount }] = await Promise.all([
     supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
     supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled').eq('org_id', orgId).maybeSingle(),
-    orgId
-      ? supabaseAdmin.rpc('get_sourcing_badge_count', { p_org_id: orgId })
-      : Promise.resolve({ data: 0, error: null }),
     orgId
       ? supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending').eq('archived', false)
       : Promise.resolve({ count: 0, error: null }),
   ])
 
-  // Sourcing badge: supplier responses waiting for designer to review
-  const sourcingBadge = (sourcingBadgeData as number) ?? 0
   const capitalHotelsEnabled = settings?.capital_hotels_enabled ?? false
   const studioEnabled = settings?.studio_enabled ?? false
   const capitalBadge = capitalBadgeCount ?? 0
@@ -102,8 +97,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
     <AppLayout
       isAdmin={membership?.role === 'admin'}
       businessName={settings?.business_name ?? ''}
-      sourcingEnabled={true}
-      sourcingBadge={sourcingBadge}
       capitalHotelsEnabled={capitalHotelsEnabled}
       capitalBadge={capitalBadge}
       studioEnabled={studioEnabled}

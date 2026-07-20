@@ -1,13 +1,15 @@
 'use client'
 import Link from 'next/link'
-import { useRef } from 'react'
-import { X, Plus, Trash2, ClipboardList } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { X, Plus, Trash2, ClipboardList, RefreshCw, Unlink, ReceiptText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore, newId } from '@/lib/studio/store'
 import { createClient } from '@/lib/supabase/client'
 import type { StudioSpec, MaterialEntry, SpecSupplierOption } from '@/lib/studio/types'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
+import { CategorySpecFields } from '@/components/shared/CategorySpecFields'
+import { CATEGORIES, type CategoryKey } from '@/lib/sourcing-categories'
 
 const ASSET_LABEL_SYNC_DEBOUNCE = 500
 
@@ -32,7 +34,13 @@ const EMPTY_SPEC: Omit<StudioSpec, 'id' | 'objectId' | 'slideId'> = {
   status: 'draft',
   rfqSentAt: null,
   rfqSentTo: [],
+  pieceId: null,
+  itemSpecs: {},
 }
+
+const SPEC_INPUT_CLASS =
+  'w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]'
+const SPEC_LABEL_CLASS = 'block text-[10px] text-[#8A877F] mb-0.5'
 
 // Specs Engine panel — slides in from the right when an object's Specs are
 // opened. Every change autosaves through the store; no Save button, no modal.
@@ -104,6 +112,45 @@ export function SpecsPanel() {
     update({ materials: spec.materials.map(m => (m.id === id ? { ...m, ...patch } : m)) })
   }
 
+  function setCategory(key: CategoryKey) {
+    // Switching category invalidates the old field set — same behaviour as
+    // the Pieces catalog editor, so a leftover "leg_height" doesn't silently
+    // survive under a category that has no such field.
+    update({ category: key, itemSpecs: {} })
+  }
+
+  function setItemSpec(key: string, val: string) {
+    update({ itemSpecs: { ...spec.itemSpecs, [key]: val } })
+  }
+
+  async function refreshFromPiece() {
+    if (!spec.pieceId) return
+    if (!window.confirm('Replace this spec’s details with the catalog piece’s current data? Any edits made here will be overwritten.')) return
+    const supabase = createClient()
+    const { data: piece, error } = await supabase
+      .from('pieces')
+      .select('name, description, category, item_specs, supplier_id, supplier_name, dimensions, colour_finish')
+      .eq('id', spec.pieceId)
+      .maybeSingle()
+    if (error || !piece) {
+      toast.error('Could not load piece — it may have been deleted')
+      return
+    }
+    update({
+      specName: piece.name ?? spec.specName,
+      description: piece.description ?? '',
+      category: piece.category ?? 'general',
+      itemSpecs: piece.item_specs ?? {},
+      supplierId: piece.supplier_id ?? null,
+      supplierName: piece.supplier_name ?? '',
+    })
+    toast.success('Refreshed from catalog')
+  }
+
+  function unlinkFromPiece() {
+    update({ pieceId: null })
+  }
+
   return (
     <div className="flex-shrink-0 w-[280px] h-full flex flex-col bg-[#F5F2EC] border-l border-[#D8D3C8]">
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#D8D3C8]">
@@ -141,6 +188,31 @@ export function SpecsPanel() {
           ))}
         </div>
 
+        {/* Catalog link */}
+        {spec.pieceId && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-[#D8D3C8] bg-white px-2.5 py-2">
+            <span className="text-[10px] text-[#8A877F] leading-snug">Linked to catalog piece</span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => void refreshFromPiece()}
+                title="Refresh from piece"
+                className="w-6 h-6 flex items-center justify-center rounded text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#EDE9E1] transition-colors cursor-pointer"
+              >
+                <RefreshCw size={11} />
+              </button>
+              <button
+                type="button"
+                onClick={unlinkFromPiece}
+                title="Unlink — make this a one-off variant"
+                className="w-6 h-6 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
+              >
+                <Unlink size={11} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* General */}
         <Section title="General">
           <Field label="Spec name">
@@ -153,6 +225,40 @@ export function SpecsPanel() {
             <TextArea value={spec.notes} onChange={v => update({ notes: v })} rows={2} />
           </Field>
         </Section>
+
+        {/* Category */}
+        <Section title="Category">
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => setCategory(cat.key as CategoryKey)}
+                className={`px-2.5 py-1 text-[10px] font-medium rounded-full border transition-colors cursor-pointer ${
+                  spec.category === cat.key
+                    ? 'bg-[#2C2C2A] text-white border-[#2C2C2A]'
+                    : 'bg-white text-[#8A877F] border-[#D8D3C8] hover:text-[#2C2C2A]'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </Section>
+
+        {/* Category-specific specifications */}
+        {CATEGORIES.some(c => c.key === spec.category) && spec.category !== 'general' && (
+          <Section title="Specifications">
+            <CategorySpecFields
+              category={spec.category as CategoryKey}
+              values={spec.itemSpecs}
+              onChange={setItemSpec}
+              inputClassName={SPEC_INPUT_CLASS}
+              labelClassName={SPEC_LABEL_CLASS}
+              fieldWrapperClassName=""
+            />
+          </Section>
+        )}
 
         {/* Supplier */}
         <Section title="Supplier">
@@ -173,6 +279,13 @@ export function SpecsPanel() {
             )}
           </Field>
         </Section>
+
+        {/* Quotes received — log what a supplier said, whether that came in
+            by email (typed in here) or, later, through a self-serve link.
+            If this spec came from a catalog piece, logging a quote here
+            also refreshes that piece's reference price — the same way
+            accepting a price used to update it, just manual now. */}
+        {spec.id && <LoggedQuotes specId={spec.id} pieceId={spec.pieceId} defaultSupplierName={spec.supplierName} />}
 
         {/* Product */}
         <Section title="Product">
@@ -262,6 +375,171 @@ export function SpecsPanel() {
         </Section>
       </div>
     </div>
+  )
+}
+
+interface SpecQuoteRow {
+  id: string
+  supplier_name: string
+  price: number | null
+  notes: string
+  source: string
+  created_at: string
+}
+
+// Record of what a supplier actually quoted — typed in here after reading
+// their email reply today; source: 'link' is reserved for a future
+// self-serve submission, same table, same list, no separate view to check.
+function LoggedQuotes({
+  specId,
+  pieceId,
+  defaultSupplierName,
+}: {
+  specId: string
+  pieceId: string | null
+  defaultSupplierName: string
+}) {
+  const orgId = useStudioStore(s => s.orgId)
+  const [quotes, setQuotes] = useState<SpecQuoteRow[] | null>(null)
+  const [supplierName, setSupplierNameField] = useState(defaultSupplierName)
+  const [price, setPrice] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('spec_quotes')
+        .select('id, supplier_name, price, notes, source, created_at')
+        .eq('studio_spec_id', specId)
+        .order('created_at', { ascending: false })
+      if (!cancelled) setQuotes((data ?? []) as SpecQuoteRow[])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [specId])
+
+  async function logQuote() {
+    if (!supplierName.trim() || !price.trim()) return
+    setSaving(true)
+    try {
+      // The spec row must exist in the DB before this FK insert can succeed
+      await useStudioStore.getState().flushSave()
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('spec_quotes')
+        .insert({
+          org_id: orgId,
+          studio_spec_id: specId,
+          supplier_name: supplierName.trim(),
+          price: Number(price) || null,
+          notes: notes.trim(),
+          source: 'manual',
+        })
+        .select('id, supplier_name, price, notes, source, created_at')
+        .single()
+      if (error) throw new Error(error.message)
+      setQuotes(prev => [data as SpecQuoteRow, ...(prev ?? [])])
+
+      // Piece-sourced spec — refresh the catalog piece's reference price too,
+      // so future re-use of it elsewhere starts from an up-to-date number
+      if (pieceId) {
+        await fetch(`/api/pieces/${pieceId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base_price: Number(price) }),
+        }).catch(() => {})
+      }
+
+      setPrice('')
+      setNotes('')
+      toast.success('Quote logged')
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not log quote')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeQuote(id: string) {
+    const prev = quotes
+    setQuotes(q => (q ?? []).filter(x => x.id !== id))
+    const supabase = createClient()
+    const { error } = await supabase.from('spec_quotes').delete().eq('id', id)
+    if (error) {
+      setQuotes(prev ?? null)
+      toast.error('Could not remove — please try again')
+    }
+  }
+
+  return (
+    <Section title="Quotes received">
+      {quotes === null ? (
+        <p className="text-[11px] text-[#8A877F]">Loading…</p>
+      ) : quotes.length === 0 ? (
+        <p className="text-[11px] text-[#8A877F]">No quotes logged yet</p>
+      ) : (
+        <div className="space-y-1.5">
+          {quotes.map(q => (
+            <div
+              key={q.id}
+              className="flex items-start justify-between gap-1.5 rounded-md border border-[#D8D3C8] bg-white px-2 py-1.5"
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] text-[#2C2C2A] truncate">
+                  {q.supplier_name || 'Unnamed supplier'}
+                  {q.price != null && <span className="font-medium"> — R{q.price.toLocaleString()}</span>}
+                </p>
+                {q.notes && <p className="text-[10px] text-[#8A877F] mt-0.5 leading-snug">{q.notes}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={() => void removeQuote(q.id)}
+                title="Remove"
+                className="w-5 h-5 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 cursor-pointer"
+              >
+                <Trash2 size={10} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="pt-1.5 space-y-1.5">
+        <div className="flex gap-1.5">
+          <input
+            value={supplierName}
+            onChange={e => setSupplierNameField(e.target.value)}
+            placeholder="Supplier"
+            className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
+          />
+          <input
+            value={price}
+            onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ''))}
+            placeholder="Price"
+            inputMode="decimal"
+            className="w-20 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
+          />
+        </div>
+        <input
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="Notes — lead time, terms…"
+          className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
+        />
+        <button
+          type="button"
+          onClick={() => void logQuote()}
+          disabled={saving || !supplierName.trim() || !price.trim()}
+          className="w-full flex items-center justify-center gap-1.5 h-7 text-[11px] font-medium bg-[#2C2C2A] text-white rounded-md hover:bg-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <ReceiptText size={11} /> Log quote
+        </button>
+      </div>
+    </Section>
   )
 }
 

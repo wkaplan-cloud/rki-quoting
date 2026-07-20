@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette, PackageOpen } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
 import type {
@@ -16,6 +16,7 @@ import type { StudioObject } from '@/lib/studio/types'
 import { SlidePanel } from './SlidePanel'
 import { CanvasArea } from './CanvasArea'
 import { AssetPanel } from './AssetPanel'
+import { PiecesPanel } from './PiecesPanel'
 import { SpecsPanel } from './SpecsPanel'
 import { SpecsListPanel } from './SpecsListPanel'
 import { RequestQuotesModal } from './RequestQuotesModal'
@@ -49,6 +50,7 @@ export default function EditorShell(props: EditorShellProps) {
   const [printPicker, setPrintPicker] = useState(false)
   const [printJob, setPrintJob] = useState<{ slideIds: string[]; win: Window | null } | null>(null)
   const [showAssets, setShowAssets] = useState(false)
+  const [showPieces, setShowPieces] = useState(false)
   const [showSpecs, setShowSpecs] = useState(false)
   const [showTheme, setShowTheme] = useState(false)
   const presenting = useStudioStore(s => s.presenting)
@@ -135,16 +137,19 @@ export default function EditorShell(props: EditorShellProps) {
     })
   }, [])
 
-  function togglePanel(panel: 'assets' | 'specs' | 'theme') {
-    const current = panel === 'assets' ? showAssets : panel === 'specs' ? showSpecs : showTheme
+  function togglePanel(panel: 'assets' | 'pieces' | 'specs' | 'theme') {
+    const current = panel === 'assets' ? showAssets : panel === 'pieces' ? showPieces : panel === 'specs' ? showSpecs : showTheme
     const next = !current
     const assets = panel === 'assets' ? next : false
+    const pieces = panel === 'pieces' ? next : false
     const specs = panel === 'specs' ? next : false
     const theme = panel === 'theme' ? next : false
     setShowAssets(assets)
+    setShowPieces(pieces)
     setShowSpecs(specs)
     setShowTheme(theme)
     localStorage.setItem('studio-assets-open', String(assets))
+    localStorage.setItem('studio-pieces-open', String(pieces))
     localStorage.setItem('studio-specs-open', String(specs))
     localStorage.setItem('studio-theme-open', String(theme))
     // Closing Specs from the header must also close whichever per-object
@@ -318,6 +323,16 @@ export default function EditorShell(props: EditorShellProps) {
         </button>
         <button
           type="button"
+          onClick={() => togglePanel('pieces')}
+          className={`flex items-center gap-1.5 h-8 px-3 text-xs rounded-lg transition-colors cursor-pointer ${
+            showPieces ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+          }`}
+          title="Your catalog of specced pieces"
+        >
+          <PackageOpen size={13} /> Pieces
+        </button>
+        <button
+          type="button"
           onClick={() => togglePanel('specs')}
           className={`flex items-center gap-1.5 h-8 px-3 text-xs rounded-lg transition-colors cursor-pointer ${
             showSpecs ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
@@ -366,6 +381,7 @@ export default function EditorShell(props: EditorShellProps) {
         <SlidePanel />
         <CanvasArea />
         {showAssets && <AssetPanel />}
+        {showPieces && <PiecesPanel />}
         {showSpecs && !specEditorOpen && <SpecsListPanel />}
         {showTheme && <MasterThemePanel />}
         <SpecsPanel />

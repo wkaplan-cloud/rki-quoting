@@ -13,7 +13,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
       .eq('auth_user_id', user.id)
       .maybeSingle()
 
-    if (supplierAccount) redirect('/supplier-portal/dashboard')
+    if (supplierAccount) redirect('/supplier-portal/home')
   }
 
   return <>{children}</>

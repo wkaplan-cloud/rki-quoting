@@ -51,7 +51,7 @@ export default function LoginPage() {
         supabase.from('elec_staff').select('id').eq('auth_user_id', session.user.id).eq('is_active', true).maybeSingle(),
       ])
       setCheckingSession(false)
-      if (portalAccount || portalMember) router.replace('/supplier-portal/dashboard')
+      if (portalAccount || portalMember) router.replace('/supplier-portal/home')
       else if (elecStaff) router.replace('/supplier-portal/staff-home')
       else router.replace('/dashboard')
     })

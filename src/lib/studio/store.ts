@@ -434,6 +434,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           status: 'draft',
           rfqSentAt: null,
           rfqSentTo: [],
+          pieceId: null,
+          itemSpecs: {},
           ...patch,
         }
     set({
@@ -780,6 +782,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           height: sp.height,
           materials: sp.materials,
           status: sp.status,
+          piece_id: sp.pieceId,
+          item_specs: sp.itemSpecs,
           updated_at: new Date().toISOString(),
         }))
         const { error } = await supabase
