@@ -18,7 +18,7 @@ const secondaryLinks = [
   { href: '/clients',     label: 'Clients',     icon: Users,     tourId: 'nav-clients' },
   { href: '/suppliers',   label: 'Suppliers',   icon: Truck,     tourId: 'nav-suppliers' },
   { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
-  { href: '/quotes',      label: 'Quotes',      icon: ReceiptText },
+  { href: '/quotes',      label: 'Quotes',      icon: ReceiptText, soloLocked: true },
 ]
 
 interface Props {
@@ -155,23 +155,41 @@ export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, c
 
           <div className="border-t border-white/10 my-2 mx-2" />
 
-          {secondaryLinks.map(({ href, label, icon: Icon, tourId }: { href: string; label: string; icon: any; tourId?: string }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              data-tour={tourId}
-              className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
-                ${isActive(href)
-                  ? 'text-white/80'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'}`}
-            >
-              <span className="flex items-center justify-center w-10 flex-shrink-0">
-                <Icon size={14} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
-              </span>
-              <span className={labelCls}>{label}</span>
-            </Link>
-          ))}
+          {secondaryLinks.map(({ href, label, icon: Icon, tourId, soloLocked }: { href: string; label: string; icon: any; tourId?: string; soloLocked?: boolean }) => {
+            if (soloLocked && plan === 'solo') {
+              return (
+                <button
+                  key={href}
+                  onClick={() => setUpgradeModalOpen(true)}
+                  className="flex items-center h-8 rounded mx-1 transition-colors duration-150 text-white/30 hover:text-white/50 hover:bg-white/5 w-[calc(100%-8px)]"
+                >
+                  <span className="flex items-center justify-center w-10 flex-shrink-0">
+                    <Icon size={14} className="opacity-30" />
+                  </span>
+                  <span className={`${labelCls} flex items-center gap-1.5`}>
+                    {label} <Lock size={9} className="opacity-40" />
+                  </span>
+                </button>
+              )
+            }
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                data-tour={tourId}
+                className={`flex items-center h-8 rounded mx-1 transition-colors duration-150
+                  ${isActive(href)
+                    ? 'text-white/80'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+              >
+                <span className="flex items-center justify-center w-10 flex-shrink-0">
+                  <Icon size={14} className={isActive(href) ? 'text-[#C4A46B]' : 'opacity-60'} />
+                </span>
+                <span className={labelCls}>{label}</span>
+              </Link>
+            )
+          })}
 
           {plan === 'solo' ? (
             <button

@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 interface SpecQuoteRow {
@@ -30,6 +32,15 @@ function one<T>(v: T | T[] | null | undefined): T | null {
 // across inboxes and boards.
 export default async function QuotesPage() {
   const supabase = await createClient()
+  const { data: orgId } = await supabase.rpc('get_current_org_id')
+
+  // Same gate as Pieces — most of what lands here originates from Pieces
+  // or Studio, both solo-plan-locked, so this follows suit
+  const { data: org } = orgId
+    ? await supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single()
+    : { data: null }
+  if (org?.plan === 'solo') redirect('/projects')
+
   const { data } = await supabase
     .from('spec_quotes')
     .select(
