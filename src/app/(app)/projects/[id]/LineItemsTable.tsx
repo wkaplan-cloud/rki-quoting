@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
@@ -128,6 +129,7 @@ const LINE_ITEM_TIPS = [
 
 export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived }: Props) {
   const supabase = createClient()
+  const router = useRouter()
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
   const [showTips, setShowTips] = useState(false)
@@ -256,6 +258,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
   const saveField = useCallback(async (id: string, field: string, value: string | number | null, oldDescriptionValue?: string | null) => {
     await supabase.from('line_items').update({ [field]: value }).eq('id', id)
+    router.refresh()
     if (field === 'description' && locked && oldDescriptionValue !== undefined && oldDescriptionValue !== value) {
       const [{ data: { user } }, { data: orgId }] = await Promise.all([
         supabase.auth.getUser(),
@@ -291,7 +294,8 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       onChange(lineItemsRef.current.map(li => li.id === id ? { ...li, cost_price } : li))
       await supabase.from('line_items').update({ cost_price }).eq('id', id)
     }
-  }, [onChange, supabase])
+    router.refresh()
+  }, [onChange, supabase, router])
 
   const applyCostDiscount = useCallback((id: string, discountPct: number) => {
     const current = lineItemsRef.current.find(i => i.id === id)
