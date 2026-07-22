@@ -103,7 +103,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       )
     }
 
-    const [{ data: slides }, { data: specs }] = await Promise.all([
+    const [{ data: slides }, { data: specs }, { data: settings }] = await Promise.all([
       supabase
         .from('studio_slides')
         .select('id, name, heading, sort_order, objects')
@@ -115,7 +115,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           'id, object_id, spec_name, description, notes, supplier_id, supplier_name, quantity, unit, width, depth, height, materials, status, category, item_specs'
         )
         .eq('board_id', boardId),
+      supabase.from('settings').select('business_name, business_address').maybeSingle(),
     ])
+
+    // Same office-address default every other "add to quote" path uses
+    // (LineItemsTable's addRow/insertRowBefore, pieces add-to-quote) — without
+    // it these rows fall back to the column default instead of the org's
+    // actual delivery address.
+    const defaultDeliveryAddress = settings?.business_address
+      ? `${settings.business_name ?? ''}\n${settings.business_address}`.trim()
+      : ''
 
     // Status is a heads-up, not a gate — the confirm modal warns when drafts
     // remain, but every spec converts regardless of draft/approved
@@ -233,6 +242,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           markup_percentage: sp.supplier_id ? (markupBySupplier.get(sp.supplier_id) ?? 0) : 0,
           dimensions,
           colour_finish: colourFinish,
+          delivery_address: defaultDeliveryAddress,
           row_type: 'item',
           indent_level: 0,
           sort_order: sortOrder++,
@@ -263,6 +273,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               twinbru_product_id: m.twinbruProductId,
               twinbru_cost_price: live?.price ?? null,
               fabric_width_cm: live?.widthCm ?? m.widthCm,
+              delivery_address: defaultDeliveryAddress,
               row_type: 'item',
               indent_level: 1,
               sort_order: sortOrder++,
