@@ -18,7 +18,7 @@ const secondaryLinks = [
   { href: '/clients',     label: 'Clients',     icon: Users,     tourId: 'nav-clients' },
   { href: '/suppliers',   label: 'Suppliers',   icon: Truck,     tourId: 'nav-suppliers' },
   { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
-  { href: '/quotes',      label: 'Quotes',      icon: ReceiptText, soloLocked: true },
+  { href: '/quotes',      label: 'Quotes',      icon: ReceiptText, soloLocked: true, requiresStudio: true },
 ]
 
 interface Props {
@@ -155,7 +155,10 @@ export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, c
 
           <div className="border-t border-white/10 my-2 mx-2" />
 
-          {secondaryLinks.map(({ href, label, icon: Icon, tourId, soloLocked }: { href: string; label: string; icon: any; tourId?: string; soloLocked?: boolean }) => {
+          {secondaryLinks.map(({ href, label, icon: Icon, tourId, soloLocked, requiresStudio }: { href: string; label: string; icon: any; tourId?: string; soloLocked?: boolean; requiresStudio?: boolean }) => {
+            if (requiresStudio && !studioEnabled) {
+              return null
+            }
             if (soloLocked && plan === 'solo') {
               return (
                 <button
