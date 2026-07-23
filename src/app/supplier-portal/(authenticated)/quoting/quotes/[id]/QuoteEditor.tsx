@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
-  MoreHorizontal, Archive, Lock, Printer,
+  MoreHorizontal, Archive, Lock, Printer, Copy,
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import type { DropResult, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
@@ -444,6 +444,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const [activeTab, setActiveTab]   = useState<QuoteTab>('quote')
   const [transitioning, setTransitioning] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
   const [showReconModal, setShowReconModal] = useState(false)
 
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
@@ -661,6 +662,15 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     router.push('/supplier-portal/quoting/quotes')
   }
 
+  async function duplicateProject() {
+    setDuplicating(true)
+    const res = await fetch(`/api/supplier-portal/quoting/quotes/${q.id}/duplicate`, { method: 'POST' })
+    const data = await res.json() as { id?: string; error?: string }
+    setDuplicating(false)
+    if (!res.ok || !data.id) { alert(data.error ?? 'Failed to duplicate'); return }
+    router.push(`/supplier-portal/quoting/quotes/${data.id}`)
+  }
+
   function addSection() { setSections(ss => [...ss, newSection(q.id, ss.length)]) }
   function addFreeItem() { setFreeItems(items => [...items, newItem(q.id, null, items.length)]) }
   function insertFreeItemAt(index: number) {
@@ -829,6 +839,12 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
                     className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
                     style={{ color: S.text }}>
                     <FileText size={14} /> Recon / Sign-off Sheet
+                  </button>
+                  <button onClick={() => { setShowMoreMenu(false); void duplicateProject() }}
+                    disabled={duplicating}
+                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-50"
+                    style={{ color: S.text }}>
+                    <Copy size={14} /> {duplicating ? 'Duplicating…' : 'Duplicate Project'}
                   </button>
                   {['draft', 'quoted'].includes(q.status) && (
                     <button onClick={() => { setShowMoreMenu(false); void archiveQuote() }}
