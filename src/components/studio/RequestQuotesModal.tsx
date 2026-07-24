@@ -52,6 +52,9 @@ export function RequestQuotesModal() {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
+  const [duplicates, setDuplicates] = useState<
+    { item: string; supplierName: string; email: string; minutesAgo: number }[] | null
+  >(null)
 
   const objectIds = useMemo(() => rfqObjectIds ?? [], [rfqObjectIds])
   const withSpec = objectIds.filter(id => specsMap[id])
@@ -167,14 +170,16 @@ export function RequestQuotesModal() {
   const totalRecipients = groups.reduce((n, g) => n + (recipients[g.key]?.length ?? 0), 0)
   const missingEmails = groups.some(g => (recipients[g.key] ?? []).some(r => !r.email.trim()))
 
-  async function send() {
+  async function send(force = false) {
     setSending(true)
     setErrors([])
+    if (!force) setDuplicates(null)
     try {
       // Make sure every spec edit is in the DB before the server reads them
       await useStudioStore.getState().flushSave()
       const payload = {
         message: message.trim(),
+        force,
         groups: groups
           .map(g => ({
             objectIds: g.objectIds,
@@ -191,6 +196,11 @@ export function RequestQuotesModal() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
+        if (json.error === 'duplicate_rfq' && Array.isArray(json.dupes)) {
+          setDuplicates(json.dupes)
+          setSending(false)
+          return
+        }
         setErrors([json.error ?? 'Sending failed — please try again'])
         setSending(false)
         return
@@ -352,6 +362,33 @@ export function RequestQuotesModal() {
             Each recipient gets their own email with a PDF of only their items — comparison suppliers
             are never CC&apos;d together. Replies come to your email address.
           </p>
+
+          {duplicates && duplicates.length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 space-y-1.5">
+              <p className="text-[11px] font-medium text-amber-800">Already requested recently:</p>
+              {duplicates.map((d, i) => (
+                <p key={i} className="text-[11px] text-amber-800 leading-relaxed">
+                  {d.item} — {d.supplierName} ({d.minutesAgo}m ago)
+                </p>
+              ))}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setDuplicates(null)}
+                  className="h-7 px-2.5 text-[11px] text-amber-800 hover:bg-amber-100 rounded-md cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void send(true)}
+                  className="h-7 px-2.5 text-[11px] font-medium bg-amber-800 text-white hover:bg-amber-900 rounded-md cursor-pointer"
+                >
+                  Send anyway
+                </button>
+              </div>
+            </div>
+          )}
 
           {errors.length > 0 && (
             <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 space-y-1">

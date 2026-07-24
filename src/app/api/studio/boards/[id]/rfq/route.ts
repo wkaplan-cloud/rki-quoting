@@ -25,9 +25,17 @@ interface RfqGroup {
 interface RfqBody {
   groups: RfqGroup[]
   message: string
+  force?: boolean
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// A resend to the same supplier for the same item within this window is far
+// more likely an accidental duplicate (double-click, reopened modal, retried
+// request) than a deliberate resend — so it's blocked unless the client
+// confirms with force:true. Longer gaps are assumed intentional (chasing a
+// non-responsive supplier) and go straight through.
+const DUPLICATE_WINDOW_MS = 10 * 60 * 1000
 
 function slug(v: string) {
   return v.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'RFQ'
@@ -100,6 +108,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ])
 
     const specByObject = new Map((specRows ?? []).map(r => [(r as StudioSpecRow).object_id, r as StudioSpecRow]))
+
+    if (!body.force) {
+      const now = Date.now()
+      const dupes: { item: string; supplierName: string; email: string; minutesAgo: number }[] = []
+      for (const group of groups) {
+        for (const objectId of group.objectIds) {
+          const row = specByObject.get(objectId)
+          if (!row) continue
+          const history = Array.isArray(row.rfq_sent_to) ? (row.rfq_sent_to as RfqRecipientStamp[]) : []
+          for (const recipient of group.recipients) {
+            const email = recipient.email.trim().toLowerCase()
+            const match = history.find(
+              h => h.email?.trim().toLowerCase() === email && now - new Date(h.at).getTime() < DUPLICATE_WINDOW_MS
+            )
+            if (match) {
+              dupes.push({
+                item: row.spec_name || 'Untitled item',
+                supplierName: recipient.supplierName || email,
+                email,
+                minutesAgo: Math.max(1, Math.round((now - new Date(match.at).getTime()) / 60000)),
+              })
+            }
+          }
+        }
+      }
+      if (dupes.length) {
+        return NextResponse.json({ error: 'duplicate_rfq', dupes }, { status: 409 })
+      }
+    }
+
     const imageUrlByObject = new Map<string, string>()
     // Room/area = the heading of the slide the object actually sits on
     const areaByObject = new Map<string, string>()

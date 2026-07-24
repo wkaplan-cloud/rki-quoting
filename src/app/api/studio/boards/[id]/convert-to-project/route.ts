@@ -308,6 +308,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: projErr?.message ?? 'Failed to create project' }, { status: 500 })
     }
 
+    // Atomic claim: the earlier project_id check above is read-then-write and
+    // can't stop two concurrent conversions of the same board (both can pass
+    // that check before either writes). This conditional update is the real
+    // guard — only the request that actually flips project_id from null wins;
+    // the loser deletes the project it just created and backs off with 409.
+    const { data: claimed } = await supabase
+      .from('studio_boards')
+      .update({ project_id: project.id })
+      .eq('id', boardId)
+      .is('project_id', null)
+      .select('id')
+    if (!claimed || claimed.length === 0) {
+      await supabase.from('projects').delete().eq('id', project.id)
+      return NextResponse.json({ error: 'This board is already linked to a project' }, { status: 409 })
+    }
+
     // Pass 1: sections + items — returned in insert order, giving us ids
     const parentRows = parents.map(r => ({ ...r, project_id: project.id }))
     const { data: inserted, error: liErr } = await supabase
@@ -315,7 +331,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .insert(parentRows)
       .select('id')
     if (liErr || !inserted || inserted.length !== parentRows.length) {
-      // Don't leave a half-built project behind
+      // Don't leave a half-built project behind. The board is already
+      // claimed by this project (on delete cascade would otherwise take the
+      // board down with it), so unlink before deleting.
+      await supabase.from('studio_boards').update({ project_id: null }).eq('id', boardId)
       await supabase.from('projects').delete().eq('id', project.id)
       return NextResponse.json({ error: liErr?.message ?? 'Failed to create line items' }, { status: 500 })
     }
@@ -327,12 +346,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (childRows.length) {
       const { error: childErr } = await supabase.from('line_items').insert(childRows)
       if (childErr) {
+        await supabase.from('studio_boards').update({ project_id: null }).eq('id', boardId)
         await supabase.from('projects').delete().eq('id', project.id)
         return NextResponse.json({ error: childErr.message }, { status: 500 })
       }
     }
 
-    // Link each spec to its line item, and the board to the project
+    // Link each spec to its line item (the board→project link is already
+    // claimed above)
     await Promise.all(
       parentMeta.map((meta, i) =>
         meta.specId
@@ -340,7 +361,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           : Promise.resolve(null)
       )
     )
-    await supabase.from('studio_boards').update({ project_id: project.id }).eq('id', boardId)
 
     return NextResponse.json({ projectId: project.id, itemCount, materialCount: childRows.length })
   } catch (e) {
