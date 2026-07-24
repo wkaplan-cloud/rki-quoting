@@ -103,12 +103,19 @@ function SupplierLoginForm() {
     if (!email.trim()) { setError('Enter your email address above first'); return }
     setMagicSending(true)
     setError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: window.location.origin + '/supplier-portal/login' },
-    })
-    setMagicSending(false)
-    if (error) { setError(error.message) } else { setMagicSent(true) }
+    try {
+      const res = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), redirectPath: '/supplier-portal/login' }),
+      })
+      const data = await res.json()
+      setMagicSending(false)
+      if (!res.ok) { setError(data.error ?? 'Something went wrong. Please try again.') } else { setMagicSent(true) }
+    } catch {
+      setMagicSending(false)
+      setError('Connection error — please try again')
+    }
   }
 
   if (hashRedirecting) {

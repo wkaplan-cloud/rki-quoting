@@ -131,12 +131,19 @@ export default function LoginPage() {
     if (!email.trim()) { setError('Enter your email address above first'); return }
     setMagicSending(true)
     setError('')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin + '/login' },
-    })
-    setMagicSending(false)
-    if (error) { setError(error.message) } else { setMagicSent(true) }
+    try {
+      const res = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), redirectPath: '/login' }),
+      })
+      const data = await res.json()
+      setMagicSending(false)
+      if (!res.ok) { setError(data.error ?? 'Something went wrong. Please try again.') } else { setMagicSent(true) }
+    } catch {
+      setMagicSending(false)
+      setError('Connection error — please try again')
+    }
   }
 
   const cardShadow = { boxShadow: '0 40px 120px rgba(0,0,0,0.22), 0 16px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.08)' }
