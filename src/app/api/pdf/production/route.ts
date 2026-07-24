@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const [{ data: project }, { data: lineItems }, { data: suppliers }, { data: settings }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(client_name)').eq('id', projectId).single(),
-      supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
+      supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
       supabase.from('suppliers').select('*'),
       supabase.from('settings').select('logo_url, business_name, vat_rate').maybeSingle(),
     ])

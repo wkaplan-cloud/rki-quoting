@@ -342,9 +342,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     const renumbered = spliced.map((item, i) => ({ ...item, sort_order: i }))
     onChange(renumbered)
     setNewlyAddedId(data.id)
-    await Promise.all(renumbered.map(item =>
-      supabase.from('line_items').update({ sort_order: item.sort_order }).eq('id', item.id)
-    ))
+    const { error: reorderError } = await supabase.from('line_items')
+      .upsert(renumbered.map(item => ({ id: item.id, sort_order: item.sort_order })), { onConflict: 'id' })
+    if (reorderError) {
+      toast.error('Failed to save new row order — please refresh')
+    }
   }, [projectId, lineItems, onChange, supabase, officeAddress])
 
   const addRow = useCallback(async () => {
@@ -479,9 +481,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     onChange(updated)
     dragItem.current = null
     dragOver.current = null
-    await Promise.all(updated.map(item =>
-      supabase.from('line_items').update({ sort_order: item.sort_order }).eq('id', item.id)
-    ))
+    const { error: reorderError } = await supabase.from('line_items')
+      .upsert(updated.map(item => ({ id: item.id, sort_order: item.sort_order })), { onConflict: 'id' })
+    if (reorderError) {
+      toast.error('Failed to save new order — please refresh')
+    }
   }, [lineItems, onChange, supabase])
 
   const itemCount = lineItems.filter(i => i.row_type === 'item').length

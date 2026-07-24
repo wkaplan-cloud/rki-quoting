@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     const [{ data: project }, { data: lineItems }, { data: settings }, { data: suppliers }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
-      supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order'),
+      supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
       supabase.from('settings').select('business_name, email_from, vat_rate').maybeSingle(),
       supabase.from('suppliers').select('id, supplier_name').order('supplier_name'),
     ])

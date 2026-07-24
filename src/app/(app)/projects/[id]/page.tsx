@@ -22,7 +22,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     { data: orgMeta }, { data: members }, { data: activeAccess },
   ] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
-    supabase.from('line_items').select('*').eq('project_id', id).order('sort_order'),
+    supabase.from('line_items').select('*').eq('project_id', id).order('sort_order').order('created_at'),
     supabase.from('clients').select('id, client_name, company').order('client_name'),
     supabase.from('suppliers').select('id, supplier_name, markup_percentage, delivery_address, delivery_contact_name, delivery_contact_number, is_platform, price_list_id, email').order('supplier_name'),
     supabase.from('items').select('id, item_name').order('item_name'),
