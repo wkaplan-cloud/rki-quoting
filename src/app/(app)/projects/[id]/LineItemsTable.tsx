@@ -343,7 +343,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     onChange(renumbered)
     setNewlyAddedId(data.id)
     const { error: reorderError } = await supabase.from('line_items')
-      .upsert(renumbered.map(item => ({ id: item.id, sort_order: item.sort_order })), { onConflict: 'id' })
+      .upsert(renumbered.map(item => ({ id: item.id, project_id: projectId, sort_order: item.sort_order })), { onConflict: 'id' })
     if (reorderError) {
       toast.error('Failed to save new row order — please refresh')
     }
@@ -472,11 +472,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     const renumbered = lineItems.filter(item => item.id !== id).map((item, i) => ({ ...item, sort_order: i }))
     onChange(renumbered)
     const { error: reorderError } = await supabase.from('line_items')
-      .upsert(renumbered.map(item => ({ id: item.id, sort_order: item.sort_order })), { onConflict: 'id' })
+      .upsert(renumbered.map(item => ({ id: item.id, project_id: projectId, sort_order: item.sort_order })), { onConflict: 'id' })
     if (reorderError) {
       toast.error('Failed to renumber remaining rows — please refresh')
     }
-  }, [lineItems, onChange, supabase])
+  }, [lineItems, onChange, supabase, projectId])
 
   const handleDragEnd = useCallback(async () => {
     if (dragItem.current === null || dragOver.current === null) return
@@ -488,11 +488,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     dragItem.current = null
     dragOver.current = null
     const { error: reorderError } = await supabase.from('line_items')
-      .upsert(updated.map(item => ({ id: item.id, sort_order: item.sort_order })), { onConflict: 'id' })
+      .upsert(updated.map(item => ({ id: item.id, project_id: projectId, sort_order: item.sort_order })), { onConflict: 'id' })
     if (reorderError) {
       toast.error('Failed to save new order — please refresh')
     }
-  }, [lineItems, onChange, supabase])
+  }, [lineItems, onChange, supabase, projectId])
 
   const itemCount = lineItems.filter(i => i.row_type === 'item').length
 
