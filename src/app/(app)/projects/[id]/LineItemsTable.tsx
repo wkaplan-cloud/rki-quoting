@@ -350,7 +350,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   }, [projectId, lineItems, onChange, supabase, officeAddress])
 
   const addRow = useCallback(async () => {
-    const sort_order = lineItems.length
+    const sort_order = lineItems.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1
     const { data, error } = await supabase.from('line_items').insert({
       project_id: projectId,
       item_name: '',
@@ -369,7 +369,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   }, [projectId, lineItems, onChange, supabase])
 
   const addSection = useCallback(async () => {
-    const sort_order = lineItems.length
+    const sort_order = lineItems.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1
     const { data, error } = await supabase.from('line_items').insert({
       project_id: projectId,
       item_name: '',
@@ -469,7 +469,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
   const deleteRow = useCallback(async (id: string) => {
     await supabase.from('line_items').delete().eq('id', id)
-    onChange(lineItems.filter(item => item.id !== id))
+    const renumbered = lineItems.filter(item => item.id !== id).map((item, i) => ({ ...item, sort_order: i }))
+    onChange(renumbered)
+    const { error: reorderError } = await supabase.from('line_items')
+      .upsert(renumbered.map(item => ({ id: item.id, sort_order: item.sort_order })), { onConflict: 'id' })
+    if (reorderError) {
+      toast.error('Failed to renumber remaining rows — please refresh')
+    }
   }, [lineItems, onChange, supabase])
 
   const handleDragEnd = useCallback(async () => {
