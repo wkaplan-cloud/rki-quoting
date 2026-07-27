@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { apiError } from '@/lib/api-error'
 import { todaySA } from '@/lib/dates'
-import { normalizeMaterial, type StudioObject, type MaterialEntry } from '@/lib/studio/types'
-import { formatCategorySpecs } from '@/lib/specFormatting'
+import {
+  buildSpecByObject,
+  loadPricingContext,
+  buildBoardRows,
+  type ConvertSpecRow,
+  type SlideRow,
+} from '@/lib/studio/convertToLineItems'
 
 // POST /api/studio/boards/[id]/convert-to-project
 // Pulls the board into a new quoting project: one section row per slide
@@ -14,35 +19,8 @@ import { formatCategorySpecs } from '@/lib/specFormatting'
 // — pricing happens in the project. Each spec is linked back to its line
 // item, and the board to the project, so a board converts once. Every row
 // also stores studio_slide_id (+ studio_object_id on item rows) — hidden
-// breadcrumbs so a future feature can jump from a quote line straight back
-// to the object in Studio (supabase/migrations/studio_line_item_links.sql).
-
-interface ConvertSpecRow {
-  id: string
-  object_id: string
-  spec_name: string
-  description: string
-  notes: string
-  supplier_id: string | null
-  supplier_name: string
-  quantity: string
-  unit: string
-  width: string
-  depth: string
-  height: string
-  materials: MaterialEntry[]
-  status: string
-  category: string
-  item_specs: Record<string, string> | null
-}
-
-interface SlideRow {
-  id: string
-  name: string
-  heading: string
-  sort_order: number
-  objects: StudioObject[]
-}
+// breadcrumbs used by sync-to-project to add board items to the quote later
+// (supabase/migrations/studio_line_item_links.sql).
 
 // Same increment logic as src/lib/projectNumber.ts, against the server client
 function incrementProjectNumber(value: string): string | null {
@@ -103,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       )
     }
 
-    const [{ data: slides }, { data: specs }, { data: settings }] = await Promise.all([
+    const [{ data: slides }, { data: specs }] = await Promise.all([
       supabase
         .from('studio_slides')
         .select('id, name, heading, sort_order, objects')
@@ -115,174 +93,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           'id, object_id, spec_name, description, notes, supplier_id, supplier_name, quantity, unit, width, depth, height, materials, status, category, item_specs'
         )
         .eq('board_id', boardId),
-      supabase.from('settings').select('business_name, business_address').maybeSingle(),
     ])
-
-    // Same office-address default every other "add to quote" path uses
-    // (LineItemsTable's addRow/insertRowBefore, pieces add-to-quote) — without
-    // it these rows fall back to the column default instead of the org's
-    // actual delivery address.
-    const defaultDeliveryAddress = settings?.business_address
-      ? `${settings.business_name ?? ''}\n${settings.business_address}`.trim()
-      : ''
 
     // Status is a heads-up, not a gate — the confirm modal warns when drafts
     // remain, but every spec converts regardless of draft/approved
-    const specByObject = new Map(
-      ((specs ?? []) as ConvertSpecRow[]).map(s => [
-        s.object_id,
-        { ...s, materials: (s.materials ?? []).map(normalizeMaterial) },
-      ])
+    const specByObject = buildSpecByObject((specs ?? []) as ConvertSpecRow[])
+    const { markupBySupplier, priceByProductId, defaultDeliveryAddress } = await loadPricingContext(
+      supabase,
+      specByObject
     )
 
-    // Supplier default markups — mirrors what picking a supplier in the line
-    // items table does, so pricing behaves the same once costs go in. Covers
-    // both the spec's own supplier and any supplier chosen on a material.
-    const supplierIds = [
-      ...new Set(
-        [...specByObject.values()].flatMap(s => [
-          s.supplier_id,
-          ...s.materials.map(m => m.supplierId),
-        ]).filter((v): v is string => !!v)
-      ),
-    ]
-    const markupBySupplier = new Map<string, number>()
-    if (supplierIds.length) {
-      const { data: sups } = await supabase
-        .from('suppliers')
-        .select('id, markup_percentage')
-        .in('id', supplierIds)
-      for (const su of sups ?? []) markupBySupplier.set(su.id, su.markup_percentage ?? 0)
-    }
-
-    // Live fabric pricing: a spec can sit in draft for weeks before a board
-    // is quoted, so price is never stored on the material — fetch the
-    // CURRENT price list price right now, at the moment of quoting.
-    const productIds = [
-      ...new Set(
-        [...specByObject.values()]
-          .flatMap(s => s.materials.map(m => m.twinbruProductId))
-          .filter((v): v is number => v != null)
-      ),
-    ]
-    const priceByProductId = new Map<string, { price: number | null; imageUrl: string | null; widthCm: number | null }>()
-    if (productIds.length) {
-      const { data: items } = await supabase
-        .from('price_list_items')
-        .select('product_id, price_zar, image_url, useable_width_cm')
-        .in('product_id', productIds.map(String))
-      for (const it of items ?? []) {
-        priceByProductId.set(it.product_id as string, {
-          price: (it.price_zar as number | null) ?? null,
-          imageUrl: (it.image_url as string | null) ?? null,
-          widthCm: (it.useable_width_cm as number | null) ?? null,
-        })
-      }
-    }
-
-    // Build rows in deck order: section per slide, items beneath, and each
-    // item's materials as child rows directly under it. Only specs whose
-    // object still exists on a slide count — spec rows for deleted objects
-    // are cleaned up lazily and must not become line items.
-    // Materials need parent_item_id, which only exists after the parent is
-    // inserted — so parents carry pre-assigned sort_orders with gaps their
-    // children fill in a second insert.
-    type Row = Record<string, unknown>
-    const parents: Row[] = []
-    const parentMeta: { specId: string | null; materials: Row[] }[] = []
-    let itemCount = 0
-    let sortOrder = 0
-    ;((slides ?? []) as SlideRow[]).forEach((slide, i) => {
-      const objects = Array.isArray(slide.objects) ? slide.objects : []
-      const specced = objects.filter(o => specByObject.has(o.id))
-      if (!specced.length) return
-
-      parents.push({
-        item_name: slide.heading.trim() || slide.name.trim() || `Slide ${i + 1}`,
-        description: '',
-        quantity: 0,
-        cost_price: 0,
-        markup_percentage: 0,
-        row_type: 'section',
-        indent_level: 0,
-        sort_order: sortOrder++,
-        studio_slide_id: slide.id,
-      })
-      parentMeta.push({ specId: null, materials: [] })
-
-      for (const obj of specced) {
-        const sp = specByObject.get(obj.id)!
-        const genericDimensions = [
-          sp.width.trim() && `W ${sp.width.trim()}`,
-          sp.depth.trim() && `D ${sp.depth.trim()}`,
-          sp.height.trim() && `H ${sp.height.trim()}`,
-        ]
-          .filter(Boolean)
-          .join(' × ')
-
-        // Category-specific fields (from Pieces or filled in directly on the
-        // spec) take priority for size/colour when present; the generic
-        // Dimensions section on the spec panel is the fallback. Everything
-        // else in the category fields — seat height, wood type, etc. — has
-        // nowhere structured to live on a line item, so it's appended into
-        // the description instead (see specFormatting.ts).
-        const { dimensions: categoryDimensions, colourFinish, extraText } = formatCategorySpecs(sp.category, sp.item_specs)
-        const dimensions = categoryDimensions || genericDimensions || null
-        const description =
-          [sp.description.trim(), sp.notes.trim(), extraText].filter(Boolean).join('\n') || null
-
-        parents.push({
-          item_name: sp.spec_name.trim() || 'Untitled item',
-          description,
-          quantity: parseFloat(sp.quantity) || 1,
-          unit: sp.unit.trim() || null,
-          supplier_id: sp.supplier_id,
-          supplier_name: sp.supplier_name.trim() || null,
-          cost_price: 0,
-          markup_percentage: sp.supplier_id ? (markupBySupplier.get(sp.supplier_id) ?? 0) : 0,
-          dimensions,
-          colour_finish: colourFinish,
-          delivery_address: defaultDeliveryAddress,
-          row_type: 'item',
-          indent_level: 0,
-          sort_order: sortOrder++,
-          studio_slide_id: slide.id,
-          studio_object_id: obj.id,
-        })
-        itemCount++
-
-        // Fabric/stone/glass etc. become their own line items under the
-        // item — quoted and procured separately, like manually linked rows.
-        // A fabric material carries its supplier's markup and a LIVE price
-        // looked up just now, never whatever the price list showed when the
-        // spec was drafted.
-        const materials = (Array.isArray(sp.materials) ? sp.materials : [])
-          .map(m => {
-            const live = m.twinbruProductId != null ? priceByProductId.get(String(m.twinbruProductId)) : undefined
-            return {
-              item_name: [m.type.trim(), m.description.trim()].filter(Boolean).join(' — ') || 'Material',
-              description: null,
-              quantity: 1,
-              unit: m.twinbruProductId != null ? 'm' : null,
-              supplier_id: m.supplierId,
-              supplier_name: m.supplierName.trim() || null,
-              cost_price: live?.price ?? 0,
-              markup_percentage: m.supplierId ? (markupBySupplier.get(m.supplierId) ?? 0) : 0,
-              colour_finish: m.colour,
-              fabric_image_url: live?.imageUrl ?? m.imageUrl,
-              twinbru_product_id: m.twinbruProductId,
-              twinbru_cost_price: live?.price ?? null,
-              fabric_width_cm: live?.widthCm ?? m.widthCm,
-              delivery_address: defaultDeliveryAddress,
-              row_type: 'item',
-              indent_level: 1,
-              sort_order: sortOrder++,
-              studio_slide_id: slide.id,
-              studio_object_id: obj.id,
-            }
-          })
-        parentMeta.push({ specId: sp.id, materials })
-      }
+    // Build every board row (convert takes the whole board — includeObject
+    // defaults to true). Materials need parent_item_id, which only exists
+    // after the parent is inserted, so parents carry pre-assigned sort_orders
+    // with gaps their children fill in a second insert.
+    const { parents, parentMeta, itemCount } = buildBoardRows({
+      slides: (slides ?? []) as SlideRow[],
+      specByObject,
+      markupBySupplier,
+      priceByProductId,
+      defaultDeliveryAddress,
     })
 
     if (!itemCount) {

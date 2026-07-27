@@ -27,6 +27,7 @@ export interface Viewport {
 
 interface InitProps {
   boardId: string
+  projectId: string | null
   orgId: string
   clientId: string
   clientName: string
@@ -46,6 +47,11 @@ interface InitProps {
 
 interface StudioState {
   boardId: string
+  // The quoting project this board has been converted into, if any. null
+  // until the first "Create quote"; drives Create vs Update/Open in the
+  // Specs panel. Set once at load — a fresh convert navigates away, so it
+  // only ever changes on the next page load.
+  projectId: string | null
   orgId: string
   clientId: string
   clientName: string
@@ -267,6 +273,7 @@ function copySpecsForDuplicates(idMap: [oldId: string, newId: string][]) {
 
 export const useStudioStore = create<StudioState>((set, get) => ({
   boardId: '',
+  projectId: null,
   orgId: '',
   clientId: '',
   clientName: '',
@@ -307,6 +314,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const slideExists = restored?.slideId && props.slides.some(sl => sl.id === restored.slideId)
     set({
       boardId: props.boardId,
+      projectId: props.projectId,
       orgId: props.orgId,
       clientId: props.clientId,
       clientName: props.clientName,

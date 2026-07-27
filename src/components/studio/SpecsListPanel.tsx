@@ -1,18 +1,23 @@
 'use client'
 import { useState } from 'react'
-import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, X, FileText, Send } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, X, FileText, Send, RefreshCw, ExternalLink } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
 import { ConvertToQuoteModal } from './ConvertToQuoteModal'
+import { SyncQuoteModal } from './SyncQuoteModal'
 
 // Board-wide specs overview: every spec'd object across all slides, grouped
 // by slide in deck order. Clicking an entry jumps to its slide, selects the
 // object and opens the per-object spec editor. Toggled from the header —
 // same slide-in pattern as the Asset Library.
 export function SpecsListPanel() {
+  const router = useRouter()
   const slides = useStudioStore(s => s.slides)
   const specs = useStudioStore(s => s.specs)
+  const projectId = useStudioStore(s => s.projectId)
   const [converting, setConverting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   // Ticked items for "Request quotes" (RFQ) — object ids
   const [checked, setChecked] = useState<Set<string>>(new Set())
 
@@ -113,14 +118,37 @@ export function SpecsListPanel() {
           >
             <Send size={13} /> Request quotes{checkedCount > 0 ? ` · ${checkedCount}` : ''}
           </button>
-          <button
-            type="button"
-            onClick={() => setConverting(true)}
-            title="Pull all specs into a new quoting project"
-            className="w-full flex items-center justify-center gap-1.5 h-8 text-xs font-medium bg-[#C4A46B] text-[#1A1A18] rounded-lg hover:bg-[#D4B47B] transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <FileText size={13} /> Create quote
-          </button>
+          {projectId ? (
+            // Board already converted — update the existing quote (adds new
+            // specs, offers to remove ones taken off the board) or jump to it.
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSyncing(true)}
+                title="Add new board items to the linked quote"
+                className="flex-1 flex items-center justify-center gap-1.5 h-8 text-xs font-medium bg-[#C4A46B] text-[#1A1A18] rounded-lg hover:bg-[#D4B47B] transition-colors cursor-pointer"
+              >
+                <RefreshCw size={13} /> Update quote
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/projects/${projectId}`)}
+                title="Open the linked quote"
+                className="flex-shrink-0 flex items-center justify-center w-8 h-8 text-[#8A877F] bg-[#EDE9E1] rounded-lg hover:text-[#2C2C2A] hover:bg-[#E5E0D6] transition-colors cursor-pointer"
+              >
+                <ExternalLink size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConverting(true)}
+              title="Pull all specs into a new quoting project"
+              className="w-full flex items-center justify-center gap-1.5 h-8 text-xs font-medium bg-[#C4A46B] text-[#1A1A18] rounded-lg hover:bg-[#D4B47B] transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <FileText size={13} /> Create quote
+            </button>
+          )}
         </div>
       )}
 
@@ -131,6 +159,8 @@ export function SpecsListPanel() {
           onClose={() => setConverting(false)}
         />
       )}
+
+      {syncing && <SyncQuoteModal onClose={() => setSyncing(false)} />}
     </div>
   )
 }

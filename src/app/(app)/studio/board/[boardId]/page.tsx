@@ -33,7 +33,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
 
   const { data: board } = await supabase
     .from('studio_boards')
-    .select('id, name, last_state, client_id, master_layout, clients(client_name)')
+    .select('id, name, last_state, client_id, project_id, master_layout, clients(client_name)')
     .eq('id', boardId)
     .maybeSingle()
   if (!board) notFound()
@@ -76,6 +76,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
   return (
     <StudioEditorLoader
       boardId={board.id}
+      projectId={(board.project_id as string | null) ?? null}
       orgId={orgId}
       clientId={board.client_id}
       clientName={client?.client_name ?? ''}

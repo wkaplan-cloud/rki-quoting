@@ -27,6 +27,7 @@ import { PrintSlidesModal } from './PrintSlidesModal'
 
 export interface EditorShellProps {
   boardId: string
+  projectId: string | null
   orgId: string
   clientId: string
   clientName: string
