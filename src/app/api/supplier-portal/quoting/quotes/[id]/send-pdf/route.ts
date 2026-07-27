@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const [{ data: quoteRaw }, { data: sections }, { data: items }, { data: settings }] = await Promise.all([
       supabaseAdmin.from('elec_quotes').select('*, client:elec_clients(*)').eq('id', quoteId).eq('portal_account_id', account.id).single(),
       supabaseAdmin.from('elec_quote_sections').select('*').eq('quote_id', quoteId).order('sort_order'),
-      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', quoteId).order('sort_order'),
+      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', quoteId).order('variation_order_id', { nullsFirst: true }).order('sort_order').order('created_at'),
       supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle(),
     ])
     if (!quoteRaw) return NextResponse.json({ error: 'Quote not found' }, { status: 404 })

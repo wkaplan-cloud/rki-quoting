@@ -26,7 +26,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
     const [{ data: sections }, { data: items }, { data: settings }] = await Promise.all([
       supabaseAdmin.from('elec_quote_sections').select('*').eq('quote_id', id).order('sort_order'),
-      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', id).order('sort_order'),
+      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', id).order('variation_order_id', { nullsFirst: true }).order('sort_order').order('created_at'),
       supabaseAdmin
         .from('elec_settings')
         .select('company_code, quote_prefix')

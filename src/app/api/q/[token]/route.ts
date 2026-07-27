@@ -24,7 +24,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         .from('elec_quote_line_items')
         .select('id, section_id, description, unit, quoted_quantity, quoted_unit_rate, labour_rate, is_variation, sort_order')
         .eq('quote_id', quoteRaw.id)
-        .order('sort_order'),
+        .order('variation_order_id', { nullsFirst: true })
+        .order('sort_order')
+        .order('created_at'),
       supabaseAdmin
         .from('supplier_portal_accounts')
         .select('company_name, email, logo_url, phone')

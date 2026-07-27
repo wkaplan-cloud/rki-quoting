@@ -42,7 +42,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       .from('elec_quote_line_items')
       .select('*')
       .eq('quote_id', id)
-      .order('sort_order'),
+      .order('variation_order_id', { nullsFirst: true })
+      .order('sort_order')
+      .order('created_at'),
     supabaseAdmin
       .from('elec_clients')
       .select('id, client_name, company, email, address, vat_number, qs_name, qs_email')

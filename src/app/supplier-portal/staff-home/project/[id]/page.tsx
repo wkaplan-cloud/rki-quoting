@@ -35,7 +35,8 @@ export default async function StaffProjectPage({ params }: { params: Promise<{ i
       .select('id, section_id, description, unit, quoted_quantity, sort_order, is_variation')
       .eq('quote_id', id)
       .eq('is_variation', false)
-      .order('sort_order'),
+      .order('sort_order')
+      .order('created_at'),
     supabaseAdmin
       .from('elec_quote_photos')
       .select('id, url, caption, created_at')

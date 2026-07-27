@@ -38,7 +38,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         .from('elec_quote_line_items')
         .select('*')
         .eq('quote_id', quoteId)
-        .order('sort_order'),
+        .order('variation_order_id', { nullsFirst: true })
+        .order('sort_order')
+        .order('created_at'),
       supabaseAdmin
         .from('elec_settings')
         .select('*')

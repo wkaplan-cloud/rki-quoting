@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const [{ data: quoteRaw }, { data: sections }, { data: quoteItems }, { data: settings }, { data: prevClaims }] = await Promise.all([
       supabaseAdmin.from('elec_quotes').select('*, client:elec_clients(*)').eq('id', claim.quote_id).single(),
       supabaseAdmin.from('elec_quote_sections').select('*').eq('quote_id', claim.quote_id).order('sort_order'),
-      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', claim.quote_id).order('sort_order'),
+      supabaseAdmin.from('elec_quote_line_items').select('*').eq('quote_id', claim.quote_id).order('variation_order_id', { nullsFirst: true }).order('sort_order').order('created_at'),
       supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle(),
       supabaseAdmin
         .from('elec_claim_line_items')
