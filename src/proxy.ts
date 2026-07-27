@@ -101,6 +101,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/vo/') ||
     pathname.startsWith('/approve/') ||
     pathname.startsWith('/api/approve/') ||
+    pathname.startsWith('/rfq/') ||
+    pathname.startsWith('/api/rfq/') ||
     pathname.startsWith('/job-sign/') ||
     pathname.startsWith('/api/job-sign/') ||
     pathname.startsWith('/capital-portal') ||

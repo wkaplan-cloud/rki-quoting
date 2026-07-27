@@ -383,6 +383,8 @@ interface SpecQuoteRow {
   supplier_name: string
   price: number | null
   notes: string
+  lead_time: string
+  unable_to_quote: boolean
   source: string
   created_at: string
 }
@@ -412,7 +414,7 @@ function LoggedQuotes({
       const supabase = createClient()
       const { data } = await supabase
         .from('spec_quotes')
-        .select('id, supplier_name, price, notes, source, created_at')
+        .select('id, supplier_name, price, notes, lead_time, unable_to_quote, source, created_at')
         .eq('studio_spec_id', specId)
         .order('created_at', { ascending: false })
       if (!cancelled) setQuotes((data ?? []) as SpecQuoteRow[])
@@ -439,7 +441,7 @@ function LoggedQuotes({
           notes: notes.trim(),
           source: 'manual',
         })
-        .select('id, supplier_name, price, notes, source, created_at')
+        .select('id, supplier_name, price, notes, lead_time, unable_to_quote, source, created_at')
         .single()
       if (error) throw new Error(error.message)
       setQuotes(prev => [data as SpecQuoteRow, ...(prev ?? [])])
@@ -491,8 +493,14 @@ function LoggedQuotes({
               <div className="min-w-0">
                 <p className="text-[11px] text-[#2C2C2A] truncate">
                   {q.supplier_name || 'Unnamed supplier'}
-                  {q.price != null && <span className="font-medium"> — R{q.price.toLocaleString()}</span>}
+                  {q.unable_to_quote
+                    ? <span className="text-[#B08968] italic"> — couldn&apos;t quote</span>
+                    : q.price != null && <span className="font-medium"> — R{q.price.toLocaleString()}</span>}
+                  {q.source === 'link' && (
+                    <span className="ml-1 text-[10px] px-1 py-px rounded bg-[#F5EFE4] text-[#9A7B4F] uppercase tracking-wide align-middle" title="Submitted by the supplier via a self-serve link">link</span>
+                  )}
                 </p>
+                {q.lead_time && <p className="text-[10px] text-[#8A877F] mt-0.5 leading-snug">Lead time: {q.lead_time}</p>}
                 {q.notes && <p className="text-[10px] text-[#8A877F] mt-0.5 leading-snug">{q.notes}</p>}
               </div>
               <button

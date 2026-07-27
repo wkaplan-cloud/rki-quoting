@@ -9,6 +9,8 @@ interface SpecQuoteRow {
   supplier_name: string
   price: number | null
   notes: string
+  lead_time: string
+  unable_to_quote: boolean
   source: string
   created_at: string
   studio_spec_id: string | null
@@ -44,7 +46,7 @@ export default async function QuotesPage() {
   const { data } = await supabase
     .from('spec_quotes')
     .select(
-      `id, supplier_name, price, notes, source, created_at, studio_spec_id, piece_id,
+      `id, supplier_name, price, notes, lead_time, unable_to_quote, source, created_at, studio_spec_id, piece_id,
        studio_specs ( spec_name, board_id, studio_boards ( name, client_id, clients ( client_name ) ) ),
        pieces ( name )`
     )
@@ -69,6 +71,7 @@ export default async function QuotesPage() {
                   <th className="px-4 py-2.5 font-medium">Board / Client</th>
                   <th className="px-4 py-2.5 font-medium">Supplier</th>
                   <th className="px-4 py-2.5 font-medium text-right">Price</th>
+                  <th className="px-4 py-2.5 font-medium">Lead time</th>
                   <th className="px-4 py-2.5 font-medium">Notes</th>
                   <th className="px-4 py-2.5 font-medium">Logged</th>
                 </tr>
@@ -85,10 +88,26 @@ export default async function QuotesPage() {
                     <tr key={row.id} className="border-b border-[#EDE9E1] last:border-0">
                       <td className="px-4 py-2.5 text-[#2C2C2A]">{itemName}</td>
                       <td className="px-4 py-2.5 text-[#8A877F]">{boardLabel}</td>
-                      <td className="px-4 py-2.5 text-[#2C2C2A]">{row.supplier_name || '—'}</td>
-                      <td className="px-4 py-2.5 text-right text-[#2C2C2A] font-medium">
-                        {row.price != null ? `R${row.price.toLocaleString()}` : '—'}
+                      <td className="px-4 py-2.5 text-[#2C2C2A]">
+                        <span className="inline-flex items-center gap-1.5">
+                          {row.supplier_name || '—'}
+                          {row.source === 'link' && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#F5EFE4] text-[#9A7B4F] uppercase tracking-wide" title="Submitted by the supplier via a self-serve link">
+                              via link
+                            </span>
+                          )}
+                        </span>
                       </td>
+                      <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap">
+                        {row.unable_to_quote ? (
+                          <span className="text-[#B08968] font-normal italic">Couldn&apos;t quote</span>
+                        ) : row.price != null ? (
+                          <span className="text-[#2C2C2A]">R{row.price.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-[#8A877F]">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-[#8A877F] whitespace-nowrap">{row.lead_time || '—'}</td>
                       <td className="px-4 py-2.5 text-[#8A877F] max-w-[240px] truncate">{row.notes || '—'}</td>
                       <td className="px-4 py-2.5 text-[#8A877F] whitespace-nowrap">
                         {new Date(row.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}

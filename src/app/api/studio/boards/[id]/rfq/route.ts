@@ -169,9 +169,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       timeZone: 'Africa/Johannesburg', day: 'numeric', month: 'long', year: 'numeric',
     })
 
+    // Self-serve pricing links live for 30 days from send.
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
+    const linkExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
     const resend = new Resend(process.env.RESEND_API_KEY)
     const results: { email: string; supplierName: string; ok: boolean; error?: string }[] = []
     const stampsByObject = new Map<string, RfqRecipientStamp[]>()
+    // rfq_requests rows to persist — one per email that actually sent. Built
+    // during the loop, inserted once at the end so a failed send leaves no
+    // orphan link.
+    const rfqRequestRows: {
+      token: string
+      org_id: string
+      board_id: string
+      supplier_id: string | null
+      supplier_name: string
+      supplier_email: string
+      object_ids: string[]
+      message: string
+      created_by: string
+      created_by_email: string | null
+      expires_at: string
+    }[] = []
 
     for (const group of groups) {
       const items: RfqPdfItem[] = []
@@ -202,6 +222,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       for (const recipient of group.recipients) {
         const email = recipient.email.trim()
         const supplierName = recipient.supplierName.trim() || email
+        // Token minted up front so it can go in the email; the rfq_requests
+        // row is only persisted below once the send actually succeeds.
+        const token = crypto.randomUUID()
+        const pricingUrl = `${baseUrl}/rfq/${token}`
         try {
           // Rendered per recipient (not per group) so the PDF's "To" line
           // names this supplier — nobody sees who else is pricing
@@ -231,10 +255,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
               '',
               intro || `Please could you quote on the ${items.length === 1 ? 'item' : `${items.length} items`} in the attached document.`,
               '',
+              'Enter your pricing online — one price per item, plus lead time and notes:',
+              pricingUrl,
+              '(link valid for 30 days)',
+              '',
               'Full specifications and images are in the attached PDF. Note that images may be',
               'reference pictures or drawings of custom pieces — please quote per the specs.',
               '',
-              replyTo ? `Reply directly to this email or contact ${replyTo}.` : '',
+              replyTo ? `Prefer email? Reply directly to this message or contact ${replyTo}.` : '',
               '',
               `${businessName} · Sent via QuotingHub`,
             ].filter(l => l !== null).join('\n'),
@@ -246,6 +274,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                   <p style="margin:0 0 12px;font-size:14px;color:#4A4A47;line-height:1.6;">Hi ${supplierName},</p>
                   <p style="margin:0 0 12px;font-size:14px;color:#4A4A47;line-height:1.6;">${intro ? intro.replace(/\n/g, '<br/>') : `Please could you quote on the ${items.length === 1 ? 'item' : `${items.length} items`} in the attached document.`}</p>
                   <p style="margin:0 0 12px;font-size:13px;color:#8A877F;line-height:1.6;">Full specifications and images are in the attached PDF. Images may be reference pictures or drawings of custom pieces — please quote per the specs.</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 8px;"><tr><td style="border-radius:8px;background:#9A7B4F;">
+                    <a href="${pricingUrl}" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">Enter your pricing online &rarr;</a>
+                  </td></tr></table>
+                  <p style="margin:0 0 12px;font-size:12px;color:#8A877F;line-height:1.6;">Add a price per item, plus lead time and any notes. ${replyTo ? 'Prefer email? Just reply to this message.' : ''} This link is valid for 30 days.</p>
                   <p style="margin:16px 0 0;font-size:12px;color:#8A877F;">${businessName}${replyTo ? ` &middot; <a href="mailto:${replyTo}" style="color:#8A877F;">${replyTo}</a>` : ''}</p>
                 </div>
                 <p style="text-align:center;margin:16px 0 0;font-size:11px;color:#B5B1A6;">Sent via QuotingHub</p>
@@ -256,6 +288,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           if (error) throw new Error(error.message)
 
           results.push({ email, supplierName, ok: true })
+          // Persist the self-serve link only now that the email is out — a
+          // failed send leaves no dangling token. Only the specs that exist
+          // are quotable, so filter object_ids to real specs.
+          rfqRequestRows.push({
+            token,
+            org_id: orgId,
+            board_id: boardId,
+            supplier_id: recipient.supplierId,
+            supplier_name: supplierName,
+            supplier_email: email,
+            object_ids: group.objectIds.filter(id => specByObject.has(id)),
+            message: intro,
+            created_by: user.id,
+            created_by_email: user.email ?? null,
+            expires_at: linkExpiresAt,
+          })
           const at = new Date().toISOString()
           for (const objectId of group.objectIds) {
             if (!specByObject.has(objectId)) continue
@@ -281,6 +329,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .eq('board_id', boardId)
         .eq('object_id', objectId)
       stamps.push({ objectId, at, recipients })
+    }
+
+    // Persist the self-serve pricing links for every email that went out.
+    // Non-fatal: a failure here just means suppliers can't use the online
+    // form (they can still reply by email), so never fail the send over it.
+    if (rfqRequestRows.length) {
+      const { error: rfqErr } = await supabase.from('rfq_requests').insert(rfqRequestRows)
+      if (rfqErr) console.error('[rfq] failed to persist pricing links', rfqErr.message)
     }
 
     return NextResponse.json({ results, stamps })
