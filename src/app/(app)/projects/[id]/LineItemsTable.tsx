@@ -324,6 +324,10 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   }, [])
 
   const insertRowBefore = useCallback(async (index: number) => {
+    // Insert at a non-colliding sort_order (max+1) — the unique
+    // (project_id, sort_order) constraint rejects a hardcoded 0 whenever a
+    // row already holds 0. The renumber-upsert below then moves it into place.
+    const sort_order = lineItems.reduce((max, item) => Math.max(max, item.sort_order), -1) + 1
     const { data, error } = await supabase.from('line_items').insert({
       project_id: projectId,
       item_name: '',
@@ -332,7 +336,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       cost_price: 0,
       markup_percentage: 0,
       delivery_address: officeAddress.address ? `${officeAddress.name}\n${officeAddress.address}` : '',
-      sort_order: 0,
+      sort_order,
       row_type: 'item',
       indent_level: 0,
     }).select().single()
