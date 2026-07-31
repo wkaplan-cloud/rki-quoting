@@ -13,6 +13,7 @@ interface Project {
   assigned_to: string | null
   user_id: string | null
   client: { client_name: string } | null
+  sage_invoice_id?: string | null
 }
 
 interface Props {

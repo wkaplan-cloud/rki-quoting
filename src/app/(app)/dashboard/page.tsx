@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   }
   const currentUserId = user?.id ?? ''
   const [{ data: projects }, { data: settings }, { data: org }, { count: clientCount }, { count: supplierCount }] = await Promise.all([
-    supabase.from('projects').select('id, project_name, project_number, status, date, quoted_date, assigned_to, user_id, client:clients(client_name), stages:project_stages(*)').is('archived_at', null).order('created_at', { ascending: false }),
+    supabase.from('projects').select('id, project_name, project_number, status, date, quoted_date, assigned_to, user_id, sage_invoice_id, client:clients(client_name), stages:project_stages(*)').is('archived_at', null).order('created_at', { ascending: false }),
     supabase.from('settings').select('sage_company_id, quote_validity_days').maybeSingle(),
     orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null }),
     supabase.from('clients').select('*', { count: 'exact', head: true }),

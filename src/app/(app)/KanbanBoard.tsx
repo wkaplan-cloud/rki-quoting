@@ -17,6 +17,7 @@ interface Project {
   project_number: string
   status: ProjectStatus
   client: { client_name: string } | null
+  sage_invoice_id?: string | null
 }
 
 interface Props {
@@ -32,10 +33,15 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
   const router = useRouter()
 
   async function toggleStage(projectId: string, key: StageKey, currentVal: boolean) {
-    // Block toggling final_invoice_paid from the board when Sage is connected — manage from inside the project
+    // Block toggling final_invoice_paid from the board only when this project is actually
+    // linked to a Sage invoice — manage payment from inside the project. Projects not yet
+    // pushed to Sage fall through to the manual toggle below.
     if (key === 'final_invoice_paid' && sageConnected) {
-      toast.error('Payment status is managed by Sage — open the project to sync')
-      return
+      const proj = localProjects.find(p => p.id === projectId)
+      if (proj?.sage_invoice_id) {
+        toast.error('Payment status is managed by Sage — open the project to sync')
+        return
+      }
     }
     const now = new Date().toISOString()
     const dateKey = stageConfig.find(s => s.key === key)!.dateKey
