@@ -345,10 +345,17 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     }
     setEmailModalType(type)
     setEmailInput(project.client?.email ?? '')
+    setDepositDraft(depositAmountReceived != null ? String(depositAmountReceived) : '')
     const template = type === 'quote' ? emailTemplateQuote : emailTemplateInvoice
     setEmailBody(resolveTemplate(template, type))
     setEmailModalOpen(true)
-  }, [project.client, project, emailTemplateQuote, emailTemplateInvoice, resolveTemplate])
+  }, [project.client, project, emailTemplateQuote, emailTemplateInvoice, resolveTemplate, depositAmountReceived])
+
+  // Closing without sending must not leave an unsaved deposit sitting in the totals panel
+  const handleCloseEmailModal = useCallback(() => {
+    setDepositDraft(depositAmountReceived != null ? String(depositAmountReceived) : '')
+    setEmailModalOpen(false)
+  }, [depositAmountReceived])
 
   const handleConfirmSend = useCallback(async () => {
     if (!emailInput.trim()) { toast.error('Please enter an email address'); return }
@@ -1221,7 +1228,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
       {/* Email send modal */}
       {emailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEmailModalOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={handleCloseEmailModal}>
           <div className="bg-white rounded-lg shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
             <h2 className="text-sm font-semibold text-[#1A1A18] mb-1">
               Send {emailModalType === 'quote' ? 'Quotation' : 'Invoice'}
@@ -1274,7 +1281,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               />
             </div>
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setEmailModalOpen(false)} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">
+              <button onClick={handleCloseEmailModal} className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer">
                 Cancel
               </button>
               <button
