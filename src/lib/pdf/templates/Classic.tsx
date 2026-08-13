@@ -18,9 +18,12 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
-export function ClassicTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime }: TemplateProps) {
+export function ClassicTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime }: TemplateProps) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
+  // Never show more paid than the invoice is worth, or a negative amount due
+  const depositReceived = Math.min(Math.max(amountPaid, 0), totals.grand_total)
+  const amountDue = totals.grand_total - depositReceived
   const issuedDate = quotedDate ?? todaySA()
   const validUntil = (type === 'quote' && validityDays) ? addDays(issuedDate, validityDays) : null
 
@@ -140,16 +143,23 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                 <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: theme.primary }}>TOTAL</Text>
                 <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: theme.primary }}>{formatZAR(totals.grand_total)}</Text>
               </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={{ fontSize: 8, color: theme.accent }}>{depositPct}% Deposit Required</Text>
-                <Text style={{ fontSize: 8, color: theme.accent, fontFamily: 'Helvetica-Bold' }}>{formatZAR(totals.deposit)}</Text>
-              </View>
-              {type === 'invoice' && (
+              {type === 'quote' ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                  <Text style={{ fontSize: 8, color: theme.muted }}>{100 - depositPct}% Due Before Delivery</Text>
-                  <Text style={{ fontSize: 8, color: theme.text, fontFamily: 'Helvetica-Bold' }}>{formatZAR(totals.balance_due)}</Text>
+                  <Text style={{ fontSize: 8, color: theme.accent }}>{depositPct}% Deposit Required</Text>
+                  <Text style={{ fontSize: 8, color: theme.accent, fontFamily: 'Helvetica-Bold' }}>{formatZAR(totals.deposit)}</Text>
                 </View>
-              )}
+              ) : depositReceived > 0 ? (
+                <>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={{ fontSize: 8, color: theme.accent }}>Deposit Received</Text>
+                    <Text style={{ fontSize: 8, color: theme.accent, fontFamily: 'Helvetica-Bold' }}>-{formatZAR(depositReceived)}</Text>
+                  </View>
+                  <View style={{ borderTopWidth: 0.5, borderTopColor: theme.border, marginTop: 5, paddingTop: 5, flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: theme.primary }}>AMOUNT DUE</Text>
+                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: theme.primary }}>{formatZAR(amountDue)}</Text>
+                  </View>
+                </>
+              ) : null}
             </View>
           </View>
 

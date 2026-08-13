@@ -81,6 +81,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     initial.sage_customer_id ? { id: initial.sage_customer_id, name: initial.sage_customer_name ?? '' } : null
   )
   const [depositAmountReceived, setDepositAmountReceived] = useState<number | null>(initial.deposit_amount_received ?? null)
+  const [depositDraft, setDepositDraft] = useState(initial.deposit_amount_received != null ? String(initial.deposit_amount_received) : '')
+  const [invoiceDepositModalOpen, setInvoiceDepositModalOpen] = useState(false)
   // Xero state
   const [pushingXero, setPushingXero] = useState(false)
   const [xeroInvoiceId, setXeroInvoiceId] = useState((initial as unknown as Record<string, unknown>).xero_invoice_id as string | null ?? null)
@@ -108,6 +110,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Keep the editable deposit field in step with the saved amount (Sage sync can change it)
+  useEffect(() => {
+    setDepositDraft(depositAmountReceived != null ? String(depositAmountReceived) : '')
+  }, [depositAmountReceived])
 
   // Auto-sync Sage payment status on project open (silent — only toast if status changes)
   useEffect(() => {
@@ -146,6 +153,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, designFeePct, vatRate, depositPct)
+  // Live preview of what an invoice would print while the deposit field is being edited
+  const depositPreview = Math.min(Math.max(parseFloat(depositDraft) || 0, 0), totals.grand_total)
   const isPaid = sageConnected && (sageInvoiceStatus ?? '').toUpperCase() === 'PAID'
 
   const handleDesignFeeChange = useCallback(async (pct: number) => {
@@ -162,6 +171,54 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     setDepositPct(pct)
     await supabase.from('projects').update({ deposit_percentage: pct }).eq('id', project.id)
   }, [project.id, supabase])
+
+  // The deposit actually paid, in rands, is what invoices print. When a Sage invoice is linked
+  // Sage owns that figure (written on sync); otherwise the designer enters it by hand here.
+  const depositManual = !sageInvoiceId
+
+  const handleDepositReceivedSave = useCallback(async (raw: string) => {
+    const parsed = parseFloat(raw)
+    const amount = raw.trim() === '' || isNaN(parsed) || parsed <= 0 ? null : Math.round(parsed * 100) / 100
+    if (amount === depositAmountReceived) return
+
+    const prevAmount = depositAmountReceived
+    setDepositAmountReceived(amount)
+
+    const { error } = await supabase.from('projects').update({ deposit_amount_received: amount }).eq('id', project.id)
+    if (error) {
+      setDepositAmountReceived(prevAmount)
+      toast.error('Failed to save deposit amount')
+      return
+    }
+
+    // Keep the Deposit Received stage in step with the amount
+    const shouldTick = amount != null
+    if (shouldTick !== !!stages?.deposit_received) {
+      const now = new Date().toISOString()
+      const update: Record<string, boolean | string | null> = shouldTick
+        ? { deposit_received: true, deposit_received_at: now }
+        : { deposit_received: false, deposit_received_at: null }
+      // Ticking deposit_received ON also auto-ticks client_approved, same as the stage checkbox
+      if (shouldTick && !stages?.client_approved) {
+        update.client_approved = true
+        update.client_approved_at = now
+      }
+      const res = await fetch('/api/stages/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id, update }),
+      })
+      const result = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setStages(prev => prev ? { ...prev, ...update } as unknown as ProjectStages : (result.stages ?? prev))
+        if (result.newStatus && project.status !== 'Cancelled') {
+          setProject(p => ({ ...p, status: result.newStatus }))
+        }
+      }
+    }
+
+    toast.success(amount != null ? `Deposit of ${formatZAR(amount)} recorded` : 'Deposit amount cleared')
+  }, [depositAmountReceived, stages, project.id, project.status, supabase])
 
   const handleDuplicate = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -226,6 +283,22 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     a.click()
   }, [project.id, project.project_number, project.project_name, project.client, businessName, suppliers])
 
+  // Invoices ask for the deposit paid first — unless Sage owns the figure, or the job is already settled
+  const handleStartInvoicePDF = useCallback(() => {
+    if (!depositManual || isPaid) { handleGeneratePDF('invoice'); return }
+    if (!project.client?.client_name) {
+      toast.error('Please add a client to this project before generating a document.')
+      return
+    }
+    setInvoiceDepositModalOpen(true)
+  }, [depositManual, isPaid, handleGeneratePDF, project.client])
+
+  const handleConfirmInvoicePDF = useCallback(async () => {
+    await handleDepositReceivedSave(depositDraft)
+    setInvoiceDepositModalOpen(false)
+    await handleGeneratePDF('invoice')
+  }, [depositDraft, handleDepositReceivedSave, handleGeneratePDF])
+
   const resolveTemplate = useCallback((template: string | null, type: 'quote' | 'invoice') => {
     const defaults = `Dear {{client_name}},\n\nPlease find attached your ${type === 'quote' ? 'quotation' : 'invoice'} for {{project_name}}.\n\nKind regards,\n{{studio_name}}`
     return (template ?? defaults)
@@ -286,6 +359,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         const { error } = await supabase.from('clients').update({ email: emailInput.trim() }).eq('id', project.client_id)
         if (error) { toast.error('Failed to save email'); setEmailSending(false); return }
       }
+      // The PDF is built server-side from the project row, so persist the deposit before sending
+      if (emailModalType === 'invoice' && depositManual && !isPaid) {
+        await handleDepositReceivedSave(depositDraft)
+      }
       const res = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -314,7 +391,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
     } finally {
       setEmailSending(false)
     }
-  }, [emailInput, emailModalType, project.client, project.client_id, project.id, supabase])
+  }, [emailInput, emailModalType, emailBody, project.client, project.client_id, project.id, supabase, depositManual, isPaid, depositDraft, handleDepositReceivedSave])
 
   const handleOpenProdSheetModal = useCallback(() => {
     setProdSheetEmailInput(initialProductionSheetEmail ?? '')
@@ -642,7 +719,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                     className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
                     <FileText size={13} className="text-[#9A7B4F] flex-shrink-0" /> Quote PDF
                   </button>
-                  <button onClick={() => { handleGeneratePDF('invoice'); setPoMenuOpen(false) }}
+                  <button onClick={() => { handleStartInvoicePDF(); setPoMenuOpen(false) }}
                     className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
                     <FileText size={13} className="text-[#9A7B4F] flex-shrink-0" /> Invoice PDF
                   </button>
@@ -904,15 +981,15 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             <span>{depositPct}% Deposit</span>
             <span className="font-medium">{formatZAR(totals.deposit)}</span>
           </div>
-          {stages?.deposit_received && depositAmountReceived != null && (
+          {depositAmountReceived != null && (
             <>
               <div className="flex justify-between text-sm text-green-700">
-                <span>Received</span>
+                <span>Deposit Received</span>
                 <span className="font-medium">{formatZAR(depositAmountReceived)}</span>
               </div>
-              <div className="flex justify-between text-sm text-[#8A877F]">
-                <span>Balance Due</span>
-                <span className="font-medium">{formatZAR(totals.grand_total - depositAmountReceived)}</span>
+              <div className="flex justify-between text-sm font-semibold text-[#2C2C2A]">
+                <span>Amount Due</span>
+                <span>{formatZAR(Math.max(0, totals.grand_total - depositAmountReceived))}</span>
               </div>
             </>
           )}
@@ -1007,23 +1084,42 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
               </span>
               <span className="font-medium">{formatZAR(totals.deposit)}</span>
             </div>
-            {stages?.deposit_received && depositAmountReceived != null ? (
-              <>
-                <div className="flex justify-between text-sm text-green-700">
-                  <span>Received</span>
-                  <span className="font-medium">{formatZAR(depositAmountReceived)}</span>
-                </div>
-                <div className="flex justify-between text-sm text-[#8A877F]">
-                  <span>Balance Due</span>
-                  <span className="font-medium">{formatZAR(totals.grand_total - depositAmountReceived)}</span>
-                </div>
-              </>
+            {/* Deposit actually received — this is what the invoice PDF prints */}
+            {depositManual ? (
+              <div className="flex justify-between text-sm text-green-700 items-center">
+                <label htmlFor="deposit-received-amount" className="cursor-text">Deposit Received (R)</label>
+                <input
+                  id="deposit-received-amount"
+                  type="number" min="0" step="0.01"
+                  value={depositDraft}
+                  onChange={e => setDepositDraft(e.target.value)}
+                  onBlur={e => handleDepositReceivedSave(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                  disabled={isPaid}
+                  aria-label="Deposit received in rands"
+                  className={`w-24 text-right text-sm text-green-700 font-medium border-b border-dashed border-green-700/40 focus:border-green-700 outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed ${NO_SPINNER}`}
+                />
+              </div>
+            ) : depositAmountReceived != null ? (
+              <div className="flex justify-between text-sm text-green-700">
+                <span>Deposit Received</span>
+                <span className="font-medium">{formatZAR(depositAmountReceived)}</span>
+              </div>
+            ) : null}
+            {depositAmountReceived != null ? (
+              <div className="flex justify-between text-sm font-semibold text-[#2C2C2A]">
+                <span>Amount Due</span>
+                <span>{formatZAR(Math.max(0, totals.grand_total - depositAmountReceived))}</span>
+              </div>
             ) : stages?.deposit_received ? (
               <div className="flex justify-between text-sm text-[#8A877F]">
                 <span>{100 - depositPct}% Balance</span>
                 <span className="font-medium">{formatZAR(totals.balance_due)}</span>
               </div>
             ) : null}
+            {!depositManual && (
+              <p className="text-[11px] text-[#8A877F]">Deposit amount is synced from Sage.</p>
+            )}
           </div>
         </div>
       </div>
@@ -1149,6 +1245,25 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 <p className="text-xs text-[#9A7B4F] mt-1.5">This email will be saved to the client record.</p>
               )}
             </div>
+            {emailModalType === 'invoice' && depositManual && !isPaid && (
+              <div className="mt-4">
+                <label htmlFor="email-deposit-received" className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">
+                  Deposit Already Paid (R)
+                </label>
+                <input
+                  id="email-deposit-received"
+                  type="number" min="0" step="0.01"
+                  value={depositDraft}
+                  onChange={e => setDepositDraft(e.target.value)}
+                  className={`w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors ${NO_SPINNER}`}
+                />
+                <p className="text-xs text-[#8A877F] mt-1.5">
+                  {depositPreview > 0
+                    ? `Invoice will show ${formatZAR(depositPreview)} received and ${formatZAR(Math.max(0, totals.grand_total - depositPreview))} due.`
+                    : 'Leave empty if no deposit has been paid — the invoice will show the full amount due.'}
+                </p>
+              </div>
+            )}
             <div className="mt-4">
               <label className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">Message</label>
               <textarea
@@ -1168,6 +1283,62 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 className="px-5 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors disabled:opacity-50 cursor-pointer font-medium"
               >
                 {emailSending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice deposit modal — asks what has actually been paid before building the PDF */}
+      {invoiceDepositModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setInvoiceDepositModalOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-[400px] p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="text-sm font-semibold text-[#1A1A18] mb-1">Deposit on this invoice</h2>
+            <p className="text-sm text-[#8A877F] mb-5">
+              Has any deposit been paid towards this total? Enter the exact amount received so the invoice balances.
+            </p>
+            <label htmlFor="invoice-deposit-received" className="block text-xs font-semibold text-[#8A877F] uppercase tracking-widest mb-1.5">
+              Deposit Received (R)
+            </label>
+            <input
+              id="invoice-deposit-received"
+              type="number" min="0" step="0.01"
+              value={depositDraft}
+              onChange={e => setDepositDraft(e.target.value)}
+              autoFocus
+              className={`w-full px-3.5 py-2.5 border border-[#D8D3C8] rounded-lg text-sm text-[#2C2C2A] outline-none focus:border-[#9A7B4F] bg-white transition-colors ${NO_SPINNER}`}
+            />
+            <div className="mt-4 rounded-lg bg-[#F5F2EC] border border-[#EDE9E1] px-3.5 py-3 space-y-1.5">
+              <div className="flex justify-between text-sm text-[#8A877F]">
+                <span>Total</span>
+                <span className="font-medium text-[#2C2C2A]">{formatZAR(totals.grand_total)}</span>
+              </div>
+              {depositPreview > 0 && (
+                <div className="flex justify-between text-sm text-green-700">
+                  <span>Deposit Received</span>
+                  <span className="font-medium">-{formatZAR(depositPreview)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-semibold text-[#1A1A18] border-t border-[#D8D3C8] pt-1.5">
+                <span>Amount Due</span>
+                <span>{formatZAR(Math.max(0, totals.grand_total - depositPreview))}</span>
+              </div>
+            </div>
+            <p className="text-xs text-[#8A877F] mt-3">
+              Leave empty if no deposit has been paid. Entering an amount also ticks the Deposit Received stage.
+            </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => { setDepositDraft(depositAmountReceived != null ? String(depositAmountReceived) : ''); setInvoiceDepositModalOpen(false) }}
+                className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmInvoicePDF}
+                className="px-5 py-2 text-sm bg-[#1A1A18] text-white rounded-lg hover:bg-[#2C2C2A] transition-colors cursor-pointer font-medium"
+              >
+                Download Invoice
               </button>
             </div>
           </div>

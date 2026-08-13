@@ -16,6 +16,7 @@ interface Props {
   themeKey?: string | null
   vatRate?: number
   depositPct?: number
+  amountPaid?: number
   footerText?: string
   logoUrl?: string | null
   businessName?: string | null

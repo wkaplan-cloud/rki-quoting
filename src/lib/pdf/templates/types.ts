@@ -9,6 +9,8 @@ export interface TemplateProps {
   theme: PdfTheme
   vatRate?: number
   depositPct?: number
+  /** Actual rand amount already paid by the client. Invoices only — shown as "Deposit Received". */
+  amountPaid?: number
   footerText?: string
   logoUrl?: string | null
   businessName?: string | null

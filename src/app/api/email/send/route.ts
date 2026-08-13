@@ -68,6 +68,7 @@ export async function POST(req: NextRequest) {
         themeKey: (settings as any)?.pdf_color_theme ?? 'warm',
         vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15,
         depositPct: (project as any).deposit_percentage ?? settings?.deposit_percentage ?? 50,
+        amountPaid: (project as any).deposit_amount_received ?? 0,
         logoUrl,
         businessName: settings?.business_name,
         businessAddress: settings?.business_address,
