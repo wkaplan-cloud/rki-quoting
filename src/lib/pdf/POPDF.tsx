@@ -224,6 +224,9 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
                             </Text>
                           ) : null}
                         </View>
+                        {child.description ? (
+                          <Text style={{ fontSize: 6.5, color: '#8A877F', marginTop: 2 }}>{child.description}</Text>
+                        ) : null}
                         {childSup && child.supplier_id !== supplier?.id ? (
                           <Text style={{ fontSize: 6, color: theme.accent, marginTop: 2 }}>via {childSup.supplier_name}</Text>
                         ) : null}
