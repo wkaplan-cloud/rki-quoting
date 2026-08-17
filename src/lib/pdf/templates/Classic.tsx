@@ -106,7 +106,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                     <View key={item.id} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border }}>
                       <Text style={{ fontSize: 6.5, color: theme.muted, width: 20 }}>{itemNum}.</Text>
                       <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: item.indent_level > 0 ? 8 : 0 }}>
-                        {img ? <Image src={img} style={{ width: 38, height: 38, borderRadius: 2, objectFit: 'cover', marginRight: 8 }} /> : null}
+                        {img ? <Image src={img} style={{ width: 42.5, height: 42.5, borderRadius: 2, objectFit: 'cover', marginRight: 8 }} /> : null}
                         <Text style={{ fontSize: 9, color: theme.text, flex: 1 }}>{cap(item.item_name)}</Text>
                       </View>
                       <Text style={{ fontSize: 9, color: theme.text, width: 44, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>

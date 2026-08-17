@@ -43,9 +43,11 @@ interface Props {
   members: { user_id: string; label: string }[]
   isAdmin: boolean
   createdByName: string | null
+  /** Platform feature flag for per-line-item images. */
+  imagesEnabled?: boolean
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -1022,6 +1024,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           activePriceListIds={activePriceListIds}
           locked={isPaid}
           depositReceived={stages?.deposit_received ?? false}
+          imagesEnabled={imagesEnabled}
         />
 
         {/* Totals */}

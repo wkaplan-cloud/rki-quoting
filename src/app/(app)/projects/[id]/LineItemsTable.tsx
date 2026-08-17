@@ -42,6 +42,8 @@ interface Props {
   activePriceListIds: string[]
   locked?: boolean
   depositReceived?: boolean
+  /** Platform feature flag — when off, the image thumbnail/upload UI is hidden entirely. */
+  imagesEnabled?: boolean
 }
 
 const COL = 'px-2 py-1.5'
@@ -127,7 +129,7 @@ const LINE_ITEM_TIPS = [
   { col: 'Tot. Price', tip: 'Total selling price for this line (Sale × Qty). This appears on the quote/invoice.' },
 ]
 
-export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived }: Props) {
+export function LineItemsTable({ projectId, lineItems, suppliers, items, officeAddress, onChange, onSupplierCreated, activePriceListIds, locked, depositReceived, imagesEnabled = false }: Props) {
   const supabase = createClient()
   const router = useRouter()
   const dragItem = useRef<number | null>(null)
@@ -684,7 +686,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         {isLinked && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
-                        {(() => {
+                        {imagesEnabled && (() => {
                           // Designer upload wins; catalogue image (Twinbru / price list) is the fallback
                           const thumb = item.image_urls?.[0] ?? item.fabric_image_url ?? null
                           const count = item.image_urls?.length ?? 0

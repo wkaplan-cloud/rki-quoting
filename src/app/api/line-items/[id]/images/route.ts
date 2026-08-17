@@ -29,6 +29,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Platform feature flag — the studio must have been granted access
+    const { data: settings } = await supabase
+      .from('settings')
+      .select('line_item_images_enabled')
+      .maybeSingle()
+    if (!settings?.line_item_images_enabled) {
+      return NextResponse.json({ error: 'Line item images are not enabled for this studio' }, { status: 403 })
+    }
+
     const formData = await req.formData()
     const files = formData.getAll('files') as File[]
     if (!files.length) return NextResponse.json({ error: 'No files provided' }, { status: 400 })

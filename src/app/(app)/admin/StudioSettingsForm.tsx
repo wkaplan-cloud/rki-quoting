@@ -268,6 +268,8 @@ interface Settings {
   production_sheet_email?: string | null
   pdf_template?: string | null
   pdf_color_theme?: string | null
+  /** Platform-controlled — the studio cannot change this from here. */
+  line_item_images_enabled?: boolean | null
   show_images_on_documents?: boolean | null
   sage_invoice_message?: string | null
 }
@@ -780,20 +782,22 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
               </div>
             </div>
 
-            {/* Line item images */}
-            <div className="flex items-start justify-between gap-6 pt-2">
-              <div>
-                <label className="text-xs font-medium text-[#8A877F] block mb-1">Show item images on quotes &amp; invoices</label>
-                <p className="text-xs text-[#A8A39B] max-w-md">
-                  Adds a thumbnail beside each line item that has an image — either one you uploaded or the supplier&apos;s catalogue image.
-                </p>
+            {/* Line item images — only for studios the platform has enabled */}
+            {settings?.line_item_images_enabled && (
+              <div className="flex items-start justify-between gap-6 pt-2">
+                <div>
+                  <label className="text-xs font-medium text-[#8A877F] block mb-1">Show item images on quotes &amp; invoices</label>
+                  <p className="text-xs text-[#A8A39B] max-w-md">
+                    Adds a 1.5 cm thumbnail beside each line item that has an image — either one you uploaded or the supplier&apos;s catalogue image.
+                  </p>
+                </div>
+                <Switch
+                  checked={!!form.show_images_on_documents}
+                  onChange={v => set('show_images_on_documents', v)}
+                  label="Show item images on quotes and invoices"
+                />
               </div>
-              <Switch
-                checked={!!form.show_images_on_documents}
-                onChange={v => set('show_images_on_documents', v)}
-                label="Show item images on quotes and invoices"
-              />
-            </div>
+            )}
           </section>
 
           {/* Custom Branded PDFs — agency only */}

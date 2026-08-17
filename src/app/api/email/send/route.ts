@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
-    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, email_from, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, show_images_on_documents').maybeSingle(),
+    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, email_from, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, line_item_images_enabled, show_images_on_documents').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -58,8 +58,11 @@ export async function POST(req: NextRequest) {
   try {
     const [logoUrl, itemImages] = await Promise.all([
       fetchLogoBase64(settings?.logo_url),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      fetchLineItemImages(lineItems ?? [], (settings as any)?.show_images_on_documents ?? false),
+      fetchLineItemImages(
+        lineItems ?? [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((settings as any)?.line_item_images_enabled ?? false) && ((settings as any)?.show_images_on_documents ?? true),
+      ),
     ])
 
     const buffer = await renderToBuffer(

@@ -198,7 +198,8 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
       )}
 
       {/* Feature toggles */}
-      <FeatureTogglesPanel orgId={id} studioEnabled={(settings as any)?.studio_enabled ?? false} />
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <FeatureTogglesPanel orgId={id} studioEnabled={(settings as any)?.studio_enabled ?? false} lineItemImagesEnabled={(settings as any)?.line_item_images_enabled ?? false} />
 
       {/* Internal notes */}
       <StudioNotes orgId={id} initial={(org as any).platform_notes ?? null} />

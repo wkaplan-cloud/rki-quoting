@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
-      supabase.from('settings').select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, vat_rate, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, show_images_on_documents').maybeSingle(),
+      supabase.from('settings').select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, vat_rate, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, line_item_images_enabled, show_images_on_documents').maybeSingle(),
     ])
 
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     const [logoUrl, itemImages] = await Promise.all([
       fetchLogoBase64(settings?.logo_url),
-      fetchLineItemImages(lineItems ?? [], settings?.show_images_on_documents ?? false),
+      fetchLineItemImages(lineItems ?? [], (settings?.line_item_images_enabled ?? false) && (settings?.show_images_on_documents ?? true)),
     ])
 
     const buffer = await renderToBuffer(
