@@ -8,7 +8,13 @@ import type { LineItem } from '@/lib/types'
 import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, Upload, X, Loader2 } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
+import { compressImage } from '@/lib/compressImage'
 import toast from 'react-hot-toast'
+
+// Line item images print at 1.5cm (42.5pt) on the quote/invoice. 400px on the
+// longest side is ~677 DPI at that size — far past the 300 DPI print threshold —
+// and still crisp in the app's own preview at 2x pixel density.
+const LINE_ITEM_IMAGE_MAX_DIM = 400
 
 function CurrencyInput({ value, onChange, onBlur, className }: { value: number; onChange: (v: number) => void; onBlur: (v: number) => void; className: string }) {
   const [focused, setFocused] = useState(false)
@@ -269,8 +275,21 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     if (!files?.length) return
     setUploadingImages(true)
     try {
+      // Downscale to LINE_ITEM_IMAGE_MAX_DIM and re-encode to JPEG before upload.
+      // Keeps files ~30-50KB and guarantees react-pdf can render them — it
+      // handles only JPEG and PNG, so a WebP/AVIF original would break the PDF.
+      let compressed: File[]
+      try {
+        compressed = await Promise.all(
+          Array.from(files).map(f => compressImage(f, LINE_ITEM_IMAGE_MAX_DIM)),
+        )
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not read image')
+        return
+      }
+
       const fd = new FormData()
-      Array.from(files).forEach(f => fd.append('files', f))
+      compressed.forEach(f => fd.append('files', f))
       const res = await fetch(`/api/line-items/${lineItemId}/images`, { method: 'POST', body: fd })
       const json = await res.json()
       if (!res.ok) { toast.error(json.error ?? 'Upload failed'); return }
@@ -686,32 +705,6 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         {isLinked && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
-                        {imagesEnabled && (() => {
-                          // Designer upload wins; catalogue image (Twinbru / price list) is the fallback
-                          const thumb = item.image_urls?.[0] ?? item.fabric_image_url ?? null
-                          const count = item.image_urls?.length ?? 0
-                          return (
-                            <button
-                              onClick={() => setImageModal({ lineItemId: item.id, itemName: item.item_name })}
-                              title={thumb ? `Images for ${item.item_name || 'this item'}` : 'Add an image'}
-                              aria-label={thumb ? `Images for ${item.item_name || 'this item'}` : 'Add an image'}
-                              className={`relative flex-shrink-0 w-6 h-6 rounded border flex items-center justify-center overflow-hidden transition-colors cursor-pointer
-                                ${thumb
-                                  ? 'border-[#D8D3C8] hover:border-[#9A7B4F]'
-                                  : 'border-transparent text-[#C4BFB5] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F] hover:border-[#D8D3C8]'
-                                }`}
-                            >
-                              {thumb
-                                // eslint-disable-next-line @next/next/no-img-element
-                                ? <img src={thumb} alt="" className="w-full h-full object-cover" />
-                                : <ImagePlus size={12} />
-                              }
-                              {count > 1 && (
-                                <span className="absolute bottom-0 right-0 px-0.5 bg-black/60 text-white text-[8px] leading-tight rounded-tl">{count}</span>
-                              )}
-                            </button>
-                          )
-                        })()}
                         <div className="flex-1 min-w-0">
                           {(() => {
                             const supplier = suppliers.find(s => s.id === item.supplier_id)
@@ -746,6 +739,34 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             )
                           })()}
                         </div>
+                        {/* Image thumbnail / add button — sits AFTER the name so the
+                            name's position never shifts, image or no image. */}
+                        {imagesEnabled && (() => {
+                          // Designer upload wins; catalogue image (Twinbru / price list) is the fallback
+                          const thumb = item.image_urls?.[0] ?? item.fabric_image_url ?? null
+                          const count = item.image_urls?.length ?? 0
+                          return (
+                            <button
+                              onClick={() => setImageModal({ lineItemId: item.id, itemName: item.item_name })}
+                              title={thumb ? `Images for ${item.item_name || 'this item'}` : 'Add an image'}
+                              aria-label={thumb ? `Images for ${item.item_name || 'this item'}` : 'Add an image'}
+                              className={`relative flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center overflow-hidden transition-colors cursor-pointer
+                                ${thumb
+                                  ? 'border-[#D8D3C8] hover:border-[#9A7B4F]'
+                                  : 'border-transparent text-[#C4BFB5] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F] hover:border-[#D8D3C8]'
+                                }`}
+                            >
+                              {thumb
+                                // eslint-disable-next-line @next/next/no-img-element
+                                ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+                                : <ImagePlus size={11} />
+                              }
+                              {count > 1 && (
+                                <span className="absolute bottom-0 right-0 px-0.5 bg-black/60 text-white text-[8px] leading-tight rounded-tl">{count}</span>
+                              )}
+                            </button>
+                          )
+                        })()}
                         {item.twinbru_product_id && (
                           <input
                             value={item.colour_finish ?? ''}
@@ -1428,7 +1449,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   <input
                     ref={imageFileRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                    accept="image/jpeg,image/png,image/webp,image/svg+xml"
                     multiple
                     className="hidden"
                     onChange={e => { uploadLineItemImages(imageModal.lineItemId, e.target.files); e.target.value = '' }}
@@ -1441,7 +1462,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                     {uploadingImages ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                     {uploadingImages ? 'Uploading…' : uploaded.length >= 6 ? 'Maximum 6 images' : 'Upload images'}
                   </button>
-                  <p className="text-xs text-[#A8A39B] mt-2">JPG, PNG, WebP or AVIF — up to 10 MB each, 6 per item.</p>
+                  <p className="text-xs text-[#A8A39B] mt-2">JPG, PNG, WebP or SVG — up to 5 MB each, 6 per item. Images are compressed automatically.</p>
                 </>
               )}
             </div>

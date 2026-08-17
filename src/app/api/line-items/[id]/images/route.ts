@@ -3,8 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
-const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'])
-const MAX_BYTES = 10 * 1024 * 1024
+// JPEG/PNG only — react-pdf renders nothing else, and an unrenderable image
+// would throw and fail the entire quote PDF. The client compresses and
+// re-encodes to JPEG before posting, so this is a backstop.
+const ALLOWED_IMAGE_MIME = new Set(['image/jpeg', 'image/png'])
+const MAX_BYTES = 5 * 1024 * 1024
 const MAX_PER_ITEM = 6
 
 /**
@@ -44,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     for (const file of files) {
       if (!ALLOWED_IMAGE_MIME.has(file.type)) return NextResponse.json({ error: `${file.name} is not an allowed image type` }, { status: 400 })
-      if (file.size > MAX_BYTES) return NextResponse.json({ error: `${file.name} exceeds the 10 MB limit` }, { status: 400 })
+      if (file.size > MAX_BYTES) return NextResponse.json({ error: `${file.name} exceeds the 5 MB limit` }, { status: 400 })
     }
 
     const lineItem = await loadLineItem(supabase, id)
