@@ -54,12 +54,19 @@ interface Props {
 
 const COL = 'px-2 py-1.5'
 const INPUT = 'w-full bg-transparent outline-none text-sm text-[#2C2C2A] focus:bg-white focus:ring-1 focus:ring-[#9A7B4F] rounded px-1 py-0.5 transition-colors placeholder-[#C4BFB5]'
+
+// Makes a text field hug its content so the image button sits right after the
+// last word instead of out at the column edge. field-sizing is Chrome 123+ /
+// Firefox 140+ / Safari 26+; older browsers fall back to the field's default
+// intrinsic width, which in this 200px column looks the same as before.
+const FIT_WIDTH = 'field-sizing-content w-auto min-w-[3rem] max-w-full'
+const INPUT_FIT = INPUT.replace('w-full', FIT_WIDTH)
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
 // leading-snug = 1.375, text-sm = 14px → 3 lines ≈ 57.75px
 const DESC_CLAMP_PX = 14 * 1.375 * 3
 
-function AutoTextarea({ value, onChange, onBlur, onFocus, placeholder, className, readOnly, autoFocus }: {
+function AutoTextarea({ value, onChange, onBlur, onFocus, placeholder, className, readOnly, autoFocus, sizeToContent }: {
   value: string
   onChange: (v: string) => void
   onBlur: (v: string) => void
@@ -68,6 +75,8 @@ function AutoTextarea({ value, onChange, onBlur, onFocus, placeholder, className
   className?: string
   readOnly?: boolean
   autoFocus?: boolean
+  /** Hug the text instead of filling the column, so a trailing control sits right after the last word. */
+  sizeToContent?: boolean
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const [focused, setFocused] = useState(false)
@@ -105,7 +114,7 @@ function AutoTextarea({ value, onChange, onBlur, onFocus, placeholder, className
         onFocus={() => { setFocused(true); onFocus?.() }}
         placeholder={placeholder}
         readOnly={readOnly}
-        className={className + ' resize-none overflow-hidden leading-snug w-full'}
+        className={className + ' resize-none overflow-hidden leading-snug ' + (sizeToContent ? FIT_WIDTH : 'w-full')}
         style={{ minHeight: '26px' }}
       />
       {!focused && overflows && (
@@ -705,7 +714,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         {isLinked && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
-                        <div className="flex-1 min-w-0">
+                        <div className={imagesEnabled ? 'min-w-0' : 'flex-1 min-w-0'}>
                           {(() => {
                             const supplier = suppliers.find(s => s.id === item.supplier_id)
                             const hasAccess = supplier?.is_platform && supplier.price_list_id ? activePriceListIds.includes(supplier.price_list_id) : false
@@ -722,7 +731,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                                 onBlur={v => saveField(item.id, 'item_name', v)}
                                 onSelect={fabric => handleFabricSelect(item.id, fabric)}
                                 placeholder="Search fabric…"
-                                className={INPUT}
+                                className={imagesEnabled ? INPUT_FIT : INPUT}
                                 priceListId={supplier.price_list_id}
                               />
                             )
@@ -733,14 +742,16 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                                 onBlur={v => { saveField(item.id, 'item_name', v); if (newlyAddedId === item.id) setNewlyAddedId(null) }}
                                 placeholder="Item name"
                                 className={INPUT}
+                                sizeToContent={imagesEnabled}
                                 readOnly={locked}
                                 autoFocus={newlyAddedId === item.id}
                               />
                             )
                           })()}
                         </div>
-                        {/* Image thumbnail / add button — sits AFTER the name so the
-                            name's position never shifts, image or no image. */}
+                        {/* Image thumbnail / add button — immediately after the name text.
+                            The name field hugs its content (FIT_WIDTH) so this lands right
+                            after the last word rather than out at the column edge. */}
                         {imagesEnabled && (() => {
                           // Designer upload wins; catalogue image (Twinbru / price list) is the fallback
                           const thumb = item.image_urls?.[0] ?? item.fabric_image_url ?? null
@@ -767,6 +778,9 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                             </button>
                           )
                         })()}
+                        {/* Pushes the colour field + link toggle back to the column edge,
+                            where they sat before the name field stopped filling the row. */}
+                        {imagesEnabled && <div className="flex-1 min-w-0" />}
                         {item.twinbru_product_id && (
                           <input
                             value={item.colour_finish ?? ''}
