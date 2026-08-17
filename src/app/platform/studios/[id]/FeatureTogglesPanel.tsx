@@ -42,8 +42,7 @@ function FeatureToggle({
 
   return (
     <div className="flex items-center justify-between gap-4">
-      {/* min-w-0 on both the row and the text block — without it the description
-          cannot shrink and pushes the toggle off the right edge. */}
+      {/* min-w-0 lets a long description wrap instead of widening the row. */}
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center flex-shrink-0">
           {icon}
@@ -97,7 +96,7 @@ export function FeatureTogglesPanel({
           initial={lineItemImagesEnabled}
           icon={<Images size={16} className="text-[#C4A46B]" />}
           title="Line item images"
-          description="Images per line item, shown on quotes & invoices"
+          description="Upload images per line item and show them on quotes & invoices"
         />
       </div>
     </div>
