@@ -18,7 +18,7 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
-export function ClassicTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime }: TemplateProps) {
+export function ClassicTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime, itemImages }: TemplateProps) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
   // Never show more paid than the invoice is worth, or a negative amount due
@@ -101,10 +101,14 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                   if (!c) return null
                   itemIndex++
                   itemNum++
+                  const img = itemImages?.[item.id]
                   return (
-                    <View key={item.id} style={{ flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border }}>
+                    <View key={item.id} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 4, borderBottomWidth: 0.5, borderBottomColor: theme.border }}>
                       <Text style={{ fontSize: 6.5, color: theme.muted, width: 20 }}>{itemNum}.</Text>
-                      <Text style={{ fontSize: 9, color: theme.text, flex: 1, paddingLeft: item.indent_level > 0 ? 8 : 0 }}>{cap(item.item_name)}</Text>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: item.indent_level > 0 ? 8 : 0 }}>
+                        {img ? <Image src={img} style={{ width: 38, height: 38, borderRadius: 2, objectFit: 'cover', marginRight: 8 }} /> : null}
+                        <Text style={{ fontSize: 9, color: theme.text, flex: 1 }}>{cap(item.item_name)}</Text>
+                      </View>
                       <Text style={{ fontSize: 9, color: theme.text, width: 44, textAlign: 'right', paddingRight: 8 }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</Text>
                       <Text style={{ fontSize: 9, color: theme.text, width: 72, textAlign: 'right' }}>{formatZAR(c.sale_price)}</Text>
                       <Text style={{ fontSize: 9, color: theme.text, width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>{formatZAR(c.total_price)}</Text>

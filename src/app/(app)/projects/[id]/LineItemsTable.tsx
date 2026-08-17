@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2 } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, Upload, X, Loader2 } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import toast from 'react-hot-toast'
@@ -164,6 +164,11 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   }, [lineItems])
   // New supplier mini-form modal (lineItemId = which row triggered it)
   const [newSupplierModal, setNewSupplierModal] = useState<{ name: string; email: string; markup: string; lineItemId: string } | null>(null)
+
+  // Per-line-item images
+  const [imageModal, setImageModal] = useState<{ lineItemId: string; itemName: string } | null>(null)
+  const [uploadingImages, setUploadingImages] = useState(false)
+  const imageFileRef = useRef<HTMLInputElement>(null)
   const lineItemsRef = useRef(lineItems)
   useEffect(() => { lineItemsRef.current = lineItems }, [lineItems])
   // Tracks description value at focus-time so we can diff before/after for audit
@@ -250,11 +255,44 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItems.map(i => `${i.id}:${i.quantity}`).join(',')])
 
-  const updateLocal = useCallback((id: string, field: string, value: string | number | null) => {
+  const updateLocal = useCallback((id: string, field: string, value: string | number | string[] | null) => {
     onChange(lineItems.map(item =>
       item.id === id ? { ...item, [field]: value } : item
     ))
   }, [lineItems, onChange])
+
+  // Storage buckets reject direct browser uploads — these go through the API
+  // route, which writes with the admin client.
+  async function uploadLineItemImages(lineItemId: string, files: FileList | null) {
+    if (!files?.length) return
+    setUploadingImages(true)
+    try {
+      const fd = new FormData()
+      Array.from(files).forEach(f => fd.append('files', f))
+      const res = await fetch(`/api/line-items/${lineItemId}/images`, { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) { toast.error(json.error ?? 'Upload failed'); return }
+      updateLocal(lineItemId, 'image_urls', json.all_urls)
+      router.refresh()
+      toast.success(json.urls.length === 1 ? 'Image added' : `${json.urls.length} images added`)
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploadingImages(false)
+    }
+  }
+
+  async function deleteLineItemImage(lineItemId: string, url: string) {
+    const res = await fetch(`/api/line-items/${lineItemId}/images`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+    const json = await res.json()
+    if (!res.ok) { toast.error(json.error ?? 'Could not remove image'); return }
+    updateLocal(lineItemId, 'image_urls', json.all_urls)
+    router.refresh()
+  }
 
   const saveField = useCallback(async (id: string, field: string, value: string | number | null, oldDescriptionValue?: string | null) => {
     await supabase.from('line_items').update({ [field]: value }).eq('id', id)
@@ -646,6 +684,32 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                         {isLinked && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
                         )}
+                        {(() => {
+                          // Designer upload wins; catalogue image (Twinbru / price list) is the fallback
+                          const thumb = item.image_urls?.[0] ?? item.fabric_image_url ?? null
+                          const count = item.image_urls?.length ?? 0
+                          return (
+                            <button
+                              onClick={() => setImageModal({ lineItemId: item.id, itemName: item.item_name })}
+                              title={thumb ? `Images for ${item.item_name || 'this item'}` : 'Add an image'}
+                              aria-label={thumb ? `Images for ${item.item_name || 'this item'}` : 'Add an image'}
+                              className={`relative flex-shrink-0 w-6 h-6 rounded border flex items-center justify-center overflow-hidden transition-colors cursor-pointer
+                                ${thumb
+                                  ? 'border-[#D8D3C8] hover:border-[#9A7B4F]'
+                                  : 'border-transparent text-[#C4BFB5] opacity-0 group-hover:opacity-100 hover:text-[#9A7B4F] hover:border-[#D8D3C8]'
+                                }`}
+                            >
+                              {thumb
+                                // eslint-disable-next-line @next/next/no-img-element
+                                ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+                                : <ImagePlus size={12} />
+                              }
+                              {count > 1 && (
+                                <span className="absolute bottom-0 right-0 px-0.5 bg-black/60 text-white text-[8px] leading-tight rounded-tl">{count}</span>
+                              )}
+                            </button>
+                          )
+                        })()}
                         <div className="flex-1 min-w-0">
                           {(() => {
                             const supplier = suppliers.find(s => s.id === item.supplier_id)
@@ -1299,6 +1363,89 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
           </div>
         </div>
       )}
+
+      {/* Line item images modal */}
+      {imageModal && (() => {
+        const item = lineItems.find(i => i.id === imageModal.lineItemId)
+        const uploaded = item?.image_urls ?? []
+        const catalogue = item?.fabric_image_url ?? null
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setImageModal(null)}>
+            <div className="bg-white rounded-lg shadow-xl w-[480px] p-6" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between mb-1">
+                <h3 className="text-base font-semibold text-[#2C2C2A]">
+                  Images — {imageModal.itemName || 'Untitled item'}
+                </h3>
+                <button onClick={() => setImageModal(null)} aria-label="Close" className="text-[#A8A39B] hover:text-[#2C2C2A] transition-colors cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-xs text-[#8A877F] mb-4">
+                The first image appears next to this item on the quote and invoice.
+              </p>
+
+              {uploaded.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {uploaded.map((url, i) => (
+                    <div key={url} className="relative group/img aspect-square rounded-lg overflow-hidden border border-[#E8E4DC]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Image ${i + 1}`} className="w-full h-full object-cover" />
+                      {i === 0 && (
+                        <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[9px] rounded">On quote</span>
+                      )}
+                      {!locked && (
+                        <button
+                          onClick={() => deleteLineItemImage(imageModal.lineItemId, url)}
+                          aria-label={`Remove image ${i + 1}`}
+                          className="absolute top-1 right-1 p-1 rounded bg-black/60 text-white opacity-0 group-hover/img:opacity-100 hover:bg-red-600 transition-colors cursor-pointer"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {uploaded.length === 0 && catalogue && (
+                <div className="flex items-center gap-3 mb-4 p-3 bg-[#FAF8F5] border border-[#E8E4DC] rounded-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={catalogue} alt="" className="w-12 h-12 rounded object-cover flex-shrink-0" />
+                  <p className="text-xs text-[#8A877F]">
+                    Using the supplier&apos;s catalogue image. Upload your own to replace it on the quote.
+                  </p>
+                </div>
+              )}
+
+              {uploaded.length === 0 && !catalogue && (
+                <p className="text-xs text-[#A8A39B] mb-4">No images on this item yet.</p>
+              )}
+
+              {!locked && (
+                <>
+                  <input
+                    ref={imageFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                    multiple
+                    className="hidden"
+                    onChange={e => { uploadLineItemImages(imageModal.lineItemId, e.target.files); e.target.value = '' }}
+                  />
+                  <button
+                    onClick={() => imageFileRef.current?.click()}
+                    disabled={uploadingImages || uploaded.length >= 6}
+                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#D8D3C8] rounded-lg text-sm text-[#8A877F] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadingImages ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    {uploadingImages ? 'Uploading…' : uploaded.length >= 6 ? 'Maximum 6 images' : 'Upload images'}
+                  </button>
+                  <p className="text-xs text-[#A8A39B] mt-2">JPG, PNG, WebP or AVIF — up to 10 MB each, 6 per item.</p>
+                </>
+              )}
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

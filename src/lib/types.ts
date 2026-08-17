@@ -79,7 +79,10 @@ export interface LineItem {
   indent_level: number
   received: boolean
   highlight_color: string | null
+  /** Automatic catalogue image (Twinbru / price list / Studio). Fallback for image_urls. */
   fabric_image_url: string | null
+  /** Designer-uploaded images. First entry renders on the quote / invoice PDF. */
+  image_urls: string[] | null
   unit: string | null
   lead_time_weeks: number | null
   lead_time_days: number | null

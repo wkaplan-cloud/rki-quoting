@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
+import { fetchLineItemImages } from '@/lib/pdf/lineItemImages'
 import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 60
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
-    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, email_from, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme').maybeSingle(),
+    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, email_from, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, show_images_on_documents').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -55,7 +56,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const logoUrl = await fetchLogoBase64(settings?.logo_url)
+    const [logoUrl, itemImages] = await Promise.all([
+      fetchLogoBase64(settings?.logo_url),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fetchLineItemImages(lineItems ?? [], (settings as any)?.show_images_on_documents ?? false),
+    ])
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,6 +88,7 @@ export async function POST(req: NextRequest) {
         validityDays: (settings as any)?.quote_validity_days ?? 30,
         paymentTerms: (settings as any)?.payment_terms ?? null,
         leadTime: (settings as any)?.lead_time ?? null,
+        itemImages,
       }) as any
     )
 

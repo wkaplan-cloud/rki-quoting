@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/Button'
+import { Switch } from '@/components/ui/Switch'
 import { Upload, X, CheckCircle, KeyRound, Zap, Maximize2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -267,6 +268,7 @@ interface Settings {
   production_sheet_email?: string | null
   pdf_template?: string | null
   pdf_color_theme?: string | null
+  show_images_on_documents?: boolean | null
   sage_invoice_message?: string | null
 }
 
@@ -474,8 +476,9 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
     pdf_template:           settings?.pdf_template ?? 'minimal',
     pdf_color_theme:        settings?.pdf_color_theme ?? 'warm',
     sage_invoice_message:   settings?.sage_invoice_message ?? '',
+    show_images_on_documents: settings?.show_images_on_documents ?? false,
   })
-  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k: string, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
 
   // Derive the live theme object from whatever colour theme is currently selected
   const currentTheme = THEMES[(form.pdf_color_theme as ThemeKey)] ?? THEMES.warm
@@ -775,6 +778,21 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
                   )
                 })}
               </div>
+            </div>
+
+            {/* Line item images */}
+            <div className="flex items-start justify-between gap-6 pt-2">
+              <div>
+                <label className="text-xs font-medium text-[#8A877F] block mb-1">Show item images on quotes &amp; invoices</label>
+                <p className="text-xs text-[#A8A39B] max-w-md">
+                  Adds a thumbnail beside each line item that has an image — either one you uploaded or the supplier&apos;s catalogue image.
+                </p>
+              </div>
+              <Switch
+                checked={!!form.show_images_on_documents}
+                onChange={v => set('show_images_on_documents', v)}
+                label="Show item images on quotes and invoices"
+              />
             </div>
           </section>
 

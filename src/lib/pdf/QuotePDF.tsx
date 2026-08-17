@@ -31,6 +31,8 @@ interface Props {
   validityDays?: number | null
   paymentTerms?: string | null
   leadTime?: string | null
+  /** Base64 data URIs keyed by line item id. Empty when images are switched off. */
+  itemImages?: Record<string, string>
 }
 
 const TEMPLATES: Record<TemplateKey, React.ComponentType<TemplateProps>> = {

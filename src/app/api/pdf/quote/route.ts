@@ -5,6 +5,7 @@ import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
+import { fetchLineItemImages } from '@/lib/pdf/lineItemImages'
 import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 60
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
     const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
       supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
       supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
-      supabase.from('settings').select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, vat_rate, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme').maybeSingle(),
+      supabase.from('settings').select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, vat_rate, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, show_images_on_documents').maybeSingle(),
     ])
 
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -33,11 +34,14 @@ export async function GET(req: NextRequest) {
       quotedDate = today
     }
 
-    const logoUrl = await fetchLogoBase64(settings?.logo_url)
+    const [logoUrl, itemImages] = await Promise.all([
+      fetchLogoBase64(settings?.logo_url),
+      fetchLineItemImages(lineItems ?? [], settings?.show_images_on_documents ?? false),
+    ])
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15, quotedDate, validityDays: settings?.quote_validity_days ?? 30, paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null }) as any
+      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15, quotedDate, validityDays: settings?.quote_validity_days ?? 30, paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null, itemImages }) as any
     )
 
     return new NextResponse(new Uint8Array(buffer), {
