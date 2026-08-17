@@ -61,7 +61,10 @@ function FeatureToggle({
         aria-label={title}
         className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer disabled:opacity-50 ${enabled ? 'bg-[#C4A46B]' : 'bg-white/10'}`}
       >
-        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+        {/* left-0.5 is required: a button is text-align:center, so without an
+            explicit left the knob's static position lands mid-track and the
+            translate pushes it clean off the right edge. */}
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-[22px]' : 'translate-x-0'}`} />
       </button>
     </div>
   )
