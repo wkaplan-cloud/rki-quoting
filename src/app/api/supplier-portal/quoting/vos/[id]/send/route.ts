@@ -17,8 +17,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
 
-    const body = await req.json() as { email: string; message?: string }
+    const body = await req.json() as { email: string; cc_emails?: string[]; message?: string }
     if (!body.email?.trim()) return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    const ccEmails = (body.cc_emails ?? []).map(e => e.trim()).filter(Boolean)
 
     // Fetch VO and verify ownership via quote
     const { data: vo } = await supabaseAdmin
@@ -115,6 +116,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: body.email.trim(),
+      ...(ccEmails.length > 0 && { cc: ccEmails }),
       subject: `Variation Order for approval — ${vo.vo_number} · ${quote.project_name}`,
       html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#F0F2F5;font-family:Inter,sans-serif;">

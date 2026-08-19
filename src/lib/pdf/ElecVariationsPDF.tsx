@@ -1,7 +1,7 @@
 import React from 'react'
 import { todaySA } from '@/lib/dates'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
-import type { ElecQuote, ElecClient, ElecSettings, ElecVariationOrder } from '@/lib/elec-types'
+import type { ElecQuote, ElecClient, ElecSettings, ElecVariationOrder, ElecQuoteLineItem } from '@/lib/elec-types'
 
 const ACCENT  = '#3A7CA5'
 const DARK    = '#18181B'
@@ -46,6 +46,9 @@ const s = StyleSheet.create({
   rowAlt:     { backgroundColor: SURF },
   td:         { fontSize: 8.5, color: DARK },
   tdMuted:    { color: MUTED },
+  itemRow:    { flexDirection: 'row', paddingVertical: 2.5, paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: '#F1F1F3' },
+  itemDesc:   { fontSize: 7.5, color: MUTED },
+  itemRate:   { fontSize: 7, color: '#A1A1AA' },
   footer:     { position: 'absolute', bottom: 24, left: 48, right: 48, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' },
   footerText: { fontSize: 7, color: MUTED },
 })
@@ -65,12 +68,18 @@ interface Props {
   client: ElecClient | null
   settings: ElecSettings | null
   variationOrders: ElecVariationOrder[]
+  lineItems?: ElecQuoteLineItem[]
   companyName: string
   companyEmail?: string | null
   logoUrl?: string | null
 }
 
-export function ElecVariationsPDF({ quote, client, settings, variationOrders, companyName, companyEmail, logoUrl }: Props) {
+export function ElecVariationsPDF({ quote, client, settings, variationOrders, lineItems = [], companyName, companyEmail, logoUrl }: Props) {
+  const itemsByVO = lineItems.reduce<Record<string, ElecQuoteLineItem[]>>((acc, li) => {
+    if (!li.variation_order_id) return acc
+    ;(acc[li.variation_order_id] ??= []).push(li)
+    return acc
+  }, {})
   const totalApproved = variationOrders.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
   const totalPending  = variationOrders.filter(v => v.status === 'pending').reduce((s, v) => s + v.value, 0)
   const totalAll      = variationOrders.reduce((s, v) => s + v.value, 0)
@@ -152,7 +161,8 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, co
             </View>
 
             {variationOrders.map((vo, i) => (
-              <View key={vo.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
+              <React.Fragment key={vo.id}>
+              <View style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
                 <Text style={[s.td, { width: 100, fontFamily: 'Helvetica-Bold' }]}>{vo.vo_number}</Text>
                 <View style={{ flex: 1, paddingRight: 4 }}>
                   <Text style={s.td}>{vo.description}</Text>
@@ -165,6 +175,25 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, co
                 <Text style={[s.td, s.tdMuted, { width: 80 }]}>{vo.requested_by ?? '—'}</Text>
                 <Text style={[s.td, s.tdMuted, { width: 70 }]}>{fmtDate(vo.approved_date)}</Text>
               </View>
+              {(itemsByVO[vo.id] ?? []).map(li => {
+                const rate = li.quoted_unit_rate + (li.labour_rate ?? 0)
+                return (
+                  <View key={li.id} style={[s.itemRow, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
+                    <Text style={{ width: 100 }} />
+                    <View style={{ flex: 1, paddingRight: 4, flexDirection: 'row' }}>
+                      <Text style={s.itemDesc}>{'\u2022  '}{li.description}</Text>
+                      <Text style={[s.itemRate, { marginLeft: 4 }]}>@ {fmtR(rate)}{li.unit ? `/${li.unit}` : ''}</Text>
+                    </View>
+                    <Text style={[s.itemDesc, { width: 56, textAlign: 'center' }]}>
+                      {li.quoted_quantity.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}{li.unit ? ` ${li.unit}` : ''}
+                    </Text>
+                    <Text style={[s.itemDesc, { width: 80, textAlign: 'right' }]}>{fmtR(li.quoted_quantity * rate)}</Text>
+                    <Text style={{ width: 80 }} />
+                    <Text style={{ width: 70 }} />
+                  </View>
+                )
+              })}
+              </React.Fragment>
             ))}
           </>
         )}

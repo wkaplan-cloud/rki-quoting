@@ -181,6 +181,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   // Send to client modal state
   const [sendModalVO, setSendModalVO] = useState<ElecVariationOrder | null>(null)
   const [sendEmail, setSendEmail] = useState('')
+  const [sendCcEmails, setSendCcEmails] = useState<string[]>([])
   const [sendMessage, setSendMessage] = useState('')
   const [sendLoading, setSendLoading] = useState(false)
   const [sendError, setSendError] = useState('')
@@ -316,7 +317,11 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
     const res = await fetch(`/api/supplier-portal/quoting/vos/${sendModalVO.id}/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: sendEmail.trim(), message: sendMessage.trim() || undefined }),
+      body: JSON.stringify({
+        email: sendEmail.trim(),
+        cc_emails: sendCcEmails.map(e => e.trim()).filter(Boolean),
+        message: sendMessage.trim() || undefined,
+      }),
     })
     const json = await res.json()
     if (!res.ok) { setSendError(json.error ?? 'Failed to send'); setSendLoading(false); return }
@@ -331,7 +336,7 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
   }
 
   function closeSendModal() {
-    setSendModalVO(null); setSendEmail(''); setSendMessage(''); setSendError(''); setSendDone(false)
+    setSendModalVO(null); setSendEmail(''); setSendCcEmails([]); setSendMessage(''); setSendError(''); setSendDone(false)
   }
 
   // ── Create VO ─────────────────────────────────────────────────────────────
@@ -1099,6 +1104,43 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
                     autoFocus
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                     style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>
+                      CC <span style={{ fontWeight: 400 }}>(optional)</span>
+                    </label>
+                    {sendCcEmails.length > 0 && sendCcEmails.length < 3 && (
+                      <button onClick={() => setSendCcEmails(p => [...p, ''])}
+                        className="text-[11px] font-semibold" style={{ color: S.accent }}>
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                  {sendCcEmails.length === 0 ? (
+                    <button onClick={() => setSendCcEmails([''])} className="text-[11px]" style={{ color: S.muted }}>
+                      + Add CC recipient
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      {sendCcEmails.map((ccEmail, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <input type="email" value={ccEmail}
+                            aria-label={`CC recipient ${i + 1}`}
+                            onChange={e => setSendCcEmails(p => p.map((v, j) => j === i ? e.target.value : v))}
+                            className="flex-1 px-3 py-2 text-sm rounded-xl outline-none"
+                            style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
+                          <button onClick={() => setSendCcEmails(p => p.filter((_, j) => j !== i))}
+                            aria-label={`Remove CC recipient ${i + 1}`}
+                            className="p-1.5 rounded-lg flex-shrink-0" style={{ color: S.muted }}
+                            onMouseEnter={e => e.currentTarget.style.background = S.bg}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                            <X size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Message <span style={{ fontWeight: 400 }}>(optional)</span></label>
