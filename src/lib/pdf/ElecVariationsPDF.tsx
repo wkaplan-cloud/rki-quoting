@@ -17,6 +17,10 @@ const STATUS_COLOR: Record<string, string> = {
   approved: GREEN,
   rejected: DANGER,
 }
+// Fixed column widths (A4 content width = 499pt; Description takes the remainder)
+const COL = { vo: 80, status: 46, value: 74, requested: 66, approved: 54 }
+const GAP = 6
+
 const STATUS_LABEL: Record<string, string> = {
   pending:  'Pending',
   approved: 'Approved',
@@ -46,15 +50,27 @@ const s = StyleSheet.create({
   rowAlt:     { backgroundColor: SURF },
   td:         { fontSize: 8.5, color: DARK },
   tdMuted:    { color: MUTED },
-  itemRow:    { flexDirection: 'row', paddingVertical: 2.5, paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: '#F1F1F3' },
-  itemDesc:   { fontSize: 7.5, color: MUTED },
-  itemRate:   { fontSize: 7, color: '#A1A1AA' },
+  itemRow:    { flexDirection: 'row', paddingVertical: 3, paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: '#F1F1F3' },
+  itemDesc:   { fontSize: 7.5, color: MUTED, lineHeight: 1.3 },
+  totalsWrap: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14 },
+  totalsBox:  { width: 240, borderWidth: 0.5, borderColor: BORDER, borderRadius: 3, padding: 10 },
+  totalRow:   { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  totalLbl:   { fontSize: 8, color: MUTED },
+  totalVal:   { fontSize: 8, color: DARK },
+  grandRow:   { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 5, marginTop: 3 },
+  grandLbl:   { fontSize: 9, fontFamily: 'Helvetica-Bold', color: DARK },
+  grandVal:   { fontSize: 10, fontFamily: 'Helvetica-Bold', color: ACCENT },
   footer:     { position: 'absolute', bottom: 24, left: 48, right: 48, borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 6, flexDirection: 'row', justifyContent: 'space-between' },
   footerText: { fontSize: 7, color: MUTED },
 })
 
 function fmtR(n: number) {
   return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// Keeps a short value from breaking across two lines mid-token (e.g. "R 443,70")
+function nbsp(v: string) {
+  return v.replace(/ /g, '\u00A0')
 }
 
 function fmtDate(iso: string | null | undefined) {
@@ -83,6 +99,9 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, li
   const totalApproved = variationOrders.filter(v => v.status === 'approved').reduce((s, v) => s + v.value, 0)
   const totalPending  = variationOrders.filter(v => v.status === 'pending').reduce((s, v) => s + v.value, 0)
   const totalAll      = variationOrders.reduce((s, v) => s + v.value, 0)
+  const vatRate       = quote.vat_rate ?? 15
+  const vatAmount     = totalAll * (vatRate / 100)
+  const totalIncVat   = totalAll + vatAmount
 
   const metaParts = [
     settings?.vat_registration_number    ? `VAT: ${settings.vat_registration_number}`    : null,
@@ -152,50 +171,78 @@ export function ElecVariationsPDF({ quote, client, settings, variationOrders, li
         ) : (
           <>
             <View style={s.tableHead}>
-              <Text style={[s.th, { width: 100 }]}>VO Number</Text>
-              <Text style={[s.th, { flex: 1 }]}>Description</Text>
-              <Text style={[s.th, { width: 56, textAlign: 'center' }]}>Status</Text>
-              <Text style={[s.th, { width: 80, textAlign: 'right' }]}>Value</Text>
-              <Text style={[s.th, { width: 80 }]}>Requested By</Text>
-              <Text style={[s.th, { width: 70 }]}>Approved</Text>
+              <Text style={[s.th, { width: COL.vo, paddingRight: GAP }]}>VO Number</Text>
+              <Text style={[s.th, { flex: 1, paddingRight: GAP }]}>Description</Text>
+              <Text style={[s.th, { width: COL.status, textAlign: 'center', paddingRight: GAP }]}>Status</Text>
+              <Text style={[s.th, { width: COL.value, textAlign: 'right', paddingRight: GAP }]}>Value</Text>
+              <Text style={[s.th, { width: COL.requested, paddingRight: GAP }]}>Requested By</Text>
+              <Text style={[s.th, { width: COL.approved }]}>Approved</Text>
             </View>
 
             {variationOrders.map((vo, i) => (
               <React.Fragment key={vo.id}>
               <View style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
-                <Text style={[s.td, { width: 100, fontFamily: 'Helvetica-Bold' }]}>{vo.vo_number}</Text>
-                <View style={{ flex: 1, paddingRight: 4 }}>
+                <Text style={[s.td, { width: COL.vo, paddingRight: GAP, fontSize: 7.5, fontFamily: 'Helvetica-Bold' }]}>{vo.vo_number}</Text>
+                <View style={{ flex: 1, paddingRight: GAP }}>
                   <Text style={s.td}>{vo.description}</Text>
                   {vo.notes && <Text style={[s.td, s.tdMuted, { fontSize: 7.5, fontStyle: 'italic', marginTop: 1 }]}>{vo.notes}</Text>}
                 </View>
-                <Text style={[s.td, { width: 56, textAlign: 'center', color: STATUS_COLOR[vo.status] ?? MUTED, fontFamily: 'Helvetica-Bold', fontSize: 7.5 }]}>
+                <Text style={[s.td, { width: COL.status, paddingRight: GAP, textAlign: 'center', color: STATUS_COLOR[vo.status] ?? MUTED, fontFamily: 'Helvetica-Bold', fontSize: 7.5 }]}>
                   {STATUS_LABEL[vo.status] ?? vo.status}
                 </Text>
-                <Text style={[s.td, { width: 80, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: ACCENT }]}>{fmtR(vo.value)}</Text>
-                <Text style={[s.td, s.tdMuted, { width: 80 }]}>{vo.requested_by ?? '—'}</Text>
-                <Text style={[s.td, s.tdMuted, { width: 70 }]}>{fmtDate(vo.approved_date)}</Text>
+                <Text style={[s.td, { width: COL.value, paddingRight: GAP, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: ACCENT }]}>{nbsp(fmtR(vo.value))}</Text>
+                <Text style={[s.td, s.tdMuted, { width: COL.requested, paddingRight: GAP, fontSize: 7.5 }]}>{vo.requested_by ?? '—'}</Text>
+                <Text style={[s.td, s.tdMuted, { width: COL.approved, fontSize: 7.5 }]}>{nbsp(fmtDate(vo.approved_date))}</Text>
               </View>
               {(itemsByVO[vo.id] ?? []).map(li => {
                 const rate = li.quoted_unit_rate + (li.labour_rate ?? 0)
+                const qty  = li.quoted_quantity.toLocaleString('en-ZA', { maximumFractionDigits: 2 })
                 return (
                   <View key={li.id} style={[s.itemRow, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
-                    <Text style={{ width: 100 }} />
-                    <View style={{ flex: 1, paddingRight: 4, flexDirection: 'row' }}>
-                      <Text style={s.itemDesc}>{'\u2022  '}{li.description}</Text>
-                      <Text style={[s.itemRate, { marginLeft: 4 }]}>@ {fmtR(rate)}{li.unit ? `/${li.unit}` : ''}</Text>
-                    </View>
-                    <Text style={[s.itemDesc, { width: 56, textAlign: 'center' }]}>
-                      {li.quoted_quantity.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}{li.unit ? ` ${li.unit}` : ''}
+                    <View style={{ width: COL.vo, paddingRight: GAP }} />
+                    <Text style={[s.itemDesc, { flex: 1, paddingRight: GAP }]}>
+                      {'\u2022  '}{li.description}{'   @ '}{fmtR(rate)}
                     </Text>
-                    <Text style={[s.itemDesc, { width: 80, textAlign: 'right' }]}>{fmtR(li.quoted_quantity * rate)}</Text>
-                    <Text style={{ width: 80 }} />
-                    <Text style={{ width: 70 }} />
+                    <Text style={[s.itemDesc, { width: COL.status, paddingRight: GAP, textAlign: 'center' }]}>
+                      {nbsp(`${qty}${li.unit ? ` ${li.unit}` : ''}`)}
+                    </Text>
+                    <Text style={[s.itemDesc, { width: COL.value, paddingRight: GAP, textAlign: 'right' }]}>{nbsp(fmtR(li.quoted_quantity * rate))}</Text>
+                    <View style={{ width: COL.requested, paddingRight: GAP }} />
+                    <View style={{ width: COL.approved }} />
                   </View>
                 )
               })}
               </React.Fragment>
             ))}
           </>
+        )}
+
+        {/* Totals */}
+        {variationOrders.length > 0 && (
+          <View style={s.totalsWrap} wrap={false}>
+            <View style={s.totalsBox}>
+              <View style={s.totalRow}>
+                <Text style={s.totalLbl}>Approved variations (excl VAT)</Text>
+                <Text style={[s.totalVal, { color: GREEN }]}>{nbsp(fmtR(totalApproved))}</Text>
+              </View>
+              <View style={s.totalRow}>
+                <Text style={s.totalLbl}>Pending variations (excl VAT)</Text>
+                <Text style={[s.totalVal, { color: GOLD }]}>{nbsp(fmtR(totalPending))}</Text>
+              </View>
+              <View style={[s.totalRow, { borderTopWidth: 0.5, borderTopColor: BORDER, paddingTop: 5, marginTop: 3 }]}>
+                <Text style={s.totalLbl}>Total variations (excl VAT)</Text>
+                <Text style={s.totalVal}>{nbsp(fmtR(totalAll))}</Text>
+              </View>
+              <View style={s.totalRow}>
+                <Text style={s.totalLbl}>VAT ({vatRate}%)</Text>
+                <Text style={s.totalVal}>{nbsp(fmtR(vatAmount))}</Text>
+              </View>
+              <View style={s.grandRow}>
+                <Text style={s.grandLbl}>Total (incl VAT)</Text>
+                <Text style={s.grandVal}>{nbsp(fmtR(totalIncVat))}</Text>
+              </View>
+            </View>
+          </View>
         )}
 
         {/* Footer */}
