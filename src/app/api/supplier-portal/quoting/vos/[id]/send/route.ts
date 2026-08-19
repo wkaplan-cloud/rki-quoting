@@ -36,6 +36,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'VO is no longer pending' }, { status: 409 })
     }
 
+    // Fetch the VO's line items for the detail table
+    const { data: voItems } = await supabaseAdmin
+      .from('elec_quote_line_items')
+      .select('description, unit, quoted_quantity, quoted_unit_rate, labour_rate')
+      .eq('variation_order_id', id)
+      .eq('is_variation', true)
+      .order('sort_order', { ascending: true })
+
+    const lineItems = (voItems ?? []) as {
+      description: string
+      unit: string | null
+      quoted_quantity: number
+      quoted_unit_rate: number
+      labour_rate: number | null
+    }[]
+
     // Ensure share_token exists
     let shareToken = vo.share_token as string | null
     if (!shareToken) {
@@ -59,6 +75,41 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       : ''
 
     const fmtR = (n: number) => 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const fmtQty = (n: number) => n.toLocaleString('en-ZA', { maximumFractionDigits: 2 })
+    const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const lineTotal = (li: typeof lineItems[number]) =>
+      li.quoted_quantity * (li.quoted_unit_rate + (li.labour_rate ?? 0))
+
+    const itemsHtml = lineItems.length > 0
+      ? `<div style="border:1px solid #E4E4E7;border-radius:10px;overflow:hidden;margin-bottom:20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:12px;">
+        <thead>
+          <tr style="background:#F4F4F5;">
+            <th align="left" style="padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#71717A;">Description</th>
+            <th align="right" style="padding:8px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#71717A;white-space:nowrap;">Qty</th>
+            <th align="left" style="padding:8px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#71717A;">Unit</th>
+            <th align="right" style="padding:8px 6px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#71717A;white-space:nowrap;">Rate</th>
+            <th align="right" style="padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#71717A;white-space:nowrap;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lineItems.map(li => `<tr style="border-top:1px solid #E4E4E7;">
+            <td style="padding:9px 12px;color:#18181B;">${esc(li.description)}</td>
+            <td align="right" style="padding:9px 6px;color:#3F3F46;white-space:nowrap;">${fmtQty(li.quoted_quantity)}</td>
+            <td style="padding:9px 6px;color:#71717A;">${esc(li.unit ?? '')}</td>
+            <td align="right" style="padding:9px 6px;color:#3F3F46;white-space:nowrap;">${fmtR(li.quoted_unit_rate + (li.labour_rate ?? 0))}</td>
+            <td align="right" style="padding:9px 12px;font-weight:600;color:#18181B;white-space:nowrap;">${fmtR(lineTotal(li))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`
+      : ''
+
+    const itemsText = lineItems.length > 0
+      ? '\n' + lineItems.map(li =>
+          `- ${li.description}: ${fmtQty(li.quoted_quantity)}${li.unit ? ' ' + li.unit : ''} @ ${fmtR(li.quoted_unit_rate + (li.labour_rate ?? 0))} = ${fmtR(lineTotal(li))}`
+        ).join('\n') + '\n'
+      : ''
 
     await resend.emails.send({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
@@ -77,9 +128,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       <strong>${companyName}</strong> has submitted a Variation Order for <strong>${quote.project_name}</strong> that requires your approval.
     </p>
     ${messageHtml}
-    <div style="background:#F4F4F5;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+    <div style="margin-bottom:20px;">
       <p style="margin:0 0 6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#71717A;">${vo.vo_number}</p>
       <p style="margin:0 0 12px;font-size:15px;font-weight:600;color:#18181B;">${vo.description}</p>
+    </div>
+    ${itemsHtml}
+    <div style="background:#F4F4F5;border-radius:10px;padding:16px 20px;margin-bottom:20px;">
       <div style="display:flex;justify-content:space-between;border-top:1px solid #E4E4E7;padding-top:10px;margin-top:4px;">
         <span style="font-size:13px;color:#71717A;">Value (ex VAT)</span>
         <span style="font-size:13px;font-weight:600;color:#18181B;">${fmtR(vo.value)}</span>
@@ -112,7 +166,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   </div>
 </div>
 </body></html>`,
-      text: `${companyName} has submitted Variation Order ${vo.vo_number} for ${quote.project_name}.\n\n${vo.description}\n\nValue (ex VAT): ${fmtR(vo.value)}\nTotal incl. VAT: ${fmtR(totalIncVat)}\n\nReview and respond: ${approvalUrl}\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
+      text: `${companyName} has submitted Variation Order ${vo.vo_number} for ${quote.project_name}.\n\n${vo.description}\n${itemsText}\nValue (ex VAT): ${fmtR(vo.value)}\nTotal incl. VAT: ${fmtR(totalIncVat)}\n\nReview and respond: ${approvalUrl}\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
     })
 
     await supabaseAdmin

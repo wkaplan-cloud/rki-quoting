@@ -16,6 +16,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
     const quote = Array.isArray(vo.quote) ? vo.quote[0] : vo.quote
 
+    const { data: voItems } = await supabaseAdmin
+      .from('elec_quote_line_items')
+      .select('id, description, unit, quoted_quantity, quoted_unit_rate, labour_rate')
+      .eq('variation_order_id', vo.id)
+      .eq('is_variation', true)
+      .order('sort_order', { ascending: true })
+
     const { data: account } = await supabaseAdmin
       .from('supplier_portal_accounts')
       .select('company_name, email, logo_url')
@@ -35,6 +42,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         approved_date: vo.approved_date,
         vat_rate: quote.vat_rate ?? 15,
       },
+      items: (voItems ?? []).map(li => ({
+        id: li.id,
+        description: li.description,
+        unit: li.unit,
+        quantity: li.quoted_quantity,
+        unit_rate: li.quoted_unit_rate + (li.labour_rate ?? 0),
+        amount: li.quoted_quantity * (li.quoted_unit_rate + (li.labour_rate ?? 0)),
+      })),
       project: {
         project_name: quote.project_name,
         quote_number: quote.quote_number,

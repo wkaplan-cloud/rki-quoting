@@ -26,6 +26,14 @@ interface VOData {
     approved_date: string | null
     vat_rate: number
   }
+  items: {
+    id: string
+    description: string
+    unit: string | null
+    quantity: number
+    unit_rate: number
+    amount: number
+  }[]
   project: {
     project_name: string
     quote_number: string
@@ -97,6 +105,7 @@ export default function VOApprovalPage() {
   }
 
   const { vo, project, company } = data
+  const items = data.items ?? []
   const vatAmt = vo.value * (vo.vat_rate / 100)
   const totalIncVat = vo.value + vatAmt
   const isAlreadyActioned = done !== null || vo.status !== 'pending'
@@ -129,6 +138,35 @@ export default function VOApprovalPage() {
           )}
           {vo.requested_by && (
             <p className="text-xs mb-4" style={{ color: S.muted }}>Requested by: {vo.requested_by}</p>
+          )}
+
+          {items.length > 0 && (
+            <div className="rounded-xl overflow-hidden mb-4" style={{ border: `1px solid ${S.border}` }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: S.input }}>
+                      <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Description</th>
+                      <th className="text-right px-2 py-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: S.muted }}>Qty</th>
+                      <th className="text-left px-2 py-2 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Unit</th>
+                      <th className="text-right px-2 py-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: S.muted }}>Rate</th>
+                      <th className="text-right px-3 py-2 text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: S.muted }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map(li => (
+                      <tr key={li.id} style={{ borderTop: `1px solid ${S.border}` }}>
+                        <td className="px-3 py-2.5 text-xs" style={{ color: S.text }}>{li.description}</td>
+                        <td className="px-2 py-2.5 text-xs text-right whitespace-nowrap" style={{ color: S.muted }}>{li.quantity.toLocaleString('en-ZA', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-2.5 text-xs" style={{ color: S.muted }}>{li.unit ?? ''}</td>
+                        <td className="px-2 py-2.5 text-xs text-right whitespace-nowrap" style={{ color: S.muted }}>{fmtR(li.unit_rate)}</td>
+                        <td className="px-3 py-2.5 text-xs text-right font-semibold whitespace-nowrap" style={{ color: S.text }}>{fmtR(li.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
 
           <div className="space-y-2 pt-3" style={{ borderTop: `1px solid ${S.border}` }}>
