@@ -4,6 +4,7 @@ import { Image as KonvaImage, Rect, Group, Text } from 'react-konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { useStudioStore } from '@/lib/studio/store'
 import { useKonvaImage } from '@/lib/studio/images'
+import { isPendingUrl, pendingId } from '@/lib/studio/offlineUploads'
 import type { ImageObject } from '@/lib/studio/types'
 import { useObjectInteraction } from './ObjectNode'
 
@@ -22,6 +23,12 @@ export const ImageNode = memo(function ImageNode({
   const processingZoom = useStudioStore(s =>
     s.bgRemoval[obj.id] === 'processing' ? s.viewport.zoom : 0
   )
+  // Added while offline: the picture is real (drawn from the queued blob) but
+  // the file has not reached storage yet. Same zoom-independent trick as above
+  // so the badge stays legible at any zoom, and 0 when there is nothing to say.
+  const queued = isPendingUrl(obj.url)
+  const failed = useStudioStore(s => queued && s.failedUploadIds.includes(pendingId(obj.url)))
+  const queuedZoom = useStudioStore(s => (queued ? s.viewport.zoom : 0))
 
   function onTransformEnd(e: KonvaEventObject<Event>) {
     const node = e.target
@@ -68,6 +75,30 @@ export const ImageNode = memo(function ImageNode({
         onTransformEnd={onTransformEnd}
         onDblClick={interactive ? () => useStudioStore.getState().setCropTarget(obj.id) : undefined}
       />
+      {/* Queued upload marker — editor-only, never exported, never clickable */}
+      {interactive && queuedZoom > 0 && (
+        <Group x={obj.x} y={obj.y} rotation={obj.rotation} listening={false}>
+          <Rect
+            x={6 / queuedZoom}
+            y={6 / queuedZoom}
+            width={112 / queuedZoom}
+            height={18 / queuedZoom}
+            cornerRadius={4 / queuedZoom}
+            fill={failed ? '#B4462F' : '#1A1A18'}
+            opacity={0.75}
+          />
+          <Text
+            text={failed ? 'Upload failed' : 'Uploads when online'}
+            x={6 / queuedZoom}
+            y={11 / queuedZoom}
+            width={112 / queuedZoom}
+            align="center"
+            fontSize={9 / queuedZoom}
+            fill="#FFFFFF"
+          />
+        </Group>
+      )}
+
       {/* Subtle veil while the background is being removed — editor-only,
           never blocks interaction (listening false), never exported */}
       {interactive && processingZoom > 0 && (

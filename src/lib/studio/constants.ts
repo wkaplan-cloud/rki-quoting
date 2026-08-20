@@ -21,6 +21,9 @@ export const MAX_HISTORY = 50
 export const SAVE_DEBOUNCE = 800
 export const STATE_SAVE_DEBOUNCE = 2000
 export const MASTER_LAYOUT_SAVE_DEBOUNCE = 600
+// Local (IndexedDB) mirror runs ahead of the network save — an edit should be
+// durable on the device long before the round-trip is attempted
+export const LOCAL_PERSIST_DEBOUNCE = 400
 
 // Editor chrome palette (matches app conventions)
 export const COLORS = {

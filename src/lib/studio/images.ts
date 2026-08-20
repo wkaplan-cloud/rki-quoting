@@ -5,6 +5,7 @@ import { gridPlacements } from './autoLayout'
 import { getMasterContentArea } from './masterThemes'
 import { createClient } from '@/lib/supabase/client'
 import { assetFromRow, type ImageObject, type StudioAsset, type StudioAssetRow } from './types'
+import { isPendingUrl, resolvePendingUrl, queueImageUpload } from './offlineUploads'
 
 // ── Image element cache ─────────────────────────────────────────────────────
 // Shared by editor nodes, thumbnails, presentation and export. crossOrigin is
@@ -41,7 +42,6 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   if (inflight) return inflight
   const p = new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous'
     img.onload = () => {
       cachePut(url, img)
       pending.delete(url)
@@ -51,11 +51,35 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
       pending.delete(url)
       reject(new Error('Failed to load image'))
     }
-    img.src = url
+    // A `pending://` object is an image queued for upload while offline: the
+    // bytes are in IndexedDB, so draw it from a local blob URL. Blob URLs are
+    // same-origin and never taint the canvas, so `crossOrigin` — which is
+    // mandatory on remote files for stage.toDataURL() — must be left off here,
+    // as Safari fails the load outright when it is set on a blob.
+    if (isPendingUrl(url)) {
+      resolvePendingUrl(url).then(
+        blobUrl => {
+          if (!blobUrl) {
+            pending.delete(url)
+            reject(new Error('Queued image is no longer available'))
+            return
+          }
+          img.src = blobUrl
+        },
+        () => {
+          pending.delete(url)
+          reject(new Error('Queued image is no longer available'))
+        }
+      )
+    } else {
+      img.crossOrigin = 'anonymous'
+      img.src = url
+    }
   })
   pending.set(url, p)
   return p
 }
+
 
 export function useKonvaImage(url: string | null): HTMLImageElement | undefined {
   const [img, setImg] = useState<HTMLImageElement | undefined>(() => (url ? cacheGet(url) : undefined))
@@ -372,11 +396,26 @@ async function uploadFile(file: File): Promise<{ url: string; width: number; hei
     }
   }
 
+  // No signal: park the compressed file in IndexedDB and hand back a
+  // `pending://` URL. The canvas renders it from the local blob and the queue
+  // swaps in the permanent URL once the connection returns.
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return queueImageUpload(prepared.file, prepared.width, prepared.height)
+  }
+
   const formData = new FormData()
   formData.append('files', prepared.file)
   formData.append('widths', String(prepared.width))
   formData.append('heights', String(prepared.height))
-  const res = await fetch(`/api/studio/boards/${store.boardId}/images`, { method: 'POST', body: formData })
+  let res: Response
+  try {
+    res = await fetch(`/api/studio/boards/${store.boardId}/images`, { method: 'POST', body: formData })
+  } catch {
+    // The connection dropped mid-upload — queue rather than lose the file.
+    // Only a transport failure lands here; a server that answers and refuses
+    // the file (wrong type, too large) still surfaces its error below.
+    return queueImageUpload(prepared.file, prepared.width, prepared.height)
+  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok || !data.urls?.[0]) throw new Error(data.error ?? 'Upload failed')
   const url: string = data.urls[0]

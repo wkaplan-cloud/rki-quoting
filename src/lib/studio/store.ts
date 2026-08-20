@@ -12,7 +12,15 @@ import type {
   RfqRecipientStamp,
 } from './types'
 import { DEFAULT_MASTER_LAYOUT } from './types'
-import { MAX_HISTORY, SAVE_DEBOUNCE, STATE_SAVE_DEBOUNCE, MASTER_LAYOUT_SAVE_DEBOUNCE, STUDIO_CLIPBOARD_PREFIX } from './constants'
+import {
+  MAX_HISTORY,
+  SAVE_DEBOUNCE,
+  STATE_SAVE_DEBOUNCE,
+  MASTER_LAYOUT_SAVE_DEBOUNCE,
+  LOCAL_PERSIST_DEBOUNCE,
+  STUDIO_CLIPBOARD_PREFIX,
+} from './constants'
+import { putBoardSnapshot, getBoardSnapshot } from './offlineDb'
 
 interface Snapshot {
   slides: StudioSlide[]
@@ -74,6 +82,16 @@ interface StudioState {
   rfqObjectIds: string[] | null
   dirtySpecIds: string[]
 
+  // Image files dropped while offline: parked in IndexedDB, drawn from a local
+  // blob URL, uploaded for real on reconnect. See offlineUploads.ts.
+  pendingUploads: number
+  // Pending uploads the server refused outright — the object keeps its place on
+  // the canvas so nothing vanishes, but it can never resolve to a real file.
+  failedUploadIds: string[]
+  setPendingUploads: (count: number) => void
+  resolvePendingUpload: (uploadId: string, url: string) => void
+  failPendingUpload: (uploadId: string) => void
+
   // Background removal: transient per-object status. Never persisted and
   // never part of undo snapshots — the durable result lives on the object
   // itself (originalUrl/processedUrl/url).
@@ -96,9 +114,15 @@ interface StudioState {
   past: Snapshot[]
   future: Snapshot[]
   dirtySlideIds: string[]
+  // The master layout lives on the board row rather than a slide, so it needs
+  // its own dirty flag to ride the same offline retry loop.
+  masterLayoutDirty: boolean
   saveState: 'saved' | 'saving' | 'error'
 
   init: (props: InitProps) => void
+  // Re-applies work saved locally by an earlier session that never reached the
+  // server. Async and idempotent — call once, right after init.
+  hydrateFromLocal: () => Promise<void>
   setCurrentSlide: (id: string) => void
   setSelected: (ids: string[]) => void
   setEditingText: (id: string | null) => void
@@ -146,6 +170,7 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 let stateTimer: ReturnType<typeof setTimeout> | null = null
 let retryTimer: ReturnType<typeof setTimeout> | null = null
 let masterLayoutTimer: ReturnType<typeof setTimeout> | null = null
+let localTimer: ReturnType<typeof setTimeout> | null = null
 // Version-history foundation: one revision snapshot per slide, at most every
 // REVISION_INTERVAL of active editing. No UI yet — restore comes later.
 const REVISION_INTERVAL = 5 * 60 * 1000
@@ -162,6 +187,43 @@ function scheduleSave() {
     saveTimer = null
     void useStudioStore.getState().flushSave()
   }, SAVE_DEBOUNCE)
+  // Mirror locally on the same edits that schedule a server save. This runs on
+  // its own (shorter) debounce so an edit is durable on the device well before
+  // the network round-trip is even attempted.
+  schedulePersistLocal()
+}
+
+function schedulePersistLocal() {
+  if (localTimer) clearTimeout(localTimer)
+  localTimer = setTimeout(() => {
+    localTimer = null
+    void persistLocal()
+  }, LOCAL_PERSIST_DEBOUNCE)
+}
+
+// Write the current board state to IndexedDB. Best-effort by design: a device
+// with no storage quota simply falls back to the in-memory-only behaviour.
+export async function persistLocal(): Promise<void> {
+  const s = useStudioStore.getState()
+  if (!s.boardId) return
+  if (localTimer) {
+    clearTimeout(localTimer)
+    localTimer = null
+  }
+  try {
+    await putBoardSnapshot({
+      boardId: s.boardId,
+      orgId: s.orgId,
+      slides: s.slides,
+      specs: s.specs,
+      dirtySlideIds: s.dirtySlideIds,
+      dirtySpecIds: s.dirtySpecIds,
+      masterLayout: s.masterLayout,
+      masterLayoutDirty: s.masterLayoutDirty,
+    })
+  } catch {
+    // Storage is a safety net, never a dependency
+  }
 }
 
 function scheduleRetry() {
@@ -206,20 +268,35 @@ function scheduleMasterLayoutSave() {
     masterLayoutTimer = null
     void saveMasterLayout()
   }, MASTER_LAYOUT_SAVE_DEBOUNCE)
+  schedulePersistLocal()
 }
 
-async function saveMasterLayout() {
+// Returns false when the write did not land, so the caller can keep the dirty
+// flag set and let the retry loop pick it up. Theme changes used to be
+// fire-and-forget, which quietly dropped them when made offline.
+async function saveMasterLayout(): Promise<boolean> {
   const s = useStudioStore.getState()
-  if (!s.boardId) return
+  if (!s.boardId) return true
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    scheduleRetry()
+    return false
+  }
   try {
     const supabase = createClient()
-    await supabase
+    const { error } = await supabase
       .from('studio_boards')
       .update({ master_layout: s.masterLayout, updated_at: new Date().toISOString() })
       .eq('id', s.boardId)
+    if (error) {
+      scheduleRetry()
+      return false
+    }
+    useStudioStore.setState({ masterLayoutDirty: false })
+    void persistLocal()
+    return true
   } catch {
-    // Best-effort, same tier as saveLastState — the in-memory value driving
-    // the live preview is already correct regardless of save success
+    scheduleRetry()
+    return false
   }
 }
 
@@ -291,6 +368,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   specPanelObjectId: null,
   rfqObjectIds: null,
   dirtySpecIds: [],
+  pendingUploads: 0,
+  failedUploadIds: [],
   bgRemoval: {},
   slides: [],
   currentSlideId: '',
@@ -307,6 +386,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   past: [],
   future: [],
   dirtySlideIds: [],
+  masterLayoutDirty: false,
   saveState: 'saved',
 
   init: props => {
@@ -336,6 +416,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         return []
       })(),
       slides: props.slides,
+      pendingUploads: 0,
+      failedUploadIds: [],
       currentSlideId: slideExists ? restored!.slideId! : (props.slides[0]?.id ?? ''),
       viewport: restored ? { zoom: restored.zoom, x: restored.panX, y: restored.panY } : { zoom: 1, x: 0, y: 0 },
       viewportRestored: !!restored,
@@ -343,12 +425,139 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       past: [],
       future: [],
       dirtySlideIds: [],
+      masterLayoutDirty: false,
       saveState: 'saved',
       presenting: false,
       exporting: false,
       bgRemoval: {},
     })
   },
+
+  // ── Offline recovery ──────────────────────────────────────────────────────
+  // init() has just loaded the server's copy of the board. If an earlier
+  // session on this device ended with unsynced work — signal dropped, the tab
+  // was evicted, the iPad went to sleep — that work is sitting in IndexedDB and
+  // has to be put back before the designer touches anything.
+  //
+  // The merge is per slide, not whole-board: only slides that were actually
+  // left dirty come from the local copy, everything else stays on the server's
+  // version. That way a colleague's edits to other slides survive, instead of
+  // being flattened by a stale snapshot.
+  hydrateFromLocal: async () => {
+    const s = get()
+    if (!s.boardId) return
+    const snap = await getBoardSnapshot(s.boardId)
+    if (!snap || snap.boardId !== s.boardId) return
+
+    const dirtySlides = new Set(snap.dirtySlideIds ?? [])
+    const dirtySpecs = snap.dirtySpecIds ?? []
+    if (!dirtySlides.size && !dirtySpecs.length && !snap.masterLayoutDirty) return
+
+    // The board may have moved on since init() ran (a fast typist, or a second
+    // hydrate) — re-read rather than trusting the captured snapshot of state.
+    const live = get()
+    if (live.boardId !== s.boardId) return
+    if (live.dirtySlideIds.length || live.dirtySpecIds.length) return
+
+    const localSlides = new Map((snap.slides ?? []).map(sl => [sl.id, sl]))
+    const serverIds = new Set(live.slides.map(sl => sl.id))
+
+    const merged: StudioSlide[] = []
+    for (const sl of live.slides) {
+      if (!dirtySlides.has(sl.id)) {
+        merged.push(sl)
+        continue
+      }
+      const local = localSlides.get(sl.id)
+      // Dirty but absent locally = deleted offline; leave it out so the flush
+      // turns it into the DELETE it was always meant to be.
+      if (local) merged.push(local)
+    }
+    // Slides created offline have no server row yet
+    for (const id of dirtySlides) {
+      if (!serverIds.has(id)) {
+        const local = localSlides.get(id)
+        if (local) merged.push(local)
+      }
+    }
+    merged.sort((a, b) => a.sortOrder - b.sortOrder)
+
+    const specs = { ...live.specs }
+    for (const objectId of dirtySpecs) {
+      const local = snap.specs?.[objectId]
+      if (local) specs[objectId] = local
+    }
+
+    const currentStillExists = merged.some(sl => sl.id === live.currentSlideId)
+
+    set({
+      slides: merged,
+      specs,
+      masterLayout: snap.masterLayoutDirty ? snap.masterLayout : live.masterLayout,
+      masterLayoutDirty: !!snap.masterLayoutDirty,
+      dirtySlideIds: snap.dirtySlideIds ?? [],
+      dirtySpecIds: dirtySpecs,
+      currentSlideId: currentStillExists ? live.currentSlideId : (merged[0]?.id ?? ''),
+      // Recovered work is not an undo step — there is nothing sensible to undo
+      // back to, and the pre-recovery state was never the designer's intent.
+      past: [],
+      future: [],
+      selectedIds: [],
+      saveState: 'saving',
+    })
+    void useStudioStore.getState().flushSave()
+  },
+
+  setPendingUploads: count => set({ pendingUploads: count }),
+
+  // A queued image finally reached storage: swap the sentinel for the real URL
+  // everywhere it appears, including the history stacks so an undo doesn't walk
+  // back to a blob that no longer exists.
+  resolvePendingUpload: (uploadId, url) => {
+    const token = `pending://${uploadId}`
+    const patchObject = (o: StudioObject): StudioObject => {
+      if (o.type !== 'image') return o
+      const hit = o.url === token || o.originalUrl === token || o.processedUrl === token
+      if (!hit) return o
+      return {
+        ...o,
+        url: o.url === token ? url : o.url,
+        originalUrl: o.originalUrl === token ? url : o.originalUrl,
+        processedUrl: o.processedUrl === token ? url : o.processedUrl,
+      }
+    }
+    const patchSlides = (slides: StudioSlide[]) => {
+      let changed = false
+      const next = slides.map(sl => {
+        let slideChanged = false
+        const objects = sl.objects.map(o => {
+          const patched = patchObject(o)
+          if (patched !== o) slideChanged = true
+          return patched
+        })
+        if (!slideChanged) return sl
+        changed = true
+        return { ...sl, objects }
+      })
+      return changed ? next : slides
+    }
+
+    const { slides, past, future, dirtySlideIds } = get()
+    const nextSlides = patchSlides(slides)
+    if (nextSlides === slides) return
+    const touched = nextSlides.filter((sl, i) => sl !== slides[i]).map(sl => sl.id)
+    set({
+      slides: nextSlides,
+      past: past.map(sn => ({ ...sn, slides: patchSlides(sn.slides) })),
+      future: future.map(sn => ({ ...sn, slides: patchSlides(sn.slides) })),
+      dirtySlideIds: mergeDirty(dirtySlideIds, touched),
+      failedUploadIds: get().failedUploadIds.filter(id => id !== uploadId),
+    })
+    scheduleSave()
+  },
+
+  failPendingUpload: uploadId =>
+    set(s => ({ failedUploadIds: Array.from(new Set([...s.failedUploadIds, uploadId])) })),
 
   setBgRemoval: (objId, state) =>
     set(s => {
@@ -373,7 +582,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   },
   setGuides: g => set({ guides: g }),
   setMasterLayout: patch => {
-    set(s => ({ masterLayout: { ...s.masterLayout, ...patch } }))
+    set(s => ({ masterLayout: { ...s.masterLayout, ...patch }, masterLayoutDirty: true }))
     scheduleMasterLayoutSave()
   },
   setPresenting: on => set({ presenting: on, selectedIds: [], editingTextId: null, cropTargetId: null }),
@@ -708,7 +917,11 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   flushSave: async () => {
     const s = get()
-    if (!s.boardId || (s.dirtySlideIds.length === 0 && s.dirtySpecIds.length === 0)) return
+    if (
+      !s.boardId ||
+      (s.dirtySlideIds.length === 0 && s.dirtySpecIds.length === 0 && !s.masterLayoutDirty)
+    )
+      return
     if (saveTimer) {
       clearTimeout(saveTimer)
       saveTimer = null
@@ -719,6 +932,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       set({ saveState: 'error' })
       scheduleRetry()
+      // The network is gone, so this is exactly when the local mirror matters
+      void persistLocal()
       return
     }
     const dirty = s.dirtySlideIds
@@ -812,6 +1027,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           else orphaned.forEach(oid => savedSpecObjectIds.delete(oid))
         }
       }
+      // A theme change made offline rides the same flush
+      if (!failed && get().masterLayoutDirty) {
+        if (!(await saveMasterLayout())) failed = true
+      }
     }
     } catch {
       failed = true
@@ -826,6 +1045,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         dirtySpecIds: Array.from(new Set([...get().dirtySpecIds, ...dirtySpecs])),
       })
       scheduleRetry()
+      void persistLocal()
       return
     }
 
@@ -853,6 +1073,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const stillDirty = get().dirtySlideIds.length > 0 || get().dirtySpecIds.length > 0
     set({ saveState: stillDirty ? 'saving' : 'saved' })
     if (stillDirty) scheduleSave()
+    // Keep the mirror in step with what the server now holds, so a cold offline
+    // open reads the synced state rather than replaying work already saved
+    void persistLocal()
   },
 }))
 

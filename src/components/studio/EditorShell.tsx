@@ -1,9 +1,12 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette, PackageOpen } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette, PackageOpen, CloudUpload } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
+import { persistLocal } from '@/lib/studio/store'
+import { registerOfflineWorker } from '@/lib/studio/offlineRuntime'
+import { processUploadQueue, refreshPendingCount } from '@/lib/studio/offlineUploads'
 import type {
   StudioSlide,
   BoardLastState,
@@ -56,6 +59,7 @@ export default function EditorShell(props: EditorShellProps) {
   const [showTheme, setShowTheme] = useState(false)
   const presenting = useStudioStore(s => s.presenting)
   const saveState = useStudioStore(s => s.saveState)
+  const pendingUploads = useStudioStore(s => s.pendingUploads)
   // The board-wide specs list yields to the per-object spec editor while
   // it's open, and comes back when the editor closes
   const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
@@ -159,11 +163,31 @@ export default function EditorShell(props: EditorShellProps) {
     if (panel === 'specs' && !specs) useStudioStore.getState().openSpecs(null)
   }
 
-  // Initialise the store from server data once
+  // Initialise the store from server data once, then put back anything an
+  // earlier session on this device left unsynced (see store.hydrateFromLocal).
+  // The editor renders straight away — recovery lands within a tick, before a
+  // designer could realistically have made a competing edit.
   useEffect(() => {
     useStudioStore.getState().init(props)
     setReady(true)
+    void useStudioStore.getState().hydrateFromLocal()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.boardId])
+
+  // Offline support: cache the board shell for a cold open with no signal, and
+  // drain any images that were queued while the connection was down.
+  useEffect(() => {
+    registerOfflineWorker()
+  }, [])
+
+  useEffect(() => {
+    void refreshPendingCount()
+    void processUploadQueue()
+    const drain = () => {
+      void processUploadQueue()
+    }
+    window.addEventListener('online', drain)
+    return () => window.removeEventListener('online', drain)
   }, [props.boardId])
 
   // Autosave reliability: flush when the tab hides / unmounts, when the
@@ -171,12 +195,19 @@ export default function EditorShell(props: EditorShellProps) {
   useEffect(() => {
     const flush = () => {
       void useStudioStore.getState().flushSave()
+      // Mirror immediately as well: flushSave is a no-op when offline, and the
+      // tab may be about to be evicted (iOS discards backgrounded tabs freely)
+      void persistLocal()
     }
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flush()
     }
     const interval = setInterval(() => {
-      if (useStudioStore.getState().dirtySlideIds.length) flush()
+      const st = useStudioStore.getState()
+      if (st.dirtySlideIds.length) flush()
+      // iOS does not reliably fire `online` when it hops between wifi and
+      // cellular, so the queue gets a periodic nudge too
+      if (st.pendingUploads > 0) void processUploadQueue()
     }, 30000)
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pagehide', flush)
@@ -277,7 +308,7 @@ export default function EditorShell(props: EditorShellProps) {
             </span>
           ) : saveState === 'error' ? (
             <span className="flex items-center gap-1 text-amber-400">
-              <AlertTriangle size={10} /> {online ? 'Not saved' : 'Will sync when online'}
+              <AlertTriangle size={10} /> {online ? 'Not saved' : 'Saved on device'}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-white/30">
@@ -286,9 +317,18 @@ export default function EditorShell(props: EditorShellProps) {
           )}
         </span>
 
+        {pendingUploads > 0 && (
+          <span
+            className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-white/40"
+            title="Images added offline — they upload automatically when the connection returns"
+          >
+            <CloudUpload size={10} /> {pendingUploads} queued
+          </span>
+        )}
+
         <span
           className="ml-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider"
-          title={online ? 'Connected — changes save automatically' : 'Offline — keep this tab open; changes sync when the connection returns'}
+          title={online ? 'Connected — changes save automatically' : 'Offline — your work is saved on this device and syncs when the connection returns'}
         >
           <span className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}`} />
           <span className={online ? 'text-white/30' : 'text-red-400'}>

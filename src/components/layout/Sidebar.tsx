@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
+import { clearStudioOfflineCaches } from '@/lib/studio/offlineRuntime'
 import { useState } from 'react'
 import {
   LayoutDashboard, FolderOpen, Users, Truck, Settings, LogOut, ShieldCheck, BookOpen, X, MessageSquare, Calculator, ArrowUpCircle, LayoutGrid, Lock, PanelLeft, PanelLeftClose, Hotel, Presentation, ReceiptText,
@@ -366,7 +367,10 @@ export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, c
             </Link>
           ) : null}
 
-          <form action="/api/auth/signout" method="post">
+          {/* Signing out drops the cached Studio pages/images so the next
+              person on a shared device can't reach them. Work queued offline
+              in IndexedDB is deliberately left alone. */}
+          <form action="/api/auth/signout" method="post" onSubmit={() => { void clearStudioOfflineCaches() }}>
             <button type="submit" 
               className="flex items-center h-8 rounded mx-1 text-white/50 hover:text-white hover:bg-white/5 transition-colors w-[calc(100%-8px)]">
               <span className="flex items-center justify-center w-10 flex-shrink-0">
