@@ -10,7 +10,10 @@
 // created and cleaned up in `activate` — after the old worker has been released.
 // Nothing about an in-flight editing session changes mid-session.
 
-const VERSION = 'v1'
+// Bumped to v2 to drop `qh-images-v1`, which on some devices holds opaque
+// responses that can never satisfy the editor's CORS image loads — see
+// imageCacheFirst below for the whole story.
+const VERSION = 'v2'
 const SHELL_CACHE = `qh-shell-${VERSION}`
 const RSC_CACHE = `qh-rsc-${VERSION}`
 const STATIC_CACHE = `qh-static-${VERSION}`
@@ -162,15 +165,70 @@ async function networkFirst(request, cacheName) {
   }
 }
 
-// Build assets are content-hashed and immutable
-async function cacheFirst(request, cacheName, max) {
+// Build assets are content-hashed and immutable. Same-origin only, so a
+// response here is always `basic` — never opaque.
+async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName)
   const cached = await cache.match(request)
   if (cached) return cached
   const response = await fetch(request)
-  if (response && (response.ok || response.type === 'opaque')) {
-    await cache.put(request, response.clone())
-    if (max) trimCache(cacheName, max)
+  if (response && response.ok) {
+    try {
+      await cache.put(request, response.clone())
+    } catch {}
+  }
+  return response
+}
+
+// ── Board images ────────────────────────────────────────────────────────────
+// These come off Supabase Storage, so they are CROSS-ORIGIN, and the app asks
+// for the very same URL two different ways:
+//
+//   * the canvas, via images.ts loadImage(), sets crossOrigin="anonymous" —
+//     mandatory, because stage.toDataURL() throws on a canvas tainted by a
+//     non-CORS image, which is what PDF export and slide thumbnails rely on;
+//   * the Assets / Specs / Pieces panels, as plain <img> tags — a `no-cors`
+//     request, whose response is OPAQUE.
+//
+// Two things went wrong with a single shared cache-first strategy:
+//
+//   1. Cache.put() REJECTS on an opaque response (status 0). That rejection
+//      propagated out through respondWith(), which the browser reports as a
+//      network error — so the picture failed to load at all.
+//   2. An opaque response that did get stored can never satisfy a later CORS
+//      request. The browser rejects it, and because cache-first never
+//      revalidates, the entry stayed poisoned for good: the picture was
+//      permanently a grey frame on that device, immune to reload.
+//
+// Both are invisible on a laptop that never registered the worker, and stick
+// hard on an iPad that did. The rules now: only ever STORE a response CORS can
+// reuse, treat any leftover opaque entry as a miss so the cache heals itself,
+// and never let a caching problem take the image down with it.
+async function imageCacheFirst(request) {
+  const cache = await caches.open(IMAGE_CACHE)
+  const cached = await cache.match(request)
+  // A `cors` or `basic` cached response satisfies both kinds of request; an
+  // opaque one satisfies only no-cors, so re-fetch rather than hand it to the
+  // canvas and have the load fail.
+  if (cached && (cached.type !== 'opaque' || request.mode !== 'cors')) return cached
+
+  let response
+  try {
+    response = await fetch(request)
+  } catch (err) {
+    // Offline: anything cached beats a broken image, opaque included
+    if (cached) return cached
+    throw err
+  }
+
+  // `ok` is false for an opaque response (status 0), so this stores only what
+  // is genuinely reusable. An image that stays uncacheable still displays —
+  // it simply is not available offline.
+  if (response && response.ok) {
+    try {
+      await cache.put(request, response.clone())
+      trimCache(IMAGE_CACHE, IMAGE_CACHE_MAX)
+    } catch {}
   }
   return response
 }
@@ -200,7 +258,7 @@ self.addEventListener('fetch', function (event) {
     return
   }
   if (isBoardImage(request, url)) {
-    event.respondWith(cacheFirst(request, IMAGE_CACHE, IMAGE_CACHE_MAX))
+    event.respondWith(imageCacheFirst(request))
     return
   }
   // Everything else — API routes, auth, RSC payloads, other pages — is left to

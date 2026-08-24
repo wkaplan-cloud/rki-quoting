@@ -213,6 +213,9 @@ function CrossBoardThumb({ result, onAdd }: { result: CrossBoardResult; onAdd: (
           alt=""
           loading="lazy"
           draggable={false}
+          // Same CORS request the canvas makes for this URL — see the board
+          // image notes in sw.js. Mismatched modes poison the offline cache.
+          crossOrigin="anonymous"
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
       </button>
@@ -305,6 +308,9 @@ function AssetThumb({ asset, used }: { asset: StudioAsset; used: boolean }) {
           alt=""
           loading="lazy"
           draggable={false}
+          // Same CORS request the canvas makes for this URL — see the board
+          // image notes in sw.js. Mismatched modes poison the offline cache.
+          crossOrigin="anonymous"
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
         {!used && (

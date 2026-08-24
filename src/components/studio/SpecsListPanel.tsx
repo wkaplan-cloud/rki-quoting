@@ -250,6 +250,7 @@ function ObjectThumb({ obj }: { obj: StudioObject }) {
           alt=""
           loading="lazy"
           draggable={false}
+          crossOrigin="anonymous"
           className="w-full h-full object-cover pointer-events-none"
         />
       </span>

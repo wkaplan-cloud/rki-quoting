@@ -132,7 +132,7 @@ function PieceThumb({ piece, placing, onPlace }: { piece: CatalogPiece; placing:
       >
         {thumb ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumb} alt="" loading="lazy" draggable={false} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+          <img src={thumb} alt="" loading="lazy" draggable={false} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <PackageOpen size={16} className="text-[#D8D3C8]" />
