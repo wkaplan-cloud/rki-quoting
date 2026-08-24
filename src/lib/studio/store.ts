@@ -10,8 +10,11 @@ import type {
   StudioSpec,
   SpecSupplierOption,
   RfqRecipientStamp,
+  StudioAssetRow,
+  StudioSlideRow,
+  StudioSpecRow,
 } from './types'
-import { DEFAULT_MASTER_LAYOUT } from './types'
+import { DEFAULT_MASTER_LAYOUT, assetFromRow, slideFromRow, specFromRow } from './types'
 import {
   MAX_HISTORY,
   SAVE_DEBOUNCE,
@@ -25,6 +28,13 @@ import { putBoardSnapshot, getBoardSnapshot } from './offlineDb'
 interface Snapshot {
   slides: StudioSlide[]
   currentSlideId: string
+}
+
+// What refreshFromServer() managed to pull. `slidesSkipped` means the asset
+// library came down but the slides deliberately did not — see the action.
+export interface RefreshResult {
+  ok: boolean
+  slidesSkipped: boolean
 }
 
 export interface Viewport {
@@ -123,6 +133,7 @@ interface StudioState {
   // Re-applies work saved locally by an earlier session that never reached the
   // server. Async and idempotent — call once, right after init.
   hydrateFromLocal: () => Promise<void>
+  refreshFromServer: () => Promise<RefreshResult>
   setCurrentSlide: (id: string) => void
   setSelected: (ids: string[]) => void
   setEditingText: (id: string | null) => void
@@ -443,6 +454,81 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   // left dirty come from the local copy, everything else stays on the server's
   // version. That way a colleague's edits to other slides survive, instead of
   // being flattened by a stale snapshot.
+  // Manual "Refresh" from the editor header. Two things go stale on a long
+  // iPad session: the asset library (a colleague imported images from another
+  // device) and the slides themselves. Pulling them again is what the button
+  // is for — a browser reload is not a substitute, since the service worker
+  // can answer a flaky-signal navigation from cache.
+  //
+  // Safety rule: this must never destroy work. The asset library carries no
+  // local-only state so it always refreshes, but slides and specs come back
+  // down ONLY when this device is fully in sync — otherwise the server copy
+  // would silently overwrite edits that have not been flushed yet.
+  refreshFromServer: async () => {
+    const s = get()
+    if (!s.boardId) return { ok: false, slidesSkipped: true }
+    const supabase = createClient()
+
+    const assetRes = await supabase
+      .from('studio_assets')
+      .select('id, board_id, org_id, url, hash, natural_width, natural_height, file_size, created_at, label')
+      .eq('board_id', s.boardId)
+      .order('created_at', { ascending: false })
+    if (assetRes.error) return { ok: false, slidesSkipped: true }
+    if (get().boardId !== s.boardId) return { ok: true, slidesSkipped: true }
+    set({ assets: ((assetRes.data ?? []) as StudioAssetRow[]).map(assetFromRow) })
+
+    const dirty = (st: StudioState) =>
+      st.dirtySlideIds.length > 0 || st.dirtySpecIds.length > 0 || st.masterLayoutDirty || st.saveState !== 'saved'
+    if (dirty(get())) return { ok: true, slidesSkipped: true }
+
+    const [slideRes, specRes] = await Promise.all([
+      supabase
+        .from('studio_slides')
+        .select('id, board_id, org_id, name, heading, sort_order, objects, is_cover')
+        .eq('board_id', s.boardId)
+        .order('sort_order'),
+      supabase
+        .from('studio_specs')
+        .select(
+          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, status, piece_id, item_specs'
+        )
+        .eq('board_id', s.boardId),
+    ])
+    if (slideRes.error || specRes.error) return { ok: false, slidesSkipped: true }
+
+    // An edit may have landed while those queries were in flight, and the
+    // board may even have been swapped underneath us — re-check before
+    // replacing anything.
+    const live = get()
+    if (live.boardId !== s.boardId || dirty(live)) return { ok: true, slidesSkipped: true }
+
+    const slides = ((slideRes.data ?? []) as StudioSlideRow[]).map(slideFromRow)
+    // A board that reads back empty is far more likely to be a permission or
+    // filter problem than a genuinely blank board — never wipe the canvas on it
+    if (!slides.length) return { ok: true, slidesSkipped: true }
+
+    const specs = ((specRes.data ?? []) as StudioSpecRow[]).map(specFromRow)
+    savedSpecObjectIds.clear()
+    specs.forEach(sp => savedSpecObjectIds.add(sp.objectId))
+
+    set({
+      slides,
+      specs: Object.fromEntries(specs.map(sp => [sp.objectId, sp])),
+      // The slide being edited may have been deleted on the other device
+      currentSlideId: slides.some(sl => sl.id === live.currentSlideId) ? live.currentSlideId : slides[0].id,
+      selectedIds: [],
+      editingTextId: null,
+      editingHeading: false,
+      cropTargetId: null,
+      // Every entry in the undo stack describes slides this client no longer
+      // holds, so replaying one would resurrect the pre-refresh board
+      past: [],
+      future: [],
+    })
+    return { ok: true, slidesSkipped: false }
+  },
+
   hydrateFromLocal: async () => {
     const s = get()
     if (!s.boardId) return

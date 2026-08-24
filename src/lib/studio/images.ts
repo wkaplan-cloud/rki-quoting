@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useStudioStore, newId } from './store'
 import { gridPlacements } from './autoLayout'
 import { getMasterContentArea } from './masterThemes'
@@ -49,6 +49,7 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     }
     img.onerror = () => {
       pending.delete(url)
+      failedUrls.add(url)
       reject(new Error('Failed to load image'))
     }
     // A `pending://` object is an image queued for upload while offline: the
@@ -81,8 +82,50 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 
+// ── Failed loads and manual refresh ─────────────────────────────────────────
+// Safari on an iPad drops image requests freely — memory pressure, a wifi hop,
+// or simply too many in flight at once — and a rejected load used to be
+// permanent: the hook below gave up and its effect never re-ran, so the slide
+// kept a grey placeholder frame until a full page reload. Failures are recorded
+// here instead, and bumping the epoch re-runs every mounted hook so they load
+// again. Images that already decoded stay in the cache and are untouched, so a
+// retry is cheap even on a board with hundreds of pictures.
+
+const failedUrls = new Set<string>()
+let imageEpoch = 0
+const epochListeners = new Set<() => void>()
+
+function subscribeImageEpoch(fn: () => void): () => void {
+  epochListeners.add(fn)
+  return () => {
+    epochListeners.delete(fn)
+  }
+}
+
+const getImageEpoch = () => imageEpoch
+// The editor never server-renders (Konva needs `window`), but the hook still
+// has to hand useSyncExternalStore a stable server snapshot.
+const getServerImageEpoch = () => 0
+
+export function hasFailedImages(): boolean {
+  return failedUrls.size > 0
+}
+
+// Retry every image whose load failed. Safe to call at any time — a no-op when
+// nothing has failed, so the automatic callers (tab refocus, reconnect) cost
+// nothing on a healthy session.
+export function retryFailedImages(): boolean {
+  if (!failedUrls.size) return false
+  failedUrls.clear()
+  imageEpoch++
+  for (const fn of epochListeners) fn()
+  return true
+}
+
 export function useKonvaImage(url: string | null): HTMLImageElement | undefined {
   const [img, setImg] = useState<HTMLImageElement | undefined>(() => (url ? cacheGet(url) : undefined))
+  // Re-runs the load below whenever retryFailedImages() bumps the epoch
+  const epoch = useSyncExternalStore(subscribeImageEpoch, getImageEpoch, getServerImageEpoch)
   useEffect(() => {
     if (!url) {
       setImg(undefined)
@@ -104,7 +147,7 @@ export function useKonvaImage(url: string | null): HTMLImageElement | undefined 
     return () => {
       cancelled = true
     }
-  }, [url])
+  }, [url, epoch])
   return img
 }
 

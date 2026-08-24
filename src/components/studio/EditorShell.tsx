@@ -1,9 +1,11 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette, PackageOpen, CloudUpload } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette, PackageOpen, CloudUpload, RefreshCw } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useStudioStore } from '@/lib/studio/store'
 import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
+import { retryFailedImages } from '@/lib/studio/images'
 import { persistLocal } from '@/lib/studio/store'
 import { registerOfflineWorker } from '@/lib/studio/offlineRuntime'
 import { processUploadQueue, refreshPendingCount } from '@/lib/studio/offlineUploads'
@@ -53,6 +55,7 @@ export default function EditorShell(props: EditorShellProps) {
   const [exporting, setExporting] = useState(false)
   const [printPicker, setPrintPicker] = useState(false)
   const [printJob, setPrintJob] = useState<{ slideIds: string[]; win: Window | null } | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [showAssets, setShowAssets] = useState(false)
   const [showPieces, setShowPieces] = useState(false)
   const [showSpecs, setShowSpecs] = useState(false)
@@ -113,6 +116,23 @@ export default function EditorShell(props: EditorShellProps) {
     return () => {
       window.removeEventListener('online', up)
       window.removeEventListener('offline', down)
+    }
+  }, [])
+
+  // Pictures that failed to load stay as grey frames forever on their own —
+  // iPad Safari drops requests under memory pressure and on every wifi/cellular
+  // hop. Retry them whenever the tab comes back to the foreground or the
+  // connection returns, so the Refresh button is the fallback rather than the
+  // only cure. A no-op when nothing failed.
+  useEffect(() => {
+    const retry = () => {
+      if (document.visibilityState === 'visible') retryFailedImages()
+    }
+    document.addEventListener('visibilitychange', retry)
+    window.addEventListener('online', retry)
+    return () => {
+      document.removeEventListener('visibilitychange', retry)
+      window.removeEventListener('online', retry)
     }
   }, [])
 
@@ -274,6 +294,31 @@ export default function EditorShell(props: EditorShellProps) {
 
   if (!ready) return null
 
+  // Pulls the board down again: the asset library always, the slides too when
+  // nothing is waiting to be saved (see store.refreshFromServer), plus a retry
+  // of any picture whose bitmap failed to load.
+  async function refreshBoard() {
+    if (refreshing) return
+    setRefreshing(true)
+    const retried = retryFailedImages()
+    try {
+      const result = await useStudioStore.getState().refreshFromServer()
+      if (!result.ok) {
+        toast.error(
+          navigator.onLine
+            ? 'Could not refresh — please try again'
+            : 'No connection — refresh once you are back online'
+        )
+      } else if (result.slidesSkipped) {
+        toast.success(retried ? 'Images reloaded' : 'Assets up to date')
+      } else {
+        toast.success('Board refreshed')
+      }
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   async function startPresent() {
     await useStudioStore.getState().flushSave()
     useStudioStore.getState().setPresenting(true)
@@ -352,6 +397,16 @@ export default function EditorShell(props: EditorShellProps) {
           </span>
         )}
 
+        <button
+          type="button"
+          onClick={() => void refreshBoard()}
+          disabled={refreshing}
+          aria-label="Refresh board"
+          title="Reload images and pull in anything added from another device"
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default"
+        >
+          <RefreshCw size={13} className={refreshing ? 'animate-spin' : undefined} />
+        </button>
         <button
           type="button"
           onClick={() => togglePanel('assets')}
