@@ -116,7 +116,7 @@ export function MasterThemePanel() {
           {studioLogoUrl ? (
             <div className="flex items-center gap-2 rounded-lg border border-[#D8D3C8] bg-white px-2.5 py-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={studioLogoUrl} alt="" className="h-8 w-auto max-w-[80px] object-contain flex-shrink-0" />
+              <img src={studioLogoUrl} alt="" crossOrigin="anonymous" className="h-8 w-auto max-w-[80px] object-contain flex-shrink-0" />
               <span className="flex-1 min-w-0 text-[10px] text-[#8A877F] truncate">Studio logo</span>
               <button
                 type="button"

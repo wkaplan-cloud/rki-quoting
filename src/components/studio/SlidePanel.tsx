@@ -210,6 +210,22 @@ function ThumbPreview({
   )
 }
 
+// iOS Safari does not throw when a canvas exceeds its memory budget — it
+// quietly returns the empty "data:," URL, which then renders as a broken
+// image. Validate the result and step the resolution down before giving up,
+// the same way stageToJpeg() does for PDF export.
+function snapshot(stage: Konva.Stage): string | null {
+  for (const pixelRatio of [2, 1]) {
+    try {
+      const url = stage.toDataURL({ pixelRatio })
+      if (url && url.length > 100) return url
+    } catch {
+      // canvas too large — retry at the lower ratio
+    }
+  }
+  return null
+}
+
 function ThumbSnapshot({
   slide,
   index,
@@ -241,11 +257,11 @@ function ThumbSnapshot({
           if (cancelled) return
           const stage = stageRef.current
           if (!stage) return
-          try {
-            onDone(stage.toDataURL({ pixelRatio: 2 }))
-          } catch {
-            // snapshot failed — the live stage stays visible, no harm done
-          }
+          const url = snapshot(stage)
+          // No usable snapshot: leave the live stage on screen rather than
+          // caching a broken one. Never cache a bad URL — thumbCache is keyed
+          // on the slide reference, so it would stick until the slide is edited.
+          if (url) onDone(url)
         })
       )
     })
