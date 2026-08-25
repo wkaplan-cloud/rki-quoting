@@ -160,6 +160,8 @@ interface StudioState {
   duplicateSelected: () => void
   bringForward: (objId: string) => void
   sendBack: (objId: string) => void
+  bringToFront: (objId: string) => void
+  sendToBack: (objId: string) => void
   copySelection: () => void
   paste: () => void
   pasteObjects: (objs: StudioObject[]) => void
@@ -357,6 +359,30 @@ function copySpecsForDuplicates(idMap: [oldId: string, newId: string][]) {
     dirtySpecIds: Array.from(new Set([...s.dirtySpecIds, ...dirty])),
   }))
   scheduleSave()
+}
+
+// ── Layer order ─────────────────────────────────────────────────────────────
+// There is no fixed set of layers: an object's stacking position IS its index
+// in slide.objects, 0 being the back. `target` returns the index to move to,
+// and returning the slides array UNCHANGED when nothing would move matters —
+// commit() bails on an identical reference, so a click that cannot do anything
+// (already at the front, say) records no empty undo step.
+function reorderObject(
+  slides: StudioSlide[],
+  slideId: string,
+  objId: string,
+  target: (from: number, count: number) => number
+): StudioSlide[] {
+  const slide = slides.find(sl => sl.id === slideId)
+  if (!slide) return slides
+  const from = slide.objects.findIndex(o => o.id === objId)
+  if (from < 0) return slides
+  const to = target(from, slide.objects.length)
+  if (to === from || to < 0 || to >= slide.objects.length) return slides
+  const objects = [...slide.objects]
+  const [moved] = objects.splice(from, 1)
+  objects.splice(to, 0, moved)
+  return slides.map(sl => (sl.id === slideId ? { ...sl, objects } : sl))
 }
 
 export const useStudioStore = create<StudioState>((set, get) => ({
@@ -818,30 +844,22 @@ export const useStudioStore = create<StudioState>((set, get) => ({
 
   bringForward: objId => {
     const { currentSlideId } = get()
-    get().commit(slides =>
-      slides.map(sl => {
-        if (sl.id !== currentSlideId) return sl
-        const i = sl.objects.findIndex(o => o.id === objId)
-        if (i < 0 || i === sl.objects.length - 1) return sl
-        const objects = [...sl.objects]
-        ;[objects[i], objects[i + 1]] = [objects[i + 1], objects[i]]
-        return { ...sl, objects }
-      })
-    )
+    get().commit(slides => reorderObject(slides, currentSlideId, objId, from => from + 1))
   },
 
   sendBack: objId => {
     const { currentSlideId } = get()
-    get().commit(slides =>
-      slides.map(sl => {
-        if (sl.id !== currentSlideId) return sl
-        const i = sl.objects.findIndex(o => o.id === objId)
-        if (i <= 0) return sl
-        const objects = [...sl.objects]
-        ;[objects[i], objects[i - 1]] = [objects[i - 1], objects[i]]
-        return { ...sl, objects }
-      })
-    )
+    get().commit(slides => reorderObject(slides, currentSlideId, objId, from => from - 1))
+  },
+
+  bringToFront: objId => {
+    const { currentSlideId } = get()
+    get().commit(slides => reorderObject(slides, currentSlideId, objId, (_from, count) => count - 1))
+  },
+
+  sendToBack: objId => {
+    const { currentSlideId } = get()
+    get().commit(slides => reorderObject(slides, currentSlideId, objId, () => 0))
   },
 
   copySelection: () => {

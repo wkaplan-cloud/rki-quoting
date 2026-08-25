@@ -1,7 +1,7 @@
 'use client'
 import { useRef } from 'react'
 import toast from 'react-hot-toast'
-import { Crop, RotateCw, ImageUp, Copy, ArrowUp, ArrowDown, Lock, Trash2, Wand2, Undo2, Loader2, Maximize2 } from 'lucide-react'
+import { Crop, RotateCw, ImageUp, Copy, ArrowUp, ArrowDown, Lock, Trash2, Wand2, Undo2, Loader2, Maximize2, ArrowUpToLine, ArrowDownToLine } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import { replaceImage } from '@/lib/studio/images'
 import { removeBackground, restoreOriginal, isBgRemoved } from '@/lib/studio/bgRemoval'
@@ -113,7 +113,9 @@ export function ImageToolbar({ obj }: { obj: ImageObject }) {
       </select>
       <TDivider />
       <TBtn icon={ArrowUp} label="Bring forward" onClick={() => store.getState().bringForward(obj.id)} />
+      <TBtn icon={ArrowUpToLine} label="Bring to front" onClick={() => store.getState().bringToFront(obj.id)} />
       <TBtn icon={ArrowDown} label="Send back" onClick={() => store.getState().sendBack(obj.id)} />
+      <TBtn icon={ArrowDownToLine} label="Send to back" onClick={() => store.getState().sendToBack(obj.id)} />
       <TBtn icon={Copy} label="Duplicate (⌘D)" onClick={() => store.getState().duplicateSelected()} />
       <TBtn icon={Lock} label="Lock" onClick={() => store.getState().updateObject(obj.id, { locked: true })} />
       <TBtn icon={Trash2} label="Delete" onClick={() => store.getState().deleteSelected()} />
