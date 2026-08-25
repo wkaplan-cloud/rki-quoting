@@ -17,8 +17,10 @@ import type { ImageObject, StudioObject, StudioSlide } from './types'
 // - Every swap goes through store.commit → one undo step + autosave.
 
 // Silent model warm-up, called when a board opens. The ONNX model downloads
-// ONCE PER DEVICE (browser-cached; ~40MB) — not per board, not per removal —
-// so after the first board this completes instantly and nothing is shown.
+// ONCE PER DEVICE (~40MB) — not per board, not per removal — so after the
+// first board this completes instantly and nothing is shown. "Once per device"
+// depends on sw.js caching the imgly CDN (see isModelAsset there); without it
+// this falls back to the browser's HTTP cache, which iOS evicts freely.
 // onProgress receives 0..1 while downloading, then null when done/failed.
 let preloadStarted = false
 export function preloadBgRemovalAssets(onProgress: (fraction: number | null) => void): void {

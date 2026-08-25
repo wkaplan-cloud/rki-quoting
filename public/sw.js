@@ -18,6 +18,13 @@ const SHELL_CACHE = `qh-shell-${VERSION}`
 const RSC_CACHE = `qh-rsc-${VERSION}`
 const STATIC_CACHE = `qh-static-${VERSION}`
 const IMAGE_CACHE = `qh-images-${VERSION}`
+// Deliberately NOT version-stamped and NOT matched by OURS below: this holds
+// the background-removal model, which is neither user data nor build output.
+// Its URLs are already pinned to the library version, so entries can never go
+// stale — and a shared iPad must not re-download ~40MB on every sign-out or
+// every deploy.
+const MODEL_CACHE = 'qh-model'
+const MODEL_CACHE_MAX = 40
 const OURS = /^qh-(shell|rsc|static|images)-/
 
 // Board images are content-addressed and never change, so they can be cached
@@ -113,6 +120,16 @@ function isBoardImage(request, url) {
   if (request.destination !== 'image') return false
   // Supabase Storage public objects, plus Next's image optimiser
   return url.pathname.includes('/storage/v1/object/') || url.pathname.startsWith('/_next/image')
+}
+
+// The background-removal model (~40MB of ONNX/WASM) is fetched from imgly's
+// CDN, so nothing we control was caching it — it depended entirely on the
+// browser's HTTP cache. iOS evicts that aggressively, which meant an iPad
+// could re-download the whole model before a removal could even start, and
+// removal never worked offline at all. Caching it here is what actually makes
+// good on "downloads once per device".
+function isModelAsset(url) {
+  return url.hostname === 'staticimgly.com'
 }
 
 function isStudioNavigation(request, url) {
@@ -233,6 +250,23 @@ async function imageCacheFirst(request) {
   return response
 }
 
+// Model chunks are immutable and version-pinned by URL. Same defensive shape
+// as imageCacheFirst: never let a caching failure take the request down.
+async function modelCacheFirst(request) {
+  const cache = await caches.open(MODEL_CACHE)
+  const cached = await cache.match(request)
+  if (cached) return cached
+
+  const response = await fetch(request)
+  if (response && response.ok) {
+    try {
+      await cache.put(request, response.clone())
+      trimCache(MODEL_CACHE, MODEL_CACHE_MAX)
+    } catch {}
+  }
+  return response
+}
+
 self.addEventListener('fetch', function (event) {
   const request = event.request
   if (request.method !== 'GET') return
@@ -259,6 +293,10 @@ self.addEventListener('fetch', function (event) {
   }
   if (isBoardImage(request, url)) {
     event.respondWith(imageCacheFirst(request))
+    return
+  }
+  if (isModelAsset(url)) {
+    event.respondWith(modelCacheFirst(request))
     return
   }
   // Everything else — API routes, auth, RSC payloads, other pages — is left to
