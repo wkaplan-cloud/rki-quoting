@@ -1,5 +1,5 @@
 'use client'
-import { Copy, Lock, Trash2, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine } from 'lucide-react'
+import { Copy, Lock, Trash2, ArrowUpToLine, ArrowDownToLine } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { RectObject, EllipseObject, LineObject, CrossObject } from '@/lib/studio/types'
 import { TBtn, TDivider, ColorControl } from './atoms'
@@ -49,9 +49,7 @@ export function ShapeToolbar({ obj }: { obj: RectObject | EllipseObject | LineOb
         />
       </div>
       <TDivider />
-      <TBtn icon={ArrowUp} label="Bring forward" onClick={() => store.getState().bringForward(obj.id)} />
       <TBtn icon={ArrowUpToLine} label="Bring to front" onClick={() => store.getState().bringToFront(obj.id)} />
-      <TBtn icon={ArrowDown} label="Send back" onClick={() => store.getState().sendBack(obj.id)} />
       <TBtn icon={ArrowDownToLine} label="Send to back" onClick={() => store.getState().sendToBack(obj.id)} />
       <TBtn icon={Copy} label="Duplicate (⌘D)" onClick={() => store.getState().duplicateSelected()} />
       <TBtn icon={Lock} label="Lock" onClick={() => store.getState().updateObject(obj.id, { locked: true })} />

@@ -1,5 +1,5 @@
 'use client'
-import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Copy, Lock, Trash2, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine } from 'lucide-react'
+import { Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Copy, Lock, Trash2, ArrowUpToLine, ArrowDownToLine } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { TextObject } from '@/lib/studio/types'
 import { TEXT_FONTS } from '@/lib/studio/textFonts'
@@ -86,9 +86,7 @@ export function TextToolbar({ obj }: { obj: TextObject }) {
       <TBtn icon={AlignCenter} label="Align centre" active={obj.align === 'center'} onClick={() => store.getState().updateObject(obj.id, { align: 'center' } as Partial<TextObject>)} />
       <TBtn icon={AlignRight} label="Align right" active={obj.align === 'right'} onClick={() => store.getState().updateObject(obj.id, { align: 'right' } as Partial<TextObject>)} />
       <TDivider />
-      <TBtn icon={ArrowUp} label="Bring forward" onClick={() => store.getState().bringForward(obj.id)} />
       <TBtn icon={ArrowUpToLine} label="Bring to front" onClick={() => store.getState().bringToFront(obj.id)} />
-      <TBtn icon={ArrowDown} label="Send back" onClick={() => store.getState().sendBack(obj.id)} />
       <TBtn icon={ArrowDownToLine} label="Send to back" onClick={() => store.getState().sendToBack(obj.id)} />
       <TBtn icon={Copy} label="Duplicate (⌘D)" onClick={() => store.getState().duplicateSelected()} />
       <TBtn icon={Lock} label="Lock" onClick={() => store.getState().updateObject(obj.id, { locked: true })} />

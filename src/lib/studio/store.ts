@@ -158,8 +158,6 @@ interface StudioState {
   addObjects: (objs: StudioObject[], slideId?: string) => void
   deleteSelected: () => void
   duplicateSelected: () => void
-  bringForward: (objId: string) => void
-  sendBack: (objId: string) => void
   bringToFront: (objId: string) => void
   sendToBack: (objId: string) => void
   copySelection: () => void
@@ -363,10 +361,10 @@ function copySpecsForDuplicates(idMap: [oldId: string, newId: string][]) {
 
 // ── Layer order ─────────────────────────────────────────────────────────────
 // There is no fixed set of layers: an object's stacking position IS its index
-// in slide.objects, 0 being the back. `target` returns the index to move to,
-// and returning the slides array UNCHANGED when nothing would move matters —
-// commit() bails on an identical reference, so a click that cannot do anything
-// (already at the front, say) records no empty undo step.
+// in slide.objects, 0 being the back. `target` returns the index to move to.
+// Returning the slides array UNCHANGED when nothing would move matters —
+// commit() bails on an identical reference, so tapping "bring to front" on
+// something already at the front records no empty undo step.
 function reorderObject(
   slides: StudioSlide[],
   slideId: string,
@@ -840,16 +838,6 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     if (copies.length === 0) return
     get().addObjects(copies)
     copySpecsForDuplicates(idMap)
-  },
-
-  bringForward: objId => {
-    const { currentSlideId } = get()
-    get().commit(slides => reorderObject(slides, currentSlideId, objId, from => from + 1))
-  },
-
-  sendBack: objId => {
-    const { currentSlideId } = get()
-    get().commit(slides => reorderObject(slides, currentSlideId, objId, from => from - 1))
   },
 
   bringToFront: objId => {
