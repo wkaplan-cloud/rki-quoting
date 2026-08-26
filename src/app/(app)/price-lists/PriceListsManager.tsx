@@ -302,7 +302,7 @@ export function PriceListsManager({ priceLists, canManage, basePath = '/price-li
                               <Lock size={12} /> {requestingId === pl.id ? 'Requesting…' : 'Request Access'}
                             </Button>
                             <span className="text-[10px] text-[#8A877F] text-right leading-relaxed">
-                              To access the Home Fabrics trade prices, click here and we&apos;ll review your request.
+                              To access the {pl.supplier_name} trade prices, click here and we&apos;ll review your request.
                             </span>
                           </div>
                         )
