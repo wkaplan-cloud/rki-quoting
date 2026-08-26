@@ -36,12 +36,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (adminEmails.length > 0 && priceList) {
         const resend = new Resend(process.env.RESEND_API_KEY)
         const subject = `Price list access approved — ${priceList.name}`
+        // Imported supplier lists (everything except the live-synced Home Fabrics feed)
+        // are a snapshot — warn designers so they confirm current pricing before ordering.
+        const isSnapshot = priceList.supplier_name !== 'Home Fabrics'
+        const snapshotText = isSnapshot
+          ? `\n\nPlease note: these trade prices are a snapshot from when the list was added and may change over time. Always confirm current pricing with ${priceList.supplier_name} before placing an order.`
+          : ''
+        const snapshotHtml = isSnapshot
+          ? `<p style="margin:0 0 28px;font-size:13px;line-height:1.7;color:#6B5D42;background-color:#FBF6E9;border:1px solid #E4D3A8;border-radius:6px;padding:12px 16px;">Please note: these trade prices are a <strong>snapshot</strong> from when the list was added and may change over time. Always confirm current pricing with ${priceList.supplier_name} before placing an order.</p>`
+          : ''
         await resend.emails.send({
           from: 'QuotingHub <noreply@quotinghub.co.za>',
           replyTo: 'hello@quotinghub.co.za',
           to: adminEmails,
           subject,
-          text: `Your request to access the ${priceList.name} price list (${priceList.supplier_name}) has been approved.\n\nYou can now search and retrieve prices from this supplier when creating quotes.\n\nLog in at: https://quotinghub.co.za`,
+          text: `Your request to access the ${priceList.name} price list (${priceList.supplier_name}) has been approved.\n\nYou can now search and retrieve prices from this supplier when creating quotes.${snapshotText}\n\nLog in at: https://quotinghub.co.za`,
           html: `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${subject}</title></head>
@@ -59,6 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           <td style="background-color:#ffffff;padding:40px 40px 32px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
             <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2C2C2A;">Your request to access the <strong>${priceList.name}</strong> price list${priceList.supplier_name ? ` (${priceList.supplier_name})` : ''} has been approved.</p>
             <p style="margin:0 0 28px;font-size:15px;line-height:1.7;color:#2C2C2A;">You can now search and retrieve prices from this supplier when creating quotes.</p>
+            ${snapshotHtml}
             <table cellpadding="0" cellspacing="0">
               <tr>
                 <td style="border-radius:6px;background-color:#9A7B4F;">

@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PriceListView } from './PriceListView'
-import { Lock, Clock } from 'lucide-react'
+import { Lock, Clock, Info } from 'lucide-react'
 
 export default async function PriceListDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -61,12 +61,28 @@ export default async function PriceListDetailPage({ params }: { params: Promise<
     }
   }
 
+  // Snapshot notice — platform lists that are NOT the live-synced Home Fabrics feed
+  // carry imported prices that can drift, so designers must confirm before ordering.
+  const isSnapshot = !!priceList.is_global && priceList.supplier_name !== 'Home Fabrics'
+  const capturedOn = priceList.created_at
+    ? new Date(priceList.created_at).toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })
+    : null
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title={priceList.name}
         subtitle={`${priceList.supplier_name} · ${priceList.item_count.toLocaleString()} items`}
       />
+      {isSnapshot && (
+        <div className="mx-8 mt-4 flex items-start gap-2.5 rounded-lg border border-[#E4D3A8] bg-[#FBF6E9] px-4 py-3">
+          <Info size={15} className="mt-0.5 flex-shrink-0 text-[#9A7B4F]" />
+          <p className="text-xs leading-relaxed text-[#6B5D42]">
+            These are <strong>trade prices captured{capturedOn ? ` in ${capturedOn}` : ''}</strong> — a snapshot, not a live feed.
+            Prices may have changed since. Always confirm current pricing with {priceList.supplier_name} before ordering.
+          </p>
+        </div>
+      )}
       <PriceListView priceListId={id} canEdit={canEdit} isGlobal={!!priceList.is_global} />
     </div>
   )
