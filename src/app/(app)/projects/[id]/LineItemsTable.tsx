@@ -744,6 +744,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                                 placeholder="Search fabric…"
                                 className={imagesEnabled ? INPUT_FIT : INPUT}
                                 priceListId={supplier.price_list_id}
+                                snapshotSupplier={supplier.is_platform && supplier.supplier_name !== 'Home Fabrics' ? supplier.supplier_name : null}
                               />
                             )
                             return (

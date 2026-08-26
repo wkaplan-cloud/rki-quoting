@@ -24,6 +24,8 @@ interface Props {
   placeholder?: string
   className?: string
   priceListId?: string | null
+  /** When set, show an always-on "snapshot prices" caveat with this supplier name. */
+  snapshotSupplier?: string | null
 }
 
 interface DropdownPos {
@@ -46,7 +48,7 @@ function Thumb({ url }: { url: string | null }) {
   )
 }
 
-export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, className, priceListId }: Props) {
+export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, className, priceListId, snapshotSupplier }: Props) {
   const [results, setResults] = useState<FabricResult[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -111,6 +113,11 @@ export function FabricSearch({ value, onChange, onBlur, onSelect, placeholder, c
       }}
       className="bg-white border border-[#D8D3C8] rounded-lg shadow-xl max-h-72 overflow-y-auto"
     >
+      {snapshotSupplier && (
+        <p className="sticky top-0 z-10 bg-[#FBF6E9] border-b border-[#EDE3C0] px-3 py-1.5 text-[10px] leading-snug text-[#8A7A55]">
+          Snapshot prices — confirm current pricing with {snapshotSupplier} before ordering.
+        </p>
+      )}
       {results.map(fabric => (
         <button
           key={fabric.id}
