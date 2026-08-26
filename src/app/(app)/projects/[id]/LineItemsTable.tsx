@@ -35,7 +35,7 @@ function CurrencyInput({ value, onChange, onBlur, className }: { value: number; 
   )
 }
 
-type Supplier = { id: string; supplier_name: string; markup_percentage: number; delivery_address: string | null; delivery_contact_name: string | null; delivery_contact_number: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }
+type Supplier = { id: string; supplier_name: string; category: string | null; markup_percentage: number; delivery_address: string | null; delivery_contact_name: string | null; delivery_contact_number: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }
 
 interface Props {
   projectId: string
@@ -469,20 +469,31 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
     design: string | null; collection: string | null; colour: string | null
     sku: string | null; brand: string | null; product_id: string | null
     price_zar: number | null; image_url: string | null; useable_width_cm?: number | null
-  }) => {
+  }, supplier?: Supplier) => {
     const description = [fabric.brand, fabric.collection]
       .filter(Boolean).join(' · ')
     const twinbru_product_id = fabric.product_id ? parseInt(fabric.product_id, 10) || null : null
+    // Non-fabric platform lists (wallpaper, furniture & homeware) keep the product's
+    // own name and a sensible unit — only true fabric collapses to the generic "Fabric"
+    // line quoted per metre.
+    const category = supplier?.category ?? null
+    const isWallpaper = category === 'Wallpaper'
+    const isNonFabric = isWallpaper || category === 'Furniture' || category === 'Homeware'
     const updates = {
-      item_name: 'Fabric',
+      item_name: isNonFabric ? (fabric.design || [fabric.brand, fabric.collection].filter(Boolean).join(' ') || 'Item') : 'Fabric',
       description,
       cost_price: fabric.price_zar ?? 0,
       fabric_image_url: fabric.image_url ?? null,
       colour_finish: fabric.colour ?? null,
       twinbru_product_id,
       twinbru_cost_price: fabric.price_zar ?? null,
-      fabric_width_cm: fabric.useable_width_cm ?? null,
-      unit: 'm',
+      fabric_width_cm: isNonFabric ? null : (fabric.useable_width_cm ?? null),
+      unit: isNonFabric ? (isWallpaper ? 'roll' : 'each') : 'm',
+      // Non-fabric size goes in the free-text dimensions field (fabric uses fabric_width_cm).
+      // Homeware carries its size in the product name, so only set this when we have a width.
+      ...(isNonFabric && fabric.useable_width_cm != null
+        ? { dimensions: `${fabric.useable_width_cm} cm wide` }
+        : {}),
     }
     onChange(lineItems.map(item => item.id === lineItemId ? { ...item, ...updates } : item))
     await supabase.from('line_items').update(updates).eq('id', lineItemId)
@@ -729,7 +740,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                                 value={item.item_name}
                                 onChange={v => updateLocal(item.id, 'item_name', v)}
                                 onBlur={v => saveField(item.id, 'item_name', v)}
-                                onSelect={fabric => handleFabricSelect(item.id, fabric)}
+                                onSelect={fabric => handleFabricSelect(item.id, fabric, supplier)}
                                 placeholder="Search fabric…"
                                 className={imagesEnabled ? INPUT_FIT : INPUT}
                                 priceListId={supplier.price_list_id}
@@ -1317,7 +1328,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   }).select().single()
                   if (error) { toast.error('Failed to create supplier'); return }
                   toast.success(`Supplier "${name.trim()}" created`)
-                  const newSupplier = { id: data.id, supplier_name: data.supplier_name, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, delivery_contact_name: null, delivery_contact_number: null, is_platform: false, price_list_id: null, email: data.email ?? null }
+                  const newSupplier = { id: data.id, supplier_name: data.supplier_name, category: data.category ?? null, markup_percentage: data.markup_percentage, delivery_address: data.delivery_address ?? null, delivery_contact_name: null, delivery_contact_number: null, is_platform: false, price_list_id: null, email: data.email ?? null }
                   onSupplierCreated(newSupplier)
                   setNewSupplierModal(null)
                   // Select the new supplier on the line item that triggered this

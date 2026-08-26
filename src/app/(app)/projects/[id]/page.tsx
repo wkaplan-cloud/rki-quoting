@@ -24,7 +24,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
     supabase.from('line_items').select('*').eq('project_id', id).order('sort_order').order('created_at'),
     supabase.from('clients').select('id, client_name, company').order('client_name'),
-    supabase.from('suppliers').select('id, supplier_name, markup_percentage, delivery_address, delivery_contact_name, delivery_contact_number, is_platform, price_list_id, email').order('supplier_name'),
+    supabase.from('suppliers').select('id, supplier_name, category, markup_percentage, delivery_address, delivery_contact_name, delivery_contact_number, is_platform, price_list_id, email').order('supplier_name'),
     supabase.from('items').select('id, item_name').order('item_name'),
     supabase.from('settings').select('business_name, business_address, vat_rate, deposit_percentage, sage_company_id, xero_access_token, xero_tenant_id, email_template_quote, email_template_invoice, production_sheet_email, line_item_images_enabled').maybeSingle(),
     supabase.from('project_stages').select('*').eq('project_id', id).maybeSingle(),
