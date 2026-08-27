@@ -178,7 +178,7 @@ function UpgradeContent() {
         </button>
 
         <p className="text-center text-xs mt-4" style={{ color: S.muted }}>
-          Secured by Paystack · Excl. VAT · Cancel anytime from your profile
+          Secured by Paystack · Cancel anytime from your profile
         </p>
 
         <button onClick={() => router.back()} className="w-full text-center text-xs mt-3" style={{ color: S.muted }}>

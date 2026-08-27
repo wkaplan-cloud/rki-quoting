@@ -122,7 +122,7 @@ function UpgradeManufacturerContent() {
             <p className="text-sm mb-4" style={{ color: 'rgba(255,255,255,0.6)' }}>{MANUFACTURER_PLAN.tagline}</p>
             <div className="flex items-end justify-center gap-1">
               <span className="text-4xl font-bold text-white">R{MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}</span>
-              <span className="text-sm mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>/month excl. VAT</span>
+              <span className="text-sm mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>/month</span>
             </div>
             {!trialExpired && (
               <div className="mt-3 inline-block px-3 py-1 rounded-full text-xs font-semibold"
@@ -176,7 +176,7 @@ function UpgradeManufacturerContent() {
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: S.accentDark, color: '#F5F2EC' }}>
                 <Zap size={15} />
-                {loading ? 'Redirecting to checkout…' : `Subscribe — R${MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}/month excl. VAT`}
+                {loading ? 'Redirecting to checkout…' : `Subscribe — R${MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}/month`}
               </button>
             ) : (
               <button

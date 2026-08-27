@@ -230,7 +230,7 @@ export default function ManufacturerLandingPage() {
               <p className="text-xs font-semibold uppercase tracking-widest text-[#C4A46B] mb-3">{MANUFACTURER_PLAN.label}</p>
               <div className="flex items-baseline gap-1 mb-1">
                 <span className="text-4xl font-bold text-white">R{MANUFACTURER_PLAN.price.toLocaleString('en-ZA')}</span>
-                <span className="text-sm text-white/50">/month excl. VAT</span>
+                <span className="text-sm text-white/50">/month</span>
               </div>
               <p className="text-sm text-white/50 italic mb-6">{MANUFACTURER_PLAN.tagline}</p>
               <ul className="space-y-2.5 mb-8">
