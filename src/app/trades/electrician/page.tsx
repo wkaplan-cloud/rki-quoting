@@ -181,7 +181,7 @@ export default function ElectricianLandingPage() {
                   Log in to your account
                 </Link>
               </div>
-              <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · plans from R999/month excl. VAT · Cancel any time</p>
+              <p className="text-sm text-[#C4BFB5] mt-4">30-day free trial · plans from R999/month · Cancel any time</p>
             </div>
 
             {/* Electrician illustration */}
@@ -321,7 +321,7 @@ export default function ElectricianLandingPage() {
                     <p className={`text-xs font-semibold uppercase tracking-widest mb-3 ${isHighlighted ? 'text-[#C4A46B]' : 'text-[#9A7B4F]'}`}>{plan.label}</p>
                     <div className="flex items-baseline gap-1 mb-1">
                       <span className={`text-3xl font-bold ${isHighlighted ? 'text-white' : 'text-[#1A1A18]'}`}>R{plan.price.toLocaleString('en-ZA')}</span>
-                      <span className={`text-sm ${isHighlighted ? 'text-white/50' : 'text-[#8A877F]'}`}>/mo excl. VAT</span>
+                      <span className={`text-sm ${isHighlighted ? 'text-white/50' : 'text-[#8A877F]'}`}>/mo</span>
                     </div>
                     <p className={`text-xs mb-6 leading-relaxed ${isHighlighted ? 'text-white/50' : 'text-[#8A877F]'}`}>{plan.tagline}</p>
                     <ul className="space-y-2.5 mb-8">
