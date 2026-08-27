@@ -513,6 +513,7 @@ export interface ElecTimePunch {
   punched_at: string
   latitude: number | null
   longitude: number | null
+  address: string | null
   job_id: string | null
   notes: string | null
   created_at: string

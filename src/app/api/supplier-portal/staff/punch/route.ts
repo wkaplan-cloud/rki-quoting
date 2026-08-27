@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         .eq('idempotency_key', idempotency_key)
         .maybeSingle()
       if (existing) {
-        return NextResponse.json({ ok: true, punch: existing, address: null, deduplicated: true })
+        return NextResponse.json({ ok: true, punch: existing, address: existing.address ?? null, deduplicated: true })
       }
     }
 
@@ -69,7 +69,13 @@ export async function POST(req: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Resolve the address after the punch is safely stored, then write it back to
+    // the row so the timesheet never has to geocode at render time.
     const address = latitude && longitude ? await reverseGeocode(latitude, longitude) : null
+    if (address) {
+      await supabaseAdmin.from('elec_time_punches').update({ address }).eq('id', punch.id)
+      punch.address = address
+    }
     const locationSource: 'gps' | 'none' = latitude && longitude ? 'gps' : 'none'
 
     const gpsNote = address ? ` · ${address}` : latitude ? ` · GPS captured` : ''

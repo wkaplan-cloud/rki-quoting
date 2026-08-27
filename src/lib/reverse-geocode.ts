@@ -21,7 +21,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   try {
     const r = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
-      { headers: { 'User-Agent': 'RKI-QuotingHub/1.0' } }
+      { headers: { 'User-Agent': 'RKI-QuotingHub/1.0' }, signal: AbortSignal.timeout(5000) }
     )
     if (!r.ok) return null
     const d = await r.json() as { address?: Record<string, string>; display_name?: string }

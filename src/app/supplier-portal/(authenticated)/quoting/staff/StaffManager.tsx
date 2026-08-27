@@ -57,6 +57,25 @@ function fmtDuration(ms: number) {
   return `${h}h ${m}m`
 }
 
+// Address for a punch: the label stored on the row at clock time, falling back to
+// a lazily-geocoded lookup for legacy punches recorded before the column existed.
+function punchAddress(
+  p: { latitude: number | null; longitude: number | null; address?: string | null },
+  geoAddresses: Record<string, string>,
+): string | null {
+  if (p.address) return p.address
+  if (p.latitude == null || p.longitude == null) return null
+  return geoAddresses[`${p.latitude},${p.longitude}`] ?? null
+}
+
+function mapsUrl(lat: number, lng: number) {
+  return `https://www.google.com/maps?q=${lat},${lng}`
+}
+
+function escHtml(v: string) {
+  return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
 // punchesToBreakdown pairs the nth clock_in with the nth clock_out by index.
 // A punch set spanning multiple days must be bucketed by day first, or a single
 // missing/extra punch on one day shifts every pairing after it and silently
@@ -86,6 +105,19 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = { name: '', role: 'electrician', phone: '', color: '#3A7CA5', username: '', pin: '' }
+
+// One GPS cell for the printable timesheet: the street address where we have one,
+// coordinates otherwise — either way linked to Google Maps so it stays clickable
+// when the sheet is read on screen rather than on paper.
+function gpsCell(
+  p: ElecTimePunch | null,
+  geoAddresses: Record<string, string>,
+) {
+  if (!p || p.latitude == null || p.longitude == null) return '<td class="gps">—</td>'
+  const coords = `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`
+  const label  = punchAddress(p, geoAddresses) ?? coords
+  return `<td class="gps"><a class="gps-link" href="${mapsUrl(p.latitude, p.longitude)}" target="_blank" rel="noopener noreferrer" title="${escHtml(coords)}">${escHtml(label)}</a></td>`
+}
 
 function printWeek(
   weekStart: string,
@@ -153,8 +185,8 @@ function printWeek(
         durStr    = `<b>${fmtMs(b.totalMs)}</b>`
       }
       const job    = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
-      const inGps  = ses.in.latitude  ? (geoAddresses[`${ses.in.latitude},${ses.in.longitude}`]   ?? `${ses.in.latitude.toFixed(5)}, ${ses.in.longitude?.toFixed(5)}`)   : '—'
-      const outGps = ses.out?.latitude ? (geoAddresses[`${ses.out.latitude},${ses.out.longitude}`] ?? `${ses.out.latitude.toFixed(5)}, ${ses.out.longitude?.toFixed(5)}`) : '—'
+      const inGps  = gpsCell(ses.in, geoAddresses)
+      const outGps = gpsCell(ses.out, geoAddresses)
       return `<tr>
         <td>${inDate.toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
         <td>${inDate.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
@@ -163,8 +195,8 @@ function printWeek(
         <td class="ot">${otStr}</td>
         <td>${durStr}</td>
         <td>${job ? `<b>${job.job_number}</b> · ${job.title}` : '—'}</td>
-        <td class="gps">${inGps}</td>
-        <td class="gps">${outGps}</td>
+        ${inGps}
+        ${outGps}
       </tr>`
     }).join('')
 
@@ -223,6 +255,9 @@ function printWeek(
     tr:nth-child(even) td{background:#fafafa}
     .open{color:#16a34a;font-weight:600}
     .gps{font-size:10px;color:#71717a}
+    .gps-link{color:#3a7ca5;text-decoration:none}
+    .gps-link:hover{text-decoration:underline}
+    @media print{.gps-link{color:#71717a;text-decoration:none}}
     .norm{color:#16a34a}
     .ot{color:#d9a441;font-weight:600}
     .ot-text{color:#d9a441}
@@ -260,20 +295,27 @@ export function StaffManager({ initialStaff, punches }: Props) {
   const [staff, setStaff] = useState(initialStaff)
   const [geoAddresses, setGeoAddresses] = useState<Record<string, string>>({})
 
+  // Punches store their address at clock time, so this only covers legacy rows
+  // recorded before that column existed. Nominatim's usage policy is one request
+  // per second — burst through it and the lookups come back empty, which is what
+  // used to leave raw coordinates on the printed sheet.
   useEffect(() => {
     const coords = [...new Set(
-      punches.filter(p => p.latitude && p.longitude).map(p => `${p.latitude},${p.longitude}`)
+      punches.filter(p => p.latitude && p.longitude && !p.address).map(p => `${p.latitude},${p.longitude}`)
     )]
     if (!coords.length) return
+    let cancelled = false
     void (async () => {
-      const results: Record<string, string> = {}
       for (const c of coords) {
+        if (cancelled) return
         const [lat, lng] = c.split(',').map(Number)
         const addr = await reverseGeocode(lat, lng)
-        if (addr) results[c] = addr
+        if (cancelled) return
+        if (addr) setGeoAddresses(prev => ({ ...prev, [c]: addr }))
+        await new Promise(r => setTimeout(r, 1100))
       }
-      setGeoAddresses(prev => ({ ...prev, ...results }))
     })()
+    return () => { cancelled = true }
   }, [punches]) // eslint-disable-line
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -927,7 +969,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                             </span>
                             {p.latitude && p.longitude && (
                               <a
-                                href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                                href={mapsUrl(p.latitude, p.longitude)}
                                 target="_blank" rel="noopener noreferrer"
                                 onClick={e => e.stopPropagation()}
                                 className="flex items-center gap-0.5"
@@ -935,7 +977,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
                                 title={`${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`}>
                                 <MapPin size={9} />
                                 <span className="text-[9px] font-medium">
-                                  {geoAddresses[`${p.latitude},${p.longitude}`] ?? 'GPS'}
+                                  {punchAddress(p, geoAddresses) ?? 'GPS'}
                                 </span>
                               </a>
                             )}
@@ -1042,10 +1084,11 @@ export function StaffManager({ initialStaff, punches }: Props) {
                                   {new Date(p.punched_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} {new Date(p.punched_at).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                                 {p.latitude && p.longitude && (
-                                  <a href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                                  <a href={mapsUrl(p.latitude, p.longitude)}
                                     target="_blank" rel="noopener noreferrer"
                                     onClick={e => e.stopPropagation()}
-                                    style={{ color: S.accent }}>
+                                    style={{ color: S.accent }}
+                                    title={punchAddress(p, geoAddresses) ?? `${p.latitude.toFixed(5)}, ${p.longitude.toFixed(5)}`}>
                                     <MapPin size={9} />
                                   </a>
                                 )}
