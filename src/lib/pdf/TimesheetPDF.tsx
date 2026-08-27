@@ -21,6 +21,12 @@ const s = StyleSheet.create({
   tdMuted: { color: '#71717A' },
   green: { color: '#16A34A', fontFamily: 'Helvetica-Bold' },
   gold: { color: '#D9A441', fontFamily: 'Helvetica-Bold' },
+  summary: { borderWidth: 0.5, borderColor: '#E4E4E7', marginBottom: 16 },
+  summaryTitle: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#71717A', backgroundColor: '#F0F2F5', padding: '4 6', textTransform: 'uppercase', letterSpacing: 0.3, borderBottomWidth: 0.5, borderBottomColor: '#E4E4E7' },
+  summaryRow: { flexDirection: 'row' },
+  summaryCell: { flex: 1, padding: '7 8', borderRightWidth: 0.5, borderRightColor: '#E4E4E7' },
+  summaryLabel: { fontSize: 7, color: '#71717A', marginBottom: 2 },
+  summaryValue: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#1E2A38' },
   footer: { position: 'absolute', bottom: 20, left: 28, right: 28, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.5, borderTopColor: '#E4E4E7', paddingTop: 6 },
   footerText: { fontSize: 7, color: '#94A3B8' },
 })
@@ -46,7 +52,45 @@ function fmtDur(ms: number) {
   return `${h}h ${m}m`
 }
 
+interface Session { in: Punch; out: Punch | null; normalMs: number; overtimeMs: number; totalMs: number }
+
+function buildSessions(punches: Punch[]) {
+  // Group by UTC date, then greedy-match within each day to avoid cross-day mispairing
+  const pByDay: Record<string, Punch[]> = {}
+  for (const p of punches) {
+    const d = p.punched_at.slice(0, 10)
+    if (!pByDay[d]) pByDay[d] = []
+    pByDay[d].push(p)
+  }
+  let totalNormalMs = 0, totalOtMs = 0, totalMs = 0
+  const sessions: Session[] = []
+  for (const dayKey of Object.keys(pByDay).sort()) {
+    const daySorted = [...pByDay[dayKey]].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
+    const dayIns  = daySorted.filter(p => p.punch_type === 'clock_in')
+    const dayOuts = daySorted.filter(p => p.punch_type === 'clock_out')
+    let outIdx = 0
+    for (const inP of dayIns) {
+      const clockInMs = new Date(inP.punched_at).getTime()
+      while (outIdx < dayOuts.length && new Date(dayOuts[outIdx].punched_at).getTime() <= clockInMs) outIdx++
+      if (outIdx < dayOuts.length) {
+        const outP = dayOuts[outIdx++]
+        const b = calcHourBreakdown(new Date(inP.punched_at), new Date(outP.punched_at))
+        totalNormalMs += b.normalMs; totalOtMs += b.overtimeMs; totalMs += b.totalMs
+        sessions.push({ in: inP, out: outP, normalMs: b.normalMs, overtimeMs: b.overtimeMs, totalMs: b.totalMs })
+      } else {
+        sessions.push({ in: inP, out: null, normalMs: 0, overtimeMs: 0, totalMs: 0 })
+      }
+    }
+  }
+  return { sessions, totalNormalMs, totalOtMs, totalMs }
+}
+
 export function TimesheetPDF({ companyName, periodLabel, staffData }: Props) {
+  const computed = staffData.map(member => ({ member, ...buildSessions(member.punches) }))
+  const weekNormalMs = computed.reduce((sum, c) => sum + c.totalNormalMs, 0)
+  const weekOtMs     = computed.reduce((sum, c) => sum + c.totalOtMs, 0)
+  const weekTotalMs  = computed.reduce((sum, c) => sum + c.totalMs, 0)
+
   return (
     <Document>
       <Page size="A4" style={s.page}>
@@ -64,35 +108,27 @@ export function TimesheetPDF({ companyName, periodLabel, staffData }: Props) {
           <Text style={{ color: '#71717A', textAlign: 'center', marginTop: 40 }}>No time records for this week.</Text>
         )}
 
-        {staffData.map(member => {
-          // Group by UTC date, then greedy-match within each day to avoid cross-day mispairing
-          const pByDay: Record<string, Punch[]> = {}
-          for (const p of member.punches) {
-            const d = p.punched_at.slice(0, 10)
-            if (!pByDay[d]) pByDay[d] = []
-            pByDay[d].push(p)
-          }
-          let totalNormalMs = 0, totalOtMs = 0, totalMs = 0
-          const sessions: { in: Punch; out: Punch | null; normalMs: number; overtimeMs: number; totalMs: number }[] = []
-          for (const dayKey of Object.keys(pByDay).sort()) {
-            const daySorted = [...pByDay[dayKey]].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-            const dayIns  = daySorted.filter(p => p.punch_type === 'clock_in')
-            const dayOuts = daySorted.filter(p => p.punch_type === 'clock_out')
-            let outIdx = 0
-            for (const inP of dayIns) {
-              const clockInMs = new Date(inP.punched_at).getTime()
-              while (outIdx < dayOuts.length && new Date(dayOuts[outIdx].punched_at).getTime() <= clockInMs) outIdx++
-              if (outIdx < dayOuts.length) {
-                const outP = dayOuts[outIdx++]
-                const b = calcHourBreakdown(new Date(inP.punched_at), new Date(outP.punched_at))
-                totalNormalMs += b.normalMs; totalOtMs += b.overtimeMs; totalMs += b.totalMs
-                sessions.push({ in: inP, out: outP, normalMs: b.normalMs, overtimeMs: b.overtimeMs, totalMs: b.totalMs })
-              } else {
-                sessions.push({ in: inP, out: null, normalMs: 0, overtimeMs: 0, totalMs: 0 })
-              }
-            }
-          }
+        {computed.length > 0 && (
+          <View style={s.summary}>
+            <Text style={s.summaryTitle}>Week Totals — All Staff</Text>
+            <View style={s.summaryRow}>
+              <View style={s.summaryCell}>
+                <Text style={s.summaryLabel}>Total Hours Worked</Text>
+                <Text style={s.summaryValue}>{fmtDur(weekTotalMs)}</Text>
+              </View>
+              <View style={s.summaryCell}>
+                <Text style={s.summaryLabel}>Normal Hours</Text>
+                <Text style={[s.summaryValue, { color: '#16A34A' }]}>{weekNormalMs > 0 ? fmtDur(weekNormalMs) : '—'}</Text>
+              </View>
+              <View style={[s.summaryCell, { borderRightWidth: 0 }]}>
+                <Text style={s.summaryLabel}>After-Hours (OT)</Text>
+                <Text style={[s.summaryValue, { color: '#D9A441' }]}>{weekOtMs > 0 ? fmtDur(weekOtMs) : '—'}</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
+        {computed.map(({ member, sessions, totalNormalMs, totalOtMs, totalMs }) => {
           return (
             <View key={member.id} style={s.staffSection} wrap={false}>
               <View style={s.staffHeader}>

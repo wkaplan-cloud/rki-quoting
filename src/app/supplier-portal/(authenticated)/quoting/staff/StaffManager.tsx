@@ -98,6 +98,7 @@ function printWeek(
   const periodStr   = `${wkStartDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} – ${wkEndDate.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}`
 
   const staffRows: string[] = []
+  let weekNormalMs = 0, weekOtMs = 0, weekTotalMs = 0
 
   for (const [staffId, staffPunches] of Object.entries(staffWeekPunches)) {
     const member = staffMap[staffId]
@@ -171,6 +172,10 @@ function printWeek(
     const normStr = totalNormalMs > 0 ? fmtMs(totalNormalMs) : '—'
     const otStrTotal = totalOtMs > 0 ? fmtMs(totalOtMs) : '—'
 
+    weekNormalMs += totalNormalMs
+    weekOtMs     += totalOtMs
+    weekTotalMs  += totalMs
+
     staffRows.push(`<div class="staff-section">
       <div class="staff-header">
         <div class="avatar" style="background:${member.color}">${initials}</div>
@@ -185,6 +190,16 @@ function printWeek(
       </table>
     </div>`)
   }
+
+  const fmtWeek = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
+  const summaryHtml = staffRows.length > 0 ? `<div class="week-summary">
+    <div class="ws-title">Week Totals — All Staff</div>
+    <div class="ws-grid">
+      <div class="ws-cell"><div class="ws-label">Total Hours Worked</div><div class="ws-value">${fmtWeek(weekTotalMs)}</div></div>
+      <div class="ws-cell"><div class="ws-label">Normal Hours</div><div class="ws-value norm">${weekNormalMs > 0 ? fmtWeek(weekNormalMs) : '—'}</div></div>
+      <div class="ws-cell"><div class="ws-label">After-Hours (OT)</div><div class="ws-value ot-text">${weekOtMs > 0 ? fmtWeek(weekOtMs) : '—'}</div></div>
+    </div>
+  </div>` : ''
 
   const html = `<!DOCTYPE html><html><head>
   <title>Timesheet ${periodStr}</title><meta charset="utf-8"/>
@@ -211,6 +226,13 @@ function printWeek(
     .norm{color:#16a34a}
     .ot{color:#d9a441;font-weight:600}
     .ot-text{color:#d9a441}
+    .week-summary{margin-bottom:24px;border:1px solid #e4e4e7;border-radius:8px;overflow:hidden;page-break-inside:avoid}
+    .ws-title{background:#f0f2f5;padding:6px 10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#71717a;border-bottom:1px solid #e4e4e7}
+    .ws-grid{display:flex}
+    .ws-cell{flex:1;padding:10px 12px;border-right:1px solid #e4e4e7}
+    .ws-cell:last-child{border-right:none}
+    .ws-label{font-size:10px;color:#71717a;margin-bottom:3px}
+    .ws-value{font-size:16px;font-weight:700;color:#1e2a38}
   </style>
   </head><body>
   <button class="back-btn" onclick="window.close();setTimeout(function(){history.back()},100)">← Back</button>
@@ -218,6 +240,7 @@ function printWeek(
   <div class="doc-header">
     <div><div class="doc-title">Weekly Timesheet</div><div class="doc-period">${periodStr}</div></div>
   </div>
+  ${summaryHtml}
   ${staffRows.length > 0 ? staffRows.join('') : '<p style="color:#71717a;text-align:center;padding:40px">No data for this week</p>'}
   </body></html>`
 
@@ -771,6 +794,15 @@ export function StaffManager({ initialStaff, punches }: Props) {
             ) : sortedWeeks.map(wk => {
               const wkEnd = new Date(wk + 'T12:00:00'); wkEnd.setDate(wkEnd.getDate() + 6)
               const weekLabel = `${new Date(wk + 'T12:00:00').toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })} – ${wkEnd.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`
+              // Week grand totals across every staff member on this week
+              const weekTotals = Object.values(staffWeekPunches[wk]).reduce(
+                (acc, ps) => {
+                  const b = dayBucketedBreakdown(ps)
+                  acc.normalMs += b.normalMs; acc.overtimeMs += b.overtimeMs; acc.totalMs += b.totalMs
+                  return acc
+                },
+                { normalMs: 0, overtimeMs: 0, totalMs: 0 },
+              )
               return (
                 <div key={wk} className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                   <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: S.bg, borderBottom: `1px solid ${S.border}` }}>
@@ -821,6 +853,14 @@ export function StaffManager({ initialStaff, punches }: Props) {
                       </div>
                     )
                   })}
+                  <div className="px-4 py-3 flex items-center gap-3" style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
+                    <p className="flex-1 min-w-0 text-xs font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Week total — all staff</p>
+                    <div className="flex items-center gap-2 flex-wrap justify-end text-xs font-medium flex-shrink-0">
+                      <span style={{ color: S.green }}>Normal: {fmtDuration(weekTotals.normalMs)}</span>
+                      <span style={{ color: S.gold }}>After-hours: {weekTotals.overtimeMs > 0 ? fmtDuration(weekTotals.overtimeMs) : '—'}</span>
+                      <span className="font-bold font-mono text-sm" style={{ color: S.accent }}>{fmtDuration(weekTotals.totalMs)}</span>
+                    </div>
+                  </div>
                 </div>
               )
             })
