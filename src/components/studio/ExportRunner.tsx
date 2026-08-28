@@ -21,6 +21,22 @@ import { StaticSlideStage } from './StaticSlideStage'
 // starts) — opening it here, after preloading/rendering has finished, would
 // fire long after the user gesture that's supposed to authorize it, and
 // browsers silently block that as an unsolicited popup.
+// Mirror progress into the print tab. That tab takes focus the moment it
+// opens (it has to — see PrintSlidesModal), so it, not the editor behind it,
+// is what the user is watching while slides rasterise. It's an about:blank
+// window we opened ourselves, so it's same-origin and its DOM is writable.
+function updatePrintWindow(win: Window | null | undefined, text: string, pct?: number) {
+  if (!win || win.closed) return
+  try {
+    const status = win.document.getElementById('qh-print-status')
+    if (status) status.textContent = text
+    const bar = win.document.getElementById('qh-print-bar')
+    if (bar && pct !== undefined) bar.style.width = `${Math.round(pct)}%`
+  } catch {
+    // tab navigated away or was closed mid-render — the toasts still cover it
+  }
+}
+
 export function ExportRunner({
   onDone,
   slideIds,
@@ -50,6 +66,7 @@ export function ExportRunner({
 
     ;(async () => {
       await flushSave()
+      updatePrintWindow(printWindow, 'Loading images…')
       // Only the slides actually being rendered need their images preloaded.
       // Preloading the whole board for a one-slide print wastes the fetches and,
       // on a large board, can evict the selected slide's own images from the LRU
@@ -63,12 +80,16 @@ export function ExportRunner({
             rejectRef.current = reject
             setRenderIndex(i)
           }),
-        (done, total) => toast.loading(`Rendering slide ${done} of ${total}…`, { id: toastId })
+        (done, total) => {
+          toast.loading(`Rendering slide ${done} of ${total}…`, { id: toastId })
+          updatePrintWindow(printWindow, `Rendering slide ${done} of ${total}…`, (done / total) * 100)
+        }
       )
       if (mode === 'print') {
         if (!printWindow || printWindow.closed) {
           toast.error('Print tab was closed — please try again', { id: toastId })
         } else {
+          updatePrintWindow(printWindow, 'Opening print preview…', 100)
           const blobUrl = pdf.output('bloburl') as unknown as string
           printWindow.location.href = blobUrl
           toast.success("Opened print preview — press ⌘/Ctrl+P if the dialog doesn't appear", { id: toastId })
@@ -90,7 +111,11 @@ export function ExportRunner({
       }
     })()
       .catch((err: Error) => {
-        toast.error(err.message || (mode === 'print' ? 'Print failed' : 'Export failed'), { id: toastId })
+        const msg = err.message || (mode === 'print' ? 'Print failed' : 'Export failed')
+        toast.error(msg, { id: toastId })
+        // Without this the print tab sits on "Rendering slide 3 of 8…"
+        // forever, with the real error only visible on the editor tab.
+        updatePrintWindow(printWindow, `${msg} — you can close this tab and try again.`, 0)
       })
       .finally(onDone)
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -109,12 +109,26 @@ export function PrintSlidesModal({
               // window.open() fired after all that would get silently
               // blocked as an unsolicited popup. We navigate this same
               // already-open tab to the finished PDF once it's ready.
+              //
+              // Because this tab takes focus immediately, it — not the editor
+              // behind it — is where the user is looking while slides render.
+              // So it carries the live progress readout (ExportRunner writes
+              // into #qh-print-status / #qh-print-bar by id); the toasts on
+              // the editor tab are the same information for whoever switches
+              // back.
               const win = window.open('', '_blank')
               if (win) {
                 win.document.title = 'Preparing print…'
                 win.document.body.style.cssText =
-                  'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font:14px system-ui;color:#8A877F;background:#F5F2EC'
-                win.document.body.textContent = 'Preparing your PDF for printing…'
+                  'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#F5F2EC'
+                win.document.body.innerHTML = `
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:14px;width:260px;font:14px system-ui,-apple-system,sans-serif;color:#8A877F">
+                    <div id="qh-print-status" style="font-size:13px">Preparing your PDF for printing…</div>
+                    <div style="width:100%;height:3px;border-radius:3px;background:#E2DDD2;overflow:hidden">
+                      <div id="qh-print-bar" style="width:0%;height:100%;background:#9A7B4F;transition:width .2s ease"></div>
+                    </div>
+                    <div style="font-size:11px;color:#B0ACA2">This tab will become your print preview</div>
+                  </div>`
               }
               onPrint(slides.filter(s => selected.has(s.id)).map(s => s.id), win)
             }}
