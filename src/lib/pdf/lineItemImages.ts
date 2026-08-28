@@ -1,17 +1,8 @@
 import type { LineItem } from '../types'
 import { fetchLogoBase64 } from './fetchLogoBase64'
+import { MAX_DOCUMENT_IMAGES, lineItemImageUrl } from '../lineItemImage'
 
-/** Hard cap — react-pdf embeds every image in the buffer, so a 200-line quote
- *  with a photo on each row would blow both render time and file size. */
-const MAX_IMAGES = 60
-
-/**
- * The image to show for a line item: the designer's first upload, falling back
- * to the automatic catalogue image (Twinbru / price list / Studio).
- */
-export function lineItemImageUrl(item: Pick<LineItem, 'image_urls' | 'fabric_image_url'>): string | null {
-  return item.image_urls?.[0] ?? item.fabric_image_url ?? null
-}
+export { lineItemImageUrl }
 
 /**
  * Pre-fetch line item images as base64 data URIs, keyed by line item id.
@@ -33,7 +24,7 @@ export async function fetchLineItemImages(
     if (item.row_type === 'section') continue
     const url = lineItemImageUrl(item)
     if (url) targets.push({ id: item.id, url })
-    if (targets.length >= MAX_IMAGES) break
+    if (targets.length >= MAX_DOCUMENT_IMAGES) break
   }
   if (!targets.length) return {}
 

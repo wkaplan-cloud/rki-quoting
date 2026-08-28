@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getNextProjectNumber } from '@/lib/projectNumber'
 import { computeLineItems, computeTotals, formatZAR } from '@/lib/quoting'
+import { MAX_DOCUMENT_IMAGES, countDocumentImages } from '@/lib/lineItemImage'
 import type { Project, LineItem, ProjectStages } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
@@ -167,6 +168,9 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
 
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, designFeePct, vatRate, depositPct)
+  // Documents print at most MAX_DOCUMENT_IMAGES thumbnails; rows past that print without one
+  const imageRowCount = imagesEnabled ? countDocumentImages(lineItems) : 0
+  const imagesOverCap = imageRowCount - MAX_DOCUMENT_IMAGES
   // Live preview of what an invoice would print while the deposit field is being edited
   const depositPreview = Math.min(Math.max(parseFloat(depositDraft) || 0, 0), totals.grand_total)
   const isPaid = sageConnected && (sageInvoiceStatus ?? '').toUpperCase() === 'PAID'
@@ -1047,6 +1051,18 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
           <div className="mb-4 flex items-center gap-2.5 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
             <span className="text-base">🔒</span>
             <span><strong>Invoice paid in full.</strong> This project is locked — no edits can be made after payment.{isAdmin && ' Use the Unlink button above to unlock if this invoice was voided or cancelled in Sage.'}</span>
+          </div>
+        )}
+        {imagesOverCap > 0 && (
+          <div className="mb-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded">
+            <p className="text-xs text-amber-800 font-medium">
+              Only the first {MAX_DOCUMENT_IMAGES} item images print on quotes and invoices
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              This project has {imageRowCount} items with an image, so the last {imagesOverCap}{' '}
+              {imagesOverCap === 1 ? 'prints' : 'print'} without a picture. Everything else on those
+              lines — description, quantity and price — is unaffected.
+            </p>
           </div>
         )}
         <LineItemsTable
