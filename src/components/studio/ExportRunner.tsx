@@ -37,6 +37,43 @@ function updatePrintWindow(win: Window | null | undefined, text: string, pct?: n
   }
 }
 
+// Resolves once React has committed the requested slide into the Konva tree.
+//
+// rAF is the natural "the stage has drawn" signal, but browsers stop firing it
+// altogether while a tab is hidden — and this run *always* hides the editor
+// tab, because the print tab has to open synchronously on the click and takes
+// focus with it. Gating on rAF alone therefore parked the whole render loop
+// until the user switched back.
+//
+// MessageChannel messages are not throttled that way, so we race the two:
+// whichever fires first, the commit is done. Two hops mirror the two frames —
+// enough for any passive effect (an image attaching from cache) to have
+// flushed and re-committed. Snapshotting doesn't need the on-screen paint
+// anyway: Konva's toDataURL redraws the scene into its own canvas.
+function afterCommit(): Promise<void> {
+  return new Promise(resolve => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+    requestAnimationFrame(() => requestAnimationFrame(finish))
+    const ch = new MessageChannel()
+    let hops = 0
+    ch.port1.onmessage = () => {
+      if (++hops < 2) {
+        ch.port2.postMessage(null)
+        return
+      }
+      ch.port1.close()
+      finish()
+    }
+    ch.port1.start()
+    ch.port2.postMessage(null)
+  })
+}
+
 export function ExportRunner({
   onDone,
   slideIds,
@@ -121,26 +158,24 @@ export function ExportRunner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onDone])
 
-  // After the hidden stage paints the requested slide, snapshot it.
-  // Images are pre-cached, so the first paint is already complete — the
-  // double rAF just guarantees Konva has drawn.
+  // Once the hidden stage holds the requested slide, snapshot it. Images are
+  // pre-cached (useKonvaImage seeds from the cache during the first render),
+  // so nothing here waits on the network.
   useEffect(() => {
     if (renderIndex < 0) return
     let cancelled = false
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        if (cancelled) return
-        const stage = stageRef.current
-        const resolve = resolveRef.current
-        const reject = rejectRef.current
-        if (!stage || !resolve) return
-        try {
-          resolve(stageToJpeg(stage))
-        } catch (err) {
-          reject?.(err as Error)
-        }
-      })
-    )
+    afterCommit().then(() => {
+      if (cancelled) return
+      const stage = stageRef.current
+      const resolve = resolveRef.current
+      const reject = rejectRef.current
+      if (!stage || !resolve) return
+      try {
+        resolve(stageToJpeg(stage))
+      } catch (err) {
+        reject?.(err as Error)
+      }
+    })
     return () => {
       cancelled = true
     }
