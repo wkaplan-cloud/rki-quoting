@@ -6,8 +6,10 @@ import { getContentFont } from './contentFonts'
 import { useStudioStore } from './store'
 import type { StudioSlide } from './types'
 
-// Preload every image referenced by the board (plus the org logo) into the
-// shared cache so export stages render complete on first paint. Also force
+// Preload every image referenced by the given slides (plus the org logo) into
+// the shared cache so export stages render complete on first paint. Callers
+// pass only the slides they are about to render — not the whole board — so a
+// partial print doesn't fetch pages it will never draw. Also force
 // -loads the Master Page's Playfair/Inter fonts and the board's chosen
 // content font — without this, `document.fonts.ready` below is a no-op on
 // this route (nothing else here ever triggers these @font-face fetches),

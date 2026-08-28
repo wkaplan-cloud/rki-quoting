@@ -50,7 +50,11 @@ export function ExportRunner({
 
     ;(async () => {
       await flushSave()
-      await preloadBoardImages(slides, logoUrl)
+      // Only the slides actually being rendered need their images preloaded.
+      // Preloading the whole board for a one-slide print wastes the fetches and,
+      // on a large board, can evict the selected slide's own images from the LRU
+      // cache before it gets rasterised.
+      await preloadBoardImages(indices.map(i => slides[i]), logoUrl)
       const pdf = await assemblePdf(
         indices,
         i =>
