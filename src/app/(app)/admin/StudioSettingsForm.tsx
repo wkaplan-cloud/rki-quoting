@@ -478,7 +478,7 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
     pdf_template:           settings?.pdf_template ?? 'minimal',
     pdf_color_theme:        settings?.pdf_color_theme ?? 'warm',
     sage_invoice_message:   settings?.sage_invoice_message ?? '',
-    show_images_on_documents: settings?.show_images_on_documents ?? false,
+    show_images_on_documents: settings?.show_images_on_documents ?? true,
   })
   const set = (k: string, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
 
