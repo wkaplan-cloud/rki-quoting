@@ -14,6 +14,13 @@ import toast from 'react-hot-toast'
 import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail, ThumbsUp, ThumbsDown } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
+// Percentage fields are typed into freely; only sane values ever reach the database.
+function clampPct(raw: string): number {
+  const n = parseFloat(raw)
+  if (!isFinite(n)) return 0
+  return Math.min(Math.max(n, 0), 100)
+}
+
 interface SageCustomer { id: string; name: string; reference?: string }
 interface SageInvoice { id: string; reference: string; customerName: string; total: number; status: string; date: string }
 interface EmailLog { id: string; type: string; sent_to: string; sent_at: string; supplier_name?: string | null }
@@ -56,6 +63,11 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
   const [vatRate, setVatRate] = useState(initialVatRate)
   const [depositPct, setDepositPct] = useState(initialDepositPct)
+  // Drafts hold what is currently in each percentage box while it is being typed into
+  const [designFeeDraft, setDesignFeeDraft] = useState(String(initial.design_fee ?? 0))
+  const [vatRateDraft, setVatRateDraft] = useState(String(initialVatRate))
+  const [depositPctDraft, setDepositPctDraft] = useState(String(initialDepositPct))
+  const savedPcts = useRef({ design_fee: initial.design_fee ?? 0, vat_rate: initialVatRate, deposit_percentage: initialDepositPct })
   const [poMenuOpen, setPoMenuOpen] = useState(false)
   const poMenuRef = useRef<HTMLDivElement>(null)
   const [sendPoMenuOpen, setSendPoMenuOpen] = useState(false)
@@ -159,20 +171,44 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const depositPreview = Math.min(Math.max(parseFloat(depositDraft) || 0, 0), totals.grand_total)
   const isPaid = sageConnected && (sageInvoiceStatus ?? '').toUpperCase() === 'PAID'
 
-  const handleDesignFeeChange = useCallback(async (pct: number) => {
-    setDesignFeePct(pct)
-    await supabase.from('projects').update({ design_fee: pct }).eq('id', project.id)
+  // Percentages commit on blur (or Enter), never on each keystroke: typing "15" over an
+  // existing value used to save the intermediate "1" first, and a dropped or out-of-order
+  // second write left projects invoicing 1% VAT. Totals still follow the draft as you type.
+  const commitPct = useCallback(async (
+    column: 'design_fee' | 'vat_rate' | 'deposit_percentage',
+    raw: string,
+    setValue: (n: number) => void,
+    setDraft: (s: string) => void,
+  ) => {
+    const pct = clampPct(raw)
+    setValue(pct)
+    setDraft(String(pct))
+    if (savedPcts.current[column] === pct) return
+    const previous = savedPcts.current[column]
+    savedPcts.current[column] = pct
+    const { error } = await supabase.from('projects').update({ [column]: pct }).eq('id', project.id)
+    if (error) {
+      savedPcts.current[column] = previous
+      setValue(previous)
+      setDraft(String(previous))
+      toast.error('Failed to save — please try again')
+    }
   }, [project.id, supabase])
 
-  const handleVatRateChange = useCallback(async (rate: number) => {
-    setVatRate(rate)
-    await supabase.from('projects').update({ vat_rate: rate }).eq('id', project.id)
-  }, [project.id, supabase])
+  const handleDesignFeeInput = useCallback((raw: string) => {
+    setDesignFeeDraft(raw)
+    setDesignFeePct(clampPct(raw))
+  }, [])
 
-  const handleDepositPctChange = useCallback(async (pct: number) => {
-    setDepositPct(pct)
-    await supabase.from('projects').update({ deposit_percentage: pct }).eq('id', project.id)
-  }, [project.id, supabase])
+  const handleVatRateInput = useCallback((raw: string) => {
+    setVatRateDraft(raw)
+    setVatRate(clampPct(raw))
+  }, [])
+
+  const handleDepositPctInput = useCallback((raw: string) => {
+    setDepositPctDraft(raw)
+    setDepositPct(clampPct(raw))
+  }, [])
 
   // The deposit actually paid, in rands, is what invoices print. When a Sage invoice is linked
   // Sage owns that figure (written on sync); otherwise the designer enters it by hand here.
@@ -1049,8 +1085,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 Design Fee (
                 <input
                   type="number" min="0" max="100" step="0.5"
-                  value={designFeePct}
-                  onChange={e => handleDesignFeeChange(parseFloat(e.target.value) || 0)}
+                  value={designFeeDraft}
+                  onChange={e => handleDesignFeeInput(e.target.value)}
+                  onBlur={e => commitPct('design_fee', e.target.value, setDesignFeePct, setDesignFeeDraft)}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
                   disabled={isPaid}
                   className={`w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed ${NO_SPINNER}`}
                 />
@@ -1065,8 +1103,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 {isAdmin && !isPaid ? (
                   <input
                     type="number" min="0" max="100" step="0.5"
-                    value={vatRate}
-                    onChange={e => handleVatRateChange(parseFloat(e.target.value) || 0)}
+                    value={vatRateDraft}
+                    onChange={e => handleVatRateInput(e.target.value)}
+                    onBlur={e => commitPct('vat_rate', e.target.value, setVatRate, setVatRateDraft)}
+                    onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
                     className={`w-8 text-center text-sm text-[#2C2C2A] border-b border-dashed border-[#D8D3C8] focus:border-[#9A7B4F] outline-none bg-transparent ${NO_SPINNER}`}
                   />
                 ) : (
@@ -1085,8 +1125,10 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                 Deposit (
                 <input
                   type="number" min="0" max="100" step="1"
-                  value={depositPct}
-                  onChange={e => handleDepositPctChange(parseFloat(e.target.value) || 0)}
+                  value={depositPctDraft}
+                  onChange={e => handleDepositPctInput(e.target.value)}
+                  onBlur={e => commitPct('deposit_percentage', e.target.value, setDepositPct, setDepositPctDraft)}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
                   disabled={isPaid}
                   className={`w-8 text-center text-sm text-[#9A7B4F] border-b border-dashed border-[#9A7B4F]/40 focus:border-[#9A7B4F] outline-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed ${NO_SPINNER}`}
                 />
