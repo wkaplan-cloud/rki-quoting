@@ -11,6 +11,15 @@ export const MASTER_SIDE = 40
 export const FONT_FAMILIES = ['Helvetica', 'Arial', 'Georgia', 'Times New Roman', 'Courier New']
 export const DEFAULT_FONT = 'Helvetica'
 
+// Canvas zoom limits and the presets offered in the zoom menu / stepped by ±
+export const MIN_ZOOM = 0.1
+export const MAX_ZOOM = 4
+export const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4]
+
+// Breathing room left around the page when fitting it to the viewport
+export const FIT_PADDING_X = 96
+export const FIT_PADDING_Y = 120
+
 // Snap threshold in screen pixels (divided by zoom at use site for constant feel)
 export const SNAP_THRESHOLD = 6
 

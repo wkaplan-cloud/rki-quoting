@@ -1,9 +1,10 @@
 'use client'
-import type { RefObject } from 'react'
+import { useState, type RefObject } from 'react'
 import { Stage, Layer, Rect } from 'react-konva'
 import type Konva from 'konva'
 import type { KonvaEventObject } from 'konva/lib/Node'
 import { PAGE_W, PAGE_H } from '@/lib/studio/constants'
+import { zoomAt, isMouseWheel } from '@/lib/studio/viewport'
 import { useStudioStore } from '@/lib/studio/store'
 import { MasterGroup } from './MasterLayer'
 import { getMasterTheme } from '@/lib/studio/masterThemes'
@@ -13,9 +14,6 @@ import { SmartGuides } from './SmartGuides'
 import { CropOverlay } from './CropOverlay'
 import { SpecIndicators } from './SpecIndicators'
 import { LowResIndicators } from './LowResIndicators'
-
-const MIN_ZOOM = 0.1
-const MAX_ZOOM = 4
 
 // The interactive A3 stage. The stage itself is scaled/positioned by the
 // viewport, so all child coordinates stay in page points.
@@ -36,6 +34,7 @@ export function CanvasStage({
   const cropTargetId = useStudioStore(s => s.cropTargetId)
   const editingHeading = useStudioStore(s => s.editingHeading)
   const masterLayout = useStudioStore(s => s.masterLayout)
+  const [panning, setPanning] = useState(false)
 
   const slideIndex = slides.findIndex(sl => sl.id === currentSlideId)
   const slide = slides[slideIndex]
@@ -43,15 +42,16 @@ export function CanvasStage({
 
   function onWheel(e: KonvaEventObject<WheelEvent>) {
     e.evt.preventDefault()
-    if (e.evt.ctrlKey || e.evt.metaKey) {
-      const stage = stageRef.current
-      const pointer = stage?.getPointerPosition()
+    // ⌘/Ctrl (or pinch, which browsers report as ctrl+wheel) always zooms; a
+    // plain mouse wheel zooms too, since that is the only zoom gesture a mouse
+    // has. Trackpad two-finger scroll keeps panning.
+    if (e.evt.ctrlKey || e.evt.metaKey || isMouseWheel(e.evt)) {
+      const pointer = stageRef.current?.getPointerPosition()
       if (!pointer) return
-      const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, viewport.zoom * Math.exp(-e.evt.deltaY * 0.0018)))
-      // Keep the page point under the cursor fixed while zooming
-      const pageX = (pointer.x - viewport.x) / viewport.zoom
-      const pageY = (pointer.y - viewport.y) / viewport.zoom
-      setViewport({ zoom: newZoom, x: pointer.x - pageX * newZoom, y: pointer.y - pageY * newZoom })
+      // Wheel ticks are far coarser than trackpad deltas — damp them so one
+      // notch is a step, not a jump
+      const intensity = isMouseWheel(e.evt) && !e.evt.ctrlKey && !e.evt.metaKey ? 0.0012 : 0.0018
+      setViewport(zoomAt(viewport, viewport.zoom * Math.exp(-e.evt.deltaY * intensity), pointer))
     } else {
       setViewport({ ...viewport, x: viewport.x - e.evt.deltaX, y: viewport.y - e.evt.deltaY })
     }
@@ -68,6 +68,7 @@ export function CanvasStage({
   function onStageDragEnd(e: KonvaEventObject<DragEvent>) {
     // Only the stage itself drags in pan mode
     if (e.target !== stageRef.current) return
+    setPanning(false)
     setViewport({ ...viewport, x: e.target.x(), y: e.target.y() })
   }
 
@@ -86,8 +87,11 @@ export function CanvasStage({
       onWheel={onWheel}
       onMouseDown={onStageMouseDown}
       onTouchStart={onStageMouseDown}
+      onDragStart={e => {
+        if (e.target === stageRef.current) setPanning(true)
+      }}
       onDragEnd={onStageDragEnd}
-      style={{ cursor: panMode ? 'grab' : 'default' }}
+      style={{ cursor: panMode ? (panning ? 'grabbing' : 'grab') : 'default' }}
     >
       <Layer listening={!panMode && !cropTargetId}>
         <Rect

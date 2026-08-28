@@ -9,8 +9,10 @@ import { extractImageFiles, importImageFiles, importImageFromUrl, addAssetToSlid
 import { ASSET_DRAG_TYPE } from './AssetPanel'
 import { PIECE_DRAG_TYPE } from './PiecesPanel'
 import { addPieceToSlide } from '@/lib/studio/pieces'
+import { fitViewport, centreViewport, zoomAtCentre, nextZoomUp, nextZoomDown } from '@/lib/studio/viewport'
 import { CanvasStage } from './CanvasStage'
 import { FloatingToolbar } from './FloatingToolbar'
+import { ZoomControl } from './ZoomControl'
 import { InsertBar } from './InsertBar'
 import { TextEditOverlay, HeadingEditOverlay } from './TextEditOverlay'
 
@@ -20,8 +22,11 @@ export function CanvasArea() {
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage | null>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
-  const [panMode, setPanMode] = useState(false)
+  const [spaceDown, setSpaceDown] = useState(false)
+  const [handTool, setHandTool] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  // Hold Space for a momentary pan; the hand tool latches it on
+  const panMode = spaceDown || handTool
   const viewportRestored = useStudioStore(s => s.viewportRestored)
 
   // Track container size
@@ -37,32 +42,59 @@ export function CanvasArea() {
   // First open (no saved state): fit the page in the container, centred
   useEffect(() => {
     if (viewportRestored || size.w === 0 || size.h === 0) return
-    const zoom = Math.min((size.w - 96) / PAGE_W, (size.h - 120) / PAGE_H)
-    useStudioStore.setState({
-      viewport: { zoom, x: (size.w - PAGE_W * zoom) / 2, y: (size.h - PAGE_H * zoom) / 2 + 16 },
-      viewportRestored: true,
-    })
+    useStudioStore.setState({ viewport: fitViewport(size), viewportRestored: true })
   }, [viewportRestored, size])
 
-  // Space held = pan mode
+  // Viewport keys: Space held = momentary pan, V/H switch tool, ⌘± / ⌘0 / ⌘1
+  // zoom. These live here rather than in EditorShell because fitting the page
+  // needs the container size.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.code !== 'Space') return
+      const store = useStudioStore.getState()
+      if (store.presenting) return
       const t = e.target as HTMLElement
-      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return
-      e.preventDefault()
-      setPanMode(true)
+      const typing = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable
+      if (typing || store.editingTextId || store.editingHeading) return
+
+      if (e.code === 'Space') {
+        e.preventDefault()
+        setSpaceDown(true)
+        return
+      }
+      if (e.metaKey || e.ctrlKey) {
+        // '=' is the unshifted ⌘+ on most layouts
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault()
+          store.setViewport(zoomAtCentre(store.viewport, nextZoomUp(store.viewport.zoom), size))
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault()
+          store.setViewport(zoomAtCentre(store.viewport, nextZoomDown(store.viewport.zoom), size))
+        } else if (e.key === '0') {
+          e.preventDefault()
+          store.setViewport(fitViewport(size))
+        } else if (e.key === '1') {
+          e.preventDefault()
+          store.setViewport(centreViewport(1, size))
+        }
+        return
+      }
+      if (e.key === 'v' || e.key === 'V') setHandTool(false)
+      else if (e.key === 'h' || e.key === 'H') setHandTool(true)
     }
     const up = (e: KeyboardEvent) => {
-      if (e.code === 'Space') setPanMode(false)
+      if (e.code === 'Space') setSpaceDown(false)
     }
+    // A drag that leaves the window swallows the keyup — never leave it stuck
+    const blur = () => setSpaceDown(false)
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', blur)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', blur)
     }
-  }, [])
+  }, [size])
 
   // Paste, in priority order: image files import; studio objects copied on
   // this or another board (prefixed JSON — see copySelection); any other
@@ -255,6 +287,7 @@ export function CanvasArea() {
       {size.w > 0 && <CanvasStage size={size} panMode={panMode} stageRef={stageRef} />}
       <InsertBar />
       <FloatingToolbar stageRef={stageRef} containerSize={size} />
+      <ZoomControl size={size} handTool={handTool} onHandToolChange={setHandTool} />
       <TextEditOverlay />
       <HeadingEditOverlay />
       {dragOver && (
