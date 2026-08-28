@@ -6,6 +6,7 @@ import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
+import { resolveAcceptance } from '@/lib/acceptance'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { fetchLineItemImages } from '@/lib/pdf/lineItemImages'
 import { apiError } from '@/lib/api-error'
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   const [{ data: project }, { data: lineItems }, { data: settings }] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', projectId).single(),
     supabase.from('line_items').select('*').eq('project_id', projectId).order('sort_order').order('created_at'),
-    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, email_from, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, line_item_images_enabled, show_images_on_documents').maybeSingle(),
+    supabase.from('settings').select('logo_url, business_name, business_address, vat_number, vat_rate, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, email_from, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, acceptance_enabled, acceptance_heading, acceptance_text, acceptance_signature_labels, line_item_images_enabled, show_images_on_documents').maybeSingle(),
   ])
 
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
@@ -92,6 +93,7 @@ export async function POST(req: NextRequest) {
         paymentTerms: (settings as any)?.payment_terms ?? null,
         leadTime: (settings as any)?.lead_time ?? null,
         itemImages,
+        acceptance: resolveAcceptance(settings),
       }) as any
     )
 

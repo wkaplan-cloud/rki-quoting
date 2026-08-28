@@ -1,4 +1,5 @@
 import type { Project, LineItem, Client } from '../types'
+import type { AcceptanceBlock } from '../acceptance'
 import { resolveTheme } from './themes'
 import { ClassicTemplate } from './templates/Classic'
 import { BoldTemplate } from './templates/Bold'
@@ -33,6 +34,8 @@ interface Props {
   leadTime?: string | null
   /** Base64 data URIs keyed by line item id. Empty when images are switched off. */
   itemImages?: Record<string, string>
+  /** Quote acceptance block, already resolved from settings. Null = don't print it. */
+  acceptance?: AcceptanceBlock | null
 }
 
 const TEMPLATES: Record<TemplateKey, React.ComponentType<TemplateProps>> = {

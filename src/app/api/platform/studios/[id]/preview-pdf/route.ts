@@ -5,6 +5,7 @@ import { renderToBuffer } from '@react-pdf/renderer'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
+import { resolveAcceptance } from '@/lib/acceptance'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import type { Project, Client, LineItem } from '@/lib/types'
@@ -76,7 +77,7 @@ export async function GET(
 
     const { data: settings } = await supabaseAdmin
       .from('settings')
-      .select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, vat_rate, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme')
+      .select('logo_url, business_name, business_address, vat_number, company_registration, bank_name, bank_account_number, bank_branch_code, footer_text, terms_conditions, deposit_percentage, vat_rate, quote_validity_days, payment_terms, lead_time, pdf_template, pdf_color_theme, acceptance_enabled, acceptance_heading, acceptance_text, acceptance_signature_labels')
       .eq('org_id', orgId)
       .maybeSingle()
 
@@ -111,6 +112,7 @@ export async function GET(
         validityDays: settings?.quote_validity_days ?? 30,
         paymentTerms: settings?.payment_terms ?? null,
         leadTime: settings?.lead_time ?? null,
+        acceptance: resolveAcceptance(settings),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }) as any)
 

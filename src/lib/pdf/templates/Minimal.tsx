@@ -18,7 +18,7 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
-export function MinimalTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime, itemImages }: TemplateProps) {
+export function MinimalTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime, itemImages, acceptance }: TemplateProps) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
   // Never show more paid than the invoice is worth, or a negative amount due
@@ -213,21 +213,25 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
             </View>
           ) : null}
 
-          {/* Acceptance */}
-          {type === 'quote' ? (
+          {/* Acceptance — heading, wording and rules all come from studio settings */}
+          {type === 'quote' && acceptance ? (
             <View style={{ marginTop: 28 }}>
-              <Text style={{ fontSize: 7, color: theme.muted, letterSpacing: 1.5, marginBottom: 8 }}>ACCEPTANCE</Text>
-              <Text style={{ fontSize: 7, color: theme.muted, marginBottom: 20, lineHeight: 1.7 }}>
-                Acceptance of this quotation may be confirmed by signing below or by payment of the required deposit. Either constitutes agreement to the above quotation and its terms and conditions.
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 32 }}>
-                {(['Full Name', 'Signature', 'Date'] as const).map(label => (
-                  <View key={label} style={{ flex: 1 }}>
-                    <View style={{ borderBottomWidth: 0.5, borderBottomColor: theme.text, marginBottom: 4, paddingBottom: 20 }} />
-                    <Text style={{ fontSize: 7, color: theme.muted }}>{label}</Text>
-                  </View>
-                ))}
-              </View>
+              {acceptance.heading ? (
+                <Text style={{ fontSize: 7, color: theme.muted, letterSpacing: 1.5, marginBottom: 8 }}>{acceptance.heading}</Text>
+              ) : null}
+              {acceptance.body ? (
+                <Text style={{ fontSize: 7, color: theme.muted, marginBottom: 20, lineHeight: 1.7 }}>{acceptance.body}</Text>
+              ) : null}
+              {acceptance.labels.length ? (
+                <View style={{ flexDirection: 'row', gap: 32 }}>
+                  {acceptance.labels.map(label => (
+                    <View key={label} style={{ flex: 1 }}>
+                      <View style={{ borderBottomWidth: 0.5, borderBottomColor: theme.text, marginBottom: 4, paddingBottom: 20 }} />
+                      <Text style={{ fontSize: 7, color: theme.muted }}>{label}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
           ) : null}
 

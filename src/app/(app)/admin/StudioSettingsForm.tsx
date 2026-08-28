@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { compressImage } from '@/lib/compressImage'
 import { THEMES } from '@/lib/pdf/themes'
+import { DEFAULT_ACCEPTANCE_HEADING, DEFAULT_ACCEPTANCE_TEXT, DEFAULT_ACCEPTANCE_LABELS } from '@/lib/acceptance'
 import type { ThemeKey, PdfTheme } from '@/lib/pdf/themes'
 
 // ─── Template preview helpers ─────────────────────────────────────────────────
@@ -258,6 +259,10 @@ interface Settings {
   deposit_percentage?: number | null
   footer_text?: string | null
   terms_conditions?: string | null
+  acceptance_enabled?: boolean | null
+  acceptance_heading?: string | null
+  acceptance_text?: string | null
+  acceptance_signature_labels?: string | null
   company_registration?: string | null
   quote_validity_days?: number | null
   payment_terms?: string | null
@@ -466,6 +471,10 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
     deposit_percentage:     String(settings?.deposit_percentage ?? 50),
     footer_text:            settings?.footer_text ?? 'Thank you for your business.',
     terms_conditions:       settings?.terms_conditions ?? '',
+    acceptance_enabled:          settings?.acceptance_enabled ?? true,
+    acceptance_heading:          settings?.acceptance_heading ?? DEFAULT_ACCEPTANCE_HEADING,
+    acceptance_text:             settings?.acceptance_text ?? DEFAULT_ACCEPTANCE_TEXT,
+    acceptance_signature_labels: settings?.acceptance_signature_labels ?? DEFAULT_ACCEPTANCE_LABELS,
     company_registration:   settings?.company_registration ?? '',
     email_template_quote:   settings?.email_template_quote ?? `Dear {{client_name}},\n\nPlease find attached your quotation for {{project_name}}.\n\nPlease don't hesitate to contact us should you have any questions or require any amendments.\n\nKind regards,\n{{studio_name}}`,
     email_template_invoice: settings?.email_template_invoice ?? `Dear {{client_name}},\n\nPlease find attached your invoice for {{project_name}}.\n\nKindly arrange payment at your earliest convenience.\n\nKind regards,\n{{studio_name}}`,
@@ -616,6 +625,36 @@ export function StudioSettingsForm({ settings, plan, isAdmin }: { settings: Sett
               <Input label="Estimated Lead Time (shown on quote PDF)" value={form.lead_time} onChange={e => set('lead_time', e.target.value)} placeholder="e.g. 6–8 weeks from deposit confirmation" />
               <Textarea label="Quote / Invoice Footer Text" value={form.footer_text} onChange={e => set('footer_text', e.target.value)} rows={3} />
               <Textarea label="Terms & Conditions (shown on quote PDF)" value={form.terms_conditions} onChange={e => set('terms_conditions', e.target.value)} rows={7} />
+
+              {/* Acceptance block — the signature panel at the foot of a quote */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <label className="text-xs font-medium text-[#8A877F] block mb-1">Acceptance Block (shown on quote PDF)</label>
+                    <p className="text-xs text-[#A8A39B] max-w-md">
+                      The signing panel printed at the foot of every quote. Switch it off to leave it off your quotes entirely.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={!!form.acceptance_enabled}
+                    onChange={v => set('acceptance_enabled', v)}
+                    label="Show the acceptance block on quotes"
+                  />
+                </div>
+
+                {form.acceptance_enabled && (
+                  <div className="space-y-4 pl-3 border-l-2 border-[#EDE9E1]">
+                    <Input label="Acceptance Heading" value={form.acceptance_heading} onChange={e => set('acceptance_heading', e.target.value)} />
+                    <Textarea label="Acceptance Wording" value={form.acceptance_text} onChange={e => set('acceptance_text', e.target.value)} rows={4} />
+                    <div>
+                      <Input label="Signature Lines" value={form.acceptance_signature_labels} onChange={e => set('acceptance_signature_labels', e.target.value)} />
+                      <p className="text-xs text-[#A8A39B] mt-1">
+                        Separate each ruled line with a comma — up to four. Clear the field to print the wording with no lines to sign.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </section>
             <section className="space-y-4">
               <div>

@@ -1,4 +1,5 @@
 import type { Project, LineItem, Client } from '@/lib/types'
+import type { AcceptanceBlock } from '@/lib/acceptance'
 import type { PdfTheme } from '../themes'
 
 export interface TemplateProps {
@@ -27,4 +28,6 @@ export interface TemplateProps {
   leadTime?: string | null
   /** Base64 data URIs keyed by line item id. Empty when images are switched off. */
   itemImages?: Record<string, string>
+  /** Quote acceptance block, already resolved from settings. Null = don't print it. */
+  acceptance?: AcceptanceBlock | null
 }
