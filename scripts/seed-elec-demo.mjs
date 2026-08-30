@@ -495,6 +495,24 @@ async function run() {
   }
   console.log('  · previous demo data cleared')
 
+  // ── 3b. Company logo ───────────────────────────────────────────────────────
+  // Source artwork: scripts/assets/nexus-demo-logo.html (render to PNG, then re-upload)
+  let logoUrl = null
+  try {
+    const logoPath = new URL('./assets/nexus-demo-logo.png', import.meta.url)
+    const logoBytes = readFileSync(logoPath)
+    const storagePath = `supplier-portal/${A}/logo.png`
+    const { error: upErr } = await sb.storage.from('branding')
+      .upload(storagePath, logoBytes, { upsert: true, contentType: 'image/png' })
+    if (upErr) throw new Error(upErr.message)
+    const { data: pub } = sb.storage.from('branding').getPublicUrl(storagePath)
+    logoUrl = `${pub.publicUrl}?t=${Date.now()}`
+    await sb.from('supplier_portal_accounts').update({ logo_url: logoUrl }).eq('id', A)
+    console.log('  · logo uploaded')
+  } catch (e) {
+    console.warn(`  ! logo skipped — ${e.message}`)
+  }
+
   // ── 4. Settings ────────────────────────────────────────────────────────────
   await sb.from('elec_settings').upsert({
     portal_account_id:              A,
