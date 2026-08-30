@@ -24,6 +24,15 @@ if (!SUPABASE_URL || !SERVICE_KEY) { console.error('Missing Supabase env vars in
 
 const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
 
+// Checks a password without touching it. Used so re-runs never revoke live sessions.
+async function passwordWorks(email, password) {
+  const anon = createClient(SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const { error } = await anon.auth.signInWithPassword({ email, password })
+  return !error
+}
+
 // Mirrors src/lib/staff-auth.ts
 const STAFF_SALT = env.STAFF_PIN_SALT ?? 'qh_staff_pin_default_salt_2024'
 const hashStaffPin      = pin => crypto.createHmac('sha256', STAFF_SALT).update(pin).digest('hex')
@@ -433,8 +442,15 @@ async function run() {
   const existingUser = list?.users?.find(u => u.email === EMAIL)
   if (existingUser) {
     userId = existingUser.id
-    await sb.auth.admin.updateUserById(userId, { password: PASSWORD, email_confirm: true })
-    console.log(`  · auth user reused, password reset — ${userId}`)
+    // NEVER reset a password that already works: an admin password update revokes
+    // every live session for that user, which boots anyone mid-demo. Probe first,
+    // and only reset (loudly) if the documented password has actually drifted.
+    if (await passwordWorks(EMAIL, PASSWORD)) {
+      console.log(`  · auth user reused, password untouched — ${userId}`)
+    } else {
+      await sb.auth.admin.updateUserById(userId, { password: PASSWORD, email_confirm: true })
+      console.log(`  ! auth user password did not match — reset (this logs out any live session)`)
+    }
   } else {
     const { data, error } = await sb.auth.admin.createUser({ email: EMAIL, password: PASSWORD, email_confirm: true })
     if (error) { console.error('Auth error:', error.message); process.exit(1) }
@@ -576,8 +592,9 @@ async function run() {
     const existingStaffUser = list?.users?.find(u => u.email === sEmail)
     let sUid
     if (existingStaffUser) {
+      // Same rule as the owner account — resetting would kill live staff sessions.
+      // The password is derived from the PIN, which never changes here.
       sUid = existingStaffUser.id
-      await sb.auth.admin.updateUserById(sUid, { password: staffAuthPassword(s.pin), email_confirm: true })
     } else {
       const { data: su, error: sErr } = await sb.auth.admin.createUser({
         email: sEmail, password: staffAuthPassword(s.pin), email_confirm: true,
