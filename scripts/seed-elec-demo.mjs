@@ -433,6 +433,22 @@ const ins = async (table, rows, select = 'id') => {
   return data ?? []
 }
 
+// The wipe happens mid-run, so a process killed after it (a closed stdout pipe,
+// Ctrl-C, a network blip) leaves the demo account EMPTY. Shout about it rather
+// than failing silently — this script gets run right before live demos.
+let wiped = false, completed = false
+process.on('exit', () => {
+  if (wiped && !completed) {
+    try {
+      process.stderr.write('\n!!! SEED DID NOT FINISH — the demo account is EMPTY. Re-run: node scripts/seed-elec-demo.mjs\n')
+    } catch {}
+  }
+})
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1))
+// Never let a closed stdout (e.g. `| head`) kill the run part-way through.
+process.stdout.on('error', () => {})
+process.stderr.on('error', () => {})
+
 async function run() {
   console.log(`\nSeeding electrician demo account — ${COMPANY}\n`)
 
@@ -509,6 +525,7 @@ async function run() {
                    'elec_item_library', 'elec_section_library']) {
     await sb.from(t).delete().eq('portal_account_id', A)
   }
+  wiped = true
   console.log('  · previous demo data cleared')
 
   // ── 3b. Company logo ───────────────────────────────────────────────────────
@@ -902,6 +919,19 @@ async function run() {
     { portal_account_id: A, type: 'invoice',          title: 'Claim NEX-CLM-2026-003 submitted',        body: 'Belmont Retail Centre — Electrical Installation',         created_at: at(daysAgo(9), 10, 22), metadata: {}, read_at: iso(daysAgo(8)) },
   ])
   console.log('  · 6 notifications')
+
+  // ── verify ─────────────────────────────────────────────────────────────────
+  const expected = {
+    elec_clients: CLIENTS.length, elec_quotes: QUOTES.length, elec_job_cards: JOB_CARDS.length,
+    elec_staff: STAFF.length, elec_jobs: schedule.length, elec_time_punches: punches.length,
+  }
+  const wrong = []
+  for (const [table, want] of Object.entries(expected)) {
+    const { count } = await sb.from(table).select('*', { count: 'exact', head: true }).eq('portal_account_id', A)
+    if (count !== want) wrong.push(`${table}: expected ${want}, found ${count}`)
+  }
+  if (wrong.length) { console.error('\n  ✗ VERIFY FAILED\n    ' + wrong.join('\n    ')); process.exit(1) }
+  completed = true
 
   // ── done ───────────────────────────────────────────────────────────────────
   console.log(`
