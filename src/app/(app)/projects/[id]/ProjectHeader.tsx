@@ -223,7 +223,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
             <input value={form.project_number} onChange={e => setForm(f => ({...f, project_number: e.target.value}))}
               className="px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white" placeholder="Project #" />
             <div>
-              <label className="block text-[10px] uppercase tracking-wide text-[#8A877F] mb-0.5">Project date</label>
+              <label className="block text-[10px] uppercase tracking-wide text-[#8A877F] mb-0.5">Project date (internal — not on PDF)</label>
               <input type="date" value={form.date} onChange={e => setForm(f => ({...f, date: e.target.value}))}
                 className="w-full px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white" />
             </div>
