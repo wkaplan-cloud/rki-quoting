@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
-import { supabaseAdmin } from '@/lib/supabase/admin'
+import { getCurrentOrg, getCurrentOrgId, getCurrentUser } from '@/lib/auth-context'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { DashboardPipeline } from './DashboardPipeline'
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
@@ -13,10 +13,8 @@ import { redirect } from 'next/navigation'
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  const [{ data: { user } }, { data: orgId }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.rpc('get_current_org_id'),
-  ])
+  // Already resolved by the surrounding layout — these are free.
+  const [user, orgId] = await Promise.all([getCurrentUser(), getCurrentOrgId()])
 
   if (!orgId) {
     // Check if this is a supplier account and send them to the right place
@@ -29,10 +27,10 @@ export default async function DashboardPage() {
     else redirect('/supplier-portal/register?notice=no-portal-account')
   }
   const currentUserId = user?.id ?? ''
-  const [{ data: projects }, { data: settings }, { data: org }, { count: clientCount }, { count: supplierCount }] = await Promise.all([
+  const [{ data: projects }, { data: settings }, org, { count: clientCount }, { count: supplierCount }] = await Promise.all([
     supabase.from('projects').select('id, project_name, project_number, status, date, quoted_date, assigned_to, user_id, sage_invoice_id, client:clients(client_name), stages:project_stages(*)').is('archived_at', null).order('created_at', { ascending: false }),
     supabase.from('settings').select('sage_company_id, quote_validity_days').maybeSingle(),
-    orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null }),
+    getCurrentOrg(orgId),
     supabase.from('clients').select('*', { count: 'exact', head: true }),
     supabase.from('suppliers').select('*', { count: 'exact', head: true }),
   ])

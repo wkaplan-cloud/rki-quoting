@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
-import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { getCurrentOrg, getCurrentOrgId, getCurrentUser } from '@/lib/auth-context'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { SessionExpiredHandler } from '@/components/SessionExpiredHandler'
 import { resolvePortalAccount } from '@/lib/portal-account'
@@ -10,17 +10,10 @@ import { getImpersonationStash } from '@/lib/impersonation'
 const GRACE_DAYS = 3
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-
-  // Accept invite and get user in parallel — both only need the session cookie
-  const [{ data: { user } }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.rpc('accept_org_invite'),
-  ])
+  // Both are memoised for the request, so the page rendering inside this layout
+  // reuses them instead of paying for the same round trips again.
+  const [user, orgId] = await Promise.all([getCurrentUser(), getCurrentOrgId()])
   if (!user) redirect('/login')
-
-  // get_current_org_id must run after accept_org_invite completes
-  const { data: orgId } = await supabase.rpc('get_current_org_id')
 
   if (!orgId) {
     if (user.email?.toLowerCase() === process.env.PLATFORM_ADMIN_EMAIL?.toLowerCase()) {
@@ -40,12 +33,14 @@ export default async function Layout({ children }: { children: React.ReactNode }
     redirect(staffMember ? '/supplier-portal/staff-home' : '/onboarding')
   }
 
-  // Check subscription / trial status
-  const { data: org } = await supabaseAdmin
-    .from('organizations')
-    .select('plan, subscription_status, trial_ends_at')
-    .eq('id', orgId)
-    .single()
+  // Everything below only needs orgId, so it all goes out in one wave rather
+  // than fetching the org first and the rest after it.
+  const [org, { data: membership }, { data: settings }, { count: capitalBadgeCount }] = await Promise.all([
+    getCurrentOrg(orgId),
+    supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
+    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled').eq('org_id', orgId).maybeSingle(),
+    supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending').eq('archived', false),
+  ])
 
   // Calculate trial and grace period
   const now = new Date()
@@ -73,14 +68,6 @@ export default async function Layout({ children }: { children: React.ReactNode }
     !trialExpired && trialEndsAt
       ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000))
       : null
-
-  const [{ data: membership }, { data: settings }, { count: capitalBadgeCount }] = await Promise.all([
-    supabaseAdmin.from('org_members').select('role, full_name').eq('user_id', user.id).eq('status', 'active').maybeSingle(),
-    supabaseAdmin.from('settings').select('business_name, capital_hotels_enabled, studio_enabled').eq('org_id', orgId).maybeSingle(),
-    orgId
-      ? supabaseAdmin.from('capital_requests').select('*', { count: 'exact', head: true }).eq('org_id', orgId).eq('status', 'pending').eq('archived', false)
-      : Promise.resolve({ count: 0, error: null }),
-  ])
 
   const capitalHotelsEnabled = settings?.capital_hotels_enabled ?? false
   const studioEnabled = settings?.studio_enabled ?? false
