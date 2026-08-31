@@ -13,13 +13,20 @@ export function SessionGuard() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return // not signed in, middleware/server will handle
 
-      const rememberUntil = localStorage.getItem('rki_remember_until')
-      const sessionOnly = sessionStorage.getItem('rki_session_only')
+      // If storage is unreadable (private browsing, blocked site data) we cannot
+      // tell what the user chose — fail open rather than signing them out.
+      let rememberUntil: string | null
+      let sessionOnly: string | null
+      try {
+        rememberUntil = localStorage.getItem('rki_remember_until')
+        sessionOnly = sessionStorage.getItem('rki_session_only')
+      } catch { return }
 
       if (rememberUntil) {
         // Remember me: check if the timestamp has expired
-        if (Date.now() > parseInt(rememberUntil, 10)) {
-          localStorage.removeItem('rki_remember_until')
+        const expiry = parseInt(rememberUntil, 10)
+        if (Number.isFinite(expiry) && Date.now() > expiry) {
+          try { localStorage.removeItem('rki_remember_until') } catch {}
           await supabase.auth.signOut()
           router.push('/login')
         }

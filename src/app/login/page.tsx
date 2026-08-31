@@ -27,6 +27,21 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  // Storage can throw (Safari private browsing, blocked site data, strict privacy
+  // extensions). A remember-me preference is never worth blocking a login over.
+  function rememberFor(days: number) {
+    try {
+      localStorage.setItem('rki_remember_until', String(Date.now() + days * 86400000))
+      sessionStorage.removeItem('rki_session_only')
+    } catch {}
+  }
+  function rememberThisSessionOnly() {
+    try {
+      localStorage.removeItem('rki_remember_until')
+      sessionStorage.setItem('rki_session_only', '1')
+    } catch {}
+  }
+
   // If already logged in, redirect away from the login page
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
@@ -74,16 +89,14 @@ export default function LoginPage() {
       if (error || !session) { setHashRedirecting(false); return }
 
       if (type === 'signup') {
-        sessionStorage.setItem('rki_session_only', '1')
+        try { sessionStorage.setItem('rki_session_only', '1') } catch {}
         router.replace('/welcome')
       } else if (type === 'invite') {
-        sessionStorage.setItem('rki_session_only', '1')
+        try { sessionStorage.setItem('rki_session_only', '1') } catch {}
         supabase.rpc('accept_org_invite').then(() => router.replace('/set-password'))
       } else {
         // magiclink, recovery, etc — treat as remember-me login
-        const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000
-        localStorage.setItem('rki_remember_until', String(expiry))
-        sessionStorage.removeItem('rki_session_only')
+        rememberFor(7)
         router.replace('/dashboard')
       }
     })
@@ -109,21 +122,20 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      if (rememberMe) {
-        const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000
-        localStorage.setItem('rki_remember_until', String(expiry))
-        sessionStorage.removeItem('rki_session_only')
-      } else {
-        localStorage.removeItem('rki_remember_until')
-        sessionStorage.setItem('rki_session_only', '1')
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+        return
       }
-      if (platformMode) { router.push('/platform'); return }
-      router.push('/dashboard')
+      if (rememberMe) rememberFor(7)
+      else rememberThisSessionOnly()
+      router.push(platformMode ? '/platform' : '/dashboard')
+    } catch {
+      // Never leave the button stuck on "Signing in…" with no explanation
+      setError('Could not sign you in — please try again, or use the login-link option below.')
+      setLoading(false)
     }
   }
 
