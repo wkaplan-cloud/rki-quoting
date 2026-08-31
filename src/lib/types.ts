@@ -56,6 +56,7 @@ export interface Project {
   sage_customer_name: string | null
   deposit_amount_received: number | null
   quoted_date: string | null
+  invoiced_date: string | null
   archived_at: string | null
   assigned_to: string | null
   // joined

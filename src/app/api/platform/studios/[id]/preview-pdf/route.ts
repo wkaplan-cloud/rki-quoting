@@ -32,6 +32,7 @@ const MOCK_PROJECT: Project = {
   sage_customer_name: null,
   deposit_amount_received: null,
   quoted_date: todaySA(),
+  invoiced_date: todaySA(),
   archived_at: null,
   assigned_to: null,
 }

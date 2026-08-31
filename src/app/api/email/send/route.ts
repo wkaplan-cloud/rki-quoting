@@ -40,6 +40,14 @@ export async function POST(req: NextRequest) {
     quotedDate = today
   }
 
+  // Lock invoiced_date on first invoice email — never overwrite if already set
+  let invoicedDate = (project as any).invoiced_date as string | null
+  if (!invoicedDate && type === 'invoice') {
+    const today = todaySA()
+    await supabase.from('projects').update({ invoiced_date: today }).eq('id', projectId)
+    invoicedDate = today
+  }
+
   // Use override email from modal, or fall back to what's saved on the client
   const clientEmail = overrideEmail?.trim() || (project.client as any)?.email
   if (!clientEmail) return NextResponse.json({ error: 'Client email not set' }, { status: 400 })
@@ -89,6 +97,7 @@ export async function POST(req: NextRequest) {
         footerText: settings?.footer_text,
         termsConditions: settings?.terms_conditions,
         quotedDate: quotedDate ?? (project as any).quoted_date ?? todaySA(),
+        invoicedDate,
         validityDays: (settings as any)?.quote_validity_days ?? 30,
         paymentTerms: (settings as any)?.payment_terms ?? null,
         leadTime: (settings as any)?.lead_time ?? null,

@@ -23,6 +23,8 @@ export interface TemplateProps {
   bankBranch?: string | null
   termsConditions?: string | null
   quotedDate?: string | null
+  /** Invoice "Date Issued". Invoices only — falls back to quotedDate when unset. */
+  invoicedDate?: string | null
   validityDays?: number | null
   paymentTerms?: string | null
   leadTime?: string | null

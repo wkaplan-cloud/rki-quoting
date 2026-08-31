@@ -26,6 +26,14 @@ export async function GET(req: NextRequest) {
 
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+    // Lock invoiced_date on first invoice generation — never overwrite if already set
+    let invoicedDate = (project as any).invoiced_date as string | null
+    if (!invoicedDate) {
+      const today = todaySA()
+      await supabase.from('projects').update({ invoiced_date: today }).eq('id', projectId)
+      invoicedDate = today
+    }
+
     const [logoUrl, itemImages] = await Promise.all([
       fetchLogoBase64(settings?.logo_url),
       fetchLineItemImages(lineItems ?? [], (settings?.line_item_images_enabled ?? false) && (settings?.show_images_on_documents ?? true)),
@@ -33,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     const buffer = await renderToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'invoice', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', vatRate: (project as any).vat_rate ?? (settings as any)?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, amountPaid: (project as any).deposit_amount_received ?? 0, quotedDate: project.quoted_date ?? todaySA(), paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null, itemImages }) as any
+      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'invoice', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', vatRate: (project as any).vat_rate ?? (settings as any)?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, amountPaid: (project as any).deposit_amount_received ?? 0, quotedDate: project.quoted_date ?? todaySA(), invoicedDate, paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null, itemImages }) as any
     )
 
     return new NextResponse(new Uint8Array(buffer), {

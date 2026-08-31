@@ -46,6 +46,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
     client_id: project.client_id ?? '',
     date: project.date,
     quoted_date: project.quoted_date ?? '',
+    invoiced_date: project.invoiced_date ?? '',
   })
   const [clientName, setClientName] = useState(project.client?.client_name ?? '')
   const [pendingClientId, setPendingClientId] = useState(project.client_id ?? '')
@@ -103,6 +104,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
       ...form,
       client_id: form.client_id || null,
       quoted_date: form.quoted_date || null,
+      invoiced_date: form.invoiced_date || null,
     }
     const { error } = await supabase.from('projects').update(update).eq('id', project.id)
     if (error) { toast.error(error.message); return }
@@ -112,7 +114,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
   }
 
   function cancel() {
-    setForm({ project_name: project.project_name, project_number: project.project_number, client_id: project.client_id ?? '', date: project.date, quoted_date: project.quoted_date ?? '' })
+    setForm({ project_name: project.project_name, project_number: project.project_number, client_id: project.client_id ?? '', date: project.date, quoted_date: project.quoted_date ?? '', invoiced_date: project.invoiced_date ?? '' })
     setEditing(false)
   }
 
@@ -225,9 +227,14 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
               <input type="date" value={form.date} onChange={e => setForm(f => ({...f, date: e.target.value}))}
                 className="w-full px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white" />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="block text-[10px] uppercase tracking-wide text-[#8A877F] mb-0.5">Quote date (shown on PDF)</label>
               <input type="date" value={form.quoted_date} onChange={e => setForm(f => ({...f, quoted_date: e.target.value}))}
+                className="w-full px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white" />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-[#8A877F] mb-0.5">Invoice date (shown on PDF)</label>
+              <input type="date" value={form.invoiced_date} onChange={e => setForm(f => ({...f, invoiced_date: e.target.value}))}
                 className="w-full px-3 py-1.5 border border-[#D8D3C8] rounded text-sm outline-none bg-white" />
             </div>
             <div className="col-span-2">

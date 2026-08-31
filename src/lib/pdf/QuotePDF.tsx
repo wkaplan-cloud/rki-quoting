@@ -29,6 +29,7 @@ interface Props {
   bankBranch?: string | null
   termsConditions?: string | null
   quotedDate?: string | null
+  invoicedDate?: string | null
   validityDays?: number | null
   paymentTerms?: string | null
   leadTime?: string | null

@@ -18,13 +18,13 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().split('T')[0]
 }
 
-export function ClassicTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, validityDays, paymentTerms, leadTime, itemImages, acceptance }: TemplateProps) {
+export function ClassicTemplate({ project, client, lineItems, type, theme, vatRate = 15, depositPct = 50, amountPaid = 0, footerText, logoUrl, businessName, businessAddress, vatNumber, companyReg, bankName, bankAccount, bankBranch, termsConditions, quotedDate, invoicedDate, validityDays, paymentTerms, leadTime, itemImages, acceptance }: TemplateProps) {
   const computed = computeLineItems(lineItems)
   const totals = computeTotals(lineItems, project.design_fee, vatRate, depositPct)
   // Never show more paid than the invoice is worth, or a negative amount due
   const depositReceived = Math.min(Math.max(amountPaid, 0), totals.grand_total)
   const amountDue = totals.grand_total - depositReceived
-  const issuedDate = quotedDate ?? todaySA()
+  const issuedDate = (type === 'invoice' ? invoicedDate ?? quotedDate : quotedDate) ?? todaySA()
   const validUntil = (type === 'quote' && validityDays) ? addDays(issuedDate, validityDays) : null
 
   return (
@@ -68,6 +68,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
                 {!client.company && client.vat_number && <Text style={{ fontSize: 9, color: theme.text }}>VAT: {client.vat_number}</Text>}
                 {client.address && <Text style={{ fontSize: 9, color: theme.text }}>{client.address}</Text>}
                 {client.contact_number && <Text style={{ fontSize: 9, color: theme.text }}>{client.contact_number}</Text>}
+                {client.email && <Text style={{ fontSize: 9, color: theme.text }}>{client.email}</Text>}
               </View>
             ) : <View style={{ flex: 1 }} />}
             <View style={{ flex: 1, paddingLeft: 24 }}>
