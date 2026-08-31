@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { getCurrentOrgId, getCurrentUser } from '@/lib/auth-context'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ProjectsTable } from './ProjectsTable'
 import Link from 'next/link'
@@ -8,18 +9,17 @@ import { Plus } from 'lucide-react'
 
 export default async function ProjectsPage() {
   const supabase = await createClient()
-  const [{ data: projects }, { data: orgIdResult }] = await Promise.all([
+
+  // Resolved by the surrounding layout, so the org id is already in hand — the
+  // member lookup no longer has to wait on a round trip of its own.
+  const [user, orgId] = await Promise.all([getCurrentUser(), getCurrentOrgId()])
+
+  const [{ data: projects }, { data: members }] = await Promise.all([
     supabase.from('projects')
       .select('*, client:clients(client_name, company), line_items(id, row_type, cost_price, markup_percentage, quantity, sale_price_override), stages:project_stages(*)')
       .order('created_at', { ascending: false })
       .order('archived_at', { ascending: false, nullsFirst: true }),
-    supabase.rpc('get_current_org_id'),
-  ])
-
-  // Fetch members and current user in parallel — both depend on orgIdResult being ready
-  const [{ data: members }, { data: { user } }] = await Promise.all([
-    supabaseAdmin.from('org_members').select('user_id, invited_email, full_name').eq('org_id', orgIdResult).eq('status', 'active'),
-    supabase.auth.getUser(),
+    supabaseAdmin.from('org_members').select('user_id, invited_email, full_name').eq('org_id', orgId).eq('status', 'active'),
   ])
 
   const userEmailMap: Record<string, string> = {}

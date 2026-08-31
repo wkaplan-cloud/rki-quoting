@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { getCurrentOrg, getCurrentOrgId, getCurrentUser } from '@/lib/auth-context'
 import { notFound } from 'next/navigation'
 import { ProjectDetail } from './ProjectDetail'
 
@@ -8,18 +9,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
 
-  // getUser and getOrgId both only need the session cookie — run in parallel
-  const [{ data: { user } }, { data: orgId }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.rpc('get_current_org_id'),
-  ])
+  // Both were resolved by the surrounding layout, so this costs nothing here.
+  const [user, orgId] = await Promise.all([getCurrentUser(), getCurrentOrgId()])
 
   // Now fire all 14 queries in parallel: project data + org meta + access + members
   const [
     { data: project }, { data: lineItems }, { data: clients }, { data: rawSuppliers },
     { data: items }, { data: settings }, { data: stages }, { data: emailLogs },
     { data: platformContacts }, { data: quoteApproval }, { data: approvalLogs },
-    { data: orgMeta }, { data: members }, { data: activeAccess },
+    orgMeta, { data: members }, { data: activeAccess },
   ] = await Promise.all([
     supabase.from('projects').select('*, client:clients(*)').eq('id', id).single(),
     supabase.from('line_items').select('*').eq('project_id', id).order('sort_order').order('created_at'),
@@ -32,7 +30,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
     supabase.from('platform_supplier_contacts').select('supplier_id, markup_percentage, email'),
     supabase.from('quote_approvals').select('decision, comment, submitted_at, client_name').eq('project_id', id).maybeSingle(),
     supabaseAdmin.from('quote_approval_logs').select('id, decision, comment, client_name, submitted_at').eq('project_id', id).order('submitted_at', { ascending: false }),
-    orgId ? supabaseAdmin.from('organizations').select('plan').eq('id', orgId).single() : Promise.resolve({ data: null, error: null }),
+    orgId ? getCurrentOrg(orgId) : Promise.resolve(null),
     orgId ? supabaseAdmin.from('org_members').select('user_id, invited_email, full_name, role').eq('org_id', orgId).eq('status', 'active') : Promise.resolve({ data: [], error: null }),
     orgId ? supabaseAdmin.from('price_list_access').select('price_list_id').eq('org_id', orgId).eq('status', 'active') : Promise.resolve({ data: [], error: null }),
   ])
