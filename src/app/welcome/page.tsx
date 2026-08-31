@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useEffect } from 'react'
+import { markTabInSession } from '@/lib/session-prefs'
 
 export default function WelcomePage() {
   useEffect(() => {
@@ -8,7 +9,7 @@ export default function WelcomePage() {
     // Neither path goes through the login form's remember-me logic, so
     // rki_session_only is never set. Set it here to prevent SessionGuard
     // from immediately signing them out when they reach the dashboard.
-    sessionStorage.setItem('rki_session_only', '1')
+    markTabInSession()
   }, [])
   return (
     <div className="min-h-screen bg-[#F5F2EC] flex items-center justify-center p-6">

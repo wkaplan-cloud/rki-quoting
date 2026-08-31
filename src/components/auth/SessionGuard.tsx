@@ -2,50 +2,60 @@
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import {
+  browsingSessionIsLive,
+  clearRememberUntil,
+  markTabInSession,
+  readRememberUntil,
+  startHeartbeat,
+  tabIsMarked,
+} from '@/lib/session-prefs'
 
 export function SessionGuard() {
   const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
+    let stopHeartbeat: (() => void) | null = null
 
     async function check() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return // not signed in, middleware/server will handle
 
-      // If storage is unreadable (private browsing, blocked site data) we cannot
-      // tell what the user chose — fail open rather than signing them out.
-      let rememberUntil: string | null
-      let sessionOnly: string | null
-      try {
-        rememberUntil = localStorage.getItem('rki_remember_until')
-        sessionOnly = sessionStorage.getItem('rki_session_only')
-      } catch { return }
+      const rememberUntil = readRememberUntil()
 
-      if (rememberUntil) {
-        // Remember me: check if the timestamp has expired
-        const expiry = parseInt(rememberUntil, 10)
-        if (Number.isFinite(expiry) && Date.now() > expiry) {
-          try { localStorage.removeItem('rki_remember_until') } catch {}
+      // Storage unreadable (private browsing, blocked site data) — we cannot tell
+      // what the user chose, so fail open rather than signing them out.
+      if (rememberUntil === undefined) return
+
+      if (rememberUntil !== null) {
+        // Remember me: sign out once the expiry has passed
+        if (Date.now() > rememberUntil) {
+          clearRememberUntil()
           await supabase.auth.signOut()
           router.push('/login')
+          return
         }
+        stopHeartbeat = startHeartbeat()
         return
       }
 
-      // No rememberUntil flag. If rki_session_only is absent from sessionStorage
-      // it means the browser was restarted after a "don't remember me" login —
-      // sign the user out so the session doesn't silently persist.
-      if (!sessionOnly) {
+      // Session-only login. This tab is fine if it was the one that logged in,
+      // or if another tab was alive moments ago — a second tab and a link opened
+      // from an email both land here and must not end the session.
+      if (!tabIsMarked() && !browsingSessionIsLive()) {
+        // Nothing has been open recently: the browser was closed and reopened.
         await supabase.auth.signOut()
         router.push('/login')
         return
       }
 
-      // sessionOnly is present — still within the same browser session, nothing to do.
+      markTabInSession()
+      stopHeartbeat = startHeartbeat()
     }
 
     check()
+    return () => { stopHeartbeat?.() }
   }, [router])
 
   return null

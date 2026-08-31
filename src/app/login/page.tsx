@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail } from 'lucide-react'
+import { markTabInSession, rememberFor, rememberThisSessionOnly } from '@/lib/session-prefs'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -26,21 +27,6 @@ export default function LoginPage() {
   const [platformMode, setPlatformMode] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-
-  // Storage can throw (Safari private browsing, blocked site data, strict privacy
-  // extensions). A remember-me preference is never worth blocking a login over.
-  function rememberFor(days: number) {
-    try {
-      localStorage.setItem('rki_remember_until', String(Date.now() + days * 86400000))
-      sessionStorage.removeItem('rki_session_only')
-    } catch {}
-  }
-  function rememberThisSessionOnly() {
-    try {
-      localStorage.removeItem('rki_remember_until')
-      sessionStorage.setItem('rki_session_only', '1')
-    } catch {}
-  }
 
   // If already logged in, redirect away from the login page
   useEffect(() => {
@@ -89,10 +75,10 @@ export default function LoginPage() {
       if (error || !session) { setHashRedirecting(false); return }
 
       if (type === 'signup') {
-        try { sessionStorage.setItem('rki_session_only', '1') } catch {}
+        markTabInSession()
         router.replace('/welcome')
       } else if (type === 'invite') {
-        try { sessionStorage.setItem('rki_session_only', '1') } catch {}
+        markTabInSession()
         supabase.rpc('accept_org_invite').then(() => router.replace('/set-password'))
       } else {
         // magiclink, recovery, etc — treat as remember-me login
