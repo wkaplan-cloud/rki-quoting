@@ -646,10 +646,15 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                 </p>
                 <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                   {scheduledToday.map((j, i) => {
-                    const linked = !Array.isArray(j.quote) ? j.quote : null
-                    return (
-                      <div key={j.id} className="flex items-center gap-3 px-4 py-3.5"
-                        style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                    const linkedQuote = !Array.isArray(j.quote) ? j.quote : null
+                    const linkedCard  = !Array.isArray(j.job_card) ? j.job_card : null
+                    // Tap through to whatever this slot was booked against
+                    const href = linkedCard  ? `/supplier-portal/staff-home/job/${linkedCard.id}`
+                               : linkedQuote ? `/supplier-portal/staff-home/project/${linkedQuote.id}`
+                               : null
+                    const rowStyle = { borderTop: i > 0 ? `1px solid ${S.border}` : undefined }
+                    const body = (
+                      <>
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                           style={{ background: 'rgba(58,124,165,0.1)' }}>
                           <Calendar size={16} style={{ color: S.accent }} />
@@ -661,9 +666,23 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                               <Clock size={9} />{j.start_time.slice(0,5)} – {j.end_time.slice(0,5)}
                             </span>
                             {j.address && <span className="flex items-center gap-0.5"><MapPin size={9} />{j.address}</span>}
-                            {linked && <span>{linked.project_name}</span>}
+                            {(linkedCard?.job_number ?? linkedQuote?.quote_number) && (
+                              <span>{linkedCard?.job_number ?? linkedQuote?.quote_number}</span>
+                            )}
                           </div>
                         </div>
+                        {href && <ChevronRight size={15} style={{ color: S.muted }} />}
+                      </>
+                    )
+                    return href ? (
+                      <button key={j.id} onClick={() => router.push(href)}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:opacity-70"
+                        style={rowStyle}>
+                        {body}
+                      </button>
+                    ) : (
+                      <div key={j.id} className="flex items-center gap-3 px-4 py-3.5" style={rowStyle}>
+                        {body}
                       </div>
                     )
                   })}

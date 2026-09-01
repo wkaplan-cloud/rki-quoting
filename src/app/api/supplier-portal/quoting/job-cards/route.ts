@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { normaliseSAScheduledAt } from '@/lib/elec-job-sync'
 import { resolveCreatorName } from '@/lib/resolve-creator'
 
 async function resolveAccount(userId: string): Promise<{ accountId: string; staffId: string | null } | null> {
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
     const { accountId, staffId } = resolved
 
     const body = await req.json() as Record<string, unknown>
+    if ('scheduled_at' in body) body.scheduled_at = normaliseSAScheduledAt(body.scheduled_at)
 
     // Auto-generate job number
     const { count } = await supabaseAdmin

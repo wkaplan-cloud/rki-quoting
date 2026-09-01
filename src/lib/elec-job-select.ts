@@ -14,9 +14,20 @@ export const JOB_SELECT_LEGACY =
 export const JOB_SELECT_FULL_WITH_PHOTOS  = `${JOB_SELECT_FULL}, elec_job_photos(count)`
 export const JOB_SELECT_LEGACY_WITH_PHOTOS = `${JOB_SELECT_LEGACY}, elec_job_photos(count)`
 
-/** True when the error is "job_card_id / the elec_job_cards embed doesn't exist yet". */
-export function isMissingJobCardLink(error: { code?: string; message?: string } | null): boolean {
+/**
+ * True when the error is specifically "job_card_id / the elec_job_cards embed
+ * doesn't exist yet" — i.e. the migration hasn't been run.
+ *
+ * Matched on error code only. Matching the message would also swallow real
+ * failures that merely mention the column (an FK violation, say), and the
+ * caller's response to a match is to retry without the link — which would
+ * quietly save an unlinked job instead of surfacing the error.
+ */
+export function isMissingJobCardLink(error: { code?: string } | null): boolean {
   if (!error) return false
-  // 42703 = undefined column, PGRST200 = no such embedded relationship
-  return error.code === '42703' || error.code === 'PGRST200' || (error.message ?? '').includes('job_card')
+  return (
+    error.code === '42703'    // undefined column
+    || error.code === 'PGRST200' // no such embedded relationship
+    || error.code === 'PGRST204' // column missing from the schema cache
+  )
 }

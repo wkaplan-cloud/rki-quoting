@@ -10,6 +10,7 @@ import {
   JOB_SELECT_LEGACY_WITH_PHOTOS,
   isMissingJobCardLink,
 } from '@/lib/elec-job-select'
+import { syncJobCardScheduledAt } from '@/lib/elec-job-sync'
 
 export async function GET(req: NextRequest) {
   try {
@@ -73,6 +74,10 @@ export async function POST(req: NextRequest) {
     if (isMissingJobCardLink(error)) ({ data, error } = await insert(rest, JOB_SELECT_LEGACY))
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    // The calendar slot owns the timing — mirror it onto the linked job card
+    await syncJobCardScheduledAt(job_card_id as string | null, account.id, rest.scheduled_date as string, rest.start_time as string)
+
     return NextResponse.json(data)
   } catch (e) {
     return apiError(e)

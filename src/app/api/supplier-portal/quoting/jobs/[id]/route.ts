@@ -8,6 +8,7 @@ import {
   JOB_SELECT_LEGACY_WITH_PHOTOS,
   isMissingJobCardLink,
 } from '@/lib/elec-job-select'
+import { syncJobCardScheduledAt } from '@/lib/elec-job-sync'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -34,7 +35,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (isMissingJobCardLink(error)) ({ data, error } = await update(body, JOB_SELECT_LEGACY_WITH_PHOTOS))
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
     const { elec_job_photos, ...rest } = data as unknown as Record<string, unknown> & { elec_job_photos: { count: number }[] | null }
+
+    // Moving the calendar slot moves the linked job card's scheduled_at with it
+    await syncJobCardScheduledAt(
+      (job_card_id ?? rest.job_card_id) as string | null,
+      account.id,
+      (body.scheduled_date ?? rest.scheduled_date) as string,
+      (body.start_time ?? rest.start_time) as string,
+    )
+
     return NextResponse.json({ ...rest, photo_count: elec_job_photos?.[0]?.count ?? 0 })
   } catch (e) {
     return apiError(e)

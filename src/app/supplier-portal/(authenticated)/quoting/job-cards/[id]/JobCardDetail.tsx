@@ -17,6 +17,7 @@ import { ClientCombobox } from '../../ClientCombobox'
 import { StaffMultiSelect } from '../../StaffMultiSelect'
 import { JobCardCOCTab } from './JobCardCOCTab'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
+import { toSADateTimeLocal } from '@/lib/dates'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -893,8 +894,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           <SectionHeader label="Scheduling" />
           <Inp label="Location / Address" val={card.location} cb={v => setField('location', v || null)} placeholder="Site address" />
           <div className="grid grid-cols-2 gap-4">
-            <Inp label="Scheduled Date & Time" val={card.scheduled_at ? card.scheduled_at.slice(0, 16) : ''} cb={v => setField('scheduled_at', v || null)} type="datetime-local" />
-            <Inp label="Completed Date" val={card.completed_at ? card.completed_at.slice(0, 16) : ''} cb={v => setField('completed_at', v || null)} type="datetime-local" />
+            <Inp label="Scheduled Date & Time" val={toSADateTimeLocal(card.scheduled_at)} cb={v => setField('scheduled_at', v || null)} type="datetime-local" />
+            <Inp label="Completed Date" val={toSADateTimeLocal(card.completed_at)} cb={v => setField('completed_at', v || null)} type="datetime-local" />
           </div>
           <Txt label="Notes" val={card.notes} cb={v => setField('notes', v || null)} placeholder="Any additional notes…" rows={2} />
         </div>

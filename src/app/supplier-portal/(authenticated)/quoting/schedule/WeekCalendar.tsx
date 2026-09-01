@@ -379,11 +379,12 @@ export function WeekCalendar({
       const res = await fetch('/api/supplier-portal/quoting/job-cards', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title:        form.title.trim(),
-          job_type:     form.job_type,
-          staff_id:     form.staff_id || null,
-          location:     form.address.trim() || null,
-          scheduled_at: `${form.scheduled_date}T${form.start_time}:00`,
+          title:    form.title.trim(),
+          job_type: form.job_type,
+          staff_id: form.staff_id || null,
+          location: form.address.trim() || null,
+          // scheduled_at is set by the jobs route once the calendar slot exists,
+          // so the booking stays the single source of truth for timing
         }),
       })
       if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? 'Could not create the job card')

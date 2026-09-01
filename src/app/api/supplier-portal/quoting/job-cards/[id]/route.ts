@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { normaliseSAScheduledAt, syncJobsFromCardStatus } from '@/lib/elec-job-sync'
 
 async function resolveAccount(userId: string) {
   const { data: own } = await supabaseAdmin
@@ -62,6 +63,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!accountId) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
     const body = await req.json() as Record<string, unknown>
+    // datetime-local inputs post a naive wall-clock — pin it to SAST
+    for (const field of ['scheduled_at', 'completed_at']) {
+      if (field in body) body[field] = normaliseSAScheduledAt(body[field])
+    }
 
     const { data, error } = await supabaseAdmin
       .from('elec_job_cards')
@@ -71,6 +76,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .select()
       .single()
     if (error) throw error
+
+    // Mirror the tech's progress onto the calendar bookings made against this card
+    if (body.status) await syncJobsFromCardStatus(id, accountId, body.status)
 
     // Auto clock-out any staff still on-site when job is completed
     if (body.status === 'completed') {
