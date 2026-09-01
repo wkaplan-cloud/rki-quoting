@@ -9,6 +9,7 @@ import { GuidedTour } from '@/components/onboarding/GuidedTour'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
+import type { ComponentProps } from 'react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -172,7 +173,7 @@ export default async function DashboardPage() {
         {/* Pipeline list — Studio+ only */}
         {!isSolo && (
           <DashboardPipeline
-            projects={ps.filter(p => p.status !== 'Cancelled') as any}
+            projects={ps.filter(p => p.status !== 'Cancelled') as unknown as ComponentProps<typeof DashboardPipeline>['projects']}
             stagesMap={stagesMap}
             sageConnected={sageConnected}
             currentUserId={currentUserId}

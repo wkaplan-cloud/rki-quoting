@@ -81,7 +81,7 @@ export function ProductionPDF({ project, lineItems, suppliers, businessName, vat
   const totals = computeTotals(lineItems, project.design_fee, vatRate)
   const grossProfit = computeLineItems(lineItems).reduce((sum, i) => sum + i.profit, 0) + totals.design_fee
   const clientName = (() => {
-    const c = (project as any).client
+    const c = (project as { client?: { client_name?: string | null } | { client_name?: string | null }[] | null }).client
     if (!c) return null
     if (Array.isArray(c)) return c[0]?.client_name ?? null
     return c.client_name ?? null

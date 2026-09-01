@@ -59,7 +59,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const fullJobCard: ElecJobCard = { ...jobCard as ElecJobCard, materials: materials ?? [], photos: photos ?? [] }
 
     const buffer = await renderPdfToBuffer(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(JobCardPDF, {
         jobCard: fullJobCard,
         companyName,

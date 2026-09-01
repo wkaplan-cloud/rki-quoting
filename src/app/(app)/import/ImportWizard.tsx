@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/Button'
 import { Combobox } from '@/components/ui/Combobox'
 import toast from 'react-hot-toast'
 import { Upload, Check, AlertTriangle, X } from 'lucide-react'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+type SupabaseBrowserClient = SupabaseClient
 
 // ─── CSV Parser ───────────────────────────────────────────────────────────────
 function parseCSV(text: string): string[][] {
@@ -124,8 +127,8 @@ export function ImportWizard({ projects, existingSuppliers, existingClients, exi
 }
 
 // ─── Suppliers Import ─────────────────────────────────────────────────────────
-function SuppliersImport({ supabase, existingSuppliers }: { supabase: any; existingSuppliers: Props['existingSuppliers'] }) {
-  const [rows, setRows] = useState<any[]>([])
+function SuppliersImport({ supabase, existingSuppliers }: { supabase: SupabaseBrowserClient; existingSuppliers: Props['existingSuppliers'] }) {
+  const [rows, setRows] = useState<SupplierImportRow[]>([])
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
 
@@ -165,6 +168,7 @@ function SuppliersImport({ supabase, existingSuppliers }: { supabase: any; exist
     setImporting(true)
     const { data: orgData } = await supabase.rpc('get_current_org_id')
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Your session has expired — please sign in again'); setImporting(false); return }
     const toInsert = rows.filter(r => !r.exists).map(({ exists: _e, ...r }) => ({ ...r, org_id: orgData, user_id: user.id }))
     if (toInsert.length === 0) { toast.success('Nothing new to import'); setImporting(false); return }
     const { error } = await supabase.from('suppliers').upsert(toInsert, { onConflict: 'org_id,supplier_name', ignoreDuplicates: true })
@@ -194,8 +198,8 @@ function SuppliersImport({ supabase, existingSuppliers }: { supabase: any; exist
 }
 
 // ─── Clients Import ───────────────────────────────────────────────────────────
-function ClientsImport({ supabase, existingClients }: { supabase: any; existingClients: Props['existingClients'] }) {
-  const [rows, setRows] = useState<any[]>([])
+function ClientsImport({ supabase, existingClients }: { supabase: SupabaseBrowserClient; existingClients: Props['existingClients'] }) {
+  const [rows, setRows] = useState<ClientImportRow[]>([])
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
 
@@ -227,6 +231,7 @@ function ClientsImport({ supabase, existingClients }: { supabase: any; existingC
     setImporting(true)
     const { data: orgData } = await supabase.rpc('get_current_org_id')
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Your session has expired — please sign in again'); setImporting(false); return }
     const toInsert = rows.filter(r => !r.exists).map(({ exists: _e, ...r }) => ({ ...r, org_id: orgData, user_id: user.id }))
     if (toInsert.length === 0) { toast.success('Nothing new to import'); setImporting(false); return }
     const { error } = await supabase.from('clients').upsert(toInsert, { onConflict: 'org_id,client_name', ignoreDuplicates: true })
@@ -256,8 +261,8 @@ function ClientsImport({ supabase, existingClients }: { supabase: any; existingC
 }
 
 // ─── Our Pieces Import ────────────────────────────────────────────────────────
-function PiecesImport({ supabase, existingPieces }: { supabase: any; existingPieces: Props['existingPieces'] }) {
-  const [rows, setRows] = useState<any[]>([])
+function PiecesImport({ supabase, existingPieces }: { supabase: SupabaseBrowserClient; existingPieces: Props['existingPieces'] }) {
+  const [rows, setRows] = useState<PieceImportRow[]>([])
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
 
@@ -294,6 +299,7 @@ function PiecesImport({ supabase, existingPieces }: { supabase: any; existingPie
     setImporting(true)
     const { data: orgData } = await supabase.rpc('get_current_org_id')
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Your session has expired — please sign in again'); setImporting(false); return }
     const toInsert = rows.filter(r => !r.exists).map(({ exists: _e, ...r }) => ({ ...r, org_id: orgData, user_id: user.id }))
     if (toInsert.length === 0) { toast.success('Nothing new to import'); setImporting(false); return }
     const { error } = await supabase.from('pieces').insert(toInsert)
@@ -322,9 +328,59 @@ function PiecesImport({ supabase, existingPieces }: { supabase: any; existingPie
   )
 }
 
+// ─── Parsed CSV row shapes ────────────────────────────────────────────────────
+// Each importer builds one of these from the spreadsheet before writing it.
+
+interface SupplierImportRow {
+  supplier_name: string
+  category: string
+  contact_person: string
+  contact_number: string
+  rep_name: string
+  rep_number: string
+  email: string
+  delivery_address: string
+  markup_percentage: number
+  exists: boolean
+}
+
+interface ClientImportRow {
+  client_name: string
+  company: string
+  vat_number: string
+  contact_number: string
+  address: string
+  exists: boolean
+}
+
+interface PieceImportRow {
+  name: string
+  description: string | null
+  work_type: string | null
+  dimensions: string | null
+  colour_finish: string | null
+  year: number | null
+  supplier_name: string | null
+  base_price: number | null
+  exists: boolean
+}
+
+interface LineImportRow {
+  item_name: string
+  description: string
+  quantity: number
+  supplier_name: string
+  supplier_id: string | null
+  delivery_address: string
+  cost_price: number
+  markup_percentage: number
+  row_type: string
+  sort_order: number
+}
+
 // ─── Quote Lines Import ───────────────────────────────────────────────────────
 function LinesImport({ supabase, projects: initialProjects, existingSuppliers, existingClients }: {
-  supabase: any
+  supabase: SupabaseBrowserClient
   projects: Props['projects']
   existingSuppliers: Props['existingSuppliers']
   existingClients: Props['existingClients']
@@ -337,7 +393,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
   const [newProjectClientId, setNewProjectClientId] = useState('')
   const [newProjectClientName, setNewProjectClientName] = useState('')
   const [savingProject, setSavingProject] = useState(false)
-  const [rows, setRows] = useState<any[]>([])
+  const [rows, setRows] = useState<LineImportRow[]>([])
   const [missingSuppliers, setMissingSuppliers] = useState<{ name: string; markup: number; include: boolean }[]>([])
   const [importing, setImporting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
@@ -345,6 +401,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
   async function handleCreateClient(name: string) {
     const { data: orgData } = await supabase.rpc('get_current_org_id')
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Your session has expired — please sign in again'); setImporting(false); return }
     const { data, error } = await supabase.from('clients').insert({ user_id: user.id, org_id: orgData, client_name: name }).select().single()
     if (error) { toast.error('Failed to create client'); return { id: '' } }
     setClients(prev => [...prev, { id: data.id, client_name: data.client_name }])
@@ -357,6 +414,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
     setSavingProject(true)
     const { data: orgData } = await supabase.rpc('get_current_org_id')
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Your session has expired — please sign in again'); setImporting(false); return }
     const { data, error } = await supabase.from('projects').insert({
       project_name: newProjectForm.project_name,
       project_number: newProjectForm.project_number || newProjectForm.project_name.slice(0, 6).toUpperCase(),
@@ -456,6 +514,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
 
     const { data: orgData } = await supabase.rpc('get_current_org_id')
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error('Your session has expired — please sign in again'); setImporting(false); return }
 
     // Create missing suppliers the user approved (upsert to handle already-existing ones gracefully)
     const toCreate = missingSuppliers.filter(s => s.include)
@@ -472,7 +531,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
 
     // Re-fetch ALL suppliers fresh from DB — captures suppliers imported earlier this session
     const { data: freshSuppliers } = await supabase.from('suppliers').select('id, supplier_name').eq('org_id', orgData)
-    const supplierMap = new Map((freshSuppliers ?? []).map((s: any) => [s.supplier_name.toLowerCase(), s.id]))
+    const supplierMap = new Map(((freshSuppliers ?? []) as { id: string; supplier_name: string }[]).map(s => [s.supplier_name.toLowerCase(), s.id]))
 
     // Get max sort_order for this project
     const { data: existing } = await supabase.from('line_items').select('sort_order').eq('project_id', projectId).order('sort_order', { ascending: false }).limit(1)
@@ -670,19 +729,19 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
 }
 
 // ─── Shared Import Shell ──────────────────────────────────────────────────────
-function ImportShell({ title, instructions, csvColumns, onFile, rows, done, importing, onImport, newCount, skipCount, headers, renderRow }: {
+function ImportShell<T extends { exists?: boolean }>({ title, instructions, csvColumns, onFile, rows, done, importing, onImport, newCount, skipCount, headers, renderRow }: {
   title: string
   instructions: string
   csvColumns?: string[]
   onFile: (text: string) => void
-  rows: any[]
+  rows: T[]
   done: number | null
   importing: boolean
   onImport: () => void
   newCount: number
   skipCount: number
   headers: string[]
-  renderRow: (r: any) => string[]
+  renderRow: (r: T) => string[]
 }) {
   return (
     <div className="space-y-6">

@@ -80,7 +80,6 @@ export async function POST(req: NextRequest) {
     const poNumber = `${project.project_number}-${supplier.supplier_name.slice(0, 3).toUpperCase()}`
     const filename = `${slug(project.project_number)}_PO_${slug(supplier.supplier_name)}.pdf`
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buffer = await renderPdfToBuffer(
       createElement(POPDF, {
         project,

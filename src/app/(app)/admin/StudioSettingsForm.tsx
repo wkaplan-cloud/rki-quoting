@@ -232,7 +232,7 @@ function TemplateFrame({ template, theme, size }: { template: string; theme: Pdf
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface Settings {
+export interface Settings {
   id?: string
   sage_access_token?: string | null
   sage_refresh_token?: string | null

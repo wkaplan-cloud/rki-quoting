@@ -316,7 +316,7 @@ export function StaffManager({ initialStaff, punches }: Props) {
       }
     })()
     return () => { cancelled = true }
-  }, [punches]) // eslint-disable-line
+  }, [punches])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)

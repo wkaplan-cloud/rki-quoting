@@ -9,11 +9,24 @@ import { Pencil, Check, X, Ban, Trash2 } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import confetti from 'canvas-confetti'
 
+/**
+ * The project shape this screen works with: the row with its joined client
+ * replacing Project['client'] rather than intersecting with it, so the reduced
+ * client object built in confirmClient() is a valid value.
+ *
+ * `email` is optional because the header is only given id/name/company for the
+ * client list — it cannot know a newly picked client's address, and never set
+ * one here even before this was typed.
+ */
+type ProjectWithClient = Omit<Project, 'client'> & {
+  client: { client_name: string; company: string | null; email?: string | null } | null
+}
+
 interface Props {
-  project: Project & { client: { client_name: string; company: string | null } | null }
+  project: ProjectWithClient
   clients: { id: string; client_name: string; company: string | null }[]
   stages: ProjectStages | null
-  onProjectUpdate: (p: any) => void
+  onProjectUpdate: (p: ProjectWithClient) => void
   onStagesUpdate: (s: ProjectStages) => void
   sageConnected?: boolean
   sageInvoicePaid?: boolean

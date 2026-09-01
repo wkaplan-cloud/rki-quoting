@@ -69,13 +69,11 @@ export async function POST(req: NextRequest) {
       fetchLogoBase64(settings?.logo_url),
       fetchLineItemImages(
         lineItems ?? [],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (settings?.line_item_images_enabled ?? false) && (settings?.show_images_on_documents ?? true),
       ),
     ])
 
     const buffer = await renderPdfToBuffer(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(QuotePDF, {
         project,
         client: project.client ?? null,

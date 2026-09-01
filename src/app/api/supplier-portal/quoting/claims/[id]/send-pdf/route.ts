@@ -97,7 +97,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const companyName = account.company_name ?? account.email ?? 'Company'
     const logoUrl = await fetchLogoBase64((account as { logo_url?: string }).logo_url)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buffer = await renderPdfToBuffer(createElement(ElecClaimPDF, {
       claim, lineItems: lineItemsForPDF, sections: (sections ?? []) as ElecQuoteSection[],
       quote: quoteRaw as ElecQuote, client: (quoteClient ?? null) as ElecClient | null,

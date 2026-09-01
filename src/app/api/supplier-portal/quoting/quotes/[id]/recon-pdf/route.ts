@@ -33,11 +33,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const client = Array.isArray(quoteRaw.client) ? quoteRaw.client[0] : quoteRaw.client
     const companyName = account.company_name ?? account.email ?? 'Company'
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logoUrl = await fetchLogoBase64(account.logo_url)
 
     const buffer = await renderPdfToBuffer(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(ElecReconPDF, {
         quote: quoteRaw as ElecQuote,
         client: client as ElecClient | null,

@@ -239,7 +239,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             replyTo,
             printDate,
             items,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           }))
 
           const subject = `Request for quote — ${board.name}${clientName ? ` (${clientName})` : ''}`

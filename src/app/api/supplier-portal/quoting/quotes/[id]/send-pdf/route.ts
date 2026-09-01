@@ -54,7 +54,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const logoUrl = await fetchLogoBase64(account.logo_url)
 
     // Generate PDF
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buffer = await renderPdfToBuffer(createElement(ElecQuotePDF, {
       quote: quoteRaw as ElecQuote,
       client: (client ?? null) as ElecClient | null,

@@ -29,7 +29,7 @@ interface EmailLog { id: string; type: string; sent_to: string; sent_at: string;
 interface ApprovalLog { id: string; decision: 'approved' | 'declined'; comment: string | null; client_name: string | null; submitted_at: string }
 
 interface Props {
-  project: Project & { client: { client_name: string; company: string | null; email: string | null } | null }
+  project: Omit<Project, 'client'> & { client: { client_name: string; company: string | null; email?: string | null } | null }
   initialLineItems: LineItem[]
   clients: { id: string; client_name: string; company: string | null }[]
   suppliers: { id: string; supplier_name: string; category: string | null; markup_percentage: number; delivery_address: string | null; delivery_contact_name: string | null; delivery_contact_number: string | null; is_platform: boolean; price_list_id: string | null; email: string | null }[]

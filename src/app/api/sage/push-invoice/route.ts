@@ -208,7 +208,6 @@ export async function POST(req: NextRequest) {
       ),
     ])
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const clientName = project.client?.client_name ?? null
     await sendAccountingNotification({
       platform: 'sage',

@@ -40,7 +40,6 @@ export async function GET(req: NextRequest) {
     ])
 
     const buffer = await renderPdfToBuffer(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'invoice', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, amountPaid: project.deposit_amount_received ?? 0, quotedDate: project.quoted_date ?? todaySA(), invoicedDate, paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null, itemImages })
     )
 

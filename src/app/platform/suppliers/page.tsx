@@ -9,13 +9,32 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+/** Mirrors the supplier_portal_accounts select below. */
+interface SupplierAccountRow {
+  id: string
+  email: string
+  company_name: string | null
+  contact_name: string | null
+  phone: string | null
+  website: string | null
+  address: string | null
+  categories: string[] | null
+  description: string | null
+  created_at: string
+  linked_portal_account_id: string | null
+  supplier_category: string | null
+  plan: string | null
+  subscription_status: string | null
+  trial_ends_at: string | null
+}
+
 export default async function PlatformSuppliersPage() {
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
     .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category, plan, subscription_status, trial_ends_at')
     .order('created_at', { ascending: false })
 
-  const rows = accounts ?? []
+  const rows = (accounts ?? []) as SupplierAccountRow[]
 
   // All session-supplier rows for analytics
   const { data: sessionSuppliers } = await supabaseAdmin
@@ -115,8 +134,7 @@ export default async function PlatformSuppliersPage() {
           { label: 'Total registered', value: rows.length.toString() },
           { label: 'Active (responded)', value: activeCount.toString() },
           { label: 'On free trial', value: rows.filter(r => {
-            const ra = r as any
-            return ra.subscription_status === 'trialing' && ra.trial_ends_at && new Date(ra.trial_ends_at) > new Date()
+            return r.subscription_status === 'trialing' && r.trial_ends_at && new Date(r.trial_ends_at) > new Date()
           }).length.toString(), highlight: true },
           { label: 'New this month', value: rows.filter(r => {
             if (!r.created_at) return false
@@ -194,8 +212,8 @@ export default async function PlatformSuppliersPage() {
         id: r.id,
         email: r.email,
         company_name: r.company_name ?? null,
-        contact_name: (r as any).contact_name ?? null,
-        linked_portal_account_id: (r as any).linked_portal_account_id ?? null,
+        contact_name: r.contact_name ?? null,
+        linked_portal_account_id: r.linked_portal_account_id ?? null,
       }))} />
 
       {/* Supplier accounts table */}
@@ -241,13 +259,12 @@ export default async function PlatformSuppliersPage() {
                       </td>
                       <td className="px-4 py-3 text-white/60 whitespace-nowrap text-xs">{row.email}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <SupplierCategoryBadge accountId={row.id} initial={(row as any).supplier_category ?? 'manufacturer'} />
+                        <SupplierCategoryBadge accountId={row.id} initial={row.supplier_category ?? 'manufacturer'} />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {(() => {
-                          const ra = row as any
-                          const status = ra.subscription_status
-                          const trialEnd = ra.trial_ends_at ? new Date(ra.trial_ends_at) : null
+                          const status = row.subscription_status
+                          const trialEnd = row.trial_ends_at ? new Date(row.trial_ends_at) : null
                           const now = new Date()
                           if (status === 'active') {
                             return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400">Active</span>

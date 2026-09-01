@@ -159,7 +159,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   // Projected profit across all active (unpaid) projects
   const pipelineProfit = pipelineProjects.reduce((total, p) => {
     const items = pipelineLineItems.filter(li => li.project_id === p.id)
-    const computed = computeLineItems(items as any)
+    const computed = computeLineItems(items)
     const lineProfit = computed.reduce((sum, i) => sum + i.profit, 0)
     const designFeeAmount = computed.reduce((sum, i) => sum + i.total_price, 0) * ((p.design_fee ?? 0) / 100)
     return total + lineProfit + designFeeAmount
@@ -168,7 +168,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
   // Compute profit per completed project
   const profitByProject = completedProjects.map(p => {
     const items = completedLineItems.filter(li => li.project_id === p.id)
-    const computed = computeLineItems(items as any)
+    const computed = computeLineItems(items)
     const profit = computed.reduce((sum, i) => sum + i.profit, 0)
     const designFeeAmount = computed.reduce((sum, i) => sum + i.total_price, 0) * ((p.design_fee ?? 0) / 100)
     return { ...p, profitExVat: profit + designFeeAmount }
@@ -447,7 +447,7 @@ export function AdminPanel({ members: initial, auditLogs, isAdmin, settings, pla
 
       {tab === 'studio' && (
         <div className="space-y-6">
-          <StudioSettingsForm settings={settings as any} plan={plan} isAdmin={isAdmin} />
+          <StudioSettingsForm settings={settings} plan={plan} isAdmin={isAdmin} />
         </div>
       )}
 

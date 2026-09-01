@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
+/** The parts of a Paystack webhook payload this handler reads. */
+interface PaystackEvent {
+  event?: string
+  data?: {
+    reference?: string
+    status?: string
+    paid_at?: string | null
+    subscription_code?: string
+    subscription?: { subscription_code?: string }
+    customer?: { customer_code?: string; email?: string }
+    metadata?: {
+      type?: string
+      org_id?: string
+      plan?: string
+      plan_category?: string
+      portal_account_id?: string
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY
   if (!secretKey) return NextResponse.json({ error: 'Not configured' }, { status: 500 })
@@ -11,7 +31,7 @@ export async function POST(req: NextRequest) {
   const expected = createHmac('sha512', secretKey).update(rawBody).digest('hex')
   if (signature !== expected) return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
 
-  let event: Record<string, any>
+  let event: PaystackEvent
   try { event = JSON.parse(rawBody) } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
 
   const { event: eventType, data } = event

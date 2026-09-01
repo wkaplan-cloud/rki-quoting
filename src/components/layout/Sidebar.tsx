@@ -116,7 +116,7 @@ export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, c
 
         {/* Main nav */}
         <nav className="flex-1 pt-4 pb-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
-          {mainLinks.map(({ href, label, icon: Icon, soloLocked, tourId }: { href: string; label: string; icon: any; soloLocked?: boolean; tourId?: string }) => {
+          {mainLinks.map(({ href, label, icon: Icon, soloLocked, tourId }: { href: string; label: string; icon: React.ElementType; soloLocked?: boolean; tourId?: string }) => {
             if (soloLocked && plan === 'solo') {
               return (
                 <button
@@ -156,7 +156,7 @@ export function Sidebar({ isAdmin, businessName, capitalHotelsEnabled = false, c
 
           <div className="border-t border-white/10 my-2 mx-2" />
 
-          {secondaryLinks.map(({ href, label, icon: Icon, tourId, soloLocked, requiresStudio }: { href: string; label: string; icon: any; tourId?: string; soloLocked?: boolean; requiresStudio?: boolean }) => {
+          {secondaryLinks.map(({ href, label, icon: Icon, tourId, soloLocked, requiresStudio }: { href: string; label: string; icon: React.ElementType; tourId?: string; soloLocked?: boolean; requiresStudio?: boolean }) => {
             if (requiresStudio && !studioEnabled) {
               return null
             }

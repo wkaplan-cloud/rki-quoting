@@ -177,7 +177,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     })
 
     setSaving(false)
-    if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as any).error ?? 'Save failed'); return }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Save failed'); return }
     setSaved(true)
   }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins])
 

@@ -207,7 +207,6 @@ export function StaffInspection({ jobCard, initialCOC, jobsBadge, projectsBadge 
     clearTimeout(autoTimer.current)
     autoTimer.current = setTimeout(() => void handleSave(), 1500)
     return () => clearTimeout(autoTimer.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coc])
 
   async function handleSave(force = false): Promise<boolean> {

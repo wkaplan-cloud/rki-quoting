@@ -47,7 +47,7 @@ interface Props {
 export function InstallationSheetPDF({ project, lineItems, suppliers, businessName, printDate, assignedTo }: Props) {
   const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.supplier_name]))
   const clientName = (() => {
-    const c = (project as any).client
+    const c = (project as { client?: { client_name?: string | null } | { client_name?: string | null }[] | null }).client
     if (!c) return null
     if (Array.isArray(c)) return c[0]?.client_name ?? null
     return c.client_name ?? null

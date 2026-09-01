@@ -5,6 +5,7 @@ import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductionPDF } from '@/lib/pdf/ProductionPDF'
 import { apiError } from '@/lib/api-error'
+import type { Supplier } from '@/lib/types'
 
 export const maxDuration = 60
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
       createElement(ProductionPDF, {
         project,
         lineItems: lineItems ?? [],
-        suppliers: (suppliers ?? []) as any,
+        suppliers: (suppliers ?? []) as Supplier[],
         businessName,
         vatRate,
         printDate,

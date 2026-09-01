@@ -89,7 +89,6 @@ export async function GET(
     const logoUrl = await fetchLogoBase64(settings?.logo_url ?? null)
 
     const buffer = await renderPdfToBuffer(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(QuotePDF, {
         project: MOCK_PROJECT,
         client: MOCK_CLIENT,
@@ -114,7 +113,6 @@ export async function GET(
         paymentTerms: settings?.payment_terms ?? null,
         leadTime: settings?.lead_time ?? null,
         acceptance: resolveAcceptance(settings),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }))
 
 

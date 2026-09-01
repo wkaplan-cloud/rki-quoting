@@ -74,13 +74,13 @@ export default async function SupplierProfilePage({ searchParams }: { searchPara
       account={{
         email: account.email,
         company_name: account.company_name ?? '',
-        contact_name: (account as any).contact_name ?? '',
+        contact_name: (account as { contact_name?: string | null }).contact_name ?? '',
         phone: account.phone ?? '',
         address: account.address ?? '',
         categories: (account.categories as string[]) ?? [],
         description: account.description ?? '',
         website: account.website ?? '',
-        logo_url: (account as any).logo_url ?? null,
+        logo_url: (account as { logo_url?: string | null }).logo_url ?? null,
       }}
       elecSettings={(elecSettings as ElecSettings | null) ?? null}
       categoryOptions={CATEGORY_OPTIONS}

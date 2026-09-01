@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { SettingsForm } from './SettingsForm'
 import { StudioSettingsForm } from '../admin/StudioSettingsForm'
 import { StorageWidget } from '../admin/StorageWidget'
+import type { Settings } from '../admin/StudioSettingsForm'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -46,7 +47,7 @@ export default async function SettingsPage() {
 
         <section className="border-t border-[#EDE9E1] pt-10">
           <h2 className="text-xs font-medium text-[#8A877F] uppercase tracking-wider mb-6">Studio Settings</h2>
-          <StudioSettingsForm settings={settings as any} plan={plan} />
+          <StudioSettingsForm settings={settings as Settings | null} plan={plan} />
         </section>
 
         {/* Upsell nudges */}

@@ -528,6 +528,13 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
   const saveDataRef = useRef({ q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber })
   useEffect(() => { saveDataRef.current = { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber } }, [q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber])
 
+  // The stable identity here is the point: the auto-save effect below sets a
+  // 1.5s timeout calling handleSave, so a callback that changed on every
+  // keystroke would reset that timer forever and the quote would never save.
+  // Reading the latest values from saveDataRef is what keeps it stable. The
+  // React Compiler cannot preserve that shape and would skip optimising this
+  // component, which is a fair trade for auto-save that actually fires.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleSave = useCallback(async () => {
     const { q, sections, freeItems, deletedSectionIds, deletedItemIds, allItems, clientCompany, clientQsName, clientQsEmail, clientVatNumber } = saveDataRef.current
     setSaveStatus('saving'); setSaveError('')

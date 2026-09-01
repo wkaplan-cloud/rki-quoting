@@ -83,7 +83,7 @@ function POPage({ project, items, allItems, allSuppliers, supplier, vatRate = 15
   const platformContact = supplier?.is_platform ? platformContacts?.find(c => c.supplier_id === supplier.id) : null
   const toEmail = supplier?.is_platform ? supplier.email : (platformContact?.email || supplier?.email)
   const ccEmail = supplier?.is_platform ? platformContact?.email : null
-  const repName = platformContact?.rep_name || (supplier as any)?.rep_name
+  const repName = platformContact?.rep_name || supplier?.rep_name
 
   // Same-supplier linked children render under their parent item, not as standalone numbered rows
   const sameSupplierChildIds = new Set(

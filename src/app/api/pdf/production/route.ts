@@ -42,7 +42,6 @@ export async function GET(req: NextRequest) {
     const logoUrl = await fetchLogoBase64(settings?.logo_url)
 
     const buffer = await renderPdfToBuffer(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString(), assignedTo: assignedToName })
     )
 

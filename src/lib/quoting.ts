@@ -4,7 +4,22 @@ import type { LineItem, LineItemComputed, ProjectTotals } from './types'
 
 const r2 = (n: number) => Math.round(n * 100) / 100
 
-export function computeLineItem(item: LineItem): LineItemComputed {
+/**
+ * The only fields the per-line maths reads. Callers holding a narrower row —
+ * the admin dashboard selects five columns, not the whole line item — can pass
+ * it directly instead of casting through `any`.
+ */
+export interface LineItemCalcInput {
+  cost_price: number
+  markup_percentage: number
+  quantity: number
+  row_type?: string | null
+  sale_price_override?: number | null
+}
+
+export function computeLineItem(item: LineItem): LineItemComputed
+export function computeLineItem<T extends LineItemCalcInput>(item: T): T & LineItemCalcResult
+export function computeLineItem(item: LineItemCalcInput): LineItemCalcInput & LineItemCalcResult {
   const sale_price = r2(item.sale_price_override ?? item.cost_price * (1 + item.markup_percentage / 100))
   const total_cost = item.cost_price * item.quantity
   const total_price = sale_price * item.quantity
@@ -13,8 +28,17 @@ export function computeLineItem(item: LineItem): LineItemComputed {
   return { ...item, sale_price, profit, total_cost, total_price }
 }
 
-export function computeLineItems(items: LineItem[]): LineItemComputed[] {
-  return items.filter(i => i.row_type !== 'section').map(computeLineItem)
+export interface LineItemCalcResult {
+  sale_price: number
+  profit: number
+  total_cost: number
+  total_price: number
+}
+
+export function computeLineItems(items: LineItem[]): LineItemComputed[]
+export function computeLineItems<T extends LineItemCalcInput>(items: T[]): (T & LineItemCalcResult)[]
+export function computeLineItems(items: LineItemCalcInput[]): (LineItemCalcInput & LineItemCalcResult)[] {
+  return items.filter(i => i.row_type !== 'section').map(i => computeLineItem(i))
 }
 
 // ─── Project totals ───────────────────────────────────────────────────────────
