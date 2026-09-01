@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ClipboardList, Palette, PackageOpen, CloudUpload, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ShoppingCart, Palette, PackageOpen, CloudUpload, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore } from '@/lib/studio/store'
 import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
@@ -23,7 +23,7 @@ import { CanvasArea } from './CanvasArea'
 import { AssetPanel } from './AssetPanel'
 import { PiecesPanel } from './PiecesPanel'
 import { SpecsPanel } from './SpecsPanel'
-import { SpecsListPanel } from './SpecsListPanel'
+import { ProcurementPanel } from './ProcurementPanel'
 import { RequestQuotesModal } from './RequestQuotesModal'
 import { MasterThemePanel } from './MasterThemePanel'
 import { PresentationMode } from './PresentationMode'
@@ -58,7 +58,7 @@ export default function EditorShell(props: EditorShellProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [showAssets, setShowAssets] = useState(false)
   const [showPieces, setShowPieces] = useState(false)
-  const [showSpecs, setShowSpecs] = useState(false)
+  const [showProcurement, setShowProcurement] = useState(false)
   const [showTheme, setShowTheme] = useState(false)
   const presenting = useStudioStore(s => s.presenting)
   const saveState = useStudioStore(s => s.saveState)
@@ -74,10 +74,10 @@ export default function EditorShell(props: EditorShellProps) {
     return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }, [boardAssets])
 
-  // Whenever any specs UI is visible — the board-wide list, OR a per-object
-  // editor already open from an earlier click (which can happen even while
-  // Assets or Theme is the active side panel, since that editor isn't part
-  // of the same show/hide toggle) — selecting a single IMAGE on canvas
+  // Whenever any specs UI is visible — the board-wide Procurement list, OR a
+  // per-object Specs editor already open from an earlier click (which can
+  // happen even while Assets or Theme is the active side panel, since that
+  // editor isn't part of the same show/hide toggle) — selecting a single IMAGE
   // jumps straight to its spec editor. Specs only make sense on images (a
   // photo stands in for a physical product; text/shapes never get one), so
   // deselecting, multi-select, or selecting a non-image closes it instead.
@@ -87,21 +87,21 @@ export default function EditorShell(props: EditorShellProps) {
   // still selected and reopened the editor immediately — the ✕ appeared dead.
   useEffect(() => {
     const store = useStudioStore.getState()
-    if (!showSpecs && !store.specPanelObjectId) return
+    if (!showProcurement && !store.specPanelObjectId) return
     const slide = store.slides.find(sl => sl.id === store.currentSlideId)
     const obj = selectedIds.length === 1 ? slide?.objects.find(o => o.id === selectedIds[0]) : null
     store.openSpecs(obj?.type === 'image' ? obj.id : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSpecs, selectedIds.join(',')])
+  }, [showProcurement, selectedIds.join(',')])
 
   useEffect(() => {
     // One right-hand panel at a time — if more than one were somehow stored
-    // open, Assets wins, then Specs
+    // open, Assets wins, then Procurement
     const assets = localStorage.getItem('studio-assets-open') === 'true'
-    const specs = !assets && localStorage.getItem('studio-specs-open') === 'true'
+    const procurement = !assets && localStorage.getItem('studio-procurement-open') === 'true'
     setShowAssets(assets)
-    setShowSpecs(specs)
-    setShowTheme(!assets && !specs && localStorage.getItem('studio-theme-open') === 'true')
+    setShowProcurement(procurement)
+    setShowTheme(!assets && !procurement && localStorage.getItem('studio-theme-open') === 'true')
   }, [])
 
   // Connectivity light. Edits keep working offline — everything stays in
@@ -162,25 +162,25 @@ export default function EditorShell(props: EditorShellProps) {
     })
   }, [])
 
-  function togglePanel(panel: 'assets' | 'pieces' | 'specs' | 'theme') {
-    const current = panel === 'assets' ? showAssets : panel === 'pieces' ? showPieces : panel === 'specs' ? showSpecs : showTheme
+  function togglePanel(panel: 'assets' | 'pieces' | 'procurement' | 'theme') {
+    const current = panel === 'assets' ? showAssets : panel === 'pieces' ? showPieces : panel === 'procurement' ? showProcurement : showTheme
     const next = !current
     const assets = panel === 'assets' ? next : false
     const pieces = panel === 'pieces' ? next : false
-    const specs = panel === 'specs' ? next : false
+    const procurement = panel === 'procurement' ? next : false
     const theme = panel === 'theme' ? next : false
     setShowAssets(assets)
     setShowPieces(pieces)
-    setShowSpecs(specs)
+    setShowProcurement(procurement)
     setShowTheme(theme)
     localStorage.setItem('studio-assets-open', String(assets))
     localStorage.setItem('studio-pieces-open', String(pieces))
-    localStorage.setItem('studio-specs-open', String(specs))
+    localStorage.setItem('studio-procurement-open', String(procurement))
     localStorage.setItem('studio-theme-open', String(theme))
-    // Closing Specs from the header must also close whichever per-object
-    // spec editor is open — otherwise clicking Specs again to close it
-    // leaves that panel lingering (it isn't gated by showSpecs itself)
-    if (panel === 'specs' && !specs) useStudioStore.getState().openSpecs(null)
+    // Closing Procurement from the header must also close whichever per-object
+    // Specs editor is open — otherwise clicking Procurement again to close it
+    // leaves that panel lingering (it isn't gated by showProcurement itself)
+    if (panel === 'procurement' && !procurement) useStudioStore.getState().openSpecs(null)
   }
 
   // Initialise the store from server data once, then put back anything an
@@ -429,13 +429,13 @@ export default function EditorShell(props: EditorShellProps) {
         </button>
         <button
           type="button"
-          onClick={() => togglePanel('specs')}
+          onClick={() => togglePanel('procurement')}
           className={`flex items-center gap-1.5 h-8 px-3 text-xs rounded-lg transition-colors cursor-pointer ${
-            showSpecs ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
+            showProcurement ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/10'
           }`}
-          title="All specs on this board"
+          title="Every specced item on this board — request supplier quotes and build the quote"
         >
-          <ClipboardList size={13} /> Specs
+          <ShoppingCart size={13} /> Procurement
         </button>
         <button
           type="button"
@@ -478,7 +478,7 @@ export default function EditorShell(props: EditorShellProps) {
         <CanvasArea />
         {showAssets && <AssetPanel />}
         {showPieces && <PiecesPanel />}
-        {showSpecs && !specEditorOpen && <SpecsListPanel />}
+        {showProcurement && !specEditorOpen && <ProcurementPanel />}
         {showTheme && <MasterThemePanel />}
         <SpecsPanel />
       </div>

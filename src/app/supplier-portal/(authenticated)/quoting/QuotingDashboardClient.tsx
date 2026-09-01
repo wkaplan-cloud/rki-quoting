@@ -435,7 +435,7 @@ function JobCardRow({ jc, i }: { jc: JobCardRow; i: number }) {
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {jc.client_name && <p className="text-xs" style={{ color: S.muted }}>{jc.client_name}</p>}
           <p className="text-[10px]" style={{ color: S.muted }}>{JC_TYPE_LABEL[jc.job_type] ?? jc.job_type}</p>
-          {jc.scheduled_at && <p className="text-[10px]" style={{ color: S.muted }}>Scheduled {fmtDate(jc.scheduled_at)}</p>}
+          {jc.scheduled_at && <p className="text-[10px]" style={{ color: S.muted }}>Target {fmtDate(jc.scheduled_at)}</p>}
           {jc.completed_at && <p className="text-[10px]" style={{ color: S.muted }}>Done {fmtDate(jc.completed_at)}</p>}
         </div>
       </div>

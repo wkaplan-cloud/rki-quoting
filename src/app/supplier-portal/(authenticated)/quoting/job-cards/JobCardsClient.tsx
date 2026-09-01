@@ -241,7 +241,7 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
                       {j.scheduled_at ? fmtDate(j.scheduled_at) : fmtDate(j.created_at)}
                     </p>
                     <p className="text-[10px] flex items-center justify-end gap-1 mt-0.5" style={{ color: S.muted }}>
-                      <Clock size={9} />{j.scheduled_at ? 'Scheduled' : 'Created'}
+                      <Clock size={9} />{j.scheduled_at ? 'Target' : 'Created'}
                     </p>
                   </div>
                   <ChevronRight size={16} style={{ color: S.muted }} />
@@ -303,7 +303,7 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
               </div>
 
               <div>
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Scheduled Date & Time</label>
+                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Target Date & Time</label>
                 <input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))}
                   className="w-full px-3 py-2 rounded-xl text-sm"
                   style={{ border: `1px solid ${S.border}`, color: S.text }} />

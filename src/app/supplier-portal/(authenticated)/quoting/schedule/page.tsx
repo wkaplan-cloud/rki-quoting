@@ -46,7 +46,7 @@ export default async function SchedulePage() {
     .lte('scheduled_date', end)
     .order('start_time')
 
-  const [{ data: jobs }, { data: staff }, { data: quotes }, { data: punches }, { data: jobCardsForLive }, { data: projects }, { data: schedulableJobCards }, { data: bookedRows }] = await Promise.all([
+  const [{ data: jobs }, { data: staff }, { data: quotes }, { data: punches }, { data: jobCardsForLive }, { data: projects }, { data: schedulableJobCards }, { data: scheduledRows }] = await Promise.all([
     fetchJobs(JOB_SELECT_FULL).then(res => isMissingJobCardLink(res.error) ? fetchJobs(JOB_SELECT_LEGACY) : res),
     supabaseAdmin
       .from('elec_staff')
@@ -86,10 +86,10 @@ export default async function SchedulePage() {
       .in('status', ['pending', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(100),
-    // Every job card that already has a calendar slot, at any date — used to
-    // work out which cards are still waiting to be booked. Scoped to the
-    // account rather than the visible week so a card booked months out isn't
-    // mistaken for unbooked.
+    // Every job card that already has a slot on the schedule, at any date —
+    // used to work out which cards are still waiting for one. Scoped to the
+    // account rather than the visible week, so a card scheduled months out
+    // isn't mistaken for unscheduled.
     supabaseAdmin
       .from('elec_jobs')
       .select('job_card_id')
@@ -130,7 +130,7 @@ export default async function SchedulePage() {
         staff={(staff ?? []) as ElecStaff[]}
         quotes={(quotes ?? []) as { id: string; quote_number: string; project_name: string; project_address: string | null; staff_id: string | null; additional_staff_ids: string[] | null }[]}
         jobCards={(schedulableJobCards ?? []) as { id: string; job_number: string; title: string; location: string | null; staff_id: string | null; scheduled_at: string | null }[]}
-        bookedJobCardIds={(bookedRows ?? []).map(r => r.job_card_id as string).filter(Boolean)}
+        scheduledJobCardIds={(scheduledRows ?? []).map(r => r.job_card_id as string).filter(Boolean)}
         companyName={account.company_name ?? account.email ?? 'Schedule'}
         initialLiveStatuses={initialLiveStatuses}
       />

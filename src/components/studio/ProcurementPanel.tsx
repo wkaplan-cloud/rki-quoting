@@ -1,17 +1,20 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Type, Square, Circle, Minus, MoveUpRight, X, FileText, Send, RefreshCw, ExternalLink } from 'lucide-react'
+import { ShoppingCart, Type, Square, Circle, Minus, MoveUpRight, X, FileText, Send, RefreshCw, ExternalLink } from 'lucide-react'
 import { useStudioStore } from '@/lib/studio/store'
 import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
 import { ConvertToQuoteModal } from './ConvertToQuoteModal'
 import { SyncQuoteModal } from './SyncQuoteModal'
 
-// Board-wide specs overview: every spec'd object across all slides, grouped
-// by slide in deck order. Clicking an entry jumps to its slide, selects the
-// object and opens the per-object spec editor. Toggled from the header —
+// Procurement: the board-wide roll-up of every spec'd object across all
+// slides, grouped by slide in deck order, and the launchpad for pricing them —
+// tick items to send suppliers an RFQ, then create or update the quote.
+// Deliberately NOT called Specs: that name belongs to the per-object editor
+// (SpecsPanel), which this panel links into. Clicking an entry jumps to its
+// slide, selects the object and opens that editor. Toggled from the header —
 // same slide-in pattern as the Asset Library.
-export function SpecsListPanel() {
+export function ProcurementPanel() {
   const router = useRouter()
   const slides = useStudioStore(s => s.slides)
   const specs = useStudioStore(s => s.specs)
@@ -55,7 +58,7 @@ export function SpecsListPanel() {
     <div className="flex-shrink-0 w-[280px] h-full flex flex-col bg-[#F5F2EC] border-l border-[#D8D3C8]">
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#D8D3C8]">
         <span className="flex items-center gap-1.5 text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">
-          <ClipboardList size={12} /> Specs · {total}
+          <ShoppingCart size={12} /> Procurement · {total}
         </span>
         {total > 0 && (
           <span
@@ -70,9 +73,9 @@ export function SpecsListPanel() {
 
       {total === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
-          <ClipboardList size={22} className="text-[#D8D3C8] mb-2" />
+          <ShoppingCart size={22} className="text-[#D8D3C8] mb-2" />
           <p className="text-[11px] text-[#8A877F] leading-relaxed">
-            No specs yet — select an object and choose Specs in its toolbar
+            Nothing to price yet — select an item and choose Specs in its toolbar
           </p>
         </div>
       ) : (

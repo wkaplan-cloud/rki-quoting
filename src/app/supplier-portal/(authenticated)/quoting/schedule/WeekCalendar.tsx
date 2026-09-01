@@ -178,7 +178,7 @@ export function WeekCalendar({
   staff,
   quotes,
   jobCards = [],
-  bookedJobCardIds = [],
+  scheduledJobCardIds = [],
   companyName,
   initialLiveStatuses = [],
 }: {
@@ -186,7 +186,7 @@ export function WeekCalendar({
   staff: ElecStaff[]
   quotes: QuoteOption[]
   jobCards?: JobCardOption[]
-  bookedJobCardIds?: string[]
+  scheduledJobCardIds?: string[]
   companyName: string
   initialLiveStatuses?: StaffLiveStatus[]
 }) {
@@ -206,9 +206,9 @@ export function WeekCalendar({
   // selectable (and resolvable when re-opening the job for edit).
   const [quoteOptions, setQuoteOptions]       = useState<QuoteOption[]>(quotes)
   const [jobCardOptions, setJobCardOptions]   = useState<JobCardOption[]>(jobCards)
-  // Job cards that already own a calendar slot, so the "waiting to be booked"
-  // strip drops one the moment it's scheduled.
-  const [bookedCardIds, setBookedCardIds]     = useState<Set<string>>(() => new Set(bookedJobCardIds))
+  // Job cards that already have a slot on the schedule, so the "not on the
+  // schedule" strip drops one the moment it is given a time.
+  const [scheduledCardIds, setScheduledCardIds] = useState<Set<string>>(() => new Set(scheduledJobCardIds))
   const [photos, setPhotos]         = useState<ElecJobPhoto[]>([])
   const [shareLink, setShareLink]   = useState<string | null>(null)
   const [copied, setCopied]         = useState<'idle' | 'copying' | 'done'>('idle')
@@ -222,7 +222,7 @@ export function WeekCalendar({
 
   useEffect(() => { setQuoteOptions(quotes) }, [quotes])
   useEffect(() => { setJobCardOptions(jobCards) }, [jobCards])
-  useEffect(() => { setBookedCardIds(new Set(bookedJobCardIds)) }, [bookedJobCardIds])
+  useEffect(() => { setScheduledCardIds(new Set(scheduledJobCardIds)) }, [scheduledJobCardIds])
 
   const dateStr  = toDateStr(currentDay)
   const todayStr = toDateStr(new Date())
@@ -485,7 +485,7 @@ export function WeekCalendar({
         if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? 'Could not save the job')
         const created = await res.json() as ElecJob
         setJobs(js => [...js, created])
-        if (created.job_card_id) setBookedCardIds(ids => new Set(ids).add(created.job_card_id!))
+        if (created.job_card_id) setScheduledCardIds(ids => new Set(ids).add(created.job_card_id!))
       }
       closeModal()
     } catch (e) {
@@ -550,15 +550,15 @@ export function WeekCalendar({
   const dayJobs = jobs.filter(j => j.scheduled_date === dateStr)
   const layout  = layoutJobs(dayJobs)
 
-  // Job cards due today that nobody has given a slot yet. They carry a target
-  // date (scheduled_at) but no elec_jobs row, so without this they'd be
-  // invisible on the calendar — the exact way work goes missing.
-  const unbookedToday = jobCardOptions.filter(jc => {
-    if (!jc.scheduled_at || bookedCardIds.has(jc.id)) return false
+  // Job cards whose target date is today but which have no slot on the
+  // schedule. They carry a target date (scheduled_at) with no elec_jobs row,
+  // so without this they'd be invisible here — the exact way work goes missing.
+  const unscheduledToday = jobCardOptions.filter(jc => {
+    if (!jc.scheduled_at || scheduledCardIds.has(jc.id)) return false
     return toSADateTimeLocal(jc.scheduled_at).slice(0, 10) === dateStr
   })
 
-  function bookJobCard(jc: JobCardOption) {
+  function scheduleJobCard(jc: JobCardOption) {
     const local = toSADateTimeLocal(jc.scheduled_at)
     const start = local.slice(11, 16) || '08:00'
     const end   = minsToTime(Math.min(toMins(start) + 60, END_HOUR * 60))
@@ -707,19 +707,19 @@ export function WeekCalendar({
       )}
 
       {/* ── Job cards due today with no slot yet ──────────────────────── */}
-      {unbookedToday.length > 0 && (
+      {unscheduledToday.length > 0 && (
         <div className="mb-3 rounded-xl overflow-hidden" style={{ background: S.card, border: `1px dashed ${S.gold}` }}>
           <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1.5">
             <ClipboardList size={12} style={{ color: S.gold }} />
             <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: S.gold }}>
-              Due today · not booked
+              Due today · not on the schedule
             </span>
           </div>
           <div className="flex gap-2 px-3 pb-3 overflow-x-auto">
-            {unbookedToday.map(jc => {
+            {unscheduledToday.map(jc => {
               const assignee = staff.find(m => m.id === jc.staff_id)
               return (
-                <button key={jc.id} onClick={() => bookJobCard(jc)}
+                <button key={jc.id} onClick={() => scheduleJobCard(jc)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg flex-shrink-0 text-left transition-colors"
                   style={{ background: S.bg, border: `1px solid ${S.border}` }}
                   onMouseEnter={e => e.currentTarget.style.background = S.input}

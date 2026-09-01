@@ -105,7 +105,7 @@ interface Props {
   bookings?: JobCardBooking[]
 }
 
-/** A calendar slot booked against this job card. */
+/** A slot on the schedule for this job card. */
 export interface JobCardBooking {
   id: string
   scheduled_date: string
@@ -905,10 +905,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           <Inp label="Location / Address" val={card.location} cb={v => setField('location', v || null)} placeholder="Site address" />
           <div className="grid grid-cols-2 gap-4">
             {bookings.length > 0 ? (
-              // Booked on the calendar — the slot owns the timing, so editing it
-              // here would just be overwritten on the next save of that booking.
+              // On the schedule — the slot owns the timing, so editing the
+              // target date here would be overwritten on its next save.
               <div>
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Scheduled Date &amp; Time</label>
+                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Scheduled</label>
                 <div className="rounded-xl px-3 py-2" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
                   {bookings.map(b => (
                     <p key={b.id} className="text-sm" style={{ color: S.text }}>
@@ -922,7 +922,13 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 </div>
               </div>
             ) : (
-              <Inp label="Scheduled Date & Time" val={toSADateTimeLocal(card.scheduled_at)} cb={v => setField('scheduled_at', v || null)} type="datetime-local" />
+              // Not on the schedule yet, so this is a target date, not a slot
+              <div>
+                <Inp label="Target Date & Time" val={toSADateTimeLocal(card.scheduled_at)} cb={v => setField('scheduled_at', v || null)} type="datetime-local" />
+                <p className="text-[11px] mt-1" style={{ color: S.muted }}>
+                  Not on the schedule yet — it will show under &ldquo;Due today&rdquo; on that date.
+                </p>
+              </div>
             )}
             <Inp label="Completed Date" val={toSADateTimeLocal(card.completed_at)} cb={v => setField('completed_at', v || null)} type="datetime-local" />
           </div>

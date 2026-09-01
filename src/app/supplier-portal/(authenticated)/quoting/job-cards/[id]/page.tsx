@@ -40,9 +40,9 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
     supabaseAdmin.from('elec_clients').select('id,client_name,company,email,address,vat_number,qs_name,qs_email').eq('portal_account_id', accountId!).order('client_name'),
     supabaseAdmin.from('elec_settings').select('sage_company_id, vat_rate, coc_prefix, company_code').eq('portal_account_id', accountId!).maybeSingle(),
     supabaseAdmin.from('elec_coc').select('*').eq('job_card_id', id).maybeSingle(),
-    // Calendar slots booked against this card. When one exists the schedule
-    // owns the timing, so the date field here defers to it rather than
-    // offering a second, silently-overwritten place to set it.
+    // Slots on the schedule for this card. When one exists the schedule owns
+    // the timing, so the date field here defers to it rather than offering a
+    // second, silently-overwritten place to set it.
     supabaseAdmin
       .from('elec_jobs')
       .select('id, scheduled_date, start_time, end_time, staff:elec_staff(id,name)')
