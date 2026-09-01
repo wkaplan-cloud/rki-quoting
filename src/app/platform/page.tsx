@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Building2, Users, FolderOpen, MessageSquare, TrendingUp, AlertTriangle, DollarSign, Activity, ArrowUpRight, Zap } from 'lucide-react'
+import { one, type Embedded } from '@/lib/supabase/embed'
 
 const PLAN_PRICE: Record<string, number> = { solo: 699, studio: 1499, agency: 2499 }
 
@@ -96,13 +97,6 @@ const getDashboardData = unstable_cache(
 
 // Supabase types embedded rows as `object | object[]`, so these queries were
 // read through `as any`. Naming the shapes keeps the joins honest.
-type Embedded<T> = T | T[] | null
-
-/** Picks the single row out of a Supabase embed, which may arrive wrapped. */
-function one<T>(v: Embedded<T>): T | null {
-  return Array.isArray(v) ? (v[0] ?? null) : v
-}
-
 interface AcceptedAssignmentRow {
   item_id: string | null
   response: Embedded<{ unit_price: number | null }>

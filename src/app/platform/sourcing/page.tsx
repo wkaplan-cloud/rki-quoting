@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { CheckCircle2, Clock, DollarSign, AlertCircle, Mail, AlertTriangle, TrendingUp, ArrowLeftRight, BarChart3 } from 'lucide-react'
 import { SourcingFeeTracker } from './SourcingFeeTracker'
 import type { CollectibleItem } from './SourcingFeeTracker'
+import { one, type Embedded } from '@/lib/supabase/embed'
 
 function fmt(n: number) {
   return `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -51,6 +52,41 @@ function getFeeStatus(projectStatus: string | null): 'unlinked' | 'pending' | 'd
   return 'pending'
 }
 
+// Shapes of the four sourcing queries above. Embedded relations come back as
+// object-or-array, which is what `one()` unwraps and what the `as any` on each
+// map callback used to hide.
+interface SourcingSessionRef {
+  id: string
+  title: string | null
+  org_id: string | null
+  project_id?: string | null
+  project?: Embedded<{ project_name: string | null; status: string | null }>
+}
+interface AssignmentRow {
+  id: string
+  accepted_at: string | null
+  fee_collected_at: string | null
+  response: Embedded<{ unit_price: number | null; lead_time_weeks: number | null }>
+  item: Embedded<{ title: string | null; session: Embedded<SourcingSessionRef> }>
+  supplier: Embedded<{ supplier_name: string | null; email: string | null }>
+}
+interface SessionRow {
+  id: string
+  title: string | null
+  status: string | null
+  created_at: string
+  org_id: string | null
+  project: Embedded<{ project_name: string | null; status: string | null }>
+}
+interface SupplierSendRow {
+  id: string
+  supplier_name: string | null
+  email: string | null
+  sent_at: string | null
+  status: string | null
+  session: Embedded<SourcingSessionRef>
+}
+
 export default async function PlatformSourcingPage() {
   // Server component: renders once per request, so reading the clock here is stable by construction.
   // eslint-disable-next-line react-hooks/purity
@@ -91,22 +127,17 @@ export default async function PlatformSourcingPage() {
     .order('sent_at', { ascending: false })
     .limit(80)
 
+  const assignmentRows  = (assignments    ?? []) as unknown as AssignmentRow[]
+  const sessionRows     = (sessions       ?? []) as unknown as SessionRow[]
+  const staleRows_      = (staleSuppliers ?? []) as unknown as SupplierSendRow[]
+  const recentSendRows  = (recentSends    ?? []) as unknown as SupplierSendRow[]
+
   // Studio name lookup keyed by org_id
   const orgIds = [...new Set([
-    ...(assignments ?? []).map((a: any) => {
-      const item = Array.isArray(a.item) ? a.item[0] : a.item
-      const session = Array.isArray(item?.session) ? item?.session[0] : item?.session
-      return session?.org_id
-    }),
-    ...(sessions ?? []).map((s: any) => s.org_id),
-    ...(staleSuppliers ?? []).map((s: any) => {
-      const session = Array.isArray(s.session) ? s.session[0] : s.session
-      return session?.org_id
-    }),
-    ...(recentSends ?? []).map((s: any) => {
-      const session = Array.isArray(s.session) ? s.session[0] : s.session
-      return session?.org_id
-    }),
+    ...assignmentRows.map(a => one(one(a.item)?.session)?.org_id),
+    ...sessionRows.map(s => s.org_id),
+    ...staleRows_.map(s => one(s.session)?.org_id),
+    ...recentSendRows.map(s => one(s.session)?.org_id),
   ].filter(Boolean))]
 
   const studioMap: Record<string, string> = {}
@@ -121,12 +152,12 @@ export default async function PlatformSourcingPage() {
   }
 
   // Normalise accepted items
-  const items = (assignments ?? []).map((a: any) => {
-    const response = Array.isArray(a.response) ? a.response[0] : a.response
-    const item = Array.isArray(a.item) ? a.item[0] : a.item
-    const session = Array.isArray(item?.session) ? item?.session[0] : item?.session
-    const project = Array.isArray(session?.project) ? session?.project[0] : session?.project
-    const supplier = Array.isArray(a.supplier) ? a.supplier[0] : a.supplier
+  const items = assignmentRows.map(a => {
+    const response = one(a.response)
+    const item = one(a.item)
+    const session = one(item?.session)
+    const project = one(session?.project)
+    const supplier = one(a.supplier)
     const unitPrice = response?.unit_price ?? 0
     const feeStatus = getFeeStatus(project?.status ?? null)
     return {
@@ -143,13 +174,13 @@ export default async function PlatformSourcingPage() {
       project_name: project?.project_name ?? null,
       project_status: project?.status ?? null,
       fee_status: feeStatus,
-      studio: studioMap[session?.org_id] ?? '—',
+      studio: studioMap[session?.org_id ?? ''] ?? '—',
     }
   })
 
   // Normalise stale suppliers
-  const staleRows = (staleSuppliers ?? []).map((s: any) => {
-    const session = Array.isArray(s.session) ? s.session[0] : s.session
+  const staleRows = staleRows_.map(s => {
+    const session = one(s.session)
     return {
       id: s.id,
       supplier_name: s.supplier_name,
@@ -157,13 +188,13 @@ export default async function PlatformSourcingPage() {
       sent_at: s.sent_at,
       session_title: session?.title ?? '—',
       session_id: session?.id ?? null,
-      studio: studioMap[session?.org_id] ?? '—',
+      studio: studioMap[session?.org_id ?? ''] ?? '—',
     }
   })
 
   // Normalise email log
-  const emailLog = (recentSends ?? []).map((s: any) => {
-    const session = Array.isArray(s.session) ? s.session[0] : s.session
+  const emailLog = recentSendRows.map(s => {
+    const session = one(s.session)
     return {
       id: s.id,
       supplier_name: s.supplier_name,
@@ -172,7 +203,7 @@ export default async function PlatformSourcingPage() {
       status: s.status as string,
       session_title: session?.title ?? '—',
       session_id: session?.id ?? null,
-      studio: studioMap[session?.org_id] ?? '—',
+      studio: studioMap[session?.org_id ?? ''] ?? '—',
     }
   })
 

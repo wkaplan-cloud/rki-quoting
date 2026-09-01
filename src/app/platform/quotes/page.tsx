@@ -17,6 +17,15 @@ const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   Cancelled: { bg: '#2A0A0A', color: '#F87171' },
 }
 
+interface PlatformProjectRow {
+  id: string
+  project_name: string | null
+  project_number: string | null
+  status: string | null
+  created_at: string
+  org_id: string | null
+}
+
 export default async function PlatformQuotesPage() {
   const { data: projects } = await supabaseAdmin
     .from('projects')
@@ -24,7 +33,8 @@ export default async function PlatformQuotesPage() {
     .order('created_at', { ascending: false })
     .limit(500)
 
-  const orgIds = [...new Set((projects ?? []).map((p: any) => p.org_id).filter(Boolean))]
+  const projectRows = (projects ?? []) as PlatformProjectRow[]
+  const orgIds = [...new Set(projectRows.map(p => p.org_id).filter((id): id is string => Boolean(id)))]
 
   const studioMap: Record<string, string> = {}
   if (orgIds.length > 0) {
@@ -37,13 +47,13 @@ export default async function PlatformQuotesPage() {
     }
   }
 
-  const rows = (projects ?? []).map((p: any) => ({
+  const rows = projectRows.map(p => ({
     id: p.id,
     project_name: p.project_name,
     project_number: p.project_number,
     status: p.status as string,
     created_at: p.created_at,
-    studio: studioMap[p.org_id] ?? '—',
+    studio: studioMap[p.org_id ?? ''] ?? '—',
   }))
 
   const byStatus = rows.reduce<Record<string, number>>((acc, r) => {

@@ -1,5 +1,6 @@
 import { cache } from 'react'
 import { supabaseAdmin } from './supabase/admin'
+import { one, type Embedded } from '@/lib/supabase/embed'
 
 export type PortalAccount = {
   id: string
@@ -35,9 +36,7 @@ export const resolvePortalAccount = cache(async (userId: string): Promise<Portal
 
   if (ownerAccount) return ownerAccount
 
-  const memberAccount = membership
-    ? (Array.isArray((membership as any).account) ? (membership as any).account[0] : (membership as any).account)
-    : null
+  const memberAccount = one((membership as { account?: Embedded<PortalAccount> } | null)?.account)
 
   return memberAccount ?? null
 })

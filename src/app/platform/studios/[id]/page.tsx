@@ -9,6 +9,24 @@ import { StudioNotes } from './StudioNotes'
 import { BrandingPanel } from './BrandingPanel'
 import { FeatureTogglesPanel } from './FeatureTogglesPanel'
 import { ImpersonateButton } from './ImpersonateButton'
+import { one, type Embedded } from '@/lib/supabase/embed'
+
+// `organizations` and `settings` are selected with `*`, so the client infers no
+// columns for them; these name the fields this page actually reads.
+interface OrgDetailRow {
+  is_internal?: boolean | null
+  platform_notes?: string | null
+}
+interface SettingsDetailRow {
+  letterhead_url?: string | null
+  letterhead_filename?: string | null
+}
+interface SourcingSessionListRow {
+  id: string
+  title: string | null
+  status: string | null
+  created_at: string
+}
 
 export default async function StudioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -35,12 +53,12 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
   let studioTotalFee = 0
   let studioAcceptedCount = 0
   if (sourcingSessions && sourcingSessions.length > 0) {
-    const sessionIds = sourcingSessions.map((s: any) => s.id)
+    const sessionIds = (sourcingSessions as SourcingSessionListRow[]).map(s => s.id)
     const { data: itemsInSessions } = await supabaseAdmin
       .from('sourcing_session_items')
       .select('id')
       .in('session_id', sessionIds)
-    const itemIds = (itemsInSessions ?? []).map((i: any) => i.id)
+    const itemIds = ((itemsInSessions ?? []) as { id: string }[]).map(i => i.id)
     if (itemIds.length > 0) {
       const { data: accepted } = await supabaseAdmin
         .from('sourcing_item_assignments')
@@ -49,7 +67,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         .eq('status', 'accepted')
       studioAcceptedCount = (accepted ?? []).length
       for (const a of accepted ?? []) {
-        const response = Array.isArray((a as any).response) ? (a as any).response[0] : (a as any).response
+        const response = one((a as { response?: Embedded<{ unit_price: number | null }> }).response)
         studioTotalFee += (response?.unit_price ?? 0) * 0.01
       }
     }
@@ -181,7 +199,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         plan={org.plan ?? 'trial'}
         status={org.subscription_status ?? 'trialing'}
         trialEndsAt={org.trial_ends_at ?? null}
-        isInternal={(org as any).is_internal ?? false}
+        isInternal={(org as OrgDetailRow).is_internal ?? false}
       />
 
       {/* Branding & PDF Template */}
@@ -190,8 +208,8 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
           orgId={id}
           adminUserId={adminMember.user_id}
           logoUrl={settings?.logo_url ?? null}
-          letterheadUrl={(settings as any)?.letterhead_url ?? null}
-          letterheadFilename={(settings as any)?.letterhead_filename ?? null}
+          letterheadUrl={(settings as SettingsDetailRow | null)?.letterhead_url ?? null}
+          letterheadFilename={(settings as SettingsDetailRow | null)?.letterhead_filename ?? null}
           currentTemplate={settings?.pdf_template ?? null}
           currentTheme={settings?.pdf_color_theme ?? null}
         />
@@ -202,7 +220,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
       <FeatureTogglesPanel orgId={id} studioEnabled={(settings as any)?.studio_enabled ?? false} lineItemImagesEnabled={(settings as any)?.line_item_images_enabled ?? false} />
 
       {/* Internal notes */}
-      <StudioNotes orgId={id} initial={(org as any).platform_notes ?? null} />
+      <StudioNotes orgId={id} initial={(org as OrgDetailRow).platform_notes ?? null} />
 
       {/* Members */}
       <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
@@ -296,7 +314,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {(sourcingSessions ?? []).map((s: any) => {
+                {((sourcingSessions ?? []) as SourcingSessionListRow[]).map(s => {
                   const statusColor: Record<string, string> = {
                     draft: '#71717A', sent: '#60A5FA', in_progress: '#F59E0B',
                     completed: '#34D399', archived: '#52525B',
@@ -305,8 +323,8 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
                     <tr key={s.id}>
                       <td className="px-5 py-3 text-white/80">{s.title}</td>
                       <td className="px-5 py-3">
-                        <span className="text-xs font-medium capitalize" style={{ color: statusColor[s.status] ?? '#71717A' }}>
-                          {s.status.replace('_', ' ')}
+                        <span className="text-xs font-medium capitalize" style={{ color: statusColor[s.status ?? ''] ?? '#71717A' }}>
+                          {(s.status ?? 'unknown').replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-white/40 text-xs">

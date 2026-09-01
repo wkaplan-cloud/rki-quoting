@@ -80,6 +80,30 @@ async function getIncompleteSignups(): Promise<IncompleteSignup[]> {
     .sort((a, b) => b.confirmed_at.localeCompare(a.confirmed_at))
 }
 
+/** Only the columns these bulk look-ups actually read. */
+interface OrgScopedRow { org_id: string | null; created_at: string }
+/** An organization row plus the counts and flags this page derives from it. */
+interface StudioRow {
+  id: string
+  name: string | null
+  plan: string | null
+  status: string | null
+  subscription_status: string | null
+  trial_ends_at: string | null
+  archived_at: string | null
+  assigned_rep: string | null
+  created_at: string
+  is_internal?: boolean | null
+  businessName: string | null
+  memberCount: number
+  projectCount: number
+  adminName: string
+  adminEmail: string | null
+  lastActive: string | null
+  isChurnRisk: boolean
+  isInternal: boolean
+}
+
 export default async function StudiosPage() {
   const { data: orgs } = await supabaseAdmin
     .from('organizations')
@@ -136,8 +160,8 @@ export default async function StudiosPage() {
     }
   }
   for (const s of allSourcingData ?? []) bumpLastActive(s.org_id, s.created_at)
-  for (const a of allAuditData ?? []) bumpLastActive((a as any).org_id, a.created_at)
-  for (const c of allClientsData ?? []) bumpLastActive((c as any).org_id, c.created_at)
+  for (const a of (allAuditData ?? []) as OrgScopedRow[]) bumpLastActive(a.org_id, a.created_at)
+  for (const c of (allClientsData ?? []) as OrgScopedRow[]) bumpLastActive(c.org_id, c.created_at)
 
   // One bulk settings fetch keyed by org_id (settings are org-scoped, not user-scoped)
   const { data: allSettings } = orgIds.length > 0
@@ -151,12 +175,12 @@ export default async function StudiosPage() {
   // eslint-disable-next-line react-hooks/purity
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000)
 
-  const enriched = (orgs ?? []).map(org => {
+  const enriched: StudioRow[] = (orgs ?? []).map(org => {
     const admin = adminByOrg.get(org.id)
     const businessName = businessNameByOrgId.get(org.id) || org.name
     const lastActive = lastActiveByOrg.get(org.id) ?? null
     const isPaid = org.subscription_status === 'active'
-    const isInternal = (org as any).is_internal ?? false
+    const isInternal = (org as { is_internal?: boolean | null }).is_internal ?? false
     const isChurnRisk = isPaid && !isInternal && (!lastActive || new Date(lastActive) < thirtyDaysAgo)
 
     return {
@@ -235,7 +259,7 @@ function formatLastActive(dateStr: string | null): { label: string; urgent: bool
   return { label: `${days}d ago`, urgent: true }
 }
 
-function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios: any[]; archived?: boolean; welcomeSentOrgIds: Set<string> }) {
+function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios: StudioRow[]; archived?: boolean; welcomeSentOrgIds: Set<string> }) {
   return (
     <div className={`bg-[#1A1A18] border rounded-xl overflow-hidden ${archived ? 'border-amber-500/20 opacity-70' : 'border-white/10'}`}>
       <table className="w-full text-sm">
@@ -326,7 +350,7 @@ function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios
                     {!archived && !welcomeSentOrgIds.has(studio.id) && (
                       <SendWelcomeButton orgId={studio.id} />
                     )}
-                    {!archived && <QuickDeleteButton orgId={studio.id} studioName={studio.businessName} />}
+                    {!archived && <QuickDeleteButton orgId={studio.id} studioName={studio.businessName ?? 'Unnamed studio'} />}
                   </div>
                 </td>
               </tr>

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Store, Globe, Phone, MapPin, BarChart3 } from 'lucide-react'
 import { PortalAccountLinker } from './PortalAccountLinker'
 import { SupplierCategoryBadge } from './SupplierCategoryBadge'
+import { one, type Embedded } from '@/lib/supabase/embed'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -53,7 +54,7 @@ export default async function PlatformSuppliersPage() {
     .eq('status', 'accepted')
 
   for (const a of acceptedItems ?? []) {
-    const supplier = Array.isArray((a as any).supplier) ? (a as any).supplier[0] : (a as any).supplier
+    const supplier = one((a as { supplier?: Embedded<{ email: string | null }> }).supplier)
     const email = (supplier?.email ?? '').toLowerCase()
     if (supplierStats[email]) {
       supplierStats[email].acceptedCount++
