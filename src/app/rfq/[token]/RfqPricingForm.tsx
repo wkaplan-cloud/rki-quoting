@@ -13,7 +13,8 @@ export interface RfqFormItem {
   unit: string
   dimensions: string
   materials: string[]
-  itemSpecs: Record<string, string>
+  /** Category specs, already resolved to their human labels + units. */
+  itemSpecs: { label: string; value: string }[]
   specNotes: string
   prefill: { price: number | null; leadTime: string; note: string; unableToQuote: boolean }
   sort: number
@@ -177,8 +178,8 @@ export function RfqPricingForm({
                 <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   {(it.quantity || it.unit) && <SpecPair label="Qty" value={[it.quantity, it.unit].filter(Boolean).join(' ')} />}
                   {it.dimensions && <SpecPair label="Dimensions" value={it.dimensions} />}
-                  {Object.entries(it.itemSpecs).filter(([, v]) => (v ?? '').trim()).map(([k, v]) => (
-                    <SpecPair key={k} label={k} value={v} />
+                  {it.itemSpecs.map(sp => (
+                    <SpecPair key={sp.label} label={sp.label} value={sp.value} />
                   ))}
                 </dl>
 
@@ -310,7 +311,7 @@ export function RfqPricingForm({
 function SpecPair({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-1.5">
-      <dt className="capitalize flex-shrink-0" style={{ color: '#8A877F' }}>{label}:</dt>
+      <dt className="flex-shrink-0" style={{ color: '#8A877F' }}>{label}:</dt>
       <dd className="min-w-0" style={{ color: '#4A4A47' }}>{value}</dd>
     </div>
   )

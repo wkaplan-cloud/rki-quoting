@@ -9,7 +9,7 @@ import type { StudioSpec, MaterialEntry, SpecSupplierOption } from '@/lib/studio
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import { CategorySpecFields } from '@/components/shared/CategorySpecFields'
-import { CATEGORIES, type CategoryKey } from '@/lib/sourcing-categories'
+import { CATEGORIES, categoryCoversDimensions, type CategoryKey } from '@/lib/sourcing-categories'
 
 const ASSET_LABEL_SYNC_DEBOUNCE = 500
 
@@ -150,6 +150,16 @@ export function SpecsPanel() {
   function unlinkFromPiece() {
     update({ pieceId: null })
   }
+
+  // The generic Width/Depth/Height block only earns its place when the chosen
+  // category doesn't already ask for sizes of its own. It stays visible on a
+  // category that does if this spec still holds values there — from before the
+  // category was picked, or from an older spec — because those values are
+  // still sent to the supplier, and a field nobody can see is worse than a
+  // duplicate one.
+  const hasGenericDimensions = !!(spec.width.trim() || spec.depth.trim() || spec.height.trim())
+  const categoryHasDimensions = categoryCoversDimensions(spec.category)
+  const showGenericDimensions = !categoryHasDimensions || hasGenericDimensions
 
   return (
     <div className="flex-shrink-0 w-[280px] h-full flex flex-col bg-[#F5F2EC] border-l border-[#D8D3C8]">
@@ -305,20 +315,28 @@ export function SpecsPanel() {
           </div>
         </Section>
 
-        {/* Dimensions */}
-        <Section title="Dimensions">
-          <div className="grid grid-cols-3 gap-2">
-            <Field label="Width">
-              <TextInput value={spec.width} onChange={v => update({ width: v })} placeholder="mm" />
-            </Field>
-            <Field label="Depth">
-              <TextInput value={spec.depth} onChange={v => update({ depth: v })} placeholder="mm" />
-            </Field>
-            <Field label="Height">
-              <TextInput value={spec.height} onChange={v => update({ height: v })} placeholder="mm" />
-            </Field>
-          </div>
-        </Section>
+        {/* Dimensions — see showGenericDimensions above */}
+        {showGenericDimensions && (
+          <Section title="Dimensions">
+            {categoryHasDimensions && (
+              <p className="text-[10px] text-[#B08968] leading-relaxed mb-1.5">
+                This category has its own sizes under Specifications. Clear these so the supplier
+                isn&apos;t sent two sets.
+              </p>
+            )}
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="Width">
+                <TextInput value={spec.width} onChange={v => update({ width: v })} placeholder="mm" />
+              </Field>
+              <Field label="Depth">
+                <TextInput value={spec.depth} onChange={v => update({ depth: v })} placeholder="mm" />
+              </Field>
+              <Field label="Height">
+                <TextInput value={spec.height} onChange={v => update({ height: v })} placeholder="mm" />
+              </Field>
+            </div>
+          </Section>
+        )}
 
         {/* Materials & Finishes */}
         <Section

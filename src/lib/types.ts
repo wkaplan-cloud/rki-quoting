@@ -94,6 +94,9 @@ export interface LineItem {
   twinbru_cost_price: number | null
   fabric_width_cm: number | null
   parent_item_id: string | null
+  /** Breadcrumbs from Studio board conversion — see studio_line_item_links.sql. */
+  studio_object_id?: string | null
+  studio_slide_id?: string | null
   created_at: string
 }
 

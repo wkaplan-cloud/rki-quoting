@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { normalizeMaterial, type StudioSpecRow, type StudioSlideRow } from '@/lib/studio/types'
 import { RfqPricingForm, type RfqFormItem } from './RfqPricingForm'
+import { CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
 import { Clock } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -70,7 +71,14 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         materials: (Array.isArray(spec.materials) ? spec.materials.map(normalizeMaterial) : [])
           .map(m => [m.type, m.description, m.colour].map(v => (v ?? '').trim()).filter(Boolean).join(' · '))
           .filter(Boolean),
-        itemSpecs: spec.item_specs ?? {},
+        // Resolved to labels + units here, not in the form — the supplier must
+        // read "Overall Width 1800 mm", never the raw "overall_width" key.
+        itemSpecs: (CATEGORY_FIELDS[spec.category as CategoryKey] ?? [])
+          .filter(f => (spec.item_specs?.[f.key] ?? '').trim())
+          .map(f => ({
+            label: f.label,
+            value: `${spec.item_specs![f.key].trim()}${f.unit ? ` ${f.unit}` : ''}`,
+          })),
         specNotes: spec.notes ?? '',
         prefill: {
           price: pre?.price ?? null,

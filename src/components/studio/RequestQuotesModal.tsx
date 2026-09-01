@@ -7,10 +7,12 @@ import { createClient } from '@/lib/supabase/client'
 import type { StudioSpec } from '@/lib/studio/types'
 
 // Send quote-request emails to suppliers for the selected spec'd items.
-// Items are grouped by the supplier named on their spec (that supplier is the
-// default recipient), and every group can have EXTRA recipients added for
-// price comparison — each recipient gets their own separate email + PDF,
-// never a CC, so suppliers don't see who else is pricing.
+// Items start grouped by the supplier named on their spec (that supplier is
+// the default recipient) but each item carries its own supplier dropdown, so
+// the split can be re-cut here without going back into every spec. Every
+// group can also have EXTRA recipients added for price comparison — each
+// recipient gets their own separate email + PDF, never a CC, so suppliers
+// don't see who else is pricing.
 
 interface OrgSupplier {
   id: string
@@ -39,6 +41,18 @@ interface Group {
 // document, sent whole to whichever supplier(s) are chosen (price the lot).
 type RfqMode = 'by-supplier' | 'combined'
 
+// Items with no supplier of their own all land in one bucket — every group key
+// is either a supplier id, `name:<typed name>` for a supplier that was typed
+// but never linked to a supplier record, or this.
+const UNASSIGNED = 'unassigned'
+
+// Which group an item falls into by default: whatever supplier its spec names.
+function defaultGroupKey(spec: StudioSpec) {
+  if (spec.supplierId) return spec.supplierId
+  const typed = spec.supplierName.trim()
+  return typed ? `name:${typed}` : UNASSIGNED
+}
+
 let recipientSeq = 0
 
 export function RequestQuotesModal() {
@@ -47,6 +61,9 @@ export function RequestQuotesModal() {
   const boardId = useStudioStore(s => s.boardId)
 
   const [mode, setMode] = useState<RfqMode>('by-supplier')
+  // Per-item supplier overrides, objectId → group key. Only holds items the
+  // designer has actually re-pointed here; everything else follows its spec.
+  const [assignments, setAssignments] = useState<Record<string, string>>({})
   const [suppliers, setSuppliers] = useState<OrgSupplier[] | null>(null)
   const [recipients, setRecipients] = useState<Record<string, Recipient[]>>({})
   const [message, setMessage] = useState('')
@@ -76,19 +93,26 @@ export function RequestQuotesModal() {
         },
       ]
     }
-    // Split by the supplier on each item's spec
+    // Split by supplier — each item's own override if it has one, otherwise
+    // the supplier named on its spec
     const map = new Map<string, Group>()
     for (const objectId of withSpec) {
       const spec = specsMap[objectId]
-      const key = spec.supplierId ?? (spec.supplierName.trim() ? `name:${spec.supplierName.trim()}` : 'unassigned')
+      const key = assignments[objectId] ?? defaultGroupKey(spec)
       let g = map.get(key)
       if (!g) {
+        // A key that matches an org supplier takes that supplier's real name —
+        // it may have been re-pointed here to a supplier the spec never named.
+        const matched = suppliers?.find(s => s.id === key)
+        const label =
+          matched?.supplier_name ??
+          (key.startsWith('name:') ? key.slice(5) : key === UNASSIGNED ? 'No supplier' : spec.supplierName.trim() || 'Supplier')
         g = {
           key,
-          label: spec.supplierName.trim() || 'No supplier on spec',
+          label,
           objectIds: [],
           specs: [],
-          defaultSupplierIds: spec.supplierId ? [spec.supplierId] : [],
+          defaultSupplierIds: matched ? [matched.id] : [],
         }
         map.set(key, g)
       }
@@ -97,7 +121,7 @@ export function RequestQuotesModal() {
     }
     return Array.from(map.values())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [withSpec.join(','), specsMap, mode])
+  }, [withSpec.join(','), specsMap, mode, assignments, suppliers])
 
   // Load org suppliers (for default recipient emails + the add-recipient list)
   useEffect(() => {
@@ -154,6 +178,13 @@ export function RequestQuotesModal() {
         [groupKey]: [...list, { key: `r${recipientSeq++}`, supplierId: sup.id, supplierName: sup.supplier_name, email: sup.email ?? '' }],
       }
     })
+  }
+
+  // Re-point one item at a different supplier. Moving the last item out of a
+  // group drops that group; moving one into a supplier with no group yet
+  // creates it, and the seeding effect fills in that supplier's email.
+  function assignItem(objectId: string, groupKey: string) {
+    setAssignments(prev => ({ ...prev, [objectId]: groupKey }))
   }
 
   function patchRecipient(groupKey: string, key: string, patch: Partial<Recipient>) {
@@ -264,7 +295,7 @@ export function RequestQuotesModal() {
             </div>
             <p className="mt-1.5 text-[10px] text-[#8A877F] leading-relaxed">
               {mode === 'by-supplier'
-                ? 'Each supplier gets an email with only their own items.'
+                ? 'Each supplier gets an email with only their own items. Change an item’s supplier below to move it.'
                 : 'One document with every item — each supplier you add below receives ALL of them, in one email.'}
             </p>
           </div>
@@ -284,9 +315,46 @@ export function RequestQuotesModal() {
             return (
               <div key={g.key} className="rounded-lg border border-[#D8D3C8] bg-white p-3">
                 <p className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest mb-1">{g.label}</p>
-                <p className="text-[11px] text-[#2C2C2A] mb-2 leading-relaxed">
-                  {g.specs.map(sp => sp.specName.trim() || 'Untitled item').join(' · ')}
-                </p>
+                {mode === 'by-supplier' ? (
+                  // One row per item, each with its own supplier — changing it
+                  // moves the item to that supplier's email
+                  <ul className="space-y-1 mb-2">
+                    {g.objectIds.map(objectId => {
+                      const sp = specsMap[objectId]
+                      const itemName = sp.specName.trim() || 'Untitled item'
+                      const current = assignments[objectId] ?? defaultGroupKey(sp)
+                      return (
+                        <li key={objectId} className="flex items-center gap-1.5">
+                          <span className="flex-1 min-w-0 truncate text-[11px] text-[#2C2C2A]" title={itemName}>
+                            {itemName}
+                          </span>
+                          <select
+                            value={current}
+                            onChange={e => assignItem(objectId, e.target.value)}
+                            aria-label={`Supplier for ${itemName}`}
+                            className="flex-shrink-0 max-w-[140px] text-[11px] rounded-md border border-[#D8D3C8] bg-white px-1.5 py-1 cursor-pointer text-[#2C2C2A]"
+                          >
+                            <option value={UNASSIGNED}>No supplier</option>
+                            {/* A name typed on the spec but never linked to a supplier record
+                                still needs an option, or the select would show blank */}
+                            {current.startsWith('name:') && (
+                              <option value={current}>{current.slice(5)}</option>
+                            )}
+                            {(suppliers ?? []).map(s => (
+                              <option key={s.id} value={s.id}>
+                                {s.supplier_name}
+                              </option>
+                            ))}
+                          </select>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-[11px] text-[#2C2C2A] mb-2 leading-relaxed">
+                    {g.specs.map(sp => sp.specName.trim() || 'Untitled item').join(' · ')}
+                  </p>
+                )}
 
                 <p className="text-[10px] text-[#8A877F] mb-1">Send to:</p>
                 <div className="space-y-1.5">

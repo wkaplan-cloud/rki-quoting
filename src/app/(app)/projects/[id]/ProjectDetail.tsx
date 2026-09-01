@@ -11,8 +11,9 @@ import type { Project, LineItem, ProjectStages } from '@/lib/types'
 import { Button } from '@/components/ui/Button'
 import { LineItemsTable } from './LineItemsTable'
 import { ProjectHeader } from './ProjectHeader'
+import { SupplierQuotesModal } from './SupplierQuotesModal'
 import toast from 'react-hot-toast'
-import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { Download, Send, Copy, ChevronDown, RefreshCw, Upload, FileText, Printer, Mail, ThumbsUp, ThumbsDown, ReceiptText } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 // Percentage fields are typed into freely; only sane values ever reach the database.
@@ -61,6 +62,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const [suppliers, setSuppliers] = useState(initialSuppliers)
   const [stages, setStages] = useState<ProjectStages | null>(initialStages)
   const [declineBannerDismissed, setDeclineBannerDismissed] = useState(false)
+  const [supplierQuotesOpen, setSupplierQuotesOpen] = useState(false)
   const [designFeePct, setDesignFeePct] = useState(initial.design_fee)
   const [vatRate, setVatRate] = useState(initialVatRate)
   const [depositPct, setDepositPct] = useState(initialDepositPct)
@@ -170,6 +172,8 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
   const totals = computeTotals(lineItems, designFeePct, vatRate, depositPct)
   // Documents print at most MAX_DOCUMENT_IMAGES thumbnails; rows past that print without one
   const imageRowCount = imagesEnabled ? countDocumentImages(lineItems) : 0
+  // Only quotes built from a Studio board can have supplier pricing waiting
+  const hasBoardItems = lineItems.some(i => i.studio_object_id)
   const imagesOverCap = imageRowCount - MAX_DOCUMENT_IMAGES
   // Live preview of what an invoice would print while the deposit field is being edited
   const depositPreview = Math.min(Math.max(parseFloat(depositDraft) || 0, 0), totals.grand_total)
@@ -1065,6 +1069,20 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             </p>
           </div>
         )}
+        {/* Board items convert unpriced and suppliers answer the RFQ later —
+            this is where their prices get carried onto the quote, on request */}
+        {hasBoardItems && !isPaid && (
+          <div className="mb-3 flex justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSupplierQuotesOpen(true)}
+              title="Apply prices suppliers have quoted for this project's board items"
+            >
+              <ReceiptText size={14} /> Apply supplier quotes
+            </Button>
+          </div>
+        )}
         <LineItemsTable
           projectId={project.id}
           lineItems={lineItems}
@@ -1616,6 +1634,18 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
             )}
           </div>
         </div>
+      )}
+
+      {/* Supplier quotes → line item costs */}
+      {supplierQuotesOpen && (
+        <SupplierQuotesModal
+          projectId={project.id}
+          onClose={() => setSupplierQuotesOpen(false)}
+          onApplied={rows => {
+            const byId = new Map(rows.map(r => [r.id, r]))
+            setLineItems(prev => prev.map(i => byId.get(i.id) ?? i))
+          }}
+        />
       )}
     </div>
   )

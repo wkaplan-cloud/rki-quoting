@@ -118,3 +118,12 @@ export const CATEGORY_FIELDS: Record<CategoryKey, FieldDef[]> = {
     { key: 'notes',           label: 'Additional Notes',        type: 'textarea', placeholder: 'Brand, source, styling notes…' },
   ],
 }
+
+// True when a category already asks for its own sizes (Overall Width, Diameter,
+// Board Length, Thickness…). The spec panel suppresses its generic
+// Width/Depth/Height block for these, so a designer is never asked for the same
+// measurement twice — and a supplier never receives two competing sets.
+export function categoryCoversDimensions(key: string): boolean {
+  const fields = CATEGORY_FIELDS[key as CategoryKey]
+  return !!fields?.some(f => f.unit === 'mm')
+}
