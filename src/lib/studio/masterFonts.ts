@@ -66,6 +66,8 @@ export function useContentFont(cssVar: string) {
   const [state, setState] = useState<{ ready: boolean; family: string }>({ ready: false, family: '' })
   useEffect(() => {
     let cancelled = false
+    // Synchronises with an external system (network / offline queue / asset loading).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState(s => (s.ready ? { ready: false, family: '' } : s))
     void ensureFontFamilyLoaded(cssVar).then(family => {
       if (!cancelled) setState({ ready: true, family })

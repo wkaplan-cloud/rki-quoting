@@ -31,6 +31,8 @@ export default function LoginPage() {
   // If already logged in, redirect away from the login page
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
+      // Reads the credentials the auth provider left in the URL, which only exist in the browser.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCheckingSession(false)
       return
     }
@@ -69,6 +71,8 @@ export default function LoginPage() {
     const type = params.get('type')
 
     if (!access_token || !refresh_token) return
+    // Reads the credentials the auth provider left in the URL, which only exist in the browser.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHashRedirecting(true)
 
     supabase.auth.setSession({ access_token, refresh_token }).then(({ data: { session }, error }) => {

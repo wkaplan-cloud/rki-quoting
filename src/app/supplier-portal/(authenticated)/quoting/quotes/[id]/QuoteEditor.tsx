@@ -98,6 +98,8 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // Drives a timer; synchronising with an external system is what an effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (value.length < 2 || locked) { setSuggestions([]); setOpen(false); return }
     const t = setTimeout(async () => {
       const { data } = await supabase
@@ -635,6 +637,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   // Reset active tab to quote if it becomes inaccessible after status change
   useEffect(() => {
+    // Resets local state when the value it was seeded from changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!tabAccessible[activeTab]) setActiveTab('quote')
   }, [q.status]) // eslint-disable-line react-hooks/exhaustive-deps
 

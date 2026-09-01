@@ -26,6 +26,8 @@ export function SupplierPortalShell({ children, companyName, hasQuoting = false,
 
   useEffect(() => {
     const saved = localStorage.getItem('supplier-sidebar-expanded')
+    // Restores a value from browser storage, which only exists after mount — reading it during render would not match the server-rendered HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved !== null) setDesktopExpanded(saved === 'true')
   }, [])
 

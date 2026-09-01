@@ -21,6 +21,8 @@ function AcceptAdminContent() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    // Reads the credentials the auth provider left in the URL, which only exist in the browser.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!token) { setStatus('error'); setError('Invalid invite link'); return }
     void fetch(`/api/supplier-portal/quoting/team/accept?token=${token}`)
       .then(async r => {

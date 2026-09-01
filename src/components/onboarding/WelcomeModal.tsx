@@ -26,6 +26,8 @@ export function WelcomeModal() {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
+    // Restores a value from browser storage, which only exists after mount — reading it during render would not match the server-rendered HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!localStorage.getItem('qh-welcome-seen')) setShow(true)
   }, [])
 

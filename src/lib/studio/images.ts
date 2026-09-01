@@ -128,6 +128,8 @@ export function useKonvaImage(url: string | null): HTMLImageElement | undefined 
   const epoch = useSyncExternalStore(subscribeImageEpoch, getImageEpoch, getServerImageEpoch)
   useEffect(() => {
     if (!url) {
+      // Synchronises with an external system (network / offline queue / asset loading).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setImg(undefined)
       return
     }
@@ -232,6 +234,8 @@ export function useTrimmedLogo(url: string | null): TrimmedLogo | undefined {
   )
   useEffect(() => {
     if (!url || !img) {
+      // Synchronises with an external system (network / offline queue / asset loading).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTrimmed(undefined)
       return
     }

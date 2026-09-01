@@ -27,6 +27,10 @@ export default function StaffGpsPage() {
   const [countdown, setCountdown] = useState(10)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  function clearTimer() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+  }
+
   // When user comes back from Safari after granting, re-check permission
   useEffect(() => {
     const onFocus = () => {
@@ -40,10 +44,6 @@ export default function StaffGpsPage() {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [state])
-
-  function clearTimer() {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
-  }
 
   // Fire the geolocation request — on iOS standalone the dialog appears in Safari
   function requestGps() {

@@ -25,6 +25,8 @@ export default function SetPasswordPage() {
     // Recovery flow arrives via auth/callback with ?mode=recovery (no hash tokens needed)
     const mode = new URLSearchParams(window.location.search).get('mode')
     if (mode === 'recovery') {
+      // Reads the credentials the auth provider left in the URL, which only exist in the browser.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFlowType('recovery')
       setSessionReady(true)
       return

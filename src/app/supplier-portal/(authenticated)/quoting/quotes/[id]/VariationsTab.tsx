@@ -77,6 +77,8 @@ function VODescriptionInput({ value, onChange, onSelect, portalAccountId, bg = S
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // Drives a timer; synchronising with an external system is what an effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (value.length < 2) { setSuggestions([]); setOpen(false); return }
     const t = setTimeout(async () => {
       const { data } = await supabase
@@ -174,6 +176,8 @@ export function VariationsTab({ quoteId, portalAccountId, initialVOs, initialCla
 
   // Sync contact fields when client changes on the quote
   useEffect(() => {
+    // Resets local state when the value it was seeded from changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVOSentToName(client?.client_name ?? '')
     setVOSentToEmail(client?.email ?? '')
   }, [client?.id]) // eslint-disable-line

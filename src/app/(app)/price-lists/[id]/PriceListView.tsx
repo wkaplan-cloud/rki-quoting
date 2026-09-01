@@ -255,6 +255,8 @@ export function PriceListView({ priceListId, canEdit = false, isGlobal = true }:
     const q = search.trim()
 
     if (q.length < 2 && !browseWhenEmpty) {
+      // Drives a timer; synchronising with an external system is what an effect is for.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setItems([])
       return
     }

@@ -206,14 +206,6 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     setMatOrders(prev => prev.filter(o => o.id !== orderId))
   }
 
-  // Auto-save report when navigating away from it
-  useEffect(() => {
-    if (prevTab.current === 'report' && tab !== 'report') {
-      void autoSaveReport()
-    }
-    prevTab.current = tab
-  }, [tab]) // eslint-disable-line
-
   async function autoSaveReport() {
     setAutoSaving(true)
     try {
@@ -232,6 +224,16 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     } catch {}
     setAutoSaving(false)
   }
+
+  // Auto-save report when navigating away from it
+  useEffect(() => {
+    if (prevTab.current === 'report' && tab !== 'report') {
+      // Synchronises with an external system (network / offline queue / asset loading).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void autoSaveReport()
+    }
+    prevTab.current = tab
+  }, [tab]) // eslint-disable-line
 
   async function handleMarkComplete() {
     setCompleting(true)

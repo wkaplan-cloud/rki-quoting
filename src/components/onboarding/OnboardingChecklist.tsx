@@ -30,6 +30,8 @@ export function OnboardingChecklist({ hasClients, hasSuppliers, hasProjects, has
       localStorage.setItem('qh-checklist-dismissed', '1')
       return
     }
+    // Restores a value from browser storage, which only exists after mount — reading it during render would not match the server-rendered HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!localStorage.getItem('qh-checklist-dismissed')) setVisible(true)
   }, [allDone])
 

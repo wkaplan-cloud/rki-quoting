@@ -30,6 +30,8 @@ export function SlidePanel() {
 
   useEffect(() => {
     const saved = Number(localStorage.getItem(PANEL_KEY))
+    // Restores a value from browser storage, which only exists after mount — reading it during render would not match the server-rendered HTML.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved >= MIN_W && saved <= MAX_W) setWidth(saved)
   }, [])
 

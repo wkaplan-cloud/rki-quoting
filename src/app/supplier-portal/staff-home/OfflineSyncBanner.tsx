@@ -21,6 +21,8 @@ export function OfflineSyncBanner({ onSynced }: Props) {
 
   // Read queue on mount and whenever the component re-renders
   useEffect(() => {
+    // Synchronises with an external system (network / offline queue / asset loading).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPending(pendingCount())
   }, [])
 
@@ -43,6 +45,8 @@ export function OfflineSyncBanner({ onSynced }: Props) {
     const handler = () => { if (pendingCount() > 0) void sync() }
     window.addEventListener('online', handler)
     // Also try immediately in case we're already online with a backlog
+    // Synchronises with an external system (network / offline queue / asset loading).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (navigator.onLine && pendingCount() > 0) void sync()
     return () => window.removeEventListener('online', handler)
   }, [sync])

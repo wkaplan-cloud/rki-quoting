@@ -179,27 +179,27 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
 
   useEffect(() => {
     if (!siteKey) return
-    function render() {
-      if (!widgetRef.current || !(window as any).turnstile) return
+    const render = () => {
+      if (!widgetRef.current || !window.turnstile) return
       if (widgetId.current != null) return
-      widgetId.current = (window as any).turnstile.render(widgetRef.current, { sitekey: siteKey, theme: 'light' })
+      widgetId.current = window.turnstile.render(widgetRef.current, { sitekey: siteKey, theme: 'light' })
     }
-    if ((window as any).turnstile) { render() }
+    if (window.turnstile) { render() }
     else {
-      const prev = (window as any).onloadTurnstileCallback
-      ;(window as any).onloadTurnstileCallback = () => { render(); if (prev) prev() }
+      const prev = window.onloadTurnstileCallback
+      ;window.onloadTurnstileCallback = () => { render(); if (prev) prev() }
     }
     return () => {
-      if (widgetId.current != null && (window as any).turnstile) {
-        (window as any).turnstile.remove(widgetId.current)
+      if (widgetId.current != null && window.turnstile) {
+        window.turnstile.remove(widgetId.current)
         widgetId.current = null
       }
     }
   }, [siteKey])
 
   useEffect(() => {
-    if (error && siteKey && (window as any).turnstile && widgetId.current != null) {
-      (window as any).turnstile.reset(widgetId.current)
+    if (error && siteKey && window.turnstile && widgetId.current != null) {
+      window.turnstile.reset(widgetId.current)
     }
   }, [error, siteKey])
 
@@ -211,8 +211,11 @@ function RegisterForm({ category, onBack }: { category: Category; onBack: () => 
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     if (!tcAccepted) { setError('Please accept the terms and conditions to continue'); return }
 
-    const cfToken = siteKey && widgetId.current != null
-      ? (window as any).turnstile.getResponse(widgetId.current)
+    // window.turnstile is absent if the script failed to load; without this
+    // guard the call throws and the form dies silently instead of showing
+    // "Please complete the security check."
+    const cfToken = siteKey && widgetId.current != null && window.turnstile
+      ? window.turnstile.getResponse(widgetId.current)
       : undefined
     if (siteKey && !cfToken) { setError('Please complete the security check.'); return }
 

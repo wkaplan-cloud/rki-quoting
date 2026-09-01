@@ -15,6 +15,8 @@ export default function ImpersonateCallbackPage() {
     const refresh_token = params.get('refresh_token')
 
     if (!access_token || !refresh_token) {
+      // Reads the credentials the auth provider left in the URL, which only exist in the browser.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(true)
       return
     }

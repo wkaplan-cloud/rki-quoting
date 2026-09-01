@@ -39,6 +39,8 @@ function ElapsedTimer({ running }: { running: boolean }) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   useEffect(() => {
     if (running) {
+      // Drives a timer; synchronising with an external system is what an effect is for.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsed(0)
       intervalRef.current = setInterval(() => setElapsed(s => s + 1), 1000)
     } else {

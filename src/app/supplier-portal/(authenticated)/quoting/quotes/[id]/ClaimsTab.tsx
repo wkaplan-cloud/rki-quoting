@@ -1036,6 +1036,8 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
 
   useEffect(() => {
     if (extraClaims.length === 0) return
+    // Resets local state when the value it was seeded from changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setClaims(prev => {
       const existingIds = new Set(prev.map(c => c.id))
       const newOnes = extraClaims.filter(c => !existingIds.has(c.id))
