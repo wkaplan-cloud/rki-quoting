@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Search, ImageOff, Plus, Pencil, X, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { useNow } from '@/lib/useNow'
 
 interface PriceListItem {
   id: string
@@ -27,6 +28,7 @@ interface StockInfo {
 }
 
 function StockBadge({ productId }: { productId: string }) {
+  const now = useNow()
   const [stock, setStock] = useState<StockInfo | null>(null)
 
   useEffect(() => {
@@ -39,7 +41,7 @@ function StockBadge({ productId }: { productId: string }) {
   if (!stock) return null
 
   const transitDays = stock.transitDate
-    ? Math.ceil((new Date(stock.transitDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    ? Math.ceil((new Date(stock.transitDate).getTime() - now) / (24 * 60 * 60 * 1000))
     : null
   const transitIsNextDay = transitDays != null && transitDays <= 1
   const localQty = (stock.localQty ?? 0) + (transitIsNextDay && stock.transitQty ? stock.transitQty : 0)
@@ -53,12 +55,12 @@ function StockBadge({ productId }: { productId: string }) {
       )}
       {showTransit && (
         <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-          {stock.transitQty!.toLocaleString()}m — in transit (~{Math.ceil((new Date(stock.transitDate!).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000))}w)
+          {stock.transitQty!.toLocaleString()}m — in transit (~{Math.ceil((new Date(stock.transitDate!).getTime() - now) / (7 * 24 * 60 * 60 * 1000))}w)
         </span>
       )}
       {!showLocal && !showTransit && stock.maxLeadTimeDate && (
         <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-          ~{Math.max(1, Math.ceil((new Date(stock.maxLeadTimeDate).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000)))}w lead time
+          ~{Math.max(1, Math.ceil((new Date(stock.maxLeadTimeDate).getTime() - now) / (7 * 24 * 60 * 60 * 1000)))}w lead time
         </span>
       )}
     </div>

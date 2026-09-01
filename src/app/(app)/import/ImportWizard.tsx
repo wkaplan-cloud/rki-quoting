@@ -591,7 +591,7 @@ function LinesImport({ supabase, projects: initialProjects, existingSuppliers, e
       {missingSuppliers.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded p-4 space-y-3">
           <div className="flex items-center gap-2 text-amber-700 text-sm font-medium">
-            <AlertTriangle size={15} /> These suppliers weren't found — create them?
+            <AlertTriangle size={15} /> These suppliers weren&apos;t found — create them?
           </div>
           <div className="space-y-2">
             {missingSuppliers.map((s, i) => (

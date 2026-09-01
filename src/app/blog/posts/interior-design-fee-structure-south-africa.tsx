@@ -88,7 +88,7 @@ export default function FeeStructureSouthAfrica() {
 
       <h2>How to include fees in a professional quotation</h2>
       <p>
-        However you structure your fees, they must be clearly itemised in your quotation. Avoid a single line like "Design fees — R45,000." Break it down:
+        However you structure your fees, they must be clearly itemised in your quotation. Avoid a single line like &quot;Design fees — R45,000.&quot; Break it down:
       </p>
       <ul>
         <li>Concept and mood board development — R8,500</li>
@@ -122,7 +122,7 @@ export default function FeeStructureSouthAfrica() {
 
       <h3>Should I include my markup in the quotation or keep it confidential?</h3>
       <p>
-        This is a personal business decision, but transparency is increasingly expected by SA clients. The recommended approach is to disclose your markup policy in your letter of engagement upfront, rather than itemising the markup on every line of a quote. This is honest and avoids the awkward "I could have bought that myself" conversation mid-project.
+        This is a personal business decision, but transparency is increasingly expected by SA clients. The recommended approach is to disclose your markup policy in your letter of engagement upfront, rather than itemising the markup on every line of a quote. This is honest and avoids the awkward &quot;I could have bought that myself&quot; conversation mid-project.
       </p>
 
       <h3>How do I raise my rates without losing clients?</h3>

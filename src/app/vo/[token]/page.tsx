@@ -207,7 +207,7 @@ export default function VOApprovalPage() {
               {company.company_name ?? 'The contractor'} has been notified.
             </p>
             {vo.rejection_notes && (
-              <p className="text-sm mt-2 italic" style={{ color: S.muted }}>"{vo.rejection_notes}"</p>
+              <p className="text-sm mt-2 italic" style={{ color: S.muted }}>&quot;{vo.rejection_notes}&quot;</p>
             )}
           </div>
         ) : isAlreadyActioned ? (

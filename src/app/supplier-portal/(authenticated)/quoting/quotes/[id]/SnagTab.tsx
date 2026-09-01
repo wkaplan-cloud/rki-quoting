@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Upload, FileText, Loader2, X, Download } from 'lucide-react'
+import { uniqueUploadPathNamed } from '@/lib/upload-path'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -42,7 +43,7 @@ export function SnagTab({ quoteId, portalAccountId }: Props) {
     if (!files || files.length === 0) return
     setUploading(true); setError('')
     for (const file of Array.from(files)) {
-      const path = `snag-docs/${portalAccountId}/${quoteId}/${Date.now()}-${file.name}`
+      const path = uniqueUploadPathNamed(`snag-docs/${portalAccountId}/${quoteId}`, file.name)
       const { error: uploadErr } = await supabase.storage
         .from('job-card-photos')
         .upload(path, file, { contentType: file.type, upsert: false })

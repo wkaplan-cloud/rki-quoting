@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
     const startTime     = Date.now()
     let totalFetched    = 0
     let added           = 0
-    let batch: Record<string, unknown>[] = []
+    const batch: Record<string, unknown>[] = []
     let timedOut        = false
     let resumeToken: string | null = null
 

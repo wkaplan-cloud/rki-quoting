@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Clock, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
+import { useNow } from '@/lib/useNow'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', bg: '#F5F7F9' }
 
@@ -53,6 +54,7 @@ function ageColor(days: number) {
 interface Props { data: DashData | null; companyName: string }
 
 export function MfgDashboardClient({ data, companyName }: Props) {
+  const now = useNow()
   const router = useRouter()
 
   if (!data) return (
@@ -175,7 +177,7 @@ export function MfgDashboardClient({ data, companyName }: Props) {
             <p className="text-xs text-center py-8" style={{ color: S.muted }}>No outstanding invoices</p>
           ) : (
             recentInvoices.map((inv, idx) => {
-              const overdueDays = inv.due_date ? Math.floor((Date.now() - new Date(inv.due_date).getTime()) / 86400000) : null
+              const overdueDays = inv.due_date ? Math.floor((now - new Date(inv.due_date).getTime()) / 86400000) : null
               const balance = inv.total - inv.amount_paid
               return (
                 <div key={inv.id} onClick={() => router.push('/supplier-portal/manufacturing/invoices')}

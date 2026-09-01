@@ -81,7 +81,7 @@ export default function VatOnInteriorDesignSouthAfrica() {
         Once you are VAT-registered, your invoices are legally required to be tax invoices — not just receipts or payment requests. A valid South African tax invoice must include:
       </p>
       <ul>
-        <li>The words <strong>"Tax Invoice"</strong> clearly displayed</li>
+        <li>The words <strong>&quot;Tax Invoice&quot;</strong> clearly displayed</li>
         <li>Your business name and address</li>
         <li>Your <strong>VAT registration number</strong></li>
         <li>An invoice number (sequential)</li>

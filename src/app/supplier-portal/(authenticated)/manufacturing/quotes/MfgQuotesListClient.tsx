@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CopySlash, Archive, ArchiveRestore } from 'lucide-react'
 import type { MfgQuote, MfgClient } from '@/lib/mfg-types'
+import { useNow } from '@/lib/useNow'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
 
@@ -28,6 +29,7 @@ interface Props {
 }
 
 export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, showArchived = false }: Props) {
+  const now = useNow()
   const router = useRouter()
   const [quotes, setQuotes]             = useState<QuoteWithJob[]>(initialQuotes)
   const [search, setSearch]             = useState('')
@@ -86,11 +88,11 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
   }
 
   function daysSince(dateStr: string) {
-    return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000)
+    return Math.floor((now - new Date(dateStr).getTime()) / 86400000)
   }
 
   function daysUntil(dateStr: string) {
-    return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000)
+    return Math.ceil((new Date(dateStr).getTime() - now) / 86400000)
   }
 
   return (

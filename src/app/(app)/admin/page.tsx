@@ -55,6 +55,8 @@ export default async function AdminPage() {
 
   const [{ data: members }, { data: auditLogs }, { data: settings }, { data: allProjects }] = await Promise.all([
     supabaseAdmin.from('org_members').select('id, user_id, invited_email, full_name, role, status, invited_at, joined_at').eq('org_id', orgId).order('invited_at'),
+    // Server component: renders once per request, so reading the clock here is stable by construction.
+    // eslint-disable-next-line react-hooks/purity
     supabaseAdmin.from('audit_logs').select('id, user_email, action, table_name, record_id, old_data, new_data, created_at').eq('org_id', orgId).gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(200),
     supabase.from('settings').select('*').maybeSingle(),
     supabase.from('projects')

@@ -28,6 +28,8 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
     .single()
 
   // Last 30 days punches + assigned job cards + clients + today's scheduled jobs
+  // Server component: renders once per request, so reading the clock here is stable by construction.
+  // eslint-disable-next-line react-hooks/purity
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
   const todayStr = todaySA()
 

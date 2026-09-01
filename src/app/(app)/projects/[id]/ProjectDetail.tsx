@@ -1231,7 +1231,7 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                             <span className="text-[#2C2C2A]">{a.client_name}</span>
                           )}
                           {a.comment && (
-                            <p className="text-xs text-[#5C5A55] mt-0.5 leading-relaxed italic">"{a.comment}"</p>
+                            <p className="text-xs text-[#5C5A55] mt-0.5 leading-relaxed italic">&quot;{a.comment}&quot;</p>
                           )}
                         </div>
                         <span className="text-[#C4BFB5] text-xs shrink-0">

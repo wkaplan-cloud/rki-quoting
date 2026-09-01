@@ -56,17 +56,17 @@ export default function HowToWriteQuotation() {
         <li>Sundries and consumables</li>
       </ul>
       <p>
-        Avoid vague line items like "lounge furniture — R45,000." Break it down. Clients who can see exactly what they are paying for are far less likely to dispute the quote later.
+        Avoid vague line items like &quot;lounge furniture — R45,000.&quot; Break it down. Clients who can see exactly what they are paying for are far less likely to dispute the quote later.
       </p>
 
       <h3>5. Subtotal, VAT, and total</h3>
       <p>
-        Show a clear subtotal before VAT, then the VAT amount separately, then the grand total. If you are not VAT-registered, state that explicitly: "No VAT applicable — not VAT registered." Never leave it ambiguous.
+        Show a clear subtotal before VAT, then the VAT amount separately, then the grand total. If you are not VAT-registered, state that explicitly: &quot;No VAT applicable — not VAT registered.&quot; Never leave it ambiguous.
       </p>
 
       <h3>6. Deposit requirements</h3>
       <p>
-        State upfront what deposit is required to confirm the order and begin procurement. Include the rand value, not just a percentage. For example: "50% deposit of R42,500 required to confirm order."
+        State upfront what deposit is required to confirm the order and begin procurement. Include the rand value, not just a percentage. For example: &quot;50% deposit of R42,500 required to confirm order.&quot;
       </p>
 
       <h3>7. Payment terms</h3>
@@ -115,7 +115,7 @@ export default function HowToWriteQuotation() {
 
       <h3>If you are not VAT-registered</h3>
       <p>
-        Businesses with taxable turnover below R1 million per year are not required to register for VAT. If this is you, do not charge VAT and state clearly on your quotation: "Prices exclude VAT — not a VAT vendor." This avoids confusion and any appearance of charging VAT you are not entitled to collect.
+        Businesses with taxable turnover below R1 million per year are not required to register for VAT. If this is you, do not charge VAT and state clearly on your quotation: &quot;Prices exclude VAT — not a VAT vendor.&quot; This avoids confusion and any appearance of charging VAT you are not entitled to collect.
       </p>
 
       <h2>Deposit terms: what is standard in South Africa?</h2>
@@ -145,7 +145,7 @@ export default function HowToWriteQuotation() {
       <h2>Common mistakes South African designers make on quotations</h2>
       <ol>
         <li><strong>Leaving VAT ambiguous.</strong> Always state explicitly whether prices include or exclude VAT, and whether you are VAT-registered.</li>
-        <li><strong>Vague line items.</strong> "Lounge furniture" is not a line item. Each piece needs its own line.</li>
+        <li><strong>Vague line items.</strong> &quot;Lounge furniture&quot; is not a line item. Each piece needs its own line.</li>
         <li><strong>No validity period.</strong> Without one, you are potentially committed to old prices indefinitely.</li>
         <li><strong>No deposit terms.</strong> Never begin procurement without a confirmed deposit in your account.</li>
         <li><strong>Calculation errors from spreadsheets.</strong> Manual spreadsheet quotes are prone to formula errors, especially when VAT is applied inconsistently across rows.</li>

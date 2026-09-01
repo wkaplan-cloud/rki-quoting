@@ -185,7 +185,7 @@ export default function TradesHubPage() {
             Built for how trade businesses actually run.
           </h2>
           <p className="text-[#8A877F] text-lg max-w-2xl mx-auto leading-relaxed mb-14">
-            Generic quoting tools aren't built for trade work. QuotingHub understands progress claims, compliance certificates, job cards, and the realities of running a field-based business in South Africa.
+            Generic quoting tools aren&apos;t built for trade work. QuotingHub understands progress claims, compliance certificates, job cards, and the realities of running a field-based business in South Africa.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
             {[

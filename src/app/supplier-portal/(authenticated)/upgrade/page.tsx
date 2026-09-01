@@ -144,7 +144,7 @@ function UpgradeContent() {
             <Zap size={14} style={{ color: S.gold, flexShrink: 0, marginTop: 1 }} />
             <div>
               <p className="text-xs font-semibold" style={{ color: S.text }}>Setup & Training — R2,500 once-off</p>
-              <p className="text-xs mt-0.5" style={{ color: S.muted }}>We'll onboard your team, configure staff devices, and walk you through the system.</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>We&apos;ll onboard your team, configure staff devices, and walk you through the system.</p>
             </div>
           </div>
           <a

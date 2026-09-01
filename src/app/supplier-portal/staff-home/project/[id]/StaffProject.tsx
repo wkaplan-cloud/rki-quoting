@@ -5,6 +5,7 @@ import { ArrowLeft, MapPin, Camera, Plus, X, Loader2, CheckCircle2, FileText, Tr
 import { createClient } from '@/lib/supabase/client'
 import { StaffBottomNav } from '../../StaffBottomNav'
 import type { ElecMaterialRequest } from '@/lib/elec-types'
+import { uniqueUploadPath } from '@/lib/upload-path'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -150,7 +151,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
     if (!files || files.length === 0) return
     setRUploading(true)
     const file = files[0]
-    const path = `reports/${portalAccountId}/${quote.id}/${Date.now()}.${file.name.split('.').pop()}`
+    const path = uniqueUploadPath(`reports/${portalAccountId}/${quote.id}`, file.name)
     const { error: uploadErr } = await supabase.storage.from('job-card-photos').upload(path, file, { contentType: file.type })
     if (!uploadErr) {
       const { data: { publicUrl } } = supabase.storage.from('job-card-photos').getPublicUrl(path)

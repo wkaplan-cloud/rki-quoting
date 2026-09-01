@@ -199,9 +199,9 @@ export function SubscribeClient({ trialExpired, daysLeft, userEmail, studioName,
 
         <p className="text-center text-xs text-[#8A877F]">
           Need help choosing?{' '}
-          <a href="/#contact" className="text-[#9A7B4F] hover:underline">
+          <Link href="/#contact" className="text-[#9A7B4F] hover:underline">
             Contact us
-          </a>
+          </Link>
         </p>
 
         {(isUpgrade || !trialExpired) && (

@@ -130,7 +130,7 @@ export function MasterThemePanel() {
             </div>
           ) : (
             <p className="text-[10px] text-[#8A877F] leading-relaxed">
-              Currently using your organisation logo. If it's not clear or high-res enough for print, upload a
+              Currently using your organisation logo. If it&apos;s not clear or high-res enough for print, upload a
               dedicated one for Studio below.
             </p>
           )}

@@ -190,7 +190,7 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
             const clockedAtMs  = clockedAt ? new Date(clockedAt).getTime() : 0
             const elapsedCap   = clockedAt ? get5pmSASTCutoff(new Date(clockedAt)).getTime() : 0
             const effectiveTo  = clockedAt
-              ? (clockedAtMs < elapsedCap ? Math.min(Date.now(), elapsedCap) : Date.now())
+              ? (clockedAtMs < elapsedCap ? Math.min(now.getTime(), elapsedCap) : now.getTime())
               : 0
             const elapsed      = clockedAt ? effectiveTo - clockedAtMs : 0
             const loc        = getLastLocation(todayPunches, s.id)
@@ -295,7 +295,7 @@ export function ClockingDashboardClient({ companyName, staff, todayPunches: init
       {todayPunches.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
           <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: 'rgba(30,42,56,0.03)' }}>
-            <p className="text-sm font-semibold" style={{ color: S.text }}>Today's activity</p>
+            <p className="text-sm font-semibold" style={{ color: S.text }}>Today&apos;s activity</p>
           </div>
           {[...todayPunches].sort((a, b) => new Date(b.punched_at).getTime() - new Date(a.punched_at).getTime()).slice(0, 20).map((p, i) => {
             const member = staff.find(s => s.id === p.staff_id)

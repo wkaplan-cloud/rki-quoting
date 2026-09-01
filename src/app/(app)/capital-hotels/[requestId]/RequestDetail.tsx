@@ -210,7 +210,7 @@ function PiecePicker({
                 )
               })}
               {filtered.length === 0 && (
-                <div className="px-5 py-8 text-center text-sm text-[#8A877F]">No pieces match <strong>"{search}"</strong></div>
+                <div className="px-5 py-8 text-center text-sm text-[#8A877F]">No pieces match <strong>&quot;{search}&quot;</strong></div>
               )}
             </div>
             <div className="px-5 py-4 border-t border-[#E8E4DC]">
@@ -229,7 +229,7 @@ function PiecePicker({
                 </div>
               ) : (
                 <button onClick={() => setShowAddNew(true)} className="w-full py-2.5 border-2 border-dashed border-[#D4CFC7] rounded-xl flex items-center justify-center gap-2 text-sm text-[#8A877F] hover:border-[#1B4F8A] hover:text-[#1B4F8A] transition-colors">
-                  <Plus size={15} /> This piece doesn't exist — add it
+                  <Plus size={15} /> This piece doesn&apos;t exist — add it
                 </button>
               )}
             </div>

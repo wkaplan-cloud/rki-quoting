@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { todaySA } from '@/lib/dates'
 import { Receipt, CheckCircle, AlertCircle, Plus, Trash2, X, Send, Check } from 'lucide-react'
 import type { MfgInvoice } from '@/lib/mfg-types'
+import { useNow } from '@/lib/useNow'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
 
@@ -21,6 +22,7 @@ interface PaymentForm { amount: string; payment_date: string; payment_method: st
 interface Props { initialInvoices: InvoiceWithJob[] }
 
 export function MfgInvoicesClient({ initialInvoices }: Props) {
+  const now = useNow()
   const [invoices, setInvoices] = useState<InvoiceWithJob[]>(initialInvoices)
   const [search, setSearch]     = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -47,7 +49,7 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
 
   function daysDue(dateStr: string | null) {
     if (!dateStr) return null
-    return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000)
+    return Math.ceil((new Date(dateStr).getTime() - now) / 86400000)
   }
 
   async function loadPayments(invoiceId: string) {

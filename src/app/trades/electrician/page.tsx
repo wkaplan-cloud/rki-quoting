@@ -258,7 +258,7 @@ export default function ElectricianLandingPage() {
                   Digital COC.<br />No more paper forms.
                 </h2>
                 <p className="text-white/60 text-lg leading-relaxed mb-6 max-w-lg">
-                  Complete your Certificate of Compliance digitally — supply authority, earthing, test results, tester registration, and client details. Send the signed COC as a professional PDF straight to the client's inbox.
+                  Complete your Certificate of Compliance digitally — supply authority, earthing, test results, tester registration, and client details. Send the signed COC as a professional PDF straight to the client&apos;s inbox.
                 </p>
                 <ul className="space-y-3 mb-8">
                   {[

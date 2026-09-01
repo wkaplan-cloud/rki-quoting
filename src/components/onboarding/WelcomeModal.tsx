@@ -46,7 +46,7 @@ export function WelcomeModal() {
 
         <h1 className="font-serif text-2xl text-[#1A1A18] text-center mb-2">Welcome to QuotingHub</h1>
         <p className="text-sm text-[#8A877F] text-center mb-8 leading-relaxed">
-          Here's how the whole system works — three steps and you're quoting.
+          Here&apos;s how the whole system works — three steps and you&apos;re quoting.
         </p>
 
         <div className="space-y-6 mb-8">

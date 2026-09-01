@@ -17,6 +17,8 @@ function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string
   }
   if (status === 'trialing') {
     const days = trialEndsAt
+      // Server component: renders once per request, so reading the clock here is stable by construction.
+      // eslint-disable-next-line react-hooks/purity
       ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
       : 0
     const expired = days === 0
@@ -145,6 +147,8 @@ export default async function StudiosPage() {
 
   const welcomeSentOrgIds = new Set((welcomeSentData ?? []).map(r => r.org_id))
 
+  // Server component: renders once per request, so reading the clock here is stable by construction.
+  // eslint-disable-next-line react-hooks/purity
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000)
 
   const enriched = (orgs ?? []).map(org => {
@@ -175,6 +179,8 @@ export default async function StudiosPage() {
   const activeCount = activeStudios.filter(o => o.subscription_status === 'active').length
   const expiredCount = activeStudios.filter(o => {
     if (o.subscription_status !== 'trialing') return false
+    // Server component: renders once per request, so reading the clock here is stable by construction.
+    // eslint-disable-next-line react-hooks/purity
     const days = o.trial_ends_at ? Math.max(0, Math.ceil((new Date(o.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0
     return days === 0
   }).length

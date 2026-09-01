@@ -52,6 +52,8 @@ function getFeeStatus(projectStatus: string | null): 'unlinked' | 'pending' | 'd
 }
 
 export default async function PlatformSourcingPage() {
+  // Server component: renders once per request, so reading the clock here is stable by construction.
+  // eslint-disable-next-line react-hooks/purity
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
   const now = new Date()
   const monthLabel = now.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' })

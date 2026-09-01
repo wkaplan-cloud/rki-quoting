@@ -271,7 +271,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
           <div className="flex items-center justify-between py-1">
             <div>
               <p className="text-xs font-semibold" style={{ color: S.text }}>BCC admin team on quotes</p>
-              <p className="text-xs mt-0.5" style={{ color: S.muted }}>All team members are BCC'd on every quote you send</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>All team members are BCC&apos;d on every quote you send</p>
             </div>
             <button
               onClick={() => setBccAdmins(v => !v)}

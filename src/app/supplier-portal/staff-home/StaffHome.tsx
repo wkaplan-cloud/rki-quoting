@@ -852,7 +852,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
                     <div className="rounded-2xl py-16 text-center" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                       <ClipboardCheck size={28} className="mx-auto mb-3" style={{ color: S.muted }} />
                       <p className="font-semibold text-sm mb-1" style={{ color: S.text }}>No inspections yet</p>
-                      <p className="text-xs" style={{ color: S.muted }}>Start a COC inspection while you're on site</p>
+                      <p className="text-xs" style={{ color: S.muted }}>Start a COC inspection while you&apos;re on site</p>
                     </div>
                   ) : (
                     <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
@@ -1020,7 +1020,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           onClick={e => { if (e.target === e.currentTarget) setShowSignOutConfirm(false) }}>
           <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: S.card }}>
             <p className="font-bold text-base mb-1.5" style={{ color: S.text }}>Sign out?</p>
-            <p className="text-sm mb-5" style={{ color: S.muted }}>You'll need to log in again to clock in or access your jobs.</p>
+            <p className="text-sm mb-5" style={{ color: S.muted }}>You&apos;ll need to log in again to clock in or access your jobs.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowSignOutConfirm(false)}

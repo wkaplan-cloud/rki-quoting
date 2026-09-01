@@ -18,6 +18,8 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
   if (!request) notFound()
 
   const objectIds = (request.object_ids as string[]) ?? []
+  // Server component: renders once per request, so reading the clock here is stable by construction.
+  // eslint-disable-next-line react-hooks/purity
   const expired = new Date(request.expires_at).getTime() < Date.now()
 
   const [{ data: settings }, { data: board }, { data: specRows }, { data: slideRows }, { data: existing }] =

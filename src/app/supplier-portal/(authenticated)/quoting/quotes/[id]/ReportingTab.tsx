@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Camera, Loader2, AlertTriangle, TrendingDown } from 'lucide-react'
+import { uniqueUploadPath } from '@/lib/upload-path'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -61,7 +62,7 @@ export function ReportingTab({ quoteId, portalAccountId }: Props) {
     if (!files || files.length === 0) return
     setUploading(true)
     const file = files[0]
-    const path = `reports/${portalAccountId}/${quoteId}/${Date.now()}.${file.name.split('.').pop()}`
+    const path = uniqueUploadPath(`reports/${portalAccountId}/${quoteId}`, file.name)
     const { error: uploadErr } = await supabase.storage.from('job-card-photos').upload(path, file, { contentType: file.type })
     if (!uploadErr) {
       const { data: { publicUrl } } = supabase.storage.from('job-card-photos').getPublicUrl(path)

@@ -22,7 +22,7 @@ export default async function SupplierPortalLayout({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/supplier-portal/login')
 
-  let account = await resolvePortalAccount(user.id)
+  const account = await resolvePortalAccount(user.id)
 
   // Staff member: redirect to staff view
   if (!account) {

@@ -57,7 +57,7 @@ export default function QuotationTemplateSouthAfrica() {
         This is the core of your template. Use a table with at minimum four columns: <strong>Description, Quantity, Unit Price, Line Total</strong>. Optionally add a Supplier or Reference column.
       </p>
       <p>
-        Every item should have its own row. Avoid grouped lines like "Lounge furniture — R58,000." Instead:
+        Every item should have its own row. Avoid grouped lines like &quot;Lounge furniture — R58,000.&quot; Instead:
       </p>
       <ul>
         <li>3-seater sofa (ref: TL-204, fabric: Warwick Tusk) — 1 × R18,500 = R18,500</li>
@@ -72,7 +72,7 @@ export default function QuotationTemplateSouthAfrica() {
       <p>Your totals section must clearly show:</p>
       <ul>
         <li><strong>Subtotal (excl. VAT)</strong></li>
-        <li><strong>VAT at 15%</strong> — or "No VAT — not a VAT vendor" if not registered</li>
+        <li><strong>VAT at 15%</strong> — or &quot;No VAT — not a VAT vendor&quot; if not registered</li>
         <li><strong>Total (incl. VAT)</strong></li>
       </ul>
       <p>
@@ -81,7 +81,7 @@ export default function QuotationTemplateSouthAfrica() {
 
       <h3>Deposit and payment terms</h3>
       <p>
-        State the deposit as a rand amount, not just a percentage. Example: "A 50% deposit of <strong>R34,250</strong> is required to confirm this order and begin procurement." This avoids any calculation confusion.
+        State the deposit as a rand amount, not just a percentage. Example: &quot;A 50% deposit of <strong>R34,250</strong> is required to confirm this order and begin procurement.&quot; This avoids any calculation confusion.
       </p>
       <p>Standard SA deposit structures:</p>
       <ul>
@@ -98,17 +98,17 @@ export default function QuotationTemplateSouthAfrica() {
         Two lines that are frequently missing from SA designer quotes — and frequently cause problems when they are:
       </p>
       <ul>
-        <li>"This quotation is valid for 30 days from the date of issue. After [expiry date], prices are subject to change."</li>
-        <li>A signature block: "I/We accept the above quotation. Signed: _______ Date: _______"</li>
+        <li>&quot;This quotation is valid for 30 days from the date of issue. After [expiry date], prices are subject to change.&quot;</li>
+        <li>A signature block: &quot;I/We accept the above quotation. Signed: _______ Date: _______&quot;</li>
       </ul>
       <p>
-        Many SA designers now accept written email confirmation in lieu of a physical signature. If you do this, state it in your terms: "Written email confirmation of acceptance constitutes agreement to these terms."
+        Many SA designers now accept written email confirmation in lieu of a physical signature. If you do this, state it in your terms: &quot;Written email confirmation of acceptance constitutes agreement to these terms.&quot;
       </p>
 
       <h2>Common template mistakes South African designers make</h2>
       <ul>
         <li><strong>No VAT clarification.</strong> Whether you charge VAT or not, it must be stated explicitly.</li>
-        <li><strong>Grouped line items.</strong> "Bedroom furniture" without a breakdown invites renegotiation.</li>
+        <li><strong>Grouped line items.</strong> &quot;Bedroom furniture&quot; without a breakdown invites renegotiation.</li>
         <li><strong>No unique quote number.</strong> You need this for your records, SARS, and follow-up communication.</li>
         <li><strong>No validity date.</strong> Without it, you may be held to old prices months later.</li>
         <li><strong>Deposit amount in % only.</strong> Always state the rand value too.</li>

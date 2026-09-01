@@ -178,7 +178,7 @@ export default function SignupPage() {
                 We sent a confirmation link to<br /><strong className="text-[#2C2C2A]">{email}</strong>
               </p>
               <p className="text-xs text-[#C4BFB5] leading-relaxed">
-                Click the link in the email to activate your account. Check your spam folder if you don't see it.
+                Click the link in the email to activate your account. Check your spam folder if you don&apos;t see it.
               </p>
               <Link href="/login" className="inline-block mt-4 text-sm text-[#9A7B4F] hover:underline">
                 Back to sign in →

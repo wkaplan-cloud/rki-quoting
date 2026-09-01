@@ -23,6 +23,8 @@ export default async function SubscribePage() {
 
   const trialEndsAt = org?.trial_ends_at ? new Date(org.trial_ends_at) : null
   const daysLeft = trialEndsAt
+    // Server component: renders once per request, so reading the clock here is stable by construction.
+    // eslint-disable-next-line react-hooks/purity
     ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / 86400000))
     : 0
   const trialExpired = !isActive && daysLeft === 0

@@ -18,6 +18,8 @@ export default async function StaffPage() {
     redirect('/supplier-portal/upgrade')
   }
 
+  // Server component: renders once per request, so reading the clock here is stable by construction.
+  // eslint-disable-next-line react-hooks/purity
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const [{ data: staff }, { data: rawPunches }] = await Promise.all([

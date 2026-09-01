@@ -6,6 +6,7 @@ import {
   CheckCircle, Loader2, Plus, X, AlertCircle, ShieldCheck,
   Edit2, Receipt, BadgeCheck, FileText, ExternalLink,
 } from 'lucide-react'
+import { useNow } from '@/lib/useNow'
 
 const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   starter:      { label: 'Starter',      color: 'text-blue-400',    bg: 'bg-blue-500/15'    },
@@ -139,6 +140,7 @@ function PlanPanel({ accountId, initialPlan, initialStatus }: {
 
 // ── Admin Users Panel ──────────────────────────────────────────────────────────
 function AdminUsersPanel({ accountId, initial }: { accountId: string; initial: AdminMember[] }) {
+  const now = useNow()
   const [members, setMembers] = useState(initial)
   const [resending, setResending]   = useState<string | null>(null)
   const [deleting, setDeleting]     = useState<string | null>(null)
@@ -151,7 +153,7 @@ function AdminUsersPanel({ accountId, initial }: { accountId: string; initial: A
   const [inviteDone, setInviteDone]   = useState(false)
 
   function timeAgo(iso: string) {
-    const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+    const days = Math.floor((now - new Date(iso).getTime()) / 86400000)
     if (days === 0) return 'Today'; if (days === 1) return '1d ago'; return `${days}d ago`
   }
 
@@ -266,6 +268,7 @@ function AdminUsersPanel({ accountId, initial }: { accountId: string; initial: A
 type ExpandView = 'plan' | 'admins'
 
 export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRow[] }) {
+  const now = useNow()
   const [rows, setRows]       = useState(initialRows)
   const [expanded, setExpanded] = useState<Record<string, ExpandView | null>>({})
   const [activating, setActivating] = useState<string | null>(null)
@@ -333,7 +336,7 @@ export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRo
         const statusInfo = SUB_STATUS[a.subscription_status ?? 'free'] ?? SUB_STATUS.free
         const planCfg    = PLAN_CONFIG[a.plan ?? 'free'] ?? PLAN_CONFIG.free
         const trialEnds  = a.trial_ends_at ? new Date(a.trial_ends_at) : null
-        const trialDaysLeft = trialEnds ? Math.max(0, Math.ceil((trialEnds.getTime() - Date.now()) / 86400000)) : null
+        const trialDaysLeft = trialEnds ? Math.max(0, Math.ceil((trialEnds.getTime() - now) / 86400000)) : null
         const isTrialExpired = trialEnds && trialEnds < new Date() && a.subscription_status === 'trialing'
         const pendingAdmins  = a.adminMembers.filter(m => !m.accepted_at).length
 

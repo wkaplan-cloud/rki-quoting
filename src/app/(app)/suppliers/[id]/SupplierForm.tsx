@@ -153,7 +153,7 @@ export function SupplierForm({ supplier, platformContact, orgPriceLists = [] }: 
             <span className="text-xs font-medium text-[#9A7B4F] uppercase tracking-wider">Platform Supplier</span>
           </div>
           <p className="text-sm text-[#8A877F]">
-            This supplier is managed by QuotingHub and is shared across all studios. The price list and supplier details are platform-wide — only your studio's rep contact details can be edited below.
+            This supplier is managed by QuotingHub and is shared across all studios. The price list and supplier details are platform-wide — only your studio&apos;s rep contact details can be edited below.
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div>
@@ -172,7 +172,7 @@ export function SupplierForm({ supplier, platformContact, orgPriceLists = [] }: 
         {/* Editable org contact */}
         <form onSubmit={savePlatformContact} className="space-y-5">
           <div>
-            <h3 className="text-sm font-semibold text-[#2C2C2A] mb-1">Your Studio's Settings</h3>
+            <h3 className="text-sm font-semibold text-[#2C2C2A] mb-1">Your Studio&apos;s Settings</h3>
             <p className="text-xs text-[#8A877F]">These details are specific to your studio and will be used when sending purchase orders to {supplier.supplier_name}.</p>
           </div>
           <div className="bg-[#9A7B4F]/8 border border-[#9A7B4F]/30 rounded p-4">

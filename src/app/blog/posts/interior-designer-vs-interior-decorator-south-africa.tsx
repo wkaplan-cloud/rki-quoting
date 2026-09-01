@@ -4,7 +4,7 @@ export default function DesignerVsDecoratorSouthAfrica() {
   return (
     <article className="prose-content">
       <p className="lead">
-        In South Africa, the terms "interior designer" and "interior decorator" are often used interchangeably — but they describe different roles, different qualifications, and in some contexts, different legal standing. If you are hiring or positioning yourself in the industry, understanding the distinction matters.
+        In South Africa, the terms &quot;interior designer&quot; and &quot;interior decorator&quot; are often used interchangeably — but they describe different roles, different qualifications, and in some contexts, different legal standing. If you are hiring or positioning yourself in the industry, understanding the distinction matters.
       </p>
 
       <h2>The core difference</h2>

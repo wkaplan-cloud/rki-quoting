@@ -5,6 +5,7 @@ import {
   CheckCircle, Loader2, Plus, X, AlertCircle, ShieldCheck, Edit2,
   Receipt, AlertTriangle, BadgeCheck, CreditCard, ExternalLink,
 } from 'lucide-react'
+import { useNow } from '@/lib/useNow'
 
 // ── Plan config ────────────────────────────────────────────────────────────────
 const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -418,6 +419,7 @@ function BillingPanel({ accountId }: { accountId: string }) {
 type ExpandView = 'plan' | 'admins' | 'billing'
 
 export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] }) {
+  const now = useNow()
   const [rows, setRows] = useState(initialRows)
   const [expanded, setExpanded] = useState<Record<string, ExpandView | null>>({})
   const [activating, setActivating] = useState<string | null>(null)
@@ -497,7 +499,7 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
         const statusInfo = SUB_STATUS[a.subscription_status ?? 'free'] ?? SUB_STATUS.free
         const planCfg    = PLAN_CONFIG[a.plan ?? 'free'] ?? PLAN_CONFIG.free
         const trialEnds  = a.trial_ends_at ? new Date(a.trial_ends_at) : null
-        const trialDaysLeft = trialEnds ? Math.max(0, Math.ceil((trialEnds.getTime() - Date.now()) / 86400000)) : null
+        const trialDaysLeft = trialEnds ? Math.max(0, Math.ceil((trialEnds.getTime() - now) / 86400000)) : null
         const isTrialExpired = trialEnds && trialEnds < new Date() && a.subscription_status === 'trialing'
         const pendingAdmins  = a.adminMembers.filter(m => !m.accepted_at).length
         const extraStaff     = Math.max(0, a.staffCount - STAFF_INCLUDED)

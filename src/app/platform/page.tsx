@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { unstable_cache } from 'next/cache'
+import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Building2, Users, FolderOpen, MessageSquare, TrendingUp, AlertTriangle, DollarSign, Activity, ArrowUpRight, Zap } from 'lucide-react'
 
@@ -164,7 +165,7 @@ export default async function PlatformDashboard() {
               <p className="text-sm text-rose-300">
                 <span className="font-semibold">{churnRiskOrgs.length} paid studio{churnRiskOrgs.length > 1 ? 's' : ''}</span> at churn risk — no project activity in 30+ days
               </p>
-              <a href="/platform/studios" className="ml-auto text-xs text-rose-400 hover:underline">View →</a>
+              <Link href="/platform/studios" className="ml-auto text-xs text-rose-400 hover:underline">View →</Link>
             </div>
           )}
           {expiringTrials.length > 0 && (
@@ -306,7 +307,7 @@ export default async function PlatformDashboard() {
                 </a>
               ))}
               {churnRiskOrgs.length > 3 && (
-                <a href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">+{churnRiskOrgs.length - 3} more →</a>
+                <Link href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">+{churnRiskOrgs.length - 3} more →</Link>
               )}
             </div>
           )}
@@ -348,7 +349,7 @@ export default async function PlatformDashboard() {
             <TrendingUp size={15} className="text-[#C4A46B]" />
             <h2 className="text-sm font-medium text-white">Recently joined studios</h2>
           </div>
-          <a href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">View all →</a>
+          <Link href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">View all →</Link>
         </div>
         <div className="divide-y divide-white/5">
           {recentStudios.length === 0 && (

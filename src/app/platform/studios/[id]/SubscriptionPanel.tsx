@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { CreditCard, FlaskConical } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
+import { useNow } from '@/lib/useNow'
 
 const PLAN_OPTIONS = [
   { value: 'trial', label: 'Trial' },
@@ -36,8 +37,9 @@ export function SubscriptionPanel({
   const [internal, setInternal] = useState(isInternal)
   const [saving, setSaving] = useState(false)
 
+  const now = useNow()
   const daysLeft = trialEndsAt
-    ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
+    ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - now) / 86400000))
     : 0
 
   async function save() {
