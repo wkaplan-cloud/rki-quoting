@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       if (member) assignedToName = member.full_name ?? member.invited_email?.split('@')[0] ?? null
     }
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       createElement(InstallationSheetPDF, {
         project,
         lineItems: lineItems ?? [],
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         businessName: settings?.business_name,
         printDate: new Date().toISOString(),
         assignedTo: assignedToName,
-      }) as any
+      })
     )
 
     return new NextResponse(new Uint8Array(buffer), {

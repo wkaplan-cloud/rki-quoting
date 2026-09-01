@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
@@ -45,14 +45,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const logoUrl = await fetchLogoBase64((account as { logo_url?: string }).logo_url)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(createElement(ElecCOCPDF, {
+    const buffer = await renderPdfToBuffer(createElement(ElecCOCPDF, {
       coc: coc as ElecCOC,
       quote: quoteRaw as ElecQuote,
       client: (client ?? null) as ElecClient | null,
       settings: (settings ?? null) as ElecSettings | null,
       companyName,
       logoUrl,
-    }) as any)
+    }))
 
     // Record send
     await supabaseAdmin

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createElement } from 'react'
 import sharp from 'sharp'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { RfqPDF, type RfqPdfItem } from '@/lib/pdf/RfqPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
@@ -229,7 +229,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         try {
           // Rendered per recipient (not per group) so the PDF's "To" line
           // names this supplier — nobody sees who else is pricing
-          const buffer = await renderToBuffer(createElement(RfqPDF, {
+          const buffer = await renderPdfToBuffer(createElement(RfqPDF, {
             businessName,
             logoUrl,
             boardName: board.name,
@@ -240,7 +240,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             printDate,
             items,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          }) as any)
+          }))
 
           const subject = `Request for quote — ${board.name}${clientName ? ` (${clientName})` : ''}`
           const filename = `${slug(businessName)}_RFQ_${slug(board.name)}.pdf`

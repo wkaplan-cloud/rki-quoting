@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
 
     const logoUrl = await fetchLogoBase64(settings?.logo_url)
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString(), assignedTo: assignedToName }) as any
+      createElement(ProductionPDF, { project, lineItems: lineItems ?? [], suppliers: suppliers ?? [], logoUrl, businessName: settings?.business_name, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, printDate: new Date().toISOString(), assignedTo: assignedToName })
     )
 
     return new NextResponse(new Uint8Array(buffer), {

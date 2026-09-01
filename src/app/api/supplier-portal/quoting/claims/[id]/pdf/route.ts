@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -118,7 +118,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const companyName = account.company_name ?? account.email ?? 'Company'
     const logoUrl = await fetchLogoBase64((account as any).logo_url)
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(ElecClaimPDF, {
         claim,
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         contractTotal,
         prevTotalClaimed,
         logoUrl,
-      }) as any
+      })
     )
 
     const titleWord = claim.claim_type === 'retention' ? 'Retention' : ['invoiced', 'paid'].includes(claim.status) ? 'Tax-Invoice' : 'Claim'

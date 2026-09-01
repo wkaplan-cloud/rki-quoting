@@ -48,8 +48,9 @@ const getDashboardData = unstable_cache(
     // Compute fees collectible without deep nesting:
     // accepted assignments → session items → sessions → filter by completed project IDs
     let totalFeeCollectible = 0
-    const acceptedItemIds = (acceptedWithPrices ?? []).map((a: any) => a.item_id).filter(Boolean) as string[]
-    const completedProjectIds = new Set((completedProjects ?? []).map((p: any) => p.id))
+    const accepted = (acceptedWithPrices ?? []) as unknown as AcceptedAssignmentRow[]
+    const acceptedItemIds = accepted.map(a => a.item_id).filter((id): id is string => Boolean(id))
+    const completedProjectIds = new Set(((completedProjects ?? []) as { id: string }[]).map(p => p.id))
 
     if (acceptedItemIds.length > 0) {
       const { data: itemStatuses } = await supabaseAdmin
@@ -58,16 +59,16 @@ const getDashboardData = unstable_cache(
         .in('id', acceptedItemIds)
 
       const completedItemIds = new Set<string>()
-      for (const item of itemStatuses ?? []) {
-        const session = Array.isArray((item as any).session) ? (item as any).session[0] : (item as any).session
+      for (const item of (itemStatuses ?? []) as unknown as SessionItemRow[]) {
+        const session = one(item.session)
         if (session?.project_id && completedProjectIds.has(session.project_id)) {
           completedItemIds.add(item.id)
         }
       }
 
-      for (const a of acceptedWithPrices ?? []) {
-        if (completedItemIds.has((a as any).item_id)) {
-          const resp = Array.isArray((a as any).response) ? (a as any).response[0] : (a as any).response
+      for (const a of accepted) {
+        if (a.item_id && completedItemIds.has(a.item_id)) {
+          const resp = one(a.response)
           totalFeeCollectible += (resp?.unit_price ?? 0) * 0.01
         }
       }
@@ -93,6 +94,38 @@ const getDashboardData = unstable_cache(
   { revalidate: 300 }
 )
 
+// Supabase types embedded rows as `object | object[]`, so these queries were
+// read through `as any`. Naming the shapes keeps the joins honest.
+type Embedded<T> = T | T[] | null
+
+/** Picks the single row out of a Supabase embed, which may arrive wrapped. */
+function one<T>(v: Embedded<T>): T | null {
+  return Array.isArray(v) ? (v[0] ?? null) : v
+}
+
+interface AcceptedAssignmentRow {
+  item_id: string | null
+  response: Embedded<{ unit_price: number | null }>
+}
+interface SessionItemRow {
+  id: string
+  session: Embedded<{ project_id: string | null }>
+}
+/** Mirrors the organizations select above — every column it asks for. */
+interface OrgRow {
+  id: string
+  name: string | null
+  plan: string | null
+  subscription_status: string | null
+  trial_ends_at: string | null
+  status: string | null
+  is_internal: boolean | null
+}
+interface OrgIdRow { org_id: string | null }
+
+/** The recent-signups list selects a different, narrower set of columns. */
+interface RecentStudioRow { id: string; name: string | null; created_at: string }
+
 export default async function PlatformDashboard() {
   const {
     studioCount, userCount, projectCount, unreadCount,
@@ -103,7 +136,7 @@ export default async function PlatformDashboard() {
   const now = new Date(nowIso)
 
   const activeOrgs = orgs.filter(o => o.status === 'active')
-  const billableOrgs = activeOrgs.filter(o => !(o as any).is_internal)
+  const billableOrgs = (activeOrgs as OrgRow[]).filter(o => !o.is_internal)
   const paidOrgs = billableOrgs.filter(o => o.subscription_status === 'active')
   const paidCount = paidOrgs.length
   const trialCount = billableOrgs.filter(o => o.subscription_status === 'trialing').length
@@ -137,10 +170,10 @@ export default async function PlatformDashboard() {
 
   const billableOrgIds = new Set(billableOrgs.map(o => o.id))
   const orgsWithSourcing = new Set(
-    sourcingOrgs.map((s: any) => s.org_id).filter((id: string) => billableOrgIds.has(id))
+    (sourcingOrgs as OrgIdRow[]).map(s => s.org_id).filter((id): id is string => !!id && billableOrgIds.has(id))
   )
   const orgsWithProjects = new Set(
-    allProjects.map((p: any) => p.org_id).filter((id: string) => billableOrgIds.has(id))
+    (allProjects as OrgIdRow[]).map(p => p.org_id).filter((id): id is string => !!id && billableOrgIds.has(id))
   )
   const totalActiveCount = billableOrgs.length || 1
   const sourcingAdoptionPct = Math.round((orgsWithSourcing.size / totalActiveCount) * 100)
@@ -181,7 +214,7 @@ export default async function PlatformDashboard() {
                   const daysLeft = Math.ceil((new Date(o.trial_ends_at!).getTime() - now.getTime()) / 86400000)
                   return (
                     <a key={o.id} href={`/platform/studios/${o.id}`} className="flex items-center justify-between text-sm text-amber-200/80 hover:text-amber-200 transition-colors">
-                      <span>{(o as any).name ?? 'Unnamed studio'}</span>
+                      <span>{o.name ?? 'Unnamed studio'}</span>
                       <span className="text-amber-400 font-medium tabular-nums">{daysLeft}d left</span>
                     </a>
                   )
@@ -355,7 +388,7 @@ export default async function PlatformDashboard() {
           {recentStudios.length === 0 && (
             <p className="px-5 py-6 text-sm text-white/30 text-center">No studios yet</p>
           )}
-          {recentStudios.map((studio: any) => (
+          {(recentStudios as RecentStudioRow[]).map(studio => (
             <a
               key={studio.id}
               href={`/platform/studios/${studio.id}`}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { POPDF } from '@/lib/pdf/POPDF'
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     const filename = `${slug(project.project_number)}_PO_${slug(supplier.supplier_name)}.pdf`
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       createElement(POPDF, {
         project,
         lineItems: items,
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         vatNumber: settings?.vat_number,
         companyReg: settings?.company_registration,
         printDate: new Date().toISOString(),
-      }) as any
+      })
     )
 
     const subject = `Purchase Order ${poNumber} – ${project.project_name}`

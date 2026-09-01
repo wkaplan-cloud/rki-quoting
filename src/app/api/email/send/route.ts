@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { todaySA } from '@/lib/dates'
 import { Resend } from 'resend'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       ),
     ])
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(QuotePDF, {
         project,
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
         leadTime: (settings as any)?.lead_time ?? null,
         itemImages,
         acceptance: resolveAcceptance(settings),
-      }) as any
+      })
     )
 
     const label = type === 'quote' ? 'Quotation' : 'Invoice'

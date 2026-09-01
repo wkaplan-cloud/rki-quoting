@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { todaySA } from '@/lib/dates'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
@@ -88,7 +88,7 @@ export async function GET(
 
     const logoUrl = await fetchLogoBase64(settings?.logo_url ?? null)
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(QuotePDF, {
         project: MOCK_PROJECT,
@@ -115,7 +115,7 @@ export async function GET(
         leadTime: settings?.lead_time ?? null,
         acceptance: resolveAcceptance(settings),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      }) as any)
+      }))
 
 
     return new NextResponse(new Uint8Array(buffer), {

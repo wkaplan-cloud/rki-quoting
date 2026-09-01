@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logoUrl     = await fetchLogoBase64(account.logo_url)
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(ElecSnagPDF, {
         quote,
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         companyName,
         companyEmail: account.email,
         logoUrl,
-      }) as any
+      })
     )
 
     const slug = quote.quote_number ?? quoteId

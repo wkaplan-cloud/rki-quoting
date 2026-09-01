@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
@@ -98,12 +98,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const logoUrl = await fetchLogoBase64((account as { logo_url?: string }).logo_url)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(createElement(ElecClaimPDF, {
+    const buffer = await renderPdfToBuffer(createElement(ElecClaimPDF, {
       claim, lineItems: lineItemsForPDF, sections: (sections ?? []) as ElecQuoteSection[],
       quote: quoteRaw as ElecQuote, client: (quoteClient ?? null) as ElecClient | null,
       settings: (settings ?? null) as ElecSettings | null,
       companyName, companyEmail: account.email, contractTotal, prevTotalClaimed, logoUrl,
-    }) as any)
+    }))
 
     // Advance to submitted if draft
     if (claim.status === 'draft') {

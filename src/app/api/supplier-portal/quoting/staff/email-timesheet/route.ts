@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     // Generate PDF
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(createElement(TimesheetPDF as any, { companyName, periodLabel, staffData }) as any)
+    const buffer = await renderPdfToBuffer(createElement(TimesheetPDF as any, { companyName, periodLabel, staffData }))
 
     const safeFilename = `Timesheet_${periodLabel.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
 

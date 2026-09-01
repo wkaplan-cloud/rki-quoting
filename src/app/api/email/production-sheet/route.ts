@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { ProductionPDF } from '@/lib/pdf/ProductionPDF'
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const replyToEmail = settings?.email_from?.trim() || user.email || ''
     const printDate = new Date().toISOString()
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       createElement(ProductionPDF, {
         project,
         lineItems: lineItems ?? [],
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         businessName,
         vatRate,
         printDate,
-      }) as any
+      })
     )
 
     const subject = `Job Cost Sheet – ${project.project_name} (${project.project_number})`

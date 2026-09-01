@@ -43,6 +43,62 @@ type JobCardRow = {
   total_charge: number
 }
 
+// ── Shapes of the three dashboard queries ─────────────────────────────────────
+// Written out rather than inferred because Supabase types embedded rows as
+// `object | object[]`, which is what all the `as any` casts here were dodging.
+// Declaring them means a column renamed in the select is caught at build time.
+
+interface ClaimRollupRow {
+  quote_id: string
+  period_month: string | null
+  claim_type: string | null
+  total_claimed: number | null
+  total_certified: number | null
+  total_invoiced: number | null
+  total_paid: number | null
+  status: string | null
+}
+
+interface QuoteLineItemRow {
+  quoted_quantity: number | null
+  quoted_unit_rate: number | null
+  labour_rate: number | null
+  as_built_quantity: number | null
+  as_built_unit_rate: number | null
+}
+
+interface VariationOrderRow { status: string | null; value: number | null }
+
+interface DashboardQuoteRow {
+  id: string
+  quote_number: string
+  project_name: string
+  status: string
+  contract_type: string | null
+  expected_completion_date: string | null
+  // Supabase returns an embedded row as an object or a one-element array
+  client: { client_name: string | null } | { client_name: string | null }[] | null
+  line_items: QuoteLineItemRow[] | null
+  variation_orders: VariationOrderRow[] | null
+}
+
+interface JobCardMaterialRow { qty: number | null; unit_price: number | null }
+
+interface DashboardJobCardRow {
+  id: string
+  job_number: string
+  title: string
+  status: string
+  job_type: string
+  client_name: string | null
+  scheduled_at: string | null
+  completed_at: string | null
+  callout_fee: number | null
+  labour_hours: number | null
+  labour_rate: number | null
+  materials: JobCardMaterialRow[] | null
+}
+
 export default async function QuotingDashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -96,34 +152,36 @@ export default async function QuotingDashboardPage() {
   const claimsByQuote: Record<string, { claimed: number; invoiced: number; paid: number }> = {}
   const reconMap: Record<string, ReconEntry> = {}
 
-  for (const c of claimsRaw ?? []) {
-    if ((c as any).status === 'draft' || (c as any).claim_type === 'retention') continue
-    const qid = (c as any).quote_id as string
-    if (!claimsByQuote[qid]) claimsByQuote[qid] = { claimed: 0, invoiced: 0, paid: 0 }
-    claimsByQuote[qid].claimed  += (c as any).total_claimed  ?? 0
-    claimsByQuote[qid].invoiced += (c as any).total_invoiced ?? 0
-    claimsByQuote[qid].paid     += (c as any).total_paid     ?? 0
+  const allClaimRows = (claimsRaw ?? []) as unknown as ClaimRollupRow[]
 
-    const month = (c as any).period_month as string
+  for (const c of allClaimRows) {
+    if (c.status === 'draft' || c.claim_type === 'retention') continue
+    const qid = c.quote_id
+    if (!claimsByQuote[qid]) claimsByQuote[qid] = { claimed: 0, invoiced: 0, paid: 0 }
+    claimsByQuote[qid].claimed  += c.total_claimed  ?? 0
+    claimsByQuote[qid].invoiced += c.total_invoiced ?? 0
+    claimsByQuote[qid].paid     += c.total_paid     ?? 0
+
+    const month = c.period_month
     if (month) {
       if (!reconMap[month]) reconMap[month] = { claimed: 0, certified: 0, invoiced: 0, paid: 0 }
-      reconMap[month].claimed   += (c as any).total_claimed   ?? 0
-      reconMap[month].certified += (c as any).total_certified ?? 0
-      reconMap[month].invoiced  += (c as any).total_invoiced  ?? 0
-      reconMap[month].paid      += (c as any).total_paid      ?? 0
+      reconMap[month].claimed   += c.total_claimed   ?? 0
+      reconMap[month].certified += c.total_certified ?? 0
+      reconMap[month].invoiced  += c.total_invoiced  ?? 0
+      reconMap[month].paid      += c.total_paid      ?? 0
     }
   }
 
   const reconMonths = Object.keys(reconMap).sort((a, b) => b.localeCompare(a)).slice(0, 12)
 
   // ── Quotes ────────────────────────────────────────────────────────────────
-  const quotes: QuoteRow[] = (quotesRaw ?? []).map((q: any) => {
+  const quotes: QuoteRow[] = ((quotesRaw ?? []) as unknown as DashboardQuoteRow[]).map(q => {
     const client = Array.isArray(q.client) ? q.client[0] : q.client
-    const lis: any[] = Array.isArray(q.line_items) ? q.line_items : []
-    const vos: any[] = Array.isArray(q.variation_orders) ? q.variation_orders : []
-    const contract_value = lis.reduce((s: number, li: any) =>
+    const lis = q.line_items ?? []
+    const vos = q.variation_orders ?? []
+    const contract_value = lis.reduce((s, li) =>
       s + (li.quoted_quantity ?? 0) * ((li.quoted_unit_rate ?? 0) + (li.labour_rate ?? 0)), 0)
-    const approved_vo_value = vos.filter((v: any) => v.status === 'approved').reduce((s: number, v: any) => s + (v.value ?? 0), 0)
+    const approved_vo_value = vos.filter(v => v.status === 'approved').reduce((s, v) => s + (v.value ?? 0), 0)
     const ct = claimsByQuote[q.id] ?? { claimed: 0, invoiced: 0, paid: 0 }
     return {
       id: q.id,
@@ -150,17 +208,17 @@ export default async function QuotingDashboardPage() {
   const completedValue = completed.reduce((s, q) => s + q.contract_value + q.approved_vo_value, 0)
 
   const year        = new Date().getFullYear().toString()
-  const allClaims   = (claimsRaw ?? []) as any[]
-  const paidYTD     = allClaims.filter(c => c.status !== 'draft' && (c.period_month as string)?.startsWith(year)).reduce((s, c) => s + (c.total_paid ?? 0), 0)
+  const allClaims   = allClaimRows
+  const paidYTD     = allClaims.filter(c => c.status !== 'draft' && c.period_month?.startsWith(year)).reduce((s, c) => s + (c.total_paid ?? 0), 0)
   const nonDraft    = allClaims.filter(c => c.status !== 'draft')
   const totalSent   = nonDraft.reduce((s, c) => s + (c.total_claimed ?? 0), 0)
   const totalPaid   = nonDraft.reduce((s, c) => s + (c.total_paid ?? 0), 0)
   const outstanding = totalSent - totalPaid
 
   // ── Job cards ─────────────────────────────────────────────────────────────
-  const jobCards: JobCardRow[] = (jobCardsRaw ?? []).map((jc: any) => {
-    const materials: any[] = Array.isArray(jc.materials) ? jc.materials : []
-    const materials_value = materials.reduce((s: number, m: any) => s + (m.qty ?? 0) * (m.unit_price ?? 0), 0)
+  const jobCards: JobCardRow[] = ((jobCardsRaw ?? []) as unknown as DashboardJobCardRow[]).map(jc => {
+    const materials = jc.materials ?? []
+    const materials_value = materials.reduce((s, m) => s + (m.qty ?? 0) * (m.unit_price ?? 0), 0)
     const labour_charge = (jc.labour_hours ?? 0) * (jc.labour_rate ?? 0)
     const total_charge = (jc.callout_fee ?? 0) + labour_charge + materials_value
     return {

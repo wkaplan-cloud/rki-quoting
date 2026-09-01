@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { JobCardPDF } from '@/lib/pdf/JobCardPDF'
@@ -102,14 +102,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       client_signature_url: signatureBase64 ?? jobCard.client_signature_url ?? null,
     }
 
-    const pdfBuffer = await renderToBuffer(
+    const pdfBuffer = await renderPdfToBuffer(
       createElement(JobCardPDF, {
         jobCard: card,
         companyName: account.company_name ?? '',
         settings: settings as ElecSettings | null,
         logoBase64,
         asInvoice: as_invoice ?? false,
-      }) as any
+      })
     )
 
     const now = new Date().toISOString()

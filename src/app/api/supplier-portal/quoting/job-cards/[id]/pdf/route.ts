@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const fullJobCard: ElecJobCard = { ...jobCard as ElecJobCard, materials: materials ?? [], photos: photos ?? [] }
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       createElement(JobCardPDF, {
         jobCard: fullJobCard,
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         settings: (settings ?? null) as ElecSettings | null,
         logoBase64,
         asInvoice: false,
-      }) as any
+      })
     )
 
     const filename = `${(jobCard as any).job_number}-JobCard.pdf`

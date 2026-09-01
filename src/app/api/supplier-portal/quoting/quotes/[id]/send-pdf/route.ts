@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { todaySA } from '@/lib/dates'
 import { Resend } from 'resend'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { ElecQuotePDF } from '@/lib/pdf/ElecQuotePDF'
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     // Generate PDF
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(createElement(ElecQuotePDF, {
+    const buffer = await renderPdfToBuffer(createElement(ElecQuotePDF, {
       quote: quoteRaw as ElecQuote,
       client: (client ?? null) as ElecClient | null,
       sections: (sections ?? []) as ElecQuoteSection[],
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       companyName,
       companyEmail: account.email,
       logoUrl,
-    }) as any)
+    }))
 
     const subtotal = (items ?? []).reduce((s, i) => {
       const item = i as ElecQuoteLineItem

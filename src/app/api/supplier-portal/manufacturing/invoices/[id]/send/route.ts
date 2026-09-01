@@ -1,7 +1,7 @@
 export const maxDuration = 60
 import { NextResponse } from 'next/server'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
 import { resolveMfgAuth } from '@/lib/mfg-auth'
@@ -83,7 +83,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfBuffer = await renderToBuffer(pdfElement as any)
+  const pdfBuffer = await renderPdfToBuffer(pdfElement as any)
   const filename = `${invoice.invoice_number}.pdf`
 
   const dueDateFormatted = invoice.due_date

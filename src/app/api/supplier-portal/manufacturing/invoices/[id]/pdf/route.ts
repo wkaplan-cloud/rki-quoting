@@ -1,7 +1,7 @@
 export const maxDuration = 60
 import { NextResponse } from 'next/server'
 import { createElement } from 'react'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
 import { resolveMfgAuth } from '@/lib/mfg-auth'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
@@ -75,7 +75,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buffer = await renderToBuffer(pdfElement as any)
+  const buffer = await renderPdfToBuffer(pdfElement as any)
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type':        'application/pdf',

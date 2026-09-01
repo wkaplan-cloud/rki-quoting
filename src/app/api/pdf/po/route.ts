@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { POPDF } from '@/lib/pdf/POPDF'
@@ -52,9 +52,9 @@ export async function GET(req: NextRequest) {
 
   const logoUrl = await fetchLogoBase64(settings?.logo_url)
 
-  const buffer = await renderToBuffer(
+  const buffer = await renderPdfToBuffer(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    createElement(POPDF, { project, lineItems, allLineItems: allLineItems ?? [], suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, printDate: new Date().toISOString(), platformContacts: platformContacts ?? [], themeKey: settings?.pdf_color_theme ?? 'warm' }) as any
+    createElement(POPDF, { project, lineItems, allLineItems: allLineItems ?? [], suppliers: suppliers ?? [], supplierId: supplierId ?? undefined, vatRate: project.vat_rate ?? settings?.vat_rate ?? 15, logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, printDate: new Date().toISOString(), platformContacts: platformContacts ?? [], themeKey: settings?.pdf_color_theme ?? 'warm' })
   )
 
     return new NextResponse(new Uint8Array(buffer), {

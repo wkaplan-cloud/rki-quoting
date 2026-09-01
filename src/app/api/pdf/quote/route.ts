@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { todaySA } from '@/lib/dates'
-import { renderToBuffer } from '@react-pdf/renderer'
+import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { QuotePDF } from '@/lib/pdf/QuotePDF'
@@ -40,9 +40,9 @@ export async function GET(req: NextRequest) {
       fetchLineItemImages(lineItems ?? [], (settings?.line_item_images_enabled ?? false) && (settings?.show_images_on_documents ?? true)),
     ])
 
-    const buffer = await renderToBuffer(
+    const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15, quotedDate, validityDays: settings?.quote_validity_days ?? 30, paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null, itemImages, acceptance: resolveAcceptance(settings) }) as any
+      createElement(QuotePDF, { project, client: project.client ?? null, lineItems: lineItems ?? [], type: 'quote', templateKey: settings?.pdf_template ?? 'minimal', themeKey: settings?.pdf_color_theme ?? 'warm', logoUrl, businessName: settings?.business_name, businessAddress: settings?.business_address, vatNumber: settings?.vat_number, companyReg: settings?.company_registration, bankName: settings?.bank_name, bankAccount: settings?.bank_account_number, bankBranch: settings?.bank_branch_code, footerText: settings?.footer_text, termsConditions: settings?.terms_conditions, depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50, vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15, quotedDate, validityDays: settings?.quote_validity_days ?? 30, paymentTerms: settings?.payment_terms ?? null, leadTime: settings?.lead_time ?? null, itemImages, acceptance: resolveAcceptance(settings) })
     )
 
     return new NextResponse(new Uint8Array(buffer), {
