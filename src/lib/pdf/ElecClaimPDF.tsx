@@ -91,6 +91,32 @@ export interface ElecClaimPDFProps {
   logoUrl?: string | null
 }
 
+// Declared at module scope: defined inside the component it was a new
+// component type on every render, remounting everything it drew.
+function LineRows({ list, indent = false }: { list: ClaimLineItemForPDF[]; indent?: boolean }) {
+  return (
+    <>
+      {list.map((li, i) => {
+        const cumulative = li.prev_claimed + li.this_claimed
+        return (
+          <View key={li.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
+            <Text style={[s.td, { flex: 1, paddingRight: 4, paddingLeft: indent ? 8 : 0 }]}>{li.description || '—'}</Text>
+            <Text style={[s.td, s.tdMuted, { width: 75, textAlign: 'right' }]}>{fmtR(li.contract_value)}</Text>
+            <Text style={[s.td, s.tdMuted, { width: 65, textAlign: 'right' }]}>{fmtR(li.prev_claimed)}</Text>
+            <Text style={[s.td, { width: 65, textAlign: 'right', color: ACCENT }]}>
+              {li.this_pct > 0 ? `${li.this_pct}%` : '—'}
+            </Text>
+            <Text style={[s.td, { width: 75, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: ACCENT }]}>
+              {fmtR(li.this_claimed)}
+            </Text>
+            <Text style={[s.td, { width: 75, textAlign: 'right' }]}>{fmtR(cumulative)}</Text>
+          </View>
+        )
+      })}
+    </>
+  )
+}
+
 export function ElecClaimPDF({
   claim, lineItems, sections, quote, client, settings, companyName, companyEmail, contractTotal, prevTotalClaimed, logoUrl,
 }: ElecClaimPDFProps) {
@@ -119,29 +145,6 @@ export function ElecClaimPDF({
     settings?.cidb_registration_number    ? `Lic: ${settings.cidb_registration_number}`    : null,
   ].filter(Boolean).join('  ·  ')
 
-  function LineRows({ list, indent = false }: { list: ClaimLineItemForPDF[]; indent?: boolean }) {
-    return (
-      <>
-        {list.map((li, i) => {
-          const cumulative = li.prev_claimed + li.this_claimed
-          return (
-            <View key={li.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
-              <Text style={[s.td, { flex: 1, paddingRight: 4, paddingLeft: indent ? 8 : 0 }]}>{li.description || '—'}</Text>
-              <Text style={[s.td, s.tdMuted, { width: 75, textAlign: 'right' }]}>{fmtR(li.contract_value)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: 65, textAlign: 'right' }]}>{fmtR(li.prev_claimed)}</Text>
-              <Text style={[s.td, { width: 65, textAlign: 'right', color: ACCENT }]}>
-                {li.this_pct > 0 ? `${li.this_pct}%` : '—'}
-              </Text>
-              <Text style={[s.td, { width: 75, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: ACCENT }]}>
-                {fmtR(li.this_claimed)}
-              </Text>
-              <Text style={[s.td, { width: 75, textAlign: 'right' }]}>{fmtR(cumulative)}</Text>
-            </View>
-          )
-        })}
-      </>
-    )
-  }
 
   return (
     <Document>

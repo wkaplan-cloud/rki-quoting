@@ -1015,6 +1015,22 @@ interface Props {
   sageConnected?: boolean
 }
 
+// Declared at module scope: defined inside the component it was a new
+// component type on every render, remounting everything it drew.
+function Breadcrumb({ label, onBack }: { label: string; onBack: () => void }) {
+  return (
+    <div className="flex items-center gap-2 mb-5">
+      <button onClick={onBack}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-75"
+        style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
+        <ChevronLeft size={14} /> Claims
+      </button>
+      <span style={{ color: S.border, fontSize: 18, lineHeight: 1, userSelect: 'none' }}>/</span>
+      <span className="text-sm font-semibold" style={{ color: S.text }}>{label}</span>
+    </div>
+  )
+}
+
 export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims = [], items, sections, contractTotal, approvedVOTotal = 0, contractType, retentionPct, client = null, sageConnected = false }: Props) {
   const [claims, setClaims] = useState<ClaimWithItems[]>(initialClaims)
 
@@ -1118,19 +1134,6 @@ export function ClaimsTab({ quoteId, portalAccountId, initialClaims, extraClaims
     setClaims(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c))
   }
 
-  function Breadcrumb({ label, onBack }: { label: string; onBack: () => void }) {
-    return (
-      <div className="flex items-center gap-2 mb-5">
-        <button onClick={onBack}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-75"
-          style={{ background: 'rgba(58,124,165,0.08)', color: S.accent }}>
-          <ChevronLeft size={14} /> Claims
-        </button>
-        <span style={{ color: S.border, fontSize: 18, lineHeight: 1, userSelect: 'none' }}>/</span>
-        <span className="text-sm font-semibold" style={{ color: S.text }}>{label}</span>
-      </div>
-    )
-  }
 
   if (view === 'new') {
     return (

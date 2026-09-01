@@ -87,15 +87,72 @@ interface Props {
   logoUrl?: string | null
 }
 
+// Pure per-item maths — module scope so the hoisted row components can use them
+const itemContractVal = (i: ElecQuoteLineItem) =>
+  i.quoted_quantity * i.quoted_unit_rate + i.quoted_quantity * (i.labour_rate ?? 0)
+const itemAsBuiltVal = (i: ElecQuoteLineItem) =>
+  (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate) + (i.as_built_quantity ?? i.quoted_quantity) * (i.labour_rate ?? 0)
+
+// Declared at module scope: defined inside the component it was a new
+// component type on every render, remounting everything it drew.
+function SecSubtotal({ contractVal, labourVal, abVal }: { contractVal: number; labourVal: number; abVal: number }) {
+  return (
+    <View style={s.subtotalRow} wrap={false}>
+      <Text style={[s.td, { flex: 1, color: MUTED, fontSize: 7 }]}>Section total</Text>
+      <Text style={[s.td, s.tdMuted, { width: COL.unit }]} />
+      <Text style={[s.td, s.tdMuted, { width: COL.cQty }]} />
+      <Text style={[s.td, s.tdMuted, { width: COL.cRate }]} />
+      <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', color: MUTED,  fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(contractVal)}</Text>
+      <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labourVal > 0 ? GREEN : MUTED, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{labourVal > 0 ? fmtR(labourVal) : '—'}</Text>
+      <Text style={[s.td, { width: COL.abQty }]} />
+      <Text style={[s.td, { width: COL.abRate }]} />
+      <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', color: ACCENT, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(abVal)}</Text>
+    </View>
+  )
+}
+
+// Declared at module scope: defined inside the component it was a new
+// component type on every render, remounting everything it drew.
+function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
+  return (
+    <>
+      {list.map((item, i) => {
+        const labour = item.labour_rate ?? 0
+        const cVal   = itemContractVal(item)
+        const abQty  = item.as_built_quantity  ?? item.quoted_quantity
+        const abRate = item.as_built_unit_rate ?? item.quoted_unit_rate
+        const abVal  = itemAsBuiltVal(item)
+        const diff   = abVal - cVal
+        return (
+          <View key={item.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
+            <View style={{ flex: 1, paddingRight: 4, paddingLeft: indent ? 10 : 0 }}>
+              <Text style={s.td}>{item.description || '—'}</Text>
+            </View>
+            <Text style={[s.td, s.tdMuted, { width: COL.unit,   textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
+            <Text style={[s.td, s.tdMuted, { width: COL.cQty,   textAlign: 'right'  }]}>{item.quoted_quantity}</Text>
+            <Text style={[s.td, s.tdMuted, { width: COL.cRate,  textAlign: 'right'  }]}>{fmtR(item.quoted_unit_rate)}</Text>
+            <Text style={[s.td, s.tdMuted, { width: COL.cVal,   textAlign: 'right'  }]}>{fmtR(item.quoted_quantity * item.quoted_unit_rate)}</Text>
+            <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labour > 0 ? GREEN : MUTED }]}>
+              {labour > 0 ? fmtR(labour) : '—'}
+            </Text>
+            <Text style={[s.td, { width: COL.abQty,  textAlign: 'right', color: ACCENT }]}>{abQty}</Text>
+            <Text style={[s.td, { width: COL.abRate, textAlign: 'right', color: ACCENT }]}>{fmtR(abRate)}</Text>
+            <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold',
+              color: diff > 0.01 ? GOLD : diff < -0.01 ? DANGER : DARK }]}>
+              {fmtR(abVal)}
+            </Text>
+          </View>
+        )
+      })}
+    </>
+  )
+}
+
 export function ElecAsBuiltPDF({ quote, client, settings, sections, items, materials, vos, companyName, logoUrl }: Props) {
   const quoteItems = items.filter(i => !i.is_variation)
   const voItems    = items.filter(i => i.is_variation)
   const freeItems  = quoteItems.filter(i => i.section_id === null)
 
-  const itemContractVal = (i: ElecQuoteLineItem) =>
-    i.quoted_quantity * i.quoted_unit_rate + i.quoted_quantity * (i.labour_rate ?? 0)
-  const itemAsBuiltVal = (i: ElecQuoteLineItem) =>
-    (i.as_built_quantity ?? i.quoted_quantity) * (i.as_built_unit_rate ?? i.quoted_unit_rate) + (i.as_built_quantity ?? i.quoted_quantity) * (i.labour_rate ?? 0)
 
   // Financial totals — use stored VO values to match the QuoteEditor strip exactly
   const originalContract = quoteItems.reduce((s, i) => s + itemContractVal(i), 0)
@@ -118,57 +175,8 @@ export function ElecAsBuiltPDF({ quote, client, settings, sections, items, mater
   const MAT_COLOR: Record<string, string> = { pending: GOLD, ordered: ACCENT, received: GREEN }
 
   // Reusable line item rows
-  function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
-    return (
-      <>
-        {list.map((item, i) => {
-          const labour = item.labour_rate ?? 0
-          const cVal   = itemContractVal(item)
-          const abQty  = item.as_built_quantity  ?? item.quoted_quantity
-          const abRate = item.as_built_unit_rate ?? item.quoted_unit_rate
-          const abVal  = itemAsBuiltVal(item)
-          const diff   = abVal - cVal
-          return (
-            <View key={item.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
-              <View style={{ flex: 1, paddingRight: 4, paddingLeft: indent ? 10 : 0 }}>
-                <Text style={s.td}>{item.description || '—'}</Text>
-              </View>
-              <Text style={[s.td, s.tdMuted, { width: COL.unit,   textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
-              <Text style={[s.td, s.tdMuted, { width: COL.cQty,   textAlign: 'right'  }]}>{item.quoted_quantity}</Text>
-              <Text style={[s.td, s.tdMuted, { width: COL.cRate,  textAlign: 'right'  }]}>{fmtR(item.quoted_unit_rate)}</Text>
-              <Text style={[s.td, s.tdMuted, { width: COL.cVal,   textAlign: 'right'  }]}>{fmtR(item.quoted_quantity * item.quoted_unit_rate)}</Text>
-              <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labour > 0 ? GREEN : MUTED }]}>
-                {labour > 0 ? fmtR(labour) : '—'}
-              </Text>
-              <Text style={[s.td, { width: COL.abQty,  textAlign: 'right', color: ACCENT }]}>{abQty}</Text>
-              <Text style={[s.td, { width: COL.abRate, textAlign: 'right', color: ACCENT }]}>{fmtR(abRate)}</Text>
-              <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', fontFamily: 'Helvetica-Bold',
-                color: diff > 0.01 ? GOLD : diff < -0.01 ? DANGER : DARK }]}>
-                {fmtR(abVal)}
-              </Text>
-            </View>
-          )
-        })}
-      </>
-    )
-  }
 
   // Section subtotal row
-  function SecSubtotal({ contractVal, labourVal, abVal }: { contractVal: number; labourVal: number; abVal: number }) {
-    return (
-      <View style={s.subtotalRow} wrap={false}>
-        <Text style={[s.td, { flex: 1, color: MUTED, fontSize: 7 }]}>Section total</Text>
-        <Text style={[s.td, s.tdMuted, { width: COL.unit }]} />
-        <Text style={[s.td, s.tdMuted, { width: COL.cQty }]} />
-        <Text style={[s.td, s.tdMuted, { width: COL.cRate }]} />
-        <Text style={[s.td, { width: COL.cVal,   textAlign: 'right', color: MUTED,  fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(contractVal)}</Text>
-        <Text style={[s.td, { width: COL.labour, textAlign: 'right', color: labourVal > 0 ? GREEN : MUTED, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{labourVal > 0 ? fmtR(labourVal) : '—'}</Text>
-        <Text style={[s.td, { width: COL.abQty }]} />
-        <Text style={[s.td, { width: COL.abRate }]} />
-        <Text style={[s.td, { width: COL.abVal,  textAlign: 'right', color: ACCENT, fontFamily: 'Helvetica-Bold', fontSize: 7 }]}>{fmtR(abVal)}</Text>
-      </View>
-    )
-  }
 
   return (
     <Document>

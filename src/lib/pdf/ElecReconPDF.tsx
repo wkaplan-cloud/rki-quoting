@@ -57,6 +57,27 @@ export interface ElecReconPDFProps {
   logoUrl?: string | null
 }
 
+// Declared at module scope: defined inside the component it was a new
+// component type on every render, remounting everything it drew.
+function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
+  return (
+    <>
+      {list.map((item, i) => (
+        <View key={item.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
+          <View style={{ flex: 1, paddingRight: 4, paddingLeft: indent ? 8 : 0 }}>
+            <Text style={s.td}>{item.description || '—'}</Text>
+          </View>
+          <Text style={[s.td, s.tdMuted, { width: 45, textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
+          <Text style={[s.td, { width: 55, textAlign: 'right' }]}>{item.quoted_quantity}</Text>
+          <View style={{ width: 60, flexDirection: 'row', justifyContent: 'center' }}>
+            <View style={{ width: 44, height: 10, borderWidth: 0.5, borderColor: BORDER, borderRadius: 2 }} />
+          </View>
+        </View>
+      ))}
+    </>
+  )
+}
+
 export function ElecReconPDF({ quote, client, sections, items, settings, companyName, companyEmail, logoUrl }: ElecReconPDFProps) {
   const quoteItems = items.filter(i => !i.is_variation)
   const voItems    = items.filter(i => i.is_variation)
@@ -67,24 +88,6 @@ export function ElecReconPDF({ quote, client, sections, items, settings, company
     settings?.cidb_registration_number ? `Lic: ${settings.cidb_registration_number}` : null,
   ].filter(Boolean).join('  ·  ')
 
-  function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
-    return (
-      <>
-        {list.map((item, i) => (
-          <View key={item.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
-            <View style={{ flex: 1, paddingRight: 4, paddingLeft: indent ? 8 : 0 }}>
-              <Text style={s.td}>{item.description || '—'}</Text>
-            </View>
-            <Text style={[s.td, s.tdMuted, { width: 45, textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
-            <Text style={[s.td, { width: 55, textAlign: 'right' }]}>{item.quoted_quantity}</Text>
-            <View style={{ width: 60, flexDirection: 'row', justifyContent: 'center' }}>
-              <View style={{ width: 44, height: 10, borderWidth: 0.5, borderColor: BORDER, borderRadius: 2 }} />
-            </View>
-          </View>
-        ))}
-      </>
-    )
-  }
 
   return (
     <Document>

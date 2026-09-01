@@ -75,6 +75,34 @@ function lineTotal(i: ElecQuoteLineItem): number {
   return (i.quoted_quantity ?? 0) * (i.quoted_unit_rate ?? 0) + (i.quoted_quantity ?? 0) * (i.labour_rate ?? 0)
 }
 
+// Declared at module scope: defined inside the component it was a new
+// component type on every render, remounting everything it drew.
+function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
+  return (
+    <>
+      {list.map((item, i) => (
+        <View key={item.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
+          <View style={{ flex: 1, paddingRight: 4, paddingLeft: indent ? 8 : 0 }}>
+            <Text style={s.td}>{item.description || '—'}</Text>
+            {item.is_variation && (
+              <Text style={{ fontSize: 6.5, color: '#D9A441', marginTop: 1 }}>VARIATION ORDER</Text>
+            )}
+          </View>
+          <Text style={[s.td, { width: 45, textAlign: 'right' }]}>{item.quoted_quantity}</Text>
+          <Text style={[s.td, s.tdMuted, { width: 36, textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
+          <Text style={[s.td, { width: 72, textAlign: 'right' }]}>{fmtR(item.quoted_unit_rate ?? 0)}</Text>
+          <Text style={[s.td, s.tdMuted, { width: 60, textAlign: 'right' }]}>
+            {(item.labour_rate ?? 0) > 0 ? fmtR(item.labour_rate ?? 0) : '—'}
+          </Text>
+          <Text style={[s.td, { width: 72, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
+            {fmtR(lineTotal(item))}
+          </Text>
+        </View>
+      ))}
+    </>
+  )
+}
+
 export function ElecQuotePDF({ quote, client, sections, items, settings, companyName, companyEmail, logoUrl }: ElecQuotePDFProps) {
   const freeItems     = items.filter(i => i.section_id === null)
   const contractTotal = items.reduce((s, i) => s + lineTotal(i), 0)
@@ -86,31 +114,6 @@ export function ElecQuotePDF({ quote, client, sections, items, settings, company
     lump_sum: 'Lump Sum', re_measurement: 'Re-Measurement', cost_plus: 'Cost Plus',
   }
 
-  function ItemRows({ list, indent = false }: { list: ElecQuoteLineItem[]; indent?: boolean }) {
-    return (
-      <>
-        {list.map((item, i) => (
-          <View key={item.id} style={[s.row, i % 2 !== 0 ? s.rowAlt : {}]} wrap={false}>
-            <View style={{ flex: 1, paddingRight: 4, paddingLeft: indent ? 8 : 0 }}>
-              <Text style={s.td}>{item.description || '—'}</Text>
-              {item.is_variation && (
-                <Text style={{ fontSize: 6.5, color: '#D9A441', marginTop: 1 }}>VARIATION ORDER</Text>
-              )}
-            </View>
-            <Text style={[s.td, { width: 45, textAlign: 'right' }]}>{item.quoted_quantity}</Text>
-            <Text style={[s.td, s.tdMuted, { width: 36, textAlign: 'center' }]}>{item.unit ?? '—'}</Text>
-            <Text style={[s.td, { width: 72, textAlign: 'right' }]}>{fmtR(item.quoted_unit_rate ?? 0)}</Text>
-            <Text style={[s.td, s.tdMuted, { width: 60, textAlign: 'right' }]}>
-              {(item.labour_rate ?? 0) > 0 ? fmtR(item.labour_rate ?? 0) : '—'}
-            </Text>
-            <Text style={[s.td, { width: 72, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
-              {fmtR(lineTotal(item))}
-            </Text>
-          </View>
-        ))}
-      </>
-    )
-  }
 
   const metaParts = [
     settings?.vat_registration_number  ? `VAT: ${settings.vat_registration_number}`   : null,

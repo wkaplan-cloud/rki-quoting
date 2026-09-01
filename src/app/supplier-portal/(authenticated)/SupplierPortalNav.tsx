@@ -39,6 +39,63 @@ const S = {
   hoverBg:      'rgba(255,255,255,0.05)',
 }
 
+/**
+ * Declared at module scope on purpose. Defined inside SupplierPortalNav it was
+ * a fresh component type on every render, so React remounted all twelve links
+ * (and threw away their DOM state) whenever the nav re-rendered.
+ *
+ * The values it used to close over now arrive as `nav`.
+ */
+interface NavContext {
+  pathname: string
+  labelCls: string
+  onNavigate: () => void
+}
+
+function NavLink({ nav, href, label, icon: Icon, badge, pendingBadge, exact = false }: {
+  nav: NavContext
+  href: string; label: string; icon: React.ElementType
+  badge?: string | null; pendingBadge?: number; exact?: boolean
+}) {
+  const { pathname, labelCls, onNavigate } = nav
+  const active = exact ? pathname === href : pathname.startsWith(href)
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
+      style={{
+        background: active ? S.activeBg : 'transparent',
+        borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
+      }}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+    >
+      <span className="flex items-center justify-center w-9 flex-shrink-0 relative">
+        <Icon size={15} style={{ color: active ? S.textLight : S.textMuted }} />
+      </span>
+      <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
+        {label}
+      </span>
+      {badge && (
+        <span className={`${labelCls} mr-1`}>
+          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.07)', color: S.textMuted }}>
+            {badge}
+          </span>
+        </span>
+      )}
+      {(pendingBadge ?? 0) > 0 && (
+        <span className={`${labelCls} ml-auto`}>
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block" style={{ background: '#D9A441', color: '#1E2A38' }}>
+            {(pendingBadge ?? 0) > 99 ? '99+' : pendingBadge}
+          </span>
+        </span>
+      )}
+    </Link>
+  )
+}
+
 export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false }: Props) {
   const isTrades = supplierCategory === 'trades'
   const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
@@ -54,48 +111,8 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
   }
 
   const labelCls = `text-xs whitespace-nowrap transition-opacity duration-150 pr-3 ${desktopExpanded ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`
+  const nav: NavContext = { pathname, labelCls, onNavigate: () => setMobileOpen(false) }
 
-  function NavLink({ href, label, icon: Icon, badge, pendingBadge, exact = false }: {
-    href: string; label: string; icon: React.ElementType
-    badge?: string | null; pendingBadge?: number; exact?: boolean
-  }) {
-    const active = exact ? pathname === href : pathname.startsWith(href)
-    return (
-      <Link
-        href={href}
-        onClick={() => setMobileOpen(false)}
-        className="flex items-center h-9 mx-2 rounded-lg transition-colors duration-150"
-        style={{
-          background: active ? S.activeBg : 'transparent',
-          borderLeft: active ? `3px solid ${S.activeAccent}` : '3px solid transparent',
-        }}
-        onMouseEnter={e => { if (!active) e.currentTarget.style.background = S.hoverBg }}
-        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
-      >
-        <span className="flex items-center justify-center w-9 flex-shrink-0 relative">
-          <Icon size={15} style={{ color: active ? S.textLight : S.textMuted }} />
-        </span>
-        <span className={`${labelCls} font-medium flex-1`} style={{ color: active ? S.textLight : S.textMuted }}>
-          {label}
-        </span>
-        {badge && (
-          <span className={`${labelCls} mr-1`}>
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
-              style={{ background: 'rgba(255,255,255,0.07)', color: S.textMuted }}>
-              {badge}
-            </span>
-          </span>
-        )}
-        {(pendingBadge ?? 0) > 0 && (
-          <span className={`${labelCls} ml-auto`}>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center inline-block" style={{ background: '#D9A441', color: '#1E2A38' }}>
-              {(pendingBadge ?? 0) > 99 ? '99+' : pendingBadge}
-            </span>
-          </span>
-        )}
-      </Link>
-    )
-  }
 
   return (
     <>
@@ -161,18 +178,18 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
           {/* Manufacturing quoting module nav */}
           {isManufacturing && (
             <>
-              <NavLink href="/supplier-portal/manufacturing/dashboard"  label="Dashboard"   icon={LayoutDashboard} exact />
-              <NavLink href="/supplier-portal/manufacturing/quotes"     label="Quotes"      icon={FileText} />
-              <NavLink href="/supplier-portal/manufacturing/invoices"   label="Invoices"    icon={Receipt} />
-              <NavLink href="/supplier-portal/manufacturing/clients"    label="Clients"     icon={Users} />
-              <NavLink href="/supplier-portal/manufacturing/price-book" label="Price Book"  icon={Library} />
+              <NavLink nav={nav} href="/supplier-portal/manufacturing/dashboard"  label="Dashboard"   icon={LayoutDashboard} exact />
+              <NavLink nav={nav} href="/supplier-portal/manufacturing/quotes"     label="Quotes"      icon={FileText} />
+              <NavLink nav={nav} href="/supplier-portal/manufacturing/invoices"   label="Invoices"    icon={Receipt} />
+              <NavLink nav={nav} href="/supplier-portal/manufacturing/clients"    label="Clients"     icon={Users} />
+              <NavLink nav={nav} href="/supplier-portal/manufacturing/price-book" label="Price Book"  icon={Library} />
 
               {receivePriceRequests && (
                 <>
                   <div className="pt-1 mx-2 mt-1" style={{ borderTop: `1px solid ${S.sidebarBorder}` }} />
                   <p className={`text-[9px] font-bold uppercase tracking-widest px-3 pt-2 pb-1 transition-opacity duration-150 ${desktopExpanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} style={{ color: S.textMuted }}>Supplier</p>
-                  <NavLink href="/supplier-portal/home"           label="Home"           icon={Home}  />
-                  <NavLink href="/supplier-portal/price-list"     label="My Price List"  icon={Tag}   />
+                  <NavLink nav={nav} href="/supplier-portal/home"           label="Home"           icon={Home}  />
+                  <NavLink nav={nav} href="/supplier-portal/price-list"     label="My Price List"  icon={Tag}   />
                 </>
               )}
             </>
@@ -181,8 +198,8 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
           {/* Standard supplier nav (price requests / price list) */}
           {!isTrades && !isManufacturing && (
             <>
-              <NavLink href="/supplier-portal/home"          label="Home"           icon={Home}  />
-              <NavLink href="/supplier-portal/price-list"    label="My Price List"  icon={Tag}   />
+              <NavLink nav={nav} href="/supplier-portal/home"          label="Home"           icon={Home}  />
+              <NavLink nav={nav} href="/supplier-portal/price-list"    label="My Price List"  icon={Tag}   />
             </>
           )}
 
@@ -194,21 +211,21 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
                 const isBiz = tradesTierRank >= 3
                 return (
                   <>
-                    <NavLink href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
-                    {isBiz && <NavLink href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />}
-                    {isPro && <NavLink href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />}
-                    {isPro && <NavLink href="/supplier-portal/quoting/coc"       label="COC"       icon={FileCheck} />}
-                    {isPro && <NavLink href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}
-                    {isPro && <NavLink href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users} />}
-                    {isBiz && <NavLink href="/supplier-portal/quoting/price-book" label="Line Items" icon={BookOpen} />}
+                    <NavLink nav={nav} href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
+                    {isBiz && <NavLink nav={nav} href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />}
+                    {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />}
+                    {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/coc"       label="COC"       icon={FileCheck} />}
+                    {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}
+                    {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/clients"   label="Clients"   icon={Users} />}
+                    {isBiz && <NavLink nav={nav} href="/supplier-portal/quoting/price-book" label="Line Items" icon={BookOpen} />}
                   </>
                 )
               })()}
 
               <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
 
-              <NavLink href="/supplier-portal/quoting/schedule" label="Schedule" icon={CalendarDays} />
-              <NavLink href="/supplier-portal/quoting/staff"    label="Staff"    icon={HardHat}      />
+              <NavLink nav={nav} href="/supplier-portal/quoting/schedule" label="Schedule" icon={CalendarDays} />
+              <NavLink nav={nav} href="/supplier-portal/quoting/staff"    label="Staff"    icon={HardHat}      />
 
               <div className="pt-1 mx-2" style={{ borderTop: `1px solid ${S.sidebarBorder}`, marginTop: '8px' }} />
 
@@ -244,7 +261,7 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
         {/* Footer */}
         <div className="flex-shrink-0 py-2 space-y-0.5" style={{ borderTop: `1px solid ${S.sidebarBorder}` }}>
           {isManufacturing && (
-            <NavLink href="/supplier-portal/manufacturing/settings" label="Settings" icon={Settings} />
+            <NavLink nav={nav} href="/supplier-portal/manufacturing/settings" label="Settings" icon={Settings} />
           )}
 
           {/* Upgrade CTA — plain suppliers only (not trades, not already a manufacturer) */}
