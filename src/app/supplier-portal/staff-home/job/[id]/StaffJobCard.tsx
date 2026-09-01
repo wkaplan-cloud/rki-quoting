@@ -29,6 +29,10 @@ const TYPE_LABEL: Record<string, string> = {
   maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout', coc: 'C.O.C',
 }
 
+function isValidEmail(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+}
+
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -56,8 +60,13 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
 
   // Signature draw
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [sigCaption, setSigCaption] = useState('')
+  const [sigName, setSigName] = useState(() => {
+    const existing = (initial.photos ?? []).find(p => p.url === initial.client_signature_url)
+    return existing?.caption ?? initial.sent_to_name ?? ''
+  })
   const [sigSaving, setSigSaving] = useState(false)
+  const [sigDrawn, setSigDrawn] = useState(false)
+  const [sigError, setSigError] = useState('')
   const isDrawing = useRef(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
 
@@ -151,6 +160,9 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   // Mark complete
   const [completing, setCompleting] = useState(false)
   const [completeMsg, setCompleteMsg] = useState('')
+  const [clientEmail, setClientEmail] = useState(card.client_email ?? client?.email ?? '')
+  const [emailError, setEmailError] = useState('')
+  const knewClientEmail = !!(card.client_email ?? client?.email)
 
   // Materials inline form (Used — no pricing on staff side)
   const [showAddMaterial, setShowAddMaterial] = useState(false)
@@ -236,7 +248,14 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   }, [tab]) // eslint-disable-line
 
   async function handleMarkComplete() {
+    const to = clientEmail.trim()
+    if (!isValidEmail(to)) {
+      setEmailError('Enter the client’s email address — the signed job card is sent there as proof.')
+      return
+    }
+    setEmailError('')
     setCompleting(true)
+    const completedAt = new Date().toISOString()
     try {
       await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
         method: 'PATCH',
@@ -247,12 +266,26 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
           resolution: card.resolution,
           notes: card.notes,
           status: 'completed',
-          completed_at: new Date().toISOString(),
+          completed_at: completedAt,
+          client_email: to,
         }),
       })
-      setCard(c => ({ ...c, status: 'completed', completed_at: new Date().toISOString() }))
-      setCompleteMsg('Job complete ✓ — returning home…')
-      setTimeout(() => router.push('/supplier-portal/staff-home'), 1500)
+      setCard(c => ({ ...c, status: 'completed', completed_at: completedAt, client_email: to }))
+      setCompleteMsg('Sending job card to client…')
+
+      const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: to, name: sigName.trim() || card.sent_to_name || null }),
+      })
+      if (res.ok) {
+        const sentAt = new Date().toISOString()
+        setCard(c => ({ ...c, sent_at: sentAt, sent_to_email: to, sent_to_name: sigName.trim() || c.sent_to_name }))
+        setCompleteMsg(`Job complete ✓ — emailed to ${to}`)
+      } else {
+        setCompleteMsg(`Job complete ✓ — but the email to ${to} did not go through. Let the office know.`)
+      }
+      setTimeout(() => router.push('/supplier-portal/staff-home'), 2500)
     } catch { setCompleteMsg('Error — try again') }
     setCompleting(false)
   }
@@ -311,6 +344,8 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
     e.currentTarget.setPointerCapture(e.pointerId)
     isDrawing.current = true; lastPos.current = getCanvasPos(e)
+    if (!sigDrawn) setSigDrawn(true)
+    if (sigError) setSigError('')
   }
   function draw(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!isDrawing.current || !lastPos.current) return
@@ -323,21 +358,27 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   function endDraw() { isDrawing.current = false; lastPos.current = null }
 
   async function saveSignature() {
+    const name = sigName.trim()
+    if (!name) { setSigError('Enter the name of the person signing.'); return }
+    if (!sigDrawn) { setSigError('Ask the client to sign in the box above.'); return }
+    setSigError('')
     const canvas = canvasRef.current!
     const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'))
     if (!blob) return
     setSigSaving(true)
     const fd = new FormData()
     fd.append('file', blob, 'signature.png')
-    fd.append('caption', sigCaption || 'Client signature')
+    fd.append('caption', name)
     const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos`, { method: 'POST', body: fd })
     if (res.ok) {
       const p = await res.json() as ElecJobCardPhoto
       const res2 = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_signature_url: p.url }),
+        body: JSON.stringify({ client_signature_url: p.url, sent_to_name: name }),
       })
-      if (res2.ok) setCard(c => ({ ...c, client_signature_url: p.url }))
+      if (res2.ok) setCard(c => ({ ...c, client_signature_url: p.url, sent_to_name: name }))
+    } else {
+      setSigError('Could not save the signature — try again.')
     }
     setSigSaving(false)
   }
@@ -676,6 +717,9 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Signature captured</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={card.client_signature_url} alt="Signature" className="max-h-28 w-auto rounded-xl" style={{ border: `1px solid ${S.border}` }} />
+                {(sigName.trim() || card.sent_to_name) && (
+                  <p className="text-xs" style={{ color: S.muted }}>Signed by {sigName.trim() || card.sent_to_name}</p>
+                )}
               </div>
             ) : (
               <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
@@ -691,16 +735,23 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                     <canvas ref={canvasRef} width={600} height={200} className="w-full" style={{ cursor: 'crosshair', display: 'block', touchAction: 'none' }}
                       onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} />
                   </div>
-                  <input value={sigCaption} onChange={e => setSigCaption(e.target.value)}
-                    placeholder="Client name (optional)"
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                    style={{ border: `1px solid ${S.border}`, color: S.text, background: S.bg }} />
+                  <div className="space-y-1.5">
+                    <label htmlFor="sig-name" className="block text-xs font-semibold" style={{ color: S.text }}>
+                      Name of person signing <span style={{ color: S.danger }}>*</span>
+                    </label>
+                    <input id="sig-name" value={sigName}
+                      onChange={e => { setSigName(e.target.value); if (sigError) setSigError('') }}
+                      autoComplete="off"
+                      className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${sigError && !sigName.trim() ? S.danger : S.border}`, color: S.text, background: S.bg }} />
+                  </div>
+                  {sigError && <p className="text-xs font-medium" style={{ color: S.danger }}>{sigError}</p>}
                   <div className="flex gap-2">
-                    <button onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200) }}
+                    <button onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200); setSigDrawn(false) }}
                       className="px-4 py-2.5 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                       Clear
                     </button>
-                    <button onClick={() => void saveSignature()} disabled={sigSaving}
+                    <button onClick={() => void saveSignature()} disabled={sigSaving || !sigName.trim() || !sigDrawn}
                       className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                       style={{ background: S.green }}>
                       {sigSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
@@ -715,18 +766,31 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
             {card.status !== 'completed' && (
               <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                 <p className="text-xs mb-3" style={{ color: S.muted }}>
-                  {card.client_signature_url || card.sent_at
-                    ? 'All done — mark this job as complete.'
-                    : 'You can still mark complete without a signature.'}
+                  {card.client_signature_url
+                    ? 'All done — the signed job card is emailed to the client as proof.'
+                    : 'The job card is emailed to the client as proof when you complete it.'}
                 </p>
+                <div className="space-y-1.5 mb-3">
+                  <label htmlFor="client-email" className="block text-xs font-semibold" style={{ color: S.text }}>
+                    Client email <span style={{ color: S.danger }}>*</span>
+                  </label>
+                  <input id="client-email" type="email" inputMode="email" autoComplete="off"
+                    value={clientEmail}
+                    onChange={e => { setClientEmail(e.target.value); if (emailError) setEmailError('') }}
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={{ border: `1px solid ${emailError ? S.danger : S.border}`, color: S.text, background: S.bg }} />
+                  {emailError
+                    ? <p className="text-xs font-medium" style={{ color: S.danger }}>{emailError}</p>
+                    : !knewClientEmail && <p className="text-xs" style={{ color: S.muted }}>We do not have an email for this client — ask them for one.</p>}
+                </div>
                 {completeMsg ? (
                   <p className="text-sm font-semibold text-center py-2" style={{ color: S.green }}>{completeMsg}</p>
                 ) : (
-                  <button onClick={() => void handleMarkComplete()} disabled={completing}
+                  <button onClick={() => void handleMarkComplete()} disabled={completing || !clientEmail.trim()}
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
                     style={{ background: S.green }}>
                     {completing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                    {completing ? 'Saving…' : 'Mark Job as Complete'}
+                    {completing ? 'Sending…' : 'Complete & Email Client'}
                   </button>
                 )}
               </div>

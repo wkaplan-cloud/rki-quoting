@@ -52,6 +52,20 @@ async function resolveAccount(userId: string) {
   return acc
 }
 
+// Staff send the completed job card to the client as proof of work
+async function resolveAccountOrStaff(userId: string) {
+  const own = await resolveAccount(userId)
+  if (own) return own
+  const { data: staff } = await supabaseAdmin
+    .from('elec_staff').select('portal_account_id')
+    .eq('auth_user_id', userId).eq('is_active', true).maybeSingle()
+  if (!staff) return null
+  const { data: acc } = await supabaseAdmin
+    .from('supplier_portal_accounts').select('id, company_name, email, logo_url')
+    .eq('id', staff.portal_account_id).maybeSingle()
+  return acc
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -62,7 +76,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const account = await resolveAccount(user.id)
+    const account = await resolveAccountOrStaff(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
     const [
