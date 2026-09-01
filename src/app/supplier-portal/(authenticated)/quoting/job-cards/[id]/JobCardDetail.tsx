@@ -102,13 +102,23 @@ interface Props {
   cocPrefix?: string
   companyCode?: string
   initialCOC?: import('@/lib/elec-types').ElecCOC | null
+  bookings?: JobCardBooking[]
+}
+
+/** A calendar slot booked against this job card. */
+export interface JobCardBooking {
+  id: string
+  scheduled_date: string
+  start_time: string
+  end_time: string
+  staff: { id: string; name: string } | null
 }
 
 type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'photos' | 'signature' | 'coc'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [] }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -894,7 +904,26 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           <SectionHeader label="Scheduling" />
           <Inp label="Location / Address" val={card.location} cb={v => setField('location', v || null)} placeholder="Site address" />
           <div className="grid grid-cols-2 gap-4">
-            <Inp label="Scheduled Date & Time" val={toSADateTimeLocal(card.scheduled_at)} cb={v => setField('scheduled_at', v || null)} type="datetime-local" />
+            {bookings.length > 0 ? (
+              // Booked on the calendar — the slot owns the timing, so editing it
+              // here would just be overwritten on the next save of that booking.
+              <div>
+                <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Scheduled Date &amp; Time</label>
+                <div className="rounded-xl px-3 py-2" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
+                  {bookings.map(b => (
+                    <p key={b.id} className="text-sm" style={{ color: S.text }}>
+                      {fmtDate(`${b.scheduled_date}T12:00:00`)} · {b.start_time.slice(0, 5)}–{b.end_time.slice(0, 5)}
+                      {b.staff && <span style={{ color: S.muted }}> · {b.staff.name}</span>}
+                    </p>
+                  ))}
+                  <a href="/supplier-portal/quoting/schedule" className="text-xs font-semibold mt-1 inline-block" style={{ color: S.accent }}>
+                    Change on the schedule →
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <Inp label="Scheduled Date & Time" val={toSADateTimeLocal(card.scheduled_at)} cb={v => setField('scheduled_at', v || null)} type="datetime-local" />
+            )}
             <Inp label="Completed Date" val={toSADateTimeLocal(card.completed_at)} cb={v => setField('completed_at', v || null)} type="datetime-local" />
           </div>
           <Txt label="Notes" val={card.notes} cb={v => setField('notes', v || null)} placeholder="Any additional notes…" rows={2} />

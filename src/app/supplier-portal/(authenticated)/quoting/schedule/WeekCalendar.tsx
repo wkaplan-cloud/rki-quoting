@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, P
 import type { ElecJob, ElecJobStatus, ElecJobPhoto, ElecStaff, ElecJobCard, ElecJobCardType } from '@/lib/elec-types'
 import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
+import { toSADateTimeLocal } from '@/lib/dates'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -124,6 +125,7 @@ interface JobCardOption {
   title: string
   location: string | null
   staff_id: string | null
+  scheduled_at?: string | null
 }
 
 // Every scheduled job hangs off real work: an existing job card / project, or a
@@ -176,6 +178,7 @@ export function WeekCalendar({
   staff,
   quotes,
   jobCards = [],
+  bookedJobCardIds = [],
   companyName,
   initialLiveStatuses = [],
 }: {
@@ -183,6 +186,7 @@ export function WeekCalendar({
   staff: ElecStaff[]
   quotes: QuoteOption[]
   jobCards?: JobCardOption[]
+  bookedJobCardIds?: string[]
   companyName: string
   initialLiveStatuses?: StaffLiveStatus[]
 }) {
@@ -202,6 +206,9 @@ export function WeekCalendar({
   // selectable (and resolvable when re-opening the job for edit).
   const [quoteOptions, setQuoteOptions]       = useState<QuoteOption[]>(quotes)
   const [jobCardOptions, setJobCardOptions]   = useState<JobCardOption[]>(jobCards)
+  // Job cards that already own a calendar slot, so the "waiting to be booked"
+  // strip drops one the moment it's scheduled.
+  const [bookedCardIds, setBookedCardIds]     = useState<Set<string>>(() => new Set(bookedJobCardIds))
   const [photos, setPhotos]         = useState<ElecJobPhoto[]>([])
   const [shareLink, setShareLink]   = useState<string | null>(null)
   const [copied, setCopied]         = useState<'idle' | 'copying' | 'done'>('idle')
@@ -215,6 +222,7 @@ export function WeekCalendar({
 
   useEffect(() => { setQuoteOptions(quotes) }, [quotes])
   useEffect(() => { setJobCardOptions(jobCards) }, [jobCards])
+  useEffect(() => { setBookedCardIds(new Set(bookedJobCardIds)) }, [bookedJobCardIds])
 
   const dateStr  = toDateStr(currentDay)
   const todayStr = toDateStr(new Date())
@@ -477,6 +485,7 @@ export function WeekCalendar({
         if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? 'Could not save the job')
         const created = await res.json() as ElecJob
         setJobs(js => [...js, created])
+        if (created.job_card_id) setBookedCardIds(ids => new Set(ids).add(created.job_card_id!))
       }
       closeModal()
     } catch (e) {
@@ -540,6 +549,33 @@ export function WeekCalendar({
   // ── Day jobs ──────────────────────────────────────────────────────────────
   const dayJobs = jobs.filter(j => j.scheduled_date === dateStr)
   const layout  = layoutJobs(dayJobs)
+
+  // Job cards due today that nobody has given a slot yet. They carry a target
+  // date (scheduled_at) but no elec_jobs row, so without this they'd be
+  // invisible on the calendar — the exact way work goes missing.
+  const unbookedToday = jobCardOptions.filter(jc => {
+    if (!jc.scheduled_at || bookedCardIds.has(jc.id)) return false
+    return toSADateTimeLocal(jc.scheduled_at).slice(0, 10) === dateStr
+  })
+
+  function bookJobCard(jc: JobCardOption) {
+    const local = toSADateTimeLocal(jc.scheduled_at)
+    const start = local.slice(11, 16) || '08:00'
+    const end   = minsToTime(Math.min(toMins(start) + 60, END_HOUR * 60))
+    setFormError('')
+    setForm({
+      ...EMPTY_FORM,
+      source: 'job_card', linkMode: 'existing',
+      job_card_id: jc.id,
+      title:    jc.title,
+      address:  jc.location ?? '',
+      staff_id: jc.staff_id ?? '',
+      scheduled_date: dateStr,
+      start_time: start,
+      end_time:   end,
+    })
+    setModal({ mode: 'add' })
+  }
   const dayLabel = `${DAY_SHORT[currentDay.getDay()]}, ${currentDay.getDate()} ${MONTHS[currentDay.getMonth()]} ${currentDay.getFullYear()}`
 
   // On-site staff for Live Now
@@ -664,6 +700,41 @@ export function WeekCalendar({
                     </a>
                   )}
                 </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Job cards due today with no slot yet ──────────────────────── */}
+      {unbookedToday.length > 0 && (
+        <div className="mb-3 rounded-xl overflow-hidden" style={{ background: S.card, border: `1px dashed ${S.gold}` }}>
+          <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1.5">
+            <ClipboardList size={12} style={{ color: S.gold }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: S.gold }}>
+              Due today · not booked
+            </span>
+          </div>
+          <div className="flex gap-2 px-3 pb-3 overflow-x-auto">
+            {unbookedToday.map(jc => {
+              const assignee = staff.find(m => m.id === jc.staff_id)
+              return (
+                <button key={jc.id} onClick={() => bookJobCard(jc)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg flex-shrink-0 text-left transition-colors"
+                  style={{ background: S.bg, border: `1px solid ${S.border}` }}
+                  onMouseEnter={e => e.currentTarget.style.background = S.input}
+                  onMouseLeave={e => e.currentTarget.style.background = S.bg}>
+                  {assignee && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: assignee.color }} />}
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold truncate" style={{ color: S.text, maxWidth: 190 }}>{jc.title}</span>
+                    <span className="block text-[10px] truncate" style={{ color: S.muted, maxWidth: 190 }}>
+                      {jc.job_number}
+                      {toSADateTimeLocal(jc.scheduled_at).slice(11, 16) && ` · ${toSADateTimeLocal(jc.scheduled_at).slice(11, 16)}`}
+                      {assignee && ` · ${assignee.name.split(' ')[0]}`}
+                    </span>
+                  </span>
+                  <Plus size={13} className="flex-shrink-0" style={{ color: S.accent }} />
+                </button>
               )
             })}
           </div>

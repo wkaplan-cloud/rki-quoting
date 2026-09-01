@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { JobCardDetail } from './JobCardDetail'
+import { JobCardDetail, type JobCardBooking } from './JobCardDetail'
 import type { ElecJobCard, ElecStaff, ElecClient, ElecCOC } from '@/lib/elec-types'
 
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,13 +33,23 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
 
   if (!card) notFound()
 
-  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }] = await Promise.all([
+  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }, { data: bookings }] = await Promise.all([
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     supabaseAdmin.from('elec_staff').select('id,name,color,role').eq('portal_account_id', accountId!).eq('is_active', true).order('name'),
     supabaseAdmin.from('elec_clients').select('id,client_name,company,email,address,vat_number,qs_name,qs_email').eq('portal_account_id', accountId!).order('client_name'),
     supabaseAdmin.from('elec_settings').select('sage_company_id, vat_rate, coc_prefix, company_code').eq('portal_account_id', accountId!).maybeSingle(),
     supabaseAdmin.from('elec_coc').select('*').eq('job_card_id', id).maybeSingle(),
+    // Calendar slots booked against this card. When one exists the schedule
+    // owns the timing, so the date field here defers to it rather than
+    // offering a second, silently-overwritten place to set it.
+    supabaseAdmin
+      .from('elec_jobs')
+      .select('id, scheduled_date, start_time, end_time, staff:elec_staff(id,name)')
+      .eq('job_card_id', id)
+      .eq('portal_account_id', accountId!)
+      .order('scheduled_date')
+      .then(res => res.error ? { data: [] } : res),
   ])
 
   const jobCard: ElecJobCard = { ...card, materials: materials ?? [], photos: photos ?? [] }
@@ -56,6 +66,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       cocPrefix={(settings as { coc_prefix?: string } | null)?.coc_prefix ?? 'COC'}
       companyCode={(settings as { company_code?: string } | null)?.company_code ?? ''}
       initialCOC={(existingCOC ?? null) as ElecCOC | null}
+      bookings={(bookings ?? []) as unknown as JobCardBooking[]}
     />
   )
 }
