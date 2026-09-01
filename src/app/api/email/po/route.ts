@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       : null
     const effectiveEmail = orgContact?.email || supplier?.email
     const effectiveEmailCc = orgContact?.email_cc || supplier?.email_cc
-    const effectiveRepName = orgContact?.rep_name || (supplier as any)?.rep_name
+    const effectiveRepName = orgContact?.rep_name || supplier?.rep_name
     const effectiveContactPerson = effectiveRepName || supplier?.contact_person || supplier?.supplier_name
 
     if (!effectiveEmail) {

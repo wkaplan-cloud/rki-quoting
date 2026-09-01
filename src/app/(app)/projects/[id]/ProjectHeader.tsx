@@ -302,7 +302,7 @@ export function ProjectHeader({ project, clients, stages, onProjectUpdate, onSta
             </>
           ) : (
             <>
-              <StatusBadge status={project.status as any} />
+              <StatusBadge status={project.status} />
               {project.status !== 'Cancelled' && project.status !== 'Completed' && project.status !== 'Paid' && !sageInvoicePaid && (
                 <button
                   onClick={handleCancel}

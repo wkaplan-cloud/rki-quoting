@@ -23,10 +23,21 @@ export const STATUS_LABELS: Record<ProjectStatus, string> = {
   Cancelled: 'Cancelled',
 }
 
-export function StatusBadge({ status }: { status: ProjectStatus }) {
+const UNKNOWN_STYLE = 'bg-[#F5F2EC] text-[#8A877F] border border-[#D8D3C8]'
+
+/**
+ * Accepts a plain string as well as ProjectStatus: statuses arrive from
+ * untyped Supabase rows, and every caller used to cast through `any` to get
+ * here. An unrecognised value now renders itself in the neutral style instead
+ * of producing `undefined` class names and a blank label.
+ */
+export function StatusBadge({ status }: { status: ProjectStatus | string }) {
+  const known = status in styles
+  const cls   = known ? styles[status as ProjectStatus] : UNKNOWN_STYLE
+  const label = known ? STATUS_LABELS[status as ProjectStatus] : status
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium tracking-wide ${styles[status]}`}>
-      {STATUS_LABELS[status]}
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium tracking-wide ${cls}`}>
+      {label}
     </span>
   )
 }

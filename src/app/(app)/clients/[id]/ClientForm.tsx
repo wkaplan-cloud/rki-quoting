@@ -91,7 +91,7 @@ export function ClientForm({ client, projects }: Props) {
                 <span className="text-sm text-[#2C2C2A] font-medium">{p.project_name}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-[#8A877F] font-mono">{p.project_number}</span>
-                  <StatusBadge status={p.status as any} />
+                  <StatusBadge status={p.status} />
                 </div>
               </Link>
             ))}

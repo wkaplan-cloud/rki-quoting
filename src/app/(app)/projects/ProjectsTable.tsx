@@ -210,7 +210,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                   <p className="text-[10px] text-[#8A877F] font-mono mt-1">{p.project_number}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                  <StatusBadge status={p.status as any} />
+                  <StatusBadge status={p.status} />
                   <p className="text-sm font-semibold text-[#2C2C2A]">{total}</p>
                 </div>
                 <ChevronRight size={16} className="text-[#C4BFB5] flex-shrink-0" />
@@ -245,7 +245,7 @@ export function ProjectsTable({ projects, userEmailMap, currentUserId }: Props) 
                   <td className="px-4 py-3 font-medium text-[#2C2C2A]">{p.project_name}</td>
                   <td className="px-4 py-3 text-[#8A877F]">{p.client?.client_name ?? '—'}</td>
                   <td className="px-4 py-3 text-[#8A877F]">{new Date(p.date).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                  <td className="px-4 py-3"><StatusBadge status={p.status as any} /></td>
+                  <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                   <td className="px-4 py-3 text-[#8A877F] text-xs">
                     {userEmailMap[p.assigned_to ?? p.user_id ?? ''] ?? '—'}
                   </td>

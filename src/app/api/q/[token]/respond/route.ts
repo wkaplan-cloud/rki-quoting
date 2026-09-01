@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
       if (account?.email) {
         const clientRaw = Array.isArray(quote.client) ? quote.client[0] : quote.client
-        const clientName = (clientRaw as any)?.client_name ?? 'Your client'
+        const clientName = clientRaw?.client_name ?? 'Your client'
         const isApproval = body.action === 'approve'
         const subject = isApproval
           ? `Quote approved — ${quote.quote_number} · ${quote.project_name}`

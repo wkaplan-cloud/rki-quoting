@@ -170,7 +170,7 @@ export function KanbanBoard({ projects: initialProjects, stagesMap, stageConfig,
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={p.status as any} />
+                    <StatusBadge status={p.status} />
                   </td>
 
                   {/* Stage cells */}

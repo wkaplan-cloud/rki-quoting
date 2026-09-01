@@ -116,7 +116,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }, 0)
 
     const companyName = account.company_name ?? account.email ?? 'Company'
-    const logoUrl = await fetchLogoBase64((account as any).logo_url)
+    const logoUrl = await fetchLogoBase64(account.logo_url)
 
     const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

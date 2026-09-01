@@ -52,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         .eq('id', coc.quote_id)
         .maybeSingle()
       quoteRaw = q as ElecQuote | null
-      clientData = quoteRaw ? (Array.isArray((quoteRaw as any).client) ? (quoteRaw as any).client[0] : (quoteRaw as any).client) : null
+      clientData = quoteRaw ? (Array.isArray(quoteRaw.client) ? quoteRaw.client[0] : quoteRaw.client) : null
     } else if (coc.job_card_id) {
       const { data: jc } = await supabaseAdmin
         .from('elec_job_cards')
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const { data: settings } = await supabaseAdmin.from('elec_settings').select('*').eq('portal_account_id', account.id).maybeSingle()
 
     const companyName = account.company_name ?? account.email ?? 'Company'
-    const logoUrl = await fetchLogoBase64((account as any).logo_url)
+    const logoUrl = await fetchLogoBase64(account.logo_url)
 
     const buffer = await renderPdfToBuffer(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

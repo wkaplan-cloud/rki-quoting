@@ -25,6 +25,7 @@ export interface Supplier {
   markup_percentage: number
   is_platform: boolean
   price_list_id: string | null
+  notes: string | null   // added by supabase/add_supplier_notes.sql
   created_at: string
 }
 

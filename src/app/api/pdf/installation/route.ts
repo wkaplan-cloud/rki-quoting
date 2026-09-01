@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (!project) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const { data: orgId } = await supabase.rpc('get_current_org_id')
-    const assignedUserId = (project as any).assigned_to ?? project.user_id
+    const assignedUserId = project.assigned_to ?? project.user_id
     let assignedToName: string | null = null
     if (assignedUserId && orgId) {
       const { data: member } = await supabaseAdmin

@@ -72,7 +72,7 @@ export default async function AdminPage() {
 
   const pipelineProjects = (allProjects ?? []).filter(p => {
     const stages = Array.isArray(p.stages) ? p.stages[0] : p.stages
-    return stages?.final_invoice_paid !== true && (p as any).status !== 'Draft'
+    return stages?.final_invoice_paid !== true && p.status !== 'Draft'
   })
 
   const paidIds = new Set(paidProjects.map(p => p.id))

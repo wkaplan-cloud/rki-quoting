@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
-    const vatRate = (project as any).vat_rate ?? settings?.vat_rate ?? 15
+    const vatRate = project.vat_rate ?? settings?.vat_rate ?? 15
     const businessName = settings?.business_name ?? undefined
     const replyToEmail = settings?.email_from?.trim() || user.email || ''
     const printDate = new Date().toISOString()

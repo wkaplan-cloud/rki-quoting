@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
           const invTotal: number = existingInv.Total ?? existingInv.total ?? 0
           const invOutstanding: number = existingInv.TotalOutstanding ?? existingInv.Outstanding ?? invTotal
           const actualPaidInclVat = Math.max(0, invTotal - invOutstanding)
-          const vatRate = (project as any).vat_rate ?? settings?.vat_rate ?? 15
+          const vatRate = project.vat_rate ?? settings?.vat_rate ?? 15
           depositExclVat = parseFloat((actualPaidInclVat / (1 + vatRate / 100)).toFixed(2))
         } catch {
           // Fallback to configured percentage if Sage call fails
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
     ])
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const clientName = (project.client as any)?.client_name ?? null
+    const clientName = project.client?.client_name ?? null
     await sendAccountingNotification({
       platform: 'sage',
       userId: user.id,

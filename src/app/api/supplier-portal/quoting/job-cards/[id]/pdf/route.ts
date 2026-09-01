@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!jobCard) return NextResponse.json({ error: 'Job card not found' }, { status: 404 })
 
     const companyName = account.company_name ?? account.email ?? 'Company'
-    const logoBase64 = await fetchLogoBase64((account as any).logo_url)
+    const logoBase64 = await fetchLogoBase64(account.logo_url)
 
     const fullJobCard: ElecJobCard = { ...jobCard as ElecJobCard, materials: materials ?? [], photos: photos ?? [] }
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       })
     )
 
-    const filename = `${(jobCard as any).job_number}-JobCard.pdf`
+    const filename = `${jobCard.job_number}-JobCard.pdf`
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',

@@ -184,8 +184,8 @@ function PieceModal({
       }
 
       onSaved(savedPiece)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError((err instanceof Error ? err.message : String(err)))
     } finally {
       setSaving(false)
     }
@@ -391,8 +391,8 @@ function AddToQuoteModal({
       if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
       onDone()
       onClose()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError((err instanceof Error ? err.message : String(err)))
     } finally {
       setAdding(false)
     }
@@ -541,8 +541,8 @@ function LogPriceModal({
 
       onSaved(json.data)
       onClose()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError((err instanceof Error ? err.message : String(err)))
     } finally {
       setSaving(false)
     }

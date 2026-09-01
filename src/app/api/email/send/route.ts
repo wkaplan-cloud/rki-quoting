@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (!project) return NextResponse.json({ error: 'Project not found' }, { status: 404 })
 
   // Lock quoted_date on first email send — never overwrite if already set
-  let quotedDate = (project as any).quoted_date as string | null
+  let quotedDate = project.quoted_date as string | null
   if (!quotedDate && type === 'quote') {
     const today = todaySA()
     await supabase.from('projects').update({ quoted_date: today }).eq('id', projectId)
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Lock invoiced_date on first invoice email — never overwrite if already set
-  let invoicedDate = (project as any).invoiced_date as string | null
+  let invoicedDate = project.invoiced_date as string | null
   if (!invoicedDate && type === 'invoice') {
     const today = todaySA()
     await supabase.from('projects').update({ invoiced_date: today }).eq('id', projectId)
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Use override email from modal, or fall back to what's saved on the client
-  const clientEmail = overrideEmail?.trim() || (project.client as any)?.email
+  const clientEmail = overrideEmail?.trim() || project.client?.email
   if (!clientEmail) return NextResponse.json({ error: 'Client email not set' }, { status: 400 })
 
   // Generate (or refresh) an approval token for quote emails
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       fetchLineItemImages(
         lineItems ?? [],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ((settings as any)?.line_item_images_enabled ?? false) && ((settings as any)?.show_images_on_documents ?? true),
+        (settings?.line_item_images_enabled ?? false) && (settings?.show_images_on_documents ?? true),
       ),
     ])
 
@@ -81,11 +81,11 @@ export async function POST(req: NextRequest) {
         client: project.client ?? null,
         lineItems: lineItems ?? [],
         type,
-        templateKey: (settings as any)?.pdf_template ?? 'minimal',
-        themeKey: (settings as any)?.pdf_color_theme ?? 'warm',
-        vatRate: (project as any).vat_rate ?? settings?.vat_rate ?? 15,
-        depositPct: (project as any).deposit_percentage ?? settings?.deposit_percentage ?? 50,
-        amountPaid: (project as any).deposit_amount_received ?? 0,
+        templateKey: settings?.pdf_template ?? 'minimal',
+        themeKey: settings?.pdf_color_theme ?? 'warm',
+        vatRate: project.vat_rate ?? settings?.vat_rate ?? 15,
+        depositPct: project.deposit_percentage ?? settings?.deposit_percentage ?? 50,
+        amountPaid: project.deposit_amount_received ?? 0,
         logoUrl,
         businessName: settings?.business_name,
         businessAddress: settings?.business_address,
@@ -96,11 +96,11 @@ export async function POST(req: NextRequest) {
         bankBranch: settings?.bank_branch_code,
         footerText: settings?.footer_text,
         termsConditions: settings?.terms_conditions,
-        quotedDate: quotedDate ?? (project as any).quoted_date ?? todaySA(),
+        quotedDate: quotedDate ?? project.quoted_date ?? todaySA(),
         invoicedDate,
-        validityDays: (settings as any)?.quote_validity_days ?? 30,
-        paymentTerms: (settings as any)?.payment_terms ?? null,
-        leadTime: (settings as any)?.lead_time ?? null,
+        validityDays: settings?.quote_validity_days ?? 30,
+        paymentTerms: settings?.payment_terms ?? null,
+        leadTime: settings?.lead_time ?? null,
         itemImages,
         acceptance: resolveAcceptance(settings),
       })
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
         { project_id: projectId, quote_sent: true, quote_sent_at: now },
         { onConflict: 'project_id' }
       )
-      if ((project as any).status === 'Draft') {
+      if (project.status === 'Draft') {
         await supabase.from('projects').update({ status: 'Quote' }).eq('id', projectId)
       }
     }

@@ -47,7 +47,7 @@ export default async function DashboardPage() {
   )
 
   const today = new Date()
-  const validityDays: number = (settings as any)?.quote_validity_days ?? 30
+  const validityDays: number = settings?.quote_validity_days ?? 30
 
   // Single pass over projects — derive all metrics without re-scanning the array.
   type Metrics = {

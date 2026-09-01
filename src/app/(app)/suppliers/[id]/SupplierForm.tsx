@@ -95,7 +95,7 @@ export function SupplierForm({ supplier, platformContact, orgPriceLists = [] }: 
     delivery_contact_name: supplier?.delivery_contact_name ?? '',
     delivery_contact_number: supplier?.delivery_contact_number ?? '',
     markup_percentage: String(supplier?.markup_percentage ?? 0),
-    notes: (supplier as any)?.notes ?? '',
+    notes: supplier?.notes ?? '',
     price_list_id: supplier?.price_list_id ?? '',
   })
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
