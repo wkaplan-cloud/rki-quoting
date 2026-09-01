@@ -581,6 +581,7 @@ export interface ElecJob {
   id: string
   portal_account_id: string
   quote_id: string | null
+  job_card_id: string | null
   staff_id: string | null
   title: string
   address: string | null
@@ -595,6 +596,7 @@ export interface ElecJob {
   // Joined
   staff?: ElecStaff | null
   quote?: { id: string; quote_number: string; project_name: string } | null
+  job_card?: { id: string; job_number: string; title: string } | null
   photo_count?: number
 }
 

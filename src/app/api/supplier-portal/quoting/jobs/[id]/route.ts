@@ -3,6 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { apiError } from '@/lib/api-error'
+import {
+  JOB_SELECT_FULL_WITH_PHOTOS,
+  JOB_SELECT_LEGACY_WITH_PHOTOS,
+  isMissingJobCardLink,
+} from '@/lib/elec-job-select'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,17 +19,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    const body = await req.json()
-    const { data, error } = await supabaseAdmin
+    const { job_card_id, ...body } = await req.json() as Record<string, unknown>
+
+    const update = (row: Record<string, unknown>, select: string) => supabaseAdmin
       .from('elec_jobs')
-      .update(body)
+      .update(row)
       .eq('id', id)
       .eq('portal_account_id', account.id)
-      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name), elec_job_photos(count)')
+      .select(select)
       .single()
 
+    let { data, error } = await update({ ...body, job_card_id: job_card_id ?? null }, JOB_SELECT_FULL_WITH_PHOTOS)
+    // Pre-migration: elec_jobs has no job_card_id yet — update without the link
+    if (isMissingJobCardLink(error)) ({ data, error } = await update(body, JOB_SELECT_LEGACY_WITH_PHOTOS))
+
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-    const { elec_job_photos, ...rest } = data as typeof data & { elec_job_photos: { count: number }[] | null }
+    const { elec_job_photos, ...rest } = data as unknown as Record<string, unknown> & { elec_job_photos: { count: number }[] | null }
     return NextResponse.json({ ...rest, photo_count: elec_job_photos?.[0]?.count ?? 0 })
   } catch (e) {
     return apiError(e)

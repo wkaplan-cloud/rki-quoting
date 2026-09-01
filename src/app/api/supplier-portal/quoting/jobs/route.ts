@@ -3,6 +3,13 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { apiError } from '@/lib/api-error'
+import {
+  JOB_SELECT_FULL,
+  JOB_SELECT_FULL_WITH_PHOTOS,
+  JOB_SELECT_LEGACY,
+  JOB_SELECT_LEGACY_WITH_PHOTOS,
+  isMissingJobCardLink,
+} from '@/lib/elec-job-select'
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,17 +24,24 @@ export async function GET(req: NextRequest) {
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    let query = supabaseAdmin
-      .from('elec_jobs')
-      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name), elec_job_photos(count)')
-      .eq('portal_account_id', account.id)
-      .order('start_time')
+    const runQuery = async (select: string) => {
+      let query = supabaseAdmin
+        .from('elec_jobs')
+        .select(select)
+        .eq('portal_account_id', account.id)
+        .order('start_time')
 
-    if (start) query = query.gte('scheduled_date', start)
-    if (end)   query = query.lte('scheduled_date', end)
+      if (start) query = query.gte('scheduled_date', start)
+      if (end)   query = query.lte('scheduled_date', end)
 
-    const { data } = await query
-    const jobs = (data ?? []).map(({ elec_job_photos, ...j }) => ({
+      return query
+    }
+
+    let { data, error } = await runQuery(JOB_SELECT_FULL_WITH_PHOTOS)
+    if (isMissingJobCardLink(error)) ({ data, error } = await runQuery(JOB_SELECT_LEGACY_WITH_PHOTOS))
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+    const jobs = ((data ?? []) as unknown as Record<string, unknown>[]).map(({ elec_job_photos, ...j }) => ({
       ...j,
       photo_count: (elec_job_photos as { count: number }[] | null)?.[0]?.count ?? 0,
     }))
@@ -46,12 +60,17 @@ export async function POST(req: NextRequest) {
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 404 })
 
-    const body = await req.json()
-    const { data, error } = await supabaseAdmin
+    const { job_card_id, ...rest } = await req.json() as Record<string, unknown>
+
+    const insert = (row: Record<string, unknown>, select: string) => supabaseAdmin
       .from('elec_jobs')
-      .insert({ ...body, portal_account_id: account.id })
-      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name)')
+      .insert({ ...row, portal_account_id: account.id })
+      .select(select)
       .single()
+
+    let { data, error } = await insert({ ...rest, job_card_id: job_card_id ?? null }, JOB_SELECT_FULL)
+    // Pre-migration: elec_jobs has no job_card_id yet — save the job without the link
+    if (isMissingJobCardLink(error)) ({ data, error } = await insert(rest, JOB_SELECT_LEGACY))
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     return NextResponse.json(data)

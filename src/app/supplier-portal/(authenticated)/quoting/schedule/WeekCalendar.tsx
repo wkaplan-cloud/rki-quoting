@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image, Camera, MapPin, RefreshCw } from 'lucide-react'
-import type { ElecJob, ElecJobStatus, ElecJobPhoto, ElecStaff } from '@/lib/elec-types'
+import { ChevronLeft, ChevronRight, Plus, X, Loader2, Trash2, Check, Calendar, Printer, Share2, Copy, CheckCheck, Image, Camera, MapPin, RefreshCw, ExternalLink, ClipboardList, FolderOpen } from 'lucide-react'
+import type { ElecJob, ElecJobStatus, ElecJobPhoto, ElecStaff, ElecJobCard, ElecJobCardType } from '@/lib/elec-types'
 import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
@@ -126,10 +126,25 @@ interface JobCardOption {
   staff_id: string | null
 }
 
-type ScheduleSource = 'manual' | 'job_card' | 'project'
+// Every scheduled job hangs off real work: an existing job card / project, or a
+// new one created inline as part of scheduling it.
+type ScheduleSource = 'job_card' | 'project'
+type LinkMode       = 'existing' | 'new'
+
+const NEW_OPTION = '__new__'
+
+const JOB_CARD_TYPES: { value: ElecJobCardType; label: string }[] = [
+  { value: 'callout',     label: 'Callout' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'repair',      label: 'Repair' },
+  { value: 'once_off',    label: 'Once-Off' },
+  { value: 'coc',         label: 'C.O.C' },
+]
 
 interface FormState {
   source: ScheduleSource
+  linkMode: LinkMode
+  job_type: ElecJobCardType   // only used when creating a new job card
   title: string
   scheduled_date: string
   start_time: string
@@ -143,7 +158,7 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  source: 'manual',
+  source: 'job_card', linkMode: 'existing', job_type: 'callout',
   title: '', scheduled_date: '', start_time: '08:00', end_time: '09:00',
   staff_id: '', quote_id: '', job_card_id: '', address: '', notes: '', status: 'scheduled',
 }
@@ -182,6 +197,11 @@ export function WeekCalendar({
   const [form, setForm]             = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving]         = useState(false)
   const [deleting, setDeleting]     = useState(false)
+  const [formError, setFormError]   = useState('')
+  // Kept in state so a job card / project created from this modal is immediately
+  // selectable (and resolvable when re-opening the job for edit).
+  const [quoteOptions, setQuoteOptions]       = useState<QuoteOption[]>(quotes)
+  const [jobCardOptions, setJobCardOptions]   = useState<JobCardOption[]>(jobCards)
   const [photos, setPhotos]         = useState<ElecJobPhoto[]>([])
   const [shareLink, setShareLink]   = useState<string | null>(null)
   const [copied, setCopied]         = useState<'idle' | 'copying' | 'done'>('idle')
@@ -192,6 +212,9 @@ export function WeekCalendar({
   const [liveRefreshing, setLiveRefreshing]   = useState(false)
   const [lastRefreshed, setLastRefreshed]     = useState<Date | null>(null)
   const [now, setNow]                         = useState(new Date())
+
+  useEffect(() => { setQuoteOptions(quotes) }, [quotes])
+  useEffect(() => { setJobCardOptions(jobCards) }, [jobCards])
 
   const dateStr  = toDateStr(currentDay)
   const todayStr = toDateStr(new Date())
@@ -261,15 +284,25 @@ export function WeekCalendar({
   }
 
   function openEdit(job: ElecJob) {
+    // A job's linked card/project may have moved out of the selectable status
+    // range (e.g. completed) — fold the joined row back in so it still shows.
+    if (job.job_card && !jobCardOptions.some(jc => jc.id === job.job_card!.id)) {
+      setJobCardOptions(opts => [{ ...job.job_card!, location: null, staff_id: null }, ...opts])
+    }
+    if (job.quote && !quoteOptions.some(q => q.id === job.quote!.id)) {
+      setQuoteOptions(opts => [{ ...job.quote!, project_address: null, staff_id: null, additional_staff_ids: null }, ...opts])
+    }
     setForm({
-      source: 'manual',
+      source:         job.job_card_id ? 'job_card' : 'project',
+      linkMode:       'existing',
+      job_type:       'callout',
       title:          job.title,
       scheduled_date: job.scheduled_date,
       start_time:     job.start_time.slice(0, 5),
       end_time:       job.end_time.slice(0, 5),
       staff_id:       job.staff_id ?? '',
       quote_id:       job.quote_id ?? '',
-      job_card_id:    '',
+      job_card_id:    job.job_card_id ?? '',
       address:        job.address ?? '',
       notes:          job.notes ?? '',
       status:         job.status,
@@ -288,17 +321,34 @@ export function WeekCalendar({
   function closeModal() {
     setModal(null)
     setForm(EMPTY_FORM)
+    setFormError('')
     setPhotos([])
     setShareLink(null)
     setCopied('idle')
   }
 
+  // Switching between Job Card / Project clears the previous link entirely —
+  // a job points at one or the other, never both.
+  function handleSourceChange(src: ScheduleSource) {
+    setFormError('')
+    setForm(f => ({
+      ...f, source: src, linkMode: 'existing',
+      title: '', address: '', staff_id: '', quote_id: '', job_card_id: '',
+    }))
+  }
+
   // When a job card is selected, auto-fill title, address, staff
-  function handleJobCardChange(jcId: string) {
-    const jc = jobCards.find(j => j.id === jcId)
+  function handleJobCardChange(value: string) {
+    setFormError('')
+    if (value === NEW_OPTION) {
+      setForm(f => ({ ...f, linkMode: 'new', job_card_id: '', title: '', address: '', staff_id: '' }))
+      return
+    }
+    const jc = jobCardOptions.find(j => j.id === value)
     setForm(f => ({
       ...f,
-      job_card_id: jcId,
+      linkMode: 'existing',
+      job_card_id: value,
       title: f.title || (jc?.title ?? ''),
       address: f.address || (jc?.location ?? ''),
       staff_id: jc?.staff_id ?? f.staff_id,
@@ -306,15 +356,56 @@ export function WeekCalendar({
   }
 
   // When a project (quote) is selected, auto-fill title, address, staff
-  function handleQuoteChange(quoteId: string) {
-    const q = quotes.find(q => q.id === quoteId)
+  function handleQuoteChange(value: string) {
+    setFormError('')
+    if (value === NEW_OPTION) {
+      setForm(f => ({ ...f, linkMode: 'new', quote_id: '', title: '', address: '', staff_id: '' }))
+      return
+    }
+    const q = quoteOptions.find(q => q.id === value)
     setForm(f => ({
       ...f,
-      quote_id: quoteId,
+      linkMode: 'existing',
+      quote_id: value,
       title: f.title || (q?.project_name ?? ''),
       address: f.address || (q?.project_address ?? ''),
       staff_id: q?.staff_id ?? f.staff_id,
     }))
+  }
+
+  /** Creates the job card / project being scheduled. Returns the new row's id. */
+  async function createLinkedRecord(): Promise<{ job_card_id: string } | { quote_id: string }> {
+    if (form.source === 'job_card') {
+      const res = await fetch('/api/supplier-portal/quoting/job-cards', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title:        form.title.trim(),
+          job_type:     form.job_type,
+          staff_id:     form.staff_id || null,
+          location:     form.address.trim() || null,
+          scheduled_at: `${form.scheduled_date}T${form.start_time}:00`,
+        }),
+      })
+      if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? 'Could not create the job card')
+      const created = await res.json() as ElecJobCard
+      setJobCardOptions(opts => [
+        { id: created.id, job_number: created.job_number, title: created.title, location: created.location, staff_id: created.staff_id },
+        ...opts,
+      ])
+      return { job_card_id: created.id }
+    }
+
+    const res = await fetch('/api/supplier-portal/quoting/quotes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_name: form.title.trim() }),
+    })
+    if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? 'Could not create the project')
+    const created = await res.json() as { id: string; quote_number: string }
+    setQuoteOptions(opts => [
+      { id: created.id, quote_number: created.quote_number, project_name: form.title.trim(), project_address: form.address.trim() || null, staff_id: form.staff_id || null, additional_staff_ids: null },
+      ...opts,
+    ])
+    return { quote_id: created.id }
   }
 
   async function handleCopyLink(jobId: string) {
@@ -329,34 +420,69 @@ export function WeekCalendar({
   }
 
   async function handleSave() {
-    if (!form.title.trim() || !form.scheduled_date || saving) return
+    if (saving) return
+    const isAdd = modal?.mode === 'add'
+
+    if (!form.title.trim()) {
+      setFormError(isAdd && form.linkMode === 'new'
+        ? (form.source === 'job_card' ? 'Give the new job card a title' : 'Give the new project a name')
+        : 'Job title is required')
+      return
+    }
+    if (!form.scheduled_date) { setFormError('Pick a date'); return }
+    if (isAdd && form.linkMode === 'existing' && !(form.source === 'job_card' ? form.job_card_id : form.quote_id)) {
+      setFormError(form.source === 'job_card'
+        ? 'Choose a job card, or create a new one'
+        : 'Choose a project, or create a new one')
+      return
+    }
+
+    setFormError('')
     setSaving(true)
-    const payload = {
-      title:          form.title.trim(),
-      scheduled_date: form.scheduled_date,
-      start_time:     form.start_time,
-      end_time:       form.end_time,
-      staff_id:       form.staff_id || null,
-      quote_id:       form.quote_id || null,
-      address:        form.address.trim() || null,
-      notes:          form.notes.trim() || null,
-      status:         form.status,
+    try {
+      let quoteId    = form.source === 'project'  ? form.quote_id    : (modal?.mode === 'edit' ? form.quote_id : '')
+      let jobCardId  = form.source === 'job_card' ? form.job_card_id : (modal?.mode === 'edit' ? form.job_card_id : '')
+
+      if (isAdd && form.linkMode === 'new') {
+        const link = await createLinkedRecord()
+        if ('job_card_id' in link) jobCardId = link.job_card_id
+        else                       quoteId   = link.quote_id
+      }
+
+      const payload = {
+        title:          form.title.trim(),
+        scheduled_date: form.scheduled_date,
+        start_time:     form.start_time,
+        end_time:       form.end_time,
+        staff_id:       form.staff_id || null,
+        quote_id:       quoteId || null,
+        job_card_id:    jobCardId || null,
+        address:        form.address.trim() || null,
+        notes:          form.notes.trim() || null,
+        status:         form.status,
+      }
+
+      if (modal?.mode === 'edit' && modal.job) {
+        const res = await fetch(`/api/supplier-portal/quoting/jobs/${modal.job.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? 'Could not save the job')
+        const updated = await res.json() as ElecJob
+        setJobs(js => js.map(j => j.id === modal.job!.id ? updated : j))
+      } else {
+        const res = await fetch('/api/supplier-portal/quoting/jobs', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? 'Could not save the job')
+        const created = await res.json() as ElecJob
+        setJobs(js => [...js, created])
+      }
+      closeModal()
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Something went wrong')
+    } finally {
+      setSaving(false)
     }
-    if (modal?.mode === 'edit' && modal.job) {
-      const res = await fetch(`/api/supplier-portal/quoting/jobs/${modal.job.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-      })
-      const updated = await res.json() as ElecJob
-      setJobs(js => js.map(j => j.id === modal.job!.id ? updated : j))
-    } else {
-      const res = await fetch('/api/supplier-portal/quoting/jobs', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-      })
-      const created = await res.json() as ElecJob
-      setJobs(js => [...js, created])
-    }
-    setSaving(false)
-    closeModal()
   }
 
   async function handleDelete() {
@@ -645,6 +771,7 @@ export function WeekCalendar({
                 const top    = jobTop(job.start_time)
                 const height = jobHeight(job.start_time, job.end_time)
                 const isDone = job.status === 'completed' || job.status === 'cancelled'
+                const linkRef = job.job_card?.job_number ?? job.quote?.quote_number ?? null
                 const w = totalCols > 1 ? `calc(${100 / totalCols}% - 4px)` : 'calc(100% - 8px)'
                 const l = totalCols > 1 ? `calc(${(col / totalCols) * 100}% + 2px)` : '4px'
 
@@ -672,9 +799,9 @@ export function WeekCalendar({
                         {fmtTime(job.start_time)} – {fmtTime(job.end_time)}
                       </p>
                     )}
-                    {height >= 60 && staffMember && (
+                    {height >= 60 && (staffMember || linkRef) && (
                       <p className="text-[10px] leading-tight truncate mt-0.5 font-medium" style={{ color }}>
-                        {staffMember.name.split(' ')[0]}
+                        {[staffMember?.name.split(' ')[0], linkRef].filter(Boolean).join(' · ')}
                       </p>
                     )}
                     {(job.photo_count ?? 0) > 0 && (
@@ -737,56 +864,88 @@ export function WeekCalendar({
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Schedule from</label>
                   <div className="flex gap-2">
-                    {([['manual', 'Custom title'], ['job_card', 'Job Card'], ['project', 'Project']] as const).map(([src, label]) => (
-                      <button key={src} onClick={() => setForm(f => ({ ...f, source: src, title: '', address: '', staff_id: '', quote_id: '', job_card_id: '' }))}
-                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                    {([['job_card', 'Job Card', ClipboardList], ['project', 'Project', FolderOpen]] as const).map(([src, label, Icon]) => (
+                      <button key={src} onClick={() => handleSourceChange(src)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors"
                         style={{
                           background: form.source === src ? S.accent : S.bg,
                           color: form.source === src ? '#fff' : S.muted,
                           border: `1px solid ${form.source === src ? S.accent : S.border}`,
                         }}>
-                        {label}
+                        <Icon size={13} /> {label}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Job Card selector */}
-              {form.source === 'job_card' && (
+              {/* Job Card selector — pick an existing one or create it inline */}
+              {modal.mode === 'add' && form.source === 'job_card' && (
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Select Job Card *</label>
-                  <select value={form.job_card_id} onChange={e => handleJobCardChange(e.target.value)}
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Job Card *</label>
+                  <select value={form.linkMode === 'new' ? NEW_OPTION : form.job_card_id}
+                    onChange={e => handleJobCardChange(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                    style={{ background: S.input, border: `1px solid ${S.border}`, color: form.job_card_id ? S.text : S.muted }}>
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: form.job_card_id || form.linkMode === 'new' ? S.text : S.muted }}>
                     <option value="">Choose a job card…</option>
-                    {jobCards.map(jc => (
+                    <option value={NEW_OPTION}>+ Create a new job card</option>
+                    {jobCardOptions.map(jc => (
                       <option key={jc.id} value={jc.id}>{jc.job_number} — {jc.title}</option>
                     ))}
                   </select>
+                  {form.linkMode === 'new' && (
+                    <p className="text-[11px] mt-1.5" style={{ color: S.muted }}>
+                      A new job card is created and linked when you save.
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Project selector */}
-              {form.source === 'project' && (
+              {/* Project selector — pick an existing one or create it inline */}
+              {modal.mode === 'add' && form.source === 'project' && (
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Select Project *</label>
-                  <select value={form.quote_id} onChange={e => handleQuoteChange(e.target.value)}
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Project *</label>
+                  <select value={form.linkMode === 'new' ? NEW_OPTION : form.quote_id}
+                    onChange={e => handleQuoteChange(e.target.value)}
                     className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                    style={{ background: S.input, border: `1px solid ${S.border}`, color: form.quote_id ? S.text : S.muted }}>
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: form.quote_id || form.linkMode === 'new' ? S.text : S.muted }}>
                     <option value="">Choose a project…</option>
-                    {quotes.map(q => (
+                    <option value={NEW_OPTION}>+ Create a new project</option>
+                    {quoteOptions.map(q => (
                       <option key={q.id} value={q.id}>{q.quote_number} — {q.project_name}</option>
                     ))}
+                  </select>
+                  {form.linkMode === 'new' && (
+                    <p className="text-[11px] mt-1.5" style={{ color: S.muted }}>
+                      A new draft project is created and linked when you save.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Job type — only when creating a new job card */}
+              {modal.mode === 'add' && form.source === 'job_card' && form.linkMode === 'new' && (
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Job Type</label>
+                  <select value={form.job_type} onChange={e => setForm(f => ({ ...f, job_type: e.target.value as ElecJobCardType }))}
+                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                    style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }}>
+                    {JOB_CARD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
               )}
 
-              {/* Title */}
+              {/* Title — doubles as the name of the record being created */}
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Job Title *</label>
-                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. DB board installation"
+                <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                  {modal.mode === 'add' && form.linkMode === 'new'
+                    ? (form.source === 'job_card' ? 'Job Card Title *' : 'Project Name *')
+                    : 'Job Title *'}
+                </label>
+                <input value={form.title} onChange={e => { setFormError(''); setForm(f => ({ ...f, title: e.target.value })) }}
+                  aria-label={modal.mode === 'add' && form.linkMode === 'new'
+                    ? (form.source === 'job_card' ? 'Job card title' : 'Project name')
+                    : 'Job title'}
                   className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
               </div>
@@ -837,26 +996,58 @@ export function WeekCalendar({
                 })()}
               </div>
 
-              {/* Linked quote (manual/edit mode only) */}
-              {(form.source === 'manual' || modal.mode === 'edit') && (
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Linked Project <span style={{ fontWeight: 400 }}>(optional)</span></label>
-                  <select value={form.quote_id} onChange={e => handleQuoteChange(e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
-                    style={{ background: S.input, border: `1px solid ${S.border}`, color: form.quote_id ? S.text : S.muted }}>
-                    <option value="">No project linked</option>
-                    {quotes.map(q => (
-                      <option key={q.id} value={q.id}>{q.quote_number} — {q.project_name}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Re-link an existing job to a different job card / project */}
+              {modal.mode === 'edit' && (
+                <>
+                  <div>
+                    <label className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                      <span>Linked Job Card</span>
+                      {form.job_card_id && (
+                        <a href={`/supplier-portal/quoting/job-cards/${form.job_card_id}`}
+                          className="flex items-center gap-1 normal-case tracking-normal font-semibold"
+                          style={{ color: S.accent }}>
+                          Open <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </label>
+                    <select value={form.job_card_id} onChange={e => handleJobCardChange(e.target.value)}
+                      className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                      style={{ background: S.input, border: `1px solid ${S.border}`, color: form.job_card_id ? S.text : S.muted }}>
+                      <option value="">No job card linked</option>
+                      {jobCardOptions.map(jc => (
+                        <option key={jc.id} value={jc.id}>{jc.job_number} — {jc.title}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>
+                      <span>Linked Project</span>
+                      {form.quote_id && (
+                        <a href={`/supplier-portal/quoting/quotes/${form.quote_id}`}
+                          className="flex items-center gap-1 normal-case tracking-normal font-semibold"
+                          style={{ color: S.accent }}>
+                          Open <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </label>
+                    <select value={form.quote_id} onChange={e => handleQuoteChange(e.target.value)}
+                      className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
+                      style={{ background: S.input, border: `1px solid ${S.border}`, color: form.quote_id ? S.text : S.muted }}>
+                      <option value="">No project linked</option>
+                      {quoteOptions.map(q => (
+                        <option key={q.id} value={q.id}>{q.quote_number} — {q.project_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
 
               {/* Address */}
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: S.muted }}>Address</label>
                 <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                  placeholder="Site address"
+                  aria-label="Site address"
                   className="w-full px-3 py-2.5 text-sm rounded-xl outline-none"
                   style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
               </div>
@@ -947,12 +1138,23 @@ export function WeekCalendar({
 
             {/* Save button */}
             <div className="px-5 pb-5">
+              {formError && (
+                <p role="alert" className="text-xs font-medium mb-2" style={{ color: S.danger }}>{formError}</p>
+              )}
               <button onClick={() => void handleSave()}
-                disabled={!form.title.trim() || !form.scheduled_date || saving}
+                disabled={saving}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold disabled:opacity-50"
                 style={{ background: S.accent, color: '#fff' }}>
                 {saving && <Loader2 size={14} className="animate-spin" />}
-                {saving ? 'Saving…' : modal.mode === 'add' ? 'Schedule Job' : 'Save Changes'}
+                {saving
+                  ? (modal.mode === 'add' && form.linkMode === 'new'
+                      ? (form.source === 'job_card' ? 'Creating job card…' : 'Creating project…')
+                      : 'Saving…')
+                  : modal.mode === 'add'
+                    ? (form.linkMode === 'new'
+                        ? (form.source === 'job_card' ? 'Create Job Card & Schedule' : 'Create Project & Schedule')
+                        : 'Schedule Job')
+                    : 'Save Changes'}
               </button>
             </div>
           </div>

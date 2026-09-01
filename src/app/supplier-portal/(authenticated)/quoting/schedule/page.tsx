@@ -5,6 +5,7 @@ import { resolvePortalAccount } from '@/lib/portal-account'
 import { WeekCalendar } from './WeekCalendar'
 import type { ElecJob, ElecStaff, ElecJobCard } from '@/lib/elec-types'
 import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
+import { JOB_SELECT_FULL, JOB_SELECT_LEGACY, isMissingJobCardLink } from '@/lib/elec-job-select'
 
 export const metadata = { title: 'Schedule — QuotingHub' }
 
@@ -36,14 +37,17 @@ export default async function SchedulePage() {
   const { start, end } = getWeekBounds()
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
 
+  // job_card is only embeddable once add_job_card_to_elec_jobs.sql has been run
+  const fetchJobs = async (select: string) => supabaseAdmin
+    .from('elec_jobs')
+    .select(select)
+    .eq('portal_account_id', account.id)
+    .gte('scheduled_date', start)
+    .lte('scheduled_date', end)
+    .order('start_time')
+
   const [{ data: jobs }, { data: staff }, { data: quotes }, { data: punches }, { data: jobCardsForLive }, { data: projects }, { data: schedulableJobCards }] = await Promise.all([
-    supabaseAdmin
-      .from('elec_jobs')
-      .select('*, staff:elec_staff(id,name,color,role), quote:elec_quotes(id,quote_number,project_name)')
-      .eq('portal_account_id', account.id)
-      .gte('scheduled_date', start)
-      .lte('scheduled_date', end)
-      .order('start_time'),
+    fetchJobs(JOB_SELECT_FULL).then(res => isMissingJobCardLink(res.error) ? fetchJobs(JOB_SELECT_LEGACY) : res),
     supabaseAdmin
       .from('elec_staff')
       .select('*')
@@ -54,7 +58,7 @@ export default async function SchedulePage() {
       .from('elec_quotes')
       .select('id, quote_number, project_name, project_address, staff_id, additional_staff_ids')
       .eq('portal_account_id', account.id)
-      .in('status', ['quoted', 'approved', 'in_progress'])
+      .in('status', ['draft', 'quoted', 'approved', 'in_progress'])
       .order('created_at', { ascending: false })
       .limit(50),
     supabaseAdmin
@@ -113,7 +117,7 @@ export default async function SchedulePage() {
   return (
     <div>
       <WeekCalendar
-        initialJobs={(jobs ?? []) as ElecJob[]}
+        initialJobs={(jobs ?? []) as unknown as ElecJob[]}
         staff={(staff ?? []) as ElecStaff[]}
         quotes={(quotes ?? []) as { id: string; quote_number: string; project_name: string; project_address: string | null; staff_id: string | null; additional_staff_ids: string[] | null }[]}
         jobCards={(schedulableJobCards ?? []) as { id: string; job_number: string; title: string; location: string | null; staff_id: string | null }[]}
