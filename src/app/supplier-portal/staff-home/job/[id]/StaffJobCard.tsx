@@ -248,6 +248,10 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   }, [tab]) // eslint-disable-line
 
   async function handleMarkComplete() {
+    if (!card.client_signature_url) {
+      setSigError('The client must sign before this job can be completed.')
+      return
+    }
     const to = clientEmail.trim()
     if (!isValidEmail(to)) {
       setEmailError('Enter the client’s email address — the signed job card is sent there as proof.')
@@ -768,7 +772,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                 <p className="text-xs mb-3" style={{ color: S.muted }}>
                   {card.client_signature_url
                     ? 'All done — the signed job card is emailed to the client as proof.'
-                    : 'The job card is emailed to the client as proof when you complete it.'}
+                    : 'Capture the client’s signature above before completing this job.'}
                 </p>
                 <div className="space-y-1.5 mb-3">
                   <label htmlFor="client-email" className="block text-xs font-semibold" style={{ color: S.text }}>
@@ -786,7 +790,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                 {completeMsg ? (
                   <p className="text-sm font-semibold text-center py-2" style={{ color: S.green }}>{completeMsg}</p>
                 ) : (
-                  <button onClick={() => void handleMarkComplete()} disabled={completing || !clientEmail.trim()}
+                  <button onClick={() => void handleMarkComplete()} disabled={completing || !clientEmail.trim() || !card.client_signature_url}
                     className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
                     style={{ background: S.green }}>
                     {completing ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
