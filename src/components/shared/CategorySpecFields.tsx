@@ -8,6 +8,9 @@ import { CATEGORY_FIELDS } from '@/lib/sourcing-categories'
 // definitions. Deliberately unstyled/unwrapped: each caller supplies its own
 // input/label classes and wraps the output in its own layout (grid, list,
 // whatever fits that surface), so this only owns the field-type switch.
+//
+// No placeholders anywhere: every field carries a visible label (with its unit),
+// and example text in an empty box reads as content that is already there.
 interface Props {
   category: CategoryKey
   values: Record<string, string>
@@ -59,7 +62,6 @@ export function CategorySpecFields({
                 value={val}
                 onChange={e => onChange(field.key, e.target.value)}
                 rows={2}
-                placeholder={field.placeholder}
                 className={`${inputClassName} resize-none`}
               />
             </div>
@@ -78,7 +80,6 @@ export function CategorySpecFields({
               step={field.type === 'number' ? 'any' : undefined}
               value={val}
               onChange={e => onChange(field.key, e.target.value)}
-              placeholder={field.placeholder ?? (field.unit ? 'e.g. 600' : '')}
               className={inputClassName}
             />
           </div>

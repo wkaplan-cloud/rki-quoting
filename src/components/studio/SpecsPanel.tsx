@@ -226,7 +226,7 @@ export function SpecsPanel() {
         {/* General */}
         <Section title="General">
           <Field label="Spec name">
-            <TextInput value={spec.specName} onChange={setSpecName} placeholder="e.g. Lounge armchair" />
+            <TextInput value={spec.specName} onChange={setSpecName} />
           </Field>
           <Field label="Description">
             <TextArea value={spec.description} onChange={v => update({ description: v })} rows={2} />
@@ -276,7 +276,6 @@ export function SpecsPanel() {
             <TextInput
               value={spec.supplierName}
               onChange={setSupplier}
-              placeholder="Choose or type…"
               list="studio-spec-suppliers"
             />
             <datalist id="studio-spec-suppliers">
@@ -305,12 +304,11 @@ export function SpecsPanel() {
               <TextInput
                 value={spec.quantity}
                 onChange={v => update({ quantity: v.replace(/[^0-9.]/g, '') })}
-                placeholder="2"
                 inputMode="decimal"
               />
             </Field>
             <Field label="Unit">
-              <TextInput value={spec.unit} onChange={v => update({ unit: v })} placeholder="each" />
+              <TextInput value={spec.unit} onChange={v => update({ unit: v })} />
             </Field>
           </div>
         </Section>
@@ -325,14 +323,14 @@ export function SpecsPanel() {
               </p>
             )}
             <div className="grid grid-cols-3 gap-2">
-              <Field label="Width">
-                <TextInput value={spec.width} onChange={v => update({ width: v })} placeholder="mm" />
+              <Field label="Width (mm)">
+                <TextInput value={spec.width} onChange={v => update({ width: v })} />
               </Field>
-              <Field label="Depth">
-                <TextInput value={spec.depth} onChange={v => update({ depth: v })} placeholder="mm" />
+              <Field label="Depth (mm)">
+                <TextInput value={spec.depth} onChange={v => update({ depth: v })} />
               </Field>
-              <Field label="Height">
-                <TextInput value={spec.height} onChange={v => update({ height: v })} placeholder="mm" />
+              <Field label="Height (mm)">
+                <TextInput value={spec.height} onChange={v => update({ height: v })} />
               </Field>
             </div>
           </Section>
@@ -536,26 +534,29 @@ function LoggedQuotes({
 
       <div className="pt-1.5 space-y-1.5">
         <div className="flex gap-1.5">
-          <input
-            value={supplierName}
-            onChange={e => setSupplierNameField(e.target.value)}
-            placeholder="Supplier"
-            className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
-          />
-          <input
-            value={price}
-            onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ''))}
-            placeholder="Price"
-            inputMode="decimal"
-            className="w-20 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
-          />
+          <Field label="Supplier" className="flex-1 min-w-0">
+            <input
+              value={supplierName}
+              onChange={e => setSupplierNameField(e.target.value)}
+              className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
+            />
+          </Field>
+          <Field label="Price" className="w-20 flex-shrink-0">
+            <input
+              value={price}
+              onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ''))}
+              inputMode="decimal"
+              className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
+            />
+          </Field>
         </div>
-        <input
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
-          placeholder="Notes — lead time, terms…"
-          className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
-        />
+        <Field label="Notes — lead time, terms">
+          <input
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
+          />
+        </Field>
         <button
           type="button"
           onClick={() => void logQuote()}
@@ -621,27 +622,29 @@ function MaterialRow({
 
   return (
     <div className="pb-2.5 border-b border-[#EDE9E1] last:border-0 last:pb-0 space-y-1.5">
-      <div className="flex items-start gap-1.5">
-        <input
-          value={material.type}
-          onChange={e => onChange({ type: e.target.value })}
-          list="studio-spec-material-types"
-          placeholder="Type"
-          className="w-[88px] flex-shrink-0 text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
-        />
-        {!isFabric && (
+      <div className="flex items-end gap-1.5">
+        <Field label="Type" className="w-[88px] flex-shrink-0">
           <input
-            value={material.description}
-            onChange={e => onChange({ description: e.target.value })}
-            placeholder="e.g. Romo Linara Pebble"
-            className={`flex-1 min-w-0 ${descriptionInputClass}`}
+            value={material.type}
+            onChange={e => onChange({ type: e.target.value })}
+            list="studio-spec-material-types"
+            className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
           />
+        </Field>
+        {!isFabric && (
+          <Field label="Description" className="flex-1 min-w-0">
+            <input
+              value={material.description}
+              onChange={e => onChange({ description: e.target.value })}
+              className={descriptionInputClass}
+            />
+          </Field>
         )}
         <button
           type="button"
           onClick={onRemove}
           title="Remove"
-          className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
+          className="w-6 h-6 mb-0.5 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
         >
           <Trash2 size={11} />
         </button>
@@ -649,13 +652,14 @@ function MaterialRow({
 
       {isFabric && (
         <>
-          <Combobox
-            options={suppliers.map(s => ({ id: s.id, label: s.name, isPlatform: s.isPlatform }))}
-            value={material.supplierId ?? ''}
-            inputValue={material.supplierName}
-            onChange={(id, label) => onChange({ supplierId: id || null, supplierName: label })}
-            placeholder="Fabric supplier…"
-          />
+          <Field label="Fabric supplier">
+            <Combobox
+              options={suppliers.map(s => ({ id: s.id, label: s.name, isPlatform: s.isPlatform }))}
+              value={material.supplierId ?? ''}
+              inputValue={material.supplierName}
+              onChange={(id, label) => onChange({ supplierId: id || null, supplierName: label })}
+            />
+          </Field>
           {platformSupplier && !hasAccess ? (
             <Link
               href="/price-lists"
@@ -664,22 +668,24 @@ function MaterialRow({
               Request price list access
             </Link>
           ) : searchListId ? (
-            <FabricSearch
-              value={material.description}
-              onChange={v => onChange({ description: v })}
-              onBlur={v => onChange({ description: v })}
-              onSelect={handleFabricSelect}
-              placeholder="Search fabric…"
-              className={descriptionInputClass}
-              priceListId={searchListId}
-            />
+            <Field label="Fabric">
+              <FabricSearch
+                value={material.description}
+                onChange={v => onChange({ description: v })}
+                onBlur={v => onChange({ description: v })}
+                onSelect={handleFabricSelect}
+                className={descriptionInputClass}
+                priceListId={searchListId}
+              />
+            </Field>
           ) : (
-            <input
-              value={material.description}
-              onChange={e => onChange({ description: e.target.value })}
-              placeholder="e.g. Romo Linara Pebble"
-              className={descriptionInputClass}
-            />
+            <Field label="Fabric">
+              <input
+                value={material.description}
+                onChange={e => onChange({ description: e.target.value })}
+                className={descriptionInputClass}
+              />
+            </Field>
           )}
         </>
       )}
@@ -707,25 +713,34 @@ function Section({
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  className = '',
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <label className="block">
+    <label className={`block ${className}`}>
       <span className="block text-[10px] text-[#8A877F] mb-0.5">{label}</span>
       {children}
     </label>
   )
 }
 
+// No placeholder prop by design: every field in this panel carries a visible
+// label, and greyed example text inside an empty box reads as a value that is
+// already filled in.
 function TextInput({
   value,
   onChange,
-  placeholder,
   list,
   inputMode,
 }: {
   value: string
   onChange: (v: string) => void
-  placeholder?: string
   list?: string
   inputMode?: 'decimal'
 }) {
@@ -733,7 +748,6 @@ function TextInput({
     <input
       value={value}
       onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
       list={list}
       inputMode={inputMode}
       className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A]"
