@@ -91,9 +91,11 @@ interface Props {
   settings: ElecSettings | null
   logoBase64: string | null
   asInvoice?: boolean
+  /** Name captured next to the signature — falls back to the client's name */
+  signatureName?: string | null
 }
 
-export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoice = false }: Props) {
+export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoice = false, signatureName = null }: Props) {
   const statusColor = STATUS_COLOR[jobCard.status] ?? MUTED
   const staffName = (jobCard.staff && !Array.isArray(jobCard.staff)) ? jobCard.staff.name : null
   const clientName = jobCard.client_name ?? ((jobCard.client && !Array.isArray(jobCard.client)) ? jobCard.client.client_name : null)
@@ -252,6 +254,8 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
                 <Text style={[s.tableCell, { flex: 1, textAlign: 'right' }]}>{fmtCurrency(m.unit_price != null ? m.qty * m.unit_price : null)}</Text>
               </View>
             ))}
+            {/* Staff capture materials without pricing — don't show the client a R 0,00 total */}
+            {totalExclVat > 0 && (
             <View>
               <View style={[s.totalRow, { marginTop: 2 }]}>
                 <Text style={[s.tableCell, { flex: 5, color: MUTED, fontSize: 8 }]}>Subtotal (excl. VAT)</Text>
@@ -266,6 +270,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
                 <Text style={[s.tableCell, { flex: 1, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 9, color: '#fff' }]}>{fmtCurrency(totalInclVat)}</Text>
               </View>
             </View>
+            )}
           </View>
         )}
 
@@ -290,7 +295,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
             <Text style={s.secLabel}>Client Signature</Text>
             <View style={s.sigBox}>
               <Image src={jobCard.client_signature_url} style={s.sigImg} />
-              <Text style={s.sigLabel}>{clientName ?? 'Client'} — {fmtDate(jobCard.completed_at ?? jobCard.created_at)}</Text>
+              <Text style={s.sigLabel}>{signatureName ?? clientName ?? 'Client'} — {fmtDate(jobCard.completed_at ?? jobCard.created_at)}</Text>
             </View>
           </View>
         )}

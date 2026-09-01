@@ -65,6 +65,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         settings: (settings ?? null) as ElecSettings | null,
         logoBase64,
         asInvoice: false,
+        signatureName: (photos ?? []).find(p => p.url === jobCard.client_signature_url)?.caption ?? null,
       })
     )
 

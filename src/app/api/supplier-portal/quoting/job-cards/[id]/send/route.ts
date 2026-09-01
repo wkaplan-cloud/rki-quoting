@@ -97,6 +97,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     ])
     if (!jobCard) return NextResponse.json({ error: 'Job card not found' }, { status: 404 })
 
+    // The name captured alongside the signature is stored as that photo's caption
+    const signatureName = (photosData ?? []).find(p => p.url === jobCard.client_signature_url)?.caption ?? null
+
     // Only fetch the photos the PDF will actually render (9 max)
     const rawPhotos = (photosData ?? []).filter(p => p.url !== jobCard.client_signature_url).slice(0, 9)
 
@@ -123,6 +126,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         settings: settings as ElecSettings | null,
         logoBase64,
         asInvoice: as_invoice ?? false,
+        signatureName,
       })
     )
 
