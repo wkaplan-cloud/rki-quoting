@@ -21,9 +21,12 @@ for (const line of fs.readFileSync(envPath, 'utf8').split('\n')) {
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '')
 }
 
-const to = process.argv[2]
+const args = process.argv.slice(2)
+const dry = args.includes('--dry')
+const to = args.find((a) => !a.startsWith('--'))
 if (!to) {
-  console.error('usage: npx tsx scripts/email-smoke-test.mts you@example.com')
+  console.error('usage: npx tsx scripts/email-smoke-test.mts you@example.com [--dry]')
+  console.error('       --dry  print what would be sent, send nothing')
   process.exit(1)
 }
 
@@ -40,8 +43,8 @@ const body = `<div style="font-family:Georgia,serif;max-width:520px;margin:0 aut
   <p><a href="https://www.quotinghub.co.za/dashboard">Open QuotingHub</a></p>
 </div>`
 
-console.log(`\n1. transactional  ->  ${to}`)
-const t = await sendEmail({
+console.log(`\n1. transactional  ->  ${to}${dry ? '   [DRY RUN - not sent]' : ''}`)
+const t = dry ? { error: null, data: { id: 'dry-run' } } : await sendEmail({
   to,
   subject: 'QuotingHub deliverability test (transactional)',
   preheader: 'Checking SPF, DKIM, DMARC and the plain-text part.',
@@ -56,7 +59,9 @@ const payload = bulkPayload({
   preheader: 'This one carries the one-click unsubscribe headers.',
   html: body + marketingFooter(to),
 })
-const res = await fetch('https://api.resend.com/emails', {
+const res = dry
+  ? { ok: true, json: async () => ({ id: 'dry-run' }), text: async () => '' }
+  : await fetch('https://api.resend.com/emails', {
   method: 'POST',
   headers: {
     Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
