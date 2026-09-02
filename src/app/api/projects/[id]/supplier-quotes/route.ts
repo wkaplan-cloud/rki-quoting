@@ -70,6 +70,12 @@ async function loadQuotableItems(
     .eq('project_id', projectId)
     .eq('row_type', 'item')
     .not('studio_object_id', 'is', null)
+    // Parents only. A material child (the fabric on a chair) carries its
+    // parent's studio_object_id, so without this it matches the same spec and
+    // gets offered the chair's quote — which would overwrite the fabric's own
+    // price, already fetched live from the price list at conversion. The
+    // supplier quoted the item, not its components.
+    .is('parent_item_id', null)
     .order('sort_order')
 
   const lineItems = (rawLineItems ?? []) as LineItemRow[]
