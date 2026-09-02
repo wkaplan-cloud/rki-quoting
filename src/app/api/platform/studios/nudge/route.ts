@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing user_id or email' }, { status: 400 })
   }
 
-  const firstName = (full_name as string | undefined)?.split(' ')[0] ?? 'there'
 
   // Nudges are lifecycle marketing — honour the unsubscribe list.
   const { data: optedOut } = await supabaseAdmin
@@ -39,8 +38,8 @@ export async function POST(req: NextRequest) {
       to: email,
       subject: 'Complete your QuotingHub setup',
       preheader: 'Add your business details and you can start quoting straight away.',
-      html: nudgeHtml(firstName, email),
-      text: nudgeText(firstName),
+      html: nudgeHtml(full_name, email),
+      text: nudgeText(full_name),
     })),
   })
 

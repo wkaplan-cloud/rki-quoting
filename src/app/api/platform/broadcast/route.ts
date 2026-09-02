@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   // so the body is built inside the loop rather than once up front.
   const escaped = body.replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const htmlFor = (email: string) => `<div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #2C2C2A;">
-  <img src="https://quotinghub.co.za/logo.png" alt="QuotingHub" style="height: 48px; width: auto; object-fit: contain; margin-bottom: 32px; display: block;" />
+  <img src="https://www.quotinghub.co.za/logo-email.png" alt="QuotingHub" width="48" height="48" style="height: 48px; width: 48px; object-fit: contain; margin-bottom: 32px; display: block; border: 0;" />
   <div style="font-size: 15px; line-height: 1.8; color: #5A5751; white-space: pre-wrap;">${escaped}</div>
   ${marketingFooter(email)}
 </div>`

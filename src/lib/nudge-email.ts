@@ -13,9 +13,24 @@ import { marketingFooter } from './email'
 
 const ONBOARDING_URL = 'https://www.quotinghub.co.za/onboarding'
 
-export function nudgeHtml(firstName: string, recipient: string): string {
+/**
+ * First name for the greeting, from a full name that may be missing or badly
+ * cased. Falls back to "there", fixes an all-lowercase or SHOUTING name, and
+ * leaves anything already mixed-case alone so "McDonald" survives intact.
+ */
+function greetingName(fullName: string | null | undefined): string {
+  const first = fullName?.trim().split(/\s+/)[0]
+  if (!first) return 'there'
+  if (first === first.toUpperCase() || first === first.toLowerCase()) {
+    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
+  }
+  return first
+}
+
+export function nudgeHtml(fullName: string | null | undefined, recipient: string): string {
+  const firstName = greetingName(fullName)
   return `<div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #2C2C2A;">
-  <img src="https://quotinghub.co.za/logo.png" alt="QuotingHub" style="height: 48px; width: auto; object-fit: contain; margin-bottom: 32px; display: block;" />
+  <img src="https://www.quotinghub.co.za/logo-email.png" alt="QuotingHub" width="48" height="48" style="height: 48px; width: 48px; object-fit: contain; margin-bottom: 32px; display: block; border: 0;" />
   <h1 style="font-size: 24px; font-weight: normal; color: #1A1A18; margin: 0 0 12px;">You are almost set up, ${firstName}!</h1>
   <p style="font-size: 15px; line-height: 1.7; color: #5A5751; margin: 0 0 16px;">You confirmed your account but your studio setup is not quite finished yet. Add your business details and you will be ready to start quoting straight away.</p>
   <p style="font-size: 15px; line-height: 1.7; color: #5A5751; margin: 0 0 28px;">It only takes about 2 minutes.</p>
@@ -25,7 +40,8 @@ export function nudgeHtml(firstName: string, recipient: string): string {
 </div>`
 }
 
-export function nudgeText(firstName: string): string {
+export function nudgeText(fullName: string | null | undefined): string {
+  const firstName = greetingName(fullName)
   return `Hi ${firstName},
 
 You confirmed your QuotingHub account but your studio setup is not quite finished yet.

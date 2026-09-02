@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
 
   for (const user of toNudge) {
     if (user.email && suppressed.has(user.email.toLowerCase())) { skipped++; continue }
-    const firstName = (user.user_metadata?.full_name as string | undefined)?.split(' ')[0] ?? 'there'
+    const fullName = user.user_metadata?.full_name as string | undefined
     const email = user.email!
 
     const res = await fetch('https://api.resend.com/emails', {
@@ -91,8 +91,8 @@ export async function GET(req: NextRequest) {
         to: email,
         subject: 'Complete your QuotingHub setup',
         preheader: 'Add your business details and you can start quoting straight away.',
-        html: nudgeHtml(firstName, email),
-        text: nudgeText(firstName),
+        html: nudgeHtml(fullName, email),
+        text: nudgeText(fullName),
       })),
     })
 
