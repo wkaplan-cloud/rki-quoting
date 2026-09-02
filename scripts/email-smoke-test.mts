@@ -28,7 +28,7 @@ if (!to) {
 }
 
 const { sendEmail, bulkPayload, marketingFooter, unsubscribeUrl, FROM_MARKETING } =
-  await import('../src/lib/email.ts')
+  await import('../src/lib/email.js') // resolved by tsx to src/lib/email.ts
 
 const body = `<div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;padding:40px 24px;color:#2C2C2A;">
   <h1 style="font-size:20px;margin:0 0 16px;">Deliverability test</h1>
