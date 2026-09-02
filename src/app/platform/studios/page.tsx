@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { QuickDeleteButton } from './[id]/DeleteStudioButton'
 import { AssignRepCell } from './AssignRepCell'
 import { IncompleteSignups, type IncompleteSignup } from './IncompleteSignups'
+import { TestNudge } from './TestNudge'
 import { SendWelcomeButton } from './SendWelcomeButton'
 
 function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string; trialEndsAt: string | null }) {
@@ -245,6 +246,7 @@ export default async function StudiosPage() {
       )}
 
       <IncompleteSignups signups={incompleteSignups} />
+      <TestNudge />
     </div>
   )
 }

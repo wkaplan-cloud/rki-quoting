@@ -13,8 +13,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { user_id, email, full_name } = await req.json()
-  if (!user_id || !email) return NextResponse.json({ error: 'Missing user_id or email' }, { status: 400 })
+  const { user_id, email, full_name, test } = await req.json()
+  // A test send targets any address and is not recorded against an account.
+  if (!email || (!test && !user_id)) {
+    return NextResponse.json({ error: 'Missing user_id or email' }, { status: 400 })
+  }
 
   const firstName = (full_name as string | undefined)?.split(' ')[0] ?? 'there'
 
@@ -46,9 +49,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: body }, { status: 502 })
   }
 
-  await supabaseAdmin
-    .from('onboarding_nudges')
-    .upsert({ user_id, sent_at: new Date().toISOString() })
+  if (!test) {
+    await supabaseAdmin
+      .from('onboarding_nudges')
+      .upsert({ user_id, sent_at: new Date().toISOString() })
+  }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, from: FROM_MARKETING })
 }
