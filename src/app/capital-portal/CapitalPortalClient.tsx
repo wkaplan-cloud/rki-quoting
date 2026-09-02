@@ -144,23 +144,25 @@ export default function CapitalPortalClient({ rkilogoUrl, businessName }: { rkil
     <div className="min-h-screen bg-[#F5F2EC]">
       {/* Header */}
       <div className="bg-white border-b border-[#E8E4DC] px-5 py-5">
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
+        <div className="max-w-xl mx-auto flex items-center gap-2 sm:gap-4">
           {/* Capital logo */}
           <Image
             src="/Capital-Logo.png"
             alt="The Capital Hotels"
             width={180}
             height={60}
-            className="h-10 sm:h-12 w-auto object-contain flex-shrink-0"
+            className="h-9 sm:h-12 w-auto object-contain flex-shrink-0"
           />
           {/* Divider */}
           <div className="w-px h-8 sm:h-10 bg-[#E8E4DC] flex-shrink-0" />
-          {/* RKI logo */}
-          {rkilogoUrl
-            ? // eslint-disable-next-line @next/next/no-img-element
-              <img src={rkilogoUrl} alt={businessName} className="h-10 sm:h-12 w-auto max-w-[110px] sm:max-w-[220px] object-contain" />
-            : <Image src="/logo.png" alt={businessName} width={48} height={48} className="h-10 sm:h-12 w-auto object-contain" />
-          }
+          {/* RKI logo — fills the remaining width; left on mobile, right on desktop */}
+          <div className="flex-1 min-w-0 flex justify-start sm:justify-end">
+            {rkilogoUrl
+              ? // eslint-disable-next-line @next/next/no-img-element
+                <img src={rkilogoUrl} alt={businessName} className="max-h-11 sm:max-h-14 max-w-full w-auto object-contain object-left sm:object-right" />
+              : <Image src="/logo.png" alt={businessName} width={48} height={48} className="max-h-11 sm:max-h-14 max-w-full w-auto object-contain object-left sm:object-right" />
+            }
+          </div>
         </div>
       </div>
 
