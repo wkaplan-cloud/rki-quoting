@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const PLATFORM_EMAIL = process.env.CONTACT_NOTIFICATION_EMAIL ?? 'hello@quotinghub.co.za'
 
 const PLAN_LABEL: Record<string, string> = {
@@ -120,7 +119,7 @@ export async function GET(req: NextRequest) {
          <p>Subscription code: ${newSubCode ?? 'Not yet available — check Paystack'}</p>
          ${!isManufacturerUpgrade ? `<p>Remember to send the <a href="https://paystack.com/buy/setup--training--r2500-once-off-vmoejb">Setup & Training payment link</a> if not already paid.</p>` : ''}`
 
-    await resend.emails.send({
+    await sendEmail({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
       to:   PLATFORM_EMAIL,
       subject,

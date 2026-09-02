@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createElement } from 'react'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
@@ -12,7 +12,6 @@ import type { ElecQuote, ElecQuoteSection, ElecQuoteLineItem, ElecClient, ElecSe
 
 export const maxDuration = 60
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 function fmtR(n: number) {
   return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }, 0)
     const totalInclVat = asBuiltTotal * (1 + quoteRaw.vat_rate / 100)
 
-    await resend.emails.send({
+    await sendEmail({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,

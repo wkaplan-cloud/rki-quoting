@@ -2,13 +2,12 @@ export const maxDuration = 60
 import { NextResponse } from 'next/server'
 import { createElement } from 'react'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { resolveMfgAuth } from '@/lib/mfg-auth'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { MfgQuotePDF } from '@/lib/pdf/MfgQuotePDF'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await resolveMfgAuth()
@@ -155,7 +154,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 </body>
 </html>`
 
-  const { error: emailError } = await resend.emails.send({
+  const { error: emailError } = await sendEmail({
     from:    `${businessName} <noreply@quotinghub.co.za>`,
     replyTo: settings?.email ?? undefined,
     to:      email.trim(),

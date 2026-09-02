@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import crypto from 'crypto'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const PLATFORM_ADMIN = process.env.PLATFORM_ADMIN_EMAIL
 
 async function assertPlatformAdmin() {
@@ -26,7 +25,7 @@ async function sendInviteEmail(
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://quotinghub.co.za'
   const inviteUrl = `${baseUrl}/supplier-portal/accept-admin-invite?token=${token}`
 
-  await resend.emails.send({
+  await sendEmail({
     from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
     replyTo,
     to,

@@ -1,4 +1,4 @@
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { computeLineItems, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
@@ -82,8 +82,7 @@ export async function sendAccountingNotification(params: AccountingNotificationP
         <td style="padding:8px 0;font-size:14px;text-align:right;color:${r.bold ? '#1A1A18' : '#4A4A47'};${r.bold ? 'font-weight:600;border-top:1px solid #EDE9E1;padding-top:12px;' : ''}">${r.value}</td>
       </tr>`).join('')
 
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    await resend.emails.send({
+    await sendEmail({
       from: `${studioName} <noreply@quotinghub.co.za>`,
       to: recipient,
       subject,

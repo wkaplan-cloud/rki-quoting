@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createElement } from 'react'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
@@ -12,7 +12,6 @@ import type { ElecCOC, ElecQuote, ElecClient, ElecSettings } from '@/lib/elec-ty
 
 export const maxDuration = 60
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -60,11 +59,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .eq('id', cocId)
 
     const clientName = (client as ElecClient | null)?.client_name ?? ''
-    await resend.emails.send({
+    await sendEmail({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,
       subject: `Certificate of Compliance – ${quoteRaw.project_name}`,
+      preheader: `The signed Certificate of Compliance for ${quoteRaw.project_name} is attached.`,
       html: buildCOCEmail({ companyName, companyEmail: account.email, clientName, coc: coc as ElecCOC, quote: quoteRaw as ElecQuote, message }),
       text: `Hi ${clientName},\n\n${message ? message + '\n\n' : ''}Please find your Certificate of Compliance (${coc.coc_number}) attached for ${quoteRaw.project_name}.\n\nIf you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
       attachments: [{

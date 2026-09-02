@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 // POST /api/approve/[token]
 // Public — no auth. Client submits their decision + optional comment.
@@ -93,7 +92,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         const decisionLabel = decision === 'approved' ? 'approved' : 'declined'
         const subject = `Client ${decisionLabel} quote ${project.project_number} – ${project.project_name}`
         try {
-          await resend.emails.send({
+          await sendEmail({
             from: `QuotingHub <noreply@quotinghub.co.za>`,
             replyTo: 'hello@quotinghub.co.za',
             to: notifyEmail,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createElement } from 'react'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
@@ -11,7 +11,6 @@ import type { ElecJobCard, ElecSettings } from '@/lib/elec-types'
 
 export const maxDuration = 60
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 // For public Supabase photos, use the CDN render endpoint (800px wide, 60% quality)
 // instead of the admin storage API — ~95% smaller, far faster to download.
@@ -162,7 +161,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       : ''
 
     const companyName = account.company_name ?? 'Your contractor'
-    await resend.emails.send({
+    await sendEmail({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,

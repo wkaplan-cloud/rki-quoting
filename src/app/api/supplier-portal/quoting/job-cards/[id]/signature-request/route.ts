@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { randomUUID } from 'crypto'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 async function resolveAccountOrStaff(userId: string): Promise<{ accountId: string; companyName: string; email: string | undefined } | null> {
   const { data: own } = await supabaseAdmin
@@ -64,11 +63,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const greeting = name ? `Hi ${name},` : 'Hi,'
     const companyName = account.companyName || 'Your contractor'
 
-    await resend.emails.send({
+    await sendEmail({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,
       subject: `Please sign job card ${card.job_number} — ${card.title}`,
+      preheader: `Job card ${card.job_number} is complete and ready for your signature.`,
       html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F0F2F5;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">

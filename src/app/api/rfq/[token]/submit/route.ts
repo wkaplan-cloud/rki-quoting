@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Guardrails on free text a public, unauthenticated supplier can send.
 const MAX_NOTE = 2000
@@ -159,7 +158,7 @@ async function notifyDesigner(
     const to = request.created_by_email || settings?.email_from?.trim()
     if (to) {
       const studioName = settings?.business_name ?? 'Your studio'
-      await resend.emails.send({
+      await sendEmail({
         from: 'QuotingHub <noreply@quotinghub.co.za>',
         replyTo: 'hello@quotinghub.co.za',
         to,

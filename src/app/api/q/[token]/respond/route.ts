@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { todaySA } from '@/lib/dates'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -45,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           ? `Quote approved — ${quote.quote_number} · ${quote.project_name}`
           : `Changes requested — ${quote.quote_number} · ${quote.project_name}`
 
-        resend.emails.send({
+        sendEmail({
           from: 'QuotingHub Notifications <noreply@quotinghub.co.za>',
           replyTo: 'hello@quotinghub.co.za',
           to: account.email,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import fs from 'fs'
@@ -37,8 +37,7 @@ export async function POST(
 
     const html = fs.readFileSync(path.join(process.cwd(), 'designer-welcome-email.html'), 'utf-8')
 
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const { error: resendError } = await resend.emails.send({
+    const { error: resendError } = await sendEmail({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
       to: admin.invited_email,
       replyTo: 'hello@quotinghub.co.za',

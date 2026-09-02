@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { todaySA } from '@/lib/dates'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
@@ -18,7 +18,6 @@ const escHtml = (s: string) =>
 
 export async function POST(req: NextRequest) {
   try {
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const { projectId, type, overrideEmail, customBody } = await req.json() as { projectId: string; type: 'quote' | 'invoice'; overrideEmail?: string; customBody?: string }
 
   const supabase = await createClient()
@@ -115,7 +114,7 @@ export async function POST(req: NextRequest) {
       ? customBody
       : `Dear ${project.client?.client_name ?? 'Client'},\n\nPlease find attached your ${label.toLowerCase()} for ${project.project_name}.\n\nReference: ${project.project_number}\n\nKind regards,\n${studioName}${userEmail ? `\n${userEmail}` : ''}`
 
-    const { error: resendError } = await resend.emails.send({
+    const { error: resendError } = await sendEmail({
       from: `${studioName} <noreply@quotinghub.co.za>`,
       ...(replyToEmail ? { replyTo: replyToEmail } : {}),
       to: clientEmail,

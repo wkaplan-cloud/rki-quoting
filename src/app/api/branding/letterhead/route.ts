@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
@@ -34,8 +34,7 @@ export async function POST(req: NextRequest) {
     const notifyEmail = process.env.CONTACT_NOTIFICATION_EMAIL
 
     if (notifyEmail) {
-      const resend = new Resend(process.env.RESEND_API_KEY)
-      await resend.emails.send({
+      await sendEmail({
         from: 'QuotingHub <noreply@quotinghub.co.za>',
         replyTo: 'hello@quotinghub.co.za',
         to: notifyEmail,

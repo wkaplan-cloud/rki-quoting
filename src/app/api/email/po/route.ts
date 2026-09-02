@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
@@ -11,7 +11,6 @@ export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const { projectId, supplierId } = await req.json() as { projectId: string; supplierId?: string }
 
   const supabase = await createClient()
@@ -98,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     const subject = `Purchase Order ${poNumber} – ${project.project_name}`
 
-    const { error: resendError } = await resend.emails.send({
+    const { error: resendError } = await sendEmail({
       from: `${studioName} <noreply@quotinghub.co.za>`,
       ...(replyTo ? { replyTo } : {}),
       to: effectiveEmail,

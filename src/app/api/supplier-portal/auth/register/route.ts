@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 // POST /api/supplier-portal/auth/register — creates Supabase auth account + portal account row
@@ -84,8 +84,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Admin notification — fire and forget, never block signup
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  resend.emails.send({
+  sendEmail({
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     to: 'hello@quotinghub.co.za',
     subject: `New supplier signup: ${company_name.trim()}`,

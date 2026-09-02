@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
@@ -19,12 +19,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
 
   try {
     const repliedAt = new Date().toISOString()
     const subject = 'Re: your QuotingHub message'
-    await resend.emails.send({
+    await sendEmail({
       from: `QuotingHub <${REPLY_FROM}>`,
       to,
       replyTo: REPLY_FROM,

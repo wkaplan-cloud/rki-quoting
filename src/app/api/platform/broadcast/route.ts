@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { bulkPayload, marketingFooter, FROM_MARKETING } from '@/lib/email'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY!
-const FROM = 'QuotingHub <hello@quotinghub.co.za>'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -67,28 +67,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No recipients matched the filter' }, { status: 400 })
   }
 
-  // Send via Resend in batches of 50 (Resend batch limit)
-  const htmlBody = `<div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #2C2C2A;">
+  // Drop anyone who has unsubscribed from marketing mail.
+  const { data: optedOut } = await supabaseAdmin
+    .from('email_unsubscribes')
+    .select('email')
+  const suppressed = new Set((optedOut ?? []).map(r => r.email.toLowerCase()))
+  const sendTo = targetEmails.filter(e => !suppressed.has(e.toLowerCase()))
+  const skipped = targetEmails.length - sendTo.length
+
+  if (sendTo.length === 0) {
+    return NextResponse.json({ error: 'All matched recipients have unsubscribed' }, { status: 400 })
+  }
+
+  // The footer differs per recipient (each gets their own unsubscribe token),
+  // so the body is built inside the loop rather than once up front.
+  const escaped = body.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const htmlFor = (email: string) => `<div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #2C2C2A;">
   <img src="https://quotinghub.co.za/logo.png" alt="QuotingHub" style="height: 48px; width: auto; object-fit: contain; margin-bottom: 32px; display: block;" />
-  <div style="font-size: 15px; line-height: 1.8; color: #5A5751; white-space: pre-wrap;">${body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-  <hr style="border: none; border-top: 1px solid #EDE9E1; margin: 32px 0;" />
-  <p style="font-size: 12px; color: #C4BFB5; margin: 0;">QuotingHub · quotinghub.co.za · To unsubscribe, reply to this email.</p>
+  <div style="font-size: 15px; line-height: 1.8; color: #5A5751; white-space: pre-wrap;">${escaped}</div>
+  ${marketingFooter(email)}
 </div>`
+
+  // Preheader: first line of the message, so the inbox preview is intentional.
+  const preheader = body.replace(/\s+/g, ' ').trim().slice(0, 90)
 
   let sentCount = 0
   const errors: string[] = []
 
-  for (let i = 0; i < targetEmails.length; i += 50) {
-    const batch = targetEmails.slice(i, i + 50)
+  for (let i = 0; i < sendTo.length; i += 50) {
+    const batch = sendTo.slice(i, i + 50)
     const res = await fetch('https://api.resend.com/emails/batch', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(batch.map(to => ({
-        from: FROM,
-        to: [to],
+      body: JSON.stringify(batch.map(to => bulkPayload({
+        to,
         subject,
-        html: htmlBody,
+        html: htmlFor(to),
         text: body,
+        preheader,
+        from: FROM_MARKETING,
       }))),
     })
     if (res.ok) {
@@ -103,5 +120,5 @@ export async function POST(req: NextRequest) {
     console.error('Broadcast partial errors:', errors)
   }
 
-  return NextResponse.json({ sent: sentCount, errors: errors.length })
+  return NextResponse.json({ sent: sentCount, skipped, errors: errors.length })
 }

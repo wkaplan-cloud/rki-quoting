@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { resolvePortalAccount } from '@/lib/portal-account'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -112,12 +111,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         ).join('\n') + '\n'
       : ''
 
-    await resend.emails.send({
+    await sendEmail({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: body.email.trim(),
       ...(ccEmails.length > 0 && { cc: ccEmails }),
       subject: `Variation Order for approval — ${vo.vo_number} · ${quote.project_name}`,
+      preheader: `Variation order ${vo.vo_number} on ${quote.project_name} is waiting for your approval.`,
       html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#F0F2F5;font-family:Inter,sans-serif;">
 <div style="max-width:520px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E4E4E7;">

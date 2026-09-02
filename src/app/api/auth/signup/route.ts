@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const SITE_URL = 'https://quotinghub.co.za'
@@ -69,12 +69,12 @@ export async function POST(req: NextRequest) {
   const firstName = full_name.trim().split(' ')[0]
 
   // Send branded confirmation email via Resend
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  const { error: emailError } = await resend.emails.send({
+  const { error: emailError } = await sendEmail({
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     replyTo: 'hello@quotinghub.co.za',
     to: email.toLowerCase().trim(),
     subject: 'Confirm your QuotingHub account',
+    preheader: 'Confirm your email address to finish setting up your QuotingHub account.',
     text: `Hi ${firstName},\n\nWelcome to QuotingHub! Please confirm your email address to activate your account:\n\n${confirmUrl}\n\nThis link expires in 24 hours.\n\nIf you didn't sign up for QuotingHub, you can safely ignore this email.\n\nThe QuotingHub Team`,
     html: `<!DOCTYPE html>
 <html lang="en">
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Admin notification — fire and forget, never block signup
-  resend.emails.send({
+  sendEmail({
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     to: 'hello@quotinghub.co.za',
     subject: `New designer signup: ${full_name.trim()}`,

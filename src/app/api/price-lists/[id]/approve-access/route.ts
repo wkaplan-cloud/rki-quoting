@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { apiError } from '@/lib/api-error'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -34,7 +34,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ])
       const adminEmails = (orgMembers ?? []).map(m => m.invited_email).filter(Boolean)
       if (adminEmails.length > 0 && priceList) {
-        const resend = new Resend(process.env.RESEND_API_KEY)
         const subject = `Price list access approved — ${priceList.name}`
         // Imported supplier lists (everything except the live-synced Home Fabrics feed)
         // are a snapshot — warn designers so they confirm current pricing before ordering.
@@ -45,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const snapshotHtml = isSnapshot
           ? `<p style="margin:0 0 28px;font-size:13px;line-height:1.7;color:#6B5D42;background-color:#FBF6E9;border:1px solid #E4D3A8;border-radius:6px;padding:12px 16px;">Please note: these trade prices are a <strong>snapshot</strong> from when the list was added and may change over time. Always confirm current pricing with ${priceList.supplier_name} before placing an order.</p>`
           : ''
-        await resend.emails.send({
+        await sendEmail({
           from: 'QuotingHub <noreply@quotinghub.co.za>',
           replyTo: 'hello@quotinghub.co.za',
           to: adminEmails,

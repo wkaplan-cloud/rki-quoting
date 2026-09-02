@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { apiError } from '@/lib/api-error'
 
 const ORG_ID = process.env.CAPITAL_HOTEL_ORG_ID
@@ -67,7 +67,6 @@ export async function POST(req: NextRequest) {
 
     const notifyEmail = settings?.capital_hotel_email ?? process.env.CONTACT_NOTIFICATION_EMAIL
     if (notifyEmail && process.env.RESEND_API_KEY) {
-      const resend = new Resend(process.env.RESEND_API_KEY)
       const itemsHtml = body.items.map((item, i) => `
         <tr>
           <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-size:13px;color:#1A1A18;">${i + 1}</td>
@@ -79,7 +78,7 @@ export async function POST(req: NextRequest) {
         </tr>
       `).join('')
 
-      await resend.emails.send({
+      await sendEmail({
         from: 'QuotingHub <noreply@quotinghub.co.za>',
         replyTo: 'hello@quotinghub.co.za',
         to: notifyEmail,

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import crypto from 'crypto'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -37,11 +36,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const inviteUrl = `${baseUrl}/supplier-portal/accept-staff-invite?token=${token}`
     const companyName = account.company_name ?? 'Your employer'
 
-    await resend.emails.send({
+    await sendEmail({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: staff.email,
       subject: `${companyName} has invited you to QuotingHub`,
+      preheader: `Set up your account to log time and job cards for ${companyName}.`,
       html: `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F0F2F5;font-family:Arial,sans-serif;">

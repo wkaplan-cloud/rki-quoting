@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createElement } from 'react'
 import { createClient } from '@/lib/supabase/server'
@@ -11,7 +11,6 @@ export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
-    const resend = new Resend(process.env.RESEND_API_KEY)
     const { projectId, toEmail } = await req.json() as { projectId: string; toEmail: string }
 
     if (!toEmail?.trim()) return NextResponse.json({ error: 'No recipient email provided' }, { status: 400 })
@@ -48,7 +47,7 @@ export async function POST(req: NextRequest) {
     const subject = `Job Cost Sheet – ${project.project_name} (${project.project_number})`
     const studioName = businessName ?? 'Your Studio'
 
-    const { error: resendError } = await resend.emails.send({
+    const { error: resendError } = await sendEmail({
       from: `${studioName} <noreply@quotinghub.co.za>`,
       ...(replyToEmail ? { replyTo: replyToEmail } : {}),
       to: toEmail.trim(),

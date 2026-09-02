@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -50,13 +50,12 @@ export async function POST(req: NextRequest) {
   // Save to database
   await supabaseAdmin.from('contact_submissions').insert({ name, email, type: type ?? null, message })
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
   const subject = type
     ? `[QuotingHub] ${type} from ${name || email}`
     : `[QuotingHub] Contact form submission from ${name || email}`
 
   try {
-    await resend.emails.send({
+    await sendEmail({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
       to: NOTIFICATION_EMAIL,
       replyTo: email,

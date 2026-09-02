@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
@@ -16,8 +16,7 @@ export async function POST(req: NextRequest) {
 
   if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  const { error } = await resend.emails.send({
+  const { error } = await sendEmail({
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     to: 'hello@quotinghub.co.za',
     subject: `Supplier Account Deletion Request — ${account.company_name ?? account.email}`,

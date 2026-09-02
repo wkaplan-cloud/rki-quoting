@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createElement } from 'react'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { createClient } from '@/lib/supabase/server'
@@ -10,7 +10,6 @@ import { apiError } from '@/lib/api-error'
 
 export const maxDuration = 60
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     const safeFilename = `Timesheet_${periodLabel.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
 
-    await resend.emails.send({
+    await sendEmail({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
       replyTo: account.email,
       to,

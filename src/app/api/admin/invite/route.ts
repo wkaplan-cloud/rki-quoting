@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
@@ -119,12 +119,12 @@ export async function POST(req: NextRequest) {
   const inviteUrl = linkData.properties.action_link
 
   // Send branded invite email via Resend
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  const { error: resendError } = await resend.emails.send({
+  const { error: resendError } = await sendEmail({
     from: `${businessName} <noreply@quotinghub.co.za>`,
     replyTo: user.email ?? undefined,
     to: email,
     subject: `You've been invited to join ${businessName} on QuotingHub`,
+    preheader: `Accept your invitation to start quoting with ${businessName}.`,
     text: `You have been invited to join ${businessName} as a ${roleLabel} on quotinghub.co.za.\n\nAccept your invite here: ${inviteUrl}\n\nThis link expires in 24 hours.`,
     html: `<!DOCTYPE html>
 <html lang="en">

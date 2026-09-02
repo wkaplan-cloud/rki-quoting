@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { apiError } from '@/lib/api-error'
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -31,9 +31,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       supabaseAdmin.from('organizations').select('name').eq('id', orgId).single(),
       supabaseAdmin.from('price_lists').select('name, supplier_name').eq('id', id).single(),
     ])
-    const resend = new Resend(process.env.RESEND_API_KEY)
     const subject = `New price list access request — ${priceList?.name ?? id}`
-    await resend.emails.send({
+    await sendEmail({
       from: 'QuotingHub <noreply@quotinghub.co.za>',
       to: 'hello@quotinghub.co.za',
       subject,

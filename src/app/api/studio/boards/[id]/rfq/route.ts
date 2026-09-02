@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { createElement } from 'react'
 import sharp from 'sharp'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
@@ -178,7 +178,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
     const linkExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-    const resend = new Resend(process.env.RESEND_API_KEY)
     const results: { email: string; supplierName: string; ok: boolean; error?: string }[] = []
     const stampsByObject = new Map<string, RfqRecipientStamp[]>()
     // rfq_requests rows to persist — one per email that actually sent. Built
@@ -249,7 +248,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           const subject = `Request for quote — ${board.name}${clientName ? ` (${clientName})` : ''}`
           const filename = `${slug(businessName)}_RFQ_${slug(board.name)}.pdf`
           const intro = (body.message ?? '').trim()
-          const { error } = await resend.emails.send({
+          const { error } = await sendEmail({
             from: `${businessName} <noreply@quotinghub.co.za>`,
             to: email,
             ...(replyTo ? { replyTo } : {}),

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
 const SITE_URL = 'https://quotinghub.co.za'
@@ -25,12 +25,12 @@ export async function POST(req: NextRequest) {
 
   const resetUrl = linkData.properties.action_link
 
-  const resend = new Resend(process.env.RESEND_API_KEY)
-  await resend.emails.send({
+  await sendEmail({
     from: 'QuotingHub <noreply@quotinghub.co.za>',
     replyTo: 'hello@quotinghub.co.za',
     to: normalizedEmail,
     subject: 'Reset your QuotingHub password',
+    preheader: 'Use the link inside to choose a new password. It expires in one hour.',
     text: `Hi,\n\nWe received a request to reset your QuotingHub password. Click the link below to choose a new one:\n\n${resetUrl}\n\nThis link expires shortly. If you didn't request this, you can safely ignore this email.\n\nThe QuotingHub Team`,
     html: `<!DOCTYPE html>
 <html lang="en">
