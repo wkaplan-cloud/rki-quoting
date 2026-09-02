@@ -53,6 +53,11 @@ function defaultGroupKey(spec: StudioSpec) {
   return typed ? `name:${typed}` : UNASSIGNED
 }
 
+// Neither the spec flush nor the send had a ceiling, so either could leave
+// the Send button spinning with no way back.
+const SAVE_FLUSH_TIMEOUT_MS = 20_000
+const SEND_TIMEOUT_MS = 120_000
+
 let recipientSeq = 0
 
 export function RequestQuotesModal() {
@@ -214,8 +219,20 @@ export function RequestQuotesModal() {
     setErrors([])
     if (!force) setDuplicates(null)
     try {
-      // Make sure every spec edit is in the DB before the server reads them
-      await useStudioStore.getState().flushSave()
+      // Make sure every spec edit is in the DB before the server reads them.
+      // Raced against a deadline: flushSave awaits Supabase calls that have no
+      // timeout of their own, and a stalled one used to leave this button
+      // spinning forever with no request ever sent. Sending anyway would mail
+      // the supplier specs that are one edit stale, so this stops instead.
+      const saved = await Promise.race([
+        useStudioStore.getState().flushSave().then(() => true),
+        new Promise<boolean>(resolve => setTimeout(() => resolve(false), SAVE_FLUSH_TIMEOUT_MS)),
+      ])
+      if (!saved) {
+        setErrors(['Could not save your latest spec changes — check your connection and try again.'])
+        setSending(false)
+        return
+      }
       const payload = {
         message: message.trim(),
         force,
@@ -228,10 +245,14 @@ export function RequestQuotesModal() {
           }))
           .filter(g => g.recipients.length > 0),
       }
+      // Rendering a PDF per recipient is slow on a big board, but never
+      // unbounded — without this the spinner has no way back if the request
+      // stalls. The window is deliberately generous.
       const res = await fetch(`/api/studio/boards/${boardId}/rfq`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -256,8 +277,14 @@ export function RequestQuotesModal() {
         setErrors(failed.map(f => `${f.supplierName || f.email}: ${f.error ?? 'send failed'}`))
         setSending(false)
       }
-    } catch {
-      setErrors(['Sending failed — please check your connection and try again'])
+    } catch (e) {
+      // A timeout is not a failed send: the route may still be working through
+      // its recipients, so say so rather than inviting a blind resend
+      setErrors(
+        (e as Error)?.name === 'TimeoutError'
+          ? ['Still sending after two minutes — some emails may already have gone out. Check with your suppliers, or reopen this and resend only the ones that missed it.']
+          : ['Sending failed — please check your connection and try again']
+      )
       setSending(false)
     }
   }

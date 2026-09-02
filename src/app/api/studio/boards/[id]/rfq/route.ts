@@ -9,7 +9,10 @@ import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
 import { normalizeMaterial, type StudioSpecRow, type StudioSlideRow, type RfqRecipientStamp } from '@/lib/studio/types'
 
-export const maxDuration = 60
+// One PDF is rendered per recipient, so a photo-heavy board sent to several
+// comparison suppliers multiplies the work. 60s was cutting long sends off
+// part-way through the recipient loop.
+export const maxDuration = 300
 
 interface RfqRecipient {
   supplierId: string | null
@@ -49,7 +52,9 @@ const PDF_IMAGE_MAX_PX = 1200
 
 async function downscaleForPdf(url: string): Promise<string> {
   try {
-    const res = await fetch(url)
+    // Bounded: an image that never responds would otherwise hold the whole
+    // send open until the function is killed, taking every recipient with it
+    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) })
     if (!res.ok) return url
     const out = await sharp(Buffer.from(await res.arrayBuffer()))
       .rotate() // honour EXIF orientation
