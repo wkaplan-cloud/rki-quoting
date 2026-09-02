@@ -229,11 +229,12 @@ export function RfqPricingForm({
                   <label htmlFor={`price-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
                     Your price (excl. VAT)
                   </label>
-                  {/* The value is right-aligned so the text caret lands at the
-                      far end of the box. Left-aligned it sat a few pixels off
-                      the R — on an empty field that reads as a stray vertical
-                      line stuck to the R rather than a cursor. Right alignment
-                      is also how a column of prices should read.
+                  {/* pl-12 is deliberate, not a guess: the text caret starts
+                      where the padding ends, and at pl-7 it sat a few pixels
+                      off the R, reading as a stray vertical line stuck to the
+                      R rather than a cursor. 48px clears it while the value
+                      still reads as a pair with the R — pl-14 leaves the
+                      number looking adrift from it.
                       The R is absolutely positioned over a single input (the
                       same construction as the Pieces price field) so the
                       border and focus ring sit on the input itself, matching
@@ -253,7 +254,7 @@ export function RfqPricingForm({
                       value={e.price}
                       disabled={disabled}
                       onChange={ev => update(it.specId, { price: ev.target.value.replace(/[^\d.]/g, '') })}
-                      className={`w-full py-2 pl-7 pr-3 text-sm text-right rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:border-[#9A7B4F] focus:ring-2 focus:ring-[#9A7B4F]/25 ${
+                      className={`w-full py-2 pl-12 pr-3 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:border-[#9A7B4F] focus:ring-2 focus:ring-[#9A7B4F]/25 ${
                         disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]'
                       }`}
                       style={{ color: '#2C2C2A' }}
