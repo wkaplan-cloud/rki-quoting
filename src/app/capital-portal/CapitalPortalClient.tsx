@@ -144,22 +144,22 @@ export default function CapitalPortalClient({ rkilogoUrl, businessName }: { rkil
     <div className="min-h-screen bg-[#F5F2EC]">
       {/* Header */}
       <div className="bg-white border-b border-[#E8E4DC] px-5 py-5">
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
           {/* Capital logo */}
           <Image
             src="/Capital-Logo.png"
             alt="The Capital Hotels"
             width={180}
             height={60}
-            className="h-12 w-auto object-contain"
+            className="h-10 sm:h-12 w-auto object-contain flex-shrink-0"
           />
           {/* Divider */}
-          <div className="w-px h-10 bg-[#E8E4DC] flex-shrink-0" />
+          <div className="w-px h-8 sm:h-10 bg-[#E8E4DC] flex-shrink-0" />
           {/* RKI logo */}
           {rkilogoUrl
             ? // eslint-disable-next-line @next/next/no-img-element
-              <img src={rkilogoUrl} alt={businessName} className="h-12 w-auto max-w-[220px] object-contain" />
-            : <Image src="/logo.png" alt={businessName} width={48} height={48} className="h-12 w-auto object-contain" />
+              <img src={rkilogoUrl} alt={businessName} className="h-10 sm:h-12 w-auto max-w-[110px] sm:max-w-[220px] object-contain" />
+            : <Image src="/logo.png" alt={businessName} width={48} height={48} className="h-10 sm:h-12 w-auto object-contain" />
           }
         </div>
       </div>
