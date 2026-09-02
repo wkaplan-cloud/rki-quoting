@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { normalizeMaterial, type StudioSpecRow, type StudioSlideRow } from '@/lib/studio/types'
 import { RfqPricingForm, type RfqFormItem } from './RfqPricingForm'
-import { CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
+import { CATEGORY_FIELDS, categoryLabel, type CategoryKey } from '@/lib/sourcing-categories'
 import { Clock } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -63,7 +63,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         name: spec.spec_name || 'Untitled item',
         area: areaByObject.get(spec.object_id) ?? '',
         imageUrl: imageByObject.get(spec.object_id) ?? null,
-        category: spec.category ?? '',
+        category: categoryLabel(spec.category),
         description: spec.description ?? '',
         quantity: spec.quantity ?? '',
         unit: spec.unit ?? '',

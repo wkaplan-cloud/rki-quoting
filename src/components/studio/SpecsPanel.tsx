@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
-import { X, Plus, Trash2, ClipboardList, RefreshCw, Unlink, ReceiptText } from 'lucide-react'
+import { useRef } from 'react'
+import { X, Plus, Trash2, ClipboardList, RefreshCw, Unlink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore, newId } from '@/lib/studio/store'
 import { createClient } from '@/lib/supabase/client'
@@ -223,17 +223,29 @@ export function SpecsPanel() {
           </div>
         )}
 
-        {/* General */}
-        <Section title="General">
+        {/* Item — what it is and how many. The fields every line item and
+            every RFQ needs, so they lead the panel; everything below is
+            detail that refines them. */}
+        <Section title="Item">
           <Field label="Spec name">
             <TextInput value={spec.specName} onChange={setSpecName} />
           </Field>
           <Field label="Description">
             <TextArea value={spec.description} onChange={v => update({ description: v })} rows={2} />
           </Field>
-          <Field label="Notes">
-            <TextArea value={spec.notes} onChange={v => update({ notes: v })} rows={2} />
-          </Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Quantity">
+              {/* Number-only: this pulls straight into quote line item quantity */}
+              <TextInput
+                value={spec.quantity}
+                onChange={v => update({ quantity: v.replace(/[^0-9.]/g, '') })}
+                inputMode="decimal"
+              />
+            </Field>
+            <Field label="Unit">
+              <TextInput value={spec.unit} onChange={v => update({ unit: v })} />
+            </Field>
+          </div>
         </Section>
 
         {/* Category */}
@@ -269,49 +281,6 @@ export function SpecsPanel() {
             />
           </Section>
         )}
-
-        {/* Supplier */}
-        <Section title="Supplier">
-          <Field label="Supplier">
-            <TextInput
-              value={spec.supplierName}
-              onChange={setSupplier}
-              list="studio-spec-suppliers"
-            />
-            <datalist id="studio-spec-suppliers">
-              {suppliers.map(su => (
-                <option key={su.id} value={su.name} />
-              ))}
-            </datalist>
-            {spec.supplierId && (
-              <p className="text-[10px] text-emerald-700 mt-1">Linked to existing supplier</p>
-            )}
-          </Field>
-        </Section>
-
-        {/* Quotes received — log what a supplier said, whether that came in
-            by email (typed in here) or, later, through a self-serve link.
-            If this spec came from a catalog piece, logging a quote here
-            also refreshes that piece's reference price — the same way
-            accepting a price used to update it, just manual now. */}
-        {spec.id && <LoggedQuotes specId={spec.id} pieceId={spec.pieceId} defaultSupplierName={spec.supplierName} />}
-
-        {/* Product */}
-        <Section title="Product">
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Quantity">
-              {/* Number-only: this pulls straight into quote line item quantity */}
-              <TextInput
-                value={spec.quantity}
-                onChange={v => update({ quantity: v.replace(/[^0-9.]/g, '') })}
-                inputMode="decimal"
-              />
-            </Field>
-            <Field label="Unit">
-              <TextInput value={spec.unit} onChange={v => update({ unit: v })} />
-            </Field>
-          </div>
-        </Section>
 
         {/* Dimensions — see showGenericDimensions above */}
         {showGenericDimensions && (
@@ -389,184 +358,28 @@ export function SpecsPanel() {
             ))}
           </datalist>
         </Section>
+
+        {/* Supplier — last, because it's the one decision that follows from
+            everything above: what it is, then who's being asked to price it */}
+        <Section title="Supplier">
+          <Field label="Supplier">
+            <TextInput
+              value={spec.supplierName}
+              onChange={setSupplier}
+              list="studio-spec-suppliers"
+            />
+            <datalist id="studio-spec-suppliers">
+              {suppliers.map(su => (
+                <option key={su.id} value={su.name} />
+              ))}
+            </datalist>
+            {spec.supplierId && (
+              <p className="text-[10px] text-emerald-700 mt-1">Linked to existing supplier</p>
+            )}
+          </Field>
+        </Section>
       </div>
     </div>
-  )
-}
-
-interface SpecQuoteRow {
-  id: string
-  supplier_name: string
-  price: number | null
-  notes: string
-  lead_time: string
-  unable_to_quote: boolean
-  source: string
-  created_at: string
-}
-
-// Record of what a supplier actually quoted — typed in here after reading
-// their email reply today; source: 'link' is reserved for a future
-// self-serve submission, same table, same list, no separate view to check.
-function LoggedQuotes({
-  specId,
-  pieceId,
-  defaultSupplierName,
-}: {
-  specId: string
-  pieceId: string | null
-  defaultSupplierName: string
-}) {
-  const orgId = useStudioStore(s => s.orgId)
-  const [quotes, setQuotes] = useState<SpecQuoteRow[] | null>(null)
-  const [supplierName, setSupplierNameField] = useState(defaultSupplierName)
-  const [price, setPrice] = useState('')
-  const [notes, setNotes] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('spec_quotes')
-        .select('id, supplier_name, price, notes, lead_time, unable_to_quote, source, created_at')
-        .eq('studio_spec_id', specId)
-        .order('created_at', { ascending: false })
-      if (!cancelled) setQuotes((data ?? []) as SpecQuoteRow[])
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [specId])
-
-  async function logQuote() {
-    if (!supplierName.trim() || !price.trim()) return
-    setSaving(true)
-    try {
-      // The spec row must exist in the DB before this FK insert can succeed
-      await useStudioStore.getState().flushSave()
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('spec_quotes')
-        .insert({
-          org_id: orgId,
-          studio_spec_id: specId,
-          supplier_name: supplierName.trim(),
-          price: Number(price) || null,
-          notes: notes.trim(),
-          source: 'manual',
-        })
-        .select('id, supplier_name, price, notes, lead_time, unable_to_quote, source, created_at')
-        .single()
-      if (error) throw new Error(error.message)
-      setQuotes(prev => [data as SpecQuoteRow, ...(prev ?? [])])
-
-      // Piece-sourced spec — refresh the catalog piece's reference price too,
-      // so future re-use of it elsewhere starts from an up-to-date number
-      if (pieceId) {
-        await fetch(`/api/pieces/${pieceId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ base_price: Number(price) }),
-        }).catch(() => {})
-      }
-
-      setPrice('')
-      setNotes('')
-      toast.success('Quote logged')
-    } catch (e) {
-      toast.error((e as Error).message || 'Could not log quote')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function removeQuote(id: string) {
-    const prev = quotes
-    setQuotes(q => (q ?? []).filter(x => x.id !== id))
-    const supabase = createClient()
-    const { error } = await supabase.from('spec_quotes').delete().eq('id', id)
-    if (error) {
-      setQuotes(prev ?? null)
-      toast.error('Could not remove — please try again')
-    }
-  }
-
-  return (
-    <Section title="Quotes received">
-      {quotes === null ? (
-        <p className="text-[11px] text-[#8A877F]">Loading…</p>
-      ) : quotes.length === 0 ? (
-        <p className="text-[11px] text-[#8A877F]">No quotes logged yet</p>
-      ) : (
-        <div className="space-y-1.5">
-          {quotes.map(q => (
-            <div
-              key={q.id}
-              className="flex items-start justify-between gap-1.5 rounded-md border border-[#D8D3C8] bg-white px-2 py-1.5"
-            >
-              <div className="min-w-0">
-                <p className="text-[11px] text-[#2C2C2A] truncate">
-                  {q.supplier_name || 'Unnamed supplier'}
-                  {q.unable_to_quote
-                    ? <span className="text-[#B08968] italic"> — couldn&apos;t quote</span>
-                    : q.price != null && <span className="font-medium"> — R{q.price.toLocaleString()}</span>}
-                  {q.source === 'link' && (
-                    <span className="ml-1 text-[10px] px-1 py-px rounded bg-[#F5EFE4] text-[#9A7B4F] uppercase tracking-wide align-middle" title="Submitted by the supplier via a self-serve link">link</span>
-                  )}
-                </p>
-                {q.lead_time && <p className="text-[10px] text-[#8A877F] mt-0.5 leading-snug">Lead time: {q.lead_time}</p>}
-                {q.notes && <p className="text-[10px] text-[#8A877F] mt-0.5 leading-snug">{q.notes}</p>}
-              </div>
-              <button
-                type="button"
-                onClick={() => void removeQuote(q.id)}
-                title="Remove"
-                className="w-5 h-5 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 cursor-pointer"
-              >
-                <Trash2 size={10} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="pt-1.5 space-y-1.5">
-        <div className="flex gap-1.5">
-          <Field label="Supplier" className="flex-1 min-w-0">
-            <input
-              value={supplierName}
-              onChange={e => setSupplierNameField(e.target.value)}
-              className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
-            />
-          </Field>
-          <Field label="Price" className="w-20 flex-shrink-0">
-            <input
-              value={price}
-              onChange={e => setPrice(e.target.value.replace(/[^0-9.]/g, ''))}
-              inputMode="decimal"
-              className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
-            />
-          </Field>
-        </div>
-        <Field label="Notes — lead time, terms">
-          <input
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            className="w-full text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
-          />
-        </Field>
-        <button
-          type="button"
-          onClick={() => void logQuote()}
-          disabled={saving || !supplierName.trim() || !price.trim()}
-          className="w-full flex items-center justify-center gap-1.5 h-7 text-[11px] font-medium bg-[#2C2C2A] text-white rounded-md hover:bg-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50"
-        >
-          <ReceiptText size={11} /> Log quote
-        </button>
-      </div>
-    </Section>
   )
 }
 

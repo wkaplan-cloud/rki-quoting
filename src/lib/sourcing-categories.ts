@@ -118,6 +118,15 @@ export const CATEGORY_FIELDS: Record<CategoryKey, FieldDef[]> = {
   ],
 }
 
+// Human label for a stored category key ('stone_glass' → 'Stone & Glass').
+// Anything a supplier or client reads must go through this — the raw key is
+// storage, not copy. 'general' resolves to '' because "General" tells the
+// reader nothing worth a line on the page.
+export function categoryLabel(key: string | null | undefined): string {
+  if (!key || key === 'general') return ''
+  return CATEGORIES.find(c => c.key === key)?.label ?? key
+}
+
 // True when a category already asks for its own sizes (Overall Width, Diameter,
 // Board Length, Thickness…). The spec panel suppresses its generic
 // Width/Depth/Height block for these, so a designer is never asked for the same

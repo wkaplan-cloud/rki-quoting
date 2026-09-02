@@ -6,16 +6,50 @@ import { CATEGORY_FIELDS, type CategoryKey } from './sourcing-categories'
 // came out of: woodwork/stone & glass/flooring have no real colour field, and
 // several categories don't have a tidy three-axis size. Where there's no
 // match, that column is simply left blank — never guessed or fabricated.
-const SIZE_FIELD_KEYS: Record<CategoryKey, string[]> = {
+// Each entry pairs the item_specs key with the short axis label the quote
+// should read ("W", "D", "H", "L", "Ø"). Without them the joined string is a
+// bare "450 × 900" that only the person who typed it can decode — and the
+// axes differ per category (Lighting is diameter × height, Flooring is board
+// width × length), so the label has to come from here, not be assumed.
+const SIZE_FIELDS: Record<CategoryKey, { key: string; label: string }[]> = {
   general: [],
-  furniture: ['overall_width', 'overall_depth', 'overall_height'],
-  woodwork: ['overall_width', 'overall_depth', 'overall_height'],
-  stone_glass: ['width', 'height', 'length'],
-  lighting: ['diameter', 'height'],
-  flooring: ['board_width', 'board_length'],
-  wall_finishes: ['width', 'height'],
-  cushions: ['width', 'depth', 'height'],
-  accessories: ['width', 'depth', 'height'],
+  furniture: [
+    { key: 'overall_width',  label: 'W' },
+    { key: 'overall_depth',  label: 'D' },
+    { key: 'overall_height', label: 'H' },
+  ],
+  woodwork: [
+    { key: 'overall_width',  label: 'W' },
+    { key: 'overall_depth',  label: 'D' },
+    { key: 'overall_height', label: 'H' },
+  ],
+  stone_glass: [
+    { key: 'width',  label: 'W' },
+    { key: 'height', label: 'H' },
+    { key: 'length', label: 'L' },
+  ],
+  lighting: [
+    { key: 'diameter', label: 'Ø' },
+    { key: 'height',   label: 'H' },
+  ],
+  flooring: [
+    { key: 'board_width',  label: 'W' },
+    { key: 'board_length', label: 'L' },
+  ],
+  wall_finishes: [
+    { key: 'width',  label: 'W' },
+    { key: 'height', label: 'H' },
+  ],
+  cushions: [
+    { key: 'width',  label: 'W' },
+    { key: 'depth',  label: 'D' },
+    { key: 'height', label: 'H' },
+  ],
+  accessories: [
+    { key: 'width',  label: 'W' },
+    { key: 'depth',  label: 'D' },
+    { key: 'height', label: 'H' },
+  ],
 }
 
 const COLOUR_FIELD_KEY: Record<CategoryKey, string | null> = {
@@ -50,12 +84,21 @@ export function formatCategorySpecs(
   const fields = CATEGORY_FIELDS[key] ?? []
   if (!fields.length) return { dimensions: null, colourFinish: null, extraText: null }
 
-  const sizeKeyList = SIZE_FIELD_KEYS[key] ?? []
-  const sizeKeys = new Set(sizeKeyList)
+  const sizeFields = SIZE_FIELDS[key] ?? []
+  const sizeKeys = new Set(sizeFields.map(f => f.key))
   const colourKey = COLOUR_FIELD_KEY[key]
 
-  const sizeValues = sizeKeyList.map(k => specs[k]?.trim()).filter((v): v is string => !!v)
-  const dimensions = sizeValues.length ? sizeValues.join(' × ') : null
+  // "W 1800 × D 900 × H 750 mm" — axis labels so the reader doesn't have to
+  // know the category's field order, and the unit appended once at the end.
+  // Safe to append here (unlike the studio's free-text W/D/H boxes) because
+  // every size field is a number input, so the value is always a bare number.
+  const sized = sizeFields
+    .map(f => ({ key: f.key, label: f.label, value: specs[f.key]?.trim() }))
+    .filter((f): f is { key: string; label: string; value: string } => !!f.value)
+  const sizeUnit = sized.length ? fields.find(f => f.key === sized[0].key)?.unit ?? '' : ''
+  const dimensions = sized.length
+    ? sized.map(f => `${f.label} ${f.value}`).join(' × ') + (sizeUnit ? ` ${sizeUnit}` : '')
+    : null
 
   const colourFinish = colourKey ? specs[colourKey]?.trim() || null : null
 
@@ -64,7 +107,9 @@ export function formatCategorySpecs(
       .filter(f => !sizeKeys.has(f.key) && f.key !== colourKey)
       .map(f => {
         const val = specs[f.key]?.trim()
-        return val ? `${f.label}: ${val}` : null
+        // Unit carried through too — "Seat Height: 450" is as unreadable on a
+        // quote as an unlabelled dimension string
+        return val ? `${f.label}: ${val}${f.unit ? ` ${f.unit}` : ''}` : null
       })
       .filter((v): v is string => !!v)
       .join(' · ') || null

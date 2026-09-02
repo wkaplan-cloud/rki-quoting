@@ -204,9 +204,17 @@ export function buildBoardRows({
 
       const materials = (Array.isArray(sp.materials) ? sp.materials : []).map(m => {
         const live = m.twinbruProductId != null ? priceByProductId.get(String(m.twinbruProductId)) : undefined
+        // The material's TYPE names the row ("Fabric", "Timber") and the
+        // specifics go in the description, which is the column that wraps —
+        // packing both into item_name truncated long collection names against
+        // an empty description sitting right beside them. A material with no
+        // type falls back to its description for the name so no row is
+        // nameless, and then has nothing left to repeat in the description.
+        const mType = m.type.trim()
+        const mDesc = m.description.trim()
         return {
-          item_name: [m.type.trim(), m.description.trim()].filter(Boolean).join(' — ') || 'Material',
-          description: null,
+          item_name: mType || mDesc || 'Material',
+          description: (mType ? mDesc : '') || null,
           quantity: 1,
           unit: m.twinbruProductId != null ? 'm' : null,
           supplier_id: m.supplierId,

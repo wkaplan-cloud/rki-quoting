@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer'
-import { CATEGORY_FIELDS, type CategoryKey } from '@/lib/sourcing-categories'
+import { CATEGORY_FIELDS, categoryLabel, type CategoryKey } from '@/lib/sourcing-categories'
 
 // Request-for-quote document sent to a supplier from a Studio moodboard.
 // One page per item: image on the left, spec details on the right. Prices are
@@ -203,10 +203,12 @@ export function RfqPDF(props: RfqPdfProps) {
                   <Text style={s.specValue}>{item.description}</Text>
                 </View>
               ) : null}
-              {item.category.trim() ? (
+              {/* item.category stays the raw key — CATEGORY_FIELDS is keyed by
+                  it below — so the label is resolved here at the point of print */}
+              {categoryLabel(item.category) ? (
                 <View style={s.specRow} wrap={false}>
                   <Text style={s.specLabel}>Category</Text>
-                  <Text style={s.specValue}>{item.category}</Text>
+                  <Text style={s.specValue}>{categoryLabel(item.category)}</Text>
                 </View>
               ) : null}
               {item.quantity.trim() ? (
