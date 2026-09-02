@@ -157,6 +157,12 @@ export function buildBoardRows({
       quantity: 0,
       cost_price: 0,
       markup_percentage: 0,
+      // A heading has no delivery address, but the column is NOT NULL and
+      // this row is inserted in the same batch as the item rows below —
+      // PostgREST widens a bulk insert to the union of every object's keys
+      // and fills what's missing with NULL, so omitting it here fails the
+      // whole insert rather than falling back to the column default.
+      delivery_address: '',
       row_type: 'section',
       indent_level: 0,
       sort_order: sortOrder++,
