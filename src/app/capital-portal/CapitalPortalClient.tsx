@@ -155,17 +155,12 @@ export default function CapitalPortalClient({ rkilogoUrl, businessName }: { rkil
           />
           {/* Divider */}
           <div className="w-px h-10 bg-[#E8E4DC] flex-shrink-0" />
-          {/* RKI logo + name */}
-          <div className="flex items-center gap-3">
-            {rkilogoUrl
-              ? // eslint-disable-next-line @next/next/no-img-element
-                <img src={rkilogoUrl} alt={businessName} className="h-12 w-auto max-w-[140px] object-contain" />
-              : <Image src="/logo.png" alt={businessName} width={48} height={48} className="h-12 w-auto object-contain" />
-            }
-            <div className="hidden sm:block">
-              <p className="text-xs font-semibold text-[#1A1A18] leading-tight">{businessName}</p>
-            </div>
-          </div>
+          {/* RKI logo */}
+          {rkilogoUrl
+            ? // eslint-disable-next-line @next/next/no-img-element
+              <img src={rkilogoUrl} alt={businessName} className="h-12 w-auto max-w-[220px] object-contain" />
+            : <Image src="/logo.png" alt={businessName} width={48} height={48} className="h-12 w-auto object-contain" />
+          }
         </div>
       </div>
 
