@@ -229,7 +229,11 @@ export function RfqPricingForm({
                   <label htmlFor={`price-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
                     Your price (excl. VAT)
                   </label>
-                  <div className="flex items-center rounded-lg border bg-white overflow-hidden" style={{ borderColor: disabled ? '#EDE9E1' : '#D8D3C8' }}>
+                  <div
+                    className={`flex items-center rounded-lg border bg-white overflow-hidden transition-colors focus-within:border-[#9A7B4F] focus-within:ring-2 focus-within:ring-[#9A7B4F]/25 ${
+                      disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]'
+                    }`}
+                  >
                     <span className="pl-3 pr-1 text-sm" style={{ color: '#8A877F' }}>R</span>
                     <input
                       id={`price-${it.specId}`}
@@ -252,8 +256,10 @@ export function RfqPricingForm({
                     value={e.leadTime}
                     disabled={disabled}
                     onChange={ev => update(it.specId, { leadTime: ev.target.value })}
-                    className="w-full py-2 px-3 text-sm rounded-lg border bg-white outline-none disabled:opacity-40 focus:border-[#9A7B4F]"
-                    style={{ borderColor: disabled ? '#EDE9E1' : '#D8D3C8', color: '#2C2C2A' }}
+                    className={`w-full py-2 px-3 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:border-[#9A7B4F] focus:ring-2 focus:ring-[#9A7B4F]/25 ${
+                      disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]'
+                    }`}
+                    style={{ color: '#2C2C2A' }}
                     aria-label={`Lead time for ${it.name}`}
                   />
                 </div>
@@ -267,8 +273,10 @@ export function RfqPricingForm({
                   value={e.note}
                   disabled={disabled}
                   onChange={ev => update(it.specId, { note: ev.target.value })}
-                  className="w-full py-2 px-3 text-sm rounded-lg border bg-white outline-none disabled:opacity-40 focus:border-[#9A7B4F]"
-                  style={{ borderColor: disabled ? '#EDE9E1' : '#D8D3C8', color: '#2C2C2A' }}
+                  className={`w-full py-2 px-3 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:border-[#9A7B4F] focus:ring-2 focus:ring-[#9A7B4F]/25 ${
+                    disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]'
+                  }`}
+                  style={{ color: '#2C2C2A' }}
                   aria-label={`Note for ${it.name}`}
                 />
               </div>
@@ -299,8 +307,8 @@ export function RfqPricingForm({
           value={overallMessage}
           onChange={ev => setOverallMessage(ev.target.value)}
           rows={3}
-          className="w-full py-2 px-3 text-sm rounded-lg border bg-white outline-none resize-y focus:border-[#9A7B4F]"
-          style={{ borderColor: '#D8D3C8', color: '#2C2C2A' }}
+          className="w-full py-2 px-3 text-sm rounded-lg border border-[#D8D3C8] bg-white outline-none resize-y transition-colors focus:border-[#9A7B4F] focus:ring-2 focus:ring-[#9A7B4F]/25"
+          style={{ color: '#2C2C2A' }}
         />
       </div>
 
