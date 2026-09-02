@@ -34,16 +34,40 @@ const rel = (p) => path.relative(ROOT, p)
 let failures = 0
 
 // --- 1. no raw Resend calls outside the wrapper --------------------------
-const raw = files.filter(
-  (f) => !f.endsWith(path.join('lib', 'email.ts')) &&
-         fs.readFileSync(f, 'utf8').includes('resend.emails.send('),
-)
+// Two ways to bypass it: the SDK (resend.emails.send) and a raw fetch to the
+// REST API. The second kind hid two marketing routes from an earlier audit,
+// so check for both.
+const raw = files.filter((f) => {
+  if (f.endsWith(path.join('lib', 'email.ts'))) return false
+  const src = fs.readFileSync(f, 'utf8')
+  if (src.includes('resend.emails.send(')) return true
+  // A raw API call is fine only if it is sending a payload the wrapper built.
+  if (!src.includes('api.resend.com/emails')) return false
+  return !src.includes('bulkPayload(')
+})
 if (raw.length) {
   failures++
   console.log('FAIL  routes bypassing src/lib/email.ts:')
   raw.forEach((f) => console.log('        ' + rel(f)))
 } else {
   console.log('ok    every send goes through sendEmail()/bulkPayload()')
+}
+
+// --- 1b. marketing mail must carry unsubscribe ---------------------------
+const marketing = files.filter((f) => {
+  if (f.endsWith(path.join('lib', 'email.ts'))) return false
+  const src = fs.readFileSync(f, 'utf8')
+  return src.includes('api.resend.com/emails') || src.includes('FROM_MARKETING')
+})
+const noUnsub = marketing.filter(
+  (f) => !fs.readFileSync(f, 'utf8').includes('bulkPayload('),
+)
+if (noUnsub.length) {
+  failures++
+  console.log('FAIL  bulk/marketing sends without one-click unsubscribe:')
+  noUnsub.forEach((f) => console.log('        ' + rel(f)))
+} else {
+  console.log(`ok    all ${marketing.length} marketing senders use bulkPayload()`)
 }
 
 // --- 2. unsubscribe endpoint must be publicly reachable ------------------
