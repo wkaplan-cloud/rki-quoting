@@ -373,10 +373,10 @@ export default function EditorShell(props: EditorShellProps) {
         <div className="w-px h-4 bg-white/15" />
         <span className="text-sm text-white truncate">
           {props.clientName}
-          <span className="text-white/40"> · {props.boardName}</span>
+          <span className="text-white/60"> · {props.boardName}</span>
         </span>
         {boardSizeLabel && (
-          <span className="text-[10px] text-white/30 whitespace-nowrap" title="Total size of images on this board">
+          <span className="text-[10px] text-white/55 whitespace-nowrap" title="Total size of images on this board">
             {boardSizeLabel}
           </span>
         )}
@@ -399,7 +399,7 @@ export default function EditorShell(props: EditorShellProps) {
 
         <span className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider">
           {saveState === 'saving' ? (
-            <span className="flex items-center gap-1 text-white/40">
+            <span className="flex items-center gap-1 text-white/60">
               <Loader2 size={10} className="animate-spin" /> Saving
             </span>
           ) : saveState === 'error' ? (
@@ -407,7 +407,7 @@ export default function EditorShell(props: EditorShellProps) {
               <AlertTriangle size={10} /> {online ? 'Not saved' : 'Saved on device'}
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-white/30">
+            <span className="flex items-center gap-1 text-white/55">
               <Check size={10} /> Saved
             </span>
           )}
@@ -415,7 +415,7 @@ export default function EditorShell(props: EditorShellProps) {
 
         {pendingUploads > 0 && (
           <span
-            className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-white/40"
+            className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-white/60"
             title="Images added offline — they upload automatically when the connection returns"
           >
             <CloudUpload size={10} /> {pendingUploads} queued
@@ -427,7 +427,7 @@ export default function EditorShell(props: EditorShellProps) {
           title={online ? 'Connected — changes save automatically' : 'Offline — your work is saved on this device and syncs when the connection returns'}
         >
           <span className={`w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}`} />
-          <span className={online ? 'text-white/30' : 'text-red-400'}>
+          <span className={online ? 'text-white/55' : 'text-red-400'}>
             {online ? 'Online' : 'Offline'}
           </span>
         </span>
@@ -436,7 +436,7 @@ export default function EditorShell(props: EditorShellProps) {
 
         {refining !== null && (
           <span className="flex items-center gap-2 mr-1" title="Preparing image tools (one-time download)">
-            <span className="text-[10px] text-white/40 uppercase tracking-wider whitespace-nowrap">
+            <span className="text-[10px] text-white/60 uppercase tracking-wider whitespace-nowrap">
               Refining canvas
             </span>
             <span className="w-20 h-1 rounded-full bg-white/10 overflow-hidden">
