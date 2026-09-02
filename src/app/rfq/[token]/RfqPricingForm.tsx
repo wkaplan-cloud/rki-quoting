@@ -229,19 +229,33 @@ export function RfqPricingForm({
                   <label htmlFor={`price-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
                     Your price (excl. VAT)
                   </label>
-                  <div
-                    className={`flex items-center rounded-lg border bg-white overflow-hidden transition-colors focus-within:border-[#9A7B4F] focus-within:ring-2 focus-within:ring-[#9A7B4F]/25 ${
-                      disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]'
-                    }`}
-                  >
-                    <span className="pl-3 pr-1 text-sm" style={{ color: '#8A877F' }}>R</span>
+                  {/* The value is right-aligned so the text caret lands at the
+                      far end of the box. Left-aligned it sat a few pixels off
+                      the R — on an empty field that reads as a stray vertical
+                      line stuck to the R rather than a cursor. Right alignment
+                      is also how a column of prices should read.
+                      The R is absolutely positioned over a single input (the
+                      same construction as the Pieces price field) so the
+                      border and focus ring sit on the input itself, matching
+                      Lead time and Note beside it. */}
+                  <div className="relative">
+                    <span
+                      className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none ${
+                        disabled ? 'opacity-40' : ''
+                      }`}
+                      style={{ color: '#8A877F' }}
+                    >
+                      R
+                    </span>
                     <input
                       id={`price-${it.specId}`}
                       inputMode="decimal"
                       value={e.price}
                       disabled={disabled}
                       onChange={ev => update(it.specId, { price: ev.target.value.replace(/[^\d.]/g, '') })}
-                      className="w-full py-2 pr-3 text-sm bg-transparent outline-none disabled:opacity-40"
+                      className={`w-full py-2 pl-7 pr-3 text-sm text-right rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:border-[#9A7B4F] focus:ring-2 focus:ring-[#9A7B4F]/25 ${
+                        disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]'
+                      }`}
                       style={{ color: '#2C2C2A' }}
                       aria-label={`Price for ${it.name} in Rand, excluding VAT`}
                     />
