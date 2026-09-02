@@ -199,7 +199,15 @@ export function RequestQuotesModal() {
   }
 
   const totalRecipients = groups.reduce((n, g) => n + (recipients[g.key]?.length ?? 0), 0)
-  const missingEmails = groups.some(g => (recipients[g.key] ?? []).some(r => !r.email.trim()))
+  // Named, not counted: a comparison supplier added with no email on their
+  // record disables Send, and "some recipients" leaves the designer hunting
+  // for which row in a modal that may be scrolled well past it.
+  const missingEmailNames = groups.flatMap(g =>
+    (recipients[g.key] ?? [])
+      .filter(r => !r.email.trim())
+      .map(r => r.supplierName.trim() || 'a typed-in recipient')
+  )
+  const missingEmails = missingEmailNames.length > 0
 
   async function send(force = false) {
     setSending(true)
@@ -469,7 +477,11 @@ export function RequestQuotesModal() {
 
         <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[#D8D3C8]">
           {missingEmails && (
-            <span className="mr-auto text-[10px] text-amber-700">Some recipients still need an email address</span>
+            <span className="mr-auto text-[10px] text-amber-700 leading-snug">
+              {missingEmailNames.length === 1
+                ? `${missingEmailNames[0]} has no email address saved — add one above to send`
+                : `${missingEmailNames.length} recipients need an email address: ${missingEmailNames.join(', ')}`}
+            </span>
           )}
           <button
             type="button"

@@ -83,6 +83,21 @@ export function RfqPricingForm({
     [entries]
   )
 
+  // Escape closes the lightbox, and the page behind it stays put while open
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setLightbox(null)
+    }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [lightbox])
+
   async function submit() {
     setError(null)
     setSubmitting(true)
@@ -115,22 +130,7 @@ export function RfqPricingForm({
   }
 
   if (done) {
-    // Escape closes the lightbox, and the page behind it stays put while open
-  useEffect(() => {
-    if (!lightbox) return
-    const onKey = (ev: KeyboardEvent) => {
-      if (ev.key === 'Escape') setLightbox(null)
-    }
-    window.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-    }
-  }, [lightbox])
-
-  return (
+    return (
       <div className="rounded-2xl bg-white border px-6 py-10 text-center" style={{ borderColor: '#EDE9E1' }}>
         <CheckCircle2 size={44} className="mx-auto mb-4" style={{ color: '#16A34A' }} />
         <h1 className="text-lg font-semibold mb-1" style={{ color: '#2C2C2A' }}>Thank you — your pricing is in</h1>
