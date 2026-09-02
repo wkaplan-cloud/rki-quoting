@@ -36,7 +36,17 @@ export const FROM_MARKETING =
 
 export const DEFAULT_REPLY_TO = 'hello@quotinghub.co.za'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
+/**
+ * Canonical origin for links in email.
+ *
+ * The apex redirects to www, and a one-click unsubscribe POST should land on
+ * the final URL rather than relying on the mail client to follow a redirect —
+ * so the apex is normalised to www here rather than changing
+ * NEXT_PUBLIC_APP_URL, which many other routes depend on.
+ */
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za')
+  .replace(/^https:\/\/quotinghub\.co\.za/, 'https://www.quotinghub.co.za')
+  .replace(/\/$/, '')
 
 /** Physical postal address shown in marketing footers (CAN-SPAM / POPIA). */
 export const POSTAL_ADDRESS =

@@ -65,6 +65,10 @@ export async function proxy(request: NextRequest) {
     pathname === '/robots.txt' ||
     pathname === '/llms.txt' ||
     pathname.startsWith('/api/contact') ||
+    // One-click unsubscribe: Gmail and Yahoo POST here with no session, and the
+    // request must succeed outright — a redirect to /login means the recipient
+    // is never actually unsubscribed.
+    pathname.startsWith('/api/unsubscribe') ||
     pathname.startsWith('/api/admin') ||
     pathname.startsWith('/api/cron') ||
     pathname.endsWith('.xml') ||
