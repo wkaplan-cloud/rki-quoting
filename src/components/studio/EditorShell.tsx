@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ShoppingCart, Palette, PackageOpen, CloudUpload, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Play, FileDown, Printer, Check, Loader2, AlertTriangle, Images, ShoppingCart, Palette, PackageOpen, CloudUpload, RefreshCw, Undo2, Redo2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore } from '@/lib/studio/store'
 import { preloadBgRemovalAssets } from '@/lib/studio/bgRemoval'
@@ -29,6 +29,39 @@ import { MasterThemePanel } from './MasterThemePanel'
 import { PresentationMode } from './PresentationMode'
 import { ExportRunner } from './ExportRunner'
 import { PrintSlidesModal } from './PrintSlidesModal'
+
+// Shortcut hint matches the platform the board is actually being edited on.
+const MOD_KEY =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+    ? '\u2318'
+    : 'Ctrl+'
+
+// Undo/redo live in the header rather than a floating toolbar: history is
+// board-wide, so the control must stay put when nothing is selected.
+function HistoryBtn({
+  icon: Icon,
+  label,
+  disabled,
+  onClick,
+}: {
+  icon: typeof Undo2
+  label: string
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-label={label}
+      className="flex items-center justify-center w-7 h-7 rounded-md text-white/60 transition-colors cursor-pointer hover:text-white hover:bg-white/10 active:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4A46B] disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-white/60"
+    >
+      <Icon size={14} />
+    </button>
+  )
+}
 
 export interface EditorShellProps {
   boardId: string
@@ -62,6 +95,8 @@ export default function EditorShell(props: EditorShellProps) {
   const [showTheme, setShowTheme] = useState(false)
   const presenting = useStudioStore(s => s.presenting)
   const saveState = useStudioStore(s => s.saveState)
+  const undoDepth = useStudioStore(s => s.past.length)
+  const redoDepth = useStudioStore(s => s.future.length)
   const pendingUploads = useStudioStore(s => s.pendingUploads)
   // The board-wide specs list yields to the per-object spec editor while
   // it's open, and comes back when the editor closes
@@ -345,6 +380,22 @@ export default function EditorShell(props: EditorShellProps) {
             {boardSizeLabel}
           </span>
         )}
+
+        <div className="w-px h-4 bg-white/15 ml-1" />
+        <div className="flex items-center gap-0.5">
+          <HistoryBtn
+            icon={Undo2}
+            label={undoDepth ? `Undo (${MOD_KEY}Z)` : 'Nothing to undo'}
+            disabled={undoDepth === 0}
+            onClick={() => useStudioStore.getState().undo()}
+          />
+          <HistoryBtn
+            icon={Redo2}
+            label={redoDepth ? `Redo (${MOD_KEY}\u21E7Z)` : 'Nothing to redo'}
+            disabled={redoDepth === 0}
+            onClick={() => useStudioStore.getState().redo()}
+          />
+        </div>
 
         <span className="ml-2 flex items-center gap-1 text-[10px] uppercase tracking-wider">
           {saveState === 'saving' ? (
