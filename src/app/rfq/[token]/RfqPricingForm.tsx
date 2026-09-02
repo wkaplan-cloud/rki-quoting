@@ -1,6 +1,6 @@
 'use client'
-import { useMemo, useState } from 'react'
-import { CheckCircle2, Loader2, AlertTriangle, Ban } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, Loader2, AlertTriangle, Ban, X } from 'lucide-react'
 
 export interface RfqFormItem {
   specId: string
@@ -52,6 +52,7 @@ export function RfqPricingForm({
   alreadySubmitted: boolean
   expiryLabel: string
 }) {
+  const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null)
   const [entries, setEntries] = useState<Record<string, Entry>>(() =>
     Object.fromEntries(
       items.map(it => [
@@ -114,7 +115,22 @@ export function RfqPricingForm({
   }
 
   if (done) {
-    return (
+    // Escape closes the lightbox, and the page behind it stays put while open
+  useEffect(() => {
+    if (!lightbox) return
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setLightbox(null)
+    }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [lightbox])
+
+  return (
       <div className="rounded-2xl bg-white border px-6 py-10 text-center" style={{ borderColor: '#EDE9E1' }}>
         <CheckCircle2 size={44} className="mx-auto mb-4" style={{ color: '#16A34A' }} />
         <h1 className="text-lg font-semibold mb-1" style={{ color: '#2C2C2A' }}>Thank you — your pricing is in</h1>
@@ -157,13 +173,23 @@ export function RfqPricingForm({
           <div key={it.specId} className="rounded-2xl bg-white border overflow-hidden" style={{ borderColor: '#EDE9E1' }}>
             <div className="flex gap-4 p-5">
               {it.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={it.imageUrl}
-                  alt={it.name}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover flex-shrink-0"
-                  style={{ backgroundColor: '#F5F2EC' }}
-                />
+                // A 96px thumbnail is not enough to quote a joint detail or a
+                // weave from — the supplier needs the picture at full size
+                <button
+                  type="button"
+                  onClick={() => setLightbox({ url: it.imageUrl!, name: it.name })}
+                  aria-label={`View larger image of ${it.name}`}
+                  className="flex-shrink-0 rounded-lg overflow-hidden cursor-zoom-in transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  style={{ outlineColor: '#9A7B4F' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={it.imageUrl}
+                    alt={it.name}
+                    className="w-20 h-20 sm:w-24 sm:h-24 object-cover"
+                    style={{ backgroundColor: '#F5F2EC' }}
+                  />
+                </button>
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2 flex-wrap">
@@ -304,6 +330,36 @@ export function RfqPricingForm({
           Link valid until {expiryLabel} · you can resubmit if anything changes
         </p>
       </div>
+
+      {lightbox && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.name}
+          onClick={() => setLightbox(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/80 cursor-zoom-out"
+        >
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            aria-label="Close image"
+            autoFocus
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white transition-colors cursor-pointer"
+          >
+            <X size={20} />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox.url}
+            alt={lightbox.name}
+            onClick={ev => ev.stopPropagation()}
+            className="max-w-full max-h-full object-contain rounded-lg cursor-default"
+          />
+          <p className="absolute bottom-4 left-0 right-0 text-center text-xs px-4 text-white/70">
+            {lightbox.name}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
