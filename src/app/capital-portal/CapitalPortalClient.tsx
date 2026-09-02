@@ -163,7 +163,6 @@ export default function CapitalPortalClient({ rkilogoUrl, businessName }: { rkil
               : <Image src="/logo.png" alt={businessName} width={48} height={48} className="h-12 w-auto object-contain" />
             }
             <div className="hidden sm:block">
-              <p className="text-[10px] text-[#8A877F] uppercase tracking-widest font-medium leading-tight">Powered by</p>
               <p className="text-xs font-semibold text-[#1A1A18] leading-tight">{businessName}</p>
             </div>
           </div>
