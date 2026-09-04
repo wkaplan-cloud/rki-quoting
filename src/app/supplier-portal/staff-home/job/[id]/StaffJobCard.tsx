@@ -458,6 +458,12 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const materials = card.materials ?? []
   const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
 
+  // An extra-work card's description is built from the same quote lines, so
+  // showing both would list the job twice on his screen.
+  const scopeLines = card.work_description && scopeItems.every(it => card.work_description!.includes(it.description))
+    ? []
+    : scopeItems
+
   const unsentExtras = extras.filter(x => !x.quote_id)
   const sentExtras   = extras.filter(x => !!x.quote_id)
 
@@ -572,24 +578,24 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
           <div className="space-y-4">
 
           {/* What the office sent him to do. Read-only — his own report is below. */}
-          {(card.work_description || scopeItems.length > 0) && (
+          {(card.work_description || scopeLines.length > 0) && (
             <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <div className="px-4 py-3 flex items-center gap-2" style={{ background: 'rgba(58,124,165,0.05)', borderBottom: `1px solid ${S.border}` }}>
                 <ClipboardList size={14} style={{ color: S.accent }} />
                 <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.accent }}>The Job</span>
               </div>
               {card.work_description && (
-                <div className="px-4 py-3" style={{ borderBottom: scopeItems.length > 0 ? `1px solid ${S.border}` : undefined }}>
+                <div className="px-4 py-3" style={{ borderBottom: scopeLines.length > 0 ? `1px solid ${S.border}` : undefined }}>
                   <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: S.text }}>{card.work_description}</p>
                 </div>
               )}
-              {scopeItems.length > 0 && (
+              {scopeLines.length > 0 && (
                 <>
                   <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>
                     Quoted scope
                   </p>
                   <div className="pb-2">
-                    {scopeItems.map((it, i) => (
+                    {scopeLines.map((it, i) => (
                       <div key={i} className="flex items-start gap-2.5 px-4 py-1.5">
                         <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: S.accent }} />
                         <p className="flex-1 text-sm leading-snug" style={{ color: S.text }}>
