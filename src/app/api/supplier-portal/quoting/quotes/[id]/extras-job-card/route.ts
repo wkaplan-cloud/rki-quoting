@@ -36,7 +36,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       portal_account_id: account.id,
       type: 'extra_work_approved',
       title: `Extra work approved — ${quote.quote_number}`,
-      body: `Job card ${card.job_number} created for ${quote.project_name}. It still needs scheduling.`,
+      body: `Job card ${card.job_number} created for ${quote.project_name}. Assign it and put it on the schedule.`,
       metadata: { job_card_id: card.id, quote_id: quote.id },
     })
 

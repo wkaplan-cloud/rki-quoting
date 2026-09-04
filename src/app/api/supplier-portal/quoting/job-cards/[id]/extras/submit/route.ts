@@ -57,7 +57,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .insert({
         portal_account_id:             ctx.accountId,
         client_id:                     card.client_id,
-        staff_id:                      card.staff_id,
         quote_number:                  quoteNumber,
         project_name:                  `Extra work — ${card.title}`,
         project_address:               card.location,

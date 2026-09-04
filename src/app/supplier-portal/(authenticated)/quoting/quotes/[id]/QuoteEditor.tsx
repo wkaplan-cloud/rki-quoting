@@ -904,7 +904,7 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.25)' }}>
           <Check size={15} style={{ color: S.green, flexShrink: 0 }} />
           <span className="flex-1 text-sm" style={{ color: S.text }}>
-            Job card <strong>{extrasJobCard.job_number}</strong> created for this extra work — it still needs scheduling.
+            Job card <strong>{extrasJobCard.job_number}</strong> created for this extra work — assign it and put it on the schedule.
           </span>
           <button onClick={() => router.push(`/supplier-portal/quoting/job-cards/${extrasJobCard.id}`)}
             className="text-sm font-semibold whitespace-nowrap" style={{ color: S.green }}>

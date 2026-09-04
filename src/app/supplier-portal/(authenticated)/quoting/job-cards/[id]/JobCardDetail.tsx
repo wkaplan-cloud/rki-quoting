@@ -118,6 +118,8 @@ interface Props {
   initialCOC?: import('@/lib/elec-types').ElecCOC | null
   bookings?: JobCardBooking[]
   extrasEnabled?: boolean
+  /** The tech who found the extra work this card came from, offered as the obvious pick. */
+  suggestedStaff?: { id: string; name: string; fromJobNumber: string } | null
 }
 
 /** A slot on the schedule for this job card. */
@@ -133,7 +135,7 @@ type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'extras' | 'photos
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true, suggestedStaff = null }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -832,6 +834,23 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </div>
       </div>
 
+      {/* Unassigned extra-work card — offer the tech who found it */}
+      {suggestedStaff && !card.staff_id && (
+        <div className="mb-5 rounded-xl px-4 py-3 flex items-center gap-3"
+          style={{ background: 'rgba(217,164,65,0.06)', border: '1px solid rgba(217,164,65,0.3)' }}>
+          <User size={15} style={{ color: S.gold, flexShrink: 0 }} />
+          <span className="flex-1 text-sm" style={{ color: S.text }}>
+            <strong>{suggestedStaff.name}</strong> found this extra work on {suggestedStaff.fromJobNumber}. This card is unassigned.
+          </span>
+          <button
+            onClick={() => setCard(c => ({ ...c, staff_id: suggestedStaff.id }))}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap"
+            style={{ background: S.gold }}>
+            Assign to {suggestedStaff.name.split(' ')[0]}
+          </button>
+        </div>
+      )}
+
       {/* ── Tabs — flat, clean ───────────────────────────────────────────── */}
       <div className="flex gap-0 mb-6" style={{ borderBottom: `1px solid ${S.border}` }}>
         {/* Job Sheet — primary tab, separated from the rest */}
@@ -1462,7 +1481,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
               <p className="text-sm font-semibold" style={{ color: S.text }}>Extra Work Reported On Site</p>
               <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                Work the client asked for beyond this job card. Each batch becomes its own draft quote with every rate at zero — price the lines there, then send it to the client for approval. Once they approve, a new job card is created automatically, ready to schedule.
+                Work the client asked for beyond this job card. Each batch becomes its own draft quote with every rate at zero — price the lines there, then send it to the client for approval. Once they approve, a new unassigned job card is created automatically, ready for you to assign and schedule.
               </p>
             </div>
 

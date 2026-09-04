@@ -105,7 +105,7 @@ export function normalizeExtras(rows: unknown): ElecJobCardExtra[] {
 export async function createJobCardFromExtrasQuote(quoteId: string) {
   const { data: quote, error } = await supabaseAdmin
     .from('elec_quotes')
-    .select('id, portal_account_id, project_name, project_address, client_id, staff_id, source_job_card_id')
+    .select('id, portal_account_id, project_name, project_address, client_id, source_job_card_id')
     .eq('id', quoteId)
     .maybeSingle()
   // A missing source_job_card_id column (migration not run) lands here too.
@@ -140,7 +140,8 @@ export async function createJobCardFromExtrasQuote(quoteId: string) {
       portal_account_id: quote.portal_account_id,
       quote_id:          quote.id,
       client_id:         quote.client_id,
-      staff_id:          quote.staff_id,
+      // Left unassigned on purpose — who does the extra work and when is the
+      // office's call, not automatically the tech who happened to find it.
       job_number:        `JC-${String((count ?? 0) + 1).padStart(4, '0')}`,
       job_type:          'once_off',
       status:            'pending',

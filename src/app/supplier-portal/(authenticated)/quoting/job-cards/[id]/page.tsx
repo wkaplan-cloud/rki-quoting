@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { JobCardDetail, type JobCardBooking } from './JobCardDetail'
 import type { ElecJobCard, ElecStaff, ElecClient, ElecCOC } from '@/lib/elec-types'
 import { normalizeExtras } from '@/lib/job-card-extras'
+import { one, type Embedded } from '@/lib/supabase/embed'
 
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -68,6 +69,31 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       .then(res => res.error ? { data: null } : res),
   ])
 
+  // An extra-work card is created unassigned — the office decides who goes back.
+  // Surface the tech who found the work as a suggestion rather than picking for them.
+  let suggestedStaff: { id: string; name: string; fromJobNumber: string } | null = null
+  if (card.quote_id && !card.staff_id) {
+    const { data: sourceQuote } = await supabaseAdmin
+      .from('elec_quotes')
+      .select('source_job_card_id')
+      .eq('id', card.quote_id)
+      .maybeSingle()
+      .then(res => res.error ? { data: null } : res)
+
+    if (sourceQuote?.source_job_card_id) {
+      const { data: origin } = await supabaseAdmin
+        .from('elec_job_cards')
+        .select('job_number, staff:elec_staff(id,name)')
+        .eq('id', sourceQuote.source_job_card_id)
+        .eq('portal_account_id', accountId!)
+        .maybeSingle()
+      const originStaff = one((origin as { staff?: Embedded<{ id: string; name: string }> } | null)?.staff)
+      if (origin && originStaff) {
+        suggestedStaff = { id: originStaff.id, name: originStaff.name, fromJobNumber: origin.job_number }
+      }
+    }
+  }
+
   const jobCard: ElecJobCard = {
     ...card,
     materials: materials ?? [],
@@ -88,6 +114,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       companyCode={(settings as { company_code?: string } | null)?.company_code ?? ''}
       initialCOC={(existingCOC ?? null) as ElecCOC | null}
       bookings={(bookings ?? []) as unknown as JobCardBooking[]}
+      suggestedStaff={suggestedStaff}
       extrasEnabled={extras !== null && (extrasSettings as { job_card_extras_enabled?: boolean } | null)?.job_card_extras_enabled !== false}
     />
   )
