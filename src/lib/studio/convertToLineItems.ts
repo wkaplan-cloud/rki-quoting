@@ -1,5 +1,11 @@
 import type { createClient } from '@/lib/supabase/server'
-import { normalizeMaterial, type StudioObject, type MaterialEntry } from '@/lib/studio/types'
+import {
+  normalizeMaterial,
+  normalizeScatter,
+  type StudioObject,
+  type MaterialEntry,
+  type ScatterEntry,
+} from '@/lib/studio/types'
 import { formatCategorySpecs } from '@/lib/specFormatting'
 
 // Shared board → quote row builder. Used by both convert-to-project (first
@@ -22,6 +28,7 @@ export interface ConvertSpecRow {
   depth: string
   height: string
   materials: MaterialEntry[]
+  scatters: ScatterEntry[]
   status: string
   category: string
   item_specs: Record<string, string> | null
@@ -45,7 +52,11 @@ export function buildSpecByObject(specs: ConvertSpecRow[]): Map<string, ConvertS
   return new Map(
     (specs ?? []).map(s => [
       s.object_id,
-      { ...s, materials: (s.materials ?? []).map(normalizeMaterial) },
+      {
+        ...s,
+        materials: (s.materials ?? []).map(normalizeMaterial),
+        scatters: (s.scatters ?? []).map(normalizeScatter),
+      },
     ])
   )
 }
@@ -61,7 +72,11 @@ export async function loadPricingContext(
   const supplierIds = [
     ...new Set(
       [...specByObject.values()]
-        .flatMap(s => [s.supplier_id, ...s.materials.map(m => m.supplierId)])
+        .flatMap(s => [
+          s.supplier_id,
+          ...s.materials.map(m => m.supplierId),
+          ...s.scatters.map(sc => sc.supplierId),
+        ])
         .filter((v): v is string => !!v)
     ),
   ]
@@ -77,7 +92,10 @@ export async function loadPricingContext(
   const productIds = [
     ...new Set(
       [...specByObject.values()]
-        .flatMap(s => s.materials.map(m => m.twinbruProductId))
+        .flatMap(s => [
+          ...s.materials.map(m => m.twinbruProductId),
+          ...s.scatters.map(sc => sc.twinbruProductId),
+        ])
         .filter((v): v is number => v != null)
     ),
   ]
@@ -240,7 +258,37 @@ export function buildBoardRows({
           studio_object_id: obj.id,
         }
       })
-      parentMeta.push({ specId: sp.id, materials })
+      // Scatters ride under the piece as their own child rows — a scatter is
+      // separately made, separately supplied and separately priced, so it has
+      // to be its own quotable line rather than a note on the sofa.
+      const scatters = (Array.isArray(sp.scatters) ? sp.scatters : []).map(sc => {
+        const live = sc.twinbruProductId != null ? priceByProductId.get(String(sc.twinbruProductId)) : undefined
+        const size = sc.size.trim()
+        return {
+          item_name: size ? `Scatter ${size}` : 'Scatter',
+          description: [sc.fabric.trim(), sc.details.trim()].filter(Boolean).join('\n') || null,
+          quantity: parseFloat(sc.quantity) || 1,
+          unit: null,
+          supplier_id: sc.supplierId,
+          supplier_name: sc.supplierName.trim() || null,
+          cost_price: live?.price ?? 0,
+          markup_percentage: sc.supplierId ? (markupBySupplier.get(sc.supplierId) ?? 0) : 0,
+          dimensions: size || null,
+          colour_finish: sc.colour,
+          fabric_image_url: live?.imageUrl ?? sc.imageUrl,
+          twinbru_product_id: sc.twinbruProductId,
+          twinbru_cost_price: live?.price ?? null,
+          fabric_width_cm: live?.widthCm ?? sc.widthCm,
+          delivery_address: defaultDeliveryAddress,
+          row_type: 'item',
+          indent_level: 1,
+          sort_order: sortOrder++,
+          studio_slide_id: slide.id,
+          studio_object_id: obj.id,
+        }
+      })
+
+      parentMeta.push({ specId: sp.id, materials: [...materials, ...scatters] })
     }
   })
 

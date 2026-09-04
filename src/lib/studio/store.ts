@@ -515,7 +515,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       supabase
         .from('studio_specs')
         .select(
-          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, status, piece_id, item_specs'
+          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, scatters, images, status, piece_id, item_specs'
         )
         .eq('board_id', s.boardId),
     ])
@@ -652,15 +652,31 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       return changed ? next : slides
     }
 
-    const { slides, past, future, dirtySlideIds } = get()
+    const { slides, past, future, dirtySlideIds, specs, dirtySpecIds } = get()
     const nextSlides = patchSlides(slides)
-    if (nextSlides === slides) return
+
+    // A spec's extra reference images go through the same offline queue as
+    // canvas images, so they carry the same sentinel and need the same swap
+    const nextSpecs = { ...specs }
+    const touchedSpecs: string[] = []
+    for (const [objectId, spec] of Object.entries(specs)) {
+      if (!spec.images.some(img => img.url === token)) continue
+      nextSpecs[objectId] = {
+        ...spec,
+        images: spec.images.map(img => (img.url === token ? { ...img, url } : img)),
+      }
+      touchedSpecs.push(objectId)
+    }
+
+    if (nextSlides === slides && !touchedSpecs.length) return
     const touched = nextSlides.filter((sl, i) => sl !== slides[i]).map(sl => sl.id)
     set({
       slides: nextSlides,
+      specs: touchedSpecs.length ? nextSpecs : specs,
       past: past.map(sn => ({ ...sn, slides: patchSlides(sn.slides) })),
       future: future.map(sn => ({ ...sn, slides: patchSlides(sn.slides) })),
       dirtySlideIds: mergeDirty(dirtySlideIds, touched),
+      dirtySpecIds: Array.from(new Set([...dirtySpecIds, ...touchedSpecs])),
       failedUploadIds: get().failedUploadIds.filter(id => id !== uploadId),
     })
     scheduleSave()
@@ -758,6 +774,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           depth: '',
           height: '',
           materials: [],
+          scatters: [],
+          images: [],
           status: 'draft',
           rfqSentAt: null,
           rfqSentTo: [],
@@ -1096,6 +1114,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           depth: sp.depth,
           height: sp.height,
           materials: sp.materials,
+          scatters: sp.scatters,
+          images: sp.images,
           status: sp.status,
           piece_id: sp.pieceId,
           item_specs: sp.itemSpecs,

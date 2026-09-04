@@ -1,7 +1,13 @@
 import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { normalizeMaterial, type StudioSpecRow, type StudioSlideRow } from '@/lib/studio/types'
-import { RfqPricingForm, type RfqFormItem } from './RfqPricingForm'
+import {
+  normalizeMaterial,
+  normalizeScatter,
+  normalizeSpecImage,
+  type StudioSpecRow,
+  type StudioSlideRow,
+} from '@/lib/studio/types'
+import { RfqPricingForm, type RfqFormItem, type RfqFormImage } from './RfqPricingForm'
 import { CATEGORY_FIELDS, categoryLabel, type CategoryKey } from '@/lib/sourcing-categories'
 import { Clock } from 'lucide-react'
 
@@ -37,14 +43,23 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
 
   // Image + room/area for each object, from the slide it sits on. Also gives
   // us a stable display order (slide order, then position on the slide).
-  const imageByObject = new Map<string, string>()
+  // The board image carries its crop: what the designer framed on the slide is
+  // the brief, so the supplier is shown that framing, never the wider original.
+  const imageByObject = new Map<string, RfqFormImage>()
   const areaByObject = new Map<string, string>()
   const orderByObject = new Map<string, number>()
   let seq = 0
   for (const slide of (slideRows ?? []) as StudioSlideRow[]) {
     const area = (slide.heading || slide.name || '').trim()
     for (const obj of Array.isArray(slide.objects) ? slide.objects : []) {
-      if (obj.type === 'image') imageByObject.set(obj.id, obj.url)
+      if (obj.type === 'image') {
+        imageByObject.set(obj.id, {
+          url: obj.url,
+          crop: obj.crop ?? null,
+          naturalWidth: obj.naturalWidth,
+          naturalHeight: obj.naturalHeight,
+        })
+      }
       areaByObject.set(obj.id, area)
       if (!orderByObject.has(obj.id)) orderByObject.set(obj.id, seq++)
     }
@@ -62,14 +77,43 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         specId: spec.id,
         name: spec.spec_name || 'Untitled item',
         area: areaByObject.get(spec.object_id) ?? '',
-        imageUrl: imageByObject.get(spec.object_id) ?? null,
+        images: [
+          imageByObject.get(spec.object_id),
+          // Extra views added on the spec — stored whole, no crop of their own
+          ...(Array.isArray(spec.images) ? spec.images.map(normalizeSpecImage) : []).map(img => ({
+            url: img.url,
+            crop: null,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+          })),
+        ].filter((img): img is RfqFormImage => !!img),
         category: categoryLabel(spec.category),
         description: spec.description ?? '',
         quantity: spec.quantity ?? '',
         unit: spec.unit ?? '',
         dimensions: [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
         materials: (Array.isArray(spec.materials) ? spec.materials.map(normalizeMaterial) : [])
-          .map(m => [m.type, m.description, m.colour].map(v => (v ?? '').trim()).filter(Boolean).join(' · '))
+          .map(m =>
+            [m.type, m.description, m.colour, m.supplierName ? `via ${m.supplierName}` : '']
+              .map(v => (v ?? '').trim())
+              .filter(Boolean)
+              .join(' · ')
+          )
+          .filter(Boolean),
+        scatters: (Array.isArray(spec.scatters) ? spec.scatters.map(normalizeScatter) : [])
+          .map(sc =>
+            [
+              sc.quantity.trim() ? `${sc.quantity.trim()} ×` : '',
+              sc.size,
+              sc.fabric,
+              sc.colour,
+              sc.details,
+              sc.supplierName ? `via ${sc.supplierName}` : '',
+            ]
+              .map(v => (v ?? '').trim())
+              .filter(Boolean)
+              .join(' · ')
+          )
           .filter(Boolean),
         // Resolved to labels + units here, not in the form — the supplier must
         // read "Overall Width 1800 mm", never the raw "overall_width" key.

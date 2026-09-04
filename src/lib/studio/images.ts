@@ -581,3 +581,15 @@ export async function replaceImage(objId: string, file: File): Promise<void> {
     crop: undefined,
   } as Partial<ImageObject>)
 }
+
+// Upload a file that belongs to a SPEC rather than to the canvas — the extra
+// reference images an item carries (back view, detail shot, drawing). Runs the
+// identical pipeline as a canvas import (normalise → dedupe by hash → register
+// in the board's asset library, offline queue included); it just never places
+// an object on a slide.
+export async function uploadSpecImageFile(
+  file: File
+): Promise<{ url: string; width: number; height: number }> {
+  if (!isImportableFile(file)) throw new Error('Please choose an image or PDF file')
+  return uploadFile(file)
+}

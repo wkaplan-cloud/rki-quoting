@@ -9,7 +9,13 @@ import { CATEGORY_FIELDS, categoryLabel, type CategoryKey } from '@/lib/sourcing
 export interface RfqPdfItem {
   name: string
   area: string // room/area — the slide heading the item sits on
+  // The board image, already cut to the designer's crop before it gets here —
+  // the framing IS part of the brief, so the supplier must never see the
+  // uncropped original.
   imageUrl: string | null
+  // Extra views of the same item (back, detail, drawing) — shown under the
+  // main image so the supplier prices the whole piece, not one angle.
+  extraImageUrls: string[]
   description: string
   category: string
   quantity: string
@@ -18,6 +24,15 @@ export interface RfqPdfItem {
   depth: string
   height: string
   materials: { type: string; description: string; supplierName: string; colour: string | null }[]
+  // Scatter cushions — separately supplied and separately priced
+  scatters: {
+    supplierName: string
+    fabric: string
+    colour: string | null
+    size: string
+    quantity: string
+    details: string
+  }[]
   notes: string
   // Category-specific fields (seat height, wood type, IP rating, etc.) —
   // the supplier needs these to price accurately, not just a photo and
@@ -68,6 +83,8 @@ const s = StyleSheet.create({
   // page with a fixed "— continued" header so it reads as one item.
   imageBox: { width: '100%', height: 300, borderWidth: 1, borderColor: '#D8D3C8', padding: 4, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   image: { maxWidth: 505, maxHeight: 290, objectFit: 'contain' },
+  extraStrip: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
+  extraThumb: { width: 96, height: 96, objectFit: 'cover', borderWidth: 1, borderColor: '#D8D3C8', marginRight: 6, marginBottom: 6, borderRadius: 3 },
   specs: { width: '100%' },
   specRow: { flexDirection: 'row', paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
   specLabel: { width: 80, fontSize: 8, color: '#8A877F' },
@@ -196,6 +213,17 @@ export function RfqPDF(props: RfqPdfProps) {
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             {item.imageUrl ? <Image src={item.imageUrl} style={s.image} /> : <Text style={s.muted}>No image</Text>}
           </View>
+          {item.extraImageUrls.length > 0 ? (
+            <View wrap={false}>
+              <Text style={[s.sectionHead, { marginTop: 0 }]}>More views</Text>
+              <View style={s.extraStrip}>
+                {item.extraImageUrls.map((u, j) => (
+                  // eslint-disable-next-line jsx-a11y/alt-text
+                  <Image key={j} src={u} style={s.extraThumb} />
+                ))}
+              </View>
+            </View>
+          ) : null}
           <View style={s.specs}>
               {item.description.trim() ? (
                 <View style={s.specRow} wrap={false}>
@@ -249,6 +277,30 @@ export function RfqPDF(props: RfqPdfProps) {
                       <Text style={s.specValue}>
                         {[m.description, m.colour, m.supplierName ? `via ${m.supplierName}` : '']
                           .filter(v => v && v.trim())
+                          .join(' · ')}
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              ) : null}
+
+              {item.scatters.length > 0 ? (
+                <>
+                  <Text style={s.sectionHead} minPresenceAhead={30}>Scatters</Text>
+                  {item.scatters.map((sc, j) => (
+                    <View key={j} style={s.specRow} wrap={false}>
+                      <Text style={s.specLabel}>
+                        {sc.quantity.trim() ? `${sc.quantity.trim()} ×` : 'Scatter'}
+                      </Text>
+                      <Text style={s.specValue}>
+                        {[
+                          sc.size.trim(),
+                          sc.fabric.trim(),
+                          sc.colour?.trim() ?? '',
+                          sc.details.trim(),
+                          sc.supplierName.trim() ? `via ${sc.supplierName.trim()}` : '',
+                        ]
+                          .filter(Boolean)
                           .join(' · ')}
                       </Text>
                     </View>

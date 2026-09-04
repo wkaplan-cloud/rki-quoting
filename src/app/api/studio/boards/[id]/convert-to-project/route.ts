@@ -90,7 +90,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       supabase
         .from('studio_specs')
         .select(
-          'id, object_id, spec_name, description, notes, supplier_id, supplier_name, quantity, unit, width, depth, height, materials, status, category, item_specs'
+          'id, object_id, spec_name, description, notes, supplier_id, supplier_name, quantity, unit, width, depth, height, materials, scatters, status, category, item_specs'
         )
         .eq('board_id', boardId),
     ])

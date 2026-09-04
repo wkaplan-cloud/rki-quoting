@@ -7,7 +7,15 @@ import { createClient } from '@/lib/supabase/server'
 import { RfqPDF, type RfqPdfItem } from '@/lib/pdf/RfqPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
 import { apiError } from '@/lib/api-error'
-import { normalizeMaterial, type StudioSpecRow, type StudioSlideRow, type RfqRecipientStamp } from '@/lib/studio/types'
+import {
+  normalizeMaterial,
+  normalizeScatter,
+  normalizeSpecImage,
+  type StudioSpecRow,
+  type StudioSlideRow,
+  type RfqRecipientStamp,
+  type ImageCropRect,
+} from '@/lib/studio/types'
 
 // One PDF is rendered per recipient, so a photo-heavy board sent to several
 // comparison suppliers multiplies the work. 60s was cutting long sends off
@@ -50,14 +58,30 @@ function slug(v: string) {
 // PDF from ~20MB to a few MB with no visible difference to the supplier.
 const PDF_IMAGE_MAX_PX = 1200
 
-async function downscaleForPdf(url: string): Promise<string> {
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
+// Fetch, apply the designer's crop, downscale. The crop is the whole point:
+// what's framed on the board is the brief, so a supplier must be sent that
+// framing — never the raw showroom photo it was cut out of. Crop coordinates
+// are in SOURCE pixels (exactly what Konva's `crop` prop uses), measured
+// against the orientation the browser saw, so EXIF rotation is applied first
+// and the rect is clamped to the real bounds before extracting.
+async function renderForPdf(url: string, crop?: ImageCropRect | null): Promise<string> {
   try {
     // Bounded: an image that never responds would otherwise hold the whole
     // send open until the function is killed, taking every recipient with it
     const res = await fetch(url, { signal: AbortSignal.timeout(20_000) })
     if (!res.ok) return url
-    const out = await sharp(Buffer.from(await res.arrayBuffer()))
-      .rotate() // honour EXIF orientation
+    let pipeline = sharp(Buffer.from(await res.arrayBuffer())).rotate() // honour EXIF orientation
+    if (crop && crop.width > 0 && crop.height > 0) {
+      const { data, info } = await pipeline.toBuffer({ resolveWithObject: true })
+      const left = clamp(Math.round(crop.x), 0, info.width - 1)
+      const top = clamp(Math.round(crop.y), 0, info.height - 1)
+      const width = clamp(Math.round(crop.width), 1, info.width - left)
+      const height = clamp(Math.round(crop.height), 1, info.height - top)
+      pipeline = sharp(data).extract({ left, top, width, height })
+    }
+    const out = await pipeline
       .resize(PDF_IMAGE_MAX_PX, PDF_IMAGE_MAX_PX, { fit: 'inside', withoutEnlargement: true })
       .flatten({ background: '#ffffff' }) // bg-removed PNGs land on paper white
       .jpeg({ quality: 80 })
@@ -143,25 +167,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    const imageUrlByObject = new Map<string, string>()
+    // The board image for each object, with the crop it is shown with on the
+    // slide — both are needed, since the same file may be cropped differently
+    // on two boards.
+    const imageByObject = new Map<string, { url: string; crop: ImageCropRect | null }>()
     // Room/area = the heading of the slide the object actually sits on
     const areaByObject = new Map<string, string>()
     for (const slide of (slideRows ?? []) as StudioSlideRow[]) {
       const area = (slide.heading || slide.name || '').trim()
       for (const obj of Array.isArray(slide.objects) ? slide.objects : []) {
-        if (obj.type === 'image') imageUrlByObject.set(obj.id, obj.url)
+        if (obj.type === 'image') imageByObject.set(obj.id, { url: obj.url, crop: obj.crop ?? null })
         areaByObject.set(obj.id, area)
       }
     }
 
-    // Downscale each unique image once, shared across groups/recipients
-    const uniquePdfUrls = [
-      ...new Set(allObjectIds.map(id => imageUrlByObject.get(id)).filter((u): u is string => !!u)),
-    ]
-    const pdfImageByUrl = new Map<string, string>()
+    // Render each unique image+crop once, shared across groups/recipients. The
+    // key carries the crop because one file can appear cropped two ways.
+    const cropKey = (url: string, crop: ImageCropRect | null) =>
+      crop ? `${url}|${crop.x},${crop.y},${crop.width},${crop.height}` : url
+    const renderTargets = new Map<string, { url: string; crop: ImageCropRect | null }>()
+    for (const objectId of allObjectIds) {
+      const placed = imageByObject.get(objectId)
+      if (placed) renderTargets.set(cropKey(placed.url, placed.crop), placed)
+      // Extra spec images are stored whole — no crop of their own
+      for (const img of (specByObject.get(objectId)?.images ?? []).map(normalizeSpecImage)) {
+        renderTargets.set(cropKey(img.url, null), { url: img.url, crop: null })
+      }
+    }
+    const pdfImageByKey = new Map<string, string>()
     await Promise.all(
-      uniquePdfUrls.map(async u => {
-        pdfImageByUrl.set(u, await downscaleForPdf(u))
+      [...renderTargets].map(async ([key, target]) => {
+        pdfImageByKey.set(key, await renderForPdf(target.url, target.crop))
       })
     )
 
@@ -202,11 +238,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       for (const objectId of group.objectIds) {
         const row = specByObject.get(objectId)
         if (!row) continue
-        const originalUrl = imageUrlByObject.get(objectId)
+        const placed = imageByObject.get(objectId)
         items.push({
           name: row.spec_name || '',
           area: areaByObject.get(objectId) ?? '',
-          imageUrl: originalUrl ? pdfImageByUrl.get(originalUrl) ?? originalUrl : null,
+          imageUrl: placed
+            ? pdfImageByKey.get(cropKey(placed.url, placed.crop)) ?? placed.url
+            : null,
+          extraImageUrls: (Array.isArray(row.images) ? row.images.map(normalizeSpecImage) : []).map(
+            img => pdfImageByKey.get(cropKey(img.url, null)) ?? img.url
+          ),
           description: row.description ?? '',
           category: row.category ?? '',
           quantity: row.quantity ?? '',
@@ -216,6 +257,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           height: row.height ?? '',
           materials: (Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : []).map(m => ({
             type: m.type, description: m.description, supplierName: m.supplierName, colour: m.colour,
+          })),
+          scatters: (Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []).map(sc => ({
+            supplierName: sc.supplierName, fabric: sc.fabric, colour: sc.colour,
+            size: sc.size, quantity: sc.quantity, details: sc.details,
           })),
           notes: row.notes ?? '',
           itemSpecs: row.item_specs ?? {},

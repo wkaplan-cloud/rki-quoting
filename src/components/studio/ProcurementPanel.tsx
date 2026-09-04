@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShoppingCart, Type, Square, Circle, Minus, MoveUpRight, X, FileText, Send, RefreshCw, ExternalLink } from 'lucide-react'
+import { CroppedImage } from '@/components/shared/CroppedImage'
 import { useStudioStore } from '@/lib/studio/store'
 import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
 import { ConvertToQuoteModal } from './ConvertToQuoteModal'
@@ -245,18 +246,18 @@ function SpecEntry({
 // Small preview: images show the picture itself, other object types an icon
 function ObjectThumb({ obj }: { obj: StudioObject }) {
   if (obj.type === 'image') {
+    // Cropped exactly as the slide frames it — this thumbnail stands for what
+    // the supplier will be sent, so an uncropped preview would mislead
     return (
-      <span className="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden border border-[#D8D3C8] bg-white">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={obj.url}
-          alt=""
-          loading="lazy"
-          draggable={false}
-          crossOrigin="anonymous"
-          className="w-full h-full object-cover pointer-events-none"
-        />
-      </span>
+      <CroppedImage
+        src={obj.url}
+        alt=""
+        crop={obj.crop}
+        naturalWidth={obj.naturalWidth}
+        naturalHeight={obj.naturalHeight}
+        crossOrigin="anonymous"
+        className="flex-shrink-0 w-9 h-9 rounded-md border border-[#D8D3C8] bg-white pointer-events-none"
+      />
     )
   }
   const Icon =

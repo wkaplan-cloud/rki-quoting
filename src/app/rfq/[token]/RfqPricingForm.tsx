@@ -1,18 +1,32 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Loader2, AlertTriangle, Ban, X } from 'lucide-react'
+import { CroppedImage } from '@/components/shared/CroppedImage'
+import type { ImageCropRect } from '@/lib/studio/types'
+
+// One picture of the item, already reduced to what the designer actually
+// framed: `crop` is the source-pixel rect the board shows, and the natural
+// dimensions let CSS re-cut it exactly. Null crop = the whole image.
+export interface RfqFormImage {
+  url: string
+  crop: ImageCropRect | null
+  naturalWidth: number
+  naturalHeight: number
+}
 
 export interface RfqFormItem {
   specId: string
   name: string
   area: string
-  imageUrl: string | null
+  // The board image (cropped as framed) first, then any extra views
+  images: RfqFormImage[]
   category: string
   description: string
   quantity: string
   unit: string
   dimensions: string
   materials: string[]
+  scatters: string[]
   /** Category specs, already resolved to their human labels + units. */
   itemSpecs: { label: string; value: string }[]
   specNotes: string
@@ -52,7 +66,7 @@ export function RfqPricingForm({
   alreadySubmitted: boolean
   expiryLabel: string
 }) {
-  const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null)
+  const [lightbox, setLightbox] = useState<{ image: RfqFormImage; name: string } | null>(null)
   const [entries, setEntries] = useState<Record<string, Entry>>(() =>
     Object.fromEntries(
       items.map(it => [
@@ -172,24 +186,38 @@ export function RfqPricingForm({
         return (
           <div key={it.specId} className="rounded-2xl bg-white border overflow-hidden" style={{ borderColor: '#EDE9E1' }}>
             <div className="flex gap-4 p-5">
-              {it.imageUrl && (
+              {it.images.length > 0 && (
                 // A 96px thumbnail is not enough to quote a joint detail or a
-                // weave from — the supplier needs the picture at full size
-                <button
-                  type="button"
-                  onClick={() => setLightbox({ url: it.imageUrl!, name: it.name })}
-                  aria-label={`View larger image of ${it.name}`}
-                  className="flex-shrink-0 rounded-lg overflow-hidden cursor-zoom-in transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                  style={{ outlineColor: '#9A7B4F' }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={it.imageUrl}
-                    alt={it.name}
-                    className="w-20 h-20 sm:w-24 sm:h-24 object-cover"
-                    style={{ backgroundColor: '#F5F2EC' }}
-                  />
-                </button>
+                // weave from — the supplier needs the picture at full size.
+                // Extra views stack under the main one, same treatment.
+                <div className="flex-shrink-0 flex flex-col gap-1.5">
+                  {it.images.map((img, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setLightbox({ image: img, name: it.name })}
+                      aria-label={
+                        i === 0
+                          ? `View larger image of ${it.name}`
+                          : `View extra image ${i} of ${it.name}`
+                      }
+                      className="rounded-lg overflow-hidden cursor-zoom-in transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                      style={{ outlineColor: '#9A7B4F' }}
+                    >
+                      <CroppedImage
+                        src={img.url}
+                        alt={it.name}
+                        crop={img.crop}
+                        naturalWidth={img.naturalWidth}
+                        naturalHeight={img.naturalHeight}
+                        className={
+                          i === 0 ? 'w-20 h-20 sm:w-24 sm:h-24' : 'w-20 h-14 sm:w-24 sm:h-16'
+                        }
+                        style={{ backgroundColor: '#F5F2EC' }}
+                      />
+                    </button>
+                  ))}
+                </div>
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-start gap-2 flex-wrap">
@@ -215,6 +243,16 @@ export function RfqPricingForm({
                       <li key={i} className="text-xs" style={{ color: '#4A4A47' }}>• {m}</li>
                     ))}
                   </ul>
+                )}
+                {it.scatters.length > 0 && (
+                  <>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide mt-2" style={{ color: '#8A877F' }}>Scatters</p>
+                    <ul className="space-y-0.5">
+                      {it.scatters.map((sc, i) => (
+                        <li key={i} className="text-xs" style={{ color: '#4A4A47' }}>• {sc}</li>
+                      ))}
+                    </ul>
+                  </>
                 )}
                 {it.specNotes.trim() && (
                   <p className="text-xs mt-2 italic" style={{ color: '#8A877F' }}>{it.specNotes.trim()}</p>
@@ -371,13 +409,17 @@ export function RfqPricingForm({
           >
             <X size={20} />
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox.url}
-            alt={lightbox.name}
-            onClick={ev => ev.stopPropagation()}
-            className="max-w-full max-h-full object-contain rounded-lg cursor-default"
-          />
+          <span onClick={ev => ev.stopPropagation()} className="max-w-full max-h-full cursor-default">
+            <CroppedImage
+              src={lightbox.image.url}
+              alt={lightbox.name}
+              crop={lightbox.image.crop}
+              naturalWidth={lightbox.image.naturalWidth}
+              naturalHeight={lightbox.image.naturalHeight}
+              fit="contain"
+              className="max-w-full max-h-full rounded-lg"
+            />
+          </span>
           <p className="absolute bottom-4 left-0 right-0 text-center text-xs px-4 text-white/70">
             {lightbox.name}
           </p>

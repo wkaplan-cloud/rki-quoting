@@ -152,11 +152,12 @@ export interface MaterialEntry {
   id: string
   type: string // Fabric, Timber, Stone, Metal, Paint, Glass, Leather, Wallpaper…
   description: string
-  // Fabric materials only: the supplier chosen for THIS material (may differ
-  // from the spec's own supplier) and, when picked from the platform fabric
-  // catalogue, its product identity. Deliberately no price here — the
-  // convert-to-quote step looks up the CURRENT price at that moment, so a
-  // spec drafted weeks earlier never quotes a stale number.
+  // The supplier chosen for THIS material — every type, not just fabric, since
+  // the timber, the stone and the fabric on one piece routinely come from three
+  // different places and each has to be priced by its own supplier. Fabric
+  // additionally carries the platform catalogue's product identity. Deliberately
+  // no price here — the convert-to-quote step looks up the CURRENT price at that
+  // moment, so a spec drafted weeks earlier never quotes a stale number.
   supplierId: string | null
   supplierName: string
   twinbruProductId: number | null
@@ -178,6 +179,75 @@ export function normalizeMaterial(m: Partial<MaterialEntry> & { id: string; type
     colour: m.colour ?? null,
     imageUrl: m.imageUrl ?? null,
     widthCm: m.widthCm ?? null,
+  }
+}
+
+// Scatter cushions specified against a piece. Kept separate from materials
+// because a scatter is its own quotable thing: it has its own supplier (the
+// scatters on a sofa are routinely made by someone other than the sofa maker),
+// its own fabric, size and quantity. Same no-price rule as MaterialEntry —
+// fabric pricing is looked up live at convert-to-quote time.
+export interface ScatterEntry {
+  id: string
+  supplierId: string | null
+  supplierName: string
+  // Fabric: free text, or a platform-catalogue pick (same flow as MaterialEntry)
+  fabric: string
+  twinbruProductId: number | null
+  colour: string | null
+  imageUrl: string | null
+  widthCm: number | null
+  size: string // e.g. "600 × 600" — free text, scatters are quoted by nominal size
+  quantity: string
+  details: string
+}
+
+export function normalizeScatter(
+  sc: Partial<ScatterEntry> & { id: string }
+): ScatterEntry {
+  return {
+    id: sc.id,
+    supplierId: sc.supplierId ?? null,
+    supplierName: sc.supplierName ?? '',
+    fabric: sc.fabric ?? '',
+    twinbruProductId: sc.twinbruProductId ?? null,
+    colour: sc.colour ?? null,
+    imageUrl: sc.imageUrl ?? null,
+    widthCm: sc.widthCm ?? null,
+    size: sc.size ?? '',
+    quantity: sc.quantity ?? '',
+    details: sc.details ?? '',
+  }
+}
+
+// A crop rect in SOURCE pixels — the same shape ImageObject.crop uses, so a
+// board image and a spec image are croppable by identical maths.
+export interface ImageCropRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+// Extra reference images for the same item, beyond the one placed on the
+// board — a back view, a detail shot, a drawing. Stored on the spec (not the
+// slide) because they belong to the ITEM, not to the layout: they never render
+// on the moodboard, they travel with the spec to the supplier.
+export interface SpecImage {
+  id: string
+  url: string
+  naturalWidth: number
+  naturalHeight: number
+  caption: string
+}
+
+export function normalizeSpecImage(img: Partial<SpecImage> & { id: string; url: string }): SpecImage {
+  return {
+    id: img.id,
+    url: img.url,
+    naturalWidth: img.naturalWidth ?? 0,
+    naturalHeight: img.naturalHeight ?? 0,
+    caption: img.caption ?? '',
   }
 }
 
@@ -207,6 +277,9 @@ export interface StudioSpec {
   depth: string
   height: string
   materials: MaterialEntry[]
+  scatters: ScatterEntry[]
+  // Extra reference images for this item — see SpecImage
+  images: SpecImage[]
   status: SpecStatus
   // RFQ tracking — stamped server-side when quote-request emails go out
   rfqSentAt: string | null
@@ -237,6 +310,8 @@ export interface StudioSpecRow {
   depth: string
   height: string
   materials: MaterialEntry[]
+  scatters?: ScatterEntry[] | null
+  images?: SpecImage[] | null
   status: SpecStatus
   rfq_sent_at?: string | null
   rfq_sent_to?: RfqRecipientStamp[]
@@ -261,6 +336,8 @@ export function specFromRow(row: StudioSpecRow): StudioSpec {
     depth: row.depth,
     height: row.height,
     materials: Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : [],
+    scatters: Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : [],
+    images: Array.isArray(row.images) ? row.images.map(normalizeSpecImage) : [],
     status: row.status === 'approved' ? 'approved' : 'draft',
     rfqSentAt: row.rfq_sent_at ?? null,
     rfqSentTo: Array.isArray(row.rfq_sent_to) ? row.rfq_sent_to : [],
