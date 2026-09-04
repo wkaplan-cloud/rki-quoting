@@ -26,6 +26,7 @@ function SignPage() {
   const [job, setJob] = useState<JobInfo | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [signerName, setSignerName] = useState('')
+  const [hasDrawn, setHasDrawn] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
@@ -64,6 +65,7 @@ function SignPage() {
       const p = touchPos(e.touches[0])
       strokeLine(lastPos.current, p)
       lastPos.current = p
+      setHasDrawn(true)
     }
 
     function onTouchEnd() { isDrawing.current = false; lastPos.current = null }
@@ -114,6 +116,7 @@ function SignPage() {
     ctx.strokeStyle = '#18181B'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke()
     lastPos.current = pos
+    setHasDrawn(true)
   }
   function endDraw(e: React.PointerEvent<HTMLCanvasElement>) {
     if (e.pointerType === 'touch') return
@@ -127,7 +130,7 @@ function SignPage() {
     const res = await fetch(`/api/job-sign/${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ signature, signerName: signerName.trim() || undefined }),
+      body: JSON.stringify({ signature, signerName: signerName.trim() }),
     })
     if (res.ok) {
       setStatus('done')
@@ -215,23 +218,33 @@ function SignPage() {
                   onPointerDown={startDraw} onPointerMove={draw} onPointerUp={endDraw} onPointerLeave={endDraw} onPointerCancel={endDraw} />
               </div>
 
-              <input value={signerName} onChange={e => setSignerName(e.target.value)}
-                placeholder="Your name"
-                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+              <div>
+                <label htmlFor="signer-name" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>
+                  Full name of the person signing <span style={{ color: S.danger }}>*</span>
+                </label>
+                <input id="signer-name" value={signerName} onChange={e => setSignerName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+              </div>
 
               {errorMsg && (
                 <p className="text-xs px-3 py-2 rounded-lg" style={{ background: '#FEF2F2', color: S.danger }}>{errorMsg}</p>
               )}
+              {!errorMsg && (!signerName.trim() || !hasDrawn) && (
+                <p className="text-xs" style={{ color: S.muted }}>
+                  {!hasDrawn ? 'Sign in the box above, then enter your name.' : 'Enter your name to submit.'}
+                </p>
+              )}
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200) }}
+                  onClick={() => { const ctx = canvasRef.current!.getContext('2d')!; ctx.clearRect(0, 0, 600, 200); setHasDrawn(false) }}
                   className="px-4 py-2.5 rounded-xl text-sm"
                   style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                   Clear
                 </button>
-                <button onClick={() => void handleSubmit()} disabled={status === 'signing'}
+                <button onClick={() => void handleSubmit()}
+                  disabled={status === 'signing' || !signerName.trim() || !hasDrawn}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
                   style={{ background: S.green }}>
                   {status === 'signing' ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}

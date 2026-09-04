@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X, CheckSquare, Square, Send } from 'lucide-react'
+import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X, CheckSquare, Square, Send, CheckCircle2 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardType, ElecStaff, ElecClient } from '@/lib/elec-types'
 import { ClientCombobox } from '../ClientCombobox'
 import { StaffMultiSelect } from '../StaffMultiSelect'
@@ -225,6 +225,11 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
                     {j.sent_at && (
                       <span className="flex items-center gap-1 text-xs" style={{ color: S.green }}>
                         <Send size={10} />Sent {fmtSentAt(j.sent_at)}
+                      </span>
+                    )}
+                    {j.client_signature_url && (
+                      <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: S.green }}>
+                        <CheckCircle2 size={10} />Client approved
                       </span>
                     )}
                   </div>

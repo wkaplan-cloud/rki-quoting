@@ -183,6 +183,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [sendMsg, setSendMsg] = useState('')
   const [sending, setSending] = useState(false)
   const [sendMethod, setSendMethod] = useState<'link' | 'pdf'>('link')
+  const [sigDrawn, setSigDrawn] = useState(false)
   const [sendResult, setSendResult] = useState<'success' | 'error' | ''>('')
 
   // Sage
@@ -502,6 +503,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     const pos = getCanvasPos(e)
     ctx.strokeStyle = '#18181B'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     ctx.beginPath(); ctx.moveTo(lastPos.current.x, lastPos.current.y); ctx.lineTo(pos.x, pos.y); ctx.stroke()
+    setSigDrawn(true)
     lastPos.current = pos
   }
 
@@ -510,6 +512,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   function clearCanvas() {
     const canvas = canvasRef.current!
     canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    setSigDrawn(false)
   }
 
   async function saveSignature() {
@@ -519,7 +522,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     setSigSaving(true)
     const fd = new FormData()
     fd.append('file', blob, 'signature.png')
-    fd.append('caption', sigCaption || 'Client signature')
+    // The caption is the signer's name — it prints on the PDF as who approved
+    // the work, so an unnamed signature is worth nothing as proof.
+    fd.append('caption', sigCaption.trim())
     const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos`, { method: 'POST', body: fd })
     if (res.ok) {
       const p = await res.json() as ElecJobCardPhoto
@@ -569,6 +574,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     setSagePushResult({ ok: true, total_incl_vat: data.total_incl_vat })
     setCard(c => ({ ...c, sage_invoice_id: String(data.sage_invoice_id), sage_invoice_status: String(data.sage_invoice_status), sage_customer_name: sageSelectedCustomer.name }))
   }
+
+  // Who signed, off the signature photo's caption — the same place the PDF reads it.
+  const signaturePhoto = (card.photos ?? []).find(p => p.url === card.client_signature_url)
+  const signedBy = signaturePhoto?.caption?.trim() || card.sent_to_name || null
+  const signedAt = signaturePhoto?.uploaded_at ?? null
 
   // ── Extra work ────────────────────────────────────────────────────────────
   const extras = initial.extras ?? []
@@ -752,6 +762,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               {card.scheduled_at && <span className="flex items-center gap-1"><Calendar size={12} />{fmtDate(card.scheduled_at)}</span>}
             </div>
           </div>
+          {/* Client approval — the signature is the client signing the work off */}
+          {card.client_signature_url && (
+            <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+              style={{ background: 'rgba(22,163,74,0.1)', color: S.green, border: '1px solid rgba(22,163,74,0.3)' }}>
+              <CheckCircle2 size={12} />
+              Client approved{signedBy ? ` — ${signedBy}` : ''}
+            </div>
+          )}
           {/* Status dropdown */}
           <div className="relative shrink-0">
             <button onClick={() => setShowStatusMenu(m => !m)}
@@ -1123,6 +1141,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <Send size={14} style={{ color: S.green, flexShrink: 0 }} />
               <p className="text-sm font-semibold" style={{ color: S.green }}>
                 Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}
+              </p>
+            </div>
+          )}
+
+          {card.client_signature_url && (
+            <div className="mb-3 rounded-xl px-4 py-2.5 flex items-center gap-2"
+              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+              <CheckCircle2 size={14} style={{ color: S.green, flexShrink: 0 }} />
+              <p className="text-sm font-semibold" style={{ color: S.green }}>
+                Client approved{signedBy ? ` by ${signedBy}` : ''}{signedAt ? ` — ${fmtDateTime(signedAt)}` : ''}
               </p>
             </div>
           )}
@@ -1623,10 +1651,17 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
               </div>
               <div className="mb-3">
-                <input value={sigCaption} onChange={e => setSigCaption(e.target.value)}
-                  placeholder="Client name (e.g. John Smith)"
+                <label htmlFor="sig-caption" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>
+                  Full name of the person signing <span style={{ color: S.danger }}>*</span>
+                </label>
+                <input id="sig-caption" value={sigCaption} onChange={e => setSigCaption(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl text-sm outline-none"
                   style={{ border: `1px solid ${S.border}`, color: S.text }} />
+                {(!sigCaption.trim() || !sigDrawn) && (
+                  <p className="text-xs mt-1.5" style={{ color: S.muted }}>
+                    {!sigDrawn ? 'Sign in the box above, then enter the name.' : 'Enter the name to save.'}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
                 <button onClick={clearCanvas}
@@ -1634,7 +1669,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                   Clear
                 </button>
-                <button onClick={() => void saveSignature()} disabled={sigSaving}
+                <button onClick={() => void saveSignature()} disabled={sigSaving || !sigCaption.trim() || !sigDrawn}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                   style={{ background: S.green }}>
                   {sigSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}

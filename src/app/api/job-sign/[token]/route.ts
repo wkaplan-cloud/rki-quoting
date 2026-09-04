@@ -41,10 +41,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     if (!signature?.startsWith('data:image/')) {
       return NextResponse.json({ error: 'Invalid signature data' }, { status: 400 })
     }
+    // The name is what makes the signature proof of who approved the work.
+    const signer = signerName?.trim()
+    if (!signer) {
+      return NextResponse.json({ error: 'Enter the name of the person signing' }, { status: 400 })
+    }
 
     const { data: card } = await supabaseAdmin
       .from('elec_job_cards')
-      .select('id, portal_account_id, client_signature_url')
+      .select('id, portal_account_id, client_signature_url, job_number, title')
       .eq('share_token', token)
       .maybeSingle()
 
@@ -65,14 +70,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .from('job-card-photos')
       .getPublicUrl(path)
 
+    // Same shape the on-site flow writes: the signature is a captioned photo,
+    // and the PDF reads the signer's name off that caption.
+    await supabaseAdmin.from('elec_job_card_photos').insert({
+      job_card_id: card.id,
+      url: publicUrl,
+      caption: signer,
+    })
+
     await supabaseAdmin
       .from('elec_job_cards')
       .update({
         client_signature_url: publicUrl,
-        client_name: signerName ?? null,
+        sent_to_name: signer,
         share_token: null,
       })
       .eq('id', card.id)
+
+    await supabaseAdmin.from('elec_notifications').insert({
+      portal_account_id: card.portal_account_id,
+      type: 'signature_captured',
+      title: `Client approved — ${card.job_number}`,
+      body: `${signer} signed off on "${card.title}" from the emailed link.`,
+      metadata: { job_card_id: card.id },
+    })
 
     return NextResponse.json({ ok: true })
   } catch (e) { return apiError(e) }
