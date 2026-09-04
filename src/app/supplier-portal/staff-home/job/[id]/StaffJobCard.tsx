@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Camera, Plus, X, Pen, CheckCircle2,
   Loader2, MapPin, Clock, Briefcase, Play, Square, ShoppingCart,
-  Wrench, Send,
+  Wrench, Send, ClipboardList,
 } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto, ElecMaterialRequest, ElecJobCardExtra } from '@/lib/elec-types'
 import { StaffBottomNav } from '../../StaffBottomNav'
@@ -45,11 +45,13 @@ interface Props {
   jobsBadge?: number
   projectsBadge?: number
   extrasEnabled?: boolean
+  /** Scope lines off the linked quote — descriptions and quantities, never rates. */
+  scopeItems?: { description: string; unit: string | null; qty: number }[]
 }
 
 type Tab = 'report' | 'materials' | 'extras' | 'photos' | 'signature'
 
-export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadge, projectsBadge, extrasEnabled = true }: Props) {
+export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadge, projectsBadge, extrasEnabled = true, scopeItems = [] }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [tab, setTab] = useState<Tab>('report')
@@ -567,6 +569,41 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
 
         {/* ── REPORT TAB ── */}
         {tab === 'report' && (
+          <div className="space-y-4">
+
+          {/* What the office sent him to do. Read-only — his own report is below. */}
+          {(card.work_description || scopeItems.length > 0) && (
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="px-4 py-3 flex items-center gap-2" style={{ background: 'rgba(58,124,165,0.05)', borderBottom: `1px solid ${S.border}` }}>
+                <ClipboardList size={14} style={{ color: S.accent }} />
+                <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.accent }}>The Job</span>
+              </div>
+              {card.work_description && (
+                <div className="px-4 py-3" style={{ borderBottom: scopeItems.length > 0 ? `1px solid ${S.border}` : undefined }}>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: S.text }}>{card.work_description}</p>
+                </div>
+              )}
+              {scopeItems.length > 0 && (
+                <>
+                  <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>
+                    Quoted scope
+                  </p>
+                  <div className="pb-2">
+                    {scopeItems.map((it, i) => (
+                      <div key={i} className="flex items-start gap-2.5 px-4 py-1.5">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: S.accent }} />
+                        <p className="flex-1 text-sm leading-snug" style={{ color: S.text }}>
+                          {it.description}
+                          <span className="ml-1.5 text-xs" style={{ color: S.muted }}>{it.qty} {it.unit ?? 'nr'}</span>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="rounded-2xl p-4 space-y-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <p className="text-xs" style={{ color: S.muted }}>Your report saves automatically when you move to the next step.</p>
             <div>
@@ -588,6 +625,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
               style={{ background: S.accent }}>
               Next: Materials →
             </button>
+          </div>
           </div>
         )}
 

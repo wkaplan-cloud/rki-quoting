@@ -49,6 +49,20 @@ export default async function StaffJobCardPage({ params }: { params: Promise<{ i
       .in('status', ['approved', 'in_progress']),
   ])
 
+  // Scope from the quote this card came off, so the tech can see what he was
+  // sent to do. Descriptions and quantities only — rates never leave the server.
+  let scopeItems: { description: string; unit: string | null; qty: number }[] = []
+  if (card.quote_id) {
+    const { data: lines } = await supabaseAdmin
+      .from('elec_quote_line_items')
+      .select('description, unit, quoted_quantity')
+      .eq('quote_id', card.quote_id)
+      .order('sort_order', { ascending: true })
+    scopeItems = (lines ?? [])
+      .filter(l => l.description?.trim())
+      .map(l => ({ description: l.description, unit: l.unit, qty: l.quoted_quantity }))
+  }
+
   const jobCard: ElecJobCard = {
     ...card,
     materials: materials ?? [],
@@ -62,6 +76,7 @@ export default async function StaffJobCardPage({ params }: { params: Promise<{ i
       staffName={staff.name}
       jobsBadge={jobsCount ?? 0}
       projectsBadge={projectsCount ?? 0}
+      scopeItems={scopeItems}
       extrasEnabled={extras !== null && (settings as { job_card_extras_enabled?: boolean } | null)?.job_card_extras_enabled !== false}
     />
   )
