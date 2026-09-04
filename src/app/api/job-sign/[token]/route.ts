@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { notifyJobCardSigned } from '@/lib/notify-job-card-signed'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -87,13 +88,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       })
       .eq('id', card.id)
 
-    await supabaseAdmin.from('elec_notifications').insert({
-      portal_account_id: card.portal_account_id,
-      type: 'signature_captured',
-      title: `Client approved — ${card.job_number}`,
-      body: `${signer} signed off on "${card.title}" from the emailed link.`,
-      metadata: { job_card_id: card.id },
-    })
+    await notifyJobCardSigned({ jobCardId: card.id, signerName: signer, source: 'email_link' })
+      .catch(e => console.error('[job-sign] notify failed', e))
 
     return NextResponse.json({ ok: true })
   } catch (e) { return apiError(e) }

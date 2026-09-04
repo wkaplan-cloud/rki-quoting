@@ -528,8 +528,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos`, { method: 'POST', body: fd })
     if (res.ok) {
       const p = await res.json() as ElecJobCardPhoto
-      await save({ client_signature_url: p.url })
-      setCard(c => ({ ...c, client_signature_url: p.url }))
+      await save({ client_signature_url: p.url, sent_to_name: sigCaption.trim() })
+      setCard(c => ({ ...c, client_signature_url: p.url, sent_to_name: sigCaption.trim() }))
       setSigning(false); clearCanvas()
     }
     setSigSaving(false)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { notifyJobCardSigned } from '@/lib/notify-job-card-signed'
 import { normaliseSAScheduledAt, syncJobsFromCardStatus } from '@/lib/elec-job-sync'
 
 async function resolveAccount(userId: string) {
@@ -130,15 +131,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       })
     }
 
-    // Notify admin when signature is captured
-    if (staffId && body.client_signature_url) {
-      supabaseAdmin.from('elec_notifications').insert({
-        portal_account_id: accountId,
-        type: 'signature_captured',
-        title: `Signature captured — ${staffName ?? 'staff'}`,
-        body: data.title ? `Client signed off on "${data.title}"` : 'Client signature captured',
-        metadata: { job_card_id: id, staff_id: staffId },
-      })
+    // Notify the office when the client signs — bell and email, same as the
+    // emailed sign link raises.
+    if (body.client_signature_url) {
+      void notifyJobCardSigned({
+        jobCardId: id,
+        signerName: (typeof body.sent_to_name === 'string' && body.sent_to_name.trim())
+          || data.sent_to_name || 'The client',
+        source: 'on_site',
+        staffName,
+        staffId,
+      }).catch(e => console.error('[job-cards] notify failed', e))
     }
 
     // Sync email and address back to the client record when present
