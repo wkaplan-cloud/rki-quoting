@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 import { apiError } from '@/lib/api-error'
+import { rateLimit } from '@/lib/rate-limit'
 
 const ORG_ID = process.env.CAPITAL_HOTEL_ORG_ID
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+// Escape all five HTML-significant characters, including quotes, so values are
+// safe in both element-text and attribute (href="...") contexts.
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
 
 // POST /api/capital-portal/submit — public, creates a capital_request + items and emails RKI
 export async function POST(req: NextRequest) {
   try {
+    const limited = rateLimit(req, 'capital-submit', 10, 60 * 60 * 1000)
+    if (limited) return limited
+
     if (!ORG_ID) return NextResponse.json({ error: 'Portal not configured' }, { status: 503 })
 
     const body = await req.json() as {
@@ -19,6 +26,13 @@ export async function POST(req: NextRequest) {
 
     if (!body.hotel_id || !body.hotel_name) return NextResponse.json({ error: 'Hotel is required' }, { status: 400 })
     if (!body.items?.length) return NextResponse.json({ error: 'At least one item is required' }, { status: 400 })
+    if (body.items.length > 200) return NextResponse.json({ error: 'Too many items in one request' }, { status: 400 })
+
+    // Only allow http(s) image URLs through to the notification email / DB.
+    const safeUrl = (u: string | null): string | null => {
+      if (!u) return null
+      try { return /^https?:$/.test(new URL(u).protocol) ? u : null } catch { return null }
+    }
 
     // Validate hotel belongs to this org
     const { data: hotel } = await supabaseAdmin
@@ -52,7 +66,7 @@ export async function POST(req: NextRequest) {
       org_id: ORG_ID,
       description: item.description,
       quantity: item.quantity,
-      image_url: item.image_url ?? null,
+      image_url: safeUrl(item.image_url),
       sort_order: item.sort_order,
     }))
 
@@ -73,7 +87,7 @@ export async function POST(req: NextRequest) {
           <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-size:13px;color:#1A1A18;">${esc(item.description)}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-size:13px;color:#1A1A18;text-align:center;">${item.quantity}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-size:13px;">
-            ${item.image_url ? `<a href="${esc(item.image_url)}" style="color:#1B4F8A;">View image</a>` : '<span style="color:#8A877F;">No image</span>'}
+            ${safeUrl(item.image_url) ? `<a href="${esc(safeUrl(item.image_url)!)}" style="color:#1B4F8A;">View image</a>` : '<span style="color:#8A877F;">No image</span>'}
           </td>
         </tr>
       `).join('')

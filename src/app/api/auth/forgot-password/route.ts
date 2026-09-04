@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 
 const SITE_URL = 'https://quotinghub.co.za'
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, 'forgot-password', 5, 15 * 60 * 1000)
+  if (limited) return limited
+
   const { email } = await req.json()
   if (!email) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })

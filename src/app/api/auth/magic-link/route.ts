@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { rateLimit } from '@/lib/rate-limit'
 
 const SITE_URL = 'https://quotinghub.co.za'
 const ALLOWED_REDIRECT_PATHS = ['/login', '/supplier-portal/login']
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, 'magic-link', 5, 15 * 60 * 1000)
+  if (limited) return limited
+
   const { email, redirectPath } = await req.json()
   if (!email || !ALLOWED_REDIRECT_PATHS.includes(redirectPath)) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
