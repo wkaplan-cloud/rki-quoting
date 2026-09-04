@@ -6,6 +6,7 @@ import {
   Check, AlertCircle, Send, Printer, Camera, Trash2,
 } from 'lucide-react'
 import type { ElecCOC, ElecSettings, COCTestReport } from '@/lib/elec-types'
+import { compressImage } from '@/lib/compressImage'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -362,7 +363,7 @@ export function COCModal({ coc: initial, title, onClose, onSaved }: {
     setUploadingPhoto(true)
     for (const file of files) {
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', await compressImage(file))
       const res = await fetch('/api/supplier-portal/quoting/coc/photos', { method: 'POST', body: fd })
       if (res.ok) {
         const { url } = await res.json() as { url: string }

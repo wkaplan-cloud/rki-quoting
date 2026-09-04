@@ -60,7 +60,9 @@ const s = StyleSheet.create({
 
   photoGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 },
   photoBox:    { width: '31%' },
-  photoImg:    { width: '100%', height: 90, objectFit: 'cover', borderRadius: 3 },
+  // Site photos are evidence — 'cover' was slicing the middle out of every one.
+  // Phone photos are 3:4 portrait, so contain in a taller box shows all of it.
+  photoImg:    { width: '100%', height: 150, objectFit: 'contain', borderRadius: 3, backgroundColor: '#F4F4F5' },
   photoCaption:{ fontSize: 6.5, color: MUTED, marginTop: 2 },
 
   sigBox:      { borderWidth: 0.5, borderColor: BORDER, borderRadius: 3, padding: 6, alignItems: 'center', marginBottom: 14 },

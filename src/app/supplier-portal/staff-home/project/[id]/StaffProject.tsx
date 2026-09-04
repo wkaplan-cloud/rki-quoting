@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { StaffBottomNav } from '../../StaffBottomNav'
 import type { ElecMaterialRequest } from '@/lib/elec-types'
 import { uniqueUploadPath } from '@/lib/upload-path'
+import { compressImage } from '@/lib/compressImage'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5',
@@ -200,7 +201,7 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
     setUploading(true)
     for (const file of Array.from(files)) {
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', await compressImage(file))
       const res = await fetch(`/api/supplier-portal/staff/projects/${quote.id}/photos`, { method: 'POST', body: fd })
       if (res.ok) {
         const p = await res.json()
