@@ -32,3 +32,19 @@ export function toSADateTimeLocal(iso: string | null | undefined): string {
   const hour = parts.hour === '24' ? '00' : parts.hour
   return `${parts.year}-${parts.month}-${parts.day}T${hour}:${parts.minute}`
 }
+
+/**
+ * Renders a stored timestamptz as a readable South African date and time,
+ * e.g. "4 Sep 2026, 14:32". Used wherever a user needs to see exactly when
+ * something happened — when a quote or invoice email went out, for instance.
+ */
+export function formatSADateTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat('en-ZA', {
+    timeZone: 'Africa/Johannesburg',
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(d).replace(/,\s*$/, '')
+}

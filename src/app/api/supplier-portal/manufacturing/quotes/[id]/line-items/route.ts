@@ -36,7 +36,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     unit_price:        li.unit_price ?? 0,
     line_total:        (li.unit_price ?? 0) * (li.quantity ?? 1),
     markup_percentage: li.markup_percentage ?? 30,
-    cost_per_unit:     li.cost_per_unit ?? 0,
+    pricing_mode:      li.pricing_mode === 'manual' ? 'manual' : 'built',
+    // null means "no cost captured" — kept distinct from a genuine R0 cost so
+    // uncosted lines stay out of the quote's cost and profit totals.
+    cost_per_unit:     li.cost_per_unit ?? null,
     profit_per_unit:   li.profit_per_unit ?? 0,
     margin_percentage: li.margin_percentage ?? 0,
     option_label:      li.option_label ?? null,

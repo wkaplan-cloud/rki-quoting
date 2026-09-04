@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { todaySA } from '@/lib/dates'
+import { todaySA, formatSADateTime } from '@/lib/dates'
 import { useRouter } from 'next/navigation'
 import { fmtR } from '@/lib/mfg-format'
 import {
@@ -14,6 +14,16 @@ const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A
 const fmt = fmtR
 
 function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
+  // Manual lines carry a typed cost and selling price — never recompute those,
+  // only the figures derived from them. A null cost means "not captured", which
+  // is not the same as R0, so it yields no profit or margin rather than 100%.
+  if (li.pricing_mode === 'manual') {
+    const unitPrice     = li.unit_price || 0
+    const cost          = li.cost_per_unit
+    const profitPerUnit = cost === null ? 0 : unitPrice - cost
+    const marginPct     = cost === null || unitPrice <= 0 ? 0 : (profitPerUnit / unitPrice) * 100
+    return { ...li, line_total: unitPrice * li.quantity, profit_per_unit: profitPerUnit, margin_percentage: marginPct }
+  }
   const markup = li.markup_percentage / 100
   const compCost    = li.components.reduce((sum, c) => {
     if (c.unit_cost === null || c.unit_cost === undefined) return sum
@@ -37,10 +47,12 @@ function hasPending(li: MfgQuoteLineItemDraft) {
 const BLANK_LINE = (markup: number): MfgQuoteLineItemDraft => ({
   sort_order: 0, description: '', callout_note: '', quantity: 1,
   unit_price: 0, line_total: 0, markup_percentage: markup,
-  cost_per_unit: 0, profit_per_unit: 0, margin_percentage: 0,
+  pricing_mode: 'manual', cost_per_unit: null, profit_per_unit: 0, margin_percentage: 0,
   option_label: null, labour_hours: 0, labour_rate: 0,
   components: [], cost_builder_open: false,
 })
+
+const round2 = (n: number) => Math.round(n * 100) / 100
 
 
 const DEFAULT_COMPONENT_CATEGORY = { material: 'boards', hardware: 'hinges_rails' } as const
@@ -76,7 +88,7 @@ function PriceBookSelect({ items, onSelect, placeholder }: {
 }
 
 interface Props {
-  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; show_unit_price: boolean; valid_until: string | null; notes: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; delivery_cost?: number; installation_cost?: number; job?: { id: string; job_name: string; client?: { client_name: string; email: string | null } | null } | null }
+  quote: { id: string; quote_number: string; revision_number: number; status: string; job_id: string; apply_vat: boolean; vat_rate: number; show_unit_price: boolean; valid_until: string | null; notes: string | null; sent_at?: string | null; sent_to_email?: string | null; total: number; subtotal: number; vat_amount: number; total_cost: number; total_profit: number; delivery_cost?: number; installation_cost?: number; job?: { id: string; job_name: string; client?: { client_name: string; email: string | null } | null } | null }
   initialLineItems: MfgQuoteLineItemDraft[]
   priceBook: MfgPriceBookItem[]
   settings: MfgSettings | null
@@ -177,6 +189,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   const [sendEmail, setSendEmail] = useState('')
   const [sendBody, setSendBody] = useState('')
   const [sendSuccess, setSendSuccess] = useState(false)
+  const [sentAt, setSentAt] = useState<string | null>(quote.sent_at ?? null)
+  const [sentTo, setSentTo] = useState<string | null>(quote.sent_to_email ?? null)
   const [markingSent, setMarkingSent] = useState(false)
   const [markingAccepted, setMarkingAccepted] = useState(false)
   const [showConvertModal, setShowConvertModal] = useState(false)
@@ -187,9 +201,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   const grossSubtotal = itemsSubtotal + deliveryCost + installationCost
   const vatAmt        = applyVat ? grossSubtotal * (vatRate / 100) : 0
   const total         = grossSubtotal + vatAmt
-  const totalCost     = lineItems.reduce((s, li) => s + li.cost_per_unit * li.quantity, 0)
-  const totalProfit   = itemsSubtotal - totalCost
-  const totalMargin   = itemsSubtotal > 0 ? (totalProfit / itemsSubtotal) * 100 : 0
+  // Lines with no cost captured are left out of both sides of the margin sum —
+  // counting them at R0 cost would report their full selling price as profit.
+  const costedItems   = lineItems.filter(li => li.cost_per_unit !== null)
+  const uncostedCount = lineItems.filter(li => li.cost_per_unit === null && li.line_total > 0).length
+  const totalCost     = costedItems.reduce((s, li) => s + (li.cost_per_unit ?? 0) * li.quantity, 0)
+  const costedRevenue = costedItems.reduce((s, li) => s + li.line_total, 0)
+  const totalProfit   = costedRevenue - totalCost
+  const totalMargin   = costedRevenue > 0 ? (totalProfit / costedRevenue) * 100 : 0
   const hasPendingItems = lineItems.some(hasPending)
 
   useEffect(() => {
@@ -215,8 +234,57 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   function updateLineItem(idx: number, updates: Partial<MfgQuoteLineItemDraft>) {
     setLineItems(prev => {
       const next = [...prev]
-      next[idx] = calcLineItem({ ...next[idx], ...updates })
+      const merged = { ...next[idx], ...updates }
+      // Adding components or labour means this line is being costed from the
+      // builder, so it stops being a typed price and the build takes over.
+      if (merged.pricing_mode === 'manual' && updates.pricing_mode === undefined) {
+        const gainedComponents = Array.isArray(updates.components) && updates.components.length > 0
+        const gainedLabour     = (updates.labour_hours ?? 0) > 0 || (updates.labour_rate ?? 0) > 0
+        if (gainedComponents || gainedLabour) merged.pricing_mode = 'built'
+      }
+      next[idx] = calcLineItem(merged)
       return next
+    })
+  }
+
+  // ─── Manual pricing ─────────────────────────────────────────────────────────
+  // Cost and selling price are independent: typing a cost never overwrites a
+  // price the user has already set. Markup is the bridge — it is derived from
+  // the two, and editing it pushes a new selling price.
+
+  function switchToManual(idx: number) {
+    const li = lineItems[idx]
+    updateLineItem(idx, {
+      pricing_mode:  'manual',
+      cost_per_unit: li.cost_per_unit && li.cost_per_unit > 0 ? round2(li.cost_per_unit) : null,
+      unit_price:    round2(li.unit_price || 0),
+    })
+  }
+
+  function setManualCost(idx: number, cost: number | null) {
+    const li = lineItems[idx]
+    // Only fill in a selling price when there isn't one yet.
+    const seedPrice = cost !== null && !li.unit_price
+      ? round2(cost * (1 + li.markup_percentage / 100))
+      : li.unit_price
+    updateLineItem(idx, { cost_per_unit: cost, unit_price: seedPrice })
+  }
+
+  function setManualMarkup(idx: number, markup: number) {
+    const li = lineItems[idx]
+    const cost = li.cost_per_unit
+    updateLineItem(idx, {
+      markup_percentage: markup,
+      unit_price: cost && cost > 0 ? round2(cost * (1 + markup / 100)) : li.unit_price,
+    })
+  }
+
+  function setManualPrice(idx: number, price: number) {
+    const li = lineItems[idx]
+    const cost = li.cost_per_unit
+    updateLineItem(idx, {
+      unit_price: price,
+      markup_percentage: cost && cost > 0 ? round2((price / cost - 1) * 100) : li.markup_percentage,
     })
   }
 
@@ -351,6 +419,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Send failed'); return }
     setSendSuccess(true)
     setCurrentStatus('sent')
+    setSentAt(new Date().toISOString())
+    setSentTo(sendEmail.trim())
   }
 
   async function handleMarkSent() {
@@ -359,6 +429,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
     await fetch(`/api/supplier-portal/manufacturing/quotes/${quote.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'sent', sent_at: now }) })
     setMarkingSent(false)
     setCurrentStatus('sent')
+    setSentAt(now)
+    setSentTo(null)
     setShowSendModal(false)
   }
 
@@ -399,6 +471,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   function renderLineItem(li: MfgQuoteLineItemDraft, liIdx: number) {
     const pending = hasPending(li)
     const isOption = !!li.option_label
+    const isManual = li.pricing_mode === 'manual'
     return (
       <div key={liIdx} className="rounded-2xl overflow-hidden" style={{ border: `1.5px solid ${pending ? '#FDE68A' : isOption ? '#D1FAE5' : S.border}`, background: S.card }}>
         <div className="p-5">
@@ -434,24 +507,70 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 <div className="flex items-center gap-2">
                   <label className="text-xs" style={{ color: S.muted }}>Qty</label>
                   <input type="number" min={1} step={1} value={li.quantity}
+                    aria-label={`Quantity — item ${liIdx + 1}`}
                     onChange={e => updateLineItem(liIdx, { quantity: parseFloat(e.target.value) || 1 })}
                     disabled={isReadOnly}
-                    className="w-20 px-2 py-1 text-sm rounded-lg outline-none text-center"
+                    className="no-spinner w-16 px-2 py-1 text-sm rounded-lg outline-none text-center tabular-nums"
                     style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs" style={{ color: S.muted }}>Unit price</label>
-                  <span className="text-sm font-semibold px-3 py-1 rounded-lg" style={{ background: '#EFF6FF', color: S.accent }}>
-                    {pending ? '⚠ pending' : fmt(li.unit_price)}
-                  </span>
-                </div>
+
+                {isManual ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs" style={{ color: S.muted }}>Cost</label>
+                      <span className="text-xs" style={{ color: S.muted }}>R</span>
+                      <input type="number" min={0} step={1} value={li.cost_per_unit ?? ''}
+                        aria-label={`Cost per unit — item ${liIdx + 1}`}
+                        onChange={e => setManualCost(liIdx, e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
+                        disabled={isReadOnly}
+                        className="no-spinner w-24 px-2 py-1 text-sm rounded-lg outline-none text-right tabular-nums"
+                        style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                    </div>
+                    {li.cost_per_unit !== null && li.cost_per_unit > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs" style={{ color: S.muted }}>Markup</label>
+                        <input type="number" min={0} step={1} value={round2(li.markup_percentage)}
+                          aria-label={`Markup percentage — item ${liIdx + 1}`}
+                          onChange={e => setManualMarkup(liIdx, parseFloat(e.target.value) || 0)}
+                          disabled={isReadOnly}
+                          className="no-spinner w-14 px-2 py-1 text-sm rounded-lg outline-none text-center tabular-nums"
+                          style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
+                        <span className="text-xs" style={{ color: S.muted }}>%</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs" style={{ color: S.muted }}>Unit price</label>
+                      <span className="text-xs" style={{ color: S.accent }}>R</span>
+                      <input type="number" min={0} step={1} value={li.unit_price || ''}
+                        aria-label={`Selling price per unit — item ${liIdx + 1}`}
+                        onChange={e => setManualPrice(liIdx, parseFloat(e.target.value) || 0)}
+                        disabled={isReadOnly}
+                        className="no-spinner w-28 px-2 py-1 text-sm font-semibold rounded-lg outline-none text-right tabular-nums"
+                        style={{ background: '#EFF6FF', border: `1.5px solid #BFDBFE`, color: S.accent }} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs" style={{ color: S.muted }}>Unit price</label>
+                    <span className="text-sm font-semibold px-3 py-1 rounded-lg" style={{ background: '#EFF6FF', color: S.accent }}>
+                      {pending ? '⚠ pending' : fmt(li.unit_price)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2">
                   <label className="text-xs" style={{ color: S.muted }}>Line total</label>
-                  <span className="text-sm font-bold" style={{ color: S.text }}>
+                  <span className="text-sm font-bold tabular-nums" style={{ color: S.text }}>
                     {pending ? '—' : fmt(li.line_total)}
                   </span>
                 </div>
               </div>
+
+              {isManual && li.cost_per_unit === null && li.unit_price > 0 && (
+                <p className="text-[11px]" style={{ color: S.muted }}>
+                  No cost captured — this line is left out of the profit and margin totals.
+                </p>
+              )}
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-1">
               {/* Top row: template + icon actions */}
@@ -494,10 +613,21 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               {/* Build cost + Option pill */}
               <div className="flex items-center gap-1">
                 <button onClick={() => setCostBuilderModal(liIdx)}
+                  title={isManual ? 'Build this price up from materials, hardware and labour instead' : undefined}
                   className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{ color: S.accent, background: '#EFF6FF' }}>
                   Build cost →
                 </button>
+                {!isReadOnly && !isManual && (
+                  <button onClick={() => switchToManual(liIdx)}
+                    title="Type a cost and selling price for this line instead of building it up"
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
+                    onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
+                    onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
+                    Type price
+                  </button>
+                )}
                 {!isReadOnly && (
                   <button onClick={() => toggleOptionItem(liIdx)}
                     className="px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors"
@@ -551,6 +681,13 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
             {quote.job?.client?.client_name && <span className="font-medium">{quote.job.client.client_name} · </span>}
             {quote.job?.job_name}
           </p>
+          {sentAt && (
+            <p className="text-xs mt-1.5 flex items-center gap-1.5" style={{ color: S.muted }}>
+              <Send size={11} style={{ color: '#D97706' }} />
+              Sent {formatSADateTime(sentAt)}
+              {sentTo ? <> to <span className="font-medium" style={{ color: S.text }}>{sentTo}</span></> : ' · marked as sent, no email'}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -671,10 +808,15 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 <span style={{ color: S.muted }}>Total cost (line items)</span>
                 <span style={{ color: S.text }}>{fmtR(totalCost)}</span>
               </div>
-              <div className="flex justify-between text-xs pb-2" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <div className="flex justify-between text-xs" style={{ borderBottom: uncostedCount > 0 ? undefined : `1px solid ${S.border}`, paddingBottom: uncostedCount > 0 ? 0 : '0.5rem' }}>
                 <span style={{ color: '#16A34A' }}>Total profit ({totalMargin.toFixed(1)}%)</span>
                 <span style={{ color: '#16A34A', fontWeight: 600 }}>{fmtR(totalProfit)}</span>
               </div>
+              {uncostedCount > 0 && (
+                <p className="text-[11px] pb-2" style={{ color: S.muted, borderBottom: `1px solid ${S.border}` }}>
+                  Excludes {uncostedCount} line item{uncostedCount === 1 ? '' : 's'} with no cost captured.
+                </p>
+              )}
             </>
           )}
           <div className="flex justify-between text-sm">
@@ -748,6 +890,11 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               </div>
               {/* Modal body */}
               <div className="px-5 py-5 space-y-5">
+                {li.pricing_mode === 'manual' && (
+                  <p className="text-xs px-3 py-2.5 rounded-xl" style={{ background: '#EFF6FF', color: S.accent, border: '1px solid #BFDBFE' }}>
+                    This line has a typed price of {fmt(li.unit_price)}. Adding a component or labour below switches it to a built-up cost and replaces that price.
+                  </p>
+                )}
                 {/* Markup */}
                 <div className="flex items-center gap-3">
                   <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Markup</label>
@@ -859,7 +1006,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 {/* Cost summary */}
                 {(li.components.length > 0 || (li.labour_hours ?? 0) > 0) && (
                   <div className="flex items-center gap-2 pt-1 flex-wrap" style={{ borderTop: `1px solid ${S.border}` }}>
-                    <span className="text-xs" style={{ color: S.muted }}>Cost {fmtR(li.cost_per_unit)}</span>
+                    <span className="text-xs" style={{ color: S.muted }}>Cost {fmtR(li.cost_per_unit ?? 0)}</span>
                     <span className="text-xs" style={{ color: S.border }}>→</span>
                     <span className="text-xs font-semibold" style={{ color: S.text }}>
                       Selling {pending ? '—' : fmt(li.unit_price)}
@@ -1017,7 +1164,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                   <Check size={28} style={{ color: '#16A34A' }} />
                 </div>
                 <h3 className="text-lg font-bold mb-1" style={{ color: S.text }}>Quote sent!</h3>
-                <p className="text-sm mb-6" style={{ color: S.muted }}>Delivered to <span className="font-medium" style={{ color: S.text }}>{sendEmail}</span></p>
+                <p className="text-sm mb-1" style={{ color: S.muted }}>Delivered to <span className="font-medium" style={{ color: S.text }}>{sendEmail}</span></p>
+                <p className="text-xs mb-6" style={{ color: S.muted }}>{formatSADateTime(sentAt)}</p>
                 <button onClick={() => { setShowSendModal(false); setSendSuccess(false) }}
                   className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>Close</button>
               </div>

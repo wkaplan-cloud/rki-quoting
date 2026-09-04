@@ -12,6 +12,9 @@ export type MfgInvoiceType = 'full' | 'deposit' | 'final'
 export type MfgInvoiceStatus = 'draft' | 'sent' | 'partially_paid' | 'paid' | 'overdue'
 export type MfgPaymentMethod = 'eft' | 'cash' | 'card' | 'other'
 export type MfgActivityEntityType = 'quote' | 'invoice'
+// 'built'  — price derived from the cost builder (components + labour × markup)
+// 'manual' — cost and selling price typed straight onto the line item
+export type MfgPricingMode = 'built' | 'manual'
 
 export type MfgMaterialCategory = 'boards' | 'solid_timber' | 'acrylic_specialty'
 export type MfgHardwareCategory =
@@ -193,7 +196,8 @@ export interface MfgQuoteLineItem {
   unit_price: number
   line_total: number
   markup_percentage: number
-  cost_per_unit: number
+  pricing_mode: MfgPricingMode
+  cost_per_unit: number | null   // null = no cost captured (excluded from margin)
   profit_per_unit: number
   margin_percentage: number
   option_label: string | null

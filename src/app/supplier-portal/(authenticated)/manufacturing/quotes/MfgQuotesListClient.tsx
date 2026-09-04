@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CopySlash, Archive, ArchiveRestore } from 'lucide-react'
 import type { MfgQuote, MfgClient } from '@/lib/mfg-types'
 import { useNow } from '@/lib/useNow'
+import { formatSADateTime } from '@/lib/dates'
 import { MfgClientCombobox } from '../MfgClientCombobox'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
@@ -212,6 +213,11 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
                     {q.job?.client?.client_name && <span className="font-medium">{q.job.client.client_name} · </span>}
                     {q.job?.job_name}
                   </p>
+                  {q.sent_at && (
+                    <p className="text-[11px] truncate mt-0.5" style={{ color: S.muted }}>
+                      Sent {formatSADateTime(q.sent_at)}{q.sent_to_email ? ` · ${q.sent_to_email}` : ''}
+                    </p>
+                  )}
                 </div>
 
                 <div className="text-right flex-shrink-0">

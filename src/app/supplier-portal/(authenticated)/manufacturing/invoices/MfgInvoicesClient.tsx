@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { todaySA } from '@/lib/dates'
+import { todaySA, formatSADateTime } from '@/lib/dates'
 import { Receipt, CheckCircle, AlertCircle, Plus, Trash2, X, Send, Check } from 'lucide-react'
 import type { MfgInvoice } from '@/lib/mfg-types'
 import { useNow } from '@/lib/useNow'
@@ -137,7 +137,10 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
       return
     }
     setSendSuccess(true)
-    setInvoices(prev => prev.map(inv => inv.id === showSendModal ? { ...inv, status: 'sent' as const } : inv))
+    const sentNow = new Date().toISOString()
+    setInvoices(prev => prev.map(inv => inv.id === showSendModal
+      ? { ...inv, status: 'sent' as const, sent_at: sentNow, sent_to_email: sendEmail.trim() }
+      : inv))
   }
 
   const totalOutstanding = filtered.filter(i => i.status !== 'paid').reduce((s, i) => s + (i.total - i.amount_paid), 0)
@@ -210,6 +213,11 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
                       {inv.job?.client?.client_name && <span className="font-medium">{inv.job.client.client_name} · </span>}
                       {inv.job?.job_name}
                     </p>
+                    {inv.sent_at && (
+                      <p className="text-[11px] truncate mt-0.5" style={{ color: S.muted }}>
+                        Sent {formatSADateTime(inv.sent_at)}{inv.sent_to_email ? ` · ${inv.sent_to_email}` : ''}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold" style={{ color: S.text }}>R {inv.total.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}</p>
