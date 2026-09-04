@@ -21,7 +21,7 @@ export function NavMobile({ trades, manufacturer }: { trades?: boolean; manufact
 
   const loginHref  = (trades || manufacturer) ? '/supplier-portal/login'                        : '/login'
   const signupHref = trades        ? '/supplier-portal/register?type=trades'
-                   : manufacturer  ? '/supplier-portal/register?type=manufacturer'
+                   : manufacturer  ? '/supplier-portal/register?type=manufacturer_quoting'
                    : '/signup'
 
   return (

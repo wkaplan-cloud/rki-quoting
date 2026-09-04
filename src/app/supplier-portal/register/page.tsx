@@ -42,39 +42,7 @@ function TypeSelector({ onSelect }: { onSelect: (c: Category) => void }) {
           We&apos;ll tailor your experience from the start.
         </p>
 
-        <div className="grid sm:grid-cols-3 gap-5 w-full max-w-4xl">
-
-          {/* Product Supplier */}
-          <button
-            onClick={() => onSelect('manufacturer')}
-            className="group text-left rounded-2xl p-7 transition-all duration-200 hover:scale-[1.02]"
-            style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1.5px solid rgba(255,255,255,0.1)',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(58,124,165,0.12)'; e.currentTarget.style.borderColor = 'rgba(58,124,165,0.5)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
-          >
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ background: 'rgba(58,124,165,0.2)' }}>
-              <Package size={22} style={{ color: '#3A7CA5' }} />
-            </div>
-            <h2 className="text-lg font-bold mb-1.5" style={{ color: '#FFFFFF' }}>Product Supplier</h2>
-            <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              Fabrics, stone, furniture, lighting, wallpaper — receive price requests from interior design studios.
-            </p>
-            <div className="space-y-1.5">
-              {['Free to join', 'All requests in one dashboard', '1% fee on accepted requests'].map(f => (
-                <div key={f} className="flex items-center gap-2">
-                  <Check size={11} style={{ color: '#3A7CA5', flexShrink: 0 }} />
-                  <span className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>{f}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 pt-5 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <span className="text-sm font-semibold" style={{ color: '#3A7CA5' }}>Free forever</span>
-              <span className="text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: 'rgba(58,124,165,0.15)', color: '#3A7CA5' }}>Get started →</span>
-            </div>
-          </button>
+        <div className="grid sm:grid-cols-2 gap-5 w-full max-w-2xl">
 
           {/* Electrician */}
           <button
