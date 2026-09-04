@@ -915,6 +915,22 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
         {tab === 'signature' && (
           <div className="space-y-4">
 
+            {/* Last prompt before the visit ends — the client usually asks for
+                the extra work while the tech is standing there signing off. */}
+            {extrasEnabled && (
+              <button onClick={() => setTab('extras')}
+                className="w-full rounded-2xl px-4 py-3 flex items-center gap-3 text-left"
+                style={{ background: 'rgba(217,164,65,0.06)', border: '1px solid rgba(217,164,65,0.3)' }}>
+                <Wrench size={15} style={{ color: S.gold, flexShrink: 0 }} />
+                <span className="flex-1 text-xs" style={{ color: S.text }}>
+                  {unsentExtras.length > 0
+                    ? `${unsentExtras.length} extra work item${unsentExtras.length === 1 ? '' : 's'} not sent to the office yet`
+                    : 'Did the client ask for anything else? Log it as extra work'}
+                </span>
+                <span className="text-xs font-semibold" style={{ color: S.gold }}>Open →</span>
+              </button>
+            )}
+
             {/* Already signed */}
             {card.client_signature_url ? (
               <div className="rounded-2xl p-5 flex flex-col items-center gap-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>

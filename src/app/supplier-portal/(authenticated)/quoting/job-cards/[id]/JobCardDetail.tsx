@@ -1462,7 +1462,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
               <p className="text-sm font-semibold" style={{ color: S.text }}>Extra Work Reported On Site</p>
               <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                Work the client asked for beyond this job card. Each batch becomes its own draft quote with every rate at zero — price the lines there, then send it to the client for approval.
+                Work the client asked for beyond this job card. Each batch becomes its own draft quote with every rate at zero — price the lines there, then send it to the client for approval. Once they approve, a new job card is created automatically, ready to schedule.
               </p>
             </div>
 

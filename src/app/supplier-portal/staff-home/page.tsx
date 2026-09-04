@@ -44,7 +44,7 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
     .eq('scheduled_date', todayStr)
     .in('status', ['scheduled', 'in_progress'])
     .order('start_time')
-  const [{ data: punches }, { data: jobCards }, { data: clients }, { data: projects }, { data: scheduledToday }] = await Promise.all([
+  const [{ data: punches }, { data: jobCards }, { data: clients }, { data: projects }, { data: recentlyCompleted }, { data: scheduledToday }] = await Promise.all([
     supabaseAdmin
       .from('elec_time_punches')
       .select('*')
@@ -70,6 +70,17 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       .or(`staff_id.eq.${staff.id},additional_staff_ids.cs.{${staff.id}}`)
       .in('status', ['approved', 'in_progress'])
       .order('created_at', { ascending: false }),
+    // Signed-off jobs stay reachable for a week — the client often asks for the
+    // extra work as the tech is packing up, after the card is closed.
+    supabaseAdmin
+      .from('elec_job_cards')
+      .select(`*, client:elec_clients(id,client_name,email)`)
+      .eq('portal_account_id', staff.portal_account_id)
+      .or(`staff_id.eq.${staff.id},additional_staff_ids.cs.{${staff.id}}`)
+      .eq('status', 'completed')
+      .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .order('completed_at', { ascending: false })
+      .limit(20),
     // The tech's day in running order. Every booking is shown — the Jobs and
     // Projects tabs list *what* they have on, this lists *when*, and each row
     // taps through to the same job card / project those tabs open.
@@ -87,6 +98,7 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       initialPunches={(punches ?? []) as ElecTimePunch[]}
       isClockedIn={isClockedIn}
       assignedJobCards={(jobCards ?? []) as ElecJobCard[]}
+      recentlyCompleted={(recentlyCompleted ?? []) as ElecJobCard[]}
       initialClients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email'>[]}
       assignedProjects={(projects ?? []) as unknown as { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]}
       scheduledToday={(scheduledToday ?? []) as unknown as ElecJob[]}

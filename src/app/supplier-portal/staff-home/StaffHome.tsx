@@ -60,10 +60,11 @@ interface Props {
   initialClients: ClientItem[]
   assignedProjects: { id: string; quote_number: string; project_name: string; project_address: string | null; status: string; client: { id: string; client_name: string } | null }[]
   scheduledToday?: ElecJob[]
+  recentlyCompleted?: ElecJobCard[]
   initialTab?: Tab
 }
 
-export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects, scheduledToday = [], initialTab = 'home' }: Props) {
+export function StaffHome({ staff, companyName, portalAccountId: _portalAccountId, initialPunches, isClockedIn: initClockedIn, assignedJobCards: initJobCards, initialClients, assignedProjects, scheduledToday = [], recentlyCompleted = [], initialTab = 'home' }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -740,6 +741,38 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
               </div>
               )
             })()}
+
+            {recentlyCompleted.length > 0 && (
+              <div className="mt-6">
+                <p className="text-xs font-semibold uppercase tracking-wider mb-2 px-1" style={{ color: S.muted }}>
+                  Signed off · 7 days
+                </p>
+                <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                  {recentlyCompleted.map((j, i) => {
+                    const client = !Array.isArray(j.client) ? j.client : null
+                    return (
+                      <button key={j.id}
+                        onClick={() => router.push(`/supplier-portal/staff-home/job/${j.id}`)}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:opacity-70"
+                        style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'rgba(22,163,74,0.1)' }}>
+                          <CheckCircle2 size={15} style={{ color: S.green }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-mono" style={{ color: S.muted }}>{j.job_number}</span>
+                          <p className="text-sm font-semibold truncate" style={{ color: S.text }}>{j.title}</p>
+                          <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                            {client ? `${client.client_name} · ` : ''}Tap to add extra work the client asked for
+                          </p>
+                        </div>
+                        <ChevronRight size={15} style={{ color: S.muted }} />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

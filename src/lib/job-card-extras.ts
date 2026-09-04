@@ -93,3 +93,64 @@ type ExtraRow = Omit<ElecJobCardExtra, 'quote'> & {
 export function normalizeExtras(rows: unknown): ElecJobCardExtra[] {
   return ((rows ?? []) as ExtraRow[]).map(r => ({ ...r, quote: one(r.quote) }))
 }
+
+/**
+ * Turns an approved extra-work quote into the job card that work will be done
+ * on. Called when the client approves — never before, so a quote they never
+ * accept doesn't leave a phantom job card sitting in the office's list.
+ *
+ * Returns null for any quote that didn't come out of a job card, and for a
+ * quote that already has one, so approving twice can't duplicate it.
+ */
+export async function createJobCardFromExtrasQuote(quoteId: string) {
+  const { data: quote, error } = await supabaseAdmin
+    .from('elec_quotes')
+    .select('id, portal_account_id, project_name, project_address, client_id, staff_id, source_job_card_id')
+    .eq('id', quoteId)
+    .maybeSingle()
+  // A missing source_job_card_id column (migration not run) lands here too.
+  if (error || !quote?.source_job_card_id) return null
+
+  const { data: existing } = await supabaseAdmin
+    .from('elec_job_cards')
+    .select('id')
+    .eq('quote_id', quoteId)
+    .limit(1)
+    .maybeSingle()
+  if (existing) return null
+
+  const { data: items } = await supabaseAdmin
+    .from('elec_quote_line_items')
+    .select('description, unit, quoted_quantity')
+    .eq('quote_id', quoteId)
+    .order('sort_order', { ascending: true })
+
+  const workDescription = (items ?? [])
+    .map(i => `\u2022 ${i.description} \u2014 ${i.quoted_quantity} ${i.unit ?? 'nr'}`)
+    .join('\n')
+
+  const { count } = await supabaseAdmin
+    .from('elec_job_cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('portal_account_id', quote.portal_account_id)
+
+  const { data: card } = await supabaseAdmin
+    .from('elec_job_cards')
+    .insert({
+      portal_account_id: quote.portal_account_id,
+      quote_id:          quote.id,
+      client_id:         quote.client_id,
+      staff_id:          quote.staff_id,
+      job_number:        `JC-${String((count ?? 0) + 1).padStart(4, '0')}`,
+      job_type:          'once_off',
+      status:            'pending',
+      title:             quote.project_name,
+      location:          quote.project_address,
+      work_description:  workDescription || null,
+      created_by_name:   'Client approval',
+    })
+    .select('id, job_number')
+    .single()
+
+  return card ?? null
+}
