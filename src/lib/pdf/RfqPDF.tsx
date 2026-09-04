@@ -23,11 +23,18 @@ export interface RfqPdfItem {
   width: string
   depth: string
   height: string
-  materials: { type: string; description: string; supplierName: string; colour: string | null }[]
+  materials: {
+    type: string
+    description: string
+    supplierName: string
+    colour: string | null
+    quantity: string
+  }[]
   // Scatter cushions — separately supplied and separately priced
   scatters: {
     supplierName: string
     fabricSupplierName: string
+    fabricQuantity: string
     fabric: string
     colour: string | null
     size: string
@@ -276,7 +283,12 @@ export function RfqPDF(props: RfqPdfProps) {
                     <View key={j} style={s.specRow} wrap={false}>
                       <Text style={s.specLabel}>{m.type || 'Material'}</Text>
                       <Text style={s.specValue}>
-                        {[m.description, m.colour, m.supplierName ? `via ${m.supplierName}` : '']
+                        {[
+                          m.description,
+                          m.colour,
+                          m.quantity.trim() ? `${m.quantity.trim()} m` : '',
+                          m.supplierName ? `via ${m.supplierName}` : '',
+                        ]
                           .filter(v => v && v.trim())
                           .join(' · ')}
                       </Text>
@@ -296,7 +308,11 @@ export function RfqPDF(props: RfqPdfProps) {
                       <Text style={s.specValue}>
                         {[
                           sc.size.trim(),
-                          [sc.fabric.trim(), sc.fabricSupplierName.trim()]
+                          [
+                            sc.fabricQuantity.trim() ? `${sc.fabricQuantity.trim()} m` : '',
+                            sc.fabric.trim(),
+                            sc.fabricSupplierName.trim(),
+                          ]
                             .filter(Boolean)
                             .join(' — '),
                           sc.colour?.trim() ?? '',

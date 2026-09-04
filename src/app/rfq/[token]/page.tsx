@@ -94,7 +94,13 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         dimensions: [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
         materials: (Array.isArray(spec.materials) ? spec.materials.map(normalizeMaterial) : [])
           .map(m =>
-            [m.type, m.description, m.colour, m.supplierName ? `via ${m.supplierName}` : '']
+            [
+              m.type,
+              m.description,
+              m.colour,
+              m.quantity.trim() ? `${m.quantity.trim()} m` : '',
+              m.supplierName ? `via ${m.supplierName}` : '',
+            ]
               .map(v => (v ?? '').trim())
               .filter(Boolean)
               .join(' · ')
@@ -105,7 +111,13 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
             [
               sc.quantity.trim() ? `${sc.quantity.trim()} ×` : '',
               sc.size,
-              [sc.fabric.trim(), sc.fabricSupplierName.trim()].filter(Boolean).join(' — '),
+              [
+                sc.fabricQuantity.trim() ? `${sc.fabricQuantity.trim()} m` : '',
+                sc.fabric.trim(),
+                sc.fabricSupplierName.trim(),
+              ]
+                .filter(Boolean)
+                .join(' — '),
               sc.colour,
               sc.details,
               sc.supplierName ? `via ${sc.supplierName}` : '',

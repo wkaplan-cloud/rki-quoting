@@ -160,6 +160,11 @@ export interface MaterialEntry {
   // moment, so a spec drafted weeks earlier never quotes a stale number.
   supplierId: string | null
   supplierName: string
+  // How much to order from that supplier — metres of fabric, litres of paint,
+  // sheets of veneer. The designer allocates it here so the material's own
+  // line on the quote is orderable as it stands, rather than defaulting to 1
+  // and being fixed up by hand later.
+  quantity: string
   twinbruProductId: number | null
   colour: string | null
   imageUrl: string | null
@@ -175,6 +180,7 @@ export function normalizeMaterial(m: Partial<MaterialEntry> & { id: string; type
     description: m.description,
     supplierId: m.supplierId ?? null,
     supplierName: m.supplierName ?? '',
+    quantity: m.quantity ?? '',
     twinbruProductId: m.twinbruProductId ?? null,
     colour: m.colour ?? null,
     imageUrl: m.imageUrl ?? null,
@@ -197,6 +203,10 @@ export interface ScatterEntry {
   // and it is this supplier's price list the fabric search reads.
   fabricSupplierId: string | null
   fabricSupplierName: string
+  // Metres of fabric to order from that house for this scatter — the fabric
+  // is quoted and ordered on its own line, so the designer allocates the
+  // yardage here rather than leaving it to be worked out at ordering time.
+  fabricQuantity: string
   // Fabric: free text, or a platform-catalogue pick (same flow as MaterialEntry)
   fabric: string
   twinbruProductId: number | null
@@ -217,6 +227,7 @@ export function normalizeScatter(
     supplierName: sc.supplierName ?? '',
     fabricSupplierId: sc.fabricSupplierId ?? null,
     fabricSupplierName: sc.fabricSupplierName ?? '',
+    fabricQuantity: sc.fabricQuantity ?? '',
     fabric: sc.fabric ?? '',
     twinbruProductId: sc.twinbruProductId ?? null,
     colour: sc.colour ?? null,

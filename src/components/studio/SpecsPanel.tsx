@@ -371,6 +371,7 @@ export function SpecsPanel() {
                       description: '',
                       supplierId: null,
                       supplierName: '',
+                      quantity: '',
                       twinbruProductId: null,
                       colour: null,
                       imageUrl: null,
@@ -427,6 +428,7 @@ export function SpecsPanel() {
                       supplierName: '',
                       fabricSupplierId: null,
                       fabricSupplierName: '',
+                      fabricQuantity: '',
                       fabric: '',
                       twinbruProductId: null,
                       colour: null,
@@ -522,6 +524,8 @@ function SupplierFabricFields({
   supplierId,
   supplierName,
   fabric,
+  quantity,
+  quantityLabel = 'Metres to order',
   suppliers,
   activePriceListIds,
   onChange,
@@ -530,12 +534,15 @@ function SupplierFabricFields({
   supplierId: string | null
   supplierName: string
   fabric: string
+  quantity: string
+  quantityLabel?: string
   suppliers: SpecSupplierOption[]
   activePriceListIds: string[]
   onChange: (patch: {
     supplierId?: string | null
     supplierName?: string
     fabric?: string
+    quantity?: string
     colour?: string | null
     twinbruProductId?: number | null
     imageUrl?: string | null
@@ -584,6 +591,17 @@ function SupplierFabricFields({
           />
         </Field>
       )}
+      {/* The fabric is bought from the house above on its own order, so the
+          yardage is specified here — it becomes that line's quantity on the
+          quote instead of a default 1 somebody has to correct later. */}
+      <Field label={quantityLabel}>
+        <input
+          value={quantity}
+          onChange={e => onChange({ quantity: e.target.value.replace(/[^0-9.]/g, '') })}
+          inputMode="decimal"
+          className={FIELD_INPUT_CLASS}
+        />
+      </Field>
     </>
   )
 }
@@ -636,6 +654,7 @@ function MaterialRow({
           supplierId={material.supplierId}
           supplierName={material.supplierName}
           fabric={material.description}
+          quantity={material.quantity}
           suppliers={suppliers}
           activePriceListIds={activePriceListIds}
           onChange={patch => {
@@ -657,6 +676,14 @@ function MaterialRow({
             <input
               value={material.description}
               onChange={e => onChange({ description: e.target.value })}
+              className={FIELD_INPUT_CLASS}
+            />
+          </Field>
+          <Field label="Quantity to order">
+            <input
+              value={material.quantity}
+              onChange={e => onChange({ quantity: e.target.value.replace(/[^0-9.]/g, '') })}
+              inputMode="decimal"
               className={FIELD_INPUT_CLASS}
             />
           </Field>
@@ -712,13 +739,17 @@ function ScatterRow({
         supplierId={scatter.fabricSupplierId}
         supplierName={scatter.fabricSupplierName}
         fabric={scatter.fabric}
+        quantity={scatter.fabricQuantity}
         suppliers={suppliers}
         activePriceListIds={activePriceListIds}
-        onChange={({ supplierId, supplierName, ...rest }) =>
+        onChange={({ supplierId, supplierName, quantity, ...rest }) =>
           onChange({
             ...rest,
             ...(supplierId !== undefined ? { fabricSupplierId: supplierId } : {}),
             ...(supplierName !== undefined ? { fabricSupplierName: supplierName } : {}),
+            // `quantity` on a scatter is how many cushions — the fabric's
+            // yardage is its own field, so it must never land on that one
+            ...(quantity !== undefined ? { fabricQuantity: quantity } : {}),
           })
         }
       />

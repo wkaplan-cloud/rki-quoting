@@ -256,11 +256,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           depth: row.depth ?? '',
           height: row.height ?? '',
           materials: (Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : []).map(m => ({
-            type: m.type, description: m.description, supplierName: m.supplierName, colour: m.colour,
+            type: m.type, description: m.description, supplierName: m.supplierName,
+            colour: m.colour, quantity: m.quantity,
           })),
           scatters: (Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []).map(sc => ({
             supplierName: sc.supplierName, fabricSupplierName: sc.fabricSupplierName,
-            fabric: sc.fabric, colour: sc.colour,
+            fabricQuantity: sc.fabricQuantity, fabric: sc.fabric, colour: sc.colour,
             size: sc.size, quantity: sc.quantity, details: sc.details,
           })),
           notes: row.notes ?? '',
