@@ -48,3 +48,26 @@ export function formatSADateTime(iso: string | null | undefined): string {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).format(d).replace(/,\s*$/, '')
 }
+
+/**
+ * The calendar month a timestamp falls in, as "YYYY-MM", in South African time.
+ *
+ * Bucketing on the raw ISO string (or on a server-local Date) puts anything
+ * between 00:00 and 02:00 SAST on the 1st into the previous month, because
+ * Vercel runs in UTC.
+ */
+export function monthKeySA(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  // en-CA formats as YYYY-MM-DD
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(d).slice(0, 7)
+}
+
+/** "YYYY-MM" for the month `back` months before the current SAST month. */
+export function monthKeyOffsetSA(back: number): string {
+  const today = todaySA()
+  const [y, m] = today.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1 - back, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}

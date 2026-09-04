@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { MfgDashboardClient } from './MfgDashboardClient'
+import { monthKeySA, monthKeyOffsetSA } from '@/lib/dates'
 
 export default async function MfgDashboardPage() {
   const supabase = await createClient()
@@ -29,24 +30,40 @@ export default async function MfgDashboardPage() {
     .limit(8)
 
   const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
-  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString()
 
-  const thisMonth = (invoicesAll ?? []).filter(i => i.created_at >= startOfMonth)
-  const lastMonth = (invoicesAll ?? []).filter(i => i.created_at >= startOfLastMonth && i.created_at <= endOfLastMonth)
+  // Cash received has to come from the payments themselves. Summing each
+  // invoice's amount_paid into the month the invoice was raised credits the
+  // money to the wrong month — an invoice raised in July and settled in
+  // September showed nothing in September and inflated July.
+  const invoiceIds = (invoicesAll ?? []).map(i => i.id)
+  const { data: payments } = invoiceIds.length
+    ? await supabase
+        .from('mfg_invoice_payments')
+        .select('amount, payment_date, invoice_id')
+        .in('invoice_id', invoiceIds)
+    : { data: [] as { amount: number; payment_date: string; invoice_id: string }[] }
 
-  const months: { month: string; invoiced: number; received: number }[] = []
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const start = d.toISOString()
-    const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59).toISOString()
-    const m = { month: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, invoiced: 0, received: 0 }
-    for (const inv of (invoicesAll ?? [])) {
-      if (inv.created_at >= start && inv.created_at <= end) { m.invoiced += inv.total; m.received += inv.amount_paid }
-    }
-    months.push(m)
+  // Month buckets are keyed in South African time — server-local (UTC on
+  // Vercel) boundaries push anything invoiced between midnight and 02:00 SAST
+  // on the 1st into the previous month.
+  const monthKeys = Array.from({ length: 6 }, (_, i) => monthKeyOffsetSA(5 - i))
+  const thisMonthKey = monthKeys[5]
+  const lastMonthKey = monthKeys[4]
+
+  const months: { month: string; invoiced: number; received: number }[] = monthKeys.map(month => ({ month, invoiced: 0, received: 0 }))
+  const monthIndex = new Map(monthKeys.map((k, i) => [k, i]))
+
+  for (const inv of (invoicesAll ?? [])) {
+    const i = monthIndex.get(monthKeySA(inv.created_at))
+    if (i !== undefined) months[i].invoiced += inv.total
   }
+  for (const p of (payments ?? [])) {
+    const i = monthIndex.get((p.payment_date ?? '').slice(0, 7))
+    if (i !== undefined) months[i].received += p.amount
+  }
+
+  const invoicedIn = (key: string) => (invoicesAll ?? []).reduce((s, i) => s + (monthKeySA(i.created_at) === key ? i.total : 0), 0)
+  const receivedIn = (key: string) => (payments ?? []).reduce((s, p) => s + ((p.payment_date ?? '').slice(0, 7) === key ? p.amount : 0), 0)
 
   const attention: { type: string; entity_type: string; entity_id: string; entity_number: string; client_name: string; job_name: string; value: number; days: number }[] = []
   for (const inv of (invoicesAll ?? [])) {
@@ -68,15 +85,20 @@ export default async function MfgDashboardPage() {
 
   const data = {
     kpis: {
-      invoicedThisMonth: thisMonth.reduce((s, i) => s + i.total, 0),
-      invoicedLastMonth: lastMonth.reduce((s, i) => s + i.total, 0),
-      receivedThisMonth: thisMonth.reduce((s, i) => s + i.amount_paid, 0),
-      receivedLastMonth: lastMonth.reduce((s, i) => s + i.amount_paid, 0),
+      invoicedThisMonth: invoicedIn(thisMonthKey),
+      invoicedLastMonth: invoicedIn(lastMonthKey),
+      receivedThisMonth: receivedIn(thisMonthKey),
+      receivedLastMonth: receivedIn(lastMonthKey),
       pipelineValue: (quotesOpen ?? []).reduce((s, q) => s + (q.total ?? 0), 0),
       pipelineCount: (quotesOpen ?? []).length,
     },
     attention: attention.slice(0, 10),
-    recentInvoices: (invoicesAll ?? []).filter(i => ['sent','partially_paid','overdue'].includes(i.status)).slice(0, 8),
+    // The panel this feeds is "Outstanding Invoices" and shows the balance, so
+    // fully paid invoices belong out of it. Everything still owing is here.
+    recentInvoices: (invoicesAll ?? [])
+      .filter(i => ['sent', 'partially_paid', 'overdue'].includes(i.status) && i.total - i.amount_paid > 0)
+      .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
+      .slice(0, 8),
     openQuotes: quotesOpen ?? [],
     monthlyRevenue: months,
   }
