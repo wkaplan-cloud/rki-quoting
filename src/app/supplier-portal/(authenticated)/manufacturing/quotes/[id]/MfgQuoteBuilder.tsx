@@ -180,7 +180,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   const [markingSent, setMarkingSent] = useState(false)
   const [markingAccepted, setMarkingAccepted] = useState(false)
   const [showConvertModal, setShowConvertModal] = useState(false)
-  const [convertType, setConvertType] = useState<'full' | 'deposit'>('deposit')
+  const [convertType, setConvertType] = useState<'full' | 'deposit'>('full')
   const [converting, setConverting] = useState(false)
 
   const itemsSubtotal = lineItems.reduce((s, li) => s + li.line_total, 0)
@@ -595,7 +595,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 </button>
               )}
               {currentStatus === 'accepted' && (
-                <button onClick={() => setShowConvertModal(true)}
+                <button onClick={() => { setConvertType('full'); setShowConvertModal(true) }}
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold text-white"
                   style={{ background: '#16A34A' }}>
                   <Check size={12} /> Convert to Invoice
@@ -1073,8 +1073,11 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                     {convertType === t && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold" style={{ color: S.text }}>
+                    <p className="text-sm font-semibold flex items-center gap-2 flex-wrap" style={{ color: S.text }}>
                       {t === 'full' ? `Full invoice — ${fmt(total)}` : `Deposit first — ${fmt(total * (settings?.default_deposit_percentage ?? 50) / 100)} now (${settings?.default_deposit_percentage ?? 50}%)`}
+                      {t === 'full' && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full" style={{ background: '#EFF6FF', color: S.accent }}>Default</span>
+                      )}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: S.muted }}>
                       {t === 'full' ? 'One invoice for the total amount.' : 'Deposit invoice now, final invoice when job is complete.'}
