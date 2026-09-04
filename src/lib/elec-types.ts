@@ -678,6 +678,7 @@ export interface ElecJobCard {
   sent_to_name: string | null
   sent_to_email: string | null
   sent_at: string | null
+  amended_at: string | null
   share_token: string | null
   invoiced: boolean | null
   sage_invoice_id: string | null

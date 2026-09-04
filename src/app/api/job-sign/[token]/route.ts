@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     const { data: card } = await supabaseAdmin
       .from('elec_job_cards')
-      .select('id, portal_account_id, client_signature_url, job_number, title')
+      .select('id, portal_account_id, client_signature_url, job_number, title, status')
       .eq('share_token', token)
       .maybeSingle()
 
@@ -85,6 +85,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         client_signature_url: publicUrl,
         sent_to_name: signer,
         share_token: null,
+        // The signature covers the wording as it stands right now.
+        amended_at: null,
+        // Approving the card is the client saying go — take it off pending.
+        ...(card.status === 'pending' ? { status: 'in_progress' } : {}),
       })
       .eq('id', card.id)
 

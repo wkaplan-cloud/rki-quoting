@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { markJobCardAmended } from '@/lib/job-card-amend'
 
 async function resolveAccountOrStaff(userId: string) {
   const { data: own } = await supabaseAdmin
@@ -49,6 +50,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .select()
       .single()
 
+    await markJobCardAmended(id)
+
     return NextResponse.json({ ok: true, material: updated })
   } catch (e) { return apiError(e) }
 }
@@ -73,6 +76,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (!mat) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     await supabaseAdmin.from('elec_job_card_materials').delete().eq('id', matId)
+    await markJobCardAmended(id)
+
     return NextResponse.json({ ok: true })
   } catch (e) { return apiError(e) }
 }

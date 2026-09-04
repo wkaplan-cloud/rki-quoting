@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
+import { markJobCardAmended } from '@/lib/job-card-amend'
 
 async function resolveAccountOrStaff(userId: string) {
   const { data: own } = await supabaseAdmin
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .insert({ job_card_id: id, description: body.description, qty: body.qty, unit_price: body.unit_price ?? null, cost_price: body.cost_price ?? null })
       .select().single()
     if (error) throw error
+    await markJobCardAmended(id)
+
     return NextResponse.json(data)
   } catch (e) { return apiError(e) }
 }

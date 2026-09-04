@@ -53,6 +53,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   } catch (e) { return apiError(e) }
 }
 
+// Fields that appear on the client's copy of the job card. Changing any of them
+// after it has gone out means the client is holding something different.
+const CLIENT_FACING_FIELDS = [
+  'title', 'job_type', 'location', 'scheduled_at', 'work_description',
+  'work_found', 'work_done', 'resolution', 'notes',
+  'client_id', 'client_name', 'callout_fee', 'labour_hours', 'labour_rate',
+]
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -67,6 +75,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // datetime-local inputs post a naive wall-clock — pin it to SAST
     for (const field of ['scheduled_at', 'completed_at']) {
       if (field in body) body[field] = normaliseSAScheduledAt(body[field])
+    }
+
+    // Editing a card the client has already been sent or has signed means their
+    // copy is now out of date — stamp it until it is sent again. A fresh
+    // signature clears it, because that signature covers the current wording.
+    if (!('amended_at' in body)) {
+      const { data: before } = await supabaseAdmin
+        .from('elec_job_cards')
+        .select('sent_at, client_signature_url')
+        .eq('id', id)
+        .eq('portal_account_id', accountId)
+        .maybeSingle()
+
+      if (body.client_signature_url) {
+        body.amended_at = null
+      } else if (before && (before.sent_at || before.client_signature_url)) {
+        const touchesContent = CLIENT_FACING_FIELDS.some(f => f in body)
+        if (touchesContent) body.amended_at = new Date().toISOString()
+      }
     }
 
     const { data, error } = await supabaseAdmin
@@ -133,6 +160,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Notify the office when the client signs — bell and email, same as the
     // emailed sign link raises.
+    if (body.client_signature_url && data.status === 'pending') {
+      await supabaseAdmin
+        .from('elec_job_cards')
+        .update({ status: 'in_progress' })
+        .eq('id', id)
+      data.status = 'in_progress'
+      await syncJobsFromCardStatus(id, accountId, 'in_progress')
+    }
+
     if (body.client_signature_url) {
       void notifyJobCardSigned({
         jobCardId: id,

@@ -145,6 +145,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         sent_to_name: name ?? null,
         sent_to_email: email,
         sent_at: now,
+        amended_at: null,
         client_email: email,
         ...(signToken ? { share_token: signToken } : {}),
       })

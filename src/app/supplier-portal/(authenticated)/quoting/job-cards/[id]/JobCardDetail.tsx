@@ -7,7 +7,7 @@ import {
   CheckCircle2, Check, Clock, Play, XCircle, Loader2,
   MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
-  Download, Printer, ShoppingCart, PackageCheck, ReceiptText, FileCheck, Link2,
+  Download, Printer, ShoppingCart, PackageCheck, ReceiptText, FileCheck, Link2, Lock, AlertCircle,
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
@@ -184,6 +184,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [sending, setSending] = useState(false)
   const [sendMethod, setSendMethod] = useState<'link' | 'pdf'>('link')
   const [sigDrawn, setSigDrawn] = useState(false)
+  // A card the client has been sent or has signed is a record of something
+  // agreed — editing it needs a deliberate act, and marks it for resending.
+  const [unlocked, setUnlocked] = useState(false)
   const [sendResult, setSendResult] = useState<'success' | 'error' | ''>('')
 
   // Sage
@@ -575,6 +578,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     setCard(c => ({ ...c, sage_invoice_id: String(data.sage_invoice_id), sage_invoice_status: String(data.sage_invoice_status), sage_customer_name: sageSelectedCustomer.name }))
   }
 
+  const isLocked = !!(card.sent_at || card.client_signature_url)
+  const editable = !isLocked || unlocked
+
   // Who signed, off the signature photo's caption — the same place the PDF reads it.
   const signaturePhoto = (card.photos ?? []).find(p => p.url === card.client_signature_url)
   const signedBy = signaturePhoto?.caption?.trim() || card.sent_to_name || null
@@ -762,14 +768,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               {card.scheduled_at && <span className="flex items-center gap-1"><Calendar size={12} />{fmtDate(card.scheduled_at)}</span>}
             </div>
           </div>
-          {/* Client approval — the signature is the client signing the work off */}
-          {card.client_signature_url && (
-            <div className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-              style={{ background: 'rgba(22,163,74,0.1)', color: S.green, border: '1px solid rgba(22,163,74,0.3)' }}>
-              <CheckCircle2 size={12} />
-              Client approved{signedBy ? ` — ${signedBy}` : ''}
-            </div>
-          )}
           {/* Status dropdown */}
           <div className="relative shrink-0">
             <button onClick={() => setShowStatusMenu(m => !m)}
@@ -915,8 +913,65 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         })}
       </div>
 
+      {/* ── Client copy: sent, approved, or out of date ───────────────────── */}
+      {isLocked && (
+        <div className="mb-5 space-y-2">
+          {card.amended_at ? (
+            <div className="rounded-xl px-4 py-3 flex items-start gap-2.5"
+              style={{ background: 'rgba(217,164,65,0.08)', border: '1px solid rgba(217,164,65,0.4)' }}>
+              <AlertCircle size={15} style={{ color: S.gold, flexShrink: 0, marginTop: 1 }} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold" style={{ color: S.gold }}>
+                  Edited {fmtDateTime(card.amended_at)} — after it went to the client
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                  {card.client_signature_url
+                    ? 'The signature on file no longer covers this version. Resend it for the client to approve again.'
+                    : 'The client is holding an older version. Resend the job card so their copy matches.'}
+                </p>
+              </div>
+              <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url ? 'pdf' : 'link'); setShowSend(true) }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap"
+                style={{ background: S.gold }}>
+                Resend
+              </button>
+            </div>
+          ) : card.client_signature_url ? (
+            <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+              <CheckCircle2 size={14} style={{ color: S.green, flexShrink: 0 }} />
+              <p className="text-sm font-semibold" style={{ color: S.green }}>
+                Client approved{signedBy ? ` by ${signedBy}` : ''}{signedAt ? ` — ${fmtDateTime(signedAt)}` : ''}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+              <Send size={14} style={{ color: S.green, flexShrink: 0 }} />
+              <p className="text-sm font-semibold" style={{ color: S.green }}>
+                Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 px-1">
+            <Lock size={12} style={{ color: S.muted }} />
+            <p className="text-xs flex-1" style={{ color: S.muted }}>
+              {editable
+                ? 'Editing — any change marks this card as amended and it will need resending.'
+                : 'Locked. This card has gone to the client.'}
+            </p>
+            <button onClick={() => setUnlocked(u => !u)}
+              className="text-xs font-semibold" style={{ color: S.accent }}>
+              {editable ? 'Lock' : 'Edit anyway'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Tab: Details (grouped) ───────────────────────────────────────── */}
       {tab === 'details' && (
+        <fieldset disabled={!editable} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
         <div className="rounded-2xl p-5 space-y-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
           <SectionHeader label="Job Info" />
@@ -1033,14 +1088,17 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           </div>
           <Txt label="Notes" val={card.notes} cb={v => setField('notes', v || null)} placeholder="Any additional notes…" rows={2} />
         </div>
+        </fieldset>
       )}
 
       {/* ── Tab: Report ──────────────────────────────────────────────────── */}
       {tab === 'report' && (
+        <fieldset disabled={!editable} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
         <div className="rounded-2xl p-5 space-y-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
           <Txt label="What Was Found" val={card.work_found} cb={v => setField('work_found', v || null)} placeholder="Describe what the technician found on site…" rows={5} />
           <Txt label="Resolution" val={card.resolution} cb={v => setField('resolution', v || null)} placeholder="How was the issue resolved?" rows={5} />
         </div>
+        </fieldset>
       )}
 
       {/* ── Tab: Materials ───────────────────────────────────────────────── */}
@@ -1134,27 +1192,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
       {/* ── Tab: Job Sheet ─────────────────────────────────────────────────── */}
       {tab === 'job_sheet' && (
+        <fieldset disabled={!editable} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
         <div>
-          {card.sent_at && (
-            <div className="mb-3 rounded-xl px-4 py-2.5 flex items-center gap-2"
-              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
-              <Send size={14} style={{ color: S.green, flexShrink: 0 }} />
-              <p className="text-sm font-semibold" style={{ color: S.green }}>
-                Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}
-              </p>
-            </div>
-          )}
-
-          {card.client_signature_url && (
-            <div className="mb-3 rounded-xl px-4 py-2.5 flex items-center gap-2"
-              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
-              <CheckCircle2 size={14} style={{ color: S.green, flexShrink: 0 }} />
-              <p className="text-sm font-semibold" style={{ color: S.green }}>
-                Client approved{signedBy ? ` by ${signedBy}` : ''}{signedAt ? ` — ${fmtDateTime(signedAt)}` : ''}
-              </p>
-            </div>
-          )}
-
           {/* Line items */}
           <div className="rounded-2xl overflow-hidden mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
@@ -1518,6 +1557,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </div>
           )}
         </div>
+        </fieldset>
       )}
 
       {/* ── Tab: Extra Work ──────────────────────────────────────────────── */}
