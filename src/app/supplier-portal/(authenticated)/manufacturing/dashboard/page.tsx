@@ -27,7 +27,6 @@ export default async function MfgDashboardPage() {
     .is('archived_at', null)
     .in('status', ['draft', 'sent'])
     .order('sent_at', { ascending: true, nullsFirst: false })
-    .limit(8)
 
   const now = new Date()
 
@@ -99,7 +98,8 @@ export default async function MfgDashboardPage() {
       .filter(i => ['sent', 'partially_paid', 'overdue'].includes(i.status) && i.total - i.amount_paid > 0)
       .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
       .slice(0, 8),
-    openQuotes: quotesOpen ?? [],
+    // The panel shows the eight most stale; the pipeline KPI above counts them all.
+    openQuotes: (quotesOpen ?? []).slice(0, 8),
     monthlyRevenue: months,
   }
 

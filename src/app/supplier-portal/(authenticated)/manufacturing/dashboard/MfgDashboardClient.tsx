@@ -64,7 +64,7 @@ export function MfgDashboardClient({ data, companyName }: Props) {
   )
 
   const { kpis, attention, recentInvoices, openQuotes, monthlyRevenue } = data
-  const maxBar = Math.max(...monthlyRevenue.map(m => m.invoiced), 1)
+  const maxBar = Math.max(...monthlyRevenue.map(m => Math.max(m.invoiced, m.received)), 1)
 
   return (
     <div className="space-y-6">
@@ -222,7 +222,7 @@ export function MfgDashboardClient({ data, companyName }: Props) {
                     style={{ height: `${(m.received / maxBar) * 100}%`, background: '#16A34A', opacity: 0.7, minHeight: m.received > 0 ? 3 : 0 }} />
                 </div>
                 <span className="text-[9px]" style={{ color: S.muted }}>
-                  {new Date(m.month + '-01').toLocaleDateString('en-ZA', { month: 'short' })}
+                  {new Date(m.month + '-01T12:00:00').toLocaleDateString('en-ZA', { month: 'short' })}
                 </span>
               </div>
             ))}
