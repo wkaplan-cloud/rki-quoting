@@ -36,6 +36,8 @@ create index if not exists idx_job_card_extras_quote   on elec_job_card_extras (
 
 alter table elec_job_card_extras enable row level security;
 
+drop policy if exists "Supplier owns elec_job_card_extras" on elec_job_card_extras;
+
 create policy "Supplier owns elec_job_card_extras" on elec_job_card_extras
   using (
     exists (
