@@ -57,6 +57,11 @@ export async function POST(req: NextRequest) {
   }
 
   const isTrades = supplier_category === 'trades'
+  // Manufacturers register before starting their trial. Stamping plan_category
+  // now is what tells the portal they're a manufacturer rather than a product
+  // supplier — without it, anyone who abandons the trial screen and logs back
+  // in later lands on the generic supplier home instead of the trial prompt.
+  const isManufacturer = supplier_category === 'manufacturer'
   const trialEndsAt = isTrades
     ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     : null
@@ -70,6 +75,7 @@ export async function POST(req: NextRequest) {
       company_name: company_name.trim(),
       contact_name: contact_name?.trim() || null,
       supplier_category: supplier_category ?? 'manufacturer',
+      ...(isManufacturer && { plan_category: 'manufacturer' }),
       ...(isTrades && {
         plan: 'quoting',
         subscription_status: 'trialing',
