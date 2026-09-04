@@ -124,10 +124,12 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   // Refresh
   const [refreshing, setRefreshing] = useState(false)
 
-  async function handleRefresh() {
+  function handleRefresh() {
+    // A full reload, not router.refresh(): the lists on this screen are seeded
+    // into useState from props, so re-rendering the server component leaves the
+    // tech looking at the same stale data. It also picks up a new app version.
     setRefreshing(true)
-    router.refresh()
-    setTimeout(() => setRefreshing(false), 1200)
+    window.location.reload()
   }
 
   // GPS permission — only relevant for iOS standalone PWA where the dialog is buggy.
@@ -431,7 +433,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
           <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.5)' }}>{companyName}</p>
         </div>
         <button
-          onClick={() => void handleRefresh()}
+          onClick={handleRefresh}
           disabled={refreshing}
           className="p-2 rounded-lg disabled:opacity-50"
           style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)' }}
