@@ -9,7 +9,7 @@ function fmtR(n: number) { return 'R ' + n.toLocaleString('en-ZA', { minimumFrac
 function pct(a: number, b: number) { if (b === 0) return null; return ((a - b) / b * 100).toFixed(0) }
 
 interface DashData {
-  kpis: { invoicedThisMonth: number; invoicedLastMonth: number; receivedThisMonth: number; receivedLastMonth: number; pipelineValue: number; pipelineCount: number }
+  kpis: { invoicedThisMonth: number; invoicedLastMonth: number; receivedThisMonth: number; receivedLastMonth: number; pipelineValue: number; pipelineCount: number; outstandingTotal: number; outstandingCount: number; overdueTotal: number }
   attention: { type: string; entity_type: string; entity_id: string; entity_number: string; client_name: string; job_name: string; value: number; days: number }[]
   recentInvoices: { id: string; invoice_number: string; total: number; amount_paid: number; status: string; due_date: string | null; job?: { job_name?: string; client?: { client_name?: string } | null } | null }[]
   openQuotes: { id: string; quote_number: string; total: number; status: string; sent_at: string | null; valid_until: string | null; job?: { job_name?: string; client?: { client_name?: string } | null } | null }[]
@@ -118,7 +118,15 @@ export function MfgDashboardClient({ data, companyName }: Props) {
           <p className="text-2xl font-bold" style={{ color: S.text }}>{fmtR(kpis.pipelineValue)}</p>
           <p className="text-xs mt-2" style={{ color: S.muted }}>{kpis.pipelineCount} open quote{kpis.pipelineCount !== 1 ? 's' : ''}</p>
         </div>
-        <KPICard label="This Month Gap" value={kpis.invoicedThisMonth - kpis.receivedThisMonth} prev={kpis.invoicedLastMonth - kpis.receivedLastMonth} />
+        <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${kpis.overdueTotal > 0 ? '#FECACA' : S.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: S.muted }}>Outstanding</p>
+          <p className="text-2xl font-bold" style={{ color: S.text }}>{fmtR(kpis.outstandingTotal)}</p>
+          <p className="text-xs mt-2" style={{ color: kpis.overdueTotal > 0 ? '#DC2626' : S.muted }}>
+            {kpis.outstandingCount === 0
+              ? 'Nothing owed'
+              : `${kpis.outstandingCount} unpaid invoice${kpis.outstandingCount === 1 ? '' : 's'}${kpis.overdueTotal > 0 ? ` · ${fmtR(kpis.overdueTotal)} overdue` : ''}`}
+          </p>
+        </div>
       </div>
 
       {/* Two columns: pipeline + invoice tracker */}

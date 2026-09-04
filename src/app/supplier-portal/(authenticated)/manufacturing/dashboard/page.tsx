@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { MfgDashboardClient } from './MfgDashboardClient'
-import { monthKeySA, monthKeyOffsetSA } from '@/lib/dates'
+import { monthKeySA, monthKeyOffsetSA, todaySA } from '@/lib/dates'
 
 export default async function MfgDashboardPage() {
   const supabase = await createClient()
@@ -64,6 +64,9 @@ export default async function MfgDashboardPage() {
   const invoicedIn = (key: string) => (invoicesAll ?? []).reduce((s, i) => s + (monthKeySA(i.created_at) === key ? i.total : 0), 0)
   const receivedIn = (key: string) => (payments ?? []).reduce((s, p) => s + ((p.payment_date ?? '').slice(0, 7) === key ? p.amount : 0), 0)
 
+  const today  = todaySA()
+  const unpaid = (invoicesAll ?? []).filter(i => i.total - i.amount_paid > 0)
+
   const attention: { type: string; entity_type: string; entity_id: string; entity_number: string; client_name: string; job_name: string; value: number; days: number }[] = []
   for (const inv of (invoicesAll ?? [])) {
     if (inv.due_date && new Date(inv.due_date) < now && inv.status !== 'paid') {
@@ -90,6 +93,13 @@ export default async function MfgDashboardPage() {
       receivedLastMonth: receivedIn(lastMonthKey),
       pipelineValue: (quotesOpen ?? []).reduce((s, q) => s + (q.total ?? 0), 0),
       pipelineCount: (quotesOpen ?? []).length,
+      // Money still owed, whenever it was invoiced. A month-scoped figure
+      // resets on the 1st and says nothing about what is actually outstanding.
+      outstandingTotal: unpaid.reduce((s, i) => s + (i.total - i.amount_paid), 0),
+      outstandingCount: unpaid.length,
+      overdueTotal: unpaid
+        .filter(i => i.due_date && i.due_date < today)
+        .reduce((s, i) => s + (i.total - i.amount_paid), 0),
     },
     attention: attention.slice(0, 10),
     // The panel this feeds is "Outstanding Invoices" and shows the balance, so

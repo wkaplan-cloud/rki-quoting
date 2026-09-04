@@ -143,7 +143,12 @@ export function MfgInvoicesClient({ initialInvoices }: Props) {
       : inv))
   }
 
-  const totalOutstanding = filtered.filter(i => i.status !== 'paid').reduce((s, i) => s + (i.total - i.amount_paid), 0)
+  // Across every issued invoice, not the filtered view — a headline figure that
+  // changes as you type in the search box is not a headline figure. Drafts are
+  // excluded: an invoice the client has never been sent is not money owed.
+  const totalOutstanding = invoices
+    .filter(i => i.status !== 'draft' && i.total - i.amount_paid > 0)
+    .reduce((s, i) => s + (i.total - i.amount_paid), 0)
 
   return (
     <div>

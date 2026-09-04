@@ -253,15 +253,14 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
 
   function switchToBuilt(idx: number) {
     const li = lineItems[idx]
-    if (li.pricing_mode !== 'built') {
-      // Built lines take their price from the components, so any typed figures
-      // are about to be replaced. Only worth asking when there is something to
-      // lose and nothing built up yet to replace it with.
-      const wouldDiscard = (li.unit_price > 0 || li.cost_per_unit !== null)
-        && li.components.length === 0 && !li.labour_hours && !li.labour_rate
-      if (wouldDiscard && confirmBuild !== idx) { setConfirmBuild(idx); return }
-      updateLineItem(idx, { pricing_mode: 'built' })
-    }
+    if (li.pricing_mode === 'built') return   // already active; the labelled button opens the builder
+    // Built lines take their price from the components, so any typed figures
+    // are about to be replaced. Only worth asking when there is something to
+    // lose and nothing built up yet to replace it with.
+    const wouldDiscard = (li.unit_price > 0 || li.cost_per_unit !== null)
+      && li.components.length === 0 && !li.labour_hours && !li.labour_rate
+    if (wouldDiscard && confirmBuild !== idx) { setConfirmBuild(idx); return }
+    updateLineItem(idx, { pricing_mode: 'built' })
     setConfirmBuild(null)
     setCostBuilderModal(idx)
   }
@@ -517,6 +516,51 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
                 onInput={e => { const el = e.currentTarget; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' }}
               />
+              {/* How this line is priced — the choice sits with the fields it drives */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Pricing</span>
+                {isReadOnly ? (
+                  <span className="text-xs px-2 py-1 rounded-lg" style={{ background: S.input, color: S.muted }}>
+                    {isManual ? 'Typed price' : 'Built from cost'}
+                  </span>
+                ) : confirmBuild === liIdx ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs" style={{ color: '#92400E' }}>
+                      Building the cost replaces your typed price of {fmt(li.unit_price)}.
+                    </span>
+                    <button onClick={() => switchToBuilt(liIdx)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold"
+                      style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}>
+                      Continue
+                    </button>
+                    <button onClick={() => setConfirmBuild(null)}
+                      className="px-2 py-1 rounded-lg text-xs" style={{ color: S.muted }}>Cancel</button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+                      <button onClick={() => switchToManual(liIdx)}
+                        className="px-3 py-1 text-xs font-medium transition-colors"
+                        style={{ background: isManual ? S.accent : S.card, color: isManual ? '#fff' : S.muted }}>
+                        Type price
+                      </button>
+                      <button onClick={() => switchToBuilt(liIdx)}
+                        className="px-3 py-1 text-xs font-medium transition-colors"
+                        style={{ background: !isManual ? S.accent : S.card, color: !isManual ? '#fff' : S.muted, borderLeft: `1px solid ${S.border}` }}>
+                        Build cost
+                      </button>
+                    </div>
+                    {!isManual && (
+                      <button onClick={() => setCostBuilderModal(liIdx)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{ background: '#EFF6FF', color: S.accent }}>
+                        {li.components.length > 0 || li.labour_hours ? 'Edit cost build →' : 'Add materials & labour →'}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <label className="text-xs" style={{ color: S.muted }}>Qty</label>
@@ -580,11 +624,17 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 </div>
               </div>
 
-              {isManual && li.cost_per_unit === null && li.unit_price > 0 && !pending && (
-                <p className="text-[11px]" style={{ color: S.muted }}>
-                  No cost captured — this line is left out of the profit and margin totals.
-                </p>
-              )}
+              <p className="text-[11px]" style={{ color: pending ? '#92400E' : S.muted }}>
+                {pending
+                  ? 'Waiting on supplier prices — the price above is incomplete.'
+                  : isManual
+                    ? li.cost_per_unit === null
+                      ? 'You set the price. Add your cost to track margin — without it this line stays out of the profit totals.'
+                      : 'You set the price. Cost is yours only — it never appears on the quote.'
+                    : (li.components.length > 0 || li.labour_hours)
+                      ? `Price is calculated: ${fmtR(li.cost_per_unit ?? 0)} cost + ${round2(li.markup_percentage)}% markup.`
+                      : 'Nothing costed yet — add materials, hardware and labour to work the price out.'}
+              </p>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0 mt-1">
               {/* Top row: template + icon actions */}
@@ -626,43 +676,12 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               </div>
               {/* Build cost + Option pill */}
               <div className="flex items-center gap-1">
-                {isReadOnly ? (
-                  !isManual && (
-                    <button onClick={() => setCostBuilderModal(liIdx)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
-                      style={{ color: S.accent, background: '#EFF6FF' }}>
-                      View cost →
-                    </button>
-                  )
-                ) : (
-                  confirmBuild === liIdx ? (
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => switchToBuilt(liIdx)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                        style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}>
-                        Replace typed price
-                      </button>
-                      <button onClick={() => setConfirmBuild(null)}
-                        className="px-2 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
-                      <button onClick={() => switchToManual(liIdx)}
-                        title="Type a cost and selling price for this line"
-                        className="px-2.5 py-1.5 text-xs font-medium transition-colors"
-                        style={{ background: isManual ? S.accent : S.card, color: isManual ? '#fff' : S.muted }}>
-                        Type price
-                      </button>
-                      <button onClick={() => switchToBuilt(liIdx)}
-                        title="Build this price up from materials, hardware and labour"
-                        className="px-2.5 py-1.5 text-xs font-medium transition-colors"
-                        style={{ background: !isManual ? S.accent : S.card, color: !isManual ? '#fff' : S.muted, borderLeft: `1px solid ${S.border}` }}>
-                        Build cost{!isManual ? ' →' : ''}
-                      </button>
-                    </div>
-                  )
+                {isReadOnly && !isManual && (
+                  <button onClick={() => setCostBuilderModal(liIdx)}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ color: S.accent, background: '#EFF6FF' }}>
+                    View cost →
+                  </button>
                 )}
                 {!isReadOnly && (
                   <button onClick={() => toggleOptionItem(liIdx)}
