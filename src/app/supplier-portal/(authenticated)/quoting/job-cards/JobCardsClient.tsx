@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X, CheckSquare, Square } from 'lucide-react'
+import { Plus, Briefcase, MapPin, Clock, User, Search, ChevronRight, X, CheckSquare, Square, Send } from 'lucide-react'
 import type { ElecJobCard, ElecJobCardType, ElecStaff, ElecClient } from '@/lib/elec-types'
 import { ClientCombobox } from '../ClientCombobox'
 import { StaffMultiSelect } from '../StaffMultiSelect'
@@ -10,6 +10,12 @@ const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
   text: '#18181B', muted: '#71717A', border: '#E4E4E7',
   danger: '#DC2626', green: '#16A34A',
+}
+
+function fmtSentAt(iso: string) {
+  return new Date(iso).toLocaleString('en-ZA', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  })
 }
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
@@ -214,6 +220,11 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
                     {client && (
                       <span className="flex items-center gap-1 text-xs" style={{ color: S.muted }}>
                         {client.client_name}
+                      </span>
+                    )}
+                    {j.sent_at && (
+                      <span className="flex items-center gap-1 text-xs" style={{ color: S.green }}>
+                        <Send size={10} />Sent {fmtSentAt(j.sent_at)}
                       </span>
                     )}
                   </div>

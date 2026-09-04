@@ -7,7 +7,7 @@ import {
   CheckCircle2, Check, Clock, Play, XCircle, Loader2,
   MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
-  Download, Printer, ShoppingCart, PackageCheck, ReceiptText, FileCheck,
+  Download, Printer, ShoppingCart, PackageCheck, ReceiptText, FileCheck, Link2,
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
@@ -40,6 +40,13 @@ const TYPE_LABEL: Record<string, string> = {
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function fmtDateTime(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('en-ZA', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
+  })
 }
 
 function fmtR(n: number) {
@@ -175,6 +182,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [sendName, setSendName] = useState(card.client_name ?? card.client?.client_name ?? '')
   const [sendMsg, setSendMsg] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendMethod, setSendMethod] = useState<'link' | 'pdf'>('link')
   const [sendResult, setSendResult] = useState<'success' | 'error' | ''>('')
 
   // Sage
@@ -530,7 +538,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     try {
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: false, client_company: clientCompany.trim() || null, client_qs_name: clientQsName.trim() || null, client_qs_email: clientQsEmail.trim() || null }),
+        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: false, include_link: sendMethod === 'link', client_company: clientCompany.trim() || null, client_qs_name: clientQsName.trim() || null, client_qs_email: clientQsEmail.trim() || null }),
       })
       setSendResult(res.ok ? 'success' : 'error')
       if (res.ok) setCard(c => ({ ...c, sent_to_email: sendEmail, sent_to_name: sendName || null, sent_at: new Date().toISOString(), client_email: sendEmail }))
@@ -684,7 +692,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </button>
           )}
           {/* Send */}
-          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setShowSend(true) }}
+          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url ? 'pdf' : 'link'); setShowSend(true) }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
             style={{ background: S.accent }}>
             <Send size={13} /> Send
@@ -830,7 +838,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: S.muted }}>
           <span>{fmtDate(card.created_at)}</span>
           {(card.created_by_name ?? staffMember?.name) && <span>· {card.created_by_name ?? staffMember?.name}</span>}
-          {card.sent_at && <span>· Sent {fmtDate(card.sent_at)}</span>}
+          {card.sent_at && (
+            <span>· Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}</span>
+          )}
         </div>
       </div>
 
@@ -1684,6 +1694,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 onClick={() => {
                   setSendEmail(card.client_email ?? card.client?.email ?? '')
                   setShowFinishFlow(false)
+                  setSendMethod(card.client_signature_url ? 'pdf' : 'link')
                   setShowSend(true)
                 }}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
@@ -1784,7 +1795,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <div className="py-8 flex flex-col items-center gap-3">
                 <CheckCircle2 size={36} style={{ color: S.green }} />
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Sent successfully!</p>
-                <p className="text-xs" style={{ color: S.muted }}>Job card PDF sent to {sendEmail}</p>
+                <p className="text-xs" style={{ color: S.muted }}>
+                  {sendMethod === 'link' ? 'Sign link and PDF sent to ' : 'Job card PDF sent to '}{sendEmail}
+                </p>
                 <button onClick={() => { setShowSend(false); setSendResult('') }}
                   className="mt-2 px-6 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>
                   Done
@@ -1805,6 +1818,50 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     style={{ border: `1px solid ${S.border}`, color: S.text }} />
                 </div>
                 <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>
+                    How to send
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setSendMethod('link')}
+                      disabled={!!card.client_signature_url}
+                      className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left disabled:opacity-50"
+                      style={{
+                        background: sendMethod === 'link' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        border: `1.5px solid ${sendMethod === 'link' ? S.accent : S.border}`,
+                      }}>
+                      <div className="flex items-center gap-1.5">
+                        <Link2 size={13} style={{ color: sendMethod === 'link' ? S.accent : S.muted }} />
+                        <span className="text-xs font-semibold" style={{ color: sendMethod === 'link' ? S.accent : S.text }}>
+                          Link + PDF
+                        </span>
+                      </div>
+                      <span className="text-[11px] leading-snug" style={{ color: S.muted }}>
+                        {card.client_signature_url
+                          ? 'Already signed — nothing left to sign'
+                          : 'Client signs online, PDF attached too'}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setSendMethod('pdf')}
+                      className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left"
+                      style={{
+                        background: sendMethod === 'pdf' ? 'rgba(58,124,165,0.08)' : S.bg,
+                        border: `1.5px solid ${sendMethod === 'pdf' ? S.accent : S.border}`,
+                      }}>
+                      <div className="flex items-center gap-1.5">
+                        <FileText size={13} style={{ color: sendMethod === 'pdf' ? S.accent : S.muted }} />
+                        <span className="text-xs font-semibold" style={{ color: sendMethod === 'pdf' ? S.accent : S.text }}>
+                          PDF Only
+                        </span>
+                      </div>
+                      <span className="text-[11px] leading-snug" style={{ color: S.muted }}>
+                        Job card PDF attached to the email
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                <div>
                   <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Message (optional)</label>
                   <textarea value={sendMsg} onChange={e => setSendMsg(e.target.value)} rows={3}
                     placeholder="Any message to include in the email…"
@@ -1822,7 +1879,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
                     style={{ background: S.accent }}>
                     {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                    {sending ? 'Sending…' : 'Send PDF'}
+                    {sending ? 'Sending…' : sendMethod === 'link' ? 'Send Link + PDF' : 'Send PDF'}
                   </button>
                 </div>
               </div>
