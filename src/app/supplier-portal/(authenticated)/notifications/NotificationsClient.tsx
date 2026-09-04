@@ -61,10 +61,8 @@ function getLink(n: ElecNotification): string | null {
     case 'vo_submitted':
       return qId ? `/supplier-portal/quoting/quotes/${qId}` : null
     case 'extra_work':
-      // The draft quote is where the office acts on it; fall back to the card.
-      return qId
-        ? `/supplier-portal/quoting/quotes/${qId}`
-        : jcId ? `/supplier-portal/quoting/job-cards/${jcId}` : null
+      // The new job card is where the office prices it.
+      return jcId ? `/supplier-portal/quoting/job-cards/${jcId}` : null
     case 'extra_work_approved':
       // Approved — the new job card is the thing to schedule.
       return jcId ? `/supplier-portal/quoting/job-cards/${jcId}` : null

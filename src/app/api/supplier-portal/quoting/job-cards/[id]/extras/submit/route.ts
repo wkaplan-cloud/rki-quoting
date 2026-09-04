@@ -3,13 +3,14 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { resolveCreatorName } from '@/lib/resolve-creator'
-import { nextQuoteNumber } from '@/lib/elec-quote-number'
-import { resolveExtrasContext, extrasEnabled } from '@/lib/job-card-extras'
+import { resolveExtrasContext, extrasEnabled, notifyExtraWorkSubmitted } from '@/lib/job-card-extras'
 
 // POST /api/supplier-portal/quoting/job-cards/[id]/extras/submit
 //
-// Turns every unsent extra-work item on this job card into a separate DRAFT
-// quote with all rates at 0, for the office to price and send to the client.
+// Turns every unsent extra-work item into a NEW JOB CARD — not a project quote.
+// Extra work on a job card is job-card work: the office prices it on the new
+// card's job sheet, sends that card for the client to approve, and the work is
+// signed off on it.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -20,9 +21,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const resolved = await resolveExtrasContext(user.id, id)
     if (!resolved.ok) return NextResponse.json({ error: resolved.error }, { status: resolved.status })
     const { ctx } = resolved
-    const { card, settings } = ctx
+    const { card } = ctx
 
-    if (!extrasEnabled(settings)) {
+    if (!extrasEnabled(ctx.settings)) {
       return NextResponse.json({ error: 'Extra work is switched off for this account' }, { status: 403 })
     }
 
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       .from('elec_job_card_extras')
       .select('*')
       .eq('job_card_id', id)
+      .is('created_job_card_id', null)
       .is('quote_id', null)
       .order('created_at')
 
@@ -40,74 +42,71 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Nothing to send — add at least one item first' }, { status: 400 })
     }
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('company_name')
-      .eq('id', ctx.accountId)
-      .maybeSingle()
-
-    const quoteNumber = await nextQuoteNumber(ctx.accountId, account?.company_name ?? null, settings)
     const createdByName = ctx.staffName ?? await resolveCreatorName(user.id)
 
-    const descriptionParts = [`Extra work requested on site during job card ${card.job_number} — ${card.title}.`]
+    const descriptionParts = [
+      `Extra work the client asked for on job card ${card.job_number} — ${card.title}.`,
+      ...extras.map(x => `• ${x.description}${x.notes ? ` (${x.notes})` : ''} — ${x.qty ?? 1} ${x.unit ?? 'nr'}`),
+    ]
     if (note) descriptionParts.push(note)
 
-    const { data: quote, error: quoteErr } = await supabaseAdmin
-      .from('elec_quotes')
-      .insert({
-        portal_account_id:             ctx.accountId,
-        client_id:                     card.client_id,
-        quote_number:                  quoteNumber,
-        project_name:                  `Extra work — ${card.title}`,
-        project_address:               card.location,
-        description:                   descriptionParts.join('\n\n'),
-        status:                        'draft',
-        is_quick_job:                  true,
-        source_job_card_id:            card.id,
-        vat_rate:                      settings?.default_vat_rate ?? 15,
-        retention_percentage:          settings?.default_retention_percentage ?? 0,
-        payment_terms_days:            settings?.default_payment_terms_days ?? 30,
-        defects_liability_period_days: settings?.default_defects_liability_days ?? 90,
-        created_by_name:               createdByName,
-      })
-      .select('id, quote_number')
-      .single()
-    if (quoteErr) throw quoteErr
+    const { count } = await supabaseAdmin
+      .from('elec_job_cards')
+      .select('id', { count: 'exact', head: true })
+      .eq('portal_account_id', ctx.accountId)
 
-    const { error: itemsErr } = await supabaseAdmin
-      .from('elec_quote_line_items')
-      .insert(extras.map((x, idx) => ({
-        quote_id:        quote.id,
-        section_id:      null,
-        // Rates stay at 0 — the office prices every line before this goes out.
-        description:     x.notes ? `${x.description} (${x.notes})` : x.description,
-        unit:            x.unit,
-        item_type:       'both' as const,
-        quoted_quantity: x.qty ?? 1,
-        quoted_unit_rate: 0,
-        sort_order:      idx,
+    const { data: newCard, error: cardErr } = await supabaseAdmin
+      .from('elec_job_cards')
+      .insert({
+        portal_account_id:       ctx.accountId,
+        client_id:               card.client_id,
+        job_number:              `JC-${String((count ?? 0) + 1).padStart(4, '0')}`,
+        job_type:                'once_off',
+        status:                  'pending',
+        title:                   `Extra work — ${card.title}`,
+        location:                card.location,
+        work_description:        descriptionParts.join('\n'),
+        extras_from_job_card_id: card.id,
+        created_by_name:         createdByName,
+        // Unassigned on purpose — who does it and when is the office's call.
+      })
+      .select('id, job_number')
+      .single()
+    if (cardErr) throw cardErr
+
+    // Items land on the job sheet with no price. The office rates them there.
+    const { error: matErr } = await supabaseAdmin
+      .from('elec_job_card_materials')
+      .insert(extras.map(x => ({
+        job_card_id: newCard.id,
+        description: x.notes ? `${x.description} (${x.notes})` : x.description,
+        qty:         x.qty ?? 1,
+        unit_price:  null,
       })))
-    if (itemsErr) {
-      // Don't leave an empty draft behind if the lines couldn't be written.
-      await supabaseAdmin.from('elec_quotes').delete().eq('id', quote.id)
-      throw itemsErr
+    if (matErr) {
+      await supabaseAdmin.from('elec_job_cards').delete().eq('id', newCard.id)
+      throw matErr
     }
 
-    const submittedAt = new Date().toISOString()
     const { error: stampErr } = await supabaseAdmin
       .from('elec_job_card_extras')
-      .update({ quote_id: quote.id, submitted_at: submittedAt })
+      .update({ created_job_card_id: newCard.id, submitted_at: new Date().toISOString() })
       .in('id', extras.map(x => x.id))
     if (stampErr) throw stampErr
 
-    await supabaseAdmin.from('elec_notifications').insert({
-      portal_account_id: ctx.accountId,
-      type: 'extra_work',
-      title: `Extra work — ${createdByName ?? 'Staff'}`,
-      body: `${extras.length} item${extras.length === 1 ? '' : 's'} on ${card.job_number} — ${card.title}. Draft quote ${quote.quote_number} is waiting to be priced.`,
-      metadata: { job_card_id: card.id, quote_id: quote.id, staff_id: ctx.staffId },
-    })
+    void notifyExtraWorkSubmitted({
+      accountId: ctx.accountId,
+      sourceCard: { id: card.id, job_number: card.job_number, title: card.title },
+      newCard,
+      items: extras.map(x => ({ description: x.description, qty: x.qty ?? 1, unit: x.unit, notes: x.notes })),
+      reportedBy: createdByName,
+      staffId: ctx.staffId,
+      note,
+    }).catch(e => console.error('[extras/submit] notify failed', e))
 
-    return NextResponse.json({ quote_id: quote.id, quote_number: quote.quote_number, count: extras.length }, { status: 201 })
+    return NextResponse.json(
+      { job_card_id: newCard.id, job_number: newCard.job_number, count: extras.length },
+      { status: 201 },
+    )
   } catch (e) { return apiError(e) }
 }

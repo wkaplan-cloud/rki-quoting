@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     const { data, error } = await supabaseAdmin
       .from('elec_job_card_extras')
-      .select('*, quote:elec_quotes(id,quote_number,status)')
+      .select('*, created_job_card:elec_job_cards!elec_job_card_extras_created_job_card_id_fkey(id,job_number,status)')
       .eq('job_card_id', id)
       .order('created_at')
     if (error) throw error

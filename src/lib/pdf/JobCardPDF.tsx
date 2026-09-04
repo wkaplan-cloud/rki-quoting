@@ -64,7 +64,7 @@ const s = StyleSheet.create({
   photoCaption:{ fontSize: 6.5, color: MUTED, marginTop: 2 },
 
   sigBox:      { borderWidth: 0.5, borderColor: BORDER, borderRadius: 3, padding: 6, alignItems: 'center', marginBottom: 14 },
-  sigImg:      { width: 160, height: 60, objectFit: 'contain' },
+  sigImg:      { width: 216, height: 72, objectFit: 'contain' },
   sigLabel:    { fontSize: 7, color: MUTED, marginTop: 4 },
 
   statusBadge: { fontSize: 7, fontFamily: 'Helvetica-Bold', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, textAlign: 'right' },
@@ -93,6 +93,10 @@ interface Props {
   asInvoice?: boolean
   /** Name captured next to the signature — falls back to the client's name */
   signatureName?: string | null
+}
+
+const APPROVAL_METHOD: Record<string, string> = {
+  phone: 'by phone', whatsapp: 'by WhatsApp', email: 'by email', in_person: 'in person',
 }
 
 export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoice = false, signatureName = null }: Props) {
@@ -289,10 +293,27 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
           </View>
         )}
 
-        {/* Client signature */}
+        {/* Quote approved — the client agreeing to the work before it started */}
+        {jobCard.approved_at && (
+          <View style={{ marginBottom: 14 }} wrap={false}>
+            <Text style={s.secLabel}>Quote Approved</Text>
+            <View style={s.sigBox}>
+              {jobCard.approval_signature_url && <Image src={jobCard.approval_signature_url} style={s.sigImg} />}
+              <Text style={s.sigLabel}>
+                {jobCard.approved_by ?? clientName ?? 'Client'} — {fmtDate(jobCard.approved_at)}
+                {jobCard.approval_method && jobCard.approval_method !== 'signature'
+                  ? ` — approved ${APPROVAL_METHOD[jobCard.approval_method] ?? jobCard.approval_method}`
+                  : ''}
+              </Text>
+              {jobCard.approval_note ? <Text style={s.sigLabel}>{jobCard.approval_note}</Text> : null}
+            </View>
+          </View>
+        )}
+
+        {/* Work signed off — the client confirming it was done */}
         {jobCard.client_signature_url && (
           <View style={{ marginBottom: 14 }} wrap={false}>
-            <Text style={s.secLabel}>Client Signature</Text>
+            <Text style={s.secLabel}>Work Signed Off</Text>
             <View style={s.sigBox}>
               <Image src={jobCard.client_signature_url} style={s.sigImg} />
               <Text style={s.sigLabel}>{signatureName ?? clientName ?? 'Client'} — {fmtDate(jobCard.completed_at ?? jobCard.created_at)}</Text>

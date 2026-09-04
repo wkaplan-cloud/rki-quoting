@@ -347,10 +347,10 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: exNote.trim() || null }),
       })
-      const d = await res.json() as { quote_number?: string; error?: string }
+      const d = await res.json() as { job_number?: string; error?: string }
       if (res.ok) {
         setExNote('')
-        setExMsg(`Sent to the office \u2713 \u2014 they are pricing quote ${d.quote_number} for the client.`)
+        setExMsg(`Sent to the office \u2713 \u2014 they are pricing job card ${d.job_number} for the client.`)
         const list = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/extras`).then(r => r.json()) as ElecJobCardExtra[]
         setExtras(list)
       } else {
@@ -464,8 +464,8 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     ? []
     : scopeItems
 
-  const unsentExtras = extras.filter(x => !x.quote_id)
-  const sentExtras   = extras.filter(x => !!x.quote_id)
+  const unsentExtras = extras.filter(x => !x.created_job_card_id && !x.quote_id)
+  const sentExtras   = extras.filter(x => !!x.created_job_card_id || !!x.quote_id)
 
   const STEPS: { key: Tab; label: string; done: boolean }[] = [
     { key: 'report',    label: 'Report',    done: !!(card.work_found || card.work_done) },
@@ -831,7 +831,7 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                       {x.qty} {x.unit ?? 'nr'}{x.notes ? ` · ${x.notes}` : ''}
                     </p>
                   </div>
-                  {x.quote_id ? (
+                  {(x.created_job_card_id || x.quote_id) ? (
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
                       style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
                       With office

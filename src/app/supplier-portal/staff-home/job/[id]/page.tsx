@@ -35,7 +35,7 @@ export default async function StaffJobCardPage({ params }: { params: Promise<{ i
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     // null (not []) when the extra-work migration hasn't been run yet, which is
     // what hides the step rather than showing one that can't save.
-    supabaseAdmin.from('elec_job_card_extras').select('*, quote:elec_quotes(id,quote_number,status)')
+    supabaseAdmin.from('elec_job_card_extras').select('*, created_job_card:elec_job_cards!elec_job_card_extras_created_job_card_id_fkey(id,job_number,status)')
       .eq('job_card_id', id).order('created_at')
       .then(res => res.error ? { data: null } : res),
     supabaseAdmin.from('elec_settings').select('job_card_extras_enabled')

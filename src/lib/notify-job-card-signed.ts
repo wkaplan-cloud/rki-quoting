@@ -104,7 +104,8 @@ export async function notifyJobCardSigned(opts: {
     ${signatureUrl ? `
     <p style="margin:0 0 6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#71717A;">${isApproval ? 'Approval signature' : 'Sign-off signature'}</p>
     <div style="border:1px solid #E4E4E7;border-radius:10px;padding:10px;margin-bottom:22px;background:#FAFAFA;">
-      <img src="${signatureUrl}" alt="Client signature" style="display:block;max-width:100%;height:auto;" />
+      <img src="${signatureUrl}" alt="Client signature" width="420"
+        style="display:block;width:100%;max-width:420px;height:auto;" />
     </div>` : ''}
     <a href="${cardUrl}" style="display:inline-block;background:#166534;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;">Open Job Card →</a>
   </div>

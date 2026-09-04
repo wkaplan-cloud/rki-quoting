@@ -682,6 +682,8 @@ export interface ElecJobCard {
   approved_by: string | null
   approval_method: ElecJobCardApprovalMethod | null
   approval_note: string | null
+  /** Set when this card came out of another card's extra work. */
+  extras_from_job_card_id: string | null
   sent_to_name: string | null
   sent_to_email: string | null
   sent_at: string | null
@@ -736,11 +738,13 @@ export interface ElecJobCardExtra {
   notes: string | null
   created_by_staff_id: string | null
   created_by_name: string | null
+  /** Legacy: extras used to become a project quote. New batches make a job card. */
   quote_id: string | null
+  created_job_card_id: string | null
   submitted_at: string | null
   created_at: string
   // Joined
-  quote?: { id: string; quote_number: string; status: ElecQuoteStatus } | null
+  created_job_card?: { id: string; job_number: string; status: ElecJobCardStatus } | null
 }
 
 export interface ElecJobCardPhoto {

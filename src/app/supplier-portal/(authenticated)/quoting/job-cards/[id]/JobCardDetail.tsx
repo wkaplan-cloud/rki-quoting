@@ -642,14 +642,15 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   // ── Extra work ────────────────────────────────────────────────────────────
   const extras = initial.extras ?? []
-  const unsentExtras = extras.filter(x => !x.quote_id)
-  const extrasQuoteGroups = Array.from(
-    extras.filter(x => !!x.quote_id).reduce((map, x) => {
-      const group = map.get(x.quote_id!)
+  const unsentExtras = extras.filter(x => !x.created_job_card_id && !x.quote_id)
+  // Each batch of extras became its own job card.
+  const extrasCardGroups = Array.from(
+    extras.filter(x => !!x.created_job_card_id).reduce((map, x) => {
+      const group = map.get(x.created_job_card_id!)
       if (group) group.items.push(x)
-      else map.set(x.quote_id!, { quote: x.quote ?? null, items: [x] })
+      else map.set(x.created_job_card_id!, { card: x.created_job_card ?? null, items: [x] })
       return map
-    }, new Map<string, { quote: NonNullable<ElecJobCardExtra['quote']> | null; items: ElecJobCardExtra[] }>()),
+    }, new Map<string, { card: NonNullable<ElecJobCardExtra['created_job_card']> | null; items: ElecJobCardExtra[] }>()),
   )
   const [extrasSubmitting, setExtrasSubmitting] = useState(false)
   const [extrasMsg, setExtrasMsg] = useState('')
@@ -664,14 +665,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/extras/submit`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
       })
-      const d = await res.json() as { quote_id?: string; error?: string }
-      if (res.ok && d.quote_id) {
-        router.push(`/supplier-portal/quoting/quotes/${d.quote_id}`)
+      const d = await res.json() as { job_card_id?: string; error?: string }
+      if (res.ok && d.job_card_id) {
+        router.push(`/supplier-portal/quoting/job-cards/${d.job_card_id}`)
         return
       }
-      setExtrasMsg(d.error ?? 'Could not create the quote — try again.')
+      setExtrasMsg(d.error ?? 'Could not create the job card — try again.')
     } catch {
-      setExtrasMsg('Could not create the quote — try again.')
+      setExtrasMsg('Could not create the job card — try again.')
     }
     setExtrasSubmitting(false)
   }
@@ -1635,7 +1636,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
               <p className="text-sm font-semibold" style={{ color: S.text }}>Extra Work Reported On Site</p>
               <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                Work the client asked for beyond this job card. Each batch becomes its own draft quote with every rate at zero — price the lines there, then send it to the client for approval. Once they approve, a new unassigned job card is created automatically, ready for you to assign and schedule.
+                Work the client asked for beyond this job card. Each batch becomes its own new job card with the items on its job sheet, unpriced — price it there, then send it to the client to approve.
               </p>
             </div>
 
@@ -1647,7 +1648,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             )}
 
             {unsentExtras.length > 0 && (
-              <div style={{ borderBottom: extrasQuoteGroups.length > 0 ? `1px solid ${S.border}` : undefined }}>
+              <div style={{ borderBottom: extrasCardGroups.length > 0 ? `1px solid ${S.border}` : undefined }}>
                 <div className="flex items-center gap-2 px-5 py-2.5" style={{ background: 'rgba(217,164,65,0.06)' }}>
                   <Wrench size={13} style={{ color: S.gold }} />
                   <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.gold }}>
@@ -1660,32 +1661,32 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50"
                     style={{ background: S.gold }}>
                     {extrasSubmitting ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
-                    {extrasSubmitting ? 'Creating…' : 'Create Draft Quote'}
+                    {extrasSubmitting ? 'Creating…' : 'Create Job Card'}
                   </button>
                   {extrasMsg && <p className="text-xs mt-2" style={{ color: S.danger }}>{extrasMsg}</p>}
                 </div>
               </div>
             )}
 
-            {extrasQuoteGroups.map(([quoteId, group], gi) => (
-              <div key={quoteId} style={{ borderTop: gi > 0 ? `1px solid ${S.border}` : undefined }}>
+            {extrasCardGroups.map(([cardId, group], gi) => (
+              <div key={cardId} style={{ borderTop: gi > 0 ? `1px solid ${S.border}` : undefined }}>
                 <div className="flex items-center justify-between gap-3 px-5 py-2.5" style={{ background: 'rgba(58,124,165,0.04)' }}>
                   <div className="flex items-center gap-2 min-w-0">
-                    <FileText size={13} style={{ color: S.accent }} />
+                    <ClipboardCheck size={13} style={{ color: S.accent }} />
                     <span className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: S.accent }}>
-                      {group.quote?.quote_number ?? 'Draft quote'} · {group.items.length} item{group.items.length === 1 ? '' : 's'}
+                      {group.card?.job_number ?? 'Job card'} · {group.items.length} item{group.items.length === 1 ? '' : 's'}
                     </span>
-                    {group.quote?.status && (
+                    {group.card?.status && (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{ background: group.quote.status === 'draft' ? 'rgba(217,164,65,0.12)' : 'rgba(22,163,74,0.1)',
-                                 color: group.quote.status === 'draft' ? S.gold : S.green }}>
-                        {group.quote.status === 'draft' ? 'Needs pricing' : group.quote.status.replace('_', ' ')}
+                        style={{ background: group.card.status === 'pending' ? 'rgba(217,164,65,0.12)' : 'rgba(22,163,74,0.1)',
+                                 color: group.card.status === 'pending' ? S.gold : S.green }}>
+                        {group.card.status === 'pending' ? 'Needs pricing' : group.card.status.replace('_', ' ')}
                       </span>
                     )}
                   </div>
-                  <Link href={`/supplier-portal/quoting/quotes/${quoteId}`}
+                  <Link href={`/supplier-portal/quoting/job-cards/${cardId}`}
                     className="text-xs font-semibold whitespace-nowrap" style={{ color: S.accent }}>
-                    Open quote →
+                    Open job card →
                   </Link>
                 </div>
                 {group.items.map((x, i) => <ExtraRow key={x.id} extra={x} first={i === 0} />)}

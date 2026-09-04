@@ -3,7 +3,6 @@ import { todaySA } from '@/lib/dates'
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
-import { createJobCardFromExtrasQuote } from '@/lib/job-card-extras'
 
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -28,18 +27,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         .update({ status: 'in_progress', approved_date: todaySA() })
         .eq('id', quote.id)
 
-      // Extra work found on a job card becomes its own job card once approved,
-      // ready to schedule. No-op for every other kind of quote.
-      const newCard = await createJobCardFromExtrasQuote(quote.id)
-      if (newCard) {
-        await supabaseAdmin.from('elec_notifications').insert({
-          portal_account_id: quote.portal_account_id,
-          type: 'extra_work_approved',
-          title: `Extra work approved \u2014 ${quote.quote_number}`,
-          body: `Job card ${newCard.job_number} created for ${quote.project_name}. Assign it and put it on the schedule.`,
-          metadata: { job_card_id: newCard.id, quote_id: quote.id },
-        })
-      }
     }
 
     // Notify the electrician — fire and forget

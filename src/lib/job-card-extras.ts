@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabase/admin'
 import { resolveAccountOrStaff } from './portal-account'
 import { one, type Embedded } from './supabase/embed'
+import { sendEmail } from './email'
 import type { ElecJobCardExtra } from './elec-types'
 
 export type JobCardExtrasSettings = {
@@ -85,73 +86,97 @@ export function extrasEnabled(settings: { job_card_extras_enabled?: boolean | nu
   return settings?.job_card_extras_enabled !== false
 }
 
-type ExtraRow = Omit<ElecJobCardExtra, 'quote'> & {
-  quote?: Embedded<NonNullable<ElecJobCardExtra['quote']>>
+type ExtraRow = Omit<ElecJobCardExtra, 'created_job_card'> & {
+  created_job_card?: Embedded<NonNullable<ElecJobCardExtra['created_job_card']>>
 }
 
 /** Unwraps the embedded quote on each extra so callers get a plain object or null. */
 export function normalizeExtras(rows: unknown): ElecJobCardExtra[] {
-  return ((rows ?? []) as ExtraRow[]).map(r => ({ ...r, quote: one(r.quote) }))
+  return ((rows ?? []) as ExtraRow[]).map(r => ({ ...r, created_job_card: one(r.created_job_card) }))
 }
 
+
 /**
- * Turns an approved extra-work quote into the job card that work will be done
- * on. Called when the client approves — never before, so a quote they never
- * accept doesn't leave a phantom job card sitting in the office's list.
- *
- * Returns null for any quote that didn't come out of a job card, and for a
- * quote that already has one, so approving twice can't duplicate it.
+ * Tells the office a tech has sent through extra work the client asked for:
+ * a bell notification and an email, because a card sitting unpriced is money
+ * not being quoted.
  */
-export async function createJobCardFromExtrasQuote(quoteId: string) {
-  const { data: quote, error } = await supabaseAdmin
-    .from('elec_quotes')
-    .select('id, portal_account_id, project_name, project_address, client_id, source_job_card_id')
-    .eq('id', quoteId)
-    .maybeSingle()
-  // A missing source_job_card_id column (migration not run) lands here too.
-  if (error || !quote?.source_job_card_id) return null
+export async function notifyExtraWorkSubmitted(opts: {
+  accountId: string
+  sourceCard: { id: string; job_number: string; title: string }
+  newCard: { id: string; job_number: string }
+  items: { description: string; qty: number; unit: string | null; notes: string | null }[]
+  reportedBy: string | null
+  staffId: string | null
+  note: string | null
+}) {
+  const { accountId, sourceCard, newCard, items, reportedBy, note } = opts
+  const who = reportedBy ?? 'Staff'
+  const countLabel = `${items.length} item${items.length === 1 ? '' : 's'}`
 
-  const { data: existing } = await supabaseAdmin
-    .from('elec_job_cards')
-    .select('id')
-    .eq('quote_id', quoteId)
-    .limit(1)
-    .maybeSingle()
-  if (existing) return null
+  await supabaseAdmin.from('elec_notifications').insert({
+    portal_account_id: accountId,
+    type: 'extra_work',
+    title: `Extra work — ${who}`,
+    body: `${countLabel} off ${sourceCard.job_number}. Job card ${newCard.job_number} is waiting to be priced.`,
+    metadata: { job_card_id: newCard.id, source_job_card_id: sourceCard.id, staff_id: opts.staffId },
+  })
 
-  const { data: items } = await supabaseAdmin
-    .from('elec_quote_line_items')
-    .select('description, unit, quoted_quantity')
-    .eq('quote_id', quoteId)
-    .order('sort_order', { ascending: true })
+  const [{ data: account }, { data: members }] = await Promise.all([
+    supabaseAdmin
+      .from('supplier_portal_accounts')
+      .select('email, company_name')
+      .eq('id', accountId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('portal_org_members')
+      .select('email')
+      .eq('portal_account_id', accountId)
+      .not('accepted_at', 'is', null),
+  ])
+  if (!account?.email) return
 
-  const workDescription = (items ?? [])
-    .map(i => `\u2022 ${i.description} \u2014 ${i.quoted_quantity} ${i.unit ?? 'nr'}`)
-    .join('\n')
+  const cc = (members ?? [])
+    .map(m => m.email as string | null)
+    .filter((e): e is string => !!e && e.toLowerCase() !== account.email.toLowerCase())
 
-  const { count } = await supabaseAdmin
-    .from('elec_job_cards')
-    .select('id', { count: 'exact', head: true })
-    .eq('portal_account_id', quote.portal_account_id)
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://quotinghub.co.za'
+  const cardUrl = `${appUrl}/supplier-portal/quoting/job-cards/${newCard.id}`
+  const rows = items.map(i => `
+    <tr>
+      <td style="padding:6px 0;font-size:13px;color:#18181B;border-bottom:1px solid #F4F4F5;">${i.description}${i.notes ? ` <span style="color:#71717A;">(${i.notes})</span>` : ''}</td>
+      <td style="padding:6px 0;font-size:13px;color:#71717A;text-align:right;white-space:nowrap;border-bottom:1px solid #F4F4F5;">${i.qty} ${i.unit ?? 'nr'}</td>
+    </tr>`).join('')
 
-  const { data: card } = await supabaseAdmin
-    .from('elec_job_cards')
-    .insert({
-      portal_account_id: quote.portal_account_id,
-      quote_id:          quote.id,
-      client_id:         quote.client_id,
-      // Left unassigned on purpose — who does the extra work and when is the
-      // office's call, not automatically the tech who happened to find it.
-      job_number:        `JC-${String((count ?? 0) + 1).padStart(4, '0')}`,
-      job_type:          'once_off',
-      status:            'pending',
-      title:             quote.project_name,
-      location:          quote.project_address,
-      work_description:  workDescription || null,
-      created_by_name:   'Client approval',
-    })
-    .select('id, job_number')
-    .single()
-
-  return card ?? null
+  await sendEmail({
+    to: account.email,
+    ...(cc.length ? { cc } : {}),
+    subject: `Extra work to price — ${newCard.job_number} (off ${sourceCard.job_number})`,
+    preheader: `${who} sent through ${countLabel} the client asked for.`,
+    html: `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F0F2F5;font-family:Inter,Arial,sans-serif;">
+<div style="max-width:520px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #E4E4E7;">
+  <div style="background:#8A6A1F;padding:28px 32px;">
+    <p style="margin:0;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,0.7);">Extra Work</p>
+    <h1 style="margin:6px 0 0;font-size:20px;font-weight:700;color:#fff;">${newCard.job_number} — needs pricing</h1>
+  </div>
+  <div style="padding:28px 32px;">
+    <p style="margin:0 0 16px;font-size:14px;color:#3F3F46;">
+      <strong>${who}</strong> sent through ${countLabel} the client asked for while on
+      <strong>${sourceCard.job_number}</strong> — ${sourceCard.title}.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">${rows}</table>
+    ${note ? `<div style="background:#F4F4F5;border-radius:8px;padding:12px 16px;margin-bottom:18px;"><p style="margin:0;font-size:13px;color:#18181B;">${note}</p></div>` : ''}
+    <p style="margin:0 0 20px;font-size:13px;color:#71717A;">
+      Job card ${newCard.job_number} has been created with these on its job sheet, unpriced. Price it, then send it to the client to approve.
+    </p>
+    <a href="${cardUrl}" style="display:inline-block;background:#8A6A1F;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;">Price ${newCard.job_number} →</a>
+  </div>
+  <div style="padding:16px 32px;border-top:1px solid #E4E4E7;">
+    <p style="margin:0;font-size:11px;color:#A1A1AA;">Sent via <a href="https://quotinghub.co.za" style="color:#3A7CA5;text-decoration:none;">QuotingHub</a></p>
+  </div>
+</div>
+</body></html>`,
+    text: `Extra work to price — ${newCard.job_number}\n\n${who} sent through ${countLabel} the client asked for while on ${sourceCard.job_number} — ${sourceCard.title}.\n\n${items.map(i => `- ${i.description}${i.notes ? ` (${i.notes})` : ''} — ${i.qty} ${i.unit ?? 'nr'}`).join('\n')}\n${note ? `\n${note}\n` : ''}\nPrice it and send it to the client: ${cardUrl}`,
+  })
 }
