@@ -755,7 +755,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                     <input type="number" min={0} step={1} value={li.markup_percentage}
                       onChange={e => updateLineItem(liIdx, { markup_percentage: parseFloat(e.target.value) || 0 })}
                       disabled={isReadOnly}
-                      className="w-20 px-2 py-1 text-sm rounded-lg outline-none text-center"
+                      className="no-spinner w-16 px-2 py-1 text-sm rounded-lg outline-none text-center tabular-nums"
                       style={{ background: li.markup_percentage !== defaultMarkup ? '#FEF3C7' : S.input, border: `1.5px solid ${li.markup_percentage !== defaultMarkup ? '#FDE68A' : S.border}`, color: S.text }} />
                     <span className="text-sm" style={{ color: S.muted }}>%</span>
                     {li.markup_percentage !== defaultMarkup && (
@@ -771,23 +771,25 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                       {li.components.map((c, cIdx) => (
                         <div key={cIdx} className="flex items-center gap-2 px-3 py-2 text-xs"
                           style={{ background: c.supplier_quoted ? '#FFFBEB' : S.card, borderTop: cIdx > 0 ? `1px solid ${S.border}` : undefined }}>
-                          <span className="flex-1 truncate font-medium" style={{ color: S.text }}>{c.item_name}</span>
+                          <span className="flex-1 min-w-0 truncate font-medium" style={{ color: S.text }}>{c.item_name}</span>
                           <input type="number" min={1} step={1} value={c.quantity}
+                            aria-label={`Quantity — ${c.item_name}`}
                             onChange={e => {
                               const comps = [...li.components]
                               comps[cIdx] = { ...comps[cIdx], quantity: parseFloat(e.target.value) || 1 }
                               updateLineItem(liIdx, { components: comps })
                             }}
                             disabled={isReadOnly}
-                            className="w-16 px-2 py-0.5 rounded text-center outline-none"
+                            className="no-spinner shrink-0 w-12 px-1.5 py-0.5 rounded text-center tabular-nums outline-none"
                             style={{ background: S.input, border: `1px solid ${S.border}`, color: S.text }} />
-                          <span style={{ color: S.muted }}>{c.unit}</span>
-                          <div className="flex items-center gap-1">
+                          <span className="shrink-0" style={{ color: S.muted }}>{c.unit}</span>
+                          <div className="flex items-center gap-1 shrink-0">
                             <span className="text-[10px]" style={{ color: S.muted }}>R</span>
-                            <input type="number" min={0} step={1} value={c.unit_cost ?? ''} placeholder="price"
+                            <input type="number" min={0} step={1} value={c.unit_cost ?? ''}
+                              aria-label={`Unit cost — ${c.item_name}`}
                               onChange={e => handleUnitCostChange(liIdx, cIdx, e.target.value === '' ? null : parseFloat(e.target.value))}
                               disabled={isReadOnly}
-                              className="w-20 px-2 py-0.5 rounded outline-none text-right"
+                              className="no-spinner w-24 px-2 py-0.5 rounded outline-none text-right tabular-nums"
                               style={{
                                 background: c.supplier_quoted ? '#FEF3C7' : S.input,
                                 border: `1px solid ${c.price_book_item_id && pbSaved.has(c.price_book_item_id) ? '#16A34A' : c.supplier_quoted ? '#FDE68A' : S.border}`,
@@ -797,11 +799,13 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                               <span className="text-[9px]" style={{ color: '#16A34A' }}>✓</span>
                             )}
                           </div>
-                          <span className="w-16 text-right font-semibold" style={{ color: S.text }}>
+                          <span className="shrink-0 min-w-[76px] text-right font-semibold whitespace-nowrap tabular-nums" style={{ color: S.text }}>
                             {c.unit_cost ? fmtR(c.unit_cost * c.quantity) : '—'}
                           </span>
                           {!isReadOnly && (
                             <button onClick={() => updateLineItem(liIdx, { components: li.components.filter((_, i) => i !== cIdx) })}
+                              aria-label={`Remove ${c.item_name}`}
+                              className="shrink-0 p-0.5"
                               style={{ color: S.muted }}><Trash2 size={11} /></button>
                           )}
                         </div>
@@ -831,7 +835,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                     <input type="number" min={0} step={1} value={li.labour_hours ?? 0}
                       onChange={e => updateLineItem(liIdx, { labour_hours: parseFloat(e.target.value) || 0 })}
                       disabled={isReadOnly}
-                      className="w-20 px-2 py-1.5 text-sm rounded-lg outline-none text-center"
+                      className="no-spinner w-16 px-2 py-1.5 text-sm rounded-lg outline-none text-center tabular-nums"
                       style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
                     <span className="text-xs" style={{ color: S.muted }}>hrs</span>
                   </div>
@@ -841,7 +845,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                     <input type="number" min={0} step={1} value={li.labour_rate ?? 0}
                       onChange={e => updateLineItem(liIdx, { labour_rate: parseFloat(e.target.value) || 0 })}
                       disabled={isReadOnly}
-                      className="w-28 px-2 py-1.5 text-sm rounded-lg outline-none"
+                      className="no-spinner w-24 px-2 py-1.5 text-sm rounded-lg outline-none text-right tabular-nums"
                       style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }} />
                     <span className="text-xs" style={{ color: S.muted }}>/hr</span>
                   </div>
