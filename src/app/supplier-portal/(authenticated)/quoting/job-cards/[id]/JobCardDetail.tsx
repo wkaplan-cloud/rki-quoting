@@ -838,9 +838,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: S.muted }}>
           <span>{fmtDate(card.created_at)}</span>
           {(card.created_by_name ?? staffMember?.name) && <span>· {card.created_by_name ?? staffMember?.name}</span>}
-          {card.sent_at && (
-            <span>· Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}</span>
-          )}
+          {card.sent_at && <span>· Sent {fmtDate(card.sent_at)}</span>}
         </div>
       </div>
 
@@ -1119,6 +1117,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       {/* ── Tab: Job Sheet ─────────────────────────────────────────────────── */}
       {tab === 'job_sheet' && (
         <div>
+          {card.sent_at && (
+            <div className="mb-3 rounded-xl px-4 py-2.5 flex items-center gap-2"
+              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+              <Send size={14} style={{ color: S.green, flexShrink: 0 }} />
+              <p className="text-sm font-semibold" style={{ color: S.green }}>
+                Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}
+              </p>
+            </div>
+          )}
+
           {/* Line items */}
           <div className="rounded-2xl overflow-hidden mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
 
