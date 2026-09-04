@@ -19,6 +19,7 @@ import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import { CroppedImage } from '@/components/shared/CroppedImage'
 import { CategorySpecFields } from '@/components/shared/CategorySpecFields'
+import { SpecAssetPickerModal } from '@/components/studio/SpecAssetPickerModal'
 import { CATEGORIES, categoryCoversDimensions, type CategoryKey } from '@/lib/sourcing-categories'
 
 const ASSET_LABEL_SYNC_DEBOUNCE = 500
@@ -332,6 +333,28 @@ export function SpecsPanel() {
           </Section>
         )}
 
+        {/* Supplier — the maker of the piece itself, above the materials
+            because every material and scatter row carries its own supplier
+            underneath: pick who's building it before who's supplying its
+            fabric, and the two never get confused. */}
+        <Section title="Supplier">
+          <Field label="Supplier">
+            <TextInput
+              value={spec.supplierName}
+              onChange={setSupplier}
+              list="studio-spec-suppliers"
+            />
+            <datalist id="studio-spec-suppliers">
+              {suppliers.map(su => (
+                <option key={su.id} value={su.name} />
+              ))}
+            </datalist>
+            {spec.supplierId && (
+              <p className="text-[10px] text-emerald-700 mt-1">Linked to existing supplier</p>
+            )}
+          </Field>
+        </Section>
+
         {/* Materials & Finishes */}
         <Section
           title="Materials & Finishes"
@@ -402,6 +425,8 @@ export function SpecsPanel() {
                       id: newId(),
                       supplierId: null,
                       supplierName: '',
+                      fabricSupplierId: null,
+                      fabricSupplierName: '',
                       fabric: '',
                       twinbruProductId: null,
                       colour: null,
@@ -437,26 +462,6 @@ export function SpecsPanel() {
               ))}
             </div>
           )}
-        </Section>
-
-        {/* Supplier — last, because it's the one decision that follows from
-            everything above: what it is, then who's being asked to price it */}
-        <Section title="Supplier">
-          <Field label="Supplier">
-            <TextInput
-              value={spec.supplierName}
-              onChange={setSupplier}
-              list="studio-spec-suppliers"
-            />
-            <datalist id="studio-spec-suppliers">
-              {suppliers.map(su => (
-                <option key={su.id} value={su.name} />
-              ))}
-            </datalist>
-            {spec.supplierId && (
-              <p className="text-[10px] text-emerald-700 mt-1">Linked to existing supplier</p>
-            )}
-          </Field>
         </Section>
       </div>
     </div>
@@ -690,14 +695,32 @@ function ScatterRow({
         </button>
       </div>
 
+      {/* Who makes it, then who supplies its fabric — two different
+          businesses on most scatters, so they get two fields. The fabric
+          search below reads the FABRIC house's price list, not the maker's. */}
+      <Field label="Scatter supplier">
+        <Combobox
+          options={suppliers.map(su => ({ id: su.id, label: su.name, isPlatform: su.isPlatform }))}
+          value={scatter.supplierId ?? ''}
+          inputValue={scatter.supplierName}
+          onChange={(id, name) => onChange({ supplierId: id || null, supplierName: name })}
+        />
+      </Field>
+
       <SupplierFabricFields
-        label="Scatter supplier"
-        supplierId={scatter.supplierId}
-        supplierName={scatter.supplierName}
+        label="Fabric house"
+        supplierId={scatter.fabricSupplierId}
+        supplierName={scatter.fabricSupplierName}
         fabric={scatter.fabric}
         suppliers={suppliers}
         activePriceListIds={activePriceListIds}
-        onChange={onChange}
+        onChange={({ supplierId, supplierName, ...rest }) =>
+          onChange({
+            ...rest,
+            ...(supplierId !== undefined ? { fabricSupplierId: supplierId } : {}),
+            ...(supplierName !== undefined ? { fabricSupplierName: supplierName } : {}),
+          })
+        }
       />
 
       <div className="grid grid-cols-2 gap-2">
@@ -752,18 +775,17 @@ function SpecImagesSection({
 
   const usedUrls = new Set(images.map(i => i.url))
 
-  function addAsset(asset: StudioAsset) {
-    if (usedUrls.has(asset.url)) return
-    onChange([
-      ...images,
-      {
+  function addAssets(chosen: StudioAsset[]) {
+    const added = chosen
+      .filter(a => !usedUrls.has(a.url))
+      .map(a => ({
         id: newId(),
-        url: asset.url,
-        naturalWidth: asset.naturalWidth,
-        naturalHeight: asset.naturalHeight,
-        caption: asset.label ?? '',
-      },
-    ])
+        url: a.url,
+        naturalWidth: a.naturalWidth,
+        naturalHeight: a.naturalHeight,
+        caption: a.label ?? '',
+      }))
+    if (added.length) onChange([...images, ...added])
     setPicking(false)
   }
 
@@ -841,7 +863,7 @@ function SpecImagesSection({
       <div className="flex items-center gap-1.5">
         <button
           type="button"
-          onClick={() => setPicking(v => !v)}
+          onClick={() => setPicking(true)}
           className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-medium rounded-md border border-[#D8D3C8] bg-white text-[#8A877F] hover:text-[#2C2C2A] hover:border-[#9A7B4F] transition-colors cursor-pointer"
         >
           <Images size={11} /> Assets
@@ -866,31 +888,12 @@ function SpecImagesSection({
       </div>
 
       {picking && (
-        assets.length === 0 ? (
-          <p className="text-[10px] text-[#8A877F]">No images in this board&rsquo;s library yet.</p>
-        ) : (
-          <div className="max-h-[168px] overflow-y-auto grid grid-cols-3 gap-1.5 p-1.5 rounded-md border border-[#D8D3C8] bg-white">
-            {assets.map(asset => (
-              <button
-                key={asset.id}
-                type="button"
-                onClick={() => addAsset(asset)}
-                disabled={usedUrls.has(asset.url)}
-                title={asset.label ?? 'Unnamed'}
-                className="aspect-square rounded border border-[#D8D3C8] overflow-hidden cursor-pointer hover:border-[#9A7B4F] transition-colors disabled:opacity-30 disabled:cursor-default focus-visible:outline-2 focus-visible:outline-[#9A7B4F]"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={asset.url}
-                  alt={asset.label ?? ''}
-                  loading="lazy"
-                  crossOrigin="anonymous"
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        )
+        <SpecAssetPickerModal
+          assets={assets}
+          usedUrls={usedUrls}
+          onAdd={addAssets}
+          onClose={() => setPicking(false)}
+        />
       )}
     </Section>
   )

@@ -189,8 +189,14 @@ export function normalizeMaterial(m: Partial<MaterialEntry> & { id: string; type
 // fabric pricing is looked up live at convert-to-quote time.
 export interface ScatterEntry {
   id: string
+  // Who makes the scatter — the cushion maker, not the fabric house
   supplierId: string | null
   supplierName: string
+  // Who supplies the fabric. Separate from the maker above: a scatter is
+  // routinely made by one workroom in a fabric bought from another house,
+  // and it is this supplier's price list the fabric search reads.
+  fabricSupplierId: string | null
+  fabricSupplierName: string
   // Fabric: free text, or a platform-catalogue pick (same flow as MaterialEntry)
   fabric: string
   twinbruProductId: number | null
@@ -209,6 +215,8 @@ export function normalizeScatter(
     id: sc.id,
     supplierId: sc.supplierId ?? null,
     supplierName: sc.supplierName ?? '',
+    fabricSupplierId: sc.fabricSupplierId ?? null,
+    fabricSupplierName: sc.fabricSupplierName ?? '',
     fabric: sc.fabric ?? '',
     twinbruProductId: sc.twinbruProductId ?? null,
     colour: sc.colour ?? null,

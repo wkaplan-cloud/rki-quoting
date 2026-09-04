@@ -27,6 +27,7 @@ export interface RfqPdfItem {
   // Scatter cushions — separately supplied and separately priced
   scatters: {
     supplierName: string
+    fabricSupplierName: string
     fabric: string
     colour: string | null
     size: string
@@ -295,7 +296,9 @@ export function RfqPDF(props: RfqPdfProps) {
                       <Text style={s.specValue}>
                         {[
                           sc.size.trim(),
-                          sc.fabric.trim(),
+                          [sc.fabric.trim(), sc.fabricSupplierName.trim()]
+                            .filter(Boolean)
+                            .join(' — '),
                           sc.colour?.trim() ?? '',
                           sc.details.trim(),
                           sc.supplierName.trim() ? `via ${sc.supplierName.trim()}` : '',

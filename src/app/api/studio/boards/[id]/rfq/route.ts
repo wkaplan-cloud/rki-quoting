@@ -259,7 +259,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             type: m.type, description: m.description, supplierName: m.supplierName, colour: m.colour,
           })),
           scatters: (Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []).map(sc => ({
-            supplierName: sc.supplierName, fabric: sc.fabric, colour: sc.colour,
+            supplierName: sc.supplierName, fabricSupplierName: sc.fabricSupplierName,
+            fabric: sc.fabric, colour: sc.colour,
             size: sc.size, quantity: sc.quantity, details: sc.details,
           })),
           notes: row.notes ?? '',

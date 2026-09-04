@@ -105,7 +105,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
             [
               sc.quantity.trim() ? `${sc.quantity.trim()} ×` : '',
               sc.size,
-              sc.fabric,
+              [sc.fabric.trim(), sc.fabricSupplierName.trim()].filter(Boolean).join(' — '),
               sc.colour,
               sc.details,
               sc.supplierName ? `via ${sc.supplierName}` : '',

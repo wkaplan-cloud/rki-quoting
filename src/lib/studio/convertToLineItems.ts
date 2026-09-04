@@ -266,7 +266,15 @@ export function buildBoardRows({
         const size = sc.size.trim()
         return {
           item_name: size ? `Scatter ${size}` : 'Scatter',
-          description: [sc.fabric.trim(), sc.details.trim()].filter(Boolean).join('\n') || null,
+          // Supplier on the row is the maker; the fabric house rides in the
+          // description so whoever prices it knows where the fabric comes from
+          description:
+            [
+              [sc.fabric.trim(), sc.fabricSupplierName.trim()].filter(Boolean).join(' — '),
+              sc.details.trim(),
+            ]
+              .filter(Boolean)
+              .join('\n') || null,
           quantity: parseFloat(sc.quantity) || 1,
           unit: null,
           supplier_id: sc.supplierId,
