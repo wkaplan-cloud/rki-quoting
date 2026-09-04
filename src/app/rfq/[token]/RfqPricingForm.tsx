@@ -398,7 +398,10 @@ export function RfqPricingForm({
           aria-modal="true"
           aria-label={lightbox.name}
           onClick={() => setLightbox(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/80 cursor-zoom-out"
+          // --crop-avail-h is the height the image has to fit inside: the
+          // viewport less this overlay's own padding. CroppedImage turns it
+          // into a width cap so the picture scales down instead of clipping.
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/80 cursor-zoom-out [--crop-avail-h:calc(100vh-2rem)] sm:[--crop-avail-h:calc(100vh-4rem)]"
         >
           <button
             type="button"
@@ -409,7 +412,13 @@ export function RfqPricingForm({
           >
             <X size={20} />
           </button>
-          <span onClick={ev => ev.stopPropagation()} className="max-w-full max-h-full cursor-default">
+          {/* Definite width AND height, not shrink-to-fit: the image inside
+              sizes itself against this box, so a percentage max-height has to
+              have something real to resolve against */}
+          <span
+            onClick={ev => ev.stopPropagation()}
+            className="w-full h-full flex items-center justify-center cursor-default"
+          >
             <CroppedImage
               src={lightbox.image.url}
               alt={lightbox.name}

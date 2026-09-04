@@ -73,12 +73,18 @@ export function CroppedImage({
           aspectRatio: `${c.width} / ${c.height}`,
         }
       : {
+          // Fitting inside a box without distorting it has to be done on ONE
+          // axis: the width. Height stays auto so aspect-ratio derives it —
+          // clamping height with max-height instead would squash the picture,
+          // and an auto width collapses to zero because the only content is an
+          // absolutely-positioned <img>. So the height limit is expressed as a
+          // width: whatever the available height allows at this ratio, or the
+          // full width, whichever is smaller. `--crop-avail-h` is that height,
+          // set by the container (default: the viewport).
+          width: `min(100%, calc(var(--crop-avail-h, 100vh) * ${ratio}))`,
+          height: 'auto',
           maxWidth: '100%',
-          maxHeight: '100%',
           aspectRatio: `${c.width} / ${c.height}`,
-          // Without a width the aspect-ratio box collapses in a flex parent
-          width: ratio >= 1 ? '100%' : 'auto',
-          height: ratio >= 1 ? 'auto' : '100%',
         }
 
   return (
@@ -90,6 +96,9 @@ export function CroppedImage({
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
+        // 'contain' needs a definite box to measure its 100% against — the
+        // caller gives it one; this just fills it.
+        ...(fit === 'contain' ? { width: '100%', height: '100%' } : {}),
         ...style,
       }}
     >
