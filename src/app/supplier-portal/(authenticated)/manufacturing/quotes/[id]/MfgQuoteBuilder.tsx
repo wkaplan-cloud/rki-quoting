@@ -32,11 +32,15 @@ function calcLineItem(li: MfgQuoteLineItemDraft): MfgQuoteLineItemDraft {
   const compSelling = compCost * (1 + markup)
   const labourCost    = (li.labour_hours ?? 0) * (li.labour_rate ?? 0)
   const labourSelling = labourCost * (1 + markup)
-  const costPerUnit   = compCost + labourCost
   const unitPrice     = compSelling + labourSelling
   const lineTotal     = unitPrice * li.quantity
-  const profitPerUnit = unitPrice - costPerUnit
-  const marginPct     = unitPrice > 0 ? (profitPerUnit / unitPrice) * 100 : 0
+  // A component still waiting on a supplier price means the real cost is higher
+  // than what has been added up so far. Reporting the partial sum as the cost
+  // would overstate the margin, so the line counts as having no cost captured
+  // until every price is in.
+  const costPerUnit   = hasPending(li) ? null : compCost + labourCost
+  const profitPerUnit = costPerUnit === null ? 0 : unitPrice - costPerUnit
+  const marginPct     = costPerUnit === null || unitPrice <= 0 ? 0 : (profitPerUnit / unitPrice) * 100
   return { ...li, cost_per_unit: costPerUnit, unit_price: unitPrice, line_total: lineTotal, profit_per_unit: profitPerUnit, margin_percentage: marginPct }
 }
 
@@ -106,6 +110,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
     initialLineItems.length ? initialLineItems.map(li => ({ ...li, cost_builder_open: false })) : []
   )
   const [costBuilderModal, setCostBuilderModal] = useState<number | null>(null)
+  const [confirmBuild, setConfirmBuild] = useState<number | null>(null)
   const [applyVat, setApplyVat]     = useState(quote.apply_vat)
   const [vatRate] = useState(quote.vat_rate)
   const [saving, setSaving]       = useState(false)
@@ -205,6 +210,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   // counting them at R0 cost would report their full selling price as profit.
   const costedItems   = lineItems.filter(li => li.cost_per_unit !== null)
   const uncostedCount = lineItems.filter(li => li.cost_per_unit === null && li.line_total > 0).length
+  const pendingCount  = lineItems.filter(li => li.cost_per_unit === null && hasPending(li)).length
   const totalCost     = costedItems.reduce((s, li) => s + (li.cost_per_unit ?? 0) * li.quantity, 0)
   const costedRevenue = costedItems.reduce((s, li) => s + li.line_total, 0)
   const totalProfit   = costedRevenue - totalCost
@@ -234,23 +240,31 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
   function updateLineItem(idx: number, updates: Partial<MfgQuoteLineItemDraft>) {
     setLineItems(prev => {
       const next = [...prev]
-      const merged = { ...next[idx], ...updates }
-      // Adding components or labour means this line is being costed from the
-      // builder, so it stops being a typed price and the build takes over.
-      if (merged.pricing_mode === 'manual' && updates.pricing_mode === undefined) {
-        const gainedComponents = Array.isArray(updates.components) && updates.components.length > 0
-        const gainedLabour     = (updates.labour_hours ?? 0) > 0 || (updates.labour_rate ?? 0) > 0
-        if (gainedComponents || gainedLabour) merged.pricing_mode = 'built'
-      }
-      next[idx] = calcLineItem(merged)
+      next[idx] = calcLineItem({ ...next[idx], ...updates })
       return next
     })
   }
 
-  // ─── Manual pricing ─────────────────────────────────────────────────────────
-  // Cost and selling price are independent: typing a cost never overwrites a
-  // price the user has already set. Markup is the bridge — it is derived from
-  // the two, and editing it pushes a new selling price.
+  // ─── Pricing mode ───────────────────────────────────────────────────────────
+  // A line is either typed or built — never both, and never switched behind the
+  // user's back. Within manual mode cost and selling price are independent:
+  // typing a cost never overwrites a price already set. Markup is the bridge —
+  // derived from the two, and editing it pushes a new selling price.
+
+  function switchToBuilt(idx: number) {
+    const li = lineItems[idx]
+    if (li.pricing_mode !== 'built') {
+      // Built lines take their price from the components, so any typed figures
+      // are about to be replaced. Only worth asking when there is something to
+      // lose and nothing built up yet to replace it with.
+      const wouldDiscard = (li.unit_price > 0 || li.cost_per_unit !== null)
+        && li.components.length === 0 && !li.labour_hours && !li.labour_rate
+      if (wouldDiscard && confirmBuild !== idx) { setConfirmBuild(idx); return }
+      updateLineItem(idx, { pricing_mode: 'built' })
+    }
+    setConfirmBuild(null)
+    setCostBuilderModal(idx)
+  }
 
   function switchToManual(idx: number) {
     const li = lineItems[idx]
@@ -566,7 +580,7 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 </div>
               </div>
 
-              {isManual && li.cost_per_unit === null && li.unit_price > 0 && (
+              {isManual && li.cost_per_unit === null && li.unit_price > 0 && !pending && (
                 <p className="text-[11px]" style={{ color: S.muted }}>
                   No cost captured — this line is left out of the profit and margin totals.
                 </p>
@@ -612,21 +626,43 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               </div>
               {/* Build cost + Option pill */}
               <div className="flex items-center gap-1">
-                <button onClick={() => setCostBuilderModal(liIdx)}
-                  title={isManual ? 'Build this price up from materials, hardware and labour instead' : undefined}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{ color: S.accent, background: '#EFF6FF' }}>
-                  Build cost →
-                </button>
-                {!isReadOnly && !isManual && (
-                  <button onClick={() => switchToManual(liIdx)}
-                    title="Type a cost and selling price for this line instead of building it up"
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                    style={{ color: S.muted, background: S.input, border: `1px solid ${S.border}` }}
-                    onMouseEnter={e => { e.currentTarget.style.color = S.accent; e.currentTarget.style.borderColor = S.accent }}
-                    onMouseLeave={e => { e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
-                    Type price
-                  </button>
+                {isReadOnly ? (
+                  !isManual && (
+                    <button onClick={() => setCostBuilderModal(liIdx)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                      style={{ color: S.accent, background: '#EFF6FF' }}>
+                      View cost →
+                    </button>
+                  )
+                ) : (
+                  confirmBuild === liIdx ? (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => switchToBuilt(liIdx)}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                        style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}>
+                        Replace typed price
+                      </button>
+                      <button onClick={() => setConfirmBuild(null)}
+                        className="px-2 py-1.5 rounded-lg text-xs" style={{ color: S.muted }}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
+                      <button onClick={() => switchToManual(liIdx)}
+                        title="Type a cost and selling price for this line"
+                        className="px-2.5 py-1.5 text-xs font-medium transition-colors"
+                        style={{ background: isManual ? S.accent : S.card, color: isManual ? '#fff' : S.muted }}>
+                        Type price
+                      </button>
+                      <button onClick={() => switchToBuilt(liIdx)}
+                        title="Build this price up from materials, hardware and labour"
+                        className="px-2.5 py-1.5 text-xs font-medium transition-colors"
+                        style={{ background: !isManual ? S.accent : S.card, color: !isManual ? '#fff' : S.muted, borderLeft: `1px solid ${S.border}` }}>
+                        Build cost{!isManual ? ' →' : ''}
+                      </button>
+                    </div>
+                  )
                 )}
                 {!isReadOnly && (
                   <button onClick={() => toggleOptionItem(liIdx)}
@@ -641,9 +677,13 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 )}
               </div>
               {/* Margin — sits directly below Build cost + Option */}
-              {li.margin_percentage > 0 && (
-                <span className="text-[11px] px-2 py-0.5 rounded-full self-start" style={{ background: '#F0FDF4', color: '#16A34A' }}>
+              {li.cost_per_unit !== null && li.profit_per_unit !== 0 && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full self-start"
+                  style={li.profit_per_unit > 0
+                    ? { background: '#F0FDF4', color: '#16A34A' }
+                    : { background: '#FEF2F2', color: '#DC2626' }}>
                   {li.margin_percentage.toFixed(1)}% · {fmt(li.profit_per_unit * li.quantity)}
+                  {li.profit_per_unit < 0 && ' loss'}
                 </span>
               )}
             </div>
@@ -814,7 +854,8 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               </div>
               {uncostedCount > 0 && (
                 <p className="text-[11px] pb-2" style={{ color: S.muted, borderBottom: `1px solid ${S.border}` }}>
-                  Excludes {uncostedCount} line item{uncostedCount === 1 ? '' : 's'} with no cost captured.
+                  Excludes {uncostedCount} line item{uncostedCount === 1 ? '' : 's'} with no cost captured
+                  {pendingCount > 0 && ` (${pendingCount} awaiting supplier prices)`}.
                 </p>
               )}
             </>
@@ -890,11 +931,6 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
               </div>
               {/* Modal body */}
               <div className="px-5 py-5 space-y-5">
-                {li.pricing_mode === 'manual' && (
-                  <p className="text-xs px-3 py-2.5 rounded-xl" style={{ background: '#EFF6FF', color: S.accent, border: '1px solid #BFDBFE' }}>
-                    This line has a typed price of {fmt(li.unit_price)}. Adding a component or labour below switches it to a built-up cost and replaces that price.
-                  </p>
-                )}
                 {/* Markup */}
                 <div className="flex items-center gap-3">
                   <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Markup</label>
@@ -1006,7 +1042,9 @@ export function MfgQuoteBuilder({ quote, initialLineItems, priceBook: initialPri
                 {/* Cost summary */}
                 {(li.components.length > 0 || (li.labour_hours ?? 0) > 0) && (
                   <div className="flex items-center gap-2 pt-1 flex-wrap" style={{ borderTop: `1px solid ${S.border}` }}>
-                    <span className="text-xs" style={{ color: S.muted }}>Cost {fmtR(li.cost_per_unit ?? 0)}</span>
+                    <span className="text-xs" style={{ color: S.muted }}>
+                      Cost {li.cost_per_unit === null ? '— (awaiting supplier prices)' : fmtR(li.cost_per_unit)}
+                    </span>
                     <span className="text-xs" style={{ color: S.border }}>→</span>
                     <span className="text-xs font-semibold" style={{ color: S.text }}>
                       Selling {pending ? '—' : fmt(li.unit_price)}

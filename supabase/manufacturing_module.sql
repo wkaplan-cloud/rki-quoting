@@ -426,7 +426,9 @@ create table if not exists mfg_quote_line_items (
   line_total          numeric     not null default 0,   -- quantity × unit_price
   -- Internal fields (never on PDF)
   markup_percentage   numeric     not null default 30,  -- can differ from default
-  cost_per_unit       numeric     not null default 0,   -- from cost builder
+  pricing_mode        text        not null default 'built'
+                      check (pricing_mode in ('built', 'manual')),
+  cost_per_unit       numeric,                           -- null = no cost captured
   profit_per_unit     numeric     not null default 0,
   margin_percentage   numeric     not null default 0,
   created_at          timestamptz default now(),
@@ -1000,16 +1002,22 @@ language plpgsql
 security definer
 as $$
 declare
-  v_subtotal    numeric;
-  v_total_cost  numeric;
-  v_vat_rate    numeric;
-  v_apply_vat   boolean;
-  v_vat_amount  numeric;
+  v_subtotal       numeric;
+  v_total_cost     numeric;
+  v_costed_revenue numeric;
+  v_vat_rate       numeric;
+  v_apply_vat      boolean;
+  v_vat_amount     numeric;
 begin
+  -- Lines with a null cost_per_unit have no cost captured. They are left out
+  -- of both the cost and the revenue side of the profit sum — counting them at
+  -- R0 cost would report their whole selling price as profit. The subtotal is
+  -- unaffected: it stays the full client-facing figure.
   select
     coalesce(sum(line_total), 0),
-    coalesce(sum(cost_per_unit * quantity), 0)
-  into v_subtotal, v_total_cost
+    coalesce(sum(cost_per_unit * quantity) filter (where cost_per_unit is not null), 0),
+    coalesce(sum(line_total)               filter (where cost_per_unit is not null), 0)
+  into v_subtotal, v_total_cost, v_costed_revenue
   from mfg_quote_line_items
   where quote_id = p_quote_id;
 
@@ -1025,7 +1033,7 @@ begin
          vat_amount   = v_vat_amount,
          total        = v_subtotal + v_vat_amount,
          total_cost   = v_total_cost,
-         total_profit = v_subtotal - v_total_cost,
+         total_profit = v_costed_revenue - v_total_cost,
          updated_at   = now()
    where id = p_quote_id;
 end;
