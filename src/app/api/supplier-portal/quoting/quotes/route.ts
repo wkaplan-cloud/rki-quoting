@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { resolveCreatorName } from '@/lib/resolve-creator'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { nextQuoteNumber } from '@/lib/elec-quote-number'
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,19 +30,7 @@ export async function POST(req: NextRequest) {
       .eq('portal_account_id', account.id)
       .maybeSingle()
 
-    const autoCode   = (account.company_name ?? '').split(/\s+/).map((w: string) => w[0]).filter(Boolean).join('').toUpperCase().slice(0, 5)
-    const companyCode = (settings?.company_code ?? '').trim() || autoCode
-    const prefix = settings?.quote_prefix ?? 'QU'
-    const year   = new Date().getFullYear()
-
-    // Count all quotes for this account to generate next number
-    const { count } = await supabaseAdmin
-      .from('elec_quotes')
-      .select('id', { count: 'exact', head: true })
-      .eq('portal_account_id', account.id)
-
-    const num = String((count ?? 0) + 1).padStart(3, '0')
-    const quoteNumber = companyCode ? `${companyCode}-${prefix}-${year}-${num}` : `${prefix}-${year}-${num}`
+    const quoteNumber = await nextQuoteNumber(account.id, account.company_name, settings)
 
     const createdByName = await resolveCreatorName(user.id)
 

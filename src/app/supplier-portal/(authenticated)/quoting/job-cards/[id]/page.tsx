@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { JobCardDetail, type JobCardBooking } from './JobCardDetail'
 import type { ElecJobCard, ElecStaff, ElecClient, ElecCOC } from '@/lib/elec-types'
+import { normalizeExtras } from '@/lib/job-card-extras'
 
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -33,7 +34,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
 
   if (!card) notFound()
 
-  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }, { data: bookings }] = await Promise.all([
+  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }, { data: bookings }, { data: extras }, { data: extrasSettings }] = await Promise.all([
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     supabaseAdmin.from('elec_staff').select('id,name,color,role').eq('portal_account_id', accountId!).eq('is_active', true).order('name'),
@@ -50,9 +51,29 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       .eq('portal_account_id', accountId!)
       .order('scheduled_date')
       .then(res => res.error ? { data: [] } : res),
+    supabaseAdmin
+      .from('elec_job_card_extras')
+      .select('*, quote:elec_quotes(id,quote_number,status)')
+      .eq('job_card_id', id)
+      .order('created_at')
+      // null (not []) when the extra-work migration hasn't been run yet.
+      .then(res => res.error ? { data: null } : res),
+    // Separate from the settings row above so a missing column can't take the
+    // other job-card settings down with it.
+    supabaseAdmin
+      .from('elec_settings')
+      .select('job_card_extras_enabled')
+      .eq('portal_account_id', accountId!)
+      .maybeSingle()
+      .then(res => res.error ? { data: null } : res),
   ])
 
-  const jobCard: ElecJobCard = { ...card, materials: materials ?? [], photos: photos ?? [] }
+  const jobCard: ElecJobCard = {
+    ...card,
+    materials: materials ?? [],
+    photos: photos ?? [],
+    extras: normalizeExtras(extras),
+  }
 
   return (
     <JobCardDetail
@@ -67,6 +88,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       companyCode={(settings as { company_code?: string } | null)?.company_code ?? ''}
       initialCOC={(existingCOC ?? null) as ElecCOC | null}
       bookings={(bookings ?? []) as unknown as JobCardBooking[]}
+      extrasEnabled={extras !== null && (extrasSettings as { job_card_extras_enabled?: boolean } | null)?.job_card_extras_enabled !== false}
     />
   )
 }

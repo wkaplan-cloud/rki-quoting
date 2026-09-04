@@ -29,6 +29,7 @@ export interface ElecSettings {
   coc_prefix: string
   email_footer_text: string | null
   quote_send_bcc_admins: boolean
+  job_card_extras_enabled: boolean
   // Sage Accounting
   sage_username: string | null
   sage_password: string | null
@@ -220,6 +221,7 @@ export interface ElecQuote {
   archived_at: string | null
   invoiced: boolean | null
   is_quick_job: boolean | null
+  source_job_card_id: string | null
   share_token: string | null
   share_token_created_at: string | null
   created_by_name: string | null
@@ -695,6 +697,7 @@ export interface ElecJobCard {
   quote?: { id: string; quote_number: string; project_name: string } | null
   materials?: ElecJobCardMaterial[]
   photos?: ElecJobCardPhoto[]
+  extras?: ElecJobCardExtra[]
 }
 
 export interface ElecJobCardMaterial {
@@ -705,6 +708,24 @@ export interface ElecJobCardMaterial {
   unit_price: number | null
   cost_price: number | null
   created_at: string
+}
+
+/** Extra work the client asked for on site — priced by the office as its own quote. */
+export interface ElecJobCardExtra {
+  id: string
+  job_card_id: string
+  portal_account_id: string
+  description: string
+  unit: string | null
+  qty: number
+  notes: string | null
+  created_by_staff_id: string | null
+  created_by_name: string | null
+  quote_id: string | null
+  submitted_at: string | null
+  created_at: string
+  // Joined
+  quote?: { id: string; quote_number: string; status: ElecQuoteStatus } | null
 }
 
 export interface ElecJobCardPhoto {

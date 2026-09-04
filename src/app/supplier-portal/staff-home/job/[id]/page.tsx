@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { StaffJobCard } from './StaffJobCard'
 import type { ElecJobCard } from '@/lib/elec-types'
+import { normalizeExtras } from '@/lib/job-card-extras'
 
 export default async function StaffJobCardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -29,9 +30,17 @@ export default async function StaffJobCardPage({ params }: { params: Promise<{ i
 
   if (!card) notFound()
 
-  const [{ data: materials }, { data: photos }, { count: jobsCount }, { count: projectsCount }] = await Promise.all([
+  const [{ data: materials }, { data: photos }, { data: extras }, { data: settings }, { count: jobsCount }, { count: projectsCount }] = await Promise.all([
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
+    // null (not []) when the extra-work migration hasn't been run yet, which is
+    // what hides the step rather than showing one that can't save.
+    supabaseAdmin.from('elec_job_card_extras').select('*, quote:elec_quotes(id,quote_number,status)')
+      .eq('job_card_id', id).order('created_at')
+      .then(res => res.error ? { data: null } : res),
+    supabaseAdmin.from('elec_settings').select('job_card_extras_enabled')
+      .eq('portal_account_id', staff.portal_account_id).maybeSingle()
+      .then(res => res.error ? { data: null } : res),
     supabaseAdmin.from('elec_job_cards').select('*', { count: 'exact', head: true })
       .eq('staff_id', staff.id).eq('portal_account_id', staff.portal_account_id)
       .in('status', ['pending', 'in_progress']),
@@ -40,7 +49,12 @@ export default async function StaffJobCardPage({ params }: { params: Promise<{ i
       .in('status', ['approved', 'in_progress']),
   ])
 
-  const jobCard: ElecJobCard = { ...card, materials: materials ?? [], photos: photos ?? [] }
+  const jobCard: ElecJobCard = {
+    ...card,
+    materials: materials ?? [],
+    photos: photos ?? [],
+    extras: normalizeExtras(extras),
+  }
 
   return (
     <StaffJobCard
@@ -48,6 +62,7 @@ export default async function StaffJobCardPage({ params }: { params: Promise<{ i
       staffName={staff.name}
       jobsBadge={jobsCount ?? 0}
       projectsBadge={projectsCount ?? 0}
+      extrasEnabled={extras !== null && (settings as { job_card_extras_enabled?: boolean } | null)?.job_card_extras_enabled !== false}
     />
   )
 }

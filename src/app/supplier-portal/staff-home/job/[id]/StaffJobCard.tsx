@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Camera, Plus, X, Pen, CheckCircle2,
   Loader2, MapPin, Clock, Briefcase, Play, Square, ShoppingCart,
+  Wrench, Send,
 } from 'lucide-react'
-import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto, ElecMaterialRequest } from '@/lib/elec-types'
+import type { ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto, ElecMaterialRequest, ElecJobCardExtra } from '@/lib/elec-types'
 import { StaffBottomNav } from '../../StaffBottomNav'
 import { OfflineSyncBanner } from '../../OfflineSyncBanner'
 import { enqueue } from '@/lib/offline-punch-queue'
@@ -43,11 +44,12 @@ interface Props {
   staffName: string
   jobsBadge?: number
   projectsBadge?: number
+  extrasEnabled?: boolean
 }
 
-type Tab = 'report' | 'materials' | 'photos' | 'signature'
+type Tab = 'report' | 'materials' | 'extras' | 'photos' | 'signature'
 
-export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadge, projectsBadge }: Props) {
+export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadge, projectsBadge, extrasEnabled = true }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [tab, setTab] = useState<Tab>('report')
@@ -169,6 +171,18 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const [matDesc, setMatDesc] = useState('')
   const [matQty, setMatQty] = useState('1')
   const [matSaving, setMatSaving] = useState(false)
+
+  // Extra work found on site — office prices it as its own quote
+  const [extras, setExtras] = useState<ElecJobCardExtra[]>(initial.extras ?? [])
+  const [showAddExtra, setShowAddExtra] = useState(false)
+  const [exDesc, setExDesc] = useState('')
+  const [exQty, setExQty] = useState('1')
+  const [exUnit, setExUnit] = useState('')
+  const [exItemNotes, setExItemNotes] = useState('')
+  const [exNote, setExNote] = useState('')
+  const [exSaving, setExSaving] = useState(false)
+  const [exSubmitting, setExSubmitting] = useState(false)
+  const [exMsg, setExMsg] = useState('')
 
   // Material order requests (Need to Order)
   const [matOrders, setMatOrders] = useState<ElecMaterialRequest[]>([])
@@ -294,6 +308,58 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
     setCompleting(false)
   }
 
+  async function addExtra() {
+    if (!exDesc.trim() || exSaving) return
+    setExSaving(true)
+    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/extras`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        description: exDesc.trim(),
+        qty: parseFloat(exQty) || 1,
+        unit: exUnit.trim() || null,
+        notes: exItemNotes.trim() || null,
+      }),
+    })
+    if (res.ok) {
+      const x = await res.json() as ElecJobCardExtra
+      setExtras(prev => [...prev, x])
+      setExDesc(''); setExQty('1'); setExUnit(''); setExItemNotes('')
+      setShowAddExtra(false); setExMsg('')
+    } else {
+      setExMsg('Could not save that item — try again.')
+    }
+    setExSaving(false)
+  }
+
+  async function deleteExtra(extraId: string) {
+    await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/extras/${extraId}`, { method: 'DELETE' })
+    setExtras(prev => prev.filter(x => x.id !== extraId))
+  }
+
+  async function submitExtras() {
+    if (exSubmitting) return
+    setExSubmitting(true)
+    setExMsg('')
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/extras/submit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: exNote.trim() || null }),
+      })
+      const d = await res.json() as { quote_number?: string; error?: string }
+      if (res.ok) {
+        setExNote('')
+        setExMsg(`Sent to the office \u2713 \u2014 they are pricing quote ${d.quote_number} for the client.`)
+        const list = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/extras`).then(r => r.json()) as ElecJobCardExtra[]
+        setExtras(list)
+      } else {
+        setExMsg(d.error ?? 'Could not send \u2014 try again.')
+      }
+    } catch {
+      setExMsg('Could not send \u2014 try again.')
+    }
+    setExSubmitting(false)
+  }
+
   async function addMaterial() {
     if (!matDesc.trim() || matSaving) return
     setMatSaving(true)
@@ -390,9 +456,15 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   const materials = card.materials ?? []
   const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
 
+  const unsentExtras = extras.filter(x => !x.quote_id)
+  const sentExtras   = extras.filter(x => !!x.quote_id)
+
   const STEPS: { key: Tab; label: string; done: boolean }[] = [
     { key: 'report',    label: 'Report',    done: !!(card.work_found || card.work_done) },
     { key: 'materials', label: 'Materials', done: materials.length > 0 },
+    ...(extrasEnabled
+      ? [{ key: 'extras' as Tab, label: 'Extra Work', done: sentExtras.length > 0 }]
+      : []),
     { key: 'photos',    label: 'Photos',    done: photos.length > 0 },
     { key: 'signature', label: 'Sign',      done: !!(card.client_signature_url || card.sent_at) },
   ]
@@ -663,6 +735,135 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
                 </div>
               )}
             </div>
+
+            <button onClick={() => setTab(extrasEnabled ? 'extras' : 'photos')}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white"
+              style={{ background: S.accent }}>
+              {extrasEnabled ? 'Next: Extra Work →' : 'Next: Photos →'}
+            </button>
+          </div>
+        )}
+
+        {/* ── EXTRA WORK TAB ── */}
+        {tab === 'extras' && (
+          <div className="space-y-4">
+
+            <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+              <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}` }}>
+                <div className="flex items-center gap-2">
+                  <Wrench size={14} style={{ color: S.gold }} />
+                  <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: S.gold }}>Extra Work</span>
+                  {unsentExtras.length > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(217,164,65,0.12)', color: S.gold }}>{unsentExtras.length}</span>
+                  )}
+                </div>
+                {!showAddExtra && (
+                  <button onClick={() => setShowAddExtra(true)}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                    style={{ color: S.gold, border: '1px solid rgba(217,164,65,0.35)' }}>
+                    <Plus size={11} /> Add Item
+                  </button>
+                )}
+              </div>
+
+              <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
+                <p className="text-xs leading-relaxed" style={{ color: S.muted }}>
+                  Work the client wants that is not on this job card. Describe each item — the office prices it and sends the client a quote. Only do the work once they approve it.
+                </p>
+              </div>
+
+              {extras.length === 0 && !showAddExtra && (
+                <div className="py-6 flex flex-col items-center gap-1">
+                  <p className="text-xs" style={{ color: S.muted }}>No extra work logged</p>
+                </div>
+              )}
+
+              {extras.map((x, i) => (
+                <div key={x.id} className="flex items-start gap-3 px-4 py-3"
+                  style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: S.text }}>{x.description}</p>
+                    <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                      {x.qty} {x.unit ?? 'nr'}{x.notes ? ` · ${x.notes}` : ''}
+                    </p>
+                  </div>
+                  {x.quote_id ? (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                      style={{ background: 'rgba(22,163,74,0.1)', color: S.green }}>
+                      With office
+                    </span>
+                  ) : (
+                    <button onClick={() => void deleteExtra(x.id)} aria-label="Remove item" style={{ color: S.muted, flexShrink: 0 }}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {showAddExtra && (
+                <div className="px-4 py-3 space-y-3" style={{ borderTop: `1px solid ${S.border}` }}>
+                  <div>
+                    <label htmlFor="extra-desc" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>What does the client want done</label>
+                    <textarea id="extra-desc" value={exDesc} onChange={e => setExDesc(e.target.value)} rows={3}
+                      className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="w-1/3">
+                      <label htmlFor="extra-qty" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Qty</label>
+                      <input id="extra-qty" value={exQty} onChange={e => setExQty(e.target.value)} type="number" min="0.01" step="0.01"
+                        className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                        style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="extra-unit" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Unit</label>
+                      <input id="extra-unit" value={exUnit} onChange={e => setExUnit(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                        style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="extra-notes" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Notes for the office (optional)</label>
+                    <input id="extra-notes" value={exItemNotes} onChange={e => setExItemNotes(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowAddExtra(false); setExDesc(''); setExQty('1'); setExUnit(''); setExItemNotes('') }}
+                      className="flex-1 py-2 rounded-xl text-sm" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                      Cancel
+                    </button>
+                    <button onClick={() => void addExtra()} disabled={!exDesc.trim() || exSaving}
+                      className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ background: S.gold }}>
+                      {exSaving ? <Loader2 size={13} className="animate-spin inline" /> : 'Add Item'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {unsentExtras.length > 0 && (
+              <div className="rounded-2xl p-4 space-y-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <div>
+                  <label htmlFor="extra-note" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Message for the office (optional)</label>
+                  <textarea id="extra-note" value={exNote} onChange={e => setExNote(e.target.value)} rows={2}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
+                    style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.text }} />
+                </div>
+                <button onClick={() => void submitExtras()} disabled={exSubmitting}
+                  className="w-full py-3 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{ background: S.gold }}>
+                  {exSubmitting
+                    ? <Loader2 size={14} className="animate-spin" />
+                    : <><Send size={14} /> Send {unsentExtras.length} item{unsentExtras.length === 1 ? '' : 's'} to Office</>}
+                </button>
+              </div>
+            )}
+
+            {exMsg && (
+              <p className="text-xs font-medium" style={{ color: exMsg.startsWith('Sent') ? S.green : S.danger }}>{exMsg}</p>
+            )}
 
             <button onClick={() => setTab('photos')}
               className="w-full py-3 rounded-xl text-sm font-semibold text-white"

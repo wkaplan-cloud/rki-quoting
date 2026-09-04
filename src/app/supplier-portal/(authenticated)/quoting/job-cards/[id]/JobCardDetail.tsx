@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Send, Plus, X, Camera, Pen,
@@ -11,7 +12,7 @@ import {
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
   ElecJobCardStatus, ElecJobCardType, ElecStaff, ElecClient,
-  ElecMaterialRequest, ElecMaterialRequestStatus,
+  ElecMaterialRequest, ElecMaterialRequestStatus, ElecJobCardExtra,
 } from '@/lib/elec-types'
 import { ClientCombobox } from '../../ClientCombobox'
 import { StaffMultiSelect } from '../../StaffMultiSelect'
@@ -89,6 +90,19 @@ function Txt({ label, val, cb, placeholder, rows = 3 }: {
   )
 }
 
+function ExtraRow({ extra, first }: { extra: ElecJobCardExtra; first: boolean }) {
+  return (
+    <div className="px-5 py-3" style={{ borderTop: first ? undefined : `1px solid ${S.border}` }}>
+      <p className="text-sm font-medium" style={{ color: S.text }}>{extra.description}</p>
+      <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+        <span className="font-semibold">{extra.qty} {extra.unit ?? 'nr'}</span>
+        {extra.created_by_name ? ` · ${extra.created_by_name}` : ''}
+        {extra.notes ? ` · ${extra.notes}` : ''}
+      </p>
+    </div>
+  )
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -103,6 +117,7 @@ interface Props {
   companyCode?: string
   initialCOC?: import('@/lib/elec-types').ElecCOC | null
   bookings?: JobCardBooking[]
+  extrasEnabled?: boolean
 }
 
 /** A slot on the schedule for this job card. */
@@ -114,11 +129,11 @@ export interface JobCardBooking {
   staff: { id: string; name: string } | null
 }
 
-type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'photos' | 'signature' | 'coc'
+type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'extras' | 'photos' | 'signature' | 'coc'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [] }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -545,6 +560,42 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     setCard(c => ({ ...c, sage_invoice_id: String(data.sage_invoice_id), sage_invoice_status: String(data.sage_invoice_status), sage_customer_name: sageSelectedCustomer.name }))
   }
 
+  // ── Extra work ────────────────────────────────────────────────────────────
+  const extras = initial.extras ?? []
+  const unsentExtras = extras.filter(x => !x.quote_id)
+  const extrasQuoteGroups = Array.from(
+    extras.filter(x => !!x.quote_id).reduce((map, x) => {
+      const group = map.get(x.quote_id!)
+      if (group) group.items.push(x)
+      else map.set(x.quote_id!, { quote: x.quote ?? null, items: [x] })
+      return map
+    }, new Map<string, { quote: NonNullable<ElecJobCardExtra['quote']> | null; items: ElecJobCardExtra[] }>()),
+  )
+  const [extrasSubmitting, setExtrasSubmitting] = useState(false)
+  const [extrasMsg, setExtrasMsg] = useState('')
+
+  // Staff normally send the batch themselves; this covers the case where they
+  // logged the items and left it to the office.
+  async function createExtrasQuote() {
+    if (extrasSubmitting) return
+    setExtrasSubmitting(true)
+    setExtrasMsg('')
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/extras/submit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+      })
+      const d = await res.json() as { quote_id?: string; error?: string }
+      if (res.ok && d.quote_id) {
+        router.push(`/supplier-portal/quoting/quotes/${d.quote_id}`)
+        return
+      }
+      setExtrasMsg(d.error ?? 'Could not create the quote — try again.')
+    } catch {
+      setExtrasMsg('Could not create the quote — try again.')
+    }
+    setExtrasSubmitting(false)
+  }
+
   // ── Derived values ────────────────────────────────────────────────────────
 
   const ss = STATUS_STYLE[card.status] ?? STATUS_STYLE.pending
@@ -800,6 +851,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           { key: 'details',   label: 'Details'   },
           { key: 'report',    label: 'Report'     },
           { key: 'materials', label: `Orders${matOrders.length > 0 ? ` (${matOrders.length})` : ''}` },
+          ...(extrasEnabled
+            ? [{ key: 'extras' as Tab, label: `Extra Work${extras.length > 0 ? ` (${extras.length})` : ''}` }]
+            : []),
           { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}` },
           { key: 'signature', label: 'Signature'  },
           { key: 'coc',       label: 'COC'        },
@@ -1398,6 +1452,73 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Tab: Extra Work ──────────────────────────────────────────────── */}
+      {tab === 'extras' && (
+        <div>
+          <div className="rounded-2xl overflow-hidden mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <p className="text-sm font-semibold" style={{ color: S.text }}>Extra Work Reported On Site</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                Work the client asked for beyond this job card. Each batch becomes its own draft quote with every rate at zero — price the lines there, then send it to the client for approval.
+              </p>
+            </div>
+
+            {extras.length === 0 && (
+              <div className="py-10 flex flex-col items-center gap-2">
+                <Wrench size={28} style={{ color: S.border }} />
+                <p className="text-sm" style={{ color: S.muted }}>No extra work reported on this job</p>
+              </div>
+            )}
+
+            {unsentExtras.length > 0 && (
+              <div style={{ borderBottom: extrasQuoteGroups.length > 0 ? `1px solid ${S.border}` : undefined }}>
+                <div className="flex items-center gap-2 px-5 py-2.5" style={{ background: 'rgba(217,164,65,0.06)' }}>
+                  <Wrench size={13} style={{ color: S.gold }} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.gold }}>
+                    Not yet quoted ({unsentExtras.length})
+                  </span>
+                </div>
+                {unsentExtras.map((x, i) => <ExtraRow key={x.id} extra={x} first={i === 0} />)}
+                <div className="px-5 py-3" style={{ borderTop: `1px solid ${S.border}` }}>
+                  <button onClick={() => void createExtrasQuote()} disabled={extrasSubmitting}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white disabled:opacity-50"
+                    style={{ background: S.gold }}>
+                    {extrasSubmitting ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                    {extrasSubmitting ? 'Creating…' : 'Create Draft Quote'}
+                  </button>
+                  {extrasMsg && <p className="text-xs mt-2" style={{ color: S.danger }}>{extrasMsg}</p>}
+                </div>
+              </div>
+            )}
+
+            {extrasQuoteGroups.map(([quoteId, group], gi) => (
+              <div key={quoteId} style={{ borderTop: gi > 0 ? `1px solid ${S.border}` : undefined }}>
+                <div className="flex items-center justify-between gap-3 px-5 py-2.5" style={{ background: 'rgba(58,124,165,0.04)' }}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText size={13} style={{ color: S.accent }} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: S.accent }}>
+                      {group.quote?.quote_number ?? 'Draft quote'} · {group.items.length} item{group.items.length === 1 ? '' : 's'}
+                    </span>
+                    {group.quote?.status && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
+                        style={{ background: group.quote.status === 'draft' ? 'rgba(217,164,65,0.12)' : 'rgba(22,163,74,0.1)',
+                                 color: group.quote.status === 'draft' ? S.gold : S.green }}>
+                        {group.quote.status === 'draft' ? 'Needs pricing' : group.quote.status.replace('_', ' ')}
+                      </span>
+                    )}
+                  </div>
+                  <Link href={`/supplier-portal/quoting/quotes/${quoteId}`}
+                    className="text-xs font-semibold whitespace-nowrap" style={{ color: S.accent }}>
+                    Open quote →
+                  </Link>
+                </div>
+                {group.items.map((x, i) => <ExtraRow key={x.id} extra={x} first={i === 0} />)}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

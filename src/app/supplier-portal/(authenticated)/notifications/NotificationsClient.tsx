@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import Link from 'next/link'
-import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin, ShoppingCart, PenLine, GitPullRequest, AlertTriangle } from 'lucide-react'
+import { Bell, LogIn, LogOut, FileText, CheckCircle2, AlertCircle, Info, DollarSign, MapPin, ShoppingCart, PenLine, GitPullRequest, AlertTriangle, Wrench } from 'lucide-react'
 import type { ElecNotification } from '@/lib/elec-types'
 import { useVisiblePoll } from '@/lib/useVisiblePoll'
 
@@ -18,6 +18,7 @@ function typeIcon(type: string) {
     case 'job_completed':     return <CheckCircle2 size={14} style={{ color: S.green }} />
     case 'signature_captured':return <PenLine size={14} style={{ color: S.green }} />
     case 'vo_submitted':      return <GitPullRequest size={14} style={{ color: S.accent }} />
+    case 'extra_work':        return <Wrench size={14} style={{ color: S.gold }} />
     case 'material_request':  return <ShoppingCart size={14} style={{ color: S.gold }} />
     case 'report_submitted':  return <AlertTriangle size={14} style={{ color: S.danger }} />
     case 'job_card_photo':    return <Info size={14} style={{ color: S.accent }} />
@@ -35,6 +36,7 @@ function typeColor(type: string) {
     case 'job_completed':      return { bg: 'rgba(22,163,74,0.08)',   border: 'rgba(22,163,74,0.2)'   }
     case 'signature_captured': return { bg: 'rgba(22,163,74,0.06)',   border: 'rgba(22,163,74,0.15)'  }
     case 'vo_submitted':       return { bg: 'rgba(58,124,165,0.08)',  border: 'rgba(58,124,165,0.2)'  }
+    case 'extra_work':         return { bg: 'rgba(217,164,65,0.08)',  border: 'rgba(217,164,65,0.2)'  }
     case 'material_request':   return { bg: 'rgba(217,164,65,0.08)',  border: 'rgba(217,164,65,0.2)'  }
     case 'report_submitted':   return { bg: 'rgba(220,38,38,0.06)',   border: 'rgba(220,38,38,0.2)'   }
     default:                   return { bg: S.bg, border: S.border }
@@ -56,6 +58,11 @@ function getLink(n: ElecNotification): string | null {
       return jcId ? `/supplier-portal/quoting/job-cards/${jcId}` : null
     case 'vo_submitted':
       return qId ? `/supplier-portal/quoting/quotes/${qId}` : null
+    case 'extra_work':
+      // The draft quote is where the office acts on it; fall back to the card.
+      return qId
+        ? `/supplier-portal/quoting/quotes/${qId}`
+        : jcId ? `/supplier-portal/quoting/job-cards/${jcId}` : null
     default:
       return null
   }
