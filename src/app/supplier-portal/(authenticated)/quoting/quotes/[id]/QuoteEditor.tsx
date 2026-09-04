@@ -649,6 +649,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     if (!tabAccessible[activeTab]) setActiveTab('quote')
   }, [q.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [extrasJobCard, setExtrasJobCard] = useState<{ id: string; job_number: string } | null>(null)
+
   // ── Status transitions ───────────────────────────────────────────────────────
   async function transition(newStatus: ElecQuoteStatus, extra?: Partial<typeof q>) {
     setTransitioning(true)
@@ -657,6 +659,18 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
     setTransitioning(false)
     if (error) { alert(error.message); return }
     setQ(prev => ({ ...prev, ...update }))
+
+    // Approving extra work raises its job card, exactly as the client approval
+    // link does. No-op for every other quote.
+    if (newStatus === 'approved' || newStatus === 'in_progress') {
+      try {
+        const res = await fetch(`/api/supplier-portal/quoting/quotes/${q.id}/extras-job-card`, { method: 'POST' })
+        const d = await res.json() as { created?: boolean; job_card_id?: string; job_number?: string }
+        if (res.ok && d.created && d.job_card_id && d.job_number) {
+          setExtrasJobCard({ id: d.job_card_id, job_number: d.job_number })
+        }
+      } catch { /* the client approval link raises it either way */ }
+    }
   }
 
   async function archiveQuote() {
@@ -883,6 +897,21 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           </div>
         </div>
       </div>
+
+      {/* Extra work just approved — the job card that came out of it */}
+      {extrasJobCard && (
+        <div className="mb-4 rounded-xl px-4 py-3 flex items-center gap-3"
+          style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.25)' }}>
+          <Check size={15} style={{ color: S.green, flexShrink: 0 }} />
+          <span className="flex-1 text-sm" style={{ color: S.text }}>
+            Job card <strong>{extrasJobCard.job_number}</strong> created for this extra work — it still needs scheduling.
+          </span>
+          <button onClick={() => router.push(`/supplier-portal/quoting/job-cards/${extrasJobCard.id}`)}
+            className="text-sm font-semibold whitespace-nowrap" style={{ color: S.green }}>
+            Open →
+          </button>
+        </div>
+      )}
 
       {/* ── Project header ─────────────────────────────────────────────────── */}
       <div className="mb-5">
