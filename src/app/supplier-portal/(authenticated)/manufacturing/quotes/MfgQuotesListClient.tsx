@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle, RefreshCw, CopySlash, Archive, ArchiveRestore } from 'lucide-react'
 import type { MfgQuote, MfgClient } from '@/lib/mfg-types'
 import { useNow } from '@/lib/useNow'
+import { MfgClientCombobox } from '../MfgClientCombobox'
 
 const S = { card: '#FFFFFF', accent: '#1B4F8A', text: '#18181B', muted: '#71717A', border: '#E4E4E7', input: '#F4F4F5' }
 
@@ -35,7 +36,9 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [showNew, setShowNew]           = useState(false)
+  const [clientList, setClientList]     = useState(clients)
   const [newClientId, setNewClientId]   = useState('')
+  const [newClientName, setNewClientName] = useState('')
   const [newJobName, setNewJobName]     = useState('')
   const [creating, setCreating]         = useState(false)
   const [error, setError]               = useState('')
@@ -52,6 +55,7 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
 
   async function handleCreate() {
     if (!newJobName.trim()) { setError('Job name is required'); return }
+    if (!newClientId && newClientName.trim()) { setError(`"${newClientName.trim()}" isn't saved yet — pick a client from the list or use "Add" to create them.`); return }
     setCreating(true); setError('')
     const res = await fetch('/api/supplier-portal/manufacturing/quotes', {
       method: 'POST',
@@ -99,7 +103,7 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
     <div>
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search quotes, clients, jobs…"
+        <input value={search} onChange={e => setSearch(e.target.value)} aria-label="Search quotes, clients, jobs"
           className="flex-1 min-w-[180px] px-3.5 py-2 text-sm rounded-lg outline-none"
           style={{ background: S.card, border: `1px solid ${S.border}`, color: S.text }} />
         <div className="flex rounded-lg overflow-hidden" style={{ border: `1px solid ${S.border}` }}>
@@ -117,7 +121,7 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
           <Archive size={14} /> {showArchived ? 'Hide archived' : 'Archived'}
         </button>
         {!showArchived && (
-          <button onClick={() => setShowNew(true)}
+          <button onClick={() => { setNewClientId(''); setNewClientName(''); setNewJobName(''); setError(''); setShowNew(true) }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90"
             style={{ background: S.accent }}>
             <Plus size={14} /> New Quote
@@ -133,17 +137,19 @@ export function MfgQuotesListClient({ initialQuotes, clients, defaultMarkup, sho
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Client</label>
-                <select value={newClientId} onChange={e => setNewClientId(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm rounded-lg outline-none"
-                  style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}>
-                  <option value="">No client / select later</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}</option>)}
-                </select>
+                <MfgClientCombobox
+                  clients={clientList}
+                  clientId={newClientId || null}
+                  displayName={newClientName}
+                  onChange={(id, name) => { setNewClientId(id ?? ''); setNewClientName(name) }}
+                  onNewClient={c => setClientList(prev => [...prev, c].sort((a, b) => a.client_name.localeCompare(b.client_name)))}
+                />
+                <p className="mt-1.5 text-xs" style={{ color: S.muted }}>Type to search, or add a new client. Leave blank to choose later.</p>
               </div>
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Job Name</label>
                 <input value={newJobName} onChange={e => setNewJobName(e.target.value)}
-                  placeholder="e.g. Master Bedroom Built-ins"
+                  aria-label="Job name"
                   className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
                   style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
                   onKeyDown={e => e.key === 'Enter' && handleCreate()} />
