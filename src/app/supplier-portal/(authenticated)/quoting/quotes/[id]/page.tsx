@@ -88,6 +88,37 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
 
   if (!quote) notFound()
 
+  // A quote raised off a job card is not a project — it turns back into a job
+  // card once approved, so the editor drops the project machinery for it.
+  let extrasContext: {
+    sourceJobCardId: string
+    sourceJobNumber: string
+    jobCard: { id: string; job_number: string } | null
+  } | null = null
+
+  if (quote.source_job_card_id) {
+    const [{ data: sourceCard }, { data: resultCard }] = await Promise.all([
+      supabaseAdmin
+        .from('elec_job_cards')
+        .select('id, job_number')
+        .eq('id', quote.source_job_card_id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('elec_job_cards')
+        .select('id, job_number')
+        .eq('quote_id', id)
+        .limit(1)
+        .maybeSingle(),
+    ])
+    if (sourceCard) {
+      extrasContext = {
+        sourceJobCardId: sourceCard.id,
+        sourceJobNumber: sourceCard.job_number,
+        jobCard: resultCard ?? null,
+      }
+    }
+  }
+
   return (
     <QuoteEditor
       portalAccountId={account.id}
@@ -103,6 +134,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       voPrefix={settings?.vo_prefix ?? 'VO'}
       companyCode={companyCode}
       sageConnected={!!(settings?.sage_company_id)}
+      extrasContext={extrasContext}
     />
   )
 }

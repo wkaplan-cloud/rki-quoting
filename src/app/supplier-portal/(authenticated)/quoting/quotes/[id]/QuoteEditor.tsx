@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   ChevronLeft, Save, Plus, Trash2, ChevronDown, ChevronRight,
   AlertCircle, Check, GripVertical, FolderPlus, Loader2, X, Download, Send, Link, FileText,
-  MoreHorizontal, Archive, Lock, Printer, Copy,
+  MoreHorizontal, Archive, Lock, Printer, Copy, Wrench,
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import type { DropResult, DraggableProvidedDragHandleProps } from '@hello-pangea/dnd'
@@ -406,12 +406,18 @@ interface Props {
   voPrefix: string
   companyCode: string
   sageConnected?: boolean
+  /** Set when this quote was raised off a job card, so it behaves as one rather than a project. */
+  extrasContext?: {
+    sourceJobCardId: string
+    sourceJobNumber: string
+    jobCard: { id: string; job_number: string } | null
+  } | null
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type QuoteTab = 'quote' | 'as_built' | 'claims' | 'variations' | 'materials' | 'snag' | 'coc' | 'reporting'
 
-export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, companyCode, sageConnected = false }: Props) {
+export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: initSections, items: initItems, clients: initialClients, staff = [], variations, snags, coc, claims, voPrefix, companyCode, sageConnected = false, extrasContext = null }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -451,15 +457,20 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   const locked = ['approved', 'in_progress', 'completed', 'cancelled'].includes(q.status)
   const showTabs = true
+  // Extra work off a job card isn't a project: no variations, claims, snag list
+  // or as-built. Once approved it becomes a job card, and everything after that
+  // happens there. Anything further the client wants is a new job card, not a VO.
+  const started = ['approved', 'in_progress', 'completed'].includes(q.status)
+  const isJobCardQuote = !!extrasContext
   const tabAccessible: Record<QuoteTab, boolean> = {
     quote:      true,
-    variations: ['approved', 'in_progress', 'completed'].includes(q.status),
-    claims:     ['approved', 'in_progress', 'completed'].includes(q.status),
-    materials:  ['approved', 'in_progress', 'completed'].includes(q.status),
-    snag:       ['approved', 'in_progress', 'completed'].includes(q.status),
-    coc:        ['approved', 'in_progress', 'completed'].includes(q.status),
-    as_built:   ['approved', 'in_progress', 'completed'].includes(q.status),
-    reporting:  ['approved', 'in_progress', 'completed'].includes(q.status),
+    variations: started && !isJobCardQuote,
+    claims:     started && !isJobCardQuote,
+    materials:  started && !isJobCardQuote,
+    snag:       started && !isJobCardQuote,
+    coc:        started && !isJobCardQuote,
+    as_built:   started && !isJobCardQuote,
+    reporting:  started && !isJobCardQuote,
   }
 
   const [showSendModal, setShowSendModal] = useState(false)
@@ -898,20 +909,32 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
         </div>
       </div>
 
-      {/* Extra work just approved — the job card that came out of it */}
-      {extrasJobCard && (
-        <div className="mb-4 rounded-xl px-4 py-3 flex items-center gap-3"
-          style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.25)' }}>
-          <Check size={15} style={{ color: S.green, flexShrink: 0 }} />
-          <span className="flex-1 text-sm" style={{ color: S.text }}>
-            Job card <strong>{extrasJobCard.job_number}</strong> created for this extra work — assign it and put it on the schedule.
-          </span>
-          <button onClick={() => router.push(`/supplier-portal/quoting/job-cards/${extrasJobCard.id}`)}
-            className="text-sm font-semibold whitespace-nowrap" style={{ color: S.green }}>
-            Open →
-          </button>
-        </div>
-      )}
+      {/* Where this quote came from, and where the work goes once approved */}
+      {extrasContext && (() => {
+        const madeCard = extrasJobCard ?? extrasContext.jobCard
+        return (
+          <div className="mb-4 rounded-xl px-4 py-3 flex items-center gap-3"
+            style={{
+              background: madeCard ? 'rgba(22,163,74,0.06)' : 'rgba(217,164,65,0.06)',
+              border: `1px solid ${madeCard ? 'rgba(22,163,74,0.25)' : 'rgba(217,164,65,0.3)'}`,
+            }}>
+            {madeCard
+              ? <Check size={15} style={{ color: S.green, flexShrink: 0 }} />
+              : <Wrench size={15} style={{ color: S.gold, flexShrink: 0 }} />}
+            <span className="flex-1 text-sm" style={{ color: S.text }}>
+              {madeCard
+                ? <>Approved — job card <strong>{madeCard.job_number}</strong> is the work. Assign it and put it on the schedule.</>
+                : <>Extra work off job card <strong>{extrasContext.sourceJobNumber}</strong>. Price it, then send it to the client.</>}
+            </span>
+            <button
+              onClick={() => router.push(`/supplier-portal/quoting/job-cards/${madeCard ? madeCard.id : extrasContext.sourceJobCardId}`)}
+              className="text-sm font-semibold whitespace-nowrap"
+              style={{ color: madeCard ? S.green : S.gold }}>
+              {madeCard ? `Open ${madeCard.job_number} →` : `Open ${extrasContext.sourceJobNumber} →`}
+            </button>
+          </div>
+        )
+      })()}
 
       {/* ── Project header ─────────────────────────────────────────────────── */}
       <div className="mb-5">
