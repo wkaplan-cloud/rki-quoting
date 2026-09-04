@@ -50,7 +50,8 @@ function fmtDateTime(iso: string | null) {
 }
 
 function fmtR(n: number) {
-  return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  // Non-breaking space: "R" and the amount must stay on one line in narrow columns.
+  return 'R\u00A0' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // ── Form primitives ───────────────────────────────────────────────────────────
@@ -708,7 +709,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </button>
           )}
           {/* Send */}
-          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url ? 'pdf' : 'link'); setShowSend(true) }}
+          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
             style={{ background: S.accent }}>
             <Send size={13} /> Send
@@ -930,7 +931,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     : 'The client is holding an older version. Resend the job card so their copy matches.'}
                 </p>
               </div>
-              <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url ? 'pdf' : 'link'); setShowSend(true) }}
+              <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap"
                 style={{ background: S.gold }}>
                 Resend
@@ -1200,7 +1201,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             {/* Column headers */}
             {(materials.length > 0 || newMat !== null) && (
               <div className="grid px-5 py-2 text-[10px] font-bold uppercase tracking-wider"
-                style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px', gap: '6px', color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingRight: 76, color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
                 <span>Description</span>
                 <span className="text-center">Qty</span>
                 <span className="text-right">Cost</span>
@@ -1227,7 +1228,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isEditing ? 'rgba(58,124,165,0.03)' : undefined, position: 'relative' }}
                   onClick={!isEditing ? () => startEditMaterial(m) : undefined}>
                   <div className="grid px-5 items-center"
-                    style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px', gap: '6px', paddingTop: 10, paddingBottom: 10 }}>
+                    style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
                     {isEditing ? (
                       <input value={editingMat.desc} autoFocus
                         onClick={e => e.stopPropagation()}
@@ -1244,7 +1245,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
                     ) : (
-                      <span className="text-sm text-center tabular-nums font-mono" style={{ color: S.muted }}>{m.qty}</span>
+                      <span className="text-sm text-center tabular-nums font-mono whitespace-nowrap" style={{ color: S.muted }}>{m.qty}</span>
                     )}
                     {isEditing ? (
                       <input type="number" value={editingMat.cost} min="0" step="0.01" placeholder="0"
@@ -1257,7 +1258,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
                     ) : (
-                      <span className="text-sm text-right tabular-nums font-mono" style={{ color: S.muted }}>{m.cost_price != null ? fmtR(m.cost_price) : '—'}</span>
+                      <span className="text-sm text-right tabular-nums font-mono whitespace-nowrap" style={{ color: S.muted }}>{m.cost_price != null ? fmtR(m.cost_price) : '—'}</span>
                     )}
                     {isEditing ? (
                       <input type="number" value={editingMat.markup} min="0" step="0.1" placeholder="0"
@@ -1270,7 +1271,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
                     ) : (
-                      <span className="text-sm text-right tabular-nums" style={{ color: S.muted }}>
+                      <span className="text-sm text-right tabular-nums whitespace-nowrap" style={{ color: S.muted }}>
                         {m.cost_price != null && m.unit_price != null ? `${computeMarkup(String(m.cost_price), String(m.unit_price))}%` : '—'}
                       </span>
                     )}
@@ -1285,9 +1286,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.accent}`, color: S.text, background: '#fff' }} />
                     ) : (
-                      <span className="text-sm text-right tabular-nums font-mono" style={{ color: S.text }}>{m.unit_price != null ? fmtR(m.unit_price) : '—'}</span>
+                      <span className="text-sm text-right tabular-nums font-mono whitespace-nowrap" style={{ color: S.text }}>{m.unit_price != null ? fmtR(m.unit_price) : '—'}</span>
                     )}
-                    <span className="text-sm text-right font-semibold tabular-nums font-mono" style={{ color: rowTotal > 0 ? S.text : S.muted }}>
+                    <span className="text-sm text-right font-semibold tabular-nums font-mono whitespace-nowrap" style={{ color: rowTotal > 0 ? S.text : S.muted }}>
                       {rowTotal > 0 ? fmtR(rowTotal) : '—'}
                     </span>
                   </div>
@@ -1326,7 +1327,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               return (
                 <div style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(22,163,74,0.03)', position: 'relative' }}>
                   <div className="grid px-5 items-center"
-                    style={{ gridTemplateColumns: '1fr 55px 85px 65px 85px 90px', gap: '6px', paddingTop: 10, paddingBottom: 10 }}>
+                    style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
                     <input value={newMat.desc} autoFocus
                       onChange={e => setNewMat(p => p ? { ...p, desc: e.target.value } : p)}
                       placeholder="Description"
@@ -1361,7 +1362,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       }}
                       className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                       style={{ border: `1px solid ${S.accent}`, color: S.text, background: '#fff' }} />
-                    <span className="text-sm text-right font-semibold tabular-nums font-mono" style={{ color: addTotal > 0 ? S.green : S.muted }}>
+                    <span className="text-sm text-right font-semibold tabular-nums font-mono whitespace-nowrap" style={{ color: addTotal > 0 ? S.green : S.muted }}>
                       {addTotal > 0 ? fmtR(addTotal) : '—'}
                     </span>
                   </div>
@@ -1385,9 +1386,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             {/* Materials subtotal */}
             {materials.length > 0 && (
               <div className="flex items-center justify-between px-5 py-3"
-                style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
+                style={{ borderTop: `1px solid ${S.border}`, background: S.bg, paddingRight: 76 }}>
                 <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Subtotal</p>
-                <p className="text-sm font-semibold font-mono" style={{ color: S.muted }}>{fmtR(totalMaterials)}</p>
+                <p className="text-sm font-semibold font-mono whitespace-nowrap" style={{ color: S.muted }}>{fmtR(totalMaterials)}</p>
               </div>
             )}
           </div>
@@ -1427,7 +1428,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       <span className="text-sm font-medium" style={{ color: S.text }}>{o.description}</span>
                       {o.unit && <span className="ml-1.5 text-xs" style={{ color: S.muted }}>{o.unit}</span>}
                     </div>
-                    <span className="text-sm text-center tabular-nums font-mono" style={{ color: S.muted }}>{o.qty}</span>
+                    <span className="text-sm text-center tabular-nums font-mono whitespace-nowrap" style={{ color: S.muted }}>{o.qty}</span>
                     <span className="text-xs text-right truncate" style={{ color: S.muted }}>{o.supplier ?? '—'}</span>
                   </div>
                 ))}
@@ -1777,7 +1778,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 onClick={() => {
                   setSendEmail(card.client_email ?? card.client?.email ?? '')
                   setShowFinishFlow(false)
-                  setSendMethod(card.client_signature_url ? 'pdf' : 'link')
+                  setSendMethod(card.client_signature_url && !card.amended_at ? 'pdf' : 'link')
                   setShowSend(true)
                 }}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
@@ -1907,7 +1908,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setSendMethod('link')}
-                      disabled={!!card.client_signature_url}
+                      disabled={!!card.client_signature_url && !card.amended_at}
                       className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left disabled:opacity-50"
                       style={{
                         background: sendMethod === 'link' ? 'rgba(58,124,165,0.08)' : S.bg,
@@ -1920,9 +1921,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         </span>
                       </div>
                       <span className="text-[11px] leading-snug" style={{ color: S.muted }}>
-                        {card.client_signature_url
-                          ? 'Already signed — nothing left to sign'
-                          : 'Client signs online, PDF attached too'}
+                        {card.client_signature_url && card.amended_at
+                          ? 'Edited since signing — client re-approves online'
+                          : card.client_signature_url
+                            ? 'Already signed — nothing left to sign'
+                            : 'Client signs online, PDF attached too'}
                       </span>
                     </button>
                     <button

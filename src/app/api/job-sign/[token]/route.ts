@@ -50,12 +50,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     const { data: card } = await supabaseAdmin
       .from('elec_job_cards')
-      .select('id, portal_account_id, client_signature_url, job_number, title, status')
+      .select('id, portal_account_id, client_signature_url, job_number, title, status, amended_at')
       .eq('share_token', token)
       .maybeSingle()
 
     if (!card) return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
-    if (card.client_signature_url) return NextResponse.json({ error: 'Already signed' }, { status: 409 })
+    // Signed and unchanged since — nothing to approve. Signed but amended is a
+    // re-approval of the new version, which is exactly what the link is for.
+    if (card.client_signature_url && !card.amended_at) {
+      return NextResponse.json({ error: 'Already signed' }, { status: 409 })
+    }
 
     // Decode base64 data URL and upload to storage
     const base64Data = signature.replace(/^data:image\/\w+;base64,/, '')
@@ -70,6 +74,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const { data: { publicUrl } } = supabaseAdmin.storage
       .from('job-card-photos')
       .getPublicUrl(path)
+
+    // Drop the superseded signature so it can't print as a job photo on the PDF.
+    if (card.client_signature_url) {
+      await supabaseAdmin
+        .from('elec_job_card_photos')
+        .delete()
+        .eq('job_card_id', card.id)
+        .eq('url', card.client_signature_url)
+    }
 
     // Same shape the on-site flow writes: the signature is a captioned photo,
     // and the PDF reads the signer's name off that caption.

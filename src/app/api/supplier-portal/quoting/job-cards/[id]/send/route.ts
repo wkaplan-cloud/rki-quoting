@@ -130,8 +130,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       })
     )
 
-    // A sign link is only worth sending while there is still a signature to give.
-    const signToken = include_link && !jobCard.client_signature_url
+    // A sign link is worth sending while there is still a signature to give —
+    // either the card has never been signed, or it was edited after signing and
+    // the client needs to approve the new version.
+    const needsSignature = !jobCard.client_signature_url || !!jobCard.amended_at
+    const signToken = include_link && needsSignature
       ? (jobCard.share_token ?? randomUUID())
       : null
     const signUrl = signToken
