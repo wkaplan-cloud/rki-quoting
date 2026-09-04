@@ -28,6 +28,24 @@ export default async function MfgDashboardPage() {
     .in('status', ['draft', 'sent'])
     .order('sent_at', { ascending: true, nullsFirst: false })
 
+  // Quotes that turned into work. Superseded revisions carry their own status
+  // and are excluded, so a revised quote is only counted once.
+  const { data: wonQuotes } = await supabase
+    .from('mfg_quotes')
+    .select('id, total_profit, total_cost, status')
+    .eq('portal_account_id', account.id)
+    .is('archived_at', null)
+    .in('status', ['accepted', 'invoiced'])
+
+  const won = wonQuotes ?? []
+  // A quote with no captured cost tells us nothing about profit — it is counted
+  // in the coverage line instead of being averaged in at 100% margin.
+  const wonCosted = won.filter(q => (q.total_cost ?? 0) > 0)
+  const wonProfit = wonCosted.reduce((s, q) => s + (q.total_profit ?? 0), 0)
+  // total_profit = costed revenue - total_cost, so the revenue those margins
+  // are measured against comes back out of the two stored figures.
+  const wonRevenue = wonCosted.reduce((s, q) => s + (q.total_profit ?? 0) + (q.total_cost ?? 0), 0)
+
   const now = new Date()
 
   // Cash received has to come from the payments themselves. Summing each
@@ -95,6 +113,11 @@ export default async function MfgDashboardPage() {
       pipelineCount: (quotesOpen ?? []).length,
       // Money still owed, whenever it was invoiced. A month-scoped figure
       // resets on the 1st and says nothing about what is actually outstanding.
+      wonProfit,
+      wonRevenue,
+      wonMargin: wonRevenue > 0 ? (wonProfit / wonRevenue) * 100 : 0,
+      wonCostedCount: wonCosted.length,
+      wonCount: won.length,
       outstandingTotal: unpaid.reduce((s, i) => s + (i.total - i.amount_paid), 0),
       outstandingCount: unpaid.length,
       overdueTotal: unpaid

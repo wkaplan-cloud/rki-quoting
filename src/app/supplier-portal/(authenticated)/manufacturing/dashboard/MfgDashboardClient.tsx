@@ -9,7 +9,7 @@ function fmtR(n: number) { return 'R ' + n.toLocaleString('en-ZA', { minimumFrac
 function pct(a: number, b: number) { if (b === 0) return null; return ((a - b) / b * 100).toFixed(0) }
 
 interface DashData {
-  kpis: { invoicedThisMonth: number; invoicedLastMonth: number; receivedThisMonth: number; receivedLastMonth: number; pipelineValue: number; pipelineCount: number; outstandingTotal: number; outstandingCount: number; overdueTotal: number }
+  kpis: { invoicedThisMonth: number; invoicedLastMonth: number; receivedThisMonth: number; receivedLastMonth: number; pipelineValue: number; pipelineCount: number; outstandingTotal: number; outstandingCount: number; overdueTotal: number; wonProfit: number; wonRevenue: number; wonMargin: number; wonCostedCount: number; wonCount: number }
   attention: { type: string; entity_type: string; entity_id: string; entity_number: string; client_name: string; job_name: string; value: number; days: number }[]
   recentInvoices: { id: string; invoice_number: string; total: number; amount_paid: number; status: string; due_date: string | null; job?: { job_name?: string; client?: { client_name?: string } | null } | null }[]
   openQuotes: { id: string; quote_number: string; total: number; status: string; sent_at: string | null; valid_until: string | null; job?: { job_name?: string; client?: { client_name?: string } | null } | null }[]
@@ -128,6 +128,39 @@ export function MfgDashboardClient({ data, companyName }: Props) {
           </p>
         </div>
       </div>
+
+      {/* Profit on won work */}
+      {kpis.wonCount > 0 && (
+        <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: S.muted }}>Profit On Work Won</p>
+          {kpis.wonCostedCount === 0 ? (
+            <p className="text-sm" style={{ color: S.muted }}>
+              None of your {kpis.wonCount} accepted quote{kpis.wonCount === 1 ? '' : 's'} {kpis.wonCount === 1 ? 'has' : 'have'} costs
+              captured — add a cost to a quote to see what you are making on it.
+            </p>
+          ) : (
+            <div className="flex items-baseline justify-between gap-4 flex-wrap">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-2xl font-bold" style={{ color: kpis.wonProfit >= 0 ? '#16A34A' : '#DC2626' }}>
+                  {fmtR(kpis.wonProfit)}
+                </span>
+                <span className="text-sm font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: kpis.wonProfit >= 0 ? '#F0FDF4' : '#FEF2F2', color: kpis.wonProfit >= 0 ? '#16A34A' : '#DC2626' }}>
+                  {kpis.wonMargin.toFixed(1)}% margin
+                </span>
+                <span className="text-xs" style={{ color: S.muted }}>on {fmtR(kpis.wonRevenue)} of work</span>
+              </div>
+              <span className="text-[11px]" style={{ color: kpis.wonCostedCount < kpis.wonCount ? '#D97706' : S.muted }}>
+                {kpis.wonCostedCount} of {kpis.wonCount} accepted quote{kpis.wonCount === 1 ? '' : 's'} costed
+                {kpis.wonCostedCount < kpis.wonCount && ` · ${kpis.wonCount - kpis.wonCostedCount} with no cost captured`}
+              </span>
+            </div>
+          )}
+          <p className="text-[11px] mt-3 pt-3" style={{ color: S.muted, borderTop: `1px solid ${S.border}` }}>
+            Quoted profit — what you expected to make when you priced the work, not what the jobs actually cost to build.
+          </p>
+        </div>
+      )}
 
       {/* Two columns: pipeline + invoice tracker */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
