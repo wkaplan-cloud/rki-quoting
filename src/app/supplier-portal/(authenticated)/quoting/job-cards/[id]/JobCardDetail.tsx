@@ -229,6 +229,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [editingMatId, setEditingMatId] = useState<string | null>(null)
   const [editingMat, setEditingMat] = useState({ desc: '', qty: '', price: '', cost: '', markup: '' })
   const [matSaving, setMatSaving] = useState(false)
+  // Only a real edit should save — opening a row for editing must not, or it
+  // would stamp the card as amended without anything having changed.
+  const [editDirty, setEditDirty] = useState(false)
+  const matTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Material order requests (from staff)
   const [matOrders, setMatOrders] = useState<ElecMaterialRequest[]>([])
@@ -399,8 +403,17 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     return (((s - c) / c) * 100).toFixed(1)
   }
 
+  // Debounced autosave for the row being edited. The row stays open so the
+  // fields never unmount mid-keystroke.
+  useEffect(() => {
+    if (!editingMatId || !editDirty) return
+    clearTimeout(matTimer.current)
+    matTimer.current = setTimeout(() => { void updateMaterial(false) }, 800)
+    return () => clearTimeout(matTimer.current)
+  }, [editingMat, editingMatId, editDirty]) // eslint-disable-line react-hooks/exhaustive-deps
+
   async function saveMaterial() {
-    if (!newMat || !newMat.desc.trim()) return
+    if (!newMat || !newMat.desc.trim()) { setNewMat(null); return }
     setMatSaving(true)
     const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/materials`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -419,16 +432,24 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     setMatSaving(false)
   }
 
+  function editMat(fn: (p: { desc: string; qty: string; price: string; cost: string; markup: string }) => { desc: string; qty: string; price: string; cost: string; markup: string }) {
+    setEditingMat(fn)
+    setEditDirty(true)
+  }
+
   function startEditMaterial(m: ElecJobCardMaterial) {
     setEditingMatId(m.id)
+    setEditDirty(false)
     const cost = m.cost_price != null ? String(m.cost_price) : ''
     const sell = m.unit_price != null ? String(m.unit_price) : ''
     const markup = cost && sell ? computeMarkup(cost, sell) : ''
     setEditingMat({ desc: m.description, qty: String(m.qty), price: sell, cost, markup })
   }
 
-  async function updateMaterial() {
+  // Autosaves while the row is open, then commits and closes when focus leaves.
+  async function updateMaterial(close = true) {
     if (!editingMatId) return
+    if (!editDirty) { if (close) setEditingMatId(null); return }
     setMatSaving(true)
     const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/materials/${editingMatId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -442,7 +463,8 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     if (res.ok) {
       const updated = (await res.json() as { ok: boolean; material: ElecJobCardMaterial }).material
       setCard(c => ({ ...c, materials: (c.materials ?? []).map(m => m.id === editingMatId ? updated : m) }))
-      setEditingMatId(null)
+      setEditDirty(false)
+      if (close) setEditingMatId(null)
     }
     setMatSaving(false)
   }
@@ -1294,13 +1316,20 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 <div key={m.id}
                   className={!isEditing ? 'group cursor-pointer' : ''}
                   style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isEditing ? 'rgba(58,124,165,0.03)' : undefined, position: 'relative' }}
-                  onClick={!isEditing ? () => startEditMaterial(m) : undefined}>
+                  onClick={!isEditing ? () => startEditMaterial(m) : undefined}
+                  onBlur={isEditing ? e => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) void updateMaterial()
+                  } : undefined}
+                  onKeyDown={isEditing ? e => {
+                    if (e.key === 'Enter') { e.preventDefault(); void updateMaterial() }
+                    if (e.key === 'Escape') { setEditDirty(false); setEditingMatId(null) }
+                  } : undefined}>
                   <div className="grid px-5 items-center"
                     style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
                     {isEditing ? (
                       <input value={editingMat.desc} autoFocus
                         onClick={e => e.stopPropagation()}
-                        onChange={e => setEditingMat(p => ({ ...p, desc: e.target.value }))}
+                        onChange={e => editMat(p => ({ ...p, desc: e.target.value }))}
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none"
                         style={{ border: `1px solid ${S.accent}`, color: S.text, background: '#fff' }} />
                     ) : (
@@ -1309,7 +1338,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     {isEditing ? (
                       <input type="number" value={editingMat.qty} min="0.01" step="0.01"
                         onClick={e => e.stopPropagation()}
-                        onChange={e => setEditingMat(p => ({ ...p, qty: e.target.value }))}
+                        onChange={e => editMat(p => ({ ...p, qty: e.target.value }))}
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
                     ) : (
@@ -1321,7 +1350,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         onChange={e => {
                           const cost = e.target.value
                           const sell = editingMat.markup ? computeSell(cost, editingMat.markup) : editingMat.price
-                          setEditingMat(p => ({ ...p, cost, price: sell || p.price }))
+                          editMat(p => ({ ...p, cost, price: sell || p.price }))
                         }}
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
@@ -1334,7 +1363,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         onChange={e => {
                           const markup = e.target.value
                           const sell = editingMat.cost ? computeSell(editingMat.cost, markup) : editingMat.price
-                          setEditingMat(p => ({ ...p, markup, price: sell || p.price }))
+                          editMat(p => ({ ...p, markup, price: sell || p.price }))
                         }}
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
@@ -1349,7 +1378,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         onChange={e => {
                           const price = e.target.value
                           const markup = editingMat.cost ? computeMarkup(editingMat.cost, price) : editingMat.markup
-                          setEditingMat(p => ({ ...p, price, markup: markup || p.markup }))
+                          editMat(p => ({ ...p, price, markup: markup || p.markup }))
                         }}
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                         style={{ border: `1px solid ${S.accent}`, color: S.text, background: '#fff' }} />
@@ -1362,19 +1391,13 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   </div>
                   {/* Action buttons — absolutely positioned so they don't affect column alignment */}
                   {isEditing ? (
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
-                      style={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 pr-1"
                       onClick={e => e.stopPropagation()}>
-                      <button onClick={() => void updateMaterial()} disabled={matSaving}
-                        className="flex items-center justify-center w-6 h-6 rounded-md disabled:opacity-50"
-                        style={{ background: S.accent, color: '#fff' }}>
-                        {matSaving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                      </button>
-                      <button onClick={() => setEditingMatId(null)}
-                        className="flex items-center justify-center w-6 h-6 rounded-md"
-                        style={{ background: S.bg, color: S.muted }}>
-                        <X size={11} />
-                      </button>
+                      {matSaving
+                        ? <Loader2 size={12} className="animate-spin" style={{ color: S.muted }} />
+                        : editDirty
+                          ? <span className="text-[10px]" style={{ color: S.muted }}>Saving…</span>
+                          : <Check size={12} style={{ color: S.green }} />}
                     </div>
                   ) : (
                     <button onClick={e => { e.stopPropagation(); void deleteMaterial(m.id) }}
@@ -1393,7 +1416,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             {newMat !== null && (() => {
               const addTotal = (parseFloat(newMat.qty) || 0) * (parseFloat(newMat.price) || 0)
               return (
-                <div style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(22,163,74,0.03)', position: 'relative' }}>
+                <div style={{ borderTop: materials.length > 0 ? `1px solid ${S.border}` : undefined, background: 'rgba(22,163,74,0.03)', position: 'relative' }}
+                  onBlur={e => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) void saveMaterial()
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); void saveMaterial() }
+                    if (e.key === 'Escape') setNewMat(null)
+                  }}>
                   <div className="grid px-5 items-center"
                     style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
                     <input value={newMat.desc} autoFocus
@@ -1434,18 +1464,12 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       {addTotal > 0 ? fmtR(addTotal) : '—'}
                     </span>
                   </div>
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1 py-0.5 rounded-lg"
-                    style={{ background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}>
-                    <button onClick={() => void saveMaterial()} disabled={matSaving || !newMat.desc.trim()}
-                      className="flex items-center justify-center w-6 h-6 rounded-md disabled:opacity-40"
-                      style={{ background: S.green, color: '#fff' }}>
-                      {matSaving ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
-                    </button>
-                    <button onClick={() => setNewMat(null)}
-                      className="flex items-center justify-center w-6 h-6 rounded-md"
-                      style={{ background: S.bg, color: S.muted }}>
-                      <X size={11} />
-                    </button>
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center pr-1">
+                    {matSaving
+                      ? <Loader2 size={12} className="animate-spin" style={{ color: S.muted }} />
+                      : <span className="text-[10px]" style={{ color: S.muted }}>
+                          {newMat.desc.trim() ? 'Saves when you click away' : 'Describe the item'}
+                        </span>}
                   </div>
                 </div>
               )
