@@ -13,6 +13,7 @@ import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
   ElecJobCardStatus, ElecJobCardType, ElecStaff, ElecClient,
   ElecMaterialRequest, ElecMaterialRequestStatus, ElecJobCardExtra,
+  ElecJobCardApprovalMethod,
 } from '@/lib/elec-types'
 import { ClientCombobox } from '../../ClientCombobox'
 import { StaffMultiSelect } from '../../StaffMultiSelect'
@@ -40,6 +41,14 @@ const TYPE_LABEL: Record<string, string> = {
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const APPROVAL_METHOD_LABEL: Record<string, string> = {
+  signature: 'signed online',
+  phone: 'by phone',
+  whatsapp: 'by WhatsApp',
+  email: 'by email',
+  in_person: 'in person',
 }
 
 function fmtDateTime(iso: string | null) {
@@ -188,6 +197,12 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   // A card the client has been sent or has signed is a record of something
   // agreed — editing it needs a deliberate act, and marks it for resending.
   const [unlocked, setUnlocked] = useState(false)
+  const [showApprove, setShowApprove] = useState(false)
+  const [approveBy, setApproveBy] = useState('')
+  const [approveMethod, setApproveMethod] = useState<ElecJobCardApprovalMethod>('phone')
+  const [approveNote, setApproveNote] = useState('')
+  const [approving, setApproving] = useState(false)
+  const [approveErr, setApproveErr] = useState('')
   const [sendResult, setSendResult] = useState<'success' | 'error' | ''>('')
 
   // Sage
@@ -541,6 +556,39 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   // ── Send / Sage ───────────────────────────────────────────────────────────
 
+  async function recordApproval() {
+    if (approving || !approveBy.trim()) return
+    setApproving(true); setApproveErr('')
+    try {
+      const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/approve`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approved_by: approveBy.trim(),
+          approval_method: approveMethod,
+          approval_note: approveNote.trim() || null,
+        }),
+      })
+      const d = await res.json() as { ok?: boolean; error?: string }
+      if (res.ok && d.ok) {
+        setCard(c => ({
+          ...c,
+          approved_at: new Date().toISOString(),
+          approved_by: approveBy.trim(),
+          approval_method: approveMethod,
+          approval_note: approveNote.trim() || null,
+          amended_at: null,
+          status: c.status === 'pending' ? 'in_progress' : c.status,
+        }))
+        setShowApprove(false)
+      } else {
+        setApproveErr(d.error ?? 'Could not record it — try again.')
+      }
+    } catch {
+      setApproveErr('Could not record it — try again.')
+    }
+    setApproving(false)
+  }
+
   async function handleSend() {
     if (!sendEmail) return
     setSending(true); setSendResult('')
@@ -579,7 +627,12 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     setCard(c => ({ ...c, sage_invoice_id: String(data.sage_invoice_id), sage_invoice_status: String(data.sage_invoice_status), sage_customer_name: sageSelectedCustomer.name }))
   }
 
-  const isLocked = !!(card.sent_at || card.client_signature_url)
+  // Two different client signatures, deliberately kept apart:
+  //   APPROVAL — the client agreeing to the work before it starts (quote signed)
+  //   SIGN-OFF — the client confirming the work was done (job signed)
+  const isApproved = !!card.approved_at
+  const isSignedOff = !!card.client_signature_url
+  const isLocked = !!(card.sent_at || isApproved || isSignedOff)
   const editable = !isLocked || unlocked
 
   // Who signed, off the signature photo's caption — the same place the PDF reads it.
@@ -709,7 +762,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </button>
           )}
           {/* Send */}
-          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
+          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(isApproved && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
             style={{ background: S.accent }}>
             <Send size={13} /> Send
@@ -926,33 +979,47 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   Edited {fmtDateTime(card.amended_at)} — after it went to the client
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-                  {card.client_signature_url
-                    ? 'The signature on file no longer covers this version. Resend it for the client to approve again.'
+                  {isApproved
+                    ? 'The approval on file no longer covers this version. Resend it for the client to approve again.'
                     : 'The client is holding an older version. Resend the job card so their copy matches.'}
                 </p>
               </div>
-              <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(card.client_signature_url && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
+              <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(isApproved && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap"
                 style={{ background: S.gold }}>
                 Resend
               </button>
             </div>
-          ) : card.client_signature_url ? (
-            <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
-              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
-              <CheckCircle2 size={14} style={{ color: S.green, flexShrink: 0 }} />
-              <p className="text-sm font-semibold" style={{ color: S.green }}>
-                Client approved{signedBy ? ` by ${signedBy}` : ''}{signedAt ? ` — ${fmtDateTime(signedAt)}` : ''}
-              </p>
-            </div>
           ) : (
-            <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
-              style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
-              <Send size={14} style={{ color: S.green, flexShrink: 0 }} />
-              <p className="text-sm font-semibold" style={{ color: S.green }}>
-                Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}
-              </p>
-            </div>
+            <>
+              {isApproved && (
+                <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+                  style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+                  <CheckCircle2 size={14} style={{ color: S.green, flexShrink: 0 }} />
+                  <p className="text-sm font-semibold" style={{ color: S.green }}>
+                    Quote signed — approved by {card.approved_by ?? 'the client'} {APPROVAL_METHOD_LABEL[card.approval_method ?? ''] ?? ''} — {fmtDateTime(card.approved_at)}
+                  </p>
+                </div>
+              )}
+              {isSignedOff && (
+                <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+                  style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+                  <CheckCircle2 size={14} style={{ color: S.green, flexShrink: 0 }} />
+                  <p className="text-sm font-semibold" style={{ color: S.green }}>
+                    Job signed off{signedBy ? ` by ${signedBy}` : ''}{signedAt ? ` — ${fmtDateTime(signedAt)}` : ''}
+                  </p>
+                </div>
+              )}
+              {!isApproved && !isSignedOff && card.sent_at && (
+                <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+                  style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+                  <Send size={14} style={{ color: S.green, flexShrink: 0 }} />
+                  <p className="text-sm font-semibold" style={{ color: S.green }}>
+                    Sent {fmtDateTime(card.sent_at)}{card.sent_to_email ? ` to ${card.sent_to_email}` : ''}
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           <div className="flex items-center gap-2 px-1">
@@ -1670,12 +1737,76 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
       {/* ── Tab: Signature ───────────────────────────────────────────────── */}
       {tab === 'signature' && (
+        <div className="space-y-4">
+
+        {/* ── 1. QUOTE SIGNED — the client agreeing to the work up front ── */}
         <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.accent }}>1 · Quote Signed</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                The client agreeing to the work and the price before it starts.
+              </p>
+            </div>
+            {isApproved && <CheckCircle2 size={18} style={{ color: S.green, flexShrink: 0 }} />}
+          </div>
+
+          {isApproved ? (
+            <div className="rounded-xl p-4" style={{ background: 'rgba(22,163,74,0.05)', border: '1px solid rgba(22,163,74,0.2)' }}>
+              <p className="text-sm font-semibold" style={{ color: S.green }}>
+                Approved by {card.approved_by ?? 'the client'}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                {fmtDateTime(card.approved_at)} · {card.approval_method === 'signature'
+                  ? 'signed online from the emailed link'
+                  : `recorded by the office — ${APPROVAL_METHOD_LABEL[card.approval_method ?? ''] ?? card.approval_method}`}
+              </p>
+              {card.approval_note && (
+                <p className="text-xs mt-2" style={{ color: S.text }}>{card.approval_note}</p>
+              )}
+              {card.approval_signature_url && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={card.approval_signature_url} alt="Approval signature"
+                    className="mt-3 max-h-32 w-auto rounded-lg bg-white" style={{ border: `1px solid ${S.border}` }} />
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-xl p-4" style={{ background: S.bg, border: `1px dashed ${S.border}` }}>
+              <p className="text-sm" style={{ color: S.muted }}>Not approved yet.</p>
+              <p className="text-xs mt-1" style={{ color: S.muted }}>
+                Send the card as <strong>Link + PDF</strong> for the client to approve online, or record an approval they gave you another way.
+              </p>
+              <button onClick={() => { setApproveBy(card.client_name ?? card.client?.client_name ?? ''); setApproveNote(''); setApproveErr(''); setShowApprove(true) }}
+                className="mt-3 px-3.5 py-2 rounded-xl text-xs font-semibold text-white"
+                style={{ background: S.accent }}>
+                Record Approval
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ── 2. JOB SIGNED — the client confirming the work was done ── */}
+        <div className="rounded-2xl p-5" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.gold }}>2 · Job Signed</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                The client confirming the work was done. Signed on site — never recorded for them.
+              </p>
+            </div>
+            {isSignedOff && <CheckCircle2 size={18} style={{ color: S.green, flexShrink: 0 }} />}
+          </div>
           {card.client_signature_url && !signing ? (
-            <div className="flex flex-col items-center gap-4">
-              <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: S.muted }}>Captured Signature</p>
+            <div className="flex flex-col items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={card.client_signature_url} alt="Signature" className="max-h-40 w-auto rounded-xl" style={{ border: `1px solid ${S.border}` }} />
+              <img src={card.client_signature_url} alt="Sign-off signature" className="max-h-40 w-auto rounded-xl bg-white" style={{ border: `1px solid ${S.border}` }} />
+              {signedBy && (
+                <p className="text-xs" style={{ color: S.muted }}>
+                  Signed off by {signedBy}{signedAt ? ` — ${fmtDateTime(signedAt)}` : ''}
+                </p>
+              )}
               <button onClick={() => setSigning(true)}
                 className="text-xs px-3 py-1.5 rounded-lg" style={{ border: `1px solid ${S.border}`, color: S.muted }}>
                 Re-capture Signature
@@ -1683,7 +1814,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             </div>
           ) : (
             <div>
-              <p className="text-xs font-semibold mb-1" style={{ color: S.muted }}>Client Signature</p>
               <p className="text-xs mb-3" style={{ color: S.muted }}>Hand the device to the client to sign below.</p>
               <div className="rounded-xl overflow-hidden mb-3" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA', touchAction: 'none' }}>
                 <canvas ref={canvasRef} width={600} height={200} className="w-full"
@@ -1724,6 +1854,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               </div>
             </div>
           )}
+        </div>
         </div>
       )}
 
@@ -1778,7 +1909,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 onClick={() => {
                   setSendEmail(card.client_email ?? card.client?.email ?? '')
                   setShowFinishFlow(false)
-                  setSendMethod(card.client_signature_url && !card.amended_at ? 'pdf' : 'link')
+                  setSendMethod(isApproved && !card.amended_at ? 'pdf' : 'link')
                   setShowSend(true)
                 }}
                 className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
@@ -1867,6 +1998,68 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </div>
       )}
 
+      {/* ── Record approval modal — quote signed, given off-app ───────────── */}
+      {showApprove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowApprove(false) }}>
+          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: S.card }}>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-bold" style={{ color: S.text }}>Record Client Approval</h2>
+              <button onClick={() => setShowApprove(false)} style={{ color: S.muted }}><X size={18} /></button>
+            </div>
+            <p className="text-xs mb-5" style={{ color: S.muted }}>
+              For an approval the client gave you away from the app. This records the quote as signed off — it is not the job sign-off.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="approve-by" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>
+                  Who approved it <span style={{ color: S.danger }}>*</span>
+                </label>
+                <input id="approve-by" value={approveBy} onChange={e => setApproveBy(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{ border: `1px solid ${S.border}`, color: S.text }} />
+              </div>
+              <div>
+                <label htmlFor="approve-method" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>
+                  How they approved it
+                </label>
+                <select id="approve-method" value={approveMethod}
+                  onChange={e => setApproveMethod(e.target.value as ElecJobCardApprovalMethod)}
+                  className="w-full px-3 py-2 rounded-xl text-sm"
+                  style={{ border: `1px solid ${S.border}`, color: S.text }}>
+                  <option value="phone">Phone</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="email">Email</option>
+                  <option value="in_person">In person</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="approve-note" className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>
+                  Reference (optional)
+                </label>
+                <input id="approve-note" value={approveNote} onChange={e => setApproveNote(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{ border: `1px solid ${S.border}`, color: S.text }} />
+              </div>
+              {approveErr && <p className="text-xs" style={{ color: S.danger }}>{approveErr}</p>}
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowApprove(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ border: `1px solid ${S.border}`, color: S.muted }}>
+                  Cancel
+                </button>
+                <button onClick={() => void recordApproval()} disabled={approving || !approveBy.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: S.accent }}>
+                  {approving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                  {approving ? 'Saving…' : 'Record Approval'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Send modal ───────────────────────────────────────────────────── */}
       {showSend && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
@@ -1908,7 +2101,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setSendMethod('link')}
-                      disabled={!!card.client_signature_url && !card.amended_at}
+                      disabled={isApproved && !card.amended_at}
                       className="flex flex-col items-start gap-1.5 p-3.5 rounded-xl text-left disabled:opacity-50"
                       style={{
                         background: sendMethod === 'link' ? 'rgba(58,124,165,0.08)' : S.bg,
@@ -1921,11 +2114,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         </span>
                       </div>
                       <span className="text-[11px] leading-snug" style={{ color: S.muted }}>
-                        {card.client_signature_url && card.amended_at
-                          ? 'Edited since signing — client re-approves online'
-                          : card.client_signature_url
-                            ? 'Already signed — nothing left to sign'
-                            : 'Client signs online, PDF attached too'}
+                        {isApproved && card.amended_at
+                          ? 'Edited since approval — client re-approves online'
+                          : isApproved
+                            ? 'Already approved — nothing left to approve'
+                            : 'Client approves online, PDF attached too'}
                       </span>
                     </button>
                     <button

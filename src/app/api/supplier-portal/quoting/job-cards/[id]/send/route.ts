@@ -133,7 +133,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // A sign link is worth sending while there is still a signature to give —
     // either the card has never been signed, or it was edited after signing and
     // the client needs to approve the new version.
-    const needsSignature = !jobCard.client_signature_url || !!jobCard.amended_at
+    const needsSignature = !jobCard.approved_at || !!jobCard.amended_at
     const signToken = include_link && needsSignature
       ? (jobCard.share_token ?? randomUUID())
       : null
@@ -200,9 +200,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         <p style="margin:0 0 16px;font-size:15px;color:#71717A;">${jobCard.title}</p>
         ${totalLine}
         ${message ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">${message}</p>` : ''}
-        ${signUrl ? `<p style="margin:0 0 20px;"><a href="${signUrl}" style="display:inline-block;background:#3A7CA5;color:#fff;text-decoration:none;padding:12px 26px;border-radius:8px;font-size:14px;font-weight:600;">Review &amp; Sign Online →</a></p>` : ''}
+        ${signUrl ? `<p style="margin:0 0 20px;"><a href="${signUrl}" style="display:inline-block;background:#3A7CA5;color:#fff;text-decoration:none;padding:12px 26px;border-radius:8px;font-size:14px;font-weight:600;">Review &amp; Approve Online →</a></p>` : ''}
         <p style="margin:0 0 24px;font-size:13px;color:#71717A;">${signUrl
-          ? `Sign it online using the button above, or review the attached PDF. If you have any questions, reply to this email and we'll get back to you.`
+          ? `Approve it online using the button above, or review the attached PDF. If you have any questions, reply to this email and we'll get back to you.`
           : `Please find the ${label.toLowerCase()} attached as a PDF. If you have any questions, reply to this email and we'll get back to you.`}</p>
         <p style="margin:0;font-size:14px;line-height:1.7;color:#18181B;">
           Kind regards,<br>
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   </td></tr>
 </table>
 </body></html>`,
-      text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${as_invoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${message ? message + '\n\n' : ''}${signUrl ? `Review and sign online: ${signUrl}\n\n` : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
+      text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${as_invoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${message ? message + '\n\n' : ''}${signUrl ? `Review and approve online: ${signUrl}\n\n` : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
     })
 
     return NextResponse.json({ ok: true })

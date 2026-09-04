@@ -227,9 +227,14 @@ export function JobCardsClient({ initialJobCards, staff, clients: initialClients
                         <Send size={10} />Sent {fmtSentAt(j.sent_at)}
                       </span>
                     )}
+                    {j.approved_at && (
+                      <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: S.green }}>
+                        <CheckCircle2 size={10} />Quote signed
+                      </span>
+                    )}
                     {j.client_signature_url && (
                       <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: S.green }}>
-                        <CheckCircle2 size={10} />Client approved
+                        <CheckCircle2 size={10} />Job signed
                       </span>
                     )}
                   </div>

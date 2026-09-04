@@ -674,7 +674,14 @@ export interface ElecJobCard {
   notes: string | null
   client_name: string | null
   client_email: string | null
+  /** Sign-off: the client confirming the work was done, captured on site. */
   client_signature_url: string | null
+  /** Approval: the client agreeing to the work up front, signed from the emailed link. */
+  approval_signature_url: string | null
+  approved_at: string | null
+  approved_by: string | null
+  approval_method: ElecJobCardApprovalMethod | null
+  approval_note: string | null
   sent_to_name: string | null
   sent_to_email: string | null
   sent_at: string | null
@@ -712,6 +719,13 @@ export interface ElecJobCardMaterial {
 }
 
 /** Extra work the client asked for on site — priced by the office as its own quote. */
+export type ElecJobCardApprovalMethod =
+  | 'signature'
+  | 'phone'
+  | 'whatsapp'
+  | 'email'
+  | 'in_person'
+
 export interface ElecJobCardExtra {
   id: string
   job_card_id: string

@@ -174,11 +174,11 @@ function SignPage() {
               <CheckCircle2 size={32} style={{ color: S.green }} />
             </div>
             <p className="font-bold text-base" style={{ color: S.text }}>
-              {job?.alreadySigned ? 'Already signed' : 'Signature received!'}
+              {job?.alreadySigned ? 'Already approved' : 'Approval received!'}
             </p>
             <p className="text-sm" style={{ color: S.muted }}>
               {job?.alreadySigned
-                ? 'This job card has already been signed.'
+                ? 'This job card has already been approved.'
                 : `Thank you${signerName ? `, ${signerName}` : ''}. Your signature has been saved.`}
             </p>
           </div>
@@ -232,7 +232,7 @@ function SignPage() {
               )}
               {!errorMsg && (!signerName.trim() || !hasDrawn) && (
                 <p className="text-xs" style={{ color: S.muted }}>
-                  {!hasDrawn ? 'Sign in the box above, then enter your name.' : 'Enter your name to submit.'}
+                  {!hasDrawn ? 'Sign in the box above to approve this work, then enter your name.' : 'Enter your name to submit.'}
                 </p>
               )}
 
@@ -248,7 +248,7 @@ function SignPage() {
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
                   style={{ background: S.green }}>
                   {status === 'signing' ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                  {status === 'signing' ? 'Saving…' : 'Submit Signature'}
+                  {status === 'signing' ? 'Saving…' : 'Approve & Sign'}
                 </button>
               </div>
             </div>

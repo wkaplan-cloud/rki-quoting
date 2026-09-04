@@ -83,14 +83,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!('amended_at' in body)) {
       const { data: before } = await supabaseAdmin
         .from('elec_job_cards')
-        .select('sent_at, client_signature_url')
+        .select('sent_at, client_signature_url, approved_at')
         .eq('id', id)
         .eq('portal_account_id', accountId)
         .maybeSingle()
 
-      if (body.client_signature_url) {
+      if (body.client_signature_url || body.approval_signature_url || body.approved_at) {
         body.amended_at = null
-      } else if (before && (before.sent_at || before.client_signature_url)) {
+      } else if (before && (before.sent_at || before.client_signature_url || before.approved_at)) {
         const touchesContent = CLIENT_FACING_FIELDS.some(f => f in body)
         if (touchesContent) body.amended_at = new Date().toISOString()
       }
@@ -160,18 +160,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Notify the office when the client signs — bell and email, same as the
     // emailed sign link raises.
-    if (body.client_signature_url && data.status === 'pending') {
-      await supabaseAdmin
-        .from('elec_job_cards')
-        .update({ status: 'in_progress' })
-        .eq('id', id)
-      data.status = 'in_progress'
-      await syncJobsFromCardStatus(id, accountId, 'in_progress')
-    }
-
     if (body.client_signature_url) {
       void notifyJobCardSigned({
         jobCardId: id,
+        kind: 'sign_off',
         signerName: (typeof body.sent_to_name === 'string' && body.sent_to_name.trim())
           || data.sent_to_name || 'The client',
         source: 'on_site',

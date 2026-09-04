@@ -50,15 +50,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     const { data: card } = await supabaseAdmin
       .from('elec_job_cards')
-      .select('id, portal_account_id, client_signature_url, job_number, title, status, amended_at')
+      .select('id, portal_account_id, approval_signature_url, approved_at, job_number, title, status, amended_at')
       .eq('share_token', token)
       .maybeSingle()
 
     if (!card) return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
-    // Signed and unchanged since — nothing to approve. Signed but amended is a
-    // re-approval of the new version, which is exactly what the link is for.
-    if (card.client_signature_url && !card.amended_at) {
-      return NextResponse.json({ error: 'Already signed' }, { status: 409 })
+    // Approved and unchanged since — nothing to approve. Approved but amended is
+    // a re-approval of the new version, which is what the link is for.
+    if (card.approved_at && !card.amended_at) {
+      return NextResponse.json({ error: 'Already approved' }, { status: 409 })
     }
 
     // Decode base64 data URL and upload to storage
@@ -75,37 +75,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .from('job-card-photos')
       .getPublicUrl(path)
 
-    // Drop the superseded signature so it can't print as a job photo on the PDF.
-    if (card.client_signature_url) {
-      await supabaseAdmin
-        .from('elec_job_card_photos')
-        .delete()
-        .eq('job_card_id', card.id)
-        .eq('url', card.client_signature_url)
-    }
-
-    // Same shape the on-site flow writes: the signature is a captioned photo,
-    // and the PDF reads the signer's name off that caption.
-    await supabaseAdmin.from('elec_job_card_photos').insert({
-      job_card_id: card.id,
-      url: publicUrl,
-      caption: signer,
-    })
-
     await supabaseAdmin
       .from('elec_job_cards')
       .update({
-        client_signature_url: publicUrl,
-        sent_to_name: signer,
+        approval_signature_url: publicUrl,
+        approved_at: new Date().toISOString(),
+        approved_by: signer,
+        approval_method: 'signature',
         share_token: null,
-        // The signature covers the wording as it stands right now.
+        // The approval covers the wording as it stands right now.
         amended_at: null,
         // Approving the card is the client saying go — take it off pending.
         ...(card.status === 'pending' ? { status: 'in_progress' } : {}),
       })
       .eq('id', card.id)
 
-    await notifyJobCardSigned({ jobCardId: card.id, signerName: signer, source: 'email_link' })
+    await notifyJobCardSigned({ jobCardId: card.id, signerName: signer, kind: 'approval', source: 'email_link' })
       .catch(e => console.error('[job-sign] notify failed', e))
 
     return NextResponse.json({ ok: true })
