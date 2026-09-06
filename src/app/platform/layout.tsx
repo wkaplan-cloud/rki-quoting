@@ -38,12 +38,13 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       accent: 'text-[#D8BA84]',
       dot: 'bg-[#D8BA84]',
       items: [
-        { href: '/platform',             label: 'Overview',    icon: 'LayoutDashboard' },
-        { href: '/platform/studios',     label: 'Studios',     icon: 'Building2' },
-        { href: '/platform/quotes',      label: 'Quotes',      icon: 'FolderOpen' },
-        { href: '/platform/messages',    label: 'Messages',    icon: 'MessageSquare', badge: unreadMessageCount ?? 0 },
-        { href: '/platform/broadcast',   label: 'Broadcast',   icon: 'Radio' },
-        { href: '/platform/commissions', label: 'Commissions', icon: 'BadgeDollarSign' },
+        { href: '/platform',              label: 'Overview',       icon: 'LayoutDashboard' },
+        { href: '/platform/studios',      label: 'Studios',        icon: 'Building2' },
+        { href: '/platform/sourcing',     label: 'Price Requests', icon: 'ArrowLeftRight' },
+        { href: '/platform/price-lists',  label: 'Price Lists',    icon: 'BookOpen', badge: pendingPriceListCount ?? 0 },
+        { href: '/platform/messages',     label: 'Messages',       icon: 'MessageSquare', badge: unreadMessageCount ?? 0 },
+        { href: '/platform/broadcast',    label: 'Broadcast',      icon: 'Radio' },
+        { href: '/platform/commissions',  label: 'Commissions',    icon: 'BadgeDollarSign' },
       ],
     },
     {
@@ -54,8 +55,6 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       dot: 'bg-teal-300',
       items: [
         { href: '/platform/suppliers',   label: 'Suppliers',   icon: 'Store' },
-        { href: '/platform/sourcing',    label: 'Price Requests', icon: 'ArrowLeftRight' },
-        { href: '/platform/price-lists', label: 'Price Lists', icon: 'BookOpen', badge: pendingPriceListCount ?? 0 },
       ],
     },
     {

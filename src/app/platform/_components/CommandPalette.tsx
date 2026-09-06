@@ -20,7 +20,6 @@ interface SearchEntry {
 const DESTINATIONS: SearchEntry[] = [
   { id: 'nav-overview',    group: 'Go to', label: 'Overview',       hint: 'Platform dashboard',        href: '/platform',               keywords: 'dashboard home mrr' },
   { id: 'nav-studios',     group: 'Go to', label: 'Studios',        hint: 'Designer accounts',         href: '/platform/studios',       keywords: 'designers organizations orgs' },
-  { id: 'nav-quotes',      group: 'Go to', label: 'Quotes',         hint: 'Quote & invoice tracker',   href: '/platform/quotes',        keywords: 'invoices projects' },
   { id: 'nav-messages',    group: 'Go to', label: 'Messages',       hint: 'Contact submissions',       href: '/platform/messages',      keywords: 'inbox contact enquiries' },
   { id: 'nav-broadcast',   group: 'Go to', label: 'Broadcast',      hint: 'Email all studios',         href: '/platform/broadcast',     keywords: 'email campaign send' },
   { id: 'nav-commissions', group: 'Go to', label: 'Commissions',    hint: 'Rep commissions',           href: '/platform/commissions',   keywords: 'reps sales payouts' },

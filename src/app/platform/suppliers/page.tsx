@@ -143,8 +143,8 @@ export default async function PlatformSuppliersPage() {
             return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
           }).length.toString() },
         ].map(({ label, value, highlight }) => (
-          <div key={label} className={`border rounded-xl p-5 ${highlight ? 'bg-[#1A1A10] border-[#C4A46B]/30' : 'bg-[#FDFCF9] border-[#DED8CC]'}`}>
-            <span className={`text-xs uppercase tracking-wider block mb-3 ${highlight ? 'text-[#7E6036]/60' : 'text-[#6E6B63]'}`}>{label}</span>
+          <div key={label} className={`border rounded-xl p-5 ${highlight ? 'bg-[#F7F0E2] border-[#7E6036]/30' : 'bg-[#FDFCF9] border-[#DED8CC]'}`}>
+            <span className={`text-xs uppercase tracking-wider block mb-3 ${highlight ? 'text-[#7E6036]' : 'text-[#6E6B63]'}`}>{label}</span>
             <p className={`text-2xl font-semibold ${highlight ? 'text-[#7E6036]' : 'text-[#1A1A18]'}`}>{value}</p>
           </div>
         ))}
