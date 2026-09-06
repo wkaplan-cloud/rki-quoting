@@ -44,12 +44,12 @@ function FeatureToggle({
     <div className="flex items-center justify-between gap-4">
       {/* min-w-0 lets a long description wrap instead of widening the row. */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-[#7E6036]/10 flex items-center justify-center flex-shrink-0">
           {icon}
         </div>
         <div className="min-w-0">
-          <p className="text-sm text-white/80">{title}</p>
-          <p className="text-xs text-white/40 break-words">{description}</p>
+          <p className="text-sm text-[#2C2C2A]">{title}</p>
+          <p className="text-xs text-[#6E6B63] break-words">{description}</p>
         </div>
       </div>
       <button
@@ -58,7 +58,7 @@ function FeatureToggle({
         role="switch"
         aria-checked={enabled}
         aria-label={title}
-        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer disabled:opacity-50 ${enabled ? 'bg-[#C4A46B]' : 'bg-white/10'}`}
+        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer disabled:opacity-50 ${enabled ? 'bg-[#7E6036]' : 'bg-[#E5DFD5]'}`}
       >
         {/* left-0.5 is required: a button is text-align:center, so without an
             explicit left the knob's static position lands mid-track and the
@@ -79,14 +79,14 @@ export function FeatureTogglesPanel({
   lineItemImagesEnabled?: boolean
 }) {
   return (
-    <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 mb-6">
-      <h2 className="text-xs text-white/40 uppercase tracking-wider mb-4">Feature Toggles</h2>
+    <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5 mb-6">
+      <h2 className="text-xs text-[#6E6B63] uppercase tracking-wider mb-4">Feature Toggles</h2>
       <div className="space-y-4">
         <FeatureToggle
           orgId={orgId}
           field="studio_enabled"
           initial={studioEnabled}
-          icon={<Presentation size={16} className="text-[#C4A46B]" />}
+          icon={<Presentation size={16} className="text-[#7E6036]" />}
           title="Studio"
           description="Presentation boards for client design presentations"
         />
@@ -94,7 +94,7 @@ export function FeatureTogglesPanel({
           orgId={orgId}
           field="line_item_images_enabled"
           initial={lineItemImagesEnabled}
-          icon={<Images size={16} className="text-[#C4A46B]" />}
+          icon={<Images size={16} className="text-[#7E6036]" />}
           title="Line item images"
           description="Upload images per line item and show them on quotes & invoices"
         />

@@ -16,14 +16,14 @@ const KIND_ICON: Record<ActivityKind, typeof Building2> = {
 }
 
 const KIND_COLOR: Record<ActivityKind, string> = {
-  studio: 'text-[#C4A46B]',
-  project: 'text-emerald-400',
-  sourcing: 'text-sky-400',
-  message: 'text-rose-400',
-  'price-list': 'text-sky-400',
-  supplier: 'text-sky-400',
-  contractor: 'text-amber-400',
-  manufacturer: 'text-orange-400',
+  studio: 'text-[#7E6036]',
+  project: 'text-[#047857]',
+  sourcing: 'text-[#0369A1]',
+  message: 'text-[#B91C1C]',
+  'price-list': 'text-[#0369A1]',
+  supplier: 'text-[#0369A1]',
+  contractor: 'text-[#8F5706]',
+  manufacturer: 'text-[#C2410C]',
 }
 
 function dayLabel(iso: string, now: Date) {
@@ -40,7 +40,7 @@ export function ActivityFeed({ events, nowIso }: { events: ActivityEvent[]; nowI
 
   if (events.length === 0) {
     return (
-      <p className="px-5 py-10 text-center text-[13px] text-white/30">
+      <p className="px-5 py-10 text-center text-[13px] text-[#6E6B63]">
         No platform activity recorded yet. Signups, projects, price requests and messages land here as they happen.
       </p>
     )
@@ -63,26 +63,26 @@ export function ActivityFeed({ events, nowIso }: { events: ActivityEvent[]; nowI
           <>
             <span className="relative flex items-center justify-center w-6 shrink-0">
               {/* The rail is the spine of the timeline; the icon sits on it. */}
-              <span className="absolute top-0 bottom-0 w-px bg-white/8" aria-hidden />
-              <span className="relative z-10 flex items-center justify-center w-6 h-6 rounded-full bg-[#181816] border border-white/10">
+              <span className="absolute top-0 bottom-0 w-px bg-[#E2DCD1]" aria-hidden />
+              <span className="relative z-10 flex items-center justify-center w-6 h-6 rounded-full bg-[#FDFCF9] border border-[#DED8CC]">
                 <Icon size={11} className={KIND_COLOR[event.kind]} />
               </span>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] text-white/85">{event.title}</span>
-              {event.subject && <span className="block truncate text-[11px] text-white/40">{event.subject}</span>}
+              <span className="block truncate text-[13px] text-[#2C2C2A]">{event.title}</span>
+              {event.subject && <span className="block truncate text-[11px] text-[#6E6B63]">{event.subject}</span>}
             </span>
-            <span className="text-[11px] text-white/25 tabular-nums shrink-0 pt-0.5">{time}</span>
+            <span className="text-[11px] text-[#6E6B63] tabular-nums shrink-0 pt-0.5">{time}</span>
           </>
         )
 
         return (
           <li key={event.id}>
             {showDay && (
-              <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/25">{day}</p>
+              <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6E6B63]">{day}</p>
             )}
             {event.href ? (
-              <Link href={event.href} className="flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors duration-150">
+              <Link href={event.href} className="flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-[#EFEBE3] transition-colors duration-150">
                 {row}
               </Link>
             ) : (

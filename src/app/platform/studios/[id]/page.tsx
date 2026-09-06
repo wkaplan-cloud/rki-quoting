@@ -78,33 +78,33 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
   }
 
   const statusColour: Record<string, string> = {
-    Quote: 'bg-blue-500/10 text-blue-400',
-    Invoice: 'bg-amber-500/10 text-amber-400',
-    Completed: 'bg-emerald-500/10 text-emerald-400',
-    Cancelled: 'bg-red-500/10 text-red-400',
+    Quote: 'bg-teal-50 text-[#0F766E]',
+    Invoice: 'bg-amber-50 text-[#8F5706]',
+    Completed: 'bg-emerald-50 text-[#047857]',
+    Cancelled: 'bg-red-50 text-[#B91C1C]',
   }
 
   return (
     <div className="p-8 max-w-5xl">
-      <Link href="/platform/studios" className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition-colors mb-6">
+      <Link href="/platform/studios" className="inline-flex items-center gap-1.5 text-sm text-[#6E6B63] hover:text-[#1A1A18] transition-colors mb-6">
         <ArrowLeft size={14} /> All studios
       </Link>
 
       {org.status === 'archived' && (
-        <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-          <span className="text-amber-400 text-xs font-medium">Archived</span>
-          <span className="text-white/40 text-xs">·</span>
-          <span className="text-white/40 text-xs">
+        <div className="mb-6 flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <span className="text-[#8F5706] text-xs font-medium">Archived</span>
+          <span className="text-[#6E6B63] text-xs">·</span>
+          <span className="text-[#6E6B63] text-xs">
             {org.archived_at ? `Archived on ${new Date(org.archived_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'This studio has been archived'}
           </span>
-          <span className="text-white/20 text-xs ml-1">· Data deleted after 24 months</span>
+          <span className="text-[#8A877F] text-xs ml-1">· Data deleted after 24 months</span>
         </div>
       )}
 
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-3xl text-white mb-1">{settings?.business_name || org.name}</h1>
-          <p className="text-sm text-white/40">
+          <h1 className="font-serif text-3xl text-[#1A1A18] mb-1">{settings?.business_name || org.name}</h1>
+          <p className="text-sm text-[#6E6B63]">
             Joined {new Date(org.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
@@ -125,8 +125,8 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Studio Settings */}
-        <div className="lg:col-span-2 bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-          <h2 className="text-xs text-white/40 uppercase tracking-wider mb-4">Studio Details</h2>
+        <div className="lg:col-span-2 bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+          <h2 className="text-xs text-[#6E6B63] uppercase tracking-wider mb-4">Studio Details</h2>
           <dl className="space-y-3">
             {[
               { label: 'Business name', value: settings?.business_name },
@@ -141,8 +141,8 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
               { label: 'Deposit %', value: settings?.deposit_percentage != null ? `${settings.deposit_percentage}%` : undefined },
             ].filter(r => r.value).map(({ label, value }) => (
               <div key={label} className="flex gap-4">
-                <dt className="text-xs text-white/30 w-36 flex-shrink-0 pt-0.5">{label}</dt>
-                <dd className="text-sm text-white/80">{value}</dd>
+                <dt className="text-xs text-[#6E6B63] w-36 flex-shrink-0 pt-0.5">{label}</dt>
+                <dd className="text-sm text-[#2C2C2A]">{value}</dd>
               </div>
             ))}
           </dl>
@@ -150,44 +150,44 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
 
         {/* Quick stats */}
         <div className="space-y-3">
-          <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center">
-              <Users size={16} className="text-[#C4A46B]" />
+          <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-[#7E6036]/10 flex items-center justify-center">
+              <Users size={16} className="text-[#7E6036]" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-white">{members?.filter(m => m.status === 'active').length ?? 0}</p>
-              <p className="text-xs text-white/40">Active members</p>
+              <p className="text-2xl font-semibold text-[#1A1A18]">{members?.filter(m => m.status === 'active').length ?? 0}</p>
+              <p className="text-xs text-[#6E6B63]">Active members</p>
             </div>
           </div>
-          <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <FolderOpen size={16} className="text-emerald-400" />
+          <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+              <FolderOpen size={16} className="text-[#047857]" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-white">{projects?.length ?? 0}</p>
-              <p className="text-xs text-white/40">Projects</p>
+              <p className="text-2xl font-semibold text-[#1A1A18]">{projects?.length ?? 0}</p>
+              <p className="text-xs text-[#6E6B63]">Projects</p>
             </div>
           </div>
-          <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-[#C4A46B]/10 flex items-center justify-center">
-              <ArrowLeftRight size={16} className="text-[#C4A46B]" />
+          <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-[#7E6036]/10 flex items-center justify-center">
+              <ArrowLeftRight size={16} className="text-[#7E6036]" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-white">{sourcingSessions?.length ?? 0}</p>
-              <p className="text-xs text-white/40">Sourcing sessions</p>
+              <p className="text-2xl font-semibold text-[#1A1A18]">{sourcingSessions?.length ?? 0}</p>
+              <p className="text-xs text-[#6E6B63]">Sourcing sessions</p>
             </div>
           </div>
-          <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <Clock size={16} className="text-blue-400" />
+          <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-teal-50 flex items-center justify-center">
+              <Clock size={16} className="text-[#0F766E]" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-[#1A1A18]">
                 {lastProjectRow?.created_at
                   ? new Date(lastProjectRow.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
                   : 'Never'}
               </p>
-              <p className="text-xs text-white/40">Last project created</p>
+              <p className="text-xs text-[#6E6B63]">Last project created</p>
             </div>
           </div>
         </div>
@@ -223,27 +223,27 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
       <StudioNotes orgId={id} initial={(org as OrgDetailRow).platform_notes ?? null} />
 
       {/* Members */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-medium text-white flex items-center gap-2"><Users size={14} className="text-[#C4A46B]" /> Team members</h2>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden mb-6">
+        <div className="px-5 py-4 border-b border-[#DED8CC]">
+          <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2"><Users size={14} className="text-[#7E6036]" /> Team members</h2>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/5">
-              <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Name</th>
-              <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Email</th>
-              <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Role</th>
-              <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Status</th>
+            <tr className="border-b border-[#EAE5DB]">
+              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Name</th>
+              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Email</th>
+              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Role</th>
+              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
+          <tbody className="divide-y divide-[#EFEBE3]">
             {members?.map(m => (
               <tr key={m.id}>
-                <td className="px-5 py-3 text-white/80">{m.full_name || '—'}</td>
-                <td className="px-5 py-3 text-white/50">{m.invited_email || '—'}</td>
-                <td className="px-5 py-3 text-white/50 capitalize">{m.role}</td>
+                <td className="px-5 py-3 text-[#2C2C2A]">{m.full_name || '—'}</td>
+                <td className="px-5 py-3 text-[#5C5A54]">{m.invited_email || '—'}</td>
+                <td className="px-5 py-3 text-[#5C5A54] capitalize">{m.role}</td>
                 <td className="px-5 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/5 text-white/30'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'active' ? 'bg-emerald-50 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
                     {m.status}
                   </span>
                 </td>
@@ -254,33 +254,33 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {/* Recent projects */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-medium text-white flex items-center gap-2"><FolderOpen size={14} className="text-[#C4A46B]" /> Recent projects</h2>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden mb-6">
+        <div className="px-5 py-4 border-b border-[#DED8CC]">
+          <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2"><FolderOpen size={14} className="text-[#7E6036]" /> Recent projects</h2>
         </div>
         {!projects?.length ? (
-          <p className="px-5 py-8 text-sm text-white/30 text-center">No projects yet</p>
+          <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No projects yet</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Project</th>
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Number</th>
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Status</th>
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Created</th>
+              <tr className="border-b border-[#EAE5DB]">
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Project</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[#EFEBE3]">
               {projects.map(p => (
                 <tr key={p.id}>
-                  <td className="px-5 py-3 text-white/80">{p.project_name}</td>
-                  <td className="px-5 py-3 text-white/40">{p.project_number}</td>
+                  <td className="px-5 py-3 text-[#2C2C2A]">{p.project_name}</td>
+                  <td className="px-5 py-3 text-[#6E6B63]">{p.project_number}</td>
                   <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColour[p.status] ?? 'bg-white/5 text-white/40'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColour[p.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
                       {p.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-white/40 text-xs">
+                  <td className="px-5 py-3 text-[#6E6B63] text-xs">
                     {new Date(p.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
                 </tr>
@@ -291,43 +291,43 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
       </div>
 
       {/* Sourcing activity */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-white flex items-center gap-2">
-              <ArrowLeftRight size={14} className="text-[#C4A46B]" /> Sourcing activity
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#DED8CC] flex items-center justify-between">
+            <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2">
+              <ArrowLeftRight size={14} className="text-[#7E6036]" /> Sourcing activity
             </h2>
-            <div className="flex items-center gap-4 text-xs text-white/40">
+            <div className="flex items-center gap-4 text-xs text-[#6E6B63]">
               <span>{sourcingSessions?.length ?? 0} sessions</span>
               <span>{studioAcceptedCount} items accepted</span>
-              <span className="text-[#C4A46B] font-semibold">{fmtFee(studioTotalFee)} fees generated</span>
+              <span className="text-[#7E6036] font-semibold">{fmtFee(studioTotalFee)} fees generated</span>
             </div>
           </div>
           {!sourcingSessions?.length ? (
-            <p className="px-5 py-8 text-sm text-white/30 text-center">No sourcing sessions yet</p>
+            <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No sourcing sessions yet</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Session</th>
-                  <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Status</th>
-                  <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Created</th>
+                <tr className="border-b border-[#EAE5DB]">
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Session</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Created</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#EFEBE3]">
                 {((sourcingSessions ?? []) as SourcingSessionListRow[]).map(s => {
                   const statusColor: Record<string, string> = {
-                    draft: '#71717A', sent: '#60A5FA', in_progress: '#F59E0B',
-                    completed: '#34D399', archived: '#52525B',
+                    draft: '#5C5A54', sent: '#0369A1', in_progress: '#8F5706',
+                    completed: '#047857', archived: '#6E6B63',
                   }
                   return (
                     <tr key={s.id}>
-                      <td className="px-5 py-3 text-white/80">{s.title}</td>
+                      <td className="px-5 py-3 text-[#2C2C2A]">{s.title}</td>
                       <td className="px-5 py-3">
-                        <span className="text-xs font-medium capitalize" style={{ color: statusColor[s.status ?? ''] ?? '#71717A' }}>
+                        <span className="text-xs font-medium capitalize" style={{ color: statusColor[s.status ?? ''] ?? '#5C5A54' }}>
                           {(s.status ?? 'unknown').replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-white/40 text-xs">
+                      <td className="px-5 py-3 text-[#6E6B63] text-xs">
                         {new Date(s.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                     </tr>

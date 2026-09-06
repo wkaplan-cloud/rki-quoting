@@ -29,12 +29,12 @@ export function StudioNotes({ orgId, initial }: { orgId: string; initial: string
   }
 
   return (
-    <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
-      <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-white flex items-center gap-2">
-          <StickyNote size={14} className="text-[#C4A46B]" /> Internal Notes
+    <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden mb-6">
+      <div className="px-5 py-4 border-b border-[#DED8CC] flex items-center justify-between">
+        <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2">
+          <StickyNote size={14} className="text-[#7E6036]" /> Internal Notes
         </h2>
-        <span className="text-xs text-white/20">Only visible to platform admins</span>
+        <span className="text-xs text-[#8A877F]">Only visible to platform admins</span>
       </div>
       <div className="p-5 space-y-3">
         <textarea
@@ -42,13 +42,13 @@ export function StudioNotes({ orgId, initial }: { orgId: string; initial: string
           onChange={e => { setNotes(e.target.value); setDirty(true) }}
           placeholder="Add notes about this studio — calls, upgrade interest, support history, anything relevant…"
           rows={4}
-          className="w-full bg-[#0F0F0D] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#9A7B4F] resize-none"
+          className="w-full bg-[#F5F2EC] border border-[#DED8CC] rounded-lg px-3 py-2.5 text-sm text-[#1A1A18] placeholder:text-[#6E6B63] focus:outline-none focus:border-[#7E6036] resize-none"
         />
         {dirty && (
           <button
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 bg-[#9A7B4F] text-white text-xs font-medium rounded-lg hover:bg-[#B8956A] transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-4 py-2 bg-[#7E6036] text-white text-xs font-medium rounded-lg hover:bg-[#5F4726] transition-colors disabled:opacity-50 cursor-pointer"
           >
             {saving ? 'Saving…' : 'Save notes'}
           </button>

@@ -92,24 +92,24 @@ export default async function ElectriciansPage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Zap size={18} className="text-amber-400" />
-          <h1 className="text-xl font-semibold text-white">Electrician Portal</h1>
+          <Zap size={18} className="text-[#8F5706]" />
+          <h1 className="text-xl font-semibold text-[#1A1A18]">Electrician Portal</h1>
         </div>
-        <p className="text-sm text-white/40">Trade contractors registered on the Electrician Portal · click a row to manage admin users</p>
+        <p className="text-sm text-[#6E6B63]">Trade contractors registered on the Electrician Portal · click a row to manage admin users</p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total',         value: totalContractors,  icon: Zap,         color: 'text-amber-400'   },
-          { label: 'Active',        value: activeContractors, icon: CheckCircle, color: 'text-emerald-400' },
-          { label: 'In Trial',      value: trialContractors,  icon: Clock,       color: 'text-amber-400'   },
-          { label: 'New this month',value: newThisMonth,      icon: TrendingUp,  color: 'text-blue-400'    },
+          { label: 'Total',         value: totalContractors,  icon: Zap,         color: 'text-[#8F5706]'   },
+          { label: 'Active',        value: activeContractors, icon: CheckCircle, color: 'text-[#047857]' },
+          { label: 'In Trial',      value: trialContractors,  icon: Clock,       color: 'text-[#8F5706]'   },
+          { label: 'New this month',value: newThisMonth,      icon: TrendingUp,  color: 'text-[#0F766E]'    },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white/5 rounded-xl px-4 py-4 border border-white/8">
+          <div key={label} className="bg-[#EFEBE3] rounded-xl px-4 py-4 border border-[#E2DCD1]">
             <div className="flex items-center gap-1.5 mb-2">
               <Icon size={12} className={color} />
-              <p className="text-[10px] text-white/40 uppercase tracking-wider">{label}</p>
+              <p className="text-[10px] text-[#6E6B63] uppercase tracking-wider">{label}</p>
             </div>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
           </div>
@@ -119,35 +119,35 @@ export default async function ElectriciansPage() {
       {/* Plan breakdown */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Starter',       value: starterCount,      sub: 'R999/mo',    color: 'text-blue-400',    bg: 'bg-blue-500/10'    },
-          { label: 'Professional',  value: professionalCount, sub: 'R1,999/mo',  color: 'text-amber-400',   bg: 'bg-amber-500/10'   },
-          { label: 'Business',      value: businessCount,     sub: 'R3,199/mo',  color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-          { label: 'Total Staff',   value: totalStaff,        sub: 'across all', color: 'text-white/60',    bg: 'bg-white/5'        },
+          { label: 'Starter',       value: starterCount,      sub: 'R999/mo',    color: 'text-[#0F766E]',    bg: 'bg-teal-50'    },
+          { label: 'Professional',  value: professionalCount, sub: 'R1,999/mo',  color: 'text-[#8F5706]',   bg: 'bg-amber-50'   },
+          { label: 'Business',      value: businessCount,     sub: 'R3,199/mo',  color: 'text-[#047857]', bg: 'bg-emerald-50' },
+          { label: 'Total Staff',   value: totalStaff,        sub: 'across all', color: 'text-[#3F3D38]',    bg: 'bg-[#EFEBE3]'        },
         ].map(({ label, value, sub, color, bg }) => (
-          <div key={label} className={`rounded-xl px-4 py-4 border border-white/8 ${bg}`}>
+          <div key={label} className={`rounded-xl px-4 py-4 border border-[#E2DCD1] ${bg}`}>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            <p className="text-xs font-medium text-white/60 mt-0.5">{label}</p>
-            <p className="text-[10px] text-white/30">{sub}</p>
+            <p className="text-xs font-medium text-[#3F3D38] mt-0.5">{label}</p>
+            <p className="text-[10px] text-[#6E6B63]">{sub}</p>
           </div>
         ))}
       </div>
 
       {/* Billing flags */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${setupFeeOwed > 0 ? 'bg-amber-500/8 border-amber-500/20' : 'bg-white/3 border-white/8'}`}>
-          <Receipt size={20} className={setupFeeOwed > 0 ? 'text-amber-400' : 'text-white/20'} />
+        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${setupFeeOwed > 0 ? 'bg-amber-500/8 border-amber-200' : 'bg-[#F3EFE8] border-[#E2DCD1]'}`}>
+          <Receipt size={20} className={setupFeeOwed > 0 ? 'text-[#8F5706]' : 'text-[#8A877F]'} />
           <div>
-            <p className={`text-xl font-bold ${setupFeeOwed > 0 ? 'text-amber-400' : 'text-white/30'}`}>{setupFeeOwed}</p>
-            <p className="text-xs font-medium text-white/60">Setup fees outstanding</p>
-            <p className="text-[10px] text-white/30">R2,500 once-off each · total R{(setupFeeOwed * 2500).toLocaleString()}</p>
+            <p className={`text-xl font-bold ${setupFeeOwed > 0 ? 'text-[#8F5706]' : 'text-[#6E6B63]'}`}>{setupFeeOwed}</p>
+            <p className="text-xs font-medium text-[#3F3D38]">Setup fees outstanding</p>
+            <p className="text-[10px] text-[#6E6B63]">R2,500 once-off each · total R{(setupFeeOwed * 2500).toLocaleString()}</p>
           </div>
         </div>
-        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${totalExtraStaff > 0 ? 'bg-amber-500/8 border-amber-500/20' : 'bg-white/3 border-white/8'}`}>
-          <Users size={20} className={totalExtraStaff > 0 ? 'text-amber-400' : 'text-white/20'} />
+        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${totalExtraStaff > 0 ? 'bg-amber-500/8 border-amber-200' : 'bg-[#F3EFE8] border-[#E2DCD1]'}`}>
+          <Users size={20} className={totalExtraStaff > 0 ? 'text-[#8F5706]' : 'text-[#8A877F]'} />
           <div>
-            <p className={`text-xl font-bold ${totalExtraStaff > 0 ? 'text-amber-400' : 'text-white/30'}`}>{totalExtraStaff}</p>
-            <p className="text-xs font-medium text-white/60">Extra staff across {extraStaffAccounts.length} account{extraStaffAccounts.length !== 1 ? 's' : ''}</p>
-            <p className="text-[10px] text-white/30">R40/staff/mo · R{(totalExtraStaff * 40).toLocaleString()}/mo to collect</p>
+            <p className={`text-xl font-bold ${totalExtraStaff > 0 ? 'text-[#8F5706]' : 'text-[#6E6B63]'}`}>{totalExtraStaff}</p>
+            <p className="text-xs font-medium text-[#3F3D38]">Extra staff across {extraStaffAccounts.length} account{extraStaffAccounts.length !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-[#6E6B63]">R40/staff/mo · R{(totalExtraStaff * 40).toLocaleString()}/mo to collect</p>
           </div>
         </div>
       </div>
@@ -156,10 +156,10 @@ export default async function ElectriciansPage() {
       <ContractorsTable rows={rows} />
 
       {/* Feature guide */}
-      <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-5">
+      <div className="bg-amber-500/8 border border-amber-200 rounded-xl p-5">
         <div className="flex items-center gap-2 mb-3">
-          <Zap size={13} className="text-amber-400" />
-          <h3 className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Electrician Portal Capabilities</h3>
+          <Zap size={13} className="text-[#8F5706]" />
+          <h3 className="text-xs font-semibold text-[#8F5706] uppercase tracking-wider">Electrician Portal Capabilities</h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-2">
           {[
@@ -171,10 +171,10 @@ export default async function ElectriciansPage() {
             ['Staff & Schedule', 'Manage team members and weekly calendar'],
           ].map(([title, desc]) => (
             <div key={title} className="flex items-start gap-2">
-              <span className="w-1 h-1 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
+              <span className="w-1 h-1 rounded-full bg-[#8F5706] mt-1.5 flex-shrink-0" />
               <div>
-                <p className="text-xs font-medium text-white/70">{title}</p>
-                <p className="text-[10px] text-white/30">{desc}</p>
+                <p className="text-xs font-medium text-[#3F3D38]">{title}</p>
+                <p className="text-[10px] text-[#6E6B63]">{desc}</p>
               </div>
             </div>
           ))}

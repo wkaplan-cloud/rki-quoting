@@ -7,9 +7,9 @@ export default function Loading() {
         <div className="qh-skeleton h-3.5 w-80 rounded" />
       </div>
 
-      <div className="mb-8 border-y border-white/8 flex flex-wrap divide-x divide-white/8">
+      <div className="mb-8 border-y border-[#E2DCD1] grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-x-8 gap-y-6 py-5">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="px-5 py-4 first:pl-0 space-y-2">
+          <div key={i} className="space-y-2">
             <div className="qh-skeleton h-2.5 w-24 rounded" />
             <div className="qh-skeleton h-5 w-28 rounded" />
             <div className="qh-skeleton h-2.5 w-20 rounded" />

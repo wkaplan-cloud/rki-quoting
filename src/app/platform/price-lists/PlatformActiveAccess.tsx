@@ -24,7 +24,7 @@ function Toggle({ enabled, loading, onToggle }: { enabled: boolean; loading: boo
       disabled={loading}
       title={enabled ? 'Revoke access' : 'Restore access'}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-40 cursor-pointer ${
-        enabled ? 'bg-emerald-600' : 'bg-white/20'
+        enabled ? 'bg-emerald-600' : 'bg-[#DED8CC]'
       }`}
     >
       <span
@@ -63,15 +63,15 @@ export function PlatformActiveAccess({ access, priceLists }: { access: AccessRow
         const pl = priceLists.find(p => p.id === row.price_list_id)
         const isActive = (statuses[row.id] ?? row.status) === 'active'
         return (
-          <div key={row.id} className="flex items-center justify-between bg-[#1A1A18] border border-white/10 rounded-lg px-5 py-4">
+          <div key={row.id} className="flex items-center justify-between bg-[#FDFCF9] border border-[#DED8CC] rounded-lg px-5 py-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-emerald-900/30' : 'bg-white/5'}`}>
-                <Building2 size={14} className={isActive ? 'text-emerald-400' : 'text-white/30'} />
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-emerald-50' : 'bg-[#EFEBE3]'}`}>
+                <Building2 size={14} className={isActive ? 'text-[#047857]' : 'text-[#6E6B63]'} />
               </div>
               <div className="min-w-0">
-                <p className={`text-sm font-medium truncate ${isActive ? 'text-white' : 'text-white/40'}`}>{row.orgName}</p>
-                <p className="text-xs text-white/40 mt-0.5">
-                  {isActive ? 'Access to' : 'Revoked —'} <span className="text-white/60">{pl?.name ?? row.price_list_id}</span>
+                <p className={`text-sm font-medium truncate ${isActive ? 'text-[#1A1A18]' : 'text-[#6E6B63]'}`}>{row.orgName}</p>
+                <p className="text-xs text-[#6E6B63] mt-0.5">
+                  {isActive ? 'Access to' : 'Revoked —'} <span className="text-[#3F3D38]">{pl?.name ?? row.price_list_id}</span>
                   {row.approved_at && isActive && (
                     <> · Approved {new Date(row.approved_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}</>
                   )}
@@ -79,7 +79,7 @@ export function PlatformActiveAccess({ access, priceLists }: { access: AccessRow
               </div>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
-              <span className="text-xs text-white/30">{isActive ? 'Allowed' : 'Revoked'}</span>
+              <span className="text-xs text-[#6E6B63]">{isActive ? 'Allowed' : 'Revoked'}</span>
               <Toggle
                 enabled={isActive}
                 loading={loading === row.id}

@@ -86,24 +86,24 @@ export default async function ManufacturingPage() {
     <div className="p-8 space-y-8">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Hammer size={18} className="text-orange-400" />
-          <h1 className="text-xl font-semibold text-white">Manufacturing Portal</h1>
+          <Hammer size={18} className="text-[#C2410C]" />
+          <h1 className="text-xl font-semibold text-[#1A1A18]">Manufacturing Portal</h1>
         </div>
-        <p className="text-sm text-white/40">Manufacturer accounts · click a row to edit plan or manage admins · click ↗ to view full detail</p>
+        <p className="text-sm text-[#6E6B63]">Manufacturer accounts · click a row to edit plan or manage admins · click ↗ to view full detail</p>
       </div>
 
       {/* Key stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total',          value: total,        icon: Hammer,      color: 'text-orange-400'  },
-          { label: 'Active',         value: active,       icon: CheckCircle, color: 'text-emerald-400' },
-          { label: 'In Trial',       value: trialing,     icon: Clock,       color: 'text-amber-400'   },
-          { label: 'New this month', value: newThisMonth, icon: TrendingUp,  color: 'text-blue-400'    },
+          { label: 'Total',          value: total,        icon: Hammer,      color: 'text-[#C2410C]'  },
+          { label: 'Active',         value: active,       icon: CheckCircle, color: 'text-[#047857]' },
+          { label: 'In Trial',       value: trialing,     icon: Clock,       color: 'text-[#8F5706]'   },
+          { label: 'New this month', value: newThisMonth, icon: TrendingUp,  color: 'text-[#0F766E]'    },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white/5 rounded-xl px-4 py-4 border border-white/8">
+          <div key={label} className="bg-[#EFEBE3] rounded-xl px-4 py-4 border border-[#E2DCD1]">
             <div className="flex items-center gap-1.5 mb-2">
               <Icon size={12} className={color} />
-              <p className="text-[10px] text-white/40 uppercase tracking-wider">{label}</p>
+              <p className="text-[10px] text-[#6E6B63] uppercase tracking-wider">{label}</p>
             </div>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
           </div>
@@ -112,26 +112,26 @@ export default async function ManufacturingPage() {
 
       {/* Activity + billing flags */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-xl px-5 py-4 border border-white/8 bg-white/3 flex items-center gap-4">
-          <FileText size={20} className="text-orange-400/60" />
+        <div className="rounded-xl px-5 py-4 border border-[#E2DCD1] bg-[#F3EFE8] flex items-center gap-4">
+          <FileText size={20} className="text-[#C2410C]/60" />
           <div>
-            <p className="text-2xl font-bold text-white/80">{totalQuotes}</p>
-            <p className="text-xs font-medium text-white/40">Total quotes created</p>
+            <p className="text-2xl font-bold text-[#2C2C2A]">{totalQuotes}</p>
+            <p className="text-xs font-medium text-[#6E6B63]">Total quotes created</p>
           </div>
         </div>
-        <div className="rounded-xl px-5 py-4 border border-white/8 bg-emerald-500/5 flex items-center gap-4">
-          <Receipt size={20} className="text-emerald-400/60" />
+        <div className="rounded-xl px-5 py-4 border border-[#E2DCD1] bg-emerald-500/5 flex items-center gap-4">
+          <Receipt size={20} className="text-[#047857]/60" />
           <div>
-            <p className="text-xl font-bold text-emerald-400">{fmtR(totalInvoiced)}</p>
-            <p className="text-xs font-medium text-white/40">Total invoiced (all time)</p>
+            <p className="text-xl font-bold text-[#047857]">{fmtR(totalInvoiced)}</p>
+            <p className="text-xs font-medium text-[#6E6B63]">Total invoiced (all time)</p>
           </div>
         </div>
-        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${setupFeeOwed > 0 ? 'bg-amber-500/8 border-amber-500/20' : 'bg-white/3 border-white/8'}`}>
-          <Receipt size={20} className={setupFeeOwed > 0 ? 'text-amber-400' : 'text-white/20'} />
+        <div className={`rounded-xl px-5 py-4 border flex items-center gap-4 ${setupFeeOwed > 0 ? 'bg-amber-500/8 border-amber-200' : 'bg-[#F3EFE8] border-[#E2DCD1]'}`}>
+          <Receipt size={20} className={setupFeeOwed > 0 ? 'text-[#8F5706]' : 'text-[#8A877F]'} />
           <div>
-            <p className={`text-2xl font-bold ${setupFeeOwed > 0 ? 'text-amber-400' : 'text-white/30'}`}>{setupFeeOwed}</p>
-            <p className="text-xs font-medium text-white/60">Setup fees outstanding</p>
-            {setupFeeOwed > 0 && <p className="text-[10px] text-white/30">R2,500 each · R{(setupFeeOwed * 2500).toLocaleString()} total</p>}
+            <p className={`text-2xl font-bold ${setupFeeOwed > 0 ? 'text-[#8F5706]' : 'text-[#6E6B63]'}`}>{setupFeeOwed}</p>
+            <p className="text-xs font-medium text-[#3F3D38]">Setup fees outstanding</p>
+            {setupFeeOwed > 0 && <p className="text-[10px] text-[#6E6B63]">R2,500 each · R{(setupFeeOwed * 2500).toLocaleString()} total</p>}
           </div>
         </div>
       </div>

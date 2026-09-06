@@ -15,6 +15,53 @@ colors:
   border: "#D8D3C8"
   surface: "#FDFCF9"
 
+  # ── Platform admin (/platform) ──────────────────────────────────────────
+  # Cream canvas, ink rail. Every text value clears 4.5:1; the "Platform
+  # control room" section below says which value goes where.
+  pf-panel: "#FDFCF9"
+  pf-sunken: "#EFEBE3"
+  pf-row: "#F1EDE5"
+  pf-row-alt: "#F3EFE8"
+  pf-row-faint: "#F7F4EE"
+  pf-hover: "#E9E4DA"
+  pf-border: "#DED8CC"
+  pf-border-soft: "#E2DCD1"
+  pf-hairline: "#EAE5DB"
+  pf-border-firm: "#CFC7B8"
+  pf-rule: "#C5C0B5"
+  pf-chevron: "#A8A398"
+  pf-text: "#1A1A18"
+  pf-text-2: "#3F3D38"
+  pf-text-3: "#5C5A54"
+  pf-text-4: "#6E6B63"
+  pf-designer: "#7E6036"
+  pf-designer-dk: "#5F4726"
+  pf-supplier: "#0F766E"
+  pf-supplier-dk: "#115E59"
+  pf-manufacture: "#C2410C"
+  pf-trades: "#6D28D9"
+  pf-critical: "#B91C1C"
+  pf-warning: "#8F5706"
+  pf-notice: "#0369A1"
+  pf-healthy: "#047857"
+  pf-healthy-dk: "#065F46"
+  pf-chip-quote: "#DDEDFA"
+  pf-chip-approved: "#D6F5E3"
+  pf-chip-deposit: "#EAE4FD"
+  pf-chip-invoice: "#FBEFD2"
+  pf-chip-cancelled: "#FBE0E0"
+  pf-rail: "#181816"
+  pf-rail-text: "#B4B0A6"
+  pf-rail-label: "#8F8B81"
+  pf-rail-hover: "#D6D2C8"
+  pf-rail-gold: "#D8BA84"
+  pf-rail-gold-hi: "#EBD3A6"
+  pf-scrim: "rgba(0,0,0,0.7)"
+  pf-scrim-strong: "rgba(0,0,0,0.75)"
+  pf-danger: "#dc2626"
+  pf-danger-bg: "#fef2f2"
+  pf-danger-border: "#fecaca"
+
 typography:
   heading:
     fontFamily: "Playfair Display"
@@ -225,39 +272,51 @@ Charcoal background, cream text. 4px radius. Appears top-right. Consistent with 
 
 ## Platform control room
 
-`/platform/*` is the internal admin surface — a dark control room, not part of the
-cream app shell. It is the one place where dark is the base rather than an accent.
+`/platform/*` is the internal admin. It runs on the house cream canvas — the ink
+rail is the only dark surface, exactly as in the app shell. Colour carries
+meaning here rather than decoration, and no text value falls below 4.5:1.
 
-**Surfaces** stack in three layers, each a step lighter than the last:
+**Surfaces**
 
-- `#0E0E0C` — the canvas everything sits on.
-- `#181816` — the navigation rail and the command palette body.
-- `#161614` — panels and cards, with a `rgba(255,255,255,0.08)` hairline border
-  and a 1px inset white highlight along the top edge.
+- `#F5F2EC` — the canvas.
+- `#FDFCF9` — panels and cards, `#DED8CC` border, a soft `rgba(44,44,42,0.16)`
+  drop shadow at -16px blur. No inset highlights; they are invisible on cream.
+- `#EFEBE3` sunken fills, `#E9E4DA` hover, `#EAE5DB` hairline dividers.
+- `#181816` — the navigation rail and the command palette. Nothing else.
 
-Borders are `white/8`, dividers `white/5`. Text runs `white` → `white/85` →
-`white/55` → `white/35` → `white/25` as it recedes; never below `white/25` for
-anything a person has to read.
+**Text** runs `#1A1A18` → `#3F3D38` → `#5C5A54` → `#6E6B63`. That last value is
+the floor for anything a person reads (4.76:1 on cream); `#8A877F` is permitted
+only for rules and decorative icons. On the ink rail the ramp inverts to
+`#FFFFFF` → `#B4B0A6` → `#8F8B81`.
 
 **Type** uses the fixed ramp above (10 / 11 / 12 / 13 / 15 / 20 / 28 / 32 / 40px).
 No fluid sizing — the admin is viewed at a consistent desk DPI. Every number is
 `tabular-nums`. Playfair is reserved for the page title; everything else is Inter.
 
-**Portal accents.** Each of the four portals owns one hue, used for its section
-dot, its nav icons when active, its card rail, and its activity-feed markers —
-never as a fill:
+**Portal accents.** Each portal owns one hue for its section dot, active nav
+icon, card rail and activity markers. Each has a cream twin and a rail twin,
+because the same hue cannot serve both grounds:
 
-- Designer — `#C4A46B` (gold-light)
-- Supplier — `sky-400`
-- Manufacturing — `orange-400`
-- Electrical & trades — `amber-400`
+| Portal | On cream | On the ink rail |
+|---|---|---|
+| Designer | `#7E6036` (5.2:1) | `#D8BA84` (9.6:1) |
+| Supplier | `#0F766E` (4.9:1) | `teal-300` (12.0:1) |
+| Manufacturing | `#C2410C` (4.6:1) | `orange-300` (10.5:1) |
+| Electrical & trades | `#6D28D9` (6.4:1) | `violet-300` (9.6:1) |
 
-**Severity** is separate from portal accent: `rose-400` critical, `amber-400`
-warning, `sky-400` notice, `emerald-400` healthy. A severity dot carries a
-`0 0 0 3px` tinted halo so it reads at 6px.
+**Severity** is separate from portal accent: `#B91C1C` critical, `#8F5706`
+warning, `#0369A1` notice, `#047857` healthy — all ≥4.5:1 on cream. A severity
+dot carries a `0 0 0 3px` tint of its own hue at 13% so it reads at 6px.
 
-**Active navigation** is a `white/[0.08]` fill plus a 2px gold tab on the trailing
-edge and a portal-coloured icon — not a thick left border.
+**Status chips** are a light tint of the hue with its AA text on top, never a
+dark chip: Draft `#EFEBE3`/`#5C5A54`, Quote `#DDEDFA`/`#0369A1`, Approved and
+Paid `#D6F5E3`/`#047857`, Deposit `#EAE4FD`/`#6D28D9`, Invoice `#FBEFD2`/`#8F5706`,
+Cancelled `#FBE0E0`/`#B91C1C`.
+
+**Filled buttons** — bronze, red, amber, teal, emerald — always carry white text.
+
+**Active navigation** is a `white/10` fill on the rail plus a 2px `#D8BA84` tab
+on the trailing edge and a portal-coloured icon, not a thick left border.
 
 Motion is limited to `transition-colors duration-150` and one 180ms entrance on
 the command palette. The skeleton pulse respects `prefers-reduced-motion`.

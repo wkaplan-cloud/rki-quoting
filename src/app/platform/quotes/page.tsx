@@ -7,14 +7,14 @@ function fmtDate(iso: string) {
 }
 
 const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
-  Draft:     { bg: '#1A1A18', color: '#71717A' },
-  Quote:     { bg: '#1C2A3A', color: '#60A5FA' },
-  Approved:  { bg: '#0A2A1A', color: '#6EE7B7' },
-  Deposit:   { bg: '#1E1A2E', color: '#C4B5FD' },
-  Invoice:   { bg: '#2A1F0A', color: '#F59E0B' },
-  Paid:      { bg: '#0A2A1A', color: '#34D399' },
-  Completed: { bg: '#0A2A1A', color: '#34D399' },
-  Cancelled: { bg: '#2A0A0A', color: '#F87171' },
+  Draft:     { bg: '#EFEBE3', color: '#5C5A54' },
+  Quote:     { bg: '#DDEDFA', color: '#0369A1' },
+  Approved:  { bg: '#D6F5E3', color: '#047857' },
+  Deposit:   { bg: '#EAE4FD', color: '#6D28D9' },
+  Invoice:   { bg: '#FBEFD2', color: '#8F5706' },
+  Paid:      { bg: '#D6F5E3', color: '#047857' },
+  Completed: { bg: '#D6F5E3', color: '#047857' },
+  Cancelled: { bg: '#FBE0E0', color: '#B91C1C' },
 }
 
 interface PlatformProjectRow {
@@ -67,10 +67,10 @@ export default async function PlatformQuotesPage() {
     <div className="p-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
-          <FolderOpen size={18} className="text-[#C4A46B]" />
-          <h1 className="font-serif text-3xl text-white">Quote & Invoice Tracker</h1>
+          <FolderOpen size={18} className="text-[#7E6036]" />
+          <h1 className="font-serif text-3xl text-[#1A1A18]">Quote & Invoice Tracker</h1>
         </div>
-        <p className="text-sm text-white/40">All projects across every studio, by pipeline stage</p>
+        <p className="text-sm text-[#6E6B63]">All projects across every studio, by pipeline stage</p>
       </div>
 
       {/* Status breakdown */}
@@ -78,8 +78,8 @@ export default async function PlatformQuotesPage() {
         {statuses.map(s => {
           const badge = STATUS_BADGE[s] ?? STATUS_BADGE.Draft
           return (
-            <div key={s} className="bg-[#1A1A18] border border-white/10 rounded-xl p-4 text-center">
-              <p className="text-2xl font-semibold text-white mb-1">{byStatus[s] ?? 0}</p>
+            <div key={s} className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-4 text-center">
+              <p className="text-2xl font-semibold text-[#1A1A18] mb-1">{byStatus[s] ?? 0}</p>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: badge.bg, color: badge.color }}>{s}</span>
             </div>
           )
@@ -87,37 +87,37 @@ export default async function PlatformQuotesPage() {
       </div>
 
       {/* Projects table */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-medium text-white">All Projects</h2>
-          <p className="text-xs text-white/30 mt-0.5">{rows.length} total · sorted by most recent</p>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#DED8CC]">
+          <h2 className="text-sm font-medium text-[#1A1A18]">All Projects</h2>
+          <p className="text-xs text-[#6E6B63] mt-0.5">{rows.length} total · sorted by most recent</p>
         </div>
         {rows.length === 0 ? (
-          <p className="px-5 py-10 text-sm text-white/30 text-center">No projects yet</p>
+          <p className="px-5 py-10 text-sm text-[#6E6B63] text-center">No projects yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-[#DED8CC]">
                   {['Studio', 'Project', 'Number', 'Status', 'Created'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#6E6B63] uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#EFEBE3]">
                 {rows.map(row => {
                   const badge = STATUS_BADGE[row.status] ?? STATUS_BADGE.Draft
                   return (
-                    <tr key={row.id} className="hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-white/60 whitespace-nowrap">{row.studio}</td>
-                      <td className="px-4 py-3 text-white font-medium whitespace-nowrap max-w-[200px] truncate">{row.project_name}</td>
-                      <td className="px-4 py-3 text-white/40 whitespace-nowrap font-mono text-xs">{row.project_number ?? '—'}</td>
+                    <tr key={row.id} className="hover:bg-[#EFEBE3] transition-colors">
+                      <td className="px-4 py-3 text-[#3F3D38] whitespace-nowrap">{row.studio}</td>
+                      <td className="px-4 py-3 text-[#1A1A18] font-medium whitespace-nowrap max-w-[200px] truncate">{row.project_name}</td>
+                      <td className="px-4 py-3 text-[#6E6B63] whitespace-nowrap font-mono text-xs">{row.project_number ?? '—'}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: badge.bg, color: badge.color }}>
                           {row.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-white/40 whitespace-nowrap text-xs">{fmtDate(row.created_at)}</td>
+                      <td className="px-4 py-3 text-[#6E6B63] whitespace-nowrap text-xs">{fmtDate(row.created_at)}</td>
                     </tr>
                   )
                 })}

@@ -25,7 +25,7 @@ const DESTINATIONS: SearchEntry[] = [
   { id: 'nav-broadcast',   group: 'Go to', label: 'Broadcast',      hint: 'Email all studios',         href: '/platform/broadcast',     keywords: 'email campaign send' },
   { id: 'nav-commissions', group: 'Go to', label: 'Commissions',    hint: 'Rep commissions',           href: '/platform/commissions',   keywords: 'reps sales payouts' },
   { id: 'nav-suppliers',   group: 'Go to', label: 'Suppliers',      hint: 'Registered suppliers',      href: '/platform/suppliers',     keywords: 'vendors accounts' },
-  { id: 'nav-sourcing',    group: 'Go to', label: 'Sourcing',       hint: 'Price requests & fees',     href: '/platform/sourcing',      keywords: 'fees rfq price requests' },
+  { id: 'nav-sourcing',    group: 'Go to', label: 'Price Requests', hint: 'RFQ delivery & responses',  href: '/platform/sourcing',      keywords: 'sourcing rfq suppliers invitations' },
   { id: 'nav-pricelists',  group: 'Go to', label: 'Price Lists',    hint: 'Catalogues & access',       href: '/platform/price-lists',   keywords: 'catalogue twinbru access requests' },
   { id: 'nav-mfg',         group: 'Go to', label: 'Manufacturing',  hint: 'Manufacturer accounts',     href: '/platform/manufacturing', keywords: 'factory workshop makers' },
   { id: 'nav-elec',        group: 'Go to', label: 'Contractors',    hint: 'Electrical & trades',       href: '/platform/electricians',  keywords: 'electricians trades sparkies' },

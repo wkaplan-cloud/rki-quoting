@@ -51,14 +51,14 @@ export function BroadcastForm({ recipientCounts }: {
   return (
     <div className="space-y-6">
       {sent && (
-        <div className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm text-emerald-300">
+        <div className="px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-[#047857]">
           Email sent successfully.
         </div>
       )}
 
       {/* Recipients */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-        <label className="block text-xs text-white/40 uppercase tracking-wider mb-3">Recipients</label>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+        <label className="block text-xs text-[#6E6B63] uppercase tracking-wider mb-3">Recipients</label>
         <div className="flex flex-wrap gap-2">
           {PLAN_OPTIONS.map(opt => (
             <button
@@ -66,8 +66,8 @@ export function BroadcastForm({ recipientCounts }: {
               onClick={() => setFilter(opt.value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                 filter === opt.value
-                  ? 'bg-[#9A7B4F] text-white'
-                  : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
+                  ? 'bg-[#7E6036] text-white'
+                  : 'bg-[#EFEBE3] text-[#5C5A54] hover:bg-[#E5DFD5] hover:text-[#1A1A18]'
               }`}
             >
               {opt.label}
@@ -75,45 +75,45 @@ export function BroadcastForm({ recipientCounts }: {
           ))}
         </div>
         <div className="flex items-center gap-2 mt-3 text-sm">
-          <Users size={14} className="text-[#C4A46B]" />
-          <span className="text-white font-semibold">{count}</span>
-          <span className="text-white/40">studio admin{count !== 1 ? 's' : ''} will receive this email</span>
+          <Users size={14} className="text-[#7E6036]" />
+          <span className="text-[#1A1A18] font-semibold">{count}</span>
+          <span className="text-[#6E6B63]">studio admin{count !== 1 ? 's' : ''} will receive this email</span>
         </div>
       </div>
 
       {/* Subject */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-        <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">Subject</label>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+        <label className="block text-xs text-[#6E6B63] uppercase tracking-wider mb-2">Subject</label>
         <input
           type="text"
           value={subject}
           onChange={e => setSubject(e.target.value)}
           placeholder="e.g. New feature: bulk import for line items"
-          className="w-full bg-[#0F0F0D] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#9A7B4F]"
+          className="w-full bg-[#F5F2EC] border border-[#DED8CC] rounded-lg px-3 py-2.5 text-sm text-[#1A1A18] placeholder:text-[#6E6B63] focus:outline-none focus:border-[#7E6036]"
         />
       </div>
 
       {/* Body */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-        <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">Message</label>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+        <label className="block text-xs text-[#6E6B63] uppercase tracking-wider mb-2">Message</label>
         <textarea
           value={body}
           onChange={e => setBody(e.target.value)}
           placeholder="Write your message here. Plain text, keep it concise. Replies will go to hello@quotinghub.co.za."
           rows={8}
-          className="w-full bg-[#0F0F0D] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-[#9A7B4F] resize-none"
+          className="w-full bg-[#F5F2EC] border border-[#DED8CC] rounded-lg px-3 py-2.5 text-sm text-[#1A1A18] placeholder:text-[#6E6B63] focus:outline-none focus:border-[#7E6036] resize-none"
         />
-        <p className="text-xs text-white/20 mt-2">Your message will be wrapped in the standard QuotingHub email template.</p>
+        <p className="text-xs text-[#8A877F] mt-2">Your message will be wrapped in the standard QuotingHub email template.</p>
       </div>
 
       {/* Preview snippet */}
       {body.trim() && (
-        <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-          <p className="text-xs text-white/40 uppercase tracking-wider mb-3">Preview</p>
-          <div className="bg-[#0F0F0D] border border-white/10 rounded-lg p-4">
-            <p className="text-xs text-white/40 mb-1">Subject: <span className="text-white/70">{subject || '(no subject)'}</span></p>
-            <hr className="border-white/10 my-2" />
-            <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{body}</p>
+        <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+          <p className="text-xs text-[#6E6B63] uppercase tracking-wider mb-3">Preview</p>
+          <div className="bg-[#F5F2EC] border border-[#DED8CC] rounded-lg p-4">
+            <p className="text-xs text-[#6E6B63] mb-1">Subject: <span className="text-[#3F3D38]">{subject || '(no subject)'}</span></p>
+            <hr className="border-[#DED8CC] my-2" />
+            <p className="text-sm text-[#3F3D38] whitespace-pre-wrap leading-relaxed">{body}</p>
           </div>
         </div>
       )}
@@ -121,7 +121,7 @@ export function BroadcastForm({ recipientCounts }: {
       <button
         onClick={send}
         disabled={sending || count === 0 || !subject.trim() || !body.trim()}
-        className="flex items-center gap-2 px-6 py-3 bg-[#9A7B4F] text-white text-sm font-medium rounded-xl hover:bg-[#B8956A] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+        className="flex items-center gap-2 px-6 py-3 bg-[#7E6036] text-white text-sm font-medium rounded-xl hover:bg-[#5F4726] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
       >
         <Send size={15} />
         {sending ? 'Sending…' : `Send to ${count} studio${count !== 1 ? 's' : ''}`}

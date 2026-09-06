@@ -7,8 +7,8 @@ const LABELS: Record<string, string> = {
 }
 
 const STYLES: Record<string, string> = {
-  manufacturer: 'bg-blue-950 text-blue-300 border-blue-800/50 hover:bg-blue-900',
-  trades:       'bg-violet-950 text-violet-300 border-violet-800/50 hover:bg-violet-900',
+  manufacturer: 'bg-teal-50 text-[#0F766E] border-teal-200 hover:bg-teal-100',
+  trades:       'bg-violet-50 text-[#6D28D9] border-violet-200 hover:bg-violet-100',
 }
 
 export function SupplierCategoryBadge({ accountId, initial }: { accountId: string; initial: string }) {

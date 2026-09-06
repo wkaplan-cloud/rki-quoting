@@ -78,8 +78,8 @@ export default async function PlatformPriceListsPage() {
   return (
     <div className="p-8 space-y-10">
       <div>
-        <h1 className="text-xl font-semibold text-white">Price Lists</h1>
-        <p className="text-sm text-white/50 mt-0.5">Manage platform-wide price lists available to all studios</p>
+        <h1 className="text-xl font-semibold text-[#1A1A18]">Price Lists</h1>
+        <p className="text-sm text-[#5C5A54] mt-0.5">Manage platform-wide price lists available to all studios</p>
       </div>
 
       {/* Twinbru Sync */}
@@ -94,14 +94,14 @@ export default async function PlatformPriceListsPage() {
 
       {/* Pending requests */}
       <div>
-        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider mb-3">
+        <h2 className="text-sm font-semibold text-[#3F3D38] uppercase tracking-wider mb-3">
           Access Requests
           {pendingRequests.length > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#9A7B4F] text-white text-[10px] font-bold">{pendingRequests.length}</span>
+            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#7E6036] text-white text-[10px] font-bold">{pendingRequests.length}</span>
           )}
         </h2>
         {pendingRequests.length === 0 ? (
-          <p className="text-sm text-white/30 bg-[#1A1A18] border border-white/10 rounded-lg px-5 py-4">No pending access requests.</p>
+          <p className="text-sm text-[#6E6B63] bg-[#FDFCF9] border border-[#DED8CC] rounded-lg px-5 py-4">No pending access requests.</p>
         ) : (
           <PlatformAccessRequests requests={pendingRequests} priceLists={priceLists ?? []} />
         )}
@@ -109,14 +109,14 @@ export default async function PlatformPriceListsPage() {
 
       {/* Active / approved access */}
       <div>
-        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider mb-3">
+        <h2 className="text-sm font-semibold text-[#3F3D38] uppercase tracking-wider mb-3">
           Approved Access
           {activeAccess.length > 0 && (
-            <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-emerald-900/60 text-emerald-400 text-[10px] font-bold px-1">{activeAccess.length}</span>
+            <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 rounded-full bg-emerald-100 text-[#047857] text-[10px] font-bold px-1">{activeAccess.length}</span>
           )}
         </h2>
         {activeAccess.length === 0 ? (
-          <p className="text-sm text-white/30 bg-[#1A1A18] border border-white/10 rounded-lg px-5 py-4">No studios have been approved yet.</p>
+          <p className="text-sm text-[#6E6B63] bg-[#FDFCF9] border border-[#DED8CC] rounded-lg px-5 py-4">No studios have been approved yet.</p>
         ) : (
           <PlatformActiveAccess access={activeAccess} priceLists={priceLists ?? []} />
         )}
@@ -124,7 +124,7 @@ export default async function PlatformPriceListsPage() {
 
       {/* All price lists */}
       <div>
-        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider mb-3">All Price Lists</h2>
+        <h2 className="text-sm font-semibold text-[#3F3D38] uppercase tracking-wider mb-3">All Price Lists</h2>
         <PriceListsManager priceLists={priceLists ?? []} canManage={true} basePath="/platform/price-lists" />
       </div>
     </div>

@@ -15,20 +15,20 @@ function fmtR(n: number) {
 }
 
 const QUOTE_STATUS_COLOR: Record<string, string> = {
-  draft:      'bg-white/5 text-white/40',
-  sent:       'bg-blue-500/15 text-blue-400',
-  accepted:   'bg-emerald-500/15 text-emerald-400',
-  declined:   'bg-red-500/15 text-red-400',
-  expired:    'bg-white/5 text-white/30',
-  invoiced:   'bg-purple-500/15 text-purple-400',
-  superseded: 'bg-white/5 text-white/20',
+  draft:      'bg-[#EFEBE3] text-[#6E6B63]',
+  sent:       'bg-teal-50 text-[#0F766E]',
+  accepted:   'bg-emerald-50 text-[#047857]',
+  declined:   'bg-red-50 text-[#B91C1C]',
+  expired:    'bg-[#EFEBE3] text-[#6E6B63]',
+  invoiced:   'bg-purple-500/15 text-[#6D28D9]',
+  superseded: 'bg-[#EFEBE3] text-[#8A877F]',
 }
 const INV_STATUS_COLOR: Record<string, string> = {
-  draft:          'bg-white/5 text-white/40',
-  sent:           'bg-blue-500/15 text-blue-400',
-  partially_paid: 'bg-amber-500/15 text-amber-400',
-  paid:           'bg-emerald-500/15 text-emerald-400',
-  overdue:        'bg-red-500/15 text-red-400',
+  draft:          'bg-[#EFEBE3] text-[#6E6B63]',
+  sent:           'bg-teal-50 text-[#0F766E]',
+  partially_paid: 'bg-amber-50 text-[#8F5706]',
+  paid:           'bg-emerald-50 text-[#047857]',
+  overdue:        'bg-red-50 text-[#B91C1C]',
 }
 
 export default async function MfgAccountDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -77,7 +77,7 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
 
   return (
     <div className="p-8 max-w-5xl">
-      <Link href="/platform/manufacturing" className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition-colors mb-6">
+      <Link href="/platform/manufacturing" className="inline-flex items-center gap-1.5 text-sm text-[#6E6B63] hover:text-[#1A1A18] transition-colors mb-6">
         <ArrowLeft size={14} /> All manufacturers
       </Link>
 
@@ -85,11 +85,11 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
       <div className="mb-8 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-            <Hammer size={18} className="text-orange-400" />
+            <Hammer size={18} className="text-[#C2410C]" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-white">{s?.business_name || account.company_name}</h1>
-            <p className="text-sm text-white/40">Joined {fmtDate(account.created_at)}</p>
+            <h1 className="text-2xl font-semibold text-[#1A1A18]">{s?.business_name || account.company_name}</h1>
+            <p className="text-sm text-[#6E6B63]">Joined {fmtDate(account.created_at)}</p>
           </div>
         </div>
       </div>
@@ -97,15 +97,15 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
       {/* Stats row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Quotes',    value: recentQuotes?.length ?? 0,  icon: FileText,  color: 'text-orange-400'  },
-          { label: 'Invoices',  value: recentInvoices?.length ?? 0, icon: Receipt,  color: 'text-blue-400'    },
-          { label: 'Clients',   value: clientCount ?? 0,            icon: Users,    color: 'text-emerald-400' },
-          { label: 'Invoiced',  value: fmtR(totalInvoiced),         icon: Receipt,  color: 'text-emerald-400' },
+          { label: 'Quotes',    value: recentQuotes?.length ?? 0,  icon: FileText,  color: 'text-[#C2410C]'  },
+          { label: 'Invoices',  value: recentInvoices?.length ?? 0, icon: Receipt,  color: 'text-[#0F766E]'    },
+          { label: 'Clients',   value: clientCount ?? 0,            icon: Users,    color: 'text-[#047857]' },
+          { label: 'Invoiced',  value: fmtR(totalInvoiced),         icon: Receipt,  color: 'text-[#047857]' },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white/5 rounded-xl px-4 py-4 border border-white/8">
+          <div key={label} className="bg-[#EFEBE3] rounded-xl px-4 py-4 border border-[#E2DCD1]">
             <div className="flex items-center gap-1.5 mb-2">
               <Icon size={12} className={color} />
-              <p className="text-[10px] text-white/40 uppercase tracking-wider">{label}</p>
+              <p className="text-[10px] text-[#6E6B63] uppercase tracking-wider">{label}</p>
             </div>
             <p className={`text-xl font-bold ${color}`}>{value}</p>
           </div>
@@ -114,8 +114,8 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Account details */}
-        <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-          <h2 className="text-xs text-white/40 uppercase tracking-wider mb-4">Account</h2>
+        <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+          <h2 className="text-xs text-[#6E6B63] uppercase tracking-wider mb-4">Account</h2>
           <dl className="space-y-2.5">
             {[
               { icon: Mail,     label: 'Login email',   value: account.email },
@@ -123,10 +123,10 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
               { icon: Building2, label: 'Contact',       value: account.contact_name },
             ].filter(r => r.value).map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-start gap-2">
-                <Icon size={12} className="text-white/20 mt-0.5 flex-shrink-0" />
+                <Icon size={12} className="text-[#8A877F] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-[10px] text-white/30">{label}</p>
-                  <p className="text-xs text-white/70">{value}</p>
+                  <p className="text-[10px] text-[#6E6B63]">{label}</p>
+                  <p className="text-xs text-[#3F3D38]">{value}</p>
                 </div>
               </div>
             ))}
@@ -134,10 +134,10 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
         </div>
 
         {/* Business identity from mfg_settings */}
-        <div className="lg:col-span-2 bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-          <h2 className="text-xs text-white/40 uppercase tracking-wider mb-4">Business Settings</h2>
+        <div className="lg:col-span-2 bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+          <h2 className="text-xs text-[#6E6B63] uppercase tracking-wider mb-4">Business Settings</h2>
           {!s ? (
-            <p className="text-xs text-white/30 italic">No settings saved yet — manufacturer hasn&apos;t completed setup.</p>
+            <p className="text-xs text-[#6E6B63] italic">No settings saved yet — manufacturer hasn&apos;t completed setup.</p>
           ) : (
             <div className="grid grid-cols-2 gap-x-8 gap-y-2">
               {[
@@ -158,8 +158,8 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
                 { label: 'Deposit default', value: `${s.default_deposit_percentage}%` },
               ].filter(r => r.value).map(({ label, value }) => (
                 <div key={label} className="flex gap-2">
-                  <dt className="text-[10px] text-white/30 w-28 flex-shrink-0 pt-0.5">{label}</dt>
-                  <dd className="text-xs text-white/70">{value}</dd>
+                  <dt className="text-[10px] text-[#6E6B63] w-28 flex-shrink-0 pt-0.5">{label}</dt>
+                  <dd className="text-xs text-[#3F3D38]">{value}</dd>
                 </div>
               ))}
             </div>
@@ -177,24 +177,24 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
       />
 
       {/* Admin users */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-medium text-white flex items-center gap-2"><Users size={14} className="text-orange-400" /> Admin Users</h2>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden mb-6">
+        <div className="px-5 py-4 border-b border-[#DED8CC]">
+          <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2"><Users size={14} className="text-[#C2410C]" /> Admin Users</h2>
         </div>
         {!orgMembers?.length ? (
-          <p className="px-5 py-6 text-sm text-white/30 text-center">No additional admins</p>
+          <p className="px-5 py-6 text-sm text-[#6E6B63] text-center">No additional admins</p>
         ) : (
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-[#EFEBE3]">
             {orgMembers.map(m => (
               <div key={m.id} className="flex items-center gap-3 px-5 py-3">
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white/60 flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#E5DFD5] flex items-center justify-center text-[10px] font-bold text-[#3F3D38] flex-shrink-0">
                   {(m.name ?? m.email).slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  {m.name && <p className="text-xs font-medium text-white/80">{m.name}</p>}
-                  <p className="text-[11px] text-white/40">{m.email}</p>
+                  {m.name && <p className="text-xs font-medium text-[#2C2C2A]">{m.name}</p>}
+                  <p className="text-[11px] text-[#6E6B63]">{m.email}</p>
                 </div>
-                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${m.accepted_at ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${m.accepted_at ? 'bg-emerald-50 text-[#047857]' : 'bg-amber-50 text-[#8F5706]'}`}>
                   {m.accepted_at ? 'Active' : 'Pending'}
                 </span>
               </div>
@@ -204,33 +204,33 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
       </div>
 
       {/* Recent quotes */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-6">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-medium text-white flex items-center gap-2"><FileText size={14} className="text-orange-400" /> Recent Quotes</h2>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden mb-6">
+        <div className="px-5 py-4 border-b border-[#DED8CC]">
+          <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2"><FileText size={14} className="text-[#C2410C]" /> Recent Quotes</h2>
         </div>
         {!recentQuotes?.length ? (
-          <p className="px-5 py-8 text-sm text-white/30 text-center">No quotes yet</p>
+          <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No quotes yet</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Number</th>
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Status</th>
-                <th className="text-right px-5 py-2.5 text-xs text-white/30 font-medium">Total</th>
-                <th className="text-right px-5 py-2.5 text-xs text-white/30 font-medium">Date</th>
+              <tr className="border-b border-[#EAE5DB]">
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Total</th>
+                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[#EFEBE3]">
               {recentQuotes.map(q => (
                 <tr key={q.id}>
-                  <td className="px-5 py-3 text-white/70 font-mono text-xs">{q.quote_number}</td>
+                  <td className="px-5 py-3 text-[#3F3D38] font-mono text-xs">{q.quote_number}</td>
                   <td className="px-5 py-3">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${QUOTE_STATUS_COLOR[q.status] ?? 'bg-white/5 text-white/40'}`}>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${QUOTE_STATUS_COLOR[q.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
                       {q.status}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-right text-white/70 text-xs tabular-nums">{fmtR(q.total ?? 0)}</td>
-                  <td className="px-5 py-3 text-right text-white/40 text-xs">{fmtDate(q.created_at)}</td>
+                  <td className="px-5 py-3 text-right text-[#3F3D38] text-xs tabular-nums">{fmtR(q.total ?? 0)}</td>
+                  <td className="px-5 py-3 text-right text-[#6E6B63] text-xs">{fmtDate(q.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -239,41 +239,41 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
       </div>
 
       {/* Recent invoices */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-white flex items-center gap-2"><Receipt size={14} className="text-orange-400" /> Recent Invoices</h2>
-          <div className="flex items-center gap-4 text-xs text-white/40">
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#DED8CC] flex items-center justify-between">
+          <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2"><Receipt size={14} className="text-[#C2410C]" /> Recent Invoices</h2>
+          <div className="flex items-center gap-4 text-xs text-[#6E6B63]">
             <span>Invoiced {fmtR(totalInvoiced)}</span>
-            <span className="text-emerald-400">Paid {fmtR(totalPaid)}</span>
+            <span className="text-[#047857]">Paid {fmtR(totalPaid)}</span>
           </div>
         </div>
         {!recentInvoices?.length ? (
-          <p className="px-5 py-8 text-sm text-white/30 text-center">No invoices yet</p>
+          <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No invoices yet</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Number</th>
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Type</th>
-                <th className="text-left px-5 py-2.5 text-xs text-white/30 font-medium">Status</th>
-                <th className="text-right px-5 py-2.5 text-xs text-white/30 font-medium">Total</th>
-                <th className="text-right px-5 py-2.5 text-xs text-white/30 font-medium">Paid</th>
-                <th className="text-right px-5 py-2.5 text-xs text-white/30 font-medium">Date</th>
+              <tr className="border-b border-[#EAE5DB]">
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Type</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Total</th>
+                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Paid</th>
+                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[#EFEBE3]">
               {recentInvoices.map(inv => (
                 <tr key={inv.id}>
-                  <td className="px-5 py-3 text-white/70 font-mono text-xs">{inv.invoice_number}</td>
-                  <td className="px-5 py-3 text-white/40 text-xs capitalize">{inv.invoice_type?.replace('_', ' ')}</td>
+                  <td className="px-5 py-3 text-[#3F3D38] font-mono text-xs">{inv.invoice_number}</td>
+                  <td className="px-5 py-3 text-[#6E6B63] text-xs capitalize">{inv.invoice_type?.replace('_', ' ')}</td>
                   <td className="px-5 py-3">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${INV_STATUS_COLOR[inv.status] ?? 'bg-white/5 text-white/40'}`}>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${INV_STATUS_COLOR[inv.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
                       {inv.status?.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-right text-white/70 text-xs tabular-nums">{fmtR(inv.total ?? 0)}</td>
-                  <td className="px-5 py-3 text-right text-emerald-400 text-xs tabular-nums">{fmtR(inv.amount_paid ?? 0)}</td>
-                  <td className="px-5 py-3 text-right text-white/40 text-xs">{fmtDate(inv.created_at)}</td>
+                  <td className="px-5 py-3 text-right text-[#3F3D38] text-xs tabular-nums">{fmtR(inv.total ?? 0)}</td>
+                  <td className="px-5 py-3 text-right text-[#047857] text-xs tabular-nums">{fmtR(inv.amount_paid ?? 0)}</td>
+                  <td className="px-5 py-3 text-right text-[#6E6B63] text-xs">{fmtDate(inv.created_at)}</td>
                 </tr>
               ))}
             </tbody>

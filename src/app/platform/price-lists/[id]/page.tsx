@@ -12,12 +12,12 @@ export default async function PlatformPriceListDetailPage({ params }: { params: 
 
   return (
     <div className="p-8">
-      <Link href="/platform/price-lists" className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white mb-6 transition-colors">
+      <Link href="/platform/price-lists" className="inline-flex items-center gap-1.5 text-sm text-[#5C5A54] hover:text-[#1A1A18] mb-6 transition-colors">
         <ChevronLeft size={14} /> Price Lists
       </Link>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">{priceList.name}</h1>
-        <p className="text-sm text-white/50 mt-0.5">{priceList.supplier_name} · {priceList.item_count.toLocaleString()} items</p>
+        <h1 className="text-xl font-semibold text-[#1A1A18]">{priceList.name}</h1>
+        <p className="text-sm text-[#5C5A54] mt-0.5">{priceList.supplier_name} · {priceList.item_count.toLocaleString()} items</p>
       </div>
       <PriceListView priceListId={id} canEdit isGlobal={!!priceList.is_global} />
     </div>

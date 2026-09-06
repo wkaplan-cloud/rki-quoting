@@ -122,10 +122,10 @@ export default async function PlatformSuppliersPage() {
     <div className="p-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
-          <Store size={18} className="text-[#C4A46B]" />
-          <h1 className="font-serif text-3xl text-white">Registered Suppliers</h1>
+          <Store size={18} className="text-[#7E6036]" />
+          <h1 className="font-serif text-3xl text-[#1A1A18]">Registered Suppliers</h1>
         </div>
-        <p className="text-sm text-white/40">Supplier portal accounts, activity analytics &amp; studio usage</p>
+        <p className="text-sm text-[#6E6B63]">Supplier portal accounts, activity analytics &amp; studio usage</p>
       </div>
 
       {/* Stats */}
@@ -143,59 +143,59 @@ export default async function PlatformSuppliersPage() {
             return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
           }).length.toString() },
         ].map(({ label, value, highlight }) => (
-          <div key={label} className={`border rounded-xl p-5 ${highlight ? 'bg-[#1A1A10] border-[#C4A46B]/30' : 'bg-[#1A1A18] border-white/10'}`}>
-            <span className={`text-xs uppercase tracking-wider block mb-3 ${highlight ? 'text-[#C4A46B]/60' : 'text-white/40'}`}>{label}</span>
-            <p className={`text-2xl font-semibold ${highlight ? 'text-[#C4A46B]' : 'text-white'}`}>{value}</p>
+          <div key={label} className={`border rounded-xl p-5 ${highlight ? 'bg-[#1A1A10] border-[#C4A46B]/30' : 'bg-[#FDFCF9] border-[#DED8CC]'}`}>
+            <span className={`text-xs uppercase tracking-wider block mb-3 ${highlight ? 'text-[#7E6036]/60' : 'text-[#6E6B63]'}`}>{label}</span>
+            <p className={`text-2xl font-semibold ${highlight ? 'text-[#7E6036]' : 'text-[#1A1A18]'}`}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Studio ↔ Supplier analytics */}
       {topSuppliers.length > 0 && (
-        <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden mb-8">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center gap-2">
-            <BarChart3 size={14} className="text-[#C4A46B]" />
-            <h2 className="text-sm font-medium text-white">Supplier Usage Analytics</h2>
-            <p className="text-xs text-white/30 ml-2">Top suppliers by accepted items across all studios</p>
+        <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden mb-8">
+          <div className="px-5 py-4 border-b border-[#DED8CC] flex items-center gap-2">
+            <BarChart3 size={14} className="text-[#7E6036]" />
+            <h2 className="text-sm font-medium text-[#1A1A18]">Supplier Usage Analytics</h2>
+            <p className="text-xs text-[#6E6B63] ml-2">Top suppliers by accepted items across all studios</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5">
+                <tr className="border-b border-[#EAE5DB]">
                   {['Supplier', 'Studios', 'Contacted', 'Responded', 'Items accepted', 'Registered'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-white/30 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-[#6E6B63] uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#EFEBE3]">
                 {topSuppliers.map(s => (
-                  <tr key={s.email} className="hover:bg-white/5 transition-colors">
+                  <tr key={s.email} className="hover:bg-[#EFEBE3] transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <p className="text-white font-medium">{s.name}</p>
-                      <p className="text-white/30 text-xs">{s.email}</p>
+                      <p className="text-[#1A1A18] font-medium">{s.name}</p>
+                      <p className="text-[#6E6B63] text-xs">{s.email}</p>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
                         {s.studios.slice(0, 3).map(studio => (
-                          <span key={studio} className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/50 whitespace-nowrap">{studio}</span>
+                          <span key={studio} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#EFEBE3] text-[#5C5A54] whitespace-nowrap">{studio}</span>
                         ))}
                         {s.studios.length > 3 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/30 whitespace-nowrap">+{s.studios.length - 3}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#EFEBE3] text-[#6E6B63] whitespace-nowrap">+{s.studios.length - 3}</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-white/60 whitespace-nowrap tabular-nums">{s.contactCount}</td>
+                    <td className="px-4 py-3 text-[#3F3D38] whitespace-nowrap tabular-nums">{s.contactCount}</td>
                     <td className="px-4 py-3 whitespace-nowrap tabular-nums">
-                      <span className="text-white/60">{s.respondedCount}</span>
+                      <span className="text-[#3F3D38]">{s.respondedCount}</span>
                       {s.contactCount > 0 && (
-                        <span className="text-white/30 text-xs ml-1">({Math.round(s.respondedCount / s.contactCount * 100)}%)</span>
+                        <span className="text-[#6E6B63] text-xs ml-1">({Math.round(s.respondedCount / s.contactCount * 100)}%)</span>
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-[#C4A46B] font-semibold tabular-nums">{s.acceptedCount}</span>
+                      <span className="text-[#7E6036] font-semibold tabular-nums">{s.acceptedCount}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.registered ? 'bg-emerald-950 text-emerald-400' : 'bg-white/5 text-white/30'}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.registered ? 'bg-emerald-950 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
                         {s.registered ? 'Yes' : 'No'}
                       </span>
                     </td>
@@ -217,47 +217,47 @@ export default async function PlatformSuppliersPage() {
       }))} />
 
       {/* Supplier accounts table */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-medium text-white">Supplier Accounts</h2>
-          <p className="text-xs text-white/30 mt-0.5">All companies registered on the supplier portal</p>
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#DED8CC]">
+          <h2 className="text-sm font-medium text-[#1A1A18]">Supplier Accounts</h2>
+          <p className="text-xs text-[#6E6B63] mt-0.5">All companies registered on the supplier portal</p>
         </div>
 
         {rows.length === 0 ? (
-          <p className="px-5 py-10 text-sm text-white/30 text-center">No registered suppliers yet</p>
+          <p className="px-5 py-10 text-sm text-[#6E6B63] text-center">No registered suppliers yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-[#DED8CC]">
                   {['Company', 'Email', 'Type', 'Subscription', 'Categories', 'Contact', 'Requests', 'Registered', 'Status'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-white/40 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#6E6B63] uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#EFEBE3]">
                 {rows.map(row => {
                   const isActive = activeEmails.has(row.email?.toLowerCase())
                   const cats: string[] = Array.isArray(row.categories) ? row.categories : []
                   const stats = supplierStats[row.email?.toLowerCase()] ?? { contactCount: 0, respondedCount: 0, acceptedCount: 0 }
                   return (
-                    <tr key={row.id} className="hover:bg-white/5 transition-colors">
+                    <tr key={row.id} className="hover:bg-[#EFEBE3] transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-[#2A2A28] flex items-center justify-center text-xs font-bold text-[#C4A46B] shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-[#2A2A28] flex items-center justify-center text-xs font-bold text-[#7E6036] shrink-0">
                             {(row.company_name ?? '?').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-white font-medium">{row.company_name ?? '—'}</p>
+                            <p className="text-[#1A1A18] font-medium">{row.company_name ?? '—'}</p>
                             {row.address && (
-                              <p className="text-white/30 text-xs flex items-center gap-1 mt-0.5">
+                              <p className="text-[#6E6B63] text-xs flex items-center gap-1 mt-0.5">
                                 <MapPin size={10} /> {row.address}
                               </p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-white/60 whitespace-nowrap text-xs">{row.email}</td>
+                      <td className="px-4 py-3 text-[#3F3D38] whitespace-nowrap text-xs">{row.email}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <SupplierCategoryBadge accountId={row.id} initial={row.supplier_category ?? 'manufacturer'} />
                       </td>
@@ -267,61 +267,61 @@ export default async function PlatformSuppliersPage() {
                           const trialEnd = row.trial_ends_at ? new Date(row.trial_ends_at) : null
                           const now = new Date()
                           if (status === 'active') {
-                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400">Active</span>
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-[#047857]">Active</span>
                           }
                           if (status === 'trialing' && trialEnd) {
                             const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000))
                             if (daysLeft > 0) {
                               return (
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C4A46B]/10 text-[#C4A46B]">
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#7E6036]/10 text-[#7E6036]">
                                   Trial · {daysLeft}d left
                                 </span>
                               )
                             }
-                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-950 text-red-400">Trial expired</span>
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-950 text-[#B91C1C]">Trial expired</span>
                           }
                           if (status === 'cancelled') {
-                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/30">Cancelled</span>
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EFEBE3] text-[#6E6B63]">Cancelled</span>
                           }
-                          return <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/20">Free</span>
+                          return <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EFEBE3] text-[#8A877F]">Free</span>
                         })()}
                       </td>
                       <td className="px-4 py-3">
                         {cats.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {cats.map(c => (
-                              <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/50 whitespace-nowrap">{c}</span>
+                              <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#EFEBE3] text-[#5C5A54] whitespace-nowrap">{c}</span>
                             ))}
                           </div>
-                        ) : <span className="text-white/20 text-xs">—</span>}
+                        ) : <span className="text-[#8A877F] text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="space-y-0.5">
                           {row.phone && (
-                            <p className="text-white/50 text-xs flex items-center gap-1"><Phone size={10} /> {row.phone}</p>
+                            <p className="text-[#5C5A54] text-xs flex items-center gap-1"><Phone size={10} /> {row.phone}</p>
                           )}
                           {row.website && (
-                            <p className="text-white/50 text-xs flex items-center gap-1">
+                            <p className="text-[#5C5A54] text-xs flex items-center gap-1">
                               <Globe size={10} />
-                              <a href={row.website} target="_blank" rel="noreferrer" className="hover:text-[#C4A46B] transition-colors truncate max-w-[140px] inline-block">
+                              <a href={row.website} target="_blank" rel="noreferrer" className="hover:text-[#7E6036] transition-colors truncate max-w-[140px] inline-block">
                                 {row.website.replace(/^https?:\/\//, '')}
                               </a>
                             </p>
                           )}
-                          {!row.phone && !row.website && <span className="text-white/20 text-xs">—</span>}
+                          {!row.phone && !row.website && <span className="text-[#8A877F] text-xs">—</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-white/50 tabular-nums">
+                      <td className="px-4 py-3 whitespace-nowrap text-xs text-[#5C5A54] tabular-nums">
                         {stats.contactCount > 0 ? (
                           <span>{stats.contactCount} sent · {stats.acceptedCount} accepted</span>
-                        ) : <span className="text-white/20">—</span>}
+                        ) : <span className="text-[#8A877F]">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-white/40 whitespace-nowrap text-xs">
+                      <td className="px-4 py-3 text-[#6E6B63] whitespace-nowrap text-xs">
                         {row.created_at ? fmtDate(row.created_at) : '—'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          isActive ? 'bg-emerald-950 text-emerald-400' : 'bg-white/5 text-white/30'
+                          isActive ? 'bg-emerald-950 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'
                         }`}>
                           {isActive ? 'Active' : 'Registered'}
                         </span>

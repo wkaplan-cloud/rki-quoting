@@ -38,15 +38,15 @@ export function PlatformAccessRequests({ requests, priceLists }: { requests: Req
       {requests.map(req => {
         const pl = priceLists.find(p => p.id === req.price_list_id)
         return (
-          <div key={req.id} className="flex items-center justify-between bg-[#1A1A18] border border-white/10 rounded-lg px-5 py-4">
+          <div key={req.id} className="flex items-center justify-between bg-[#FDFCF9] border border-[#DED8CC] rounded-lg px-5 py-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                <Building2 size={14} className="text-white/40" />
+              <div className="w-8 h-8 rounded-lg bg-[#EFEBE3] flex items-center justify-center flex-shrink-0">
+                <Building2 size={14} className="text-[#6E6B63]" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{req.orgName}</p>
-                <p className="text-xs text-white/40 mt-0.5">
-                  Requesting access to <span className="text-white/60">{pl?.name ?? req.price_list_id}</span>
+                <p className="text-sm font-medium text-[#1A1A18] truncate">{req.orgName}</p>
+                <p className="text-xs text-[#6E6B63] mt-0.5">
+                  Requesting access to <span className="text-[#3F3D38]">{pl?.name ?? req.price_list_id}</span>
                   {' · '}
                   {new Date(req.requested_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
@@ -56,14 +56,14 @@ export function PlatformAccessRequests({ requests, priceLists }: { requests: Req
               <button
                 onClick={() => act(req, 'rejected')}
                 disabled={acting === req.id}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-900/50 rounded hover:bg-red-950/40 transition-colors disabled:opacity-40 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#B91C1C] border border-red-300 rounded hover:bg-red-50 transition-colors disabled:opacity-40 cursor-pointer"
               >
                 <XCircle size={13} /> Reject
               </button>
               <button
                 onClick={() => act(req, 'active')}
                 disabled={acting === req.id}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-400 border border-emerald-900/50 rounded hover:bg-emerald-950/40 transition-colors disabled:opacity-40 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#047857] border border-emerald-300 rounded hover:bg-emerald-50 transition-colors disabled:opacity-40 cursor-pointer"
               >
                 <CheckCircle size={13} /> Approve
               </button>

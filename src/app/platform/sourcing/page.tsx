@@ -1,8 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { CheckCircle2, Clock, DollarSign, AlertCircle, Mail, AlertTriangle, TrendingUp, ArrowLeftRight, BarChart3 } from 'lucide-react'
-import { SourcingFeeTracker } from './SourcingFeeTracker'
-import type { CollectibleItem } from './SourcingFeeTracker'
+import { CheckCircle2, Clock, Mail, AlertTriangle, ArrowLeftRight, BarChart3, Building2, Package } from 'lucide-react'
 import { one, type Embedded } from '@/lib/supabase/embed'
 
 function fmt(n: number) {
@@ -18,38 +16,23 @@ function daysSince(iso: string) {
 }
 
 const PROJECT_STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  Draft:      { label: 'Draft',         bg: '#1A1A18', color: '#71717A' },
-  Quote:      { label: 'Quote',         bg: '#1C2A3A', color: '#60A5FA' },
-  Approved:   { label: 'Approved',      bg: '#0A2A1A', color: '#6EE7B7' },
-  Deposit:    { label: 'Deposit Paid',  bg: '#1E1A2E', color: '#C4B5FD' },
-  Invoice:    { label: 'Invoice',       bg: '#2A1F0A', color: '#F59E0B' },
-  Paid:       { label: 'Paid',          bg: '#0A2A1A', color: '#34D399' },
-  Completed:  { label: 'Completed',     bg: '#0A2A1A', color: '#34D399' },
-  Cancelled:  { label: 'Cancelled',     bg: '#2A0A0A', color: '#F87171' },
-}
-
-const FEE_STATUS: Record<string, { label: string; color: string }> = {
-  unlinked:    { label: 'No project',    color: '#52525B' },
-  pending:     { label: 'Pending',       color: '#71717A' },
-  due:         { label: 'Fee due',       color: '#F59E0B' },
-  collectible: { label: 'Outstanding',   color: '#C4A46B' },
-  collected:   { label: 'Collected ✓',   color: '#34D399' },
+  Draft:      { label: 'Draft',         bg: '#EFEBE3', color: '#5C5A54' },
+  Quote:      { label: 'Quote',         bg: '#DDEDFA', color: '#0369A1' },
+  Approved:   { label: 'Approved',      bg: '#D6F5E3', color: '#047857' },
+  Deposit:    { label: 'Deposit Paid',  bg: '#EAE4FD', color: '#6D28D9' },
+  Invoice:    { label: 'Invoice',       bg: '#FBEFD2', color: '#8F5706' },
+  Paid:       { label: 'Paid',          bg: '#D6F5E3', color: '#047857' },
+  Completed:  { label: 'Completed',     bg: '#D6F5E3', color: '#047857' },
+  Cancelled:  { label: 'Cancelled',     bg: '#FBE0E0', color: '#B91C1C' },
 }
 
 const SUPPLIER_STATUS_COLOR: Record<string, string> = {
-  pending:     '#71717A',
-  viewed:      '#60A5FA',
-  in_progress: '#F59E0B',
-  responded:   '#34D399',
-  completed:   '#34D399',
-  declined:    '#F87171',
-}
-
-function getFeeStatus(projectStatus: string | null): 'unlinked' | 'pending' | 'due' | 'collectible' {
-  if (!projectStatus) return 'unlinked'
-  if (['Paid', 'Completed'].includes(projectStatus)) return 'collectible'
-  if (projectStatus === 'Invoice') return 'due'
-  return 'pending'
+  pending:     '#5C5A54',
+  viewed:      '#0369A1',
+  in_progress: '#8F5706',
+  responded:   '#047857',
+  completed:   '#047857',
+  declined:    '#B91C1C',
 }
 
 // Shapes of the four sourcing queries above. Embedded relations come back as
@@ -65,7 +48,6 @@ interface SourcingSessionRef {
 interface AssignmentRow {
   id: string
   accepted_at: string | null
-  fee_collected_at: string | null
   response: Embedded<{ unit_price: number | null; lead_time_weeks: number | null }>
   item: Embedded<{ title: string | null; session: Embedded<SourcingSessionRef> }>
   supplier: Embedded<{ supplier_name: string | null; email: string | null }>
@@ -97,7 +79,7 @@ export default async function PlatformSourcingPage() {
   const { data: assignments } = await supabaseAdmin
     .from('sourcing_item_assignments')
     .select(`
-      id, accepted_at, fee_collected_at,
+      id, accepted_at,
       response:sourcing_item_responses(unit_price, lead_time_weeks),
       item:sourcing_session_items(title, session:sourcing_sessions(id, title, org_id, project_id, project:projects(project_name, status))),
       supplier:sourcing_session_suppliers(supplier_name, email)
@@ -159,21 +141,17 @@ export default async function PlatformSourcingPage() {
     const project = one(session?.project)
     const supplier = one(a.supplier)
     const unitPrice = response?.unit_price ?? 0
-    const feeStatus = getFeeStatus(project?.status ?? null)
     return {
       id: a.id as string,
       accepted_at: a.accepted_at as string,
-      fee_collected_at: a.fee_collected_at as string | null,
       item_title: item?.title ?? '—',
       session_title: session?.title ?? '—',
       session_id: session?.id ?? null,
       supplier_name: (supplier?.supplier_name ?? '—') as string,
       supplier_email: (supplier?.email ?? '') as string,
       unit_price: unitPrice as number,
-      fee: unitPrice * 0.01 as number,
       project_name: project?.project_name ?? null,
       project_status: project?.status ?? null,
-      fee_status: feeStatus,
       studio: studioMap[session?.org_id ?? ''] ?? '—',
     }
   })
@@ -207,12 +185,11 @@ export default async function PlatformSourcingPage() {
     }
   })
 
-  // Fee stats
-  const totalFeeValue   = items.reduce((s, i) => s + i.fee, 0)
-  const feeDue          = items.filter(i => i.fee_status === 'due').reduce((s, i) => s + i.fee, 0)
-  const feeOutstanding  = items.filter(i => i.fee_status === 'collectible' && !i.fee_collected_at).reduce((s, i) => s + i.fee, 0)
-  const feeCollected    = items.filter(i => i.fee_collected_at).reduce((s, i) => s + i.fee, 0)
-  const suppliersOwing  = new Set(items.filter(i => i.fee_status === 'collectible' && !i.fee_collected_at).map(i => i.supplier_email || i.supplier_name)).size
+  // Volume flowing through sourcing — the platform charges nothing on it,
+  // but it is the measure of whether studios actually use the price flow.
+  const acceptedValue   = items.reduce((s, i) => s + i.unit_price, 0)
+  const studiosUsing    = new Set([...items.map(i => i.studio), ...sessionRows.map(r => studioMap[r.org_id ?? ''] ?? '—')].filter(v => v !== '—')).size
+  const suppliersWon    = new Set(items.map(i => i.supplier_email || i.supplier_name).filter(Boolean)).size
 
   // Session pipeline stats
   const sessionsByStatus = (sessions ?? []).reduce<Record<string, number>>((acc, s) => {
@@ -220,28 +197,16 @@ export default async function PlatformSourcingPage() {
     return acc
   }, {})
 
-  // Items where fee is collectible — passed to interactive fee tracker
-  const collectibleItems: CollectibleItem[] = items
-    .filter(i => i.fee_status === 'collectible')
-    .map(i => ({
-      id: i.id,
-      supplier_name: i.supplier_name,
-      supplier_email: i.supplier_email,
-      fee: i.fee,
-      fee_collected_at: i.fee_collected_at,
-    }))
-
   return (
     <div className="p-8 max-w-[1400px]">
 
       {/* ── Page header ─────────────────────────────── */}
       <div className="flex items-end justify-between mb-8">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-1">QuotingHub</p>
-          <h1 className="font-serif text-3xl text-white">Platform Admin</h1>
-          <p className="text-sm text-white/35 mt-1">Sourcing activity · 1% fee tracking · {monthLabel}</p>
+          <h1 className="font-serif text-3xl text-[#1A1A18]">Price Requests</h1>
+          <p className="text-sm text-[#6E6B63] mt-1">RFQ delivery, supplier responses and accepted items · {monthLabel}</p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-white/20">
+        <div className="flex items-center gap-2 text-xs text-[#8A877F]">
           <ArrowLeftRight size={13} />
           <span>{(sessions ?? []).length} sessions · {items.length} accepted items</span>
         </div>
@@ -251,92 +216,77 @@ export default async function PlatformSourcingPage() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
         {[
           {
-            label: 'Outstanding',
-            value: fmt(feeOutstanding),
-            sub: `${suppliersOwing} supplier${suppliersOwing !== 1 ? 's' : ''} owing`,
-            icon: TrendingUp,
-            valueColor: feeOutstanding > 0 ? 'text-amber-400' : 'text-white',
-            border: feeOutstanding > 0 ? 'border-amber-500/20' : 'border-white/8',
+            label: 'Awaiting response',
+            value: staleRows.length.toString(),
+            sub: 'invitations silent 7 days+',
+            icon: AlertTriangle,
+            valueColor: staleRows.length > 0 ? 'text-[#8F5706]' : 'text-[#1A1A18]',
+            border: staleRows.length > 0 ? 'border-amber-200' : 'border-[#E2DCD1]',
           },
           {
-            label: 'Fee due',
-            value: fmt(feeDue),
-            sub: 'invoice raised, not yet paid',
-            icon: AlertCircle,
-            valueColor: feeDue > 0 ? 'text-amber-300' : 'text-white',
-            border: 'border-white/8',
-          },
-          {
-            label: 'Collected',
-            value: fmt(feeCollected),
-            sub: 'received to date',
-            icon: CheckCircle2,
-            valueColor: 'text-emerald-400',
-            border: 'border-white/8',
-          },
-          {
-            label: 'Total fee value',
-            value: fmt(totalFeeValue),
-            sub: 'across all accepted items',
-            icon: DollarSign,
-            valueColor: 'text-[#C4A46B]',
-            border: 'border-white/8',
+            label: 'Sessions',
+            value: sessionRows.length.toString(),
+            sub: 'most recent 200',
+            icon: ArrowLeftRight,
+            valueColor: 'text-[#1A1A18]',
+            border: 'border-[#E2DCD1]',
           },
           {
             label: 'Accepted items',
             value: items.length.toString(),
             sub: 'supplier quotes selected',
             icon: BarChart3,
-            valueColor: 'text-white',
-            border: 'border-white/8',
+            valueColor: 'text-[#1A1A18]',
+            border: 'border-[#E2DCD1]',
+          },
+          {
+            label: 'Value accepted',
+            value: fmt(acceptedValue),
+            sub: 'across all accepted items',
+            icon: CheckCircle2,
+            valueColor: 'text-[#7E6036]',
+            border: 'border-[#E2DCD1]',
+          },
+          {
+            label: 'Studios · suppliers',
+            value: `${studiosUsing} · ${suppliersWon}`,
+            sub: 'using it · winning work',
+            icon: Building2,
+            valueColor: 'text-[#1A1A18]',
+            border: 'border-[#E2DCD1]',
           },
         ].map(({ label, value, sub, icon: Icon, valueColor, border }) => (
-          <div key={label} className={`bg-[#1A1A18] border ${border} rounded-xl p-5`}>
+          <div key={label} className={`bg-[#FDFCF9] border ${border} rounded-xl p-5`}>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">{label}</span>
-              <Icon size={13} className="text-white/20" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#6E6B63]">{label}</span>
+              <Icon size={13} className="text-[#8A877F]" />
             </div>
             <p className={`text-xl font-semibold tabular-nums ${valueColor}`}>{value}</p>
-            <p className="text-[10px] text-white/25 mt-1 leading-tight">{sub}</p>
+            <p className="text-[10px] text-[#6E6B63] mt-1 leading-tight">{sub}</p>
           </div>
         ))}
-      </div>
-
-      {/* ── 1% Fee collection — hero section ─────────── */}
-      <div className="mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 mb-3">Fee Collection</p>
-      </div>
-      <div className="mb-8">
-        <SourcingFeeTracker items={collectibleItems} />
-        {collectibleItems.length === 0 && (
-          <div className="bg-[#1A1A18] border border-white/8 rounded-xl px-6 py-10 text-center">
-            <CheckCircle2 size={20} className="text-emerald-400/40 mx-auto mb-2" />
-            <p className="text-sm text-white/30">No fees ready to collect yet</p>
-            <p className="text-xs text-white/15 mt-1">Fees become collectible when the linked project is marked Paid or Completed</p>
-          </div>
-        )}
       </div>
 
       {/* ── Session pipeline + Stale invitations side-by-side ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
 
         {/* Session pipeline */}
-        <div className="bg-[#1A1A18] border border-white/8 rounded-xl p-5">
+        <div className="bg-[#FDFCF9] border border-[#E2DCD1] rounded-xl p-5">
           <div className="flex items-center gap-2 mb-5">
-            <Clock size={13} className="text-white/30" />
-            <h2 className="text-sm font-semibold text-white">Session Pipeline</h2>
-            <span className="text-xs text-white/20 ml-1">· {(sessions ?? []).length} total</span>
+            <Clock size={13} className="text-[#6E6B63]" />
+            <h2 className="text-sm font-semibold text-[#1A1A18]">Session Pipeline</h2>
+            <span className="text-xs text-[#8A877F] ml-1">· {(sessions ?? []).length} total</span>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { key: 'draft',       label: 'Draft',       color: '#52525B' },
-              { key: 'sent',        label: 'Sent',        color: '#60A5FA' },
-              { key: 'in_progress', label: 'In Progress', color: '#F59E0B' },
-              { key: 'completed',   label: 'Completed',   color: '#34D399' },
-              { key: 'archived',    label: 'Archived',    color: '#3F3F46' },
+              { key: 'draft',       label: 'Draft',       color: '#5C5A54' },
+              { key: 'sent',        label: 'Sent',        color: '#0369A1' },
+              { key: 'in_progress', label: 'In Progress', color: '#8F5706' },
+              { key: 'completed',   label: 'Completed',   color: '#047857' },
+              { key: 'archived',    label: 'Archived',    color: '#6E6B63' },
             ].map(({ key, label, color }) => (
-              <div key={key} className="bg-white/[0.03] rounded-lg px-3 py-3 text-center">
-                <p className="text-2xl font-bold text-white tabular-nums">{sessionsByStatus[key] ?? 0}</p>
+              <div key={key} className="bg-[#F1EDE5] rounded-lg px-3 py-3 text-center">
+                <p className="text-2xl font-bold text-[#1A1A18] tabular-nums">{sessionsByStatus[key] ?? 0}</p>
                 <p className="text-[10px] font-semibold mt-1 uppercase tracking-wider" style={{ color }}>{label}</p>
               </div>
             ))}
@@ -344,45 +294,45 @@ export default async function PlatformSourcingPage() {
         </div>
 
         {/* Stale invitations */}
-        <div className={`bg-[#1A1A18] rounded-xl overflow-hidden border ${staleRows.length > 0 ? 'border-amber-500/20' : 'border-white/8'}`}>
-          <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
-            <AlertTriangle size={13} className={staleRows.length > 0 ? 'text-amber-400' : 'text-white/20'} />
-            <h2 className="text-sm font-semibold text-white">Stale Invitations</h2>
+        <div className={`bg-[#FDFCF9] rounded-xl overflow-hidden border ${staleRows.length > 0 ? 'border-amber-200' : 'border-[#E2DCD1]'}`}>
+          <div className="px-5 py-4 border-b border-[#EAE5DB] flex items-center gap-2">
+            <AlertTriangle size={13} className={staleRows.length > 0 ? 'text-[#8F5706]' : 'text-[#8A877F]'} />
+            <h2 className="text-sm font-semibold text-[#1A1A18]">Stale Invitations</h2>
             {staleRows.length > 0 ? (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 ml-1">{staleRows.length}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-[#8F5706] ml-1">{staleRows.length}</span>
             ) : (
-              <span className="text-xs text-white/20 ml-1">None</span>
+              <span className="text-xs text-[#8A877F] ml-1">None</span>
             )}
-            <span className="text-[10px] text-white/20 ml-1 hidden sm:inline">Sent &gt;7 days · no response</span>
+            <span className="text-[10px] text-[#8A877F] ml-1 hidden sm:inline">Sent &gt;7 days · no response</span>
           </div>
           {staleRows.length === 0 ? (
             <div className="px-5 py-8 text-center">
-              <CheckCircle2 size={16} className="text-emerald-400/30 mx-auto mb-1.5" />
-              <p className="text-xs text-white/20">All invitations responded to</p>
+              <CheckCircle2 size={16} className="text-[#047857]/30 mx-auto mb-1.5" />
+              <p className="text-xs text-[#8A877F]">All invitations responded to</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/5">
+                  <tr className="border-b border-[#EAE5DB]">
                     {['Studio', 'Session', 'Supplier', 'Sent', 'Waiting'].map(h => (
-                      <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-white/20 whitespace-nowrap">{h}</th>
+                      <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#8A877F] whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+                <tbody className="divide-y divide-[#EFEBE3]">
                   {staleRows.map(row => (
-                    <tr key={row.id} className="hover:bg-white/[0.03] transition-colors">
-                      <td className="px-4 py-2.5 text-white/40 whitespace-nowrap text-xs">{row.studio}</td>
+                    <tr key={row.id} className="hover:bg-[#F1EDE5] transition-colors">
+                      <td className="px-4 py-2.5 text-[#6E6B63] whitespace-nowrap text-xs">{row.studio}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-xs">
                         {row.session_id ? (
-                          <a href={`/sourcing/${row.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
-                        ) : <span className="text-white/40">{row.session_title}</span>}
+                          <a href={`/sourcing/${row.session_id}`} className="text-[#7E6036] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
+                        ) : <span className="text-[#6E6B63]">{row.session_title}</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-white/70 whitespace-nowrap text-xs">{row.supplier_name}</td>
-                      <td className="px-4 py-2.5 text-white/30 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
+                      <td className="px-4 py-2.5 text-[#3F3D38] whitespace-nowrap text-xs">{row.supplier_name}</td>
+                      <td className="px-4 py-2.5 text-[#6E6B63] whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
-                        <span className="text-xs font-bold text-amber-400">{row.sent_at ? daysSince(row.sent_at) : '—'}d</span>
+                        <span className="text-xs font-bold text-[#8F5706]">{row.sent_at ? daysSince(row.sent_at) : '—'}d</span>
                       </td>
                     </tr>
                   ))}
@@ -395,58 +345,52 @@ export default async function PlatformSourcingPage() {
 
       {/* ── Accepted items table ──────────────────────── */}
       <div className="mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 mb-3">Accepted Items</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-3">Accepted Items</p>
       </div>
-      <div className="bg-[#1A1A18] border border-white/8 rounded-xl overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
+      <div className="bg-[#FDFCF9] border border-[#E2DCD1] rounded-xl overflow-hidden mb-8">
+        <div className="px-6 py-4 border-b border-[#E2DCD1] flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-white">All Accepted Items</h2>
-            <p className="text-xs text-white/25 mt-0.5">Items accepted from supplier quotes · {items.length} total</p>
+            <h2 className="text-sm font-semibold text-[#1A1A18]">All Accepted Items</h2>
+            <p className="text-xs text-[#6E6B63] mt-0.5">Items accepted from supplier quotes · {items.length} total</p>
           </div>
         </div>
         {items.length === 0 ? (
-          <p className="px-6 py-10 text-sm text-white/25 text-center">No accepted items yet</p>
+          <p className="px-6 py-10 text-sm text-[#6E6B63] text-center">No accepted items yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/8">
-                  {['Studio', 'Session', 'Item', 'Supplier', 'Price', '1% Fee', 'Project', 'Status', 'Fee Status', 'Accepted'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-white/25 whitespace-nowrap">{h}</th>
+                <tr className="border-b border-[#E2DCD1]">
+                  {['Studio', 'Session', 'Item', 'Supplier', 'Price', 'Project', 'Status', 'Accepted'].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6E6B63] whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-[#EFEBE3]">
                 {items.map(item => {
                   const psBadge = item.project_status ? (PROJECT_STATUS_BADGE[item.project_status] ?? PROJECT_STATUS_BADGE.Draft) : null
-                  const displayStatus = item.fee_collected_at ? 'collected' : item.fee_status
-                  const fsBadge = FEE_STATUS[displayStatus]
                   return (
-                    <tr key={item.id} className="hover:bg-white/[0.025] transition-colors">
-                      <td className="px-4 py-3 text-white/50 whitespace-nowrap text-xs">{item.studio}</td>
-                      <td className="px-4 py-3 text-white/50 whitespace-nowrap max-w-[140px] truncate text-xs">
+                    <tr key={item.id} className="hover:bg-[#F5F2EC] transition-colors">
+                      <td className="px-4 py-3 text-[#5C5A54] whitespace-nowrap text-xs">{item.studio}</td>
+                      <td className="px-4 py-3 text-[#5C5A54] whitespace-nowrap max-w-[140px] truncate text-xs">
                         {item.session_id ? (
-                          <a href={`/sourcing/${item.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">
+                          <a href={`/sourcing/${item.session_id}`} className="text-[#7E6036] hover:underline" target="_blank" rel="noreferrer">
                             {item.session_title}
                           </a>
                         ) : item.session_title}
                       </td>
-                      <td className="px-4 py-3 text-white whitespace-nowrap max-w-[150px] truncate font-medium text-xs">{item.item_title}</td>
-                      <td className="px-4 py-3 text-white/60 whitespace-nowrap text-xs">{item.supplier_name}</td>
-                      <td className="px-4 py-3 text-white whitespace-nowrap font-mono text-xs">{fmt(item.unit_price)}</td>
-                      <td className="px-4 py-3 text-[#C4A46B] whitespace-nowrap font-mono font-semibold text-xs">{fmt(item.fee)}</td>
-                      <td className="px-4 py-3 text-white/50 whitespace-nowrap text-xs">{item.project_name ?? <span className="text-white/20">—</span>}</td>
+                      <td className="px-4 py-3 text-[#1A1A18] whitespace-nowrap max-w-[150px] truncate font-medium text-xs">{item.item_title}</td>
+                      <td className="px-4 py-3 text-[#3F3D38] whitespace-nowrap text-xs">{item.supplier_name}</td>
+                      <td className="px-4 py-3 text-[#1A1A18] whitespace-nowrap font-mono text-xs">{fmt(item.unit_price)}</td>
+                      <td className="px-4 py-3 text-[#5C5A54] whitespace-nowrap text-xs">{item.project_name ?? <span className="text-[#8A877F]">—</span>}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {psBadge ? (
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: psBadge.bg, color: psBadge.color }}>
                             {psBadge.label}
                           </span>
-                        ) : <span className="text-white/20 text-xs">—</span>}
+                        ) : <span className="text-[#8A877F] text-xs">—</span>}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-[10px] font-semibold" style={{ color: fsBadge.color }}>{fsBadge.label}</span>
-                      </td>
-                      <td className="px-4 py-3 text-white/30 whitespace-nowrap text-xs">
+                      <td className="px-4 py-3 text-[#6E6B63] whitespace-nowrap text-xs">
                         {item.accepted_at ? fmtDate(item.accepted_at) : '—'}
                       </td>
                     </tr>
@@ -460,40 +404,40 @@ export default async function PlatformSourcingPage() {
 
       {/* ── Email delivery log ────────────────────────── */}
       <div className="mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-white/20 mb-3">Email Log</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[#8A877F] mb-3">Email Log</p>
       </div>
-      <div className="bg-[#1A1A18] border border-white/8 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/8 flex items-center gap-2">
-          <Mail size={13} className="text-white/30" />
-          <h2 className="text-sm font-semibold text-white">Supplier Invitations</h2>
-          <p className="text-xs text-white/20 ml-2">Most recent first</p>
+      <div className="bg-[#FDFCF9] border border-[#E2DCD1] rounded-xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#E2DCD1] flex items-center gap-2">
+          <Mail size={13} className="text-[#6E6B63]" />
+          <h2 className="text-sm font-semibold text-[#1A1A18]">Supplier Invitations</h2>
+          <p className="text-xs text-[#8A877F] ml-2">Most recent first</p>
         </div>
         {emailLog.length === 0 ? (
-          <p className="px-6 py-10 text-sm text-white/25 text-center">No emails sent yet</p>
+          <p className="px-6 py-10 text-sm text-[#6E6B63] text-center">No emails sent yet</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5">
+                <tr className="border-b border-[#EAE5DB]">
                   {['Studio', 'Session', 'Supplier', 'Email', 'Sent', 'Status'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-white/20 whitespace-nowrap">{h}</th>
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-[#8A877F] whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-[#EFEBE3]">
                 {emailLog.map(row => (
-                  <tr key={row.id} className="hover:bg-white/[0.025] transition-colors">
-                    <td className="px-4 py-2.5 text-white/40 whitespace-nowrap text-xs">{row.studio}</td>
+                  <tr key={row.id} className="hover:bg-[#F5F2EC] transition-colors">
+                    <td className="px-4 py-2.5 text-[#6E6B63] whitespace-nowrap text-xs">{row.studio}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap max-w-[140px] truncate text-xs">
                       {row.session_id ? (
-                        <a href={`/sourcing/${row.session_id}`} className="text-[#C4A46B] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
-                      ) : <span className="text-white/40">{row.session_title}</span>}
+                        <a href={`/sourcing/${row.session_id}`} className="text-[#7E6036] hover:underline" target="_blank" rel="noreferrer">{row.session_title}</a>
+                      ) : <span className="text-[#6E6B63]">{row.session_title}</span>}
                     </td>
-                    <td className="px-4 py-2.5 text-white/70 whitespace-nowrap text-xs">{row.supplier_name}</td>
-                    <td className="px-4 py-2.5 text-white/35 whitespace-nowrap text-xs">{row.email}</td>
-                    <td className="px-4 py-2.5 text-white/25 whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
+                    <td className="px-4 py-2.5 text-[#3F3D38] whitespace-nowrap text-xs">{row.supplier_name}</td>
+                    <td className="px-4 py-2.5 text-[#6E6B63] whitespace-nowrap text-xs">{row.email}</td>
+                    <td className="px-4 py-2.5 text-[#6E6B63] whitespace-nowrap text-xs">{row.sent_at ? fmtDate(row.sent_at) : '—'}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className="text-[10px] font-semibold capitalize" style={{ color: SUPPLIER_STATUS_COLOR[row.status] ?? '#71717A' }}>
+                      <span className="text-[10px] font-semibold capitalize" style={{ color: SUPPLIER_STATUS_COLOR[row.status] ?? '#5C5A54' }}>
                         {row.status.replace('_', ' ')}
                       </span>
                     </td>

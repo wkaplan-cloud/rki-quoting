@@ -4,7 +4,7 @@ export default function PlatformError({ error, reset }: { error: Error & { diges
   return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, fontFamily: 'Arial, sans-serif' }}>
       <div style={{ maxWidth: 480, width: '100%', background: '#fff', border: '1px solid #EDE9E1', borderRadius: 8, padding: 40, textAlign: 'center' }}>
-        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#C4A46B', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Platform error</p>
+        <p style={{ margin: '0 0 8px', fontSize: 11, color: '#7E6036', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Platform error</p>
         <h2 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 600, color: '#1A1A18' }}>Something went wrong</h2>
         <p style={{ margin: '0 0 24px', fontSize: 14, color: '#8A877F', lineHeight: 1.6 }}>
           An error occurred in the platform admin. Check the server logs for details.

@@ -74,10 +74,10 @@ export default async function BroadcastPage() {
     <div className="p-8 max-w-3xl">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <Radio size={20} className="text-[#C4A46B]" />
-          <h1 className="font-serif text-3xl text-white">Broadcast</h1>
+          <Radio size={20} className="text-[#7E6036]" />
+          <h1 className="font-serif text-3xl text-[#1A1A18]">Broadcast</h1>
         </div>
-        <p className="text-sm text-white/40">Send an email to your studios — product updates, announcements, or direct outreach.</p>
+        <p className="text-sm text-[#6E6B63]">Send an email to your studios — product updates, announcements, or direct outreach.</p>
       </div>
 
       <BroadcastForm recipientCounts={recipientCounts} />

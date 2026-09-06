@@ -51,13 +51,13 @@ function ElapsedTimer({ running }: { running: boolean }) {
   if (!running) return null
   const m = Math.floor(elapsed / 60)
   const s = elapsed % 60
-  return <span className="text-white/40 tabular-nums">{m > 0 ? `${m}m ` : ''}{s}s</span>
+  return <span className="text-[#6E6B63] tabular-nums">{m > 0 ? `${m}m ` : ''}{s}s</span>
 }
 
 function ProgressBar({ running }: { running: boolean }) {
   if (!running) return null
   return (
-    <div className="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
+    <div className="mt-3 h-0.5 bg-[#E5DFD5] rounded-full overflow-hidden">
       <div className="h-full w-full bg-gradient-to-r from-transparent via-[#9A7B4F] to-transparent animate-pulse" />
     </div>
   )
@@ -67,7 +67,7 @@ function ResultBanner({ result }: { result: SyncResult }) {
   if (!result) return null
   return (
     <div className={`mt-2 flex items-start gap-2 text-xs rounded-lg px-3 py-2 ${
-      result.type === 'ok' ? 'bg-emerald-900/30 text-emerald-400' : 'bg-red-900/30 text-red-400'
+      result.type === 'ok' ? 'bg-emerald-50 text-[#047857]' : 'bg-red-50 text-[#B91C1C]'
     }`}>
       {result.type === 'ok'
         ? <CheckCircle2 size={12} className="mt-0.5 flex-shrink-0" />
@@ -79,7 +79,7 @@ function ResultBanner({ result }: { result: SyncResult }) {
 }
 
 function SectionLabel({ children }: { children: string }) {
-  return <p className="text-[10px] font-semibold uppercase tracking-widest text-[#9A7B4F] mb-3">{children}</p>
+  return <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7E6036] mb-3">{children}</p>
 }
 
 function makeLog(partial: Partial<SyncLog> & { sync_type: string }): SyncLog {
@@ -305,15 +305,15 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
   const priceSyncOk = priceSyncLog?.status === 'ok'
 
   return (
-    <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-6">
+    <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-6">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Twinbru Sync</h2>
-        <span className="text-xs text-white/30">{catalogueCount.toLocaleString()} fabrics in catalogue</span>
+        <h2 className="text-sm font-semibold text-[#3F3D38] uppercase tracking-wider">Twinbru Sync</h2>
+        <span className="text-xs text-[#6E6B63]">{catalogueCount.toLocaleString()} fabrics in catalogue</span>
       </div>
-      <p className="text-xs text-white/30 mb-6">Load new fabrics (2:00am) · Sync prices (2:20am) · Remove discontinued (2:40am) · Backfill images (3:00am) — all run automatically each night. Use the buttons below to trigger manually.</p>
+      <p className="text-xs text-[#6E6B63] mb-6">Load new fabrics (2:00am) · Sync prices (2:20am) · Remove discontinued (2:40am) · Backfill images (3:00am) — all run automatically each night. Use the buttons below to trigger manually.</p>
 
       {/* ── Section 1: Fetch / Update Fabrics ── */}
-      <div className="border-b border-white/10 pb-5 mb-5">
+      <div className="border-b border-[#DED8CC] pb-5 mb-5">
         <SectionLabel>Fetch / Update Fabrics</SectionLabel>
 
         {/* Load New Fabrics */}
@@ -321,29 +321,29 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
           <div className="flex items-start justify-between gap-6">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-white">Load New Fabrics</p>
+                <p className="text-sm font-medium text-[#1A1A18]">Load New Fabrics</p>
                 {triggeringLoad && <ElapsedTimer running={triggeringLoad} />}
               </div>
-              <p className="text-xs text-white/30 mb-1">Scans Twinbru year by year and adds any fabrics not already in the catalogue. Existing fabrics and prices are never overwritten.</p>
+              <p className="text-xs text-[#6E6B63] mb-1">Scans Twinbru year by year and adds any fabrics not already in the catalogue. Existing fabrics and prices are never overwritten.</p>
               {loadSyncLog ? (
                 <div className="mt-1 space-y-0.5">
-                  <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(loadSyncLog.completed_at ?? loadSyncLog.started_at)}</span></p>
+                  <p className="text-xs text-[#5C5A54]">Last run: <span className="text-[#3F3D38]">{fmt(loadSyncLog.completed_at ?? loadSyncLog.started_at)}</span></p>
                   {loadSyncLog.status === 'ok' ? (
-                    <p className="text-xs text-white/50">
+                    <p className="text-xs text-[#5C5A54]">
                       {loadSyncLog.items_checked?.toLocaleString()} scanned &middot;{' '}
-                      <span className="text-emerald-400">{loadSyncLog.items_added ?? 0} added</span>
+                      <span className="text-[#047857]">{loadSyncLog.items_added ?? 0} added</span>
                     </p>
                   ) : (
-                    <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {loadSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
+                    <p className="text-xs text-[#B91C1C] flex items-center gap-1"><AlertCircle size={11} /> {loadSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-white/40 mt-1">{triggeringLoad ? 'Running…' : 'Never run'}</p>
+                <p className="text-xs text-[#6E6B63] mt-1">{triggeringLoad ? 'Running…' : 'Never run'}</p>
               )}
               <ResultBanner result={loadResult} />
             </div>
             <button onClick={triggerFullLoad} disabled={triggeringLoad || discontinuedState === 'scanning' || discontinuedState === 'deleting'}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#9A7B4F]/20 hover:bg-[#9A7B4F]/30 text-[#C8A97A] transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#7E6036]/12 hover:bg-[#7E6036]/25 text-[#7E6036] transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
               <Database size={12} className={triggeringLoad ? 'animate-pulse' : ''} />
               {triggeringLoad ? 'Loading…' : 'Load New Fabrics'}
             </button>
@@ -356,32 +356,32 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
           <div className="flex items-start justify-between gap-6">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-white">Remove Discontinued</p>
+                <p className="text-sm font-medium text-[#1A1A18]">Remove Discontinued</p>
                 {discontinuedState === 'scanning' && <ElapsedTimer running={true} />}
               </div>
-              <p className="text-xs text-white/30 mb-1">Scans all active Twinbru fabrics and removes any from your catalogue that are no longer listed. Also runs automatically at 2:40am.</p>
+              <p className="text-xs text-[#6E6B63] mb-1">Scans all active Twinbru fabrics and removes any from your catalogue that are no longer listed. Also runs automatically at 2:40am.</p>
               {lastDiscontinuedSync ? (
                 <div className="mt-1 mb-2 space-y-0.5">
-                  <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(lastDiscontinuedSync.completed_at ?? lastDiscontinuedSync.started_at)}</span></p>
+                  <p className="text-xs text-[#5C5A54]">Last run: <span className="text-[#3F3D38]">{fmt(lastDiscontinuedSync.completed_at ?? lastDiscontinuedSync.started_at)}</span></p>
                   {lastDiscontinuedSync.status === 'ok' && (
-                    <p className="text-xs text-white/50">
+                    <p className="text-xs text-[#5C5A54]">
                       {lastDiscontinuedSync.items_checked?.toLocaleString()} scanned &middot;{' '}
-                      <span className="text-red-400">{lastDiscontinuedSync.items_added ?? 0} removed</span>
+                      <span className="text-[#B91C1C]">{lastDiscontinuedSync.items_added ?? 0} removed</span>
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-white/40 mt-1 mb-2">Never run</p>
+                <p className="text-xs text-[#6E6B63] mt-1 mb-2">Never run</p>
               )}
 
               {discontinuedState === 'found' && (
-                <div className="mt-2 p-3 bg-red-900/20 border border-red-500/20 rounded-lg">
-                  <p className="text-sm font-medium text-red-400">{discontinuedCount.toLocaleString()} discontinued fabrics found</p>
-                  <p className="text-xs text-white/40 mt-0.5">
+                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm font-medium text-[#B91C1C]">{discontinuedCount.toLocaleString()} discontinued fabrics found</p>
+                  <p className="text-xs text-[#6E6B63] mt-0.5">
                     Active on Twinbru: {activeIdsRef.current.length.toLocaleString()} &middot; In your catalogue: {discontinuedTotalInDb.toLocaleString()}
                   </p>
                   <button onClick={deleteDiscontinued}
-                    className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600/80 hover:bg-red-600 text-white transition-colors cursor-pointer">
+                    className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer">
                     <Trash2 size={12} />
                     Delete {discontinuedCount.toLocaleString()} discontinued fabrics
                   </button>
@@ -392,13 +392,13 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
 
             {(discontinuedState === 'idle' || discontinuedState === 'done') && (
               <button onClick={startDiscontinuedScan} disabled={triggeringLoad}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors flex-shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#E5DFD5] hover:bg-[#DED8CC] text-[#1A1A18] transition-colors flex-shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                 <RefreshCw size={12} />
                 {discontinuedState === 'done' ? 'Scan Again' : 'Find Discontinued'}
               </button>
             )}
             {(discontinuedState === 'scanning' || discontinuedState === 'deleting') && (
-              <span className="text-xs text-white/40 flex-shrink-0 pt-1">
+              <span className="text-xs text-[#6E6B63] flex-shrink-0 pt-1">
                 {discontinuedState === 'deleting' ? 'Deleting…' : 'Scanning…'}
               </span>
             )}
@@ -408,38 +408,38 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
       </div>
 
       {/* ── Section 2: Fetch / Update Prices ── */}
-      <div className="border-b border-white/10 pb-5 mb-5">
+      <div className="border-b border-[#DED8CC] pb-5 mb-5">
         <SectionLabel>Fetch / Update Prices</SectionLabel>
         <div className="flex items-start justify-between gap-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-white">Sync Prices</p>
+              <p className="text-sm font-medium text-[#1A1A18]">Sync Prices</p>
               {triggeringPrices && <ElapsedTimer running={triggeringPrices} />}
             </div>
-            <p className="text-xs text-white/30 mb-1">Updates the ZAR price on every fabric in the catalogue. Does not add or remove fabrics.</p>
+            <p className="text-xs text-[#6E6B63] mb-1">Updates the ZAR price on every fabric in the catalogue. Does not add or remove fabrics.</p>
             {priceSyncLog ? (
               <div className="mt-1 space-y-0.5">
-                <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(priceSyncLog.completed_at ?? priceSyncLog.started_at)}</span></p>
+                <p className="text-xs text-[#5C5A54]">Last run: <span className="text-[#3F3D38]">{fmt(priceSyncLog.completed_at ?? priceSyncLog.started_at)}</span></p>
                 {priceSyncOk ? (
-                  <p className="text-xs text-white/50">
+                  <p className="text-xs text-[#5C5A54]">
                     {priceSyncLog.items_checked?.toLocaleString()} checked &middot;{' '}
-                    <span className={priceSyncLog.items_changed ? 'text-amber-400' : 'text-emerald-400'}>
+                    <span className={priceSyncLog.items_changed ? 'text-[#8F5706]' : 'text-[#047857]'}>
                       {priceSyncLog.items_changed ?? 0} changed
                     </span>
                   </p>
                 ) : !priceSyncLog.completed_at ? (
-                  <p className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11} /> Did not complete — likely timed out.</p>
+                  <p className="text-xs text-[#8F5706] flex items-center gap-1"><AlertCircle size={11} /> Did not complete — likely timed out.</p>
                 ) : (
-                  <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11} /> {priceSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
+                  <p className="text-xs text-[#B91C1C] flex items-center gap-1"><AlertCircle size={11} /> {priceSyncLog.error_message?.slice(0, 160) ?? 'Failed'}</p>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-white/40 mt-1">{triggeringPrices ? 'Running…' : 'Never run'}</p>
+              <p className="text-xs text-[#6E6B63] mt-1">{triggeringPrices ? 'Running…' : 'Never run'}</p>
             )}
             <ResultBanner result={priceResult} />
           </div>
           <button onClick={triggerPriceSync} disabled={triggeringPrices}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#E5DFD5] hover:bg-[#DED8CC] text-[#1A1A18] transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
             <RefreshCw size={12} className={triggeringPrices ? 'animate-spin' : ''} />
             {triggeringPrices ? 'Syncing…' : 'Sync Prices'}
           </button>
@@ -453,27 +453,27 @@ export function TwinbruSyncPanel({ lastPriceSync, lastLoadSync, lastDiscontinued
         <div className="flex items-start justify-between gap-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-white">Backfill Images</p>
+              <p className="text-sm font-medium text-[#1A1A18]">Backfill Images</p>
               {triggeringImages && <ElapsedTimer running={triggeringImages} />}
             </div>
-            <p className="text-xs text-white/30 mb-1">Fetches and populates images for any fabrics in the catalogue that are missing an image URL. Also runs automatically at 3:00am.</p>
+            <p className="text-xs text-[#6E6B63] mb-1">Fetches and populates images for any fabrics in the catalogue that are missing an image URL. Also runs automatically at 3:00am.</p>
             {lastImageSync ? (
               <div className="mt-1 space-y-0.5">
-                <p className="text-xs text-white/50">Last run: <span className="text-white/70">{fmt(lastImageSync.completed_at ?? lastImageSync.started_at)}</span></p>
+                <p className="text-xs text-[#5C5A54]">Last run: <span className="text-[#3F3D38]">{fmt(lastImageSync.completed_at ?? lastImageSync.started_at)}</span></p>
                 {lastImageSync.status === 'ok' && (
-                  <p className="text-xs text-white/50">
+                  <p className="text-xs text-[#5C5A54]">
                     {lastImageSync.items_checked?.toLocaleString()} scanned &middot;{' '}
-                    <span className="text-emerald-400">{lastImageSync.items_added ?? 0} images populated</span>
+                    <span className="text-[#047857]">{lastImageSync.items_added ?? 0} images populated</span>
                   </p>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-white/40 mt-1">{triggeringImages ? 'Running…' : 'Never run'}</p>
+              <p className="text-xs text-[#6E6B63] mt-1">{triggeringImages ? 'Running…' : 'Never run'}</p>
             )}
             <ResultBanner result={imageResult} />
           </div>
           <button onClick={triggerImageBackfill} disabled={triggeringImages}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-white transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#E5DFD5] hover:bg-[#DED8CC] text-[#1A1A18] transition-colors disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-not-allowed">
             <Image size={12} className={triggeringImages ? 'animate-pulse' : ''} />
             {triggeringImages ? 'Running…' : 'Backfill Images'}
           </button>

@@ -11,8 +11,8 @@ export default async function MessagesPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="font-serif text-3xl text-white mb-1">Messages</h1>
-        <p className="text-sm text-white/40">
+        <h1 className="font-serif text-3xl text-[#1A1A18] mb-1">Messages</h1>
+        <p className="text-sm text-[#6E6B63]">
           {submissions?.filter(s => !s.read).length ?? 0} unread · {submissions?.length ?? 0} total
         </p>
       </div>

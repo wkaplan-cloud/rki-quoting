@@ -23,10 +23,10 @@ export function AssignRepCell({ orgId, initial }: { orgId: string; initial: stri
       value={value}
       onChange={e => save(e.target.value)}
       disabled={saving}
-      className="text-xs bg-transparent border border-white/15 rounded px-2 py-1 text-white/70 outline-none focus:border-[#C4A46B] focus:text-white cursor-pointer disabled:opacity-40 transition-colors"
+      className="text-xs bg-transparent border border-[#DED8CC] rounded px-2 py-1 text-[#3F3D38] outline-none focus:border-[#7E6036] focus:text-[#1A1A18] cursor-pointer disabled:opacity-40 transition-colors"
     >
       {REPS.map(r => (
-        <option key={r} value={r} className="bg-[#1A1A18] text-white">
+        <option key={r} value={r} className="bg-[#FDFCF9] text-[#1A1A18]">
           {r}
         </option>
       ))}

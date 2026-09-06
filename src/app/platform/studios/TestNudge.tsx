@@ -40,17 +40,17 @@ export function TestNudge() {
 
   return (
     <div className="mt-10">
-      <h2 className="text-sm font-medium text-white/40 uppercase tracking-wider mb-4">
+      <h2 className="text-sm font-medium text-[#6E6B63] uppercase tracking-wider mb-4">
         Send a test nudge
       </h2>
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-        <p className="text-xs text-white/40 mb-4 leading-relaxed">
+      <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5">
+        <p className="text-xs text-[#6E6B63] mb-4 leading-relaxed">
           Sends the real &ldquo;Complete your setup&rdquo; email to any address, using the same
           sender and unsubscribe headers as the hourly cron. Not recorded against any account.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1">
-            <label htmlFor="test-nudge-email" className="block text-xs text-white/50 mb-1.5">
+            <label htmlFor="test-nudge-email" className="block text-xs text-[#5C5A54] mb-1.5">
               Email address
             </label>
             <input
@@ -59,11 +59,11 @@ export function TestNudge() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') send() }}
-              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/90 focus:outline-none focus-visible:border-[#C4A46B]/60 transition-colors"
+              className="w-full bg-[#FDFCF9] border border-[#DED8CC] rounded-lg px-3 py-2 text-sm text-[#2C2C2A] focus:outline-none focus-visible:border-[#7E6036]/60 transition-colors"
             />
           </div>
           <div className="flex-1">
-            <label htmlFor="test-nudge-name" className="block text-xs text-white/50 mb-1.5">
+            <label htmlFor="test-nudge-name" className="block text-xs text-[#5C5A54] mb-1.5">
               Name (optional)
             </label>
             <input
@@ -72,14 +72,14 @@ export function TestNudge() {
               value={name}
               onChange={e => setName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') send() }}
-              className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/90 focus:outline-none focus-visible:border-[#C4A46B]/60 transition-colors"
+              className="w-full bg-[#FDFCF9] border border-[#DED8CC] rounded-lg px-3 py-2 text-sm text-[#2C2C2A] focus:outline-none focus-visible:border-[#7E6036]/60 transition-colors"
             />
           </div>
           <div className="flex items-end">
             <button
               onClick={send}
               disabled={loading || !email.trim()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#C4A46B] text-[#1A1A18] text-sm font-medium hover:bg-[#9A7B4F] active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C4A46B] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#7E6036] text-white text-sm font-medium hover:bg-[#5F4726] active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7E6036] disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               <Send size={14} />
               {loading ? 'Sending…' : 'Send test'}

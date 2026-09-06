@@ -27,7 +27,7 @@ export function SendWelcomeButton({ orgId }: { orgId: string }) {
       onClick={send}
       disabled={loading}
       title="Send welcome / how-to-use email"
-      className="flex items-center gap-1 text-xs text-[#C4A46B]/70 hover:text-[#C4A46B] transition-colors cursor-pointer disabled:opacity-40"
+      className="flex items-center gap-1 text-xs text-[#7E6036]/70 hover:text-[#7E6036] transition-colors cursor-pointer disabled:opacity-40"
     >
       <Mail size={11} />
       {loading ? 'Sending…' : 'Send welcome'}

@@ -76,7 +76,7 @@ export function ArchiveStudioButton({ orgId, studioName }: { orgId: string; stud
     <>
       <button
         onClick={open}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/30 text-amber-400 text-xs font-medium hover:bg-amber-500/10 transition-colors flex-shrink-0 cursor-pointer"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-300 text-[#8F5706] text-xs font-medium hover:bg-amber-50 transition-colors flex-shrink-0 cursor-pointer"
       >
         <Archive size={13} />
         Archive studio
@@ -88,26 +88,26 @@ export function ArchiveStudioButton({ orgId, studioName }: { orgId: string; stud
           style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
           onClick={e => { if (e.target === e.currentTarget) close() }}
         >
-          <div className="bg-[#1A1A18] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl">
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/10">
+          <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#DED8CC]">
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${step === 'mfa' || step === 'archiving' ? 'bg-[#9A7B4F]/20' : 'bg-amber-500/15'}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${step === 'mfa' || step === 'archiving' ? 'bg-[#7E6036]/12' : 'bg-amber-50'}`}>
                   {step === 'mfa' || step === 'archiving'
-                    ? <ShieldCheck size={17} className="text-[#C4A46B]" />
-                    : <AlertTriangle size={17} className="text-amber-400" />
+                    ? <ShieldCheck size={17} className="text-[#7E6036]" />
+                    : <AlertTriangle size={17} className="text-[#8F5706]" />
                   }
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-[#1A1A18]">
                     {step === 'mfa' ? 'Verify your identity' : step === 'archiving' ? 'Archiving…' : 'Archive studio'}
                   </p>
-                  <p className="text-xs text-white/40 mt-0.5">
+                  <p className="text-xs text-[#6E6B63] mt-0.5">
                     {step === 'mfa' ? 'Authenticator code required' : 'Studio can be restored later'}
                   </p>
                 </div>
               </div>
               {step !== 'archiving' && (
-                <button onClick={close} className="text-white/30 hover:text-white transition-colors cursor-pointer">
+                <button onClick={close} className="text-[#6E6B63] hover:text-[#1A1A18] transition-colors cursor-pointer">
                   <X size={16} />
                 </button>
               )}
@@ -115,20 +115,20 @@ export function ArchiveStudioButton({ orgId, studioName }: { orgId: string; stud
 
             {step === 'confirm' && (
               <div className="px-6 py-5 space-y-4">
-                <p className="text-sm text-white/60 leading-relaxed">
+                <p className="text-sm text-[#3F3D38] leading-relaxed">
                   You are about to archive{' '}
-                  <span className="text-white font-semibold">&ldquo;{studioName}&rdquo;</span>.
+                  <span className="text-[#1A1A18] font-semibold">&ldquo;{studioName}&rdquo;</span>.
                 </p>
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg px-4 py-3">
-                  <p className="text-xs text-amber-300 leading-relaxed">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+                  <p className="text-xs text-[#8F5706] leading-relaxed">
                     The studio and all its data will be preserved but the studio will lose access to the platform. You can restore it at any time. Data is permanently deleted after <strong>24 months</strong>.
                   </p>
                 </div>
                 <div className="flex gap-3 pt-1">
-                  <button onClick={close} className="flex-1 py-2.5 rounded-lg border border-white/10 text-white/60 text-sm hover:bg-white/5 transition-colors cursor-pointer">
+                  <button onClick={close} className="flex-1 py-2.5 rounded-lg border border-[#DED8CC] text-[#3F3D38] text-sm hover:bg-[#EFEBE3] transition-colors cursor-pointer">
                     Cancel
                   </button>
-                  <button onClick={() => setStep('mfa')} className="flex-1 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium transition-colors cursor-pointer">
+                  <button onClick={() => setStep('mfa')} className="flex-1 py-2.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors cursor-pointer">
                     Continue →
                   </button>
                 </div>
@@ -137,9 +137,9 @@ export function ArchiveStudioButton({ orgId, studioName }: { orgId: string; stud
 
             {step === 'mfa' && (
               <div className="px-6 py-5 space-y-4">
-                <p className="text-sm text-white/60 leading-relaxed">
+                <p className="text-sm text-[#3F3D38] leading-relaxed">
                   Enter the 6-digit code from your authenticator app to archive{' '}
-                  <span className="text-white font-medium">&ldquo;{studioName}&rdquo;</span>.
+                  <span className="text-[#1A1A18] font-medium">&ldquo;{studioName}&rdquo;</span>.
                 </p>
                 <input
                   ref={inputRef}
@@ -151,16 +151,16 @@ export function ArchiveStudioButton({ orgId, studioName }: { orgId: string; stud
                   placeholder="000 000"
                   maxLength={7}
                   autoComplete="one-time-code"
-                  className="w-full px-4 py-4 bg-[#0F0F0D] border border-white/10 rounded-lg text-white text-center text-3xl font-mono tracking-widest outline-none focus:border-[#9A7B4F] transition-colors placeholder:text-white/20"
+                  className="w-full px-4 py-4 bg-[#F5F2EC] border border-[#DED8CC] rounded-lg text-[#1A1A18] text-center text-3xl font-mono tracking-widest outline-none focus:border-[#7E6036] transition-colors placeholder:text-[#6E6B63]"
                 />
-                {mfaError && <p className="text-xs text-red-400 text-center">{mfaError}</p>}
+                {mfaError && <p className="text-xs text-[#B91C1C] text-center">{mfaError}</p>}
                 <div className="flex gap-3">
                   <button onClick={() => { setStep('confirm'); setCode(''); setMfaError('') }} disabled={loading}
-                    className="flex-1 py-2.5 rounded-lg border border-white/10 text-white/60 text-sm hover:bg-white/5 transition-colors disabled:opacity-40 cursor-pointer">
+                    className="flex-1 py-2.5 rounded-lg border border-[#DED8CC] text-[#3F3D38] text-sm hover:bg-[#EFEBE3] transition-colors disabled:opacity-40 cursor-pointer">
                     ← Back
                   </button>
                   <button onClick={verifyAndArchive} disabled={loading || code.replace(/\s/g, '').length < 6}
-                    className="flex-1 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium transition-colors disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2">
+                    className="flex-1 py-2.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2">
                     <ShieldCheck size={14} />
                     {loading ? 'Verifying…' : 'Verify & Archive'}
                   </button>
@@ -170,8 +170,8 @@ export function ArchiveStudioButton({ orgId, studioName }: { orgId: string; stud
 
             {step === 'archiving' && (
               <div className="px-6 py-10 flex flex-col items-center gap-3">
-                <div className="w-8 h-8 rounded-full border-2 border-[#9A7B4F] border-t-transparent animate-spin" />
-                <p className="text-sm text-white/50">Archiving &ldquo;{studioName}&rdquo;…</p>
+                <div className="w-8 h-8 rounded-full border-2 border-[#7E6036] border-t-transparent animate-spin" />
+                <p className="text-sm text-[#5C5A54]">Archiving &ldquo;{studioName}&rdquo;…</p>
               </div>
             )}
           </div>
@@ -253,7 +253,7 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
     <>
       <button
         onClick={open}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-colors flex-shrink-0 cursor-pointer"
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-500/30 text-[#B91C1C] text-xs font-medium hover:bg-red-500/10 transition-colors flex-shrink-0 cursor-pointer"
       >
         <Trash2 size={13} />
         Delete permanently
@@ -265,26 +265,26 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
           style={{ backgroundColor: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
           onClick={e => { if (e.target === e.currentTarget) close() }}
         >
-          <div className="bg-[#1A1A18] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl">
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/10">
+          <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#DED8CC]">
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${step === 'mfa' || step === 'deleting' ? 'bg-[#9A7B4F]/20' : 'bg-red-500/15'}`}>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${step === 'mfa' || step === 'deleting' ? 'bg-[#7E6036]/12' : 'bg-red-50'}`}>
                   {step === 'mfa' || step === 'deleting'
-                    ? <ShieldCheck size={17} className="text-[#C4A46B]" />
-                    : <Trash2 size={17} className="text-red-400" />
+                    ? <ShieldCheck size={17} className="text-[#7E6036]" />
+                    : <Trash2 size={17} className="text-[#B91C1C]" />
                   }
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-[#1A1A18]">
                     {step === 'mfa' ? 'Verify your identity' : step === 'deleting' ? 'Deleting…' : step === 'type-name' ? 'Confirm deletion' : 'Delete studio permanently'}
                   </p>
-                  <p className="text-xs text-white/40 mt-0.5">
+                  <p className="text-xs text-[#6E6B63] mt-0.5">
                     {step === 'mfa' ? 'Authenticator code required' : step === 'deleting' ? 'This cannot be undone' : 'This action cannot be reversed'}
                   </p>
                 </div>
               </div>
               {step !== 'deleting' && (
-                <button onClick={close} className="text-white/30 hover:text-white transition-colors cursor-pointer">
+                <button onClick={close} className="text-[#6E6B63] hover:text-[#1A1A18] transition-colors cursor-pointer">
                   <X size={16} />
                 </button>
               )}
@@ -292,25 +292,25 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
 
             {step === 'confirm' && (
               <div className="px-6 py-5 space-y-4">
-                <p className="text-sm text-white/60 leading-relaxed">
-                  You are about to <span className="text-red-400 font-semibold">permanently delete</span>{' '}
-                  <span className="text-white font-semibold">&ldquo;{studioName}&rdquo;</span>.
+                <p className="text-sm text-[#3F3D38] leading-relaxed">
+                  You are about to <span className="text-[#B91C1C] font-semibold">permanently delete</span>{' '}
+                  <span className="text-[#1A1A18] font-semibold">&ldquo;{studioName}&rdquo;</span>.
                 </p>
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 space-y-2">
-                  <p className="text-xs text-red-300 font-semibold">This will permanently erase:</p>
-                  <ul className="text-xs text-red-300/80 space-y-1 leading-relaxed list-disc list-inside">
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-2">
+                  <p className="text-xs text-[#B91C1C] font-semibold">This will permanently erase:</p>
+                  <ul className="text-xs text-[#B91C1C]/80 space-y-1 leading-relaxed list-disc list-inside">
                     <li>All projects, quotes, invoices &amp; purchase orders</li>
                     <li>All clients, suppliers &amp; price lists</li>
                     <li>All team member accounts &amp; settings</li>
                     <li>The studio itself</li>
                   </ul>
-                  <p className="text-xs text-red-300/60 pt-1">There is no undo.</p>
+                  <p className="text-xs text-[#B91C1C]/60 pt-1">There is no undo.</p>
                 </div>
                 <div className="flex gap-3 pt-1">
-                  <button onClick={close} className="flex-1 py-2.5 rounded-lg border border-white/10 text-white/60 text-sm hover:bg-white/5 transition-colors cursor-pointer">
+                  <button onClick={close} className="flex-1 py-2.5 rounded-lg border border-[#DED8CC] text-[#3F3D38] text-sm hover:bg-[#EFEBE3] transition-colors cursor-pointer">
                     Cancel
                   </button>
-                  <button onClick={() => setStep('type-name')} className="flex-1 py-2.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-medium transition-colors cursor-pointer">
+                  <button onClick={() => setStep('type-name')} className="flex-1 py-2.5 rounded-lg bg-red-700 hover:bg-red-600 text-[#1A1A18] text-sm font-medium transition-colors cursor-pointer">
                     I understand →
                   </button>
                 </div>
@@ -319,25 +319,25 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
 
             {step === 'type-name' && (
               <div className="px-6 py-5 space-y-4">
-                <p className="text-sm text-white/60 leading-relaxed">
-                  Type <span className="text-white font-mono font-semibold">{studioName}</span> to confirm.
+                <p className="text-sm text-[#3F3D38] leading-relaxed">
+                  Type <span className="text-[#1A1A18] font-mono font-semibold">{studioName}</span> to confirm.
                 </p>
                 <input
                   type="text"
                   value={typed}
                   onChange={e => setTyped(e.target.value)}
                   placeholder={studioName}
-                  className="w-full px-4 py-3 bg-[#0F0F0D] border border-white/10 rounded-lg text-white text-sm outline-none focus:border-red-500/50 transition-colors placeholder:text-white/20"
+                  className="w-full px-4 py-3 bg-[#F5F2EC] border border-[#DED8CC] rounded-lg text-[#1A1A18] text-sm outline-none focus:border-red-400 transition-colors placeholder:text-[#6E6B63]"
                   autoFocus
                 />
                 <div className="flex gap-3">
-                  <button onClick={() => { setStep('confirm'); setTyped('') }} className="flex-1 py-2.5 rounded-lg border border-white/10 text-white/60 text-sm hover:bg-white/5 transition-colors cursor-pointer">
+                  <button onClick={() => { setStep('confirm'); setTyped('') }} className="flex-1 py-2.5 rounded-lg border border-[#DED8CC] text-[#3F3D38] text-sm hover:bg-[#EFEBE3] transition-colors cursor-pointer">
                     ← Back
                   </button>
                   <button
                     onClick={() => setStep('mfa')}
                     disabled={typed !== studioName}
-                    className="flex-1 py-2.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-30 cursor-pointer"
+                    className="flex-1 py-2.5 rounded-lg bg-red-700 hover:bg-red-600 text-[#1A1A18] text-sm font-medium transition-colors disabled:opacity-30 cursor-pointer"
                   >
                     Continue →
                   </button>
@@ -347,9 +347,9 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
 
             {step === 'mfa' && (
               <div className="px-6 py-5 space-y-4">
-                <p className="text-sm text-white/60 leading-relaxed">
+                <p className="text-sm text-[#3F3D38] leading-relaxed">
                   Enter your authenticator code to permanently delete{' '}
-                  <span className="text-white font-medium">&ldquo;{studioName}&rdquo;</span>.
+                  <span className="text-[#1A1A18] font-medium">&ldquo;{studioName}&rdquo;</span>.
                 </p>
                 <input
                   ref={inputRef}
@@ -361,16 +361,16 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
                   placeholder="000 000"
                   maxLength={7}
                   autoComplete="one-time-code"
-                  className="w-full px-4 py-4 bg-[#0F0F0D] border border-white/10 rounded-lg text-white text-center text-3xl font-mono tracking-widest outline-none focus:border-red-500/50 transition-colors placeholder:text-white/20"
+                  className="w-full px-4 py-4 bg-[#F5F2EC] border border-[#DED8CC] rounded-lg text-[#1A1A18] text-center text-3xl font-mono tracking-widest outline-none focus:border-red-400 transition-colors placeholder:text-[#6E6B63]"
                 />
-                {mfaError && <p className="text-xs text-red-400 text-center">{mfaError}</p>}
+                {mfaError && <p className="text-xs text-[#B91C1C] text-center">{mfaError}</p>}
                 <div className="flex gap-3">
                   <button onClick={() => { setStep('type-name'); setCode(''); setMfaError('') }} disabled={loading}
-                    className="flex-1 py-2.5 rounded-lg border border-white/10 text-white/60 text-sm hover:bg-white/5 transition-colors disabled:opacity-40 cursor-pointer">
+                    className="flex-1 py-2.5 rounded-lg border border-[#DED8CC] text-[#3F3D38] text-sm hover:bg-[#EFEBE3] transition-colors disabled:opacity-40 cursor-pointer">
                     ← Back
                   </button>
                   <button onClick={verifyAndDelete} disabled={loading || code.replace(/\s/g, '').length < 6}
-                    className="flex-1 py-2.5 rounded-lg bg-red-700 hover:bg-red-600 text-white text-sm font-medium transition-colors disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2">
+                    className="flex-1 py-2.5 rounded-lg bg-red-700 hover:bg-red-600 text-[#1A1A18] text-sm font-medium transition-colors disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2">
                     <ShieldCheck size={14} />
                     {loading ? 'Verifying…' : 'Delete forever'}
                   </button>
@@ -381,7 +381,7 @@ export function DeleteStudioButton({ orgId, studioName }: { orgId: string; studi
             {step === 'deleting' && (
               <div className="px-6 py-10 flex flex-col items-center gap-3">
                 <div className="w-8 h-8 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
-                <p className="text-sm text-white/50">Deleting &ldquo;{studioName}&rdquo;…</p>
+                <p className="text-sm text-[#5C5A54]">Deleting &ldquo;{studioName}&rdquo;…</p>
               </div>
             )}
           </div>
@@ -423,7 +423,7 @@ export function QuickDeleteButton({ orgId, studioName }: { orgId: string; studio
     <button
       onClick={handleDelete}
       disabled={loading}
-      className="flex items-center gap-1 text-xs text-red-400/70 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-40"
+      className="flex items-center gap-1 text-xs text-[#B91C1C]/70 hover:text-[#B91C1C] transition-colors cursor-pointer disabled:opacity-40"
       title="Quick delete (no MFA) — testing only"
     >
       <Trash2 size={11} />
@@ -453,7 +453,7 @@ export function RestoreStudioButton({ orgId, studioName }: { orgId: string; stud
     <button
       onClick={restore}
       disabled={loading}
-      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 text-emerald-400 text-xs font-medium hover:bg-emerald-500/10 transition-colors flex-shrink-0 cursor-pointer disabled:opacity-50"
+      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 text-[#047857] text-xs font-medium hover:bg-emerald-500/10 transition-colors flex-shrink-0 cursor-pointer disabled:opacity-50"
     >
       <RotateCcw size={13} />
       {loading ? 'Restoring…' : 'Restore studio'}

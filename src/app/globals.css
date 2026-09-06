@@ -70,6 +70,35 @@ body:has(.staff-portal) {
 .no-spinner::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .no-spinner { -moz-appearance: textfield; appearance: textfield; }
 
+/* ── Platform control room tokens ───────────────────────────────────────────
+   The admin runs on the house cream canvas, not a black one. Every text value
+   below clears 4.5:1 on both #F5F2EC and #FDFCF9; the four portal hues and the
+   severity ramp clear it too, so colour can carry meaning without costing
+   legibility. Only the nav rail stays ink, per DESIGN.md.                    */
+.platform-root {
+  --pf-canvas:      #F5F2EC;
+  --pf-panel:       #FDFCF9;
+  --pf-sunken:      #EFEBE3;
+  --pf-hover:       #E9E4DA;
+  --pf-border:      #DED8CC;
+  --pf-hairline:    #EAE5DB;
+
+  --pf-ink:         #1A1A18;
+  --pf-secondary:   #3F3D38;
+  --pf-tertiary:    #5C5A54;
+  --pf-muted:       #6E6B63;
+
+  --pf-designer:    #7E6036;
+  --pf-supplier:    #0F766E;
+  --pf-manufacture: #C2410C;
+  --pf-trades:      #6D28D9;
+
+  --pf-critical:    #B91C1C;
+  --pf-warning:     #8F5706;
+  --pf-notice:      #0369A1;
+  --pf-healthy:     #047857;
+}
+
 /* Platform control room: command palette entrance + skeleton shimmer */
 @keyframes qh-pop {
   from { opacity: 0; transform: translateY(-6px) scale(0.985); }
@@ -79,7 +108,7 @@ body:has(.staff-portal) {
   0%, 100% { opacity: 0.45; }
   50%      { opacity: 0.8; }
 }
-.qh-skeleton { background: rgba(255,255,255,0.05); animation: qh-pulse 1.6s ease-in-out infinite; }
+.qh-skeleton { background: #E9E4DA; animation: qh-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .qh-skeleton { animation: none; }
 }

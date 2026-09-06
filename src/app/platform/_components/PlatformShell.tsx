@@ -96,7 +96,7 @@ export function PlatformShell({
             <div className="flex items-center gap-2 px-3 mb-2">
               <span className={`w-1.5 h-1.5 rounded-full ${section.dot}`} />
               <SectionIcon size={11} className={section.accent} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8F8B81]">
                 {section.label}
               </span>
             </div>
@@ -113,20 +113,20 @@ export function PlatformShell({
                     aria-current={active ? 'page' : undefined}
                     className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-[7px] rounded-lg text-[13px] transition-colors duration-150 ${
                       active
-                        ? 'bg-white/[0.08] text-white'
-                        : 'text-white/55 hover:text-white hover:bg-white/[0.04]'
+                        ? 'bg-white/[0.10] text-white'
+                        : 'text-[#B4B0A6] hover:text-white hover:bg-white/[0.06]'
                     }`}
                   >
-                    <Icon size={14} className={`shrink-0 transition-colors duration-150 ${active ? section.accent : 'text-white/35 group-hover:text-white/70'}`} />
+                    <Icon size={14} className={`shrink-0 transition-colors duration-150 ${active ? section.accent : 'text-[#8F8B81] group-hover:text-[#D6D2C8]'}`} />
                     <span className="flex-1 truncate">{label}</span>
                     {badge > 0 && (
                       <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full min-w-[19px] text-center ${
-                        active ? 'bg-[#C4A46B] text-[#1A1A18]' : 'bg-[#9A7B4F]/25 text-[#C4A46B]'
+                        active ? 'bg-[#D8BA84] text-[#1A1A18]' : 'bg-[#D8BA84]/20 text-[#D8BA84]'
                       }`}>
                         {badge > 99 ? '99+' : badge}
                       </span>
                     )}
-                    {active && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-l bg-[#C4A46B]" />}
+                    {active && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-l bg-[#D8BA84]" />}
                   </Link>
                 )
               })}
@@ -142,7 +142,7 @@ export function PlatformShell({
       <Link href="/platform" className="flex flex-col items-center gap-2 group">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="QuotingHub" className="w-24 h-auto object-contain" style={{ filter: 'invert(1)' }} />
-        <span className="text-[10px] font-semibold text-[#C4A46B] uppercase tracking-[0.22em] transition-colors duration-150 group-hover:text-[#E0C68C]">
+        <span className="text-[10px] font-semibold text-[#D8BA84] uppercase tracking-[0.22em] transition-colors duration-150 group-hover:text-[#EBD3A6]">
           Control Room
         </span>
       </Link>
@@ -152,13 +152,13 @@ export function PlatformShell({
   const footer = (
     <div className="px-3 py-3 border-t border-white/8">
       <div className="px-3 pb-2">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-white/25">Signed in</p>
-        <p className="text-[11px] text-white/55 truncate" title={adminEmail}>{adminEmail}</p>
+        <p className="text-[10px] uppercase tracking-[0.14em] text-[#8F8B81]">Signed in</p>
+        <p className="text-[11px] text-[#B4B0A6] truncate" title={adminEmail}>{adminEmail}</p>
       </div>
       <form action="/api/auth/signout" method="post">
         <button
           type="submit"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] text-white/40 hover:text-white hover:bg-white/[0.05] transition-colors duration-150 w-full text-left cursor-pointer"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] text-[#B4B0A6] hover:text-white hover:bg-white/[0.07] transition-colors duration-150 w-full text-left cursor-pointer"
         >
           <LogOut size={13} />
           Sign out
@@ -168,9 +168,9 @@ export function PlatformShell({
   )
 
   return (
-    <div className="min-h-screen bg-[#0E0E0C] text-white">
+    <div className="platform-root min-h-screen bg-[#F5F2EC] text-[#1A1A18]">
       {/* Desktop rail */}
-      <aside className="hidden lg:flex w-[236px] flex-col h-screen fixed left-0 top-0 bg-[#181816] border-r border-white/8 z-40">
+      <aside className="hidden lg:flex w-[236px] flex-col h-screen fixed left-0 top-0 bg-[#181816] z-40">
         {brand}
         {nav}
         {footer}
@@ -184,11 +184,11 @@ export function PlatformShell({
             onClick={() => setDrawerOpen(false)}
             className="absolute inset-0 bg-black/70 cursor-default"
           />
-          <aside className="relative w-[236px] flex flex-col h-full bg-[#181816] border-r border-white/8">
+          <aside className="relative w-[236px] flex flex-col h-full bg-[#181816]">
             <button
               aria-label="Close navigation"
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-2 top-2 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer"
+              className="absolute right-2 top-2 p-1.5 rounded-lg text-[#B4B0A6] hover:text-white hover:bg-white/[0.08] transition-colors duration-150 cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -201,40 +201,40 @@ export function PlatformShell({
 
       <div className="lg:ml-[236px] flex flex-col min-h-screen">
         {/* Command bar */}
-        <header className="sticky top-0 z-30 h-14 flex items-center gap-3 px-4 sm:px-6 border-b border-white/8 bg-[#0E0E0C]/85 backdrop-blur-md">
+        <header className="sticky top-0 z-30 h-14 flex items-center gap-3 px-4 sm:px-6 border-b border-[#DED8CC] bg-[#F5F2EC]/90 backdrop-blur-md">
           <button
             aria-label="Open navigation"
             onClick={() => setDrawerOpen(true)}
-            className="lg:hidden p-2 -ml-2 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer"
+            className="lg:hidden p-2 -ml-2 rounded-lg text-[#5C5A54] hover:text-[#1A1A18] hover:bg-[#E9E4DA] transition-colors duration-150 cursor-pointer"
           >
             <Menu size={17} />
           </button>
 
           <nav aria-label="Breadcrumb" className="hidden sm:flex items-center gap-1.5 text-[12px] shrink-0">
-            <span className="text-white/30">{current?.section.label ?? 'Platform'}</span>
+            <span className="text-[#6E6B63]">{current?.section.label ?? 'Platform'}</span>
             {current && (
               <>
-                <ChevronRight size={11} className="text-white/20" />
-                <span className="text-white/75 font-medium">{current.item.label}</span>
+                <ChevronRight size={11} className="text-[#A8A398]" />
+                <span className="text-[#1A1A18] font-medium">{current.item.label}</span>
               </>
             )}
           </nav>
 
           <button
             onClick={() => setPaletteOpen(true)}
-            className="ml-auto sm:ml-4 flex items-center gap-2.5 h-8 pl-3 pr-2 flex-1 max-w-[22rem] rounded-lg border border-white/10 bg-white/[0.03] text-left hover:border-white/20 hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer"
+            className="ml-auto sm:ml-4 flex items-center gap-2.5 h-8 pl-3 pr-2 flex-1 max-w-[22rem] rounded-lg border border-[#DED8CC] bg-[#FDFCF9] text-left hover:border-[#7E6036]/50 hover:bg-white transition-colors duration-150 cursor-pointer"
           >
-            <Search size={13} className="text-white/35 shrink-0" />
-            <span className="flex-1 truncate text-[12px] text-white/40">Search studios, contractors, suppliers…</span>
-            <kbd className="hidden sm:block text-[10px] font-medium text-white/35 border border-white/12 rounded px-1.5 py-0.5">⌘K</kbd>
+            <Search size={13} className="text-[#6E6B63] shrink-0" />
+            <span className="flex-1 truncate text-[12px] text-[#6E6B63]">Search studios, contractors, suppliers…</span>
+            <kbd className="hidden sm:block text-[10px] font-medium text-[#5C5A54] bg-[#EFEBE3] border border-[#DED8CC] rounded px-1.5 py-0.5">⌘K</kbd>
           </button>
 
           <div className="hidden md:flex items-center gap-2 ml-auto pl-4 shrink-0">
             {totalBadges > 0 && (
-              <span className="text-[11px] text-[#C4A46B] tabular-nums">{totalBadges} waiting</span>
+              <span className="text-[11px] font-medium text-[#7E6036] tabular-nums">{totalBadges} waiting</span>
             )}
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(52,211,153,0.15)]" />
-            <span className="text-[11px] text-white/35 tabular-nums">{clock ?? '—'}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#047857] shadow-[0_0_0_3px_rgba(4,120,87,0.14)]" />
+            <span className="text-[11px] text-[#5C5A54] tabular-nums">{clock ?? '—'}</span>
           </div>
         </header>
 

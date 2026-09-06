@@ -9,11 +9,11 @@ import {
 import { useNow } from '@/lib/useNow'
 
 const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  starter:      { label: 'Starter',      color: 'text-blue-400',    bg: 'bg-blue-500/15'    },
-  professional: { label: 'Professional', color: 'text-amber-400',   bg: 'bg-amber-500/15'   },
-  business:     { label: 'Business',     color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
-  quoting:      { label: 'Business',     color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
-  free:         { label: 'Free',         color: 'text-white/30',    bg: 'bg-white/5'        },
+  starter:      { label: 'Starter',      color: 'text-[#0F766E]',    bg: 'bg-teal-50'    },
+  professional: { label: 'Professional', color: 'text-[#8F5706]',   bg: 'bg-amber-50'   },
+  business:     { label: 'Business',     color: 'text-[#047857]', bg: 'bg-emerald-50' },
+  quoting:      { label: 'Business',     color: 'text-[#047857]', bg: 'bg-emerald-50' },
+  free:         { label: 'Free',         color: 'text-[#6E6B63]',    bg: 'bg-[#EFEBE3]'        },
 }
 
 const PLAN_OPTIONS = [
@@ -24,11 +24,11 @@ const PLAN_OPTIONS = [
 ]
 
 const SUB_STATUS: Record<string, { label: string; color: string }> = {
-  active:    { label: 'Active',    color: 'bg-emerald-500/15 text-emerald-400' },
-  trialing:  { label: 'Trial',     color: 'bg-amber-500/15 text-amber-400'    },
-  cancelled: { label: 'Cancelled', color: 'bg-red-500/15 text-red-400'        },
-  past_due:  { label: 'Past Due',  color: 'bg-red-500/15 text-red-400'        },
-  free:      { label: 'Free',      color: 'bg-white/5 text-white/40'          },
+  active:    { label: 'Active',    color: 'bg-emerald-50 text-[#047857]' },
+  trialing:  { label: 'Trial',     color: 'bg-amber-50 text-[#8F5706]'    },
+  cancelled: { label: 'Cancelled', color: 'bg-red-50 text-[#B91C1C]'        },
+  past_due:  { label: 'Past Due',  color: 'bg-red-50 text-[#B91C1C]'        },
+  free:      { label: 'Free',      color: 'bg-[#EFEBE3] text-[#6E6B63]'          },
 }
 
 export interface AdminMember {
@@ -89,48 +89,48 @@ function PlanPanel({ accountId, initialPlan, initialStatus }: {
   }
 
   return (
-    <div className="px-5 py-4 bg-white/2 border-t border-white/5">
+    <div className="px-5 py-4 bg-[#F7F4EE] border-t border-[#EAE5DB]">
       <div className="flex items-center gap-1.5 mb-3">
-        <ShieldCheck size={11} className="text-orange-400" />
-        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Plan Management</p>
+        <ShieldCheck size={11} className="text-[#C2410C]" />
+        <p className="text-[10px] font-semibold text-[#6E6B63] uppercase tracking-wider">Plan Management</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[10px] text-white/40 mb-1.5 uppercase tracking-wider">Plan Tier</p>
+          <p className="text-[10px] text-[#6E6B63] mb-1.5 uppercase tracking-wider">Plan Tier</p>
           <div className="space-y-1.5">
             {PLAN_OPTIONS.map(opt => (
               <button key={opt.id} onClick={() => setPlan(opt.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${plan === opt.id ? 'bg-orange-500/15 border border-orange-500/30' : 'bg-white/3 border border-white/5 hover:bg-white/5'}`}>
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${plan === opt.id ? 'bg-orange-400' : 'bg-white/20'}`} />
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${plan === opt.id ? 'bg-orange-50 border border-orange-300' : 'bg-[#F3EFE8] border border-[#EAE5DB] hover:bg-[#EFEBE3]'}`}>
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${plan === opt.id ? 'bg-[#C2410C]' : 'bg-[#DED8CC]'}`} />
                 <div>
-                  <p className={`text-xs font-medium ${plan === opt.id ? 'text-orange-300' : 'text-white/60'}`}>{opt.label}</p>
-                  <p className="text-[10px] text-white/30">{opt.desc}</p>
+                  <p className={`text-xs font-medium ${plan === opt.id ? 'text-[#C2410C]' : 'text-[#3F3D38]'}`}>{opt.label}</p>
+                  <p className="text-[10px] text-[#6E6B63]">{opt.desc}</p>
                 </div>
-                {plan === opt.id && <CheckCircle size={11} className="text-orange-400 ml-auto" />}
+                {plan === opt.id && <CheckCircle size={11} className="text-[#C2410C] ml-auto" />}
               </button>
             ))}
           </div>
         </div>
         <div>
-          <p className="text-[10px] text-white/40 mb-1.5 uppercase tracking-wider">Subscription Status</p>
+          <p className="text-[10px] text-[#6E6B63] mb-1.5 uppercase tracking-wider">Subscription Status</p>
           <div className="space-y-1.5 mb-3">
             {(['active', 'trialing', 'cancelled', 'past_due'] as const).map(s => (
               <button key={s} onClick={() => setStatus(s)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${status === s ? 'bg-white/10 border border-white/20' : 'bg-white/3 border border-white/5 hover:bg-white/5'}`}>
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s === 'active' ? 'bg-emerald-400' : s === 'trialing' ? 'bg-amber-400' : 'bg-red-400'}`} />
-                <p className={`text-xs font-medium ${status === s ? 'text-white' : 'text-white/50'}`}>{SUB_STATUS[s]?.label}</p>
-                {status === s && <CheckCircle size={11} className="text-white/60 ml-auto" />}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${status === s ? 'bg-[#E5DFD5] border border-[#DED8CC]' : 'bg-[#F3EFE8] border border-[#EAE5DB] hover:bg-[#EFEBE3]'}`}>
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s === 'active' ? 'bg-[#047857]' : s === 'trialing' ? 'bg-[#8F5706]' : 'bg-red-400'}`} />
+                <p className={`text-xs font-medium ${status === s ? 'text-[#1A1A18]' : 'text-[#5C5A54]'}`}>{SUB_STATUS[s]?.label}</p>
+                {status === s && <CheckCircle size={11} className="text-[#3F3D38] ml-auto" />}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-white/3 rounded-lg border border-white/5">
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-[#F3EFE8] rounded-lg border border-[#EAE5DB]">
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>{cfg.label}</span>
             <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${SUB_STATUS[status]?.color ?? ''}`}>{SUB_STATUS[status]?.label ?? status}</span>
           </div>
-          {error && <div className="flex items-center gap-1.5 text-xs text-red-400 mb-2"><AlertCircle size={11} /> {error}</div>}
+          {error && <div className="flex items-center gap-1.5 text-xs text-[#B91C1C] mb-2"><AlertCircle size={11} /> {error}</div>}
           <button onClick={() => void handleSave()} disabled={saving}
-            className="w-full py-2 text-xs font-semibold rounded-lg bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
-            {saving ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : saved ? <><CheckCircle size={12} className="text-emerald-400" /> Saved</> : 'Save Changes'}
+            className="w-full py-2 text-xs font-semibold rounded-lg bg-orange-500/20 text-[#C2410C] hover:bg-orange-500/30 transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving ? <><Loader2 size={12} className="animate-spin" /> Saving…</> : saved ? <><CheckCircle size={12} className="text-[#047857]" /> Saved</> : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -195,42 +195,42 @@ function AdminUsersPanel({ accountId, initial }: { accountId: string; initial: A
   }
 
   return (
-    <div className="px-5 py-4 bg-white/2 border-t border-white/5">
+    <div className="px-5 py-4 bg-[#F7F4EE] border-t border-[#EAE5DB]">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider flex items-center gap-1.5">
+        <p className="text-[10px] font-semibold text-[#6E6B63] uppercase tracking-wider flex items-center gap-1.5">
           <Users size={11} /> Admin Users
         </p>
         <button onClick={() => { setShowInvite(true); setInviteError(''); setInviteDone(false) }}
-          className="flex items-center gap-1 text-[10px] text-orange-400 hover:text-orange-300 transition-colors cursor-pointer">
+          className="flex items-center gap-1 text-[10px] text-[#C2410C] hover:text-[#C2410C] transition-colors cursor-pointer">
           <Plus size={10} /> Invite Admin
         </button>
       </div>
       {members.length === 0 && !showInvite && (
-        <p className="text-xs text-white/20 italic">No additional admins.</p>
+        <p className="text-xs text-[#8A877F] italic">No additional admins.</p>
       )}
       <div className="space-y-2">
         {members.map(m => (
-          <div key={m.id} className="flex items-center gap-3 bg-white/4 rounded-lg px-3 py-2.5">
-            <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-white/60">
+          <div key={m.id} className="flex items-center gap-3 bg-[#F1EDE5] rounded-lg px-3 py-2.5">
+            <div className="w-7 h-7 rounded-full bg-[#E5DFD5] flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-[#3F3D38]">
               {(m.name ?? m.email).slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              {m.name && <p className="text-xs font-medium text-white/80 leading-tight">{m.name}</p>}
-              <p className="text-[11px] text-white/40 truncate">{m.email}</p>
-              <p className="text-[10px] text-white/20">Invited {timeAgo(m.invited_at)}</p>
+              {m.name && <p className="text-xs font-medium text-[#2C2C2A] leading-tight">{m.name}</p>}
+              <p className="text-[11px] text-[#6E6B63] truncate">{m.email}</p>
+              <p className="text-[10px] text-[#8A877F]">Invited {timeAgo(m.invited_at)}</p>
             </div>
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${m.accepted_at ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${m.accepted_at ? 'bg-emerald-50 text-[#047857]' : 'bg-amber-50 text-[#8F5706]'}`}>
               {m.accepted_at ? <span className="flex items-center gap-1"><CheckCircle size={9} /> Active</span> : <span className="flex items-center gap-1"><Clock size={9} /> Pending</span>}
             </span>
             <div className="flex items-center gap-1">
               {!m.accepted_at && (
                 <button onClick={() => void handleResend(m.id)} disabled={resending === m.id} title="Resend"
-                  className="p-1.5 rounded text-white/30 hover:text-orange-400 hover:bg-orange-500/10 transition-colors cursor-pointer disabled:opacity-50">
-                  {resending === m.id ? <Loader2 size={12} className="animate-spin" /> : resentId === m.id ? <CheckCircle size={12} className="text-emerald-400" /> : <RotateCcw size={12} />}
+                  className="p-1.5 rounded text-[#6E6B63] hover:text-[#C2410C] hover:bg-orange-500/10 transition-colors cursor-pointer disabled:opacity-50">
+                  {resending === m.id ? <Loader2 size={12} className="animate-spin" /> : resentId === m.id ? <CheckCircle size={12} className="text-[#047857]" /> : <RotateCcw size={12} />}
                 </button>
               )}
               <button onClick={() => void handleDelete(m.id)} disabled={deleting === m.id} title="Remove"
-                className="p-1.5 rounded text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50">
+                className="p-1.5 rounded text-[#6E6B63] hover:text-[#B91C1C] hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50">
                 {deleting === m.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
               </button>
             </div>
@@ -238,22 +238,22 @@ function AdminUsersPanel({ accountId, initial }: { accountId: string; initial: A
         ))}
       </div>
       {showInvite && (
-        <div className="mt-3 bg-white/5 border border-white/10 rounded-lg p-3 space-y-2">
+        <div className="mt-3 bg-[#EFEBE3] border border-[#DED8CC] rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">Invite New Admin</p>
-            <button onClick={() => setShowInvite(false)} className="text-white/30 hover:text-white/60 cursor-pointer"><X size={12} /></button>
+            <p className="text-[10px] font-semibold text-[#5C5A54] uppercase tracking-wider">Invite New Admin</p>
+            <button onClick={() => setShowInvite(false)} className="text-[#6E6B63] hover:text-[#1A1A18] cursor-pointer"><X size={12} /></button>
           </div>
           {inviteDone ? (
-            <div className="flex items-center gap-2 text-xs text-emerald-400 py-1"><CheckCircle size={13} /> Invite sent!</div>
+            <div className="flex items-center gap-2 text-xs text-[#047857] py-1"><CheckCircle size={13} /> Invite sent!</div>
           ) : (
             <>
               <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="admin@example.com"
-                className="w-full px-3 py-2 text-xs rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-orange-500/50" />
+                className="w-full px-3 py-2 text-xs rounded-lg bg-[#EFEBE3] border border-[#DED8CC] text-[#1A1A18] placeholder-white/20 outline-none focus:border-orange-500/50" />
               <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Name (optional)"
-                className="w-full px-3 py-2 text-xs rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-orange-500/50" />
-              {inviteError && <div className="flex items-center gap-1.5 text-xs text-red-400"><AlertCircle size={11} /> {inviteError}</div>}
+                className="w-full px-3 py-2 text-xs rounded-lg bg-[#EFEBE3] border border-[#DED8CC] text-[#1A1A18] placeholder-white/20 outline-none focus:border-orange-500/50" />
+              {inviteError && <div className="flex items-center gap-1.5 text-xs text-[#B91C1C]"><AlertCircle size={11} /> {inviteError}</div>}
               <button onClick={() => void handleInvite()} disabled={inviting || !inviteEmail.trim()}
-                className="w-full py-2 text-xs font-semibold rounded-lg bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 transition-colors cursor-pointer disabled:opacity-50">
+                className="w-full py-2 text-xs font-semibold rounded-lg bg-orange-500/20 text-[#C2410C] hover:bg-orange-500/30 transition-colors cursor-pointer disabled:opacity-50">
                 {inviting ? <><Loader2 size={11} className="animate-spin inline mr-1" />Sending…</> : 'Send Invite'}
               </button>
             </>
@@ -309,17 +309,17 @@ export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRo
 
   if (rows.length === 0) {
     return (
-      <div className="bg-white/5 border border-white/10 rounded-xl px-6 py-16 text-center">
-        <Hammer size={32} className="mx-auto text-orange-400/40 mb-3" />
-        <p className="text-sm font-medium text-white/60 mb-1">No manufacturer accounts yet</p>
-        <p className="text-xs text-white/30 max-w-xs mx-auto">Manufacturers appear here once their accounts are activated.</p>
+      <div className="bg-[#EFEBE3] border border-[#DED8CC] rounded-xl px-6 py-16 text-center">
+        <Hammer size={32} className="mx-auto text-[#C2410C]/40 mb-3" />
+        <p className="text-sm font-medium text-[#3F3D38] mb-1">No manufacturer accounts yet</p>
+        <p className="text-xs text-[#6E6B63] max-w-xs mx-auto">Manufacturers appear here once their accounts are activated.</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-[#1A1A18] rounded-xl border border-white/10 overflow-hidden">
-      <div className="hidden md:grid px-5 py-2 border-b border-white/10 text-[10px] font-semibold text-white/30 uppercase tracking-wider"
+    <div className="bg-[#FDFCF9] rounded-xl border border-[#DED8CC] overflow-hidden">
+      <div className="hidden md:grid px-5 py-2 border-b border-[#DED8CC] text-[10px] font-semibold text-[#6E6B63] uppercase tracking-wider"
         style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 110px' }}>
         <span>Company</span>
         <span>Plan</span>
@@ -341,24 +341,24 @@ export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRo
         const pendingAdmins  = a.adminMembers.filter(m => !m.accepted_at).length
 
         return (
-          <div key={a.id} className="border-b border-white/5 last:border-0">
-            <div className="grid items-center px-5 py-3 gap-4 hover:bg-white/2 transition-colors"
+          <div key={a.id} className="border-b border-[#EAE5DB] last:border-0">
+            <div className="grid items-center px-5 py-3 gap-4 hover:bg-[#F7F4EE] transition-colors"
               style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 110px' }}>
 
               {/* Company + detail link */}
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-6 h-6 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                  <Hammer size={11} className="text-orange-400" />
+                  <Hammer size={11} className="text-[#C2410C]" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-white font-medium text-xs leading-tight truncate">{a.company_name}</p>
+                    <p className="text-[#1A1A18] font-medium text-xs leading-tight truncate">{a.company_name}</p>
                     <Link href={`/platform/manufacturing/${a.id}`} title="View details"
-                      className="text-white/20 hover:text-orange-400 transition-colors flex-shrink-0">
+                      className="text-[#8A877F] hover:text-[#C2410C] transition-colors flex-shrink-0">
                       <ExternalLink size={10} />
                     </Link>
                   </div>
-                  <p className="text-white/30 text-[10px] truncate">{a.email}</p>
+                  <p className="text-[#6E6B63] text-[10px] truncate">{a.email}</p>
                 </div>
               </div>
 
@@ -366,7 +366,7 @@ export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRo
               <div>
                 <button onClick={() => toggle(a.id, 'plan')} className="flex items-center gap-1.5 cursor-pointer group" title="Edit plan">
                   <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${planCfg.bg} ${planCfg.color}`}>{planCfg.label}</span>
-                  <Edit2 size={9} className="text-white/20 group-hover:text-white/50 transition-colors" />
+                  <Edit2 size={9} className="text-[#8A877F] group-hover:text-[#5C5A54] transition-colors" />
                 </button>
               </div>
 
@@ -381,25 +381,25 @@ export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRo
               </div>
 
               {/* Quotes */}
-              <span className={`text-xs tabular-nums ${a.quoteCount ? 'text-white/70' : 'text-white/20'}`}>
+              <span className={`text-xs tabular-nums ${a.quoteCount ? 'text-[#3F3D38]' : 'text-[#8A877F]'}`}>
                 <span className="flex items-center gap-1"><FileText size={10} className="opacity-50" />{a.quoteCount}</span>
               </span>
 
               {/* Invoices */}
-              <span className={`text-xs tabular-nums ${a.invoiceCount ? 'text-white/70' : 'text-white/20'}`}>{a.invoiceCount}</span>
+              <span className={`text-xs tabular-nums ${a.invoiceCount ? 'text-[#3F3D38]' : 'text-[#8A877F]'}`}>{a.invoiceCount}</span>
 
               {/* Invoiced total */}
-              <span className={`text-xs tabular-nums font-medium ${a.invoicedTotal > 0 ? 'text-emerald-400' : 'text-white/20'}`}>
+              <span className={`text-xs tabular-nums font-medium ${a.invoicedTotal > 0 ? 'text-[#047857]' : 'text-[#8A877F]'}`}>
                 {a.invoicedTotal > 0 ? fmtR(a.invoicedTotal) : '—'}
               </span>
 
               {/* Setup fee */}
               <div>
                 {a.setup_fee_paid ? (
-                  <span className="text-[10px] font-medium flex items-center gap-1 text-emerald-400"><BadgeCheck size={11} /> Paid</span>
+                  <span className="text-[10px] font-medium flex items-center gap-1 text-[#047857]"><BadgeCheck size={11} /> Paid</span>
                 ) : (
                   <button onClick={e => { e.stopPropagation(); void markSetupFeePaid(a.id) }} disabled={markingFee === a.id}
-                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors cursor-pointer disabled:opacity-50">
+                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-[#8F5706] hover:bg-amber-500/25 transition-colors cursor-pointer disabled:opacity-50">
                     {markingFee === a.id ? <Loader2 size={9} className="animate-spin" /> : <Receipt size={9} />}
                     {markingFee === a.id ? '…' : 'R2,500 owed'}
                   </button>
@@ -408,22 +408,22 @@ export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRo
 
               {/* Joined + activate + delete */}
               <div className="text-right space-y-1">
-                <p className="text-white/40 text-[10px]">{fmtDate(a.created_at)}</p>
+                <p className="text-[#6E6B63] text-[10px]">{fmtDate(a.created_at)}</p>
                 {activating === a.id ? (
-                  <span className="text-[10px] text-white/30 flex items-center gap-1 justify-end"><Loader2 size={9} className="animate-spin" /> …</span>
+                  <span className="text-[10px] text-[#6E6B63] flex items-center gap-1 justify-end"><Loader2 size={9} className="animate-spin" /> …</span>
                 ) : a.subscription_status !== 'active' ? (
                   <button onClick={e => { e.stopPropagation(); void setStatus(a.id, 'active') }}
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1 ml-auto">
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-[#047857] hover:bg-emerald-500/30 transition-colors cursor-pointer flex items-center gap-1 ml-auto">
                     <CheckCircle size={9} /> Activate
                   </button>
                 ) : (
                   <button onClick={e => { e.stopPropagation(); void setStatus(a.id, 'cancelled') }}
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/30 hover:bg-red-500/15 hover:text-red-400 transition-colors cursor-pointer flex items-center gap-1 ml-auto">
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EFEBE3] text-[#6E6B63] hover:bg-red-500/15 hover:text-[#B91C1C] transition-colors cursor-pointer flex items-center gap-1 ml-auto">
                     Pause
                   </button>
                 )}
                 <button onClick={e => { e.stopPropagation(); void handleDelete(a.id, a.company_name) }} disabled={deleting === a.id}
-                  className="p-1 rounded text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50 ml-auto flex items-center justify-end"
+                  className="p-1 rounded text-[#8A877F] hover:text-[#B91C1C] hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50 ml-auto flex items-center justify-end"
                   title="Delete account">
                   {deleting === a.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                 </button>
