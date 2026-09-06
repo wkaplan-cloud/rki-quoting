@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { Store, Globe, Phone, MapPin, BarChart3 } from 'lucide-react'
 import { PortalAccountLinker } from './PortalAccountLinker'
 import { SupplierCategoryBadge } from './SupplierCategoryBadge'
+import { InviteProductSupplier } from './InviteProductSupplier'
 import { one, type Embedded } from '@/lib/supabase/embed'
 
 function fmtDate(iso: string) {
@@ -122,18 +123,24 @@ export default async function PlatformSuppliersPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <Store size={18} className="text-[#7E6036]" />
-          <h1 className="font-serif text-3xl text-[#1A1A18]">All Accounts</h1>
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <Store size={18} className="text-[#7E6036]" />
+            <h1 className="font-serif text-3xl text-[#1A1A18]">All Accounts</h1>
+          </div>
+          <p className="text-sm text-[#6E6B63]">Every supplier, manufacturer and contractor on the portal &mdash; plus the account type toggle and usage analytics</p>
         </div>
-        <p className="text-sm text-[#6E6B63]">Every supplier, manufacturer and contractor on the portal &mdash; plus the account type toggle and usage analytics</p>
+        <InviteProductSupplier />
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         {[
           { label: 'Total registered', value: rows.length.toString() },
+          { label: 'Product suppliers', value: rows.filter(r =>
+            r.supplier_category !== 'trades' && r.plan_category !== 'manufacturer'
+          ).length.toString() },
           { label: 'Active (responded)', value: activeCount.toString() },
           { label: 'On free trial', value: rows.filter(r => {
             return r.subscription_status === 'trialing' && r.trial_ends_at && new Date(r.trial_ends_at) > new Date()
