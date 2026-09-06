@@ -23,12 +23,12 @@ const DESTINATIONS: SearchEntry[] = [
   { id: 'nav-messages',    group: 'Go to', label: 'Messages',       hint: 'Contact submissions',       href: '/platform/messages',      keywords: 'inbox contact enquiries' },
   { id: 'nav-broadcast',   group: 'Go to', label: 'Broadcast',      hint: 'Email all studios',         href: '/platform/broadcast',     keywords: 'email campaign send' },
   { id: 'nav-commissions', group: 'Go to', label: 'Commissions',    hint: 'Rep commissions',           href: '/platform/commissions',   keywords: 'reps sales payouts' },
-  { id: 'nav-suppliers',   group: 'Go to', label: 'Suppliers',      hint: 'Registered suppliers',      href: '/platform/suppliers',     keywords: 'vendors accounts' },
+  { id: 'nav-suppliers',   group: 'Go to', label: 'All Accounts',   hint: 'Every portal account',      href: '/platform/suppliers',     keywords: 'suppliers vendors directory registered' },
   { id: 'nav-sourcing',    group: 'Go to', label: 'Price Requests', hint: 'RFQ delivery & responses',  href: '/platform/sourcing',      keywords: 'sourcing rfq suppliers invitations' },
   { id: 'nav-pricelists',  group: 'Go to', label: 'Price Lists',    hint: 'Catalogues & access',       href: '/platform/price-lists',   keywords: 'catalogue twinbru access requests' },
   { id: 'nav-mfg',         group: 'Go to', label: 'Manufacturing',  hint: 'Manufacturer accounts',     href: '/platform/manufacturing', keywords: 'factory workshop makers' },
-  { id: 'nav-elec',        group: 'Go to', label: 'Contractors',    hint: 'Electrical & trades',       href: '/platform/electricians',  keywords: 'electricians trades sparkies' },
-  { id: 'nav-health',      group: 'Go to', label: 'System Health',  hint: 'Env vars & activity pulse', href: '/platform/health',        keywords: 'status uptime env' },
+  { id: 'nav-elec',        group: 'Go to', label: 'Electrical & Trades', hint: 'Contractor accounts',  href: '/platform/electricians',  keywords: 'electricians trades contractors sparkies' },
+  { id: 'nav-health',      group: 'Go to', label: 'Health',         hint: 'Env vars & activity pulse', href: '/platform/health',        keywords: 'system status uptime env' },
 ]
 
 const GROUP_ORDER = ['Go to', 'Studios', 'Contractors', 'Manufacturers', 'Suppliers', 'Price lists']

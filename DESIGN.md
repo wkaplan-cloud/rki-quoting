@@ -318,6 +318,17 @@ Cancelled `#FBE0E0`/`#B91C1C`.
 **Active navigation** is a `white/10` fill on the rail plus a 2px `#D8BA84` tab
 on the trailing edge and a portal-coloured icon, not a thick left border.
 
+**Nav sections collapse.** A section is open when it holds the current page;
+clicking its heading overrides that, and overrides are dropped on navigating
+into a different section so the rule reasserts. A collapsed section shows the
+sum of its items' badges on the heading, so nothing waiting on you is hidden by
+being folded away. Disclosure animates `grid-template-rows` from `0fr` to `1fr`
+over 200ms — no magic height — and is disabled under `prefers-reduced-motion`.
+Links inside a collapsed section are `tabIndex={-1}` so they leave the tab order.
+
+**Portal Accounts is a container, not a portal.** Its three items each keep
+their own hue via `NavItem.accent`, which overrides the section accent.
+
 Motion is limited to `transition-colors duration-150` and one 180ms entrance on
 the command palette. The skeleton pulse respects `prefers-reduced-motion`.
 

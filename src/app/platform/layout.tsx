@@ -48,34 +48,27 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       ],
     },
     {
-      key: 'supplier',
-      label: 'Supplier Portal',
+      // Three portals, one list. Each item keeps its own hue because the group
+      // is a container, not a portal in its own right.
+      key: 'accounts',
+      label: 'Portal Accounts',
       icon: 'Package',
       accent: 'text-teal-300',
       dot: 'bg-teal-300',
       items: [
-        { href: '/platform/suppliers',   label: 'Suppliers',   icon: 'Store' },
+        { href: '/platform/suppliers',     label: 'All Accounts',        icon: 'Store', accent: 'text-teal-300' },
+        { href: '/platform/manufacturing', label: 'Manufacturing',       icon: 'Hammer', accent: 'text-orange-300' },
+        { href: '/platform/electricians',  label: 'Electrical & Trades', icon: 'Zap',    accent: 'text-violet-300' },
       ],
     },
     {
-      key: 'manufacturing',
-      label: 'Manufacturing',
-      icon: 'Hammer',
-      accent: 'text-orange-300',
-      dot: 'bg-orange-300',
+      key: 'system',
+      label: 'System',
+      icon: 'Activity',
+      accent: 'text-[#B4B0A6]',
+      dot: 'bg-[#B4B0A6]',
       items: [
-        { href: '/platform/manufacturing', label: 'Accounts', icon: 'Users' },
-      ],
-    },
-    {
-      key: 'electrician',
-      label: 'Electrical & Trades',
-      icon: 'Zap',
-      accent: 'text-violet-300',
-      dot: 'bg-violet-300',
-      items: [
-        { href: '/platform/electricians', label: 'Contractors',   icon: 'Zap' },
-        { href: '/platform/health',       label: 'System Health', icon: 'Activity' },
+        { href: '/platform/health', label: 'Health', icon: 'Activity' },
       ],
     },
   ]

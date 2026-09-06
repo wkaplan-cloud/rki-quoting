@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Building2, MessageSquare, BookOpen, LogOut,
   ArrowLeftRight, Store, FolderOpen, Activity, BadgeDollarSign,
   Radio, Zap, Palette, Package, Hammer, Users,
-  Search, Menu, X, ChevronRight,
+  Search, Menu, X, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import { CommandPalette } from './CommandPalette'
 
@@ -27,6 +27,11 @@ export interface NavItem {
   label: string
   icon: IconName
   badge?: number
+  /**
+   * Overrides the section accent. Portal Accounts holds three portals that
+   * each own a hue, so the colour has to travel with the item, not the group.
+   */
+  accent?: string
 }
 
 export interface NavSection {
@@ -78,6 +83,24 @@ export function PlatformShell({
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  // A section is open when it holds the current page. Clicking a heading
+  // overrides that, and the overrides are dropped as soon as you navigate into
+  // a different section, so the rule reasserts itself on every move.
+  const activeSectionKey = sections.find(sec =>
+    sec.items.some(i => isActive(pathname, i.href)),
+  )?.key ?? null
+
+  const [openOverrides, setOpenOverrides] = useState<Record<string, boolean>>({})
+  const [lastSectionKey, setLastSectionKey] = useState(activeSectionKey)
+  if (lastSectionKey !== activeSectionKey) {
+    setLastSectionKey(activeSectionKey)
+    setOpenOverrides({})
+  }
+
+  const isOpen = (key: string) => openOverrides[key] ?? key === activeSectionKey
+  const toggleSection = (key: string) =>
+    setOpenOverrides(prev => ({ ...prev, [key]: !isOpen(key) }))
+
   const current = sections
     .flatMap(s => s.items.map(i => ({ section: s, item: i })))
     .filter(({ item }) => isActive(pathname, item.href))
@@ -91,45 +114,74 @@ export function PlatformShell({
     <nav className="flex-1 px-3 py-4 overflow-y-auto">
       {sections.map((section, si) => {
         const SectionIcon = ICONS[section.icon]
+        const open = isOpen(section.key)
+        const sectionBadge = section.items.reduce((n, i) => n + (i.badge ?? 0), 0)
         return (
-          <div key={section.key} className={si === 0 ? '' : 'mt-6'}>
-            <div className="flex items-center gap-2 px-3 mb-2">
-              <span className={`w-1.5 h-1.5 rounded-full ${section.dot}`} />
-              <SectionIcon size={11} className={section.accent} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8F8B81]">
+          <div key={section.key} className={si === 0 ? '' : 'mt-1.5'}>
+            <button
+              type="button"
+              onClick={() => toggleSection(section.key)}
+              aria-expanded={open}
+              aria-controls={`nav-section-${section.key}`}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/[0.05] transition-colors duration-150 cursor-pointer"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${section.dot}`} />
+              <SectionIcon size={11} className={`${section.accent} shrink-0`} />
+              <span className="flex-1 text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8F8B81]">
                 {section.label}
               </span>
-            </div>
+              {/* A collapsed section must not swallow the fact that it is waiting on you. */}
+              {!open && sectionBadge > 0 && (
+                <span className="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-[#D8BA84]/20 text-[#D8BA84]">
+                  {sectionBadge > 99 ? '99+' : sectionBadge}
+                </span>
+              )}
+              <ChevronDown
+                size={12}
+                className={`text-[#6F6B62] shrink-0 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
+              />
+            </button>
 
-            <div className="space-y-px">
-              {section.items.map(({ href, label, icon, badge = 0 }) => {
-                const Icon = ICONS[icon]
-                const active = isActive(pathname, href)
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setDrawerOpen(false)}
-                    aria-current={active ? 'page' : undefined}
-                    className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2.5 lg:py-[7px] rounded-lg text-[13px] transition-colors duration-150 ${
-                      active
-                        ? 'bg-white/[0.10] text-white'
-                        : 'text-[#B4B0A6] hover:text-white hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    <Icon size={14} className={`shrink-0 transition-colors duration-150 ${active ? section.accent : 'text-[#8F8B81] group-hover:text-[#D6D2C8]'}`} />
-                    <span className="flex-1 truncate">{label}</span>
-                    {badge > 0 && (
-                      <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full min-w-[19px] text-center ${
-                        active ? 'bg-[#D8BA84] text-[#1A1A18]' : 'bg-[#D8BA84]/20 text-[#D8BA84]'
-                      }`}>
-                        {badge > 99 ? '99+' : badge}
-                      </span>
-                    )}
-                    {active && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-l bg-[#D8BA84]" />}
-                  </Link>
-                )
-              })}
+            {/* 0fr -> 1fr collapses to the content's own height with no magic numbers. */}
+            <div
+              id={`nav-section-${section.key}`}
+              className="grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none"
+              style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+            >
+              <div className="overflow-hidden">
+                <div className="space-y-px pt-1 pb-1">
+                  {section.items.map(({ href, label, icon, badge = 0, accent }) => {
+                    const Icon = ICONS[icon]
+                    const active = isActive(pathname, href)
+                    const itemAccent = accent ?? section.accent
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setDrawerOpen(false)}
+                        aria-current={active ? 'page' : undefined}
+                        tabIndex={open ? undefined : -1}
+                        className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2.5 lg:py-[7px] rounded-lg text-[13px] transition-colors duration-150 ${
+                          active
+                            ? 'bg-white/[0.10] text-white'
+                            : 'text-[#B4B0A6] hover:text-white hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <Icon size={14} className={`shrink-0 transition-colors duration-150 ${active ? itemAccent : 'text-[#8F8B81] group-hover:text-[#D6D2C8]'}`} />
+                        <span className="flex-1 truncate">{label}</span>
+                        {badge > 0 && (
+                          <span className={`text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full min-w-[19px] text-center ${
+                            active ? 'bg-[#D8BA84] text-[#1A1A18]' : 'bg-[#D8BA84]/20 text-[#D8BA84]'
+                          }`}>
+                            {badge > 99 ? '99+' : badge}
+                          </span>
+                        )}
+                        {active && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-l bg-[#D8BA84]" />}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         )

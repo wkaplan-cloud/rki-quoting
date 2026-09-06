@@ -123,9 +123,9 @@ export default async function PlatformSuppliersPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           <Store size={18} className="text-[#7E6036]" />
-          <h1 className="font-serif text-3xl text-[#1A1A18]">Registered Suppliers</h1>
+          <h1 className="font-serif text-3xl text-[#1A1A18]">All Accounts</h1>
         </div>
-        <p className="text-sm text-[#6E6B63]">Supplier portal accounts, activity analytics &amp; studio usage</p>
+        <p className="text-sm text-[#6E6B63]">Every supplier, manufacturer and contractor on the portal &mdash; plus the account type toggle and usage analytics</p>
       </div>
 
       {/* Stats */}
