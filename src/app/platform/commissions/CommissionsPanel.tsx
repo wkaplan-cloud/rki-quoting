@@ -61,7 +61,7 @@ export function CommissionsPanel({ orgs }: { orgs: OrgRow[] }) {
     .reduce((sum, c) => sum + (RATES[c.plan ?? '']?.upfront ?? 0), 0)
 
   return (
-    <div className="p-8 space-y-10">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-10">
       <div>
         <h1 className="font-serif text-3xl text-[#1A1A18] mb-1">Commissions</h1>
         <p className="text-sm text-[#6E6B63]">Track rep payouts — upfront on signup, monthly while subscribed (max 12 months)</p>
@@ -73,7 +73,7 @@ export function CommissionsPanel({ orgs }: { orgs: OrgRow[] }) {
           <TrendingUp size={14} className="text-[#7E6036]" />
           <h2 className="text-sm font-medium text-[#1A1A18]">All reps combined</h2>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: 'Active commissioned clients', value: allActiveClients.length.toString(), color: 'text-[#1A1A18]' },
             { label: 'Monthly owed this month', value: fmt(totalMonthlyOwed), color: 'text-[#7E6036]' },
@@ -125,77 +125,79 @@ export function CommissionsPanel({ orgs }: { orgs: OrgRow[] }) {
             {clients.length === 0 ? (
               <p className="px-6 py-8 text-sm text-[#6E6B63] text-center">No active clients assigned yet</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#EAE5DB] text-xs text-[#6E6B63] uppercase tracking-wider">
-                    <th className="text-left px-6 py-3">Studio</th>
-                    <th className="text-left px-6 py-3">Plan</th>
-                    <th className="text-left px-6 py-3">Signed Up</th>
-                    <th className="text-left px-6 py-3">Months Active</th>
-                    <th className="text-left px-6 py-3">Upfront</th>
-                    <th className="text-left px-6 py-3">Monthly</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFEBE3]">
-                  {clients.map(c => {
-                    const rate = RATES[c.plan ?? '']
-                    const months = monthsSince(c.created_at)
-                    const recurringActive = !!rate && months < 12
-                    const paidThisMonth = isPaidThisMonth(c.rep_monthly_last_paid_at)
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[40rem]">
+                  <thead>
+                    <tr className="border-b border-[#EAE5DB] text-xs text-[#6E6B63] uppercase tracking-wider">
+                      <th className="text-left px-6 py-3">Studio</th>
+                      <th className="text-left px-6 py-3">Plan</th>
+                      <th className="text-left px-6 py-3">Signed Up</th>
+                      <th className="text-left px-6 py-3">Months Active</th>
+                      <th className="text-left px-6 py-3">Upfront</th>
+                      <th className="text-left px-6 py-3">Monthly</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EFEBE3]">
+                    {clients.map(c => {
+                      const rate = RATES[c.plan ?? '']
+                      const months = monthsSince(c.created_at)
+                      const recurringActive = !!rate && months < 12
+                      const paidThisMonth = isPaidThisMonth(c.rep_monthly_last_paid_at)
 
-                    return (
-                      <tr key={c.id} className="hover:bg-[#EFEBE3] transition-colors">
-                        <td className="px-6 py-3.5 text-[#1A1A18] font-medium">{c.businessName}</td>
-                        <td className="px-6 py-3.5">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#E5DFD5] text-[#3F3D38] capitalize">{c.plan ?? '—'}</span>
-                        </td>
-                        <td className="px-6 py-3.5 text-[#5C5A54] text-xs">
-                          {new Date(c.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="px-6 py-3.5 text-[#5C5A54] text-xs">
-                          {Math.floor(months)} / 12
-                        </td>
+                      return (
+                        <tr key={c.id} className="hover:bg-[#EFEBE3] transition-colors">
+                          <td className="px-6 py-3.5 text-[#1A1A18] font-medium">{c.businessName}</td>
+                          <td className="px-6 py-3.5">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-[#E5DFD5] text-[#3F3D38] capitalize">{c.plan ?? '—'}</span>
+                          </td>
+                          <td className="px-6 py-3.5 text-[#5C5A54] text-xs">
+                            {new Date(c.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </td>
+                          <td className="px-6 py-3.5 text-[#5C5A54] text-xs">
+                            {Math.floor(months)} / 12
+                          </td>
 
-                        {/* Upfront */}
-                        <td className="px-6 py-3.5">
-                          {!rate ? (
-                            <span className="text-[#8A877F] text-xs">—</span>
-                          ) : c.rep_upfront_paid ? (
-                            <span className="flex items-center gap-1.5 text-xs text-[#047857]">
-                              <CheckCircle2 size={13} /> {fmt(rate.upfront)} paid
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => patch(c.id, { rep_upfront_paid: true })}
-                              className="flex items-center gap-1.5 text-xs text-[#8F5706] hover:text-[#8F5706] transition-colors cursor-pointer"
-                            >
-                              <Circle size={13} /> Pay {fmt(rate.upfront)}
-                            </button>
-                          )}
-                        </td>
+                          {/* Upfront */}
+                          <td className="px-6 py-3.5">
+                            {!rate ? (
+                              <span className="text-[#8A877F] text-xs">—</span>
+                            ) : c.rep_upfront_paid ? (
+                              <span className="flex items-center gap-1.5 text-xs text-[#047857]">
+                                <CheckCircle2 size={13} /> {fmt(rate.upfront)} paid
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => patch(c.id, { rep_upfront_paid: true })}
+                                className="flex items-center gap-1.5 text-xs text-[#8F5706] hover:text-[#8F5706] transition-colors cursor-pointer"
+                              >
+                                <Circle size={13} /> Pay {fmt(rate.upfront)}
+                              </button>
+                            )}
+                          </td>
 
-                        {/* Monthly */}
-                        <td className="px-6 py-3.5">
-                          {!recurringActive ? (
-                            <span className="text-[#8A877F] text-xs">{months >= 12 ? 'Completed' : '—'}</span>
-                          ) : paidThisMonth ? (
-                            <span className="flex items-center gap-1.5 text-xs text-[#047857]">
-                              <CheckCircle2 size={13} /> {fmt(rate.monthly)} paid
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => patch(c.id, { rep_monthly_last_paid_at: new Date().toISOString() })}
-                              className="flex items-center gap-1.5 text-xs text-[#7E6036] hover:text-[#1A1A18] transition-colors cursor-pointer"
-                            >
-                              <Circle size={13} /> Pay {fmt(rate.monthly)}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                          {/* Monthly */}
+                          <td className="px-6 py-3.5">
+                            {!recurringActive ? (
+                              <span className="text-[#8A877F] text-xs">{months >= 12 ? 'Completed' : '—'}</span>
+                            ) : paidThisMonth ? (
+                              <span className="flex items-center gap-1.5 text-xs text-[#047857]">
+                                <CheckCircle2 size={13} /> {fmt(rate.monthly)} paid
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => patch(c.id, { rep_monthly_last_paid_at: new Date().toISOString() })}
+                                className="flex items-center gap-1.5 text-xs text-[#7E6036] hover:text-[#1A1A18] transition-colors cursor-pointer"
+                              >
+                                <Circle size={13} /> Pay {fmt(rate.monthly)}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )

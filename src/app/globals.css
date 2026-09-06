@@ -99,6 +99,11 @@ body:has(.staff-portal) {
   --pf-healthy:     #047857;
 }
 
+/* Nothing in the admin may push the page sideways: wide tables scroll inside
+   their own overflow-x-auto wrapper instead. This is the backstop for anything
+   that slips through. */
+.platform-root { overflow-x: clip; }
+
 /* Platform control room: command palette entrance + skeleton shimmer */
 @keyframes qh-pop {
   from { opacity: 0; transform: translateY(-6px) scale(0.985); }

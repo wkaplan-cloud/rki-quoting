@@ -11,7 +11,7 @@ export default async function PlatformPriceListDetailPage({ params }: { params: 
   if (!priceList) notFound()
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <Link href="/platform/price-lists" className="inline-flex items-center gap-1.5 text-sm text-[#5C5A54] hover:text-[#1A1A18] mb-6 transition-colors">
         <ChevronLeft size={14} /> Price Lists
       </Link>

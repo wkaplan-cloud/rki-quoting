@@ -94,7 +94,7 @@ function PlanPanel({ accountId, initialPlan, initialStatus }: {
         <ShieldCheck size={11} className="text-[#C2410C]" />
         <p className="text-[10px] font-semibold text-[#6E6B63] uppercase tracking-wider">Plan Management</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <p className="text-[10px] text-[#6E6B63] mb-1.5 uppercase tracking-wider">Plan Tier</p>
           <div className="space-y-1.5">

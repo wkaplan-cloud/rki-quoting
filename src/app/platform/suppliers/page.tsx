@@ -119,7 +119,7 @@ export default async function PlatformSuppliersPage() {
     })
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           <Store size={18} className="text-[#7E6036]" />
@@ -159,7 +159,7 @@ export default async function PlatformSuppliersPage() {
             <p className="text-xs text-[#6E6B63] ml-2">Top suppliers by accepted items across all studios</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[40rem]">
               <thead>
                 <tr className="border-b border-[#EAE5DB]">
                   {['Supplier', 'Studios', 'Contacted', 'Responded', 'Items accepted', 'Registered'].map(h => (
@@ -227,7 +227,7 @@ export default async function PlatformSuppliersPage() {
           <p className="px-5 py-10 text-sm text-[#6E6B63] text-center">No registered suppliers yet</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[58rem]">
               <thead>
                 <tr className="border-b border-[#DED8CC]">
                   {['Company', 'Email', 'Type', 'Subscription', 'Categories', 'Contact', 'Requests', 'Registered', 'Status'].map(h => (

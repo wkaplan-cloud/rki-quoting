@@ -82,7 +82,7 @@ export default async function PlatformHealthPage() {
   const allEnvsOk = envVars.every(k => !!process.env[k])
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           <Activity size={18} className="text-[#7E6036]" />

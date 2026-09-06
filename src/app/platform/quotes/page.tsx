@@ -64,7 +64,7 @@ export default async function PlatformQuotesPage() {
   const statuses = ['Draft', 'Quote', 'Approved', 'Deposit', 'Invoice', 'Paid', 'Completed', 'Cancelled']
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           <FolderOpen size={18} className="text-[#7E6036]" />
@@ -96,7 +96,7 @@ export default async function PlatformQuotesPage() {
           <p className="px-5 py-10 text-sm text-[#6E6B63] text-center">No projects yet</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[34rem]">
               <thead>
                 <tr className="border-b border-[#DED8CC]">
                   {['Studio', 'Project', 'Number', 'Status', 'Created'].map(h => (

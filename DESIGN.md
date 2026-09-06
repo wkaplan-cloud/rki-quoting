@@ -320,3 +320,18 @@ on the trailing edge and a portal-coloured icon, not a thick left border.
 
 Motion is limited to `transition-colors duration-150` and one 180ms entrance on
 the command palette. The skeleton pulse respects `prefers-reduced-motion`.
+
+**Responsive.** The admin is used on a phone as often as at a desk.
+
+- Page padding steps `p-4 sm:p-6 lg:p-8`. Never a bare `p-8`.
+- The rail becomes a drawer below `lg`, capped at `82vw` so it never pins a
+  320px handset. Nav rows are `py-2.5` on touch and `py-[7px]` from `lg` up.
+- Stat grids start at one or two columns and widen; never a bare `grid-cols-4`.
+- **Every table sits in an `overflow-x-auto` wrapper and carries a `min-w-`
+  floor sized to its column count** — roughly 34rem at five columns, 40rem at
+  six, 52rem at eight, 58rem at nine. Without the floor the table squashes
+  instead of scrolling; without the wrapper it drags the page sideways.
+- Grid tracks that hold scrollable panels need `min-w-0`, since a grid item
+  defaults to `min-width: auto` and will otherwise widen its track.
+- `.platform-root` sets `overflow-x: clip` as the backstop. It is a safety net,
+  not a licence to skip the wrapper.

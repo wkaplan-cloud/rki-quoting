@@ -85,7 +85,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl">
       <Link href="/platform/studios" className="inline-flex items-center gap-1.5 text-sm text-[#6E6B63] hover:text-[#1A1A18] transition-colors mb-6">
         <ArrowLeft size={14} /> All studios
       </Link>
@@ -227,30 +227,32 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         <div className="px-5 py-4 border-b border-[#DED8CC]">
           <h2 className="text-sm font-medium text-[#1A1A18] flex items-center gap-2"><Users size={14} className="text-[#7E6036]" /> Team members</h2>
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#EAE5DB]">
-              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Name</th>
-              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Email</th>
-              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Role</th>
-              <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#EFEBE3]">
-            {members?.map(m => (
-              <tr key={m.id}>
-                <td className="px-5 py-3 text-[#2C2C2A]">{m.full_name || '—'}</td>
-                <td className="px-5 py-3 text-[#5C5A54]">{m.invited_email || '—'}</td>
-                <td className="px-5 py-3 text-[#5C5A54] capitalize">{m.role}</td>
-                <td className="px-5 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'active' ? 'bg-emerald-50 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
-                    {m.status}
-                  </span>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[52rem]">
+            <thead>
+              <tr className="border-b border-[#EAE5DB]">
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Name</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Email</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Role</th>
+                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-[#EFEBE3]">
+              {members?.map(m => (
+                <tr key={m.id}>
+                  <td className="px-5 py-3 text-[#2C2C2A]">{m.full_name || '—'}</td>
+                  <td className="px-5 py-3 text-[#5C5A54]">{m.invited_email || '—'}</td>
+                  <td className="px-5 py-3 text-[#5C5A54] capitalize">{m.role}</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'active' ? 'bg-emerald-50 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
+                      {m.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Recent projects */}
@@ -261,32 +263,34 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
         {!projects?.length ? (
           <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No projects yet</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#EAE5DB]">
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Project</th>
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Created</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EFEBE3]">
-              {projects.map(p => (
-                <tr key={p.id}>
-                  <td className="px-5 py-3 text-[#2C2C2A]">{p.project_name}</td>
-                  <td className="px-5 py-3 text-[#6E6B63]">{p.project_number}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColour[p.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-[#6E6B63] text-xs">
-                    {new Date(p.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#EAE5DB]">
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Project</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Created</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#EFEBE3]">
+                {projects.map(p => (
+                  <tr key={p.id}>
+                    <td className="px-5 py-3 text-[#2C2C2A]">{p.project_name}</td>
+                    <td className="px-5 py-3 text-[#6E6B63]">{p.project_number}</td>
+                    <td className="px-5 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${statusColour[p.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-[#6E6B63] text-xs">
+                      {new Date(p.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -305,36 +309,38 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
           {!sourcingSessions?.length ? (
             <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No sourcing sessions yet</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#EAE5DB]">
-                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Session</th>
-                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
-                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Created</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EFEBE3]">
-                {((sourcingSessions ?? []) as SourcingSessionListRow[]).map(s => {
-                  const statusColor: Record<string, string> = {
-                    draft: '#5C5A54', sent: '#0369A1', in_progress: '#8F5706',
-                    completed: '#047857', archived: '#6E6B63',
-                  }
-                  return (
-                    <tr key={s.id}>
-                      <td className="px-5 py-3 text-[#2C2C2A]">{s.title}</td>
-                      <td className="px-5 py-3">
-                        <span className="text-xs font-medium capitalize" style={{ color: statusColor[s.status ?? ''] ?? '#5C5A54' }}>
-                          {(s.status ?? 'unknown').replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-[#6E6B63] text-xs">
-                        {new Date(s.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#EAE5DB]">
+                    <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Session</th>
+                    <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                    <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFEBE3]">
+                  {((sourcingSessions ?? []) as SourcingSessionListRow[]).map(s => {
+                    const statusColor: Record<string, string> = {
+                      draft: '#5C5A54', sent: '#0369A1', in_progress: '#8F5706',
+                      completed: '#047857', archived: '#6E6B63',
+                    }
+                    return (
+                      <tr key={s.id}>
+                        <td className="px-5 py-3 text-[#2C2C2A]">{s.title}</td>
+                        <td className="px-5 py-3">
+                          <span className="text-xs font-medium capitalize" style={{ color: statusColor[s.status ?? ''] ?? '#5C5A54' }}>
+                            {(s.status ?? 'unknown').replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-[#6E6B63] text-xs">
+                          {new Date(s.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
     </div>

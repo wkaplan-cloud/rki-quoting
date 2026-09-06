@@ -175,7 +175,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[12vh]"
+      className="fixed inset-0 z-[100] flex items-start justify-center px-3 sm:px-4 pt-[5vh] sm:pt-[12vh]"
       role="dialog"
       aria-modal="true"
       aria-label="Search the platform"
@@ -205,7 +205,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           <kbd className="text-[10px] font-medium text-white/30 border border-white/12 rounded px-1.5 py-0.5">ESC</kbd>
         </div>
 
-        <div ref={listRef} className="max-h-[52vh] overflow-y-auto py-2">
+        <div ref={listRef} className="max-h-[60vh] sm:max-h-[52vh] overflow-y-auto overscroll-contain py-2">
           {ordered.length === 0 && (
             <p className="px-4 py-8 text-center text-[13px] text-white/35">
               Nothing matches “{query}”. Try a studio name, an email address, or a page.
@@ -225,7 +225,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                       data-idx={i}
                       onMouseMove={() => setActive(i)}
                       onClick={() => go(item)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 ${
+                      className={`w-full flex items-center gap-3 px-4 py-3 sm:py-2.5 text-left transition-colors duration-150 ${
                         isActive ? 'bg-white/[0.07]' : 'hover:bg-white/[0.04]'
                       }`}
                     >
@@ -244,8 +244,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         </div>
 
         <div className="flex items-center gap-4 px-4 h-9 border-t border-white/8 bg-white/[0.02] text-[10px] text-white/30">
-          <span className="flex items-center gap-1"><ArrowUp size={10} /><ArrowDown size={10} /> navigate</span>
-          <span className="flex items-center gap-1"><CornerDownLeft size={10} /> open</span>
+          <span className="hidden sm:flex items-center gap-1"><ArrowUp size={10} /><ArrowDown size={10} /> navigate</span>
+          <span className="hidden sm:flex items-center gap-1"><CornerDownLeft size={10} /> open</span>
           <span className="ml-auto tabular-nums">
             {entries === null ? 'loading index…' : `${entries.length.toLocaleString()} records indexed`}
           </span>

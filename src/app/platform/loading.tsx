@@ -1,7 +1,7 @@
 /** Mirrors the dashboard's bands so the page doesn't jump when data lands. */
 export default function Loading() {
   return (
-    <div className="p-6 sm:p-8 max-w-[1400px] w-full" aria-busy="true" aria-label="Loading">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] w-full" aria-busy="true" aria-label="Loading">
       <div className="mb-6 space-y-2">
         <div className="qh-skeleton h-7 w-52 rounded-lg" />
         <div className="qh-skeleton h-3.5 w-80 rounded" />

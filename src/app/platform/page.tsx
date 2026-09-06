@@ -449,7 +449,7 @@ export default async function PlatformDashboard() {
   ]
 
   return (
-    <div className="p-6 sm:p-8 max-w-[1400px] w-full">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] w-full">
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
@@ -482,7 +482,7 @@ export default async function PlatformDashboard() {
 
       {/* Needs you now */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-2 min-w-0">
           <Panel
             title="Needs you now"
             icon={AlertTriangle}
@@ -610,7 +610,7 @@ export default async function PlatformDashboard() {
 
       {/* Activity + recent signups */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-2 min-w-0">
           <Panel title="Live activity" icon={History} accent="text-[#0369A1]">
             <div className="max-h-[30rem] overflow-y-auto">
               <ActivityFeed events={activity as ActivityEvent[]} nowIso={nowIso} />

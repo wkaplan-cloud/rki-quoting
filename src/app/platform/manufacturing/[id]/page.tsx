@@ -76,7 +76,7 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
   const totalPaid     = (recentInvoices ?? []).reduce((sum, inv) => sum + (inv.amount_paid ?? 0), 0)
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl">
       <Link href="/platform/manufacturing" className="inline-flex items-center gap-1.5 text-sm text-[#6E6B63] hover:text-[#1A1A18] transition-colors mb-6">
         <ArrowLeft size={14} /> All manufacturers
       </Link>
@@ -139,7 +139,7 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
           {!s ? (
             <p className="text-xs text-[#6E6B63] italic">No settings saved yet — manufacturer hasn&apos;t completed setup.</p>
           ) : (
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
               {[
                 { label: 'Business name',   value: s.business_name },
                 { label: 'Email',           value: s.email },
@@ -211,30 +211,32 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
         {!recentQuotes?.length ? (
           <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No quotes yet</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#EAE5DB]">
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
-                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Total</th>
-                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EFEBE3]">
-              {recentQuotes.map(q => (
-                <tr key={q.id}>
-                  <td className="px-5 py-3 text-[#3F3D38] font-mono text-xs">{q.quote_number}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${QUOTE_STATUS_COLOR[q.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
-                      {q.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right text-[#3F3D38] text-xs tabular-nums">{fmtR(q.total ?? 0)}</td>
-                  <td className="px-5 py-3 text-right text-[#6E6B63] text-xs">{fmtDate(q.created_at)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[34rem]">
+              <thead>
+                <tr className="border-b border-[#EAE5DB]">
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                  <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Total</th>
+                  <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#EFEBE3]">
+                {recentQuotes.map(q => (
+                  <tr key={q.id}>
+                    <td className="px-5 py-3 text-[#3F3D38] font-mono text-xs">{q.quote_number}</td>
+                    <td className="px-5 py-3">
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${QUOTE_STATUS_COLOR[q.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
+                        {q.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right text-[#3F3D38] text-xs tabular-nums">{fmtR(q.total ?? 0)}</td>
+                    <td className="px-5 py-3 text-right text-[#6E6B63] text-xs">{fmtDate(q.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -250,34 +252,36 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
         {!recentInvoices?.length ? (
           <p className="px-5 py-8 text-sm text-[#6E6B63] text-center">No invoices yet</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#EAE5DB]">
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Type</th>
-                <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
-                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Total</th>
-                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Paid</th>
-                <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EFEBE3]">
-              {recentInvoices.map(inv => (
-                <tr key={inv.id}>
-                  <td className="px-5 py-3 text-[#3F3D38] font-mono text-xs">{inv.invoice_number}</td>
-                  <td className="px-5 py-3 text-[#6E6B63] text-xs capitalize">{inv.invoice_type?.replace('_', ' ')}</td>
-                  <td className="px-5 py-3">
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${INV_STATUS_COLOR[inv.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
-                      {inv.status?.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right text-[#3F3D38] text-xs tabular-nums">{fmtR(inv.total ?? 0)}</td>
-                  <td className="px-5 py-3 text-right text-[#047857] text-xs tabular-nums">{fmtR(inv.amount_paid ?? 0)}</td>
-                  <td className="px-5 py-3 text-right text-[#6E6B63] text-xs">{fmtDate(inv.created_at)}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[40rem]">
+              <thead>
+                <tr className="border-b border-[#EAE5DB]">
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Number</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Type</th>
+                  <th className="text-left px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Status</th>
+                  <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Total</th>
+                  <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Paid</th>
+                  <th className="text-right px-5 py-2.5 text-xs text-[#6E6B63] font-medium">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#EFEBE3]">
+                {recentInvoices.map(inv => (
+                  <tr key={inv.id}>
+                    <td className="px-5 py-3 text-[#3F3D38] font-mono text-xs">{inv.invoice_number}</td>
+                    <td className="px-5 py-3 text-[#6E6B63] text-xs capitalize">{inv.invoice_type?.replace('_', ' ')}</td>
+                    <td className="px-5 py-3">
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full capitalize ${INV_STATUS_COLOR[inv.status] ?? 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
+                        {inv.status?.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-right text-[#3F3D38] text-xs tabular-nums">{fmtR(inv.total ?? 0)}</td>
+                    <td className="px-5 py-3 text-right text-[#047857] text-xs tabular-nums">{fmtR(inv.amount_paid ?? 0)}</td>
+                    <td className="px-5 py-3 text-right text-[#6E6B63] text-xs">{fmtDate(inv.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

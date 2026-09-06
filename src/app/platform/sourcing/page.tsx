@@ -198,10 +198,10 @@ export default async function PlatformSourcingPage() {
   }, {})
 
   return (
-    <div className="p-8 max-w-[1400px]">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px]">
 
       {/* ── Page header ─────────────────────────────── */}
-      <div className="flex items-end justify-between mb-8">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-8">
         <div>
           <h1 className="font-serif text-3xl text-[#1A1A18]">Price Requests</h1>
           <p className="text-sm text-[#6E6B63] mt-1">RFQ delivery, supplier responses and accepted items · {monthLabel}</p>
@@ -277,7 +277,7 @@ export default async function PlatformSourcingPage() {
             <h2 className="text-sm font-semibold text-[#1A1A18]">Session Pipeline</h2>
             <span className="text-xs text-[#8A877F] ml-1">· {(sessions ?? []).length} total</span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { key: 'draft',       label: 'Draft',       color: '#5C5A54' },
               { key: 'sent',        label: 'Sent',        color: '#0369A1' },
@@ -312,7 +312,7 @@ export default async function PlatformSourcingPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[34rem]">
                 <thead>
                   <tr className="border-b border-[#EAE5DB]">
                     {['Studio', 'Session', 'Supplier', 'Sent', 'Waiting'].map(h => (
@@ -358,7 +358,7 @@ export default async function PlatformSourcingPage() {
           <p className="px-6 py-10 text-sm text-[#6E6B63] text-center">No accepted items yet</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[52rem]">
               <thead>
                 <tr className="border-b border-[#E2DCD1]">
                   {['Studio', 'Session', 'Item', 'Supplier', 'Price', 'Project', 'Status', 'Accepted'].map(h => (
@@ -416,7 +416,7 @@ export default async function PlatformSourcingPage() {
           <p className="px-6 py-10 text-sm text-[#6E6B63] text-center">No emails sent yet</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[40rem]">
               <thead>
                 <tr className="border-b border-[#EAE5DB]">
                   {['Studio', 'Session', 'Supplier', 'Email', 'Sent', 'Status'].map(h => (

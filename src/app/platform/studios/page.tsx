@@ -212,14 +212,14 @@ export default async function StudiosPage() {
   const churnRiskCount = activeStudios.filter(o => o.isChurnRisk).length
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
         <h1 className="font-serif text-3xl text-[#1A1A18] mb-1">Studios</h1>
         <p className="text-sm text-[#6E6B63]">{activeStudios.length} active studio{activeStudios.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {[
           { label: 'Active subscriptions', value: activeCount, color: 'text-[#047857]' },
           { label: 'In trial', value: trialCount, color: 'text-[#7E6036]' },
@@ -264,102 +264,104 @@ function formatLastActive(dateStr: string | null): { label: string; urgent: bool
 function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios: StudioRow[]; archived?: boolean; welcomeSentOrgIds: Set<string> }) {
   return (
     <div className={`bg-[#FDFCF9] border rounded-xl overflow-hidden ${archived ? 'border-amber-200 opacity-70' : 'border-[#DED8CC]'}`}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-[#DED8CC]">
-            <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Studio / Business</th>
-            <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Admin</th>
-            <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Rep</th>
-            <th className="text-center px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">
-              <div className="flex items-center justify-center gap-1"><Users size={11} /> Members</div>
-            </th>
-            <th className="text-center px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">
-              <div className="flex items-center justify-center gap-1"><FolderOpen size={11} /> Projects</div>
-            </th>
-            <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">{archived ? 'Archived' : 'Plan'}</th>
-            {!archived && <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Last Active</th>}
-            <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Joined</th>
-            <th className="px-5 py-3" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#EFEBE3]">
-          {studios.length === 0 && (
-            <tr>
-              <td colSpan={9} className="px-5 py-10 text-center text-[#6E6B63] text-sm">No studios yet</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[58rem]">
+          <thead>
+            <tr className="border-b border-[#DED8CC]">
+              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Studio / Business</th>
+              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Admin</th>
+              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Rep</th>
+              <th className="text-center px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">
+                <div className="flex items-center justify-center gap-1"><Users size={11} /> Members</div>
+              </th>
+              <th className="text-center px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">
+                <div className="flex items-center justify-center gap-1"><FolderOpen size={11} /> Projects</div>
+              </th>
+              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">{archived ? 'Archived' : 'Plan'}</th>
+              {!archived && <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Last Active</th>}
+              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Joined</th>
+              <th className="px-5 py-3" />
             </tr>
-          )}
-          {studios.map(studio => {
-            const { label: lastActiveLabel, urgent: lastActiveUrgent } = formatLastActive(studio.lastActive)
-            return (
-              <tr key={studio.id} className={`hover:bg-[#EFEBE3] transition-colors ${studio.isChurnRisk ? 'border-l-2 border-rose-500/40' : ''}`}>
-                <td className="px-5 py-3.5">
-                  <div className="flex items-center gap-2">
-                    <div>
-                      <p className="text-[#1A1A18] font-medium">{studio.businessName}</p>
-                      {studio.businessName !== studio.name && (
-                        <p className="text-xs text-[#6E6B63] mt-0.5">{studio.name}</p>
+          </thead>
+          <tbody className="divide-y divide-[#EFEBE3]">
+            {studios.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-5 py-10 text-center text-[#6E6B63] text-sm">No studios yet</td>
+              </tr>
+            )}
+            {studios.map(studio => {
+              const { label: lastActiveLabel, urgent: lastActiveUrgent } = formatLastActive(studio.lastActive)
+              return (
+                <tr key={studio.id} className={`hover:bg-[#EFEBE3] transition-colors ${studio.isChurnRisk ? 'border-l-2 border-rose-500/40' : ''}`}>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="text-[#1A1A18] font-medium">{studio.businessName}</p>
+                        {studio.businessName !== studio.name && (
+                          <p className="text-xs text-[#6E6B63] mt-0.5">{studio.name}</p>
+                        )}
+                      </div>
+                      {studio.isChurnRisk && (
+                        <span title="Churn risk"><AlertTriangle size={12} className="text-[#B91C1C] shrink-0" /></span>
                       )}
                     </div>
-                    {studio.isChurnRisk && (
-                      <span title="Churn risk"><AlertTriangle size={12} className="text-[#B91C1C] shrink-0" /></span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-5 py-3.5">
-                  {studio.adminEmail ? (
-                    studio.adminName === studio.adminEmail ? (
-                      <a href={`mailto:${studio.adminEmail}`} className="text-[#7E6036] hover:underline text-sm">{studio.adminEmail}</a>
-                    ) : (
-                      <div>
-                        <p className="text-[#3F3D38]">{studio.adminName}</p>
-                        <a href={`mailto:${studio.adminEmail}`} className="text-xs text-[#7E6036] hover:underline">{studio.adminEmail}</a>
-                      </div>
-                    )
-                  ) : (
-                    <span className="text-[#3F3D38]">{studio.adminName}</span>
-                  )}
-                </td>
-                <td className="px-5 py-3.5">
-                  <AssignRepCell orgId={studio.id} initial={studio.assigned_rep ?? null} />
-                </td>
-                <td className="px-5 py-3.5 text-center text-[#3F3D38]">{studio.memberCount}</td>
-                <td className="px-5 py-3.5 text-center text-[#3F3D38]">{studio.projectCount}</td>
-                <td className="px-5 py-3.5">
-                  {archived
-                    ? <span className="text-xs text-[#8F5706]/70">{studio.archived_at ? new Date(studio.archived_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
-                    : studio.isInternal
-                      ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/15 text-[#6D28D9]">
-                          <FlaskConical size={10} /> Internal
-                        </span>
-                      )
-                      : <PlanBadge plan={studio.plan ?? 'trial'} status={studio.subscription_status ?? 'trialing'} trialEndsAt={studio.trial_ends_at} />
-                  }
-                </td>
-                {!archived && (
-                  <td className="px-5 py-3.5">
-                    <span className={`text-xs ${lastActiveUrgent ? 'text-[#B91C1C]' : 'text-[#6E6B63]'}`}>{lastActiveLabel}</span>
                   </td>
-                )}
-                <td className="px-5 py-3.5 text-[#6E6B63] text-xs">
-                  {new Date(studio.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </td>
-                <td className="px-5 py-3.5">
-                  <div className="flex items-center gap-3">
-                    <Link href={`/platform/studios/${studio.id}`} className="flex items-center gap-1 text-xs text-[#7E6036] hover:underline">
-                      {archived ? 'View' : 'Manage'} <ChevronRight size={12} />
-                    </Link>
-                    {!archived && !welcomeSentOrgIds.has(studio.id) && (
-                      <SendWelcomeButton orgId={studio.id} />
+                  <td className="px-5 py-3.5">
+                    {studio.adminEmail ? (
+                      studio.adminName === studio.adminEmail ? (
+                        <a href={`mailto:${studio.adminEmail}`} className="text-[#7E6036] hover:underline text-sm">{studio.adminEmail}</a>
+                      ) : (
+                        <div>
+                          <p className="text-[#3F3D38]">{studio.adminName}</p>
+                          <a href={`mailto:${studio.adminEmail}`} className="text-xs text-[#7E6036] hover:underline">{studio.adminEmail}</a>
+                        </div>
+                      )
+                    ) : (
+                      <span className="text-[#3F3D38]">{studio.adminName}</span>
                     )}
-                    {!archived && <QuickDeleteButton orgId={studio.id} studioName={studio.businessName ?? 'Unnamed studio'} />}
-                  </div>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <AssignRepCell orgId={studio.id} initial={studio.assigned_rep ?? null} />
+                  </td>
+                  <td className="px-5 py-3.5 text-center text-[#3F3D38]">{studio.memberCount}</td>
+                  <td className="px-5 py-3.5 text-center text-[#3F3D38]">{studio.projectCount}</td>
+                  <td className="px-5 py-3.5">
+                    {archived
+                      ? <span className="text-xs text-[#8F5706]/70">{studio.archived_at ? new Date(studio.archived_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
+                      : studio.isInternal
+                        ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/15 text-[#6D28D9]">
+                            <FlaskConical size={10} /> Internal
+                          </span>
+                        )
+                        : <PlanBadge plan={studio.plan ?? 'trial'} status={studio.subscription_status ?? 'trialing'} trialEndsAt={studio.trial_ends_at} />
+                    }
+                  </td>
+                  {!archived && (
+                    <td className="px-5 py-3.5">
+                      <span className={`text-xs ${lastActiveUrgent ? 'text-[#B91C1C]' : 'text-[#6E6B63]'}`}>{lastActiveLabel}</span>
+                    </td>
+                  )}
+                  <td className="px-5 py-3.5 text-[#6E6B63] text-xs">
+                    {new Date(studio.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <Link href={`/platform/studios/${studio.id}`} className="flex items-center gap-1 text-xs text-[#7E6036] hover:underline">
+                        {archived ? 'View' : 'Manage'} <ChevronRight size={12} />
+                      </Link>
+                      {!archived && !welcomeSentOrgIds.has(studio.id) && (
+                        <SendWelcomeButton orgId={studio.id} />
+                      )}
+                      {!archived && <QuickDeleteButton orgId={studio.id} studioName={studio.businessName ?? 'Unnamed studio'} />}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

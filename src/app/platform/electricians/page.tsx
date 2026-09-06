@@ -88,7 +88,7 @@ export default async function ElectriciansPage() {
   const totalExtraStaff   = extraStaffAccounts.reduce((s, a) => s + Math.max(0, a.staffCount - 20), 0)
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">

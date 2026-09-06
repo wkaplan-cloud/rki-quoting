@@ -116,34 +116,36 @@ export function IncompleteSignups({ signups: initial }: { signups: IncompleteSig
         <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-[#8F5706]">{signups.length}</span>
       </div>
       <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#DED8CC]">
-              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Name</th>
-              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Email</th>
-              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">
-                <div className="flex items-center gap-1"><Clock size={11} /> Confirmed</div>
-              </th>
-              <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Nudge</th>
-              <th className="px-5 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#EFEBE3]">
-            {signups.map(s => (
-              <tr key={s.user_id} className="hover:bg-[#EFEBE3] transition-colors">
-                <td className="px-5 py-3.5 text-[#2C2C2A]">{s.full_name || '—'}</td>
-                <td className="px-5 py-3.5 text-[#3F3D38]">{s.email}</td>
-                <td className="px-5 py-3.5 text-[#6E6B63] text-xs">{timeAgo(s.confirmed_at)}</td>
-                <td className="px-5 py-3.5">
-                  <NudgeButton signup={s} />
-                </td>
-                <td className="px-5 py-3.5">
-                  <DeleteSignupButton userId={s.user_id} email={s.email} onDeleted={() => remove(s.user_id)} />
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[34rem]">
+            <thead>
+              <tr className="border-b border-[#DED8CC]">
+                <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Name</th>
+                <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Email</th>
+                <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">
+                  <div className="flex items-center gap-1"><Clock size={11} /> Confirmed</div>
+                </th>
+                <th className="text-left px-5 py-3 text-xs text-[#6E6B63] uppercase tracking-wider font-medium">Nudge</th>
+                <th className="px-5 py-3" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-[#EFEBE3]">
+              {signups.map(s => (
+                <tr key={s.user_id} className="hover:bg-[#EFEBE3] transition-colors">
+                  <td className="px-5 py-3.5 text-[#2C2C2A]">{s.full_name || '—'}</td>
+                  <td className="px-5 py-3.5 text-[#3F3D38]">{s.email}</td>
+                  <td className="px-5 py-3.5 text-[#6E6B63] text-xs">{timeAgo(s.confirmed_at)}</td>
+                  <td className="px-5 py-3.5">
+                    <NudgeButton signup={s} />
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <DeleteSignupButton userId={s.user_id} email={s.email} onDeleted={() => remove(s.user_id)} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

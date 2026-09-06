@@ -111,7 +111,7 @@ export function PlatformShell({
                     href={href}
                     onClick={() => setDrawerOpen(false)}
                     aria-current={active ? 'page' : undefined}
-                    className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-[7px] rounded-lg text-[13px] transition-colors duration-150 ${
+                    className={`group relative flex items-center gap-2.5 pl-3 pr-2 py-2.5 lg:py-[7px] rounded-lg text-[13px] transition-colors duration-150 ${
                       active
                         ? 'bg-white/[0.10] text-white'
                         : 'text-[#B4B0A6] hover:text-white hover:bg-white/[0.06]'
@@ -158,7 +158,7 @@ export function PlatformShell({
       <form action="/api/auth/signout" method="post">
         <button
           type="submit"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] text-[#B4B0A6] hover:text-white hover:bg-white/[0.07] transition-colors duration-150 w-full text-left cursor-pointer"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[12px] text-[#B4B0A6] hover:text-white hover:bg-white/[0.07] transition-colors duration-150 w-full text-left cursor-pointer"
         >
           <LogOut size={13} />
           Sign out
@@ -184,11 +184,11 @@ export function PlatformShell({
             onClick={() => setDrawerOpen(false)}
             className="absolute inset-0 bg-black/70 cursor-default"
           />
-          <aside className="relative w-[236px] flex flex-col h-full bg-[#181816]">
+          <aside className="relative w-[236px] max-w-[82vw] flex flex-col h-full bg-[#181816] overflow-y-auto">
             <button
               aria-label="Close navigation"
               onClick={() => setDrawerOpen(false)}
-              className="absolute right-2 top-2 p-1.5 rounded-lg text-[#B4B0A6] hover:text-white hover:bg-white/[0.08] transition-colors duration-150 cursor-pointer"
+              className="absolute right-2 top-2 p-2.5 rounded-lg text-[#B4B0A6] hover:text-white hover:bg-white/[0.08] transition-colors duration-150 cursor-pointer"
             >
               <X size={16} />
             </button>
@@ -225,16 +225,21 @@ export function PlatformShell({
             className="ml-auto sm:ml-4 flex items-center gap-2.5 h-8 pl-3 pr-2 flex-1 max-w-[22rem] rounded-lg border border-[#DED8CC] bg-[#FDFCF9] text-left hover:border-[#7E6036]/50 hover:bg-white transition-colors duration-150 cursor-pointer"
           >
             <Search size={13} className="text-[#6E6B63] shrink-0" />
-            <span className="flex-1 truncate text-[12px] text-[#6E6B63]">Search studios, contractors, suppliers…</span>
+            <span className="flex-1 truncate text-[12px] text-[#6E6B63]">
+              <span className="sm:hidden">Search…</span>
+              <span className="hidden sm:inline">Search studios, contractors, suppliers…</span>
+            </span>
             <kbd className="hidden sm:block text-[10px] font-medium text-[#5C5A54] bg-[#EFEBE3] border border-[#DED8CC] rounded px-1.5 py-0.5">⌘K</kbd>
           </button>
 
-          <div className="hidden md:flex items-center gap-2 ml-auto pl-4 shrink-0">
+          <div className="flex items-center gap-2 ml-auto md:pl-4 shrink-0">
             {totalBadges > 0 && (
-              <span className="text-[11px] font-medium text-[#7E6036] tabular-nums">{totalBadges} waiting</span>
+              <span className="text-[11px] font-medium text-[#7E6036] tabular-nums">
+                {totalBadges}<span className="hidden sm:inline"> waiting</span>
+              </span>
             )}
             <span className="w-1.5 h-1.5 rounded-full bg-[#047857] shadow-[0_0_0_3px_rgba(4,120,87,0.14)]" />
-            <span className="text-[11px] text-[#5C5A54] tabular-nums">{clock ?? '—'}</span>
+            <span className="hidden md:inline text-[11px] text-[#5C5A54] tabular-nums">{clock ?? '—'}</span>
           </div>
         </header>
 

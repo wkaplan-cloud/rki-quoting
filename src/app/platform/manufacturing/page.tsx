@@ -83,7 +83,7 @@ export default async function ManufacturingPage() {
   const setupFeeOwed   = rows.filter(r => !r.setup_fee_paid && r.subscription_status === 'active').length
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8">
       <div>
         <div className="flex items-center gap-2 mb-1">
           <Hammer size={18} className="text-[#C2410C]" />

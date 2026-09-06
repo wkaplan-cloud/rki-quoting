@@ -76,7 +76,7 @@ export default async function PlatformPriceListsPage() {
   const catalogueCount = catalogueCountRes.count ?? 0
 
   return (
-    <div className="p-8 space-y-10">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-10">
       <div>
         <h1 className="text-xl font-semibold text-[#1A1A18]">Price Lists</h1>
         <p className="text-sm text-[#5C5A54] mt-0.5">Manage platform-wide price lists available to all studios</p>
