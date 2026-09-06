@@ -32,6 +32,18 @@ typography:
     fontFamily: "Inter"
     fontWeight: 400
     fontSize: 0.75rem
+  # Fixed ramp for the dark platform control room. Dense admin surfaces need
+  # finer steps than the cream app; these are the only sizes allowed there.
+  scale:
+    micro: 10px
+    meta: 11px
+    ui: 12px
+    body: 13px
+    lead: 15px
+    figure: 20px
+    display-sm: 28px
+    display: 32px
+    display-lg: 40px
 
 spacing:
   xs: 4px
@@ -210,3 +222,42 @@ Charcoal background, cream text. 4px radius. Appears top-right. Consistent with 
 - Use a third typeface
 - Mix the dark sidebar color (`ink`) into content area cards or panels
 - Use more than two font weights in a single component
+
+## Platform control room
+
+`/platform/*` is the internal admin surface — a dark control room, not part of the
+cream app shell. It is the one place where dark is the base rather than an accent.
+
+**Surfaces** stack in three layers, each a step lighter than the last:
+
+- `#0E0E0C` — the canvas everything sits on.
+- `#181816` — the navigation rail and the command palette body.
+- `#161614` — panels and cards, with a `rgba(255,255,255,0.08)` hairline border
+  and a 1px inset white highlight along the top edge.
+
+Borders are `white/8`, dividers `white/5`. Text runs `white` → `white/85` →
+`white/55` → `white/35` → `white/25` as it recedes; never below `white/25` for
+anything a person has to read.
+
+**Type** uses the fixed ramp above (10 / 11 / 12 / 13 / 15 / 20 / 28 / 32 / 40px).
+No fluid sizing — the admin is viewed at a consistent desk DPI. Every number is
+`tabular-nums`. Playfair is reserved for the page title; everything else is Inter.
+
+**Portal accents.** Each of the four portals owns one hue, used for its section
+dot, its nav icons when active, its card rail, and its activity-feed markers —
+never as a fill:
+
+- Designer — `#C4A46B` (gold-light)
+- Supplier — `sky-400`
+- Manufacturing — `orange-400`
+- Electrical & trades — `amber-400`
+
+**Severity** is separate from portal accent: `rose-400` critical, `amber-400`
+warning, `sky-400` notice, `emerald-400` healthy. A severity dot carries a
+`0 0 0 3px` tinted halo so it reads at 6px.
+
+**Active navigation** is a `white/[0.08]` fill plus a 2px gold tab on the trailing
+edge and a portal-coloured icon — not a thick left border.
+
+Motion is limited to `transition-colors duration-150` and one 180ms entrance on
+the command palette. The skeleton pulse respects `prefers-reduced-motion`.

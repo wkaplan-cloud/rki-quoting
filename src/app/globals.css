@@ -69,3 +69,17 @@ body:has(.staff-portal) {
 .no-spinner::-webkit-outer-spin-button,
 .no-spinner::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .no-spinner { -moz-appearance: textfield; appearance: textfield; }
+
+/* Platform control room: command palette entrance + skeleton shimmer */
+@keyframes qh-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes qh-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.8; }
+}
+.qh-skeleton { background: rgba(255,255,255,0.05); animation: qh-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .qh-skeleton { animation: none; }
+}

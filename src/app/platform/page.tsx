@@ -2,10 +2,41 @@ export const dynamic = 'force-dynamic'
 import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { Building2, Users, FolderOpen, MessageSquare, TrendingUp, AlertTriangle, DollarSign, Activity, ArrowUpRight, Zap } from 'lucide-react'
+import {
+  Building2, Users, FolderOpen, MessageSquare, AlertTriangle, Activity,
+  ArrowUpRight, Zap, ChevronRight, Palette, Package, Hammer, CheckCircle2,
+  UserX, BookOpen, Coins, History, Sparkles,
+} from 'lucide-react'
 import { one, type Embedded } from '@/lib/supabase/embed'
+import { getPlatformActivity, type ActivityEvent } from '@/lib/platform-activity'
+import { ActivityFeed } from './_components/ActivityFeed'
 
 const PLAN_PRICE: Record<string, number> = { solo: 699, studio: 1499, agency: 2499 }
+
+/** Signups that confirmed an email but never landed in any portal. */
+async function getStrandedSignupCount(): Promise<number> {
+  const cutoff = new Date(Date.now() - 30 * 86400000).toISOString()
+  const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+  const confirmed = (authData?.users ?? []).filter(u => u.email_confirmed_at && u.email_confirmed_at >= cutoff)
+  if (confirmed.length === 0) return 0
+
+  const ids = confirmed.map(u => u.id)
+  const [{ data: members }, { data: suppliers }, { data: portalMembers }, { data: elecStaff }] = await Promise.all([
+    supabaseAdmin.from('org_members').select('user_id').in('user_id', ids),
+    supabaseAdmin.from('supplier_portal_accounts').select('auth_user_id').in('auth_user_id', ids),
+    supabaseAdmin.from('portal_org_members').select('auth_user_id').in('auth_user_id', ids),
+    supabaseAdmin.from('elec_staff').select('auth_user_id').in('auth_user_id', ids),
+  ])
+
+  const placed = new Set<string>([
+    ...(members ?? []).map((m: { user_id: string }) => m.user_id),
+    ...(suppliers ?? []).map((s: { auth_user_id: string }) => s.auth_user_id),
+    ...(portalMembers ?? []).map((m: { auth_user_id: string }) => m.auth_user_id),
+    ...(elecStaff ?? []).map((s: { auth_user_id: string }) => s.auth_user_id),
+  ])
+
+  return confirmed.filter(u => !placed.has(u.id)).length
+}
 
 // Cache all DB queries for 5 minutes — admin dashboard doesn't need real-time precision
 const getDashboardData = unstable_cache(
@@ -28,6 +59,15 @@ const getDashboardData = unstable_cache(
       { data: acceptedWithPrices },
       // Paid/completed project IDs for fee filtering — far fewer rows than all assignments
       { data: completedProjects },
+      // Portal accounts drive the manufacturing / trades / supplier health cards
+      { data: portalAccounts },
+      { count: priceListCount },
+      { count: pendingAccessCount },
+      { count: sourcingSessionCount },
+      { data: elecJobCards },
+      { data: mfgQuotes },
+      activity,
+      strandedSignups,
     ] = await Promise.all([
       supabaseAdmin.from('organizations').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('org_members').select('*', { count: 'exact', head: true }).eq('status', 'active'),
@@ -44,6 +84,15 @@ const getDashboardData = unstable_cache(
         .eq('status', 'accepted'),
       // Paid/completed project IDs — used to filter fees without a 4-level join
       supabaseAdmin.from('projects').select('id').in('status', ['Paid', 'Completed']),
+      supabaseAdmin.from('supplier_portal_accounts')
+        .select('id, company_name, supplier_category, subscription_status, trial_ends_at, created_at'),
+      supabaseAdmin.from('price_lists').select('*', { count: 'exact', head: true }),
+      supabaseAdmin.from('price_list_access').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabaseAdmin.from('sourcing_sessions').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
+      supabaseAdmin.from('elec_job_cards').select('portal_account_id, created_at').gte('created_at', thirtyDaysAgo),
+      supabaseAdmin.from('mfg_quotes').select('portal_account_id, created_at').gte('created_at', thirtyDaysAgo),
+      getPlatformActivity(20),
+      getStrandedSignupCount(),
     ])
 
     // Compute fees collectible without deep nesting:
@@ -86,6 +135,14 @@ const getDashboardData = unstable_cache(
       allProjects: allProjects ?? [],
       sourcingOrgs: sourcingOrgs ?? [],
       totalFeeCollectible,
+      portalAccounts: (portalAccounts ?? []) as PortalAccountRow[],
+      priceListCount: priceListCount ?? 0,
+      pendingAccessCount: pendingAccessCount ?? 0,
+      sourcingSessionCount: sourcingSessionCount ?? 0,
+      elecJobCardCount: (elecJobCards ?? []).length,
+      mfgQuoteCount: (mfgQuotes ?? []).length,
+      activity,
+      strandedSignups,
       nowIso: now.toISOString(),
       thirtyDaysAgo,
       sevenDaysFromNow,
@@ -120,11 +177,91 @@ interface OrgIdRow { org_id: string | null }
 /** The recent-signups list selects a different, narrower set of columns. */
 interface RecentStudioRow { id: string; name: string | null; created_at: string }
 
+/** Supplier, manufacturer and trades accounts all live in one table. */
+interface PortalAccountRow {
+  id: string
+  company_name: string | null
+  supplier_category: string | null
+  subscription_status: string | null
+  trial_ends_at: string | null
+  created_at: string
+}
+
+type Severity = 'critical' | 'warning' | 'notice'
+
+const SEVERITY_DOT: Record<Severity, string> = {
+  critical: 'bg-rose-400 shadow-[0_0_0_3px_rgba(251,113,133,0.14)]',
+  warning: 'bg-amber-400 shadow-[0_0_0_3px_rgba(251,191,36,0.14)]',
+  notice: 'bg-sky-400 shadow-[0_0_0_3px_rgba(56,189,248,0.14)]',
+}
+
+const SEVERITY_COUNT: Record<Severity, string> = {
+  critical: 'text-rose-300',
+  warning: 'text-amber-300',
+  notice: 'text-sky-300',
+}
+
+interface QueueItem {
+  key: string
+  severity: Severity
+  count: number
+  headline: string
+  detail: string
+  href: string
+  /** Named rows shown under the headline, for the cases where names matter. */
+  names?: { id: string; label: string; meta: string; href: string }[]
+}
+
+/** A horizontal ledger figure — the money band at the top of the page. */
+function Figure({ label, value, tone = 'default', sub }: {
+  label: string
+  value: string
+  tone?: 'default' | 'gold' | 'muted'
+  sub?: string
+}) {
+  const valueClass =
+    tone === 'gold' ? 'text-[#E0C68C]'
+    : tone === 'muted' ? 'text-white/55'
+    : 'text-white'
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30 mb-1.5">{label}</p>
+      <p className={`text-[20px] font-semibold tabular-nums ${valueClass}`}>{value}</p>
+      {sub && <p className="text-[11px] text-white/30 mt-0.5">{sub}</p>}
+    </div>
+  )
+}
+
+function Panel({ title, icon: Icon, accent, action, children }: {
+  title: string
+  icon: typeof Activity
+  accent: string
+  action?: { label: string; href: string }
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-2xl border border-white/8 bg-[#161614] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_18px_36px_-28px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
+      <header className="flex items-center gap-2 px-5 h-12 border-b border-white/8">
+        <Icon size={14} className={accent} />
+        <h2 className="text-[13px] font-medium text-white">{title}</h2>
+        {action && (
+          <Link href={action.href} className="ml-auto text-[11px] text-white/40 hover:text-[#E0C68C] transition-colors duration-150">
+            {action.label} →
+          </Link>
+        )}
+      </header>
+      <div className="flex-1 min-h-0">{children}</div>
+    </section>
+  )
+}
+
 export default async function PlatformDashboard() {
   const {
     studioCount, userCount, projectCount, unreadCount,
     recentStudios, orgs, newProjectsCount, allProjects, sourcingOrgs,
-    totalFeeCollectible, nowIso, thirtyDaysAgo, sevenDaysFromNow,
+    totalFeeCollectible, portalAccounts, priceListCount, pendingAccessCount,
+    sourcingSessionCount, elecJobCardCount, mfgQuoteCount, activity, strandedSignups,
+    nowIso, thirtyDaysAgo, sevenDaysFromNow,
   } = await getDashboardData()
 
   const now = new Date(nowIso)
@@ -173,228 +310,461 @@ export default async function PlatformDashboard() {
   const sourcingAdoptionPct = Math.round((orgsWithSourcing.size / totalActiveCount) * 100)
   const projectAdoptionPct = Math.round((orgsWithProjects.size / totalActiveCount) * 100)
 
+  // ── Portal accounts (manufacturing / trades / supplier network) ────────────
+  const mfgAccounts = portalAccounts.filter(a => a.supplier_category === 'manufacturer')
+  const tradesAccounts = portalAccounts.filter(a => a.supplier_category === 'trades')
+
+  const paidIn = (rows: PortalAccountRow[]) => rows.filter(a => a.subscription_status === 'active').length
+  const trialingIn = (rows: PortalAccountRow[]) => rows.filter(a => a.subscription_status === 'trialing').length
+  const expiringIn = (rows: PortalAccountRow[]) => rows.filter(a => {
+    if (a.subscription_status !== 'trialing' || !a.trial_ends_at) return false
+    const end = new Date(a.trial_ends_at)
+    return end > now && end <= new Date(sevenDaysFromNow)
+  })
+
+  const expiringPortalTrials = [...expiringIn(mfgAccounts), ...expiringIn(tradesAccounts)]
+
   const fmt = (n: number) => `R ${n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const fmtShort = (n: number) => `R ${n.toLocaleString('en-ZA')}`
+  const daysLeft = (iso: string) => Math.ceil((new Date(iso).getTime() - now.getTime()) / 86400000)
+
+  // ── The action queue ───────────────────────────────────────────────────────
+  const queue: QueueItem[] = []
+
+  if (churnRiskOrgs.length > 0) {
+    queue.push({
+      key: 'churn',
+      severity: 'critical',
+      count: churnRiskOrgs.length,
+      headline: `paid studio${churnRiskOrgs.length > 1 ? 's' : ''} at churn risk`,
+      detail: 'No project activity in 30+ days',
+      href: '/platform/studios',
+      names: churnRiskOrgs.slice(0, 4).map(o => ({
+        id: o.id,
+        label: o.name ?? 'Unnamed studio',
+        meta: o.plan ?? '—',
+        href: `/platform/studios/${o.id}`,
+      })),
+    })
+  }
+  if (expiredTrials.length > 0) {
+    queue.push({
+      key: 'expired',
+      severity: 'critical',
+      count: expiredTrials.length,
+      headline: `trial${expiredTrials.length > 1 ? 's' : ''} expired without converting`,
+      detail: 'Still on the books — chase or archive',
+      href: '/platform/studios',
+      names: expiredTrials.slice(0, 4).map(o => ({
+        id: o.id,
+        label: o.name ?? 'Unnamed studio',
+        meta: 'expired',
+        href: `/platform/studios/${o.id}`,
+      })),
+    })
+  }
+  if (expiringTrials.length > 0) {
+    queue.push({
+      key: 'expiring',
+      severity: 'warning',
+      count: expiringTrials.length,
+      headline: `studio trial${expiringTrials.length > 1 ? 's' : ''} ending within 7 days`,
+      detail: 'The conversion window is open now',
+      href: '/platform/studios',
+      names: expiringTrials.slice(0, 4).map(o => ({
+        id: o.id,
+        label: o.name ?? 'Unnamed studio',
+        meta: `${daysLeft(o.trial_ends_at!)}d left`,
+        href: `/platform/studios/${o.id}`,
+      })),
+    })
+  }
+  if (expiringPortalTrials.length > 0) {
+    queue.push({
+      key: 'portal-trials',
+      severity: 'warning',
+      count: expiringPortalTrials.length,
+      headline: `portal trial${expiringPortalTrials.length > 1 ? 's' : ''} ending within 7 days`,
+      detail: 'Manufacturing and trades accounts',
+      href: '/platform/electricians',
+      names: expiringPortalTrials.slice(0, 4).map(a => ({
+        id: a.id,
+        label: a.company_name ?? 'Unnamed account',
+        meta: `${daysLeft(a.trial_ends_at!)}d left`,
+        href: a.supplier_category === 'manufacturer' ? `/platform/manufacturing/${a.id}` : '/platform/electricians',
+      })),
+    })
+  }
+  if ((unreadCount ?? 0) > 0) {
+    queue.push({
+      key: 'messages',
+      severity: 'warning',
+      count: unreadCount ?? 0,
+      headline: `unread message${(unreadCount ?? 0) > 1 ? 's' : ''}`,
+      detail: 'Contact submissions waiting on a reply',
+      href: '/platform/messages',
+    })
+  }
+  if (pendingAccessCount > 0) {
+    queue.push({
+      key: 'access',
+      severity: 'notice',
+      count: pendingAccessCount,
+      headline: `price-list access request${pendingAccessCount > 1 ? 's' : ''} pending`,
+      detail: 'Studios blocked until you approve',
+      href: '/platform/price-lists',
+    })
+  }
+  if (strandedSignups > 0) {
+    queue.push({
+      key: 'stranded',
+      severity: 'notice',
+      count: strandedSignups,
+      headline: `signup${strandedSignups > 1 ? 's' : ''} never reached a portal`,
+      detail: 'Confirmed an email in the last 30 days, then stalled',
+      href: '/platform/studios',
+    })
+  }
+  if (totalFeeCollectible > 0) {
+    queue.push({
+      key: 'fees',
+      severity: 'notice',
+      count: Math.round(totalFeeCollectible),
+      headline: 'rand in sourcing fees collectible',
+      detail: 'Accepted items on paid or completed projects',
+      href: '/platform/sourcing',
+    })
+  }
+
+  const portals = [
+    {
+      key: 'designer',
+      label: 'Designer Studios',
+      icon: Palette,
+      accent: 'text-[#C4A46B]',
+      rail: 'bg-[#C4A46B]',
+      href: '/platform/studios',
+      headline: `${billableOrgs.length}`,
+      headlineLabel: 'billable studios',
+      stats: [
+        { label: 'Paid', value: paidCount.toString() },
+        { label: 'In trial', value: trialCount.toString() },
+        { label: 'Projects 30d', value: (newProjectsCount ?? 0).toString() },
+      ],
+    },
+    {
+      key: 'supplier',
+      label: 'Supplier Network',
+      icon: Package,
+      accent: 'text-sky-400',
+      rail: 'bg-sky-400',
+      href: '/platform/suppliers',
+      headline: `${portalAccounts.length}`,
+      headlineLabel: 'registered accounts',
+      stats: [
+        { label: 'Price lists', value: priceListCount.toString() },
+        { label: 'Access pending', value: pendingAccessCount.toString() },
+        { label: 'Requests 30d', value: sourcingSessionCount.toString() },
+      ],
+    },
+    {
+      key: 'manufacturing',
+      label: 'Manufacturing',
+      icon: Hammer,
+      accent: 'text-orange-400',
+      rail: 'bg-orange-400',
+      href: '/platform/manufacturing',
+      headline: `${mfgAccounts.length}`,
+      headlineLabel: 'manufacturer accounts',
+      stats: [
+        { label: 'Paid', value: paidIn(mfgAccounts).toString() },
+        { label: 'In trial', value: trialingIn(mfgAccounts).toString() },
+        { label: 'Quotes 30d', value: mfgQuoteCount.toString() },
+      ],
+    },
+    {
+      key: 'trades',
+      label: 'Electrical & Trades',
+      icon: Zap,
+      accent: 'text-amber-400',
+      rail: 'bg-amber-400',
+      href: '/platform/electricians',
+      headline: `${tradesAccounts.length}`,
+      headlineLabel: 'contractor accounts',
+      stats: [
+        { label: 'Paid', value: paidIn(tradesAccounts).toString() },
+        { label: 'In trial', value: trialingIn(tradesAccounts).toString() },
+        { label: 'Job cards 30d', value: elecJobCardCount.toString() },
+      ],
+    },
+  ]
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="font-serif text-3xl text-white mb-1">Platform Overview</h1>
-        <p className="text-sm text-white/40">QuotingHub CEO dashboard</p>
-      </div>
-
-      {/* Alerts */}
-      {(expiringTrials.length > 0 || expiredTrials.length > 0 || churnRiskOrgs.length > 0) && (
-        <div className="mb-6 space-y-2">
-          {churnRiskOrgs.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-              <AlertTriangle size={14} className="text-rose-400 shrink-0" />
-              <p className="text-sm text-rose-300">
-                <span className="font-semibold">{churnRiskOrgs.length} paid studio{churnRiskOrgs.length > 1 ? 's' : ''}</span> at churn risk — no project activity in 30+ days
-              </p>
-              <Link href="/platform/studios" className="ml-auto text-xs text-rose-400 hover:underline">View →</Link>
-            </div>
-          )}
-          {expiringTrials.length > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle size={14} className="text-amber-400 shrink-0" />
-                <p className="text-sm font-semibold text-amber-300">
-                  {expiringTrials.length} trial{expiringTrials.length > 1 ? 's' : ''} expiring within 7 days
-                </p>
-              </div>
-              <div className="flex flex-col gap-1 pl-5">
-                {expiringTrials.map(o => {
-                  const daysLeft = Math.ceil((new Date(o.trial_ends_at!).getTime() - now.getTime()) / 86400000)
-                  return (
-                    <a key={o.id} href={`/platform/studios/${o.id}`} className="flex items-center justify-between text-sm text-amber-200/80 hover:text-amber-200 transition-colors">
-                      <span>{o.name ?? 'Unnamed studio'}</span>
-                      <span className="text-amber-400 font-medium tabular-nums">{daysLeft}d left</span>
-                    </a>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-          {expiredTrials.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-              <AlertTriangle size={14} className="text-red-400 shrink-0" />
-              <p className="text-sm text-red-300">
-                <span className="font-semibold">{expiredTrials.length} trial{expiredTrials.length > 1 ? 's' : ''}</span> expired and not converted
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* MRR hero */}
-      <div className="bg-[#1A1A18] border border-[#9A7B4F]/30 rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Monthly Recurring Revenue</p>
-            <p className="text-4xl font-semibold text-white">{fmtShort(mrr)}</p>
-            <p className="text-xs text-white/30 mt-1.5">
-              {paidCount} paid studio{paidCount !== 1 ? 's' : ''} ·
-              {' '}Solo × {paidOrgs.filter(o => o.plan === 'solo').length} · Studio × {paidOrgs.filter(o => o.plan === 'studio').length} · Agency × {paidOrgs.filter(o => o.plan === 'agency').length}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-2">ARR</p>
-            <p className="text-2xl font-semibold text-[#C4A46B]">{fmtShort(mrr * 12)}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Primary stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        {[
-          { label: 'Studios online', value: studioCount ?? 0, icon: Building2, color: 'text-[#C4A46B]' },
-          { label: 'Total users', value: userCount ?? 0, icon: Users, color: 'text-blue-400' },
-          { label: 'Total projects', value: projectCount ?? 0, icon: FolderOpen, color: 'text-emerald-400' },
-          { label: 'Unread messages', value: unreadCount ?? 0, icon: MessageSquare, color: 'text-rose-400' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-white/40 uppercase tracking-wider">{label}</span>
-              <Icon size={16} className={color} />
-            </div>
-            <p className="text-3xl font-semibold text-white">{value.toLocaleString()}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Secondary stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Paid subscriptions', value: paidCount.toString(), color: 'text-emerald-400', icon: Activity },
-          { label: 'In trial', value: trialCount.toString(), color: 'text-[#C4A46B]', icon: Activity },
-          { label: 'New projects (30d)', value: (newProjectsCount ?? 0).toString(), color: 'text-blue-400', icon: FolderOpen },
-          { label: 'Fees collectible', value: fmt(totalFeeCollectible), color: 'text-[#C4A46B]', icon: DollarSign },
-        ].map(({ label, value, color, icon: Icon }) => (
-          <div key={label} className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-white/40 uppercase tracking-wider">{label}</span>
-              <Icon size={14} className={color} />
-            </div>
-            <p className="text-2xl font-semibold text-white">{value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Trial conversion + churn risk row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Trial conversion funnel */}
-        <div className="lg:col-span-2 bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <ArrowUpRight size={14} className="text-[#C4A46B]" />
-            <h2 className="text-sm font-medium text-white">Trial conversion</h2>
-          </div>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-white/40">Converted to paid</span>
-                <span className="text-xs font-semibold text-emerald-400">{paidCount}</span>
-              </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${conversionRate}%` }} />
-              </div>
-            </div>
-            <div className="text-2xl font-semibold text-white w-16 text-right">{conversionRate}%</div>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Paid', value: paidCount, color: 'text-emerald-400' },
-              { label: 'Active trials', value: trialCount - expiredTrials.length, color: 'text-[#C4A46B]' },
-              { label: 'Expired (not converted)', value: expiredTrials.length, color: 'text-red-400' },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="bg-white/5 rounded-lg px-3 py-2.5 text-center">
-                <p className={`text-xl font-semibold ${color}`}>{value}</p>
-                <p className="text-xs text-white/30 mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Churn risk */}
-        <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={14} className={churnRiskOrgs.length > 0 ? 'text-rose-400' : 'text-white/30'} />
-            <h2 className="text-sm font-medium text-white">Churn risk</h2>
-          </div>
-          <p className={`text-4xl font-semibold mb-1 ${churnRiskOrgs.length > 0 ? 'text-rose-400' : 'text-white'}`}>
-            {churnRiskOrgs.length}
+    <div className="p-6 sm:p-8 max-w-[1400px] w-full">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="font-serif text-[28px] leading-tight text-white">Control Room</h1>
+          <p className="text-[13px] text-white/40 mt-1">
+            Every portal, every account, one screen · press <kbd className="text-[10px] border border-white/12 rounded px-1 py-px text-white/50">⌘K</kbd> to jump anywhere
           </p>
-          <p className="text-xs text-white/30 mb-4">Paid studios, no activity 30+ days</p>
-          {churnRiskOrgs.length > 0 && (
-            <div className="space-y-1.5">
-              {churnRiskOrgs.slice(0, 3).map(o => (
-                <a key={o.id} href={`/platform/studios/${o.id}`} className="flex items-center justify-between text-xs text-white/50 hover:text-white transition-colors">
-                  <span className="truncate">{o.plan}</span>
-                  <span className="text-white/20 capitalize">{o.plan}</span>
-                </a>
+        </div>
+        <p className="text-[11px] text-white/30 tabular-nums">
+          {now.toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
+      </div>
+
+      {/* Money ledger — one continuous band, not a row of cards */}
+      <div className="mb-8 border-y border-white/8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-x-8 gap-y-6 py-5">
+          <Figure
+            label="Monthly recurring"
+            value={fmtShort(mrr)}
+            tone="gold"
+            sub={`Solo ${paidOrgs.filter(o => o.plan === 'solo').length} · Studio ${paidOrgs.filter(o => o.plan === 'studio').length} · Agency ${paidOrgs.filter(o => o.plan === 'agency').length}`}
+          />
+          <Figure label="Annual run rate" value={fmtShort(mrr * 12)} sub={`${paidCount} paying studio${paidCount !== 1 ? 's' : ''}`} />
+          <Figure label="Trial conversion" value={`${conversionRate}%`} sub={`${paidCount} won · ${expiredTrials.length} lost`} />
+          <Figure label="Fees collectible" value={fmt(totalFeeCollectible)} sub="Sourcing, 1% of accepted" />
+          <Figure label="Users" value={(userCount ?? 0).toLocaleString()} tone="muted" sub={`across ${(studioCount ?? 0).toLocaleString()} studios`} />
+          <Figure label="Projects" value={(projectCount ?? 0).toLocaleString()} tone="muted" sub={`${(newProjectsCount ?? 0).toLocaleString()} in last 30 days`} />
+        </div>
+      </div>
+
+      {/* Needs you now */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
+        <div className="xl:col-span-2">
+          <Panel
+            title="Needs you now"
+            icon={AlertTriangle}
+            accent={queue.length > 0 ? 'text-amber-400' : 'text-emerald-400'}
+          >
+            {queue.length === 0 ? (
+              <div className="flex items-center gap-3 px-5 py-8">
+                <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                <div>
+                  <p className="text-[13px] text-white">Nothing waiting on you.</p>
+                  <p className="text-[12px] text-white/40 mt-0.5">
+                    No expiring trials, no churn risk, no pending approvals, inbox clear.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <ul className="divide-y divide-white/5">
+                {queue.map(item => (
+                  <li key={item.key}>
+                    <Link
+                      href={item.href}
+                      className="group flex items-start gap-3.5 px-5 py-3.5 hover:bg-white/[0.03] transition-colors duration-150"
+                    >
+                      <span className={`mt-[7px] w-1.5 h-1.5 rounded-full shrink-0 ${SEVERITY_DOT[item.severity]}`} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13px] text-white/85">
+                          <span className={`font-semibold tabular-nums ${SEVERITY_COUNT[item.severity]}`}>
+                            {item.key === 'fees' ? fmtShort(item.count) : item.count}
+                          </span>{' '}
+                          {item.headline}
+                        </span>
+                        <span className="block text-[11px] text-white/35 mt-0.5">{item.detail}</span>
+                        {item.names && (
+                          <span className="mt-2 flex flex-wrap gap-1.5">
+                            {item.names.map(n => (
+                              <span
+                                key={n.id}
+                                className="inline-flex items-center gap-1.5 rounded-md bg-white/[0.05] px-2 py-1 text-[11px] text-white/60"
+                              >
+                                <span className="truncate max-w-[13rem]">{n.label}</span>
+                                <span className="text-white/30 tabular-nums">{n.meta}</span>
+                              </span>
+                            ))}
+                            {item.count > item.names.length && (
+                              <span className="inline-flex items-center rounded-md px-2 py-1 text-[11px] text-white/30">
+                                +{item.count - item.names.length} more
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </span>
+                      <ChevronRight size={14} className="mt-1 text-white/15 group-hover:text-white/50 transition-colors duration-150 shrink-0" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </div>
+
+        {/* Trial conversion */}
+        <Panel title="Trial conversion" icon={ArrowUpRight} accent="text-[#C4A46B]" action={{ label: 'Studios', href: '/platform/studios' }}>
+          <div className="p-5">
+            <div className="flex items-end gap-3 mb-4">
+              <p className="text-[40px] leading-none font-semibold text-white tabular-nums">{conversionRate}<span className="text-[20px] text-white/40">%</span></p>
+              <p className="text-[11px] text-white/35 pb-1.5">of finished trials<br />became paying studios</p>
+            </div>
+            <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden mb-4">
+              <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${conversionRate}%` }} />
+            </div>
+            <dl className="space-y-2">
+              {[
+                { label: 'Converted to paid', value: paidCount, color: 'text-emerald-400' },
+                { label: 'Still in trial', value: Math.max(trialCount - expiredTrials.length, 0), color: 'text-[#C4A46B]' },
+                { label: 'Expired, not converted', value: expiredTrials.length, color: 'text-rose-400' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <dt className="text-[12px] text-white/45">{label}</dt>
+                  <dd className={`text-[13px] font-semibold tabular-nums ${color}`}>{value}</dd>
+                </div>
               ))}
-              {churnRiskOrgs.length > 3 && (
-                <Link href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">+{churnRiskOrgs.length - 3} more →</Link>
+            </dl>
+          </div>
+        </Panel>
+      </div>
+
+      {/* Portal health */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles size={13} className="text-white/30" />
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/35">The four portals</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {portals.map(portal => {
+            const Icon = portal.icon
+            return (
+              <Link
+                key={portal.key}
+                href={portal.href}
+                className="group relative rounded-2xl border border-white/8 bg-[#161614] overflow-hidden hover:border-white/16 hover:bg-[#1A1A18] transition-colors duration-150"
+              >
+                <span className={`absolute inset-x-0 top-0 h-px ${portal.rail} opacity-60`} aria-hidden />
+                <div className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Icon size={14} className={portal.accent} />
+                    <span className="text-[12px] font-medium text-white/70">{portal.label}</span>
+                    <ChevronRight size={13} className="ml-auto text-white/15 group-hover:text-white/50 transition-colors duration-150" />
+                  </div>
+                  <p className="text-[32px] leading-none font-semibold text-white tabular-nums">{portal.headline}</p>
+                  <p className="text-[11px] text-white/35 mt-1.5 mb-4">{portal.headlineLabel}</p>
+                  <dl className="grid grid-cols-3 gap-2 pt-3 border-t border-white/8">
+                    {portal.stats.map(stat => (
+                      <div key={stat.label}>
+                        <dd className="text-[15px] font-semibold text-white/80 tabular-nums">{stat.value}</dd>
+                        <dt className="text-[10px] text-white/30 mt-0.5 leading-tight">{stat.label}</dt>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Activity + recent signups */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mb-6">
+        <div className="xl:col-span-2">
+          <Panel title="Live activity" icon={History} accent="text-sky-400">
+            <div className="max-h-[30rem] overflow-y-auto">
+              <ActivityFeed events={activity as ActivityEvent[]} nowIso={nowIso} />
+            </div>
+          </Panel>
+        </div>
+
+        <div className="flex flex-col gap-5">
+          <Panel title="Recently joined" icon={Building2} accent="text-[#C4A46B]" action={{ label: 'All studios', href: '/platform/studios' }}>
+            {recentStudios.length === 0 ? (
+              <p className="px-5 py-8 text-center text-[13px] text-white/30">
+                No studios yet. New signups appear here the moment they complete onboarding.
+              </p>
+            ) : (
+              <ul className="divide-y divide-white/5">
+                {(recentStudios as RecentStudioRow[]).map(studio => (
+                  <li key={studio.id}>
+                    <Link
+                      href={`/platform/studios/${studio.id}`}
+                      className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-white/[0.03] transition-colors duration-150"
+                    >
+                      <span className="text-[13px] text-white truncate">{studio.name ?? 'Unnamed studio'}</span>
+                      <span className="text-[11px] text-white/30 tabular-nums shrink-0">
+                        {new Date(studio.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          <Panel title="Churn watch" icon={UserX} accent={churnRiskOrgs.length > 0 ? 'text-rose-400' : 'text-emerald-400'}>
+            <div className="p-5">
+              <p className={`text-[32px] leading-none font-semibold tabular-nums ${churnRiskOrgs.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {churnRiskOrgs.length}
+              </p>
+              <p className="text-[11px] text-white/35 mt-1.5">
+                {churnRiskOrgs.length > 0
+                  ? 'paying studios with no project activity in 30+ days'
+                  : 'every paying studio has been active in the last 30 days'}
+              </p>
+              {churnRiskOrgs.length > 0 && (
+                <ul className="mt-4 space-y-1.5">
+                  {churnRiskOrgs.slice(0, 4).map(o => (
+                    <li key={o.id}>
+                      <Link
+                        href={`/platform/studios/${o.id}`}
+                        className="flex items-center justify-between gap-2 text-[12px] text-white/55 hover:text-white transition-colors duration-150"
+                      >
+                        <span className="truncate">{o.name ?? 'Unnamed studio'}</span>
+                        <span className="text-white/25 capitalize shrink-0">{o.plan ?? '—'}</span>
+                      </Link>
+                    </li>
+                  ))}
+                  {churnRiskOrgs.length > 4 && (
+                    <li>
+                      <Link href="/platform/studios" className="text-[11px] text-[#C4A46B] hover:text-[#E0C68C] transition-colors duration-150">
+                        +{churnRiskOrgs.length - 4} more →
+                      </Link>
+                    </li>
+                  )}
+                </ul>
               )}
             </div>
-          )}
-          {churnRiskOrgs.length === 0 && (
-            <p className="text-xs text-emerald-400">All paid studios active</p>
-          )}
+          </Panel>
         </div>
       </div>
 
       {/* Feature adoption */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl p-5 mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap size={14} className="text-[#C4A46B]" />
-          <h2 className="text-sm font-medium text-white">Feature adoption</h2>
-          <span className="text-xs text-white/30 ml-1">across all {billableOrgs.length} billable studios</span>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { label: 'Have created a project', pct: projectAdoptionPct, count: orgsWithProjects.size, color: 'bg-blue-500' },
-            { label: 'Using sourcing / price requests', pct: sourcingAdoptionPct, count: orgsWithSourcing.size, color: 'bg-[#C4A46B]' },
-          ].map(({ label, pct, count, color }) => (
-            <div key={label}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-white/50">{label}</span>
-                <span className="text-xs font-semibold text-white">{count} <span className="text-white/30">({pct}%)</span></span>
+      <Panel title="Feature adoption" icon={Zap} accent="text-[#C4A46B]">
+        <div className="p-5">
+          <p className="text-[11px] text-white/35 mb-4">Across all {billableOrgs.length} billable studios</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {[
+              { label: 'Have created a project', pct: projectAdoptionPct, count: orgsWithProjects.size, bar: 'bg-emerald-400', icon: FolderOpen },
+              { label: 'Using sourcing / price requests', pct: sourcingAdoptionPct, count: orgsWithSourcing.size, bar: 'bg-[#C4A46B]', icon: BookOpen },
+            ].map(({ label, pct, count, bar, icon: Icon }) => (
+              <div key={label}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon size={12} className="text-white/30" />
+                  <span className="text-[12px] text-white/55">{label}</span>
+                  <span className="ml-auto text-[12px] font-semibold text-white tabular-nums">
+                    {count} <span className="text-white/30 font-normal">({pct}%)</span>
+                  </span>
+                </div>
+                <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                  <div className={`h-full ${bar} rounded-full`} style={{ width: `${pct}%` }} />
+                </div>
               </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent studios */}
-      <div className="bg-[#1A1A18] border border-white/10 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={15} className="text-[#C4A46B]" />
-            <h2 className="text-sm font-medium text-white">Recently joined studios</h2>
+            ))}
           </div>
-          <Link href="/platform/studios" className="text-xs text-[#C4A46B] hover:underline">View all →</Link>
         </div>
-        <div className="divide-y divide-white/5">
-          {recentStudios.length === 0 && (
-            <p className="px-5 py-6 text-sm text-white/30 text-center">No studios yet</p>
-          )}
-          {(recentStudios as RecentStudioRow[]).map(studio => (
-            <a
-              key={studio.id}
-              href={`/platform/studios/${studio.id}`}
-              className="flex items-center justify-between px-5 py-3.5 hover:bg-white/5 transition-colors"
-            >
-              <span className="text-sm text-white">{studio.name}</span>
-              <span className="text-xs text-white/30">
-                {new Date(studio.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </span>
-            </a>
-          ))}
-        </div>
+      </Panel>
+
+      {/* Footnote: the remaining raw counters, kept honest and out of the way */}
+      <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-white/30">
+        <span className="flex items-center gap-1.5"><Building2 size={12} /> {(studioCount ?? 0).toLocaleString()} studios on record</span>
+        <span className="flex items-center gap-1.5"><Users size={12} /> {(userCount ?? 0).toLocaleString()} active members</span>
+        <span className="flex items-center gap-1.5"><FolderOpen size={12} /> {(projectCount ?? 0).toLocaleString()} projects</span>
+        <span className="flex items-center gap-1.5"><MessageSquare size={12} /> {(unreadCount ?? 0).toLocaleString()} unread</span>
+        <span className="flex items-center gap-1.5"><Coins size={12} /> {fmt(totalFeeCollectible)} fees collectible</span>
+        <span className="flex items-center gap-1.5 ml-auto"><Activity size={12} /> Figures cached for 5 minutes</span>
       </div>
     </div>
   )
