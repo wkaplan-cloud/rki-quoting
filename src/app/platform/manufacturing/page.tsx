@@ -16,7 +16,10 @@ export default async function ManufacturingPage() {
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
     .select('id, email, company_name, contact_name, phone, plan, subscription_status, trial_ends_at, setup_fee_paid, created_at')
-    .eq('supplier_category', 'manufacturer')
+    // plan_category is what the portal itself routes on, and it is stamped both
+    // at registration and at trial start. supplier_category would also sweep in
+    // every plain product supplier, who never touched the manufacturing product.
+    .eq('plan_category', 'manufacturer')
     .order('created_at', { ascending: false })
 
   const raw = accounts ?? []
@@ -89,7 +92,8 @@ export default async function ManufacturingPage() {
           <Hammer size={18} className="text-[#C2410C]" />
           <h1 className="text-xl font-semibold text-[#1A1A18]">Manufacturing Portal</h1>
         </div>
-        <p className="text-sm text-[#6E6B63]">Manufacturer accounts · click a row to edit plan or manage admins · click ↗ to view full detail</p>
+        <p className="text-sm text-[#6E6B63]">Accounts on the manufacturing product · click a row to edit plan or manage admins · click ↗ to view full detail</p>
+        <p className="text-xs text-[#6E6B63] mt-1">Product suppliers who never took a manufacturing plan are not counted here — find them under Portal Accounts → All Accounts.</p>
       </div>
 
       {/* Key stats */}

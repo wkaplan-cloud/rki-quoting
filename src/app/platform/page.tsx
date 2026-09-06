@@ -75,7 +75,7 @@ const getDashboardData = unstable_cache(
       supabaseAdmin.from('projects').select('org_id, created_at').order('created_at', { ascending: false }),
       supabaseAdmin.from('sourcing_sessions').select('org_id'),
       supabaseAdmin.from('supplier_portal_accounts')
-        .select('id, company_name, supplier_category, subscription_status, trial_ends_at, created_at'),
+        .select('id, company_name, supplier_category, plan_category, subscription_status, trial_ends_at, created_at'),
       supabaseAdmin.from('price_lists').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('price_list_access').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabaseAdmin.from('sourcing_sessions').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
@@ -142,6 +142,8 @@ interface PortalAccountRow {
   id: string
   company_name: string | null
   supplier_category: string | null
+  /** Set only once an account is on the manufacturing product. */
+  plan_category: string | null
   subscription_status: string | null
   trial_ends_at: string | null
   created_at: string
@@ -271,7 +273,9 @@ export default async function PlatformDashboard() {
   const projectAdoptionPct = Math.round((orgsWithProjects.size / totalActiveCount) * 100)
 
   // ── Portal accounts (manufacturing / trades / supplier network) ────────────
-  const mfgAccounts = portalAccounts.filter(a => a.supplier_category === 'manufacturer')
+  // A manufacturer is an account on the manufacturing product, not merely one
+  // whose business type is 'manufacturer' — see the note in manufacturing/page.
+  const mfgAccounts = portalAccounts.filter(a => a.plan_category === 'manufacturer')
   const tradesAccounts = portalAccounts.filter(a => a.supplier_category === 'trades')
 
   const paidIn = (rows: PortalAccountRow[]) => rows.filter(a => a.subscription_status === 'active').length
@@ -350,7 +354,7 @@ export default async function PlatformDashboard() {
         id: a.id,
         label: a.company_name ?? 'Unnamed account',
         meta: `${daysLeft(a.trial_ends_at!)}d left`,
-        href: a.supplier_category === 'manufacturer' ? `/platform/manufacturing/${a.id}` : '/platform/electricians',
+        href: a.plan_category === 'manufacturer' ? `/platform/manufacturing/${a.id}` : '/platform/electricians',
       })),
     })
   }

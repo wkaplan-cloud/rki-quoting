@@ -23,6 +23,8 @@ interface SupplierAccountRow {
   created_at: string
   linked_portal_account_id: string | null
   supplier_category: string | null
+  /** Set only once the account is on the manufacturing product. */
+  plan_category: string | null
   plan: string | null
   subscription_status: string | null
   trial_ends_at: string | null
@@ -31,7 +33,7 @@ interface SupplierAccountRow {
 export default async function PlatformSuppliersPage() {
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category, plan, subscription_status, trial_ends_at')
+    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category, plan_category, plan, subscription_status, trial_ends_at')
     .order('created_at', { ascending: false })
 
   const rows = (accounts ?? []) as SupplierAccountRow[]
@@ -195,7 +197,7 @@ export default async function PlatformSuppliersPage() {
                       <span className="text-[#7E6036] font-semibold tabular-nums">{s.acceptedCount}</span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.registered ? 'bg-emerald-950 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.registered ? 'bg-emerald-50 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'}`}>
                         {s.registered ? 'Yes' : 'No'}
                       </span>
                     </td>
@@ -259,7 +261,17 @@ export default async function PlatformSuppliersPage() {
                       </td>
                       <td className="px-4 py-3 text-[#3F3D38] whitespace-nowrap text-xs">{row.email}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <SupplierCategoryBadge accountId={row.id} initial={row.supplier_category ?? 'manufacturer'} />
+                        <div className="flex items-center gap-1.5">
+                          <SupplierCategoryBadge accountId={row.id} initial={row.supplier_category ?? 'manufacturer'} />
+                          {row.plan_category === 'manufacturer' && (
+                            <span
+                              title="On the manufacturing product — appears under Manufacturing"
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-[#C2410C] border border-orange-200"
+                            >
+                              Mfg
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {(() => {
@@ -267,7 +279,7 @@ export default async function PlatformSuppliersPage() {
                           const trialEnd = row.trial_ends_at ? new Date(row.trial_ends_at) : null
                           const now = new Date()
                           if (status === 'active') {
-                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950 text-[#047857]">Active</span>
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-[#047857]">Active</span>
                           }
                           if (status === 'trialing' && trialEnd) {
                             const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000))
@@ -278,7 +290,7 @@ export default async function PlatformSuppliersPage() {
                                 </span>
                               )
                             }
-                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-950 text-[#B91C1C]">Trial expired</span>
+                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-[#B91C1C]">Trial expired</span>
                           }
                           if (status === 'cancelled') {
                             return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EFEBE3] text-[#6E6B63]">Cancelled</span>
@@ -321,7 +333,7 @@ export default async function PlatformSuppliersPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          isActive ? 'bg-emerald-950 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'
+                          isActive ? 'bg-emerald-50 text-[#047857]' : 'bg-[#EFEBE3] text-[#6E6B63]'
                         }`}>
                           {isActive ? 'Active' : 'Registered'}
                         </span>

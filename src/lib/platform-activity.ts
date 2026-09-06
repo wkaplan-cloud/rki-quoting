@@ -49,7 +49,7 @@ export async function getPlatformActivity(limit = 18): Promise<ActivityEvent[]> 
     supabaseAdmin.from('price_list_access')
       .select('id, org_id, status, requested_at').order('requested_at', { ascending: false }).limit(PER_SOURCE),
     supabaseAdmin.from('supplier_portal_accounts')
-      .select('id, company_name, email, supplier_category, created_at').order('created_at', { ascending: false }).limit(PER_SOURCE),
+      .select('id, company_name, email, supplier_category, plan_category, created_at').order('created_at', { ascending: false }).limit(PER_SOURCE),
   ])
 
   // Org names are needed by three of the six sources — resolve them in one pass.
@@ -125,7 +125,7 @@ export async function getPlatformActivity(limit = 18): Promise<ActivityEvent[]> 
     const trades = acc.supplier_category === 'trades'
     events.push({
       id: `account-${acc.id}`,
-      kind: trades ? 'contractor' : acc.supplier_category === 'manufacturer' ? 'manufacturer' : 'supplier',
+      kind: trades ? 'contractor' : acc.plan_category === 'manufacturer' ? 'manufacturer' : 'supplier',
       title: trades ? 'Contractor registered' : 'Supplier registered',
       subject: acc.company_name || acc.email || null,
       at: acc.created_at,

@@ -40,7 +40,6 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       items: [
         { href: '/platform',              label: 'Overview',       icon: 'LayoutDashboard' },
         { href: '/platform/studios',      label: 'Studios',        icon: 'Building2' },
-        { href: '/platform/sourcing',     label: 'Price Requests', icon: 'ArrowLeftRight' },
         { href: '/platform/price-lists',  label: 'Price Lists',    icon: 'BookOpen', badge: pendingPriceListCount ?? 0 },
         { href: '/platform/messages',     label: 'Messages',       icon: 'MessageSquare', badge: unreadMessageCount ?? 0 },
         { href: '/platform/broadcast',    label: 'Broadcast',      icon: 'Radio' },

@@ -38,7 +38,7 @@ export default async function MfgAccountDetailPage({ params }: { params: Promise
     .from('supplier_portal_accounts')
     .select('id, email, company_name, contact_name, phone, plan, subscription_status, trial_ends_at, setup_fee_paid, created_at')
     .eq('id', id)
-    .eq('supplier_category', 'manufacturer')
+    .eq('plan_category', 'manufacturer')
     .maybeSingle()
 
   if (!account) notFound()

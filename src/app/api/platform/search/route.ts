@@ -29,7 +29,7 @@ export async function GET() {
       .select('id, name, plan, subscription_status, status')
       .order('created_at', { ascending: false }),
     supabaseAdmin.from('supplier_portal_accounts')
-      .select('id, company_name, contact_name, email, supplier_category, plan, subscription_status')
+      .select('id, company_name, contact_name, email, supplier_category, plan_category, plan, subscription_status')
       .order('created_at', { ascending: false }),
     supabaseAdmin.from('price_lists')
       .select('id, name, supplier_name, item_count')
@@ -58,11 +58,11 @@ export async function GET() {
     const trades = a.supplier_category === 'trades'
     entries.push({
       id: `acc-${a.id}`,
-      group: trades ? 'Contractors' : a.supplier_category === 'manufacturer' ? 'Manufacturers' : 'Suppliers',
+      group: trades ? 'Contractors' : a.plan_category === 'manufacturer' ? 'Manufacturers' : 'Suppliers',
       label: a.company_name || a.contact_name || a.email,
       hint: [a.email, a.plan, a.subscription_status].filter(Boolean).join(' · ') || null,
       // Only manufacturers have a detail route; the rest resolve on their list page.
-      href: a.supplier_category === 'manufacturer'
+      href: a.plan_category === 'manufacturer'
         ? `/platform/manufacturing/${a.id}`
         : trades ? '/platform/electricians' : '/platform/suppliers',
       keywords: [a.company_name, a.contact_name, a.email, a.plan].filter(Boolean).join(' '),
