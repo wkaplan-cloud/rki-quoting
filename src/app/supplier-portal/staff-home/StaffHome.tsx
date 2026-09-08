@@ -45,6 +45,7 @@ const JOB_TYPES: { value: ElecJobCardType; label: string }[] = [
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'repair',      label: 'Repair' },
   { value: 'once_off',    label: 'Once-Off' },
+  { value: 'emergency',   label: 'Emergency' },
   { value: 'coc',         label: 'C.O.C' },
 ]
 

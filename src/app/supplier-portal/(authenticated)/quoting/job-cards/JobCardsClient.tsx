@@ -26,7 +26,8 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout', coc: 'C.O.C',
+  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout',
+  emergency: 'Emergency', coc: 'C.O.C',
 }
 
 function fmtDate(iso: string) {

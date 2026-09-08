@@ -117,16 +117,21 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
   // The name captured alongside the signature is stored as that photo's caption
   const signatureName = (photosData ?? []).find(p => p.url === jobCard.client_signature_url)?.caption ?? null
 
-  // Only fetch the photos the PDF will actually render (9 max)
-  const rawPhotos = (photosData ?? []).filter(p => p.url !== jobCard.client_signature_url).slice(0, 9)
+  // Only fetch the photos the PDF will actually render (9 max). The signature
+  // and the work-description reference image are stored in the same table but
+  // are not site photos, so neither may eat a slot in that nine.
+  const rawPhotos = (photosData ?? [])
+    .filter(p => p.url !== jobCard.client_signature_url && p.url !== jobCard.work_description_image_url)
+    .slice(0, 9)
 
   // Pre-fetch all images concurrently. Photos use the CDN render endpoint for small JPEGs;
   // the signature uses the full fetchLogoBase64 path (may be a private signed URL).
-  const [photosWithBase64, signatureBase64] = await Promise.all([
+  const [photosWithBase64, signatureBase64, refImageBase64] = await Promise.all([
     Promise.all(rawPhotos.map(p =>
       fetchPhotoForPDF(p.url).then(b64 => ({ ...p, url: b64 ?? p.url }))
     )),
     jobCard.client_signature_url ? fetchLogoBase64(jobCard.client_signature_url) : Promise.resolve(null),
+    jobCard.work_description_image_url ? fetchPhotoForPDF(jobCard.work_description_image_url) : Promise.resolve(null),
   ])
 
   const card: ElecJobCard = {
@@ -134,6 +139,7 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
     materials: materialsData ?? [],
     photos: photosWithBase64,
     client_signature_url: signatureBase64 ?? jobCard.client_signature_url ?? null,
+    work_description_image_url: refImageBase64 ?? jobCard.work_description_image_url ?? null,
   }
 
   const pdfBuffer = await renderPdfToBuffer(

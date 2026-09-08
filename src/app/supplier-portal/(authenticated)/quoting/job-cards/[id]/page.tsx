@@ -16,7 +16,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
   let accountId: string | null = null
 
   const { data: own } = await supabaseAdmin
-    .from('supplier_portal_accounts').select('id, company_name')
+    .from('supplier_portal_accounts').select('id, company_name, email')
     .eq('auth_user_id', user.id).maybeSingle()
   if (own) { accountId = own.id } else {
     const { data: mem } = await supabaseAdmin
@@ -25,6 +25,14 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
     if (mem) accountId = mem.portal_account_id
     else redirect('/supplier-portal/not-a-supplier')
   }
+
+  // An org member has no account row of their own, so the company's name and
+  // office address have to come from the account the membership points at.
+  const { data: orgAccount } = own
+    ? { data: own }
+    : await supabaseAdmin
+        .from('supplier_portal_accounts').select('id, company_name, email')
+        .eq('id', accountId!).maybeSingle()
 
   const { data: card } = await supabaseAdmin
     .from('elec_job_cards')
@@ -35,7 +43,7 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
 
   if (!card) notFound()
 
-  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }, { data: bookings }, { data: extras }, { data: extrasSettings }] = await Promise.all([
+  const [{ data: materials }, { data: photos }, { data: staff }, { data: clients }, { data: settings }, { data: existingCOC }, { data: bookings }, { data: extras }, { data: extrasSettings }, { data: clientSendSettings }] = await Promise.all([
     supabaseAdmin.from('elec_job_card_materials').select('*').eq('job_card_id', id).order('created_at'),
     supabaseAdmin.from('elec_job_card_photos').select('*').eq('job_card_id', id).order('uploaded_at'),
     supabaseAdmin.from('elec_staff').select('id,name,color,role').eq('portal_account_id', accountId!).eq('is_active', true).order('name'),
@@ -64,6 +72,13 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
     supabaseAdmin
       .from('elec_settings')
       .select('job_card_extras_enabled')
+      .eq('portal_account_id', accountId!)
+      .maybeSingle()
+      .then(res => res.error ? { data: null } : res),
+    // Guarded on its own too — this column arrives with the 2026-09-08 migration.
+    supabaseAdmin
+      .from('elec_settings')
+      .select('job_card_client_send_enabled')
       .eq('portal_account_id', accountId!)
       .maybeSingle()
       .then(res => res.error ? { data: null } : res),
@@ -99,7 +114,9 @@ export default async function JobCardDetailPage({ params }: { params: Promise<{ 
       staff={(staff ?? []) as ElecStaff[]}
       clients={(clients ?? []) as ElecClient[]}
       portalAccountId={accountId!}
-      companyName={own?.company_name ?? ''}
+      companyName={orgAccount?.company_name ?? ''}
+      officeEmail={orgAccount?.email ?? null}
+      clientSendEnabled={(clientSendSettings as { job_card_client_send_enabled?: boolean } | null)?.job_card_client_send_enabled !== false}
       vatRate={(settings as { vat_rate?: number } | null)?.vat_rate ?? 15}
       sageConnected={!!(settings?.sage_company_id)}
       cocPrefix={(settings as { coc_prefix?: string } | null)?.coc_prefix ?? 'COC'}

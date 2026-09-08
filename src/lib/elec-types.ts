@@ -30,6 +30,8 @@ export interface ElecSettings {
   email_footer_text: string | null
   quote_send_bcc_admins: boolean
   job_card_extras_enabled: boolean
+  /** When false, job cards email the org only — never the client. */
+  job_card_client_send_enabled: boolean
   // Sage Accounting
   sage_username: string | null
   sage_password: string | null
@@ -649,7 +651,7 @@ export interface ElecDashboardSummary {
 
 // ─── Job Cards ────────────────────────────────────────────────────────────────
 
-export type ElecJobCardType   = 'maintenance' | 'repair' | 'once_off' | 'callout' | 'coc'
+export type ElecJobCardType   = 'maintenance' | 'repair' | 'once_off' | 'callout' | 'coc' | 'emergency'
 export type ElecJobCardStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 
 export interface ElecJobCard {
@@ -668,6 +670,8 @@ export interface ElecJobCard {
   started_at: string | null
   completed_at: string | null
   work_description: string | null
+  /** Optional reference image for the scope — kept out of the Photos gallery. */
+  work_description_image_url: string | null
   work_found: string | null
   work_done: string | null
   resolution: string | null

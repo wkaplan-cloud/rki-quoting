@@ -21,6 +21,7 @@ const TYPE_LABEL: Record<string, string> = {
   maintenance: 'Maintenance',
   repair:      'Repair',
   once_off:    'Once-Off',
+  emergency:   'Emergency',
   callout:     'Callout',
   coc:         'C.O.C',
 }
@@ -113,7 +114,10 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
   const clientName = jobCard.client_name ?? ((jobCard.client && !Array.isArray(jobCard.client)) ? jobCard.client.client_name : null)
   const clientEmail = jobCard.client_email ?? ((jobCard.client && !Array.isArray(jobCard.client)) ? jobCard.client.email : null)
   const materials = jobCard.materials ?? []
-  const photos = (jobCard.photos ?? []).filter(p => p.url !== jobCard.client_signature_url)
+  // The signature and the scope reference image are stored as photos but are
+  // not site photos — the reference image prints with the work description.
+  const photos = (jobCard.photos ?? []).filter(p =>
+    p.url !== jobCard.client_signature_url && p.url !== jobCard.work_description_image_url)
   const materialsSubtotal = materials.reduce((acc, m) => acc + m.qty * (m.unit_price ?? 0), 0)
   const labourCharge = (jobCard.labour_hours ?? 0) * (jobCard.labour_rate ?? 0)
   const calloutFee = jobCard.callout_fee ?? 0
@@ -182,11 +186,18 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
           </View>
         </View>
 
-        {/* Work description */}
-        {jobCard.work_description && (
-          <View style={{ marginBottom: 12 }}>
+        {/* Work description, with its reference image if one was attached */}
+        {(jobCard.work_description || jobCard.work_description_image_url) && (
+          <View style={{ marginBottom: 12 }} wrap={false}>
             <Text style={s.secLabel}>Work Description</Text>
-            <View style={s.textBox}><Text style={s.textContent}>{jobCard.work_description}</Text></View>
+            {jobCard.work_description && (
+              <View style={s.textBox}><Text style={s.textContent}>{jobCard.work_description}</Text></View>
+            )}
+            {jobCard.work_description_image_url && (
+              <View style={{ marginTop: 6, width: '46%' }}>
+                <Image src={jobCard.work_description_image_url} style={s.photoImg} />
+              </View>
+            )}
           </View>
         )}
 

@@ -35,13 +35,17 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string; i
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout', coc: 'C.O.C',
+  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout',
+  emergency: 'Emergency', coc: 'C.O.C',
 }
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })
 }
+
+/** Marks the scope reference image so the Photos gallery can leave it out. */
+const REF_IMAGE_CAPTION = 'Work description reference'
 
 const APPROVAL_METHOD_LABEL: Record<string, string> = {
   signature: 'signed online',
@@ -258,6 +262,10 @@ interface Props {
   initialCOC?: import('@/lib/elec-types').ElecCOC | null
   bookings?: JobCardBooking[]
   extrasEnabled?: boolean
+  /** Off when the org only wants job cards reaching the office, never the client. */
+  clientSendEnabled?: boolean
+  /** The org's own address — the only recipient when client sending is off. */
+  officeEmail?: string | null
   /** The tech who found the extra work this card came from, offered as the obvious pick. */
   suggestedStaff?: { id: string; name: string; fromJobNumber: string } | null
 }
@@ -275,7 +283,7 @@ type Tab = 'details' | 'report' | 'materials' | 'job_sheet' | 'extras' | 'photos
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true, suggestedStaff = null }: Props) {
+export function JobCardDetail({ jobCard: initial, staff, clients: initialClients, portalAccountId, companyName, vatRate = 15, sageConnected = false, cocPrefix = 'COC', companyCode = '', initialCOC = null, bookings = [], extrasEnabled = true, clientSendEnabled = true, officeEmail = null, suggestedStaff = null }: Props) {
   const router = useRouter()
   const [card, setCard] = useState<ElecJobCard>(initial)
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
@@ -296,6 +304,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   // The report is the technician's to write. The office can take it over, but
   // only on purpose — an open textarea invites the wrong person to type.
   const [reportOverride, setReportOverride] = useState(false)
+
+  // Job number — edited deliberately, not autosaved with the rest of the form.
+  // It is the card's identity: it prints on the PDF and titles every email.
+  const [editingNumber, setEditingNumber] = useState(false)
+  const [numberDraft, setNumberDraft] = useState(initial.job_number)
+  const [numberErr, setNumberErr] = useState('')
+
+  // Reference image on the work description
+  const [refUploading, setRefUploading] = useState(false)
+  const [refErr, setRefErr] = useState('')
 
   // Download / print
   const [downloading, setDownloading] = useState(false)
@@ -441,6 +459,58 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   function setField<K extends keyof ElecJobCard>(key: K, val: ElecJobCard[K]) {
     setCard(c => ({ ...c, [key]: val }))
+  }
+
+  async function commitJobNumber() {
+    const next = numberDraft.trim()
+    setNumberErr('')
+    if (!next) { setNumberDraft(card.job_number); setEditingNumber(false); return }
+    if (next === card.job_number) { setEditingNumber(false); return }
+    const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_number: next }),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({})) as { error?: string }
+      setNumberErr(d.error ?? 'Could not save')
+      setNumberDraft(card.job_number)
+      setEditingNumber(false)
+      return
+    }
+    setCard(c => ({ ...c, job_number: next }))
+    setEditingNumber(false)
+    setSaveMsg('Saved')
+    setTimeout(() => setSaveMsg(''), 2000)
+  }
+
+  /** One reference image for the scope — a drawing, a board photo, a marked-up plan. */
+  async function handleRefImage(file: File | null) {
+    if (!file) return
+    setRefUploading(true); setRefErr('')
+    try {
+      const compressed = await compressImage(file)
+      const fd = new FormData()
+      fd.append('file', compressed, file.name.replace(/\.[^.]+$/, '.jpg'))
+      fd.append('caption', REF_IMAGE_CAPTION)
+      const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos`, { method: 'POST', body: fd })
+      if (!res.ok) throw new Error()
+      const photo = await res.json() as ElecJobCardPhoto
+      await save({ work_description_image_url: photo.url })
+      setCard(c => ({ ...c, photos: [...(c.photos ?? []), photo] }))
+    } catch {
+      setRefErr('Could not upload that image — try again.')
+    }
+    setRefUploading(false)
+  }
+
+  async function removeRefImage() {
+    const url = card.work_description_image_url
+    const photo = (card.photos ?? []).find(ph => ph.url === url)
+    await save({ work_description_image_url: null })
+    if (photo) {
+      void fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/photos/${photo.id}`, { method: 'DELETE' })
+      setCard(c => ({ ...c, photos: (c.photos ?? []).filter(ph => ph.id !== photo.id) }))
+    }
   }
 
   async function handleStatusChange(status: ElecJobCardStatus) {
@@ -830,7 +900,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const ss = STATUS_STYLE[card.status] ?? STATUS_STYLE.pending
   const StatusIcon = ss.icon
   const materials = card.materials ?? []
-  const photos = (card.photos ?? []).filter(p => p.url !== card.client_signature_url)
+  // The signature and the scope reference image live in the same table as the
+  // site photos but are not part of the gallery.
+  const photos = (card.photos ?? []).filter(p =>
+    p.url !== card.client_signature_url && p.url !== card.work_description_image_url)
   const staffMember = !Array.isArray(card.staff) ? card.staff : null
   const totalMaterials = materials.reduce((a, m) => a + m.qty * (m.unit_price ?? 0), 0)
   const totalMaterialsCost = materials.reduce((a, m) => a + m.qty * (m.cost_price ?? 0), 0)
@@ -957,8 +1030,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <Check size={13} /> Mark Complete
             </button>
           )}
+          {/* Download — the most-used action, so not buried in the overflow */}
+          <button onClick={() => void handleDownload()} disabled={downloading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+            style={{ border: `1px solid ${S.border}`, color: S.text, background: S.card }}>
+            {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} PDF
+          </button>
           {/* Send */}
-          <button onClick={() => { setSendEmail(card.client_email ?? card.client?.email ?? ''); setSendMethod(isApproved && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
+          <button onClick={() => { setSendEmail(clientSendEnabled ? (card.client_email ?? card.client?.email ?? '') : (officeEmail ?? '')); setSendMethod(isApproved && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
             style={{ background: S.accent }}>
             <Send size={13} /> Send
@@ -975,11 +1054,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} />
                 <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[160px]"
                   style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                  <button onClick={() => { setShowMoreMenu(false); void handleDownload() }} disabled={downloading}
-                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-50"
-                    style={{ color: S.text }}>
-                    <Download size={14} /> Download PDF
-                  </button>
                   <button onClick={() => { setShowMoreMenu(false); handlePrint() }}
                     className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
                     style={{ color: S.text }}>
@@ -1010,7 +1084,36 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       <div className="mb-5">
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-mono mb-1" style={{ color: S.muted }}>{card.job_number} · {TYPE_LABEL[card.job_type]}</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              {editingNumber ? (
+                <input
+                  value={numberDraft} autoFocus
+                  onChange={e => setNumberDraft(e.target.value)}
+                  onBlur={() => void commitJobNumber()}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); void commitJobNumber() }
+                    if (e.key === 'Escape') { setNumberDraft(card.job_number); setEditingNumber(false) }
+                  }}
+                  aria-label="Job number"
+                  className="px-2 py-0.5 rounded-lg text-xs font-mono outline-none"
+                  style={{ border: `1px solid ${S.accent}`, color: S.text, background: '#fff', width: 132 }} />
+              ) : (
+                <>
+                  <span className="text-xs font-mono" style={{ color: S.muted }}>{card.job_number}</span>
+                  <button
+                    onClick={() => { setNumberDraft(card.job_number); setEditingNumber(true) }}
+                    aria-label="Edit job number"
+                    className="flex items-center justify-center w-5 h-5 rounded-md"
+                    style={{ color: S.muted }}
+                    onMouseEnter={e => e.currentTarget.style.color = S.accent}
+                    onMouseLeave={e => e.currentTarget.style.color = S.muted}>
+                    <Edit2 size={11} />
+                  </button>
+                </>
+              )}
+              <span className="text-xs font-mono" style={{ color: S.muted }}>· {TYPE_LABEL[card.job_type]}</span>
+              {numberErr && <span className="text-xs" style={{ color: S.danger }}>{numberErr}</span>}
+            </div>
             <h1 className="text-xl font-bold leading-snug" style={{ color: S.text }}>{card.title}</h1>
             <div className="flex items-center gap-3 mt-1.5 text-sm flex-wrap" style={{ color: S.muted }}>
               {(card.client_name ?? card.client?.client_name) && <span style={{ color: S.text, fontWeight: 500 }}>{card.client_name ?? card.client?.client_name}</span>}
@@ -1254,7 +1357,39 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               />
             </Field>
           </div>
-          <Txt label="Work Description" val={card.work_description} cb={v => setField('work_description', v || null)} placeholder="Describe the work required…" rows={3} />
+          <Txt label="Work Description" val={card.work_description} cb={v => setField('work_description', v || null)} rows={3} />
+
+          {/* Optional reference image — a drawing, a board photo, a marked-up plan */}
+          {card.work_description_image_url ? (
+            <div className="flex items-start gap-3">
+              <a href={card.work_description_image_url} target="_blank" rel="noopener noreferrer"
+                className="block rounded-xl overflow-hidden shrink-0"
+                style={{ border: `1px solid ${S.border}`, width: 132, height: 99 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={card.work_description_image_url} alt="Work description reference"
+                  className="w-full h-full object-cover" />
+              </a>
+              <div className="flex flex-col items-start gap-1.5 pt-0.5">
+                <p className="text-xs font-semibold" style={{ color: S.text }}>Reference image</p>
+                <p className="text-xs" style={{ color: S.muted }}>Shown with the scope. Not part of the site photos.</p>
+                <button type="button" onClick={() => void removeRefImage()}
+                  className="text-xs font-semibold" style={{ color: S.danger }}>
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer"
+                style={{ border: `1px dashed ${S.border}`, color: S.muted }}>
+                {refUploading ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}
+                {refUploading ? 'Uploading…' : 'Add reference image (optional)'}
+                <input type="file" accept="image/*" className="hidden" disabled={refUploading}
+                  onChange={e => { void handleRefImage(e.target.files?.[0] ?? null); e.target.value = '' }} />
+              </label>
+              {refErr && <p className="text-xs mt-1.5" style={{ color: S.danger }}>{refErr}</p>}
+            </div>
+          )}
 
           <SectionHeader label="Client & Billing" />
           <div className="grid grid-cols-2 gap-4">
@@ -1380,10 +1515,51 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       {/* ── Tab: Materials ───────────────────────────────────────────────── */}
       {tab === 'materials' && (
         <div>
-          {/* ── Staff Material Order Requests ── */}
+          {/* ── Materials Used — what actually went into the job ── */}
+          <div className="rounded-2xl overflow-hidden mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            <div className="px-5 py-3 flex items-center justify-between gap-3" style={{ borderBottom: `1px solid ${S.border}` }}>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: S.text }}>Materials Used</p>
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                  Logged on site as the work is done. Price them on the Job Sheet.
+                </p>
+              </div>
+              <button onClick={() => setTab('job_sheet')}
+                className="text-xs font-semibold whitespace-nowrap shrink-0" style={{ color: S.accent }}>
+                Job Sheet →
+              </button>
+            </div>
+
+            {materials.length === 0 && (
+              <div className="py-8 flex flex-col items-center gap-2">
+                <p className="text-sm" style={{ color: S.muted }}>No materials logged on this job yet</p>
+              </div>
+            )}
+
+            {materials.map((m, i) => (
+              <div key={m.id} className="px-5 py-3 flex items-center justify-between gap-4"
+                style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined }}>
+                <p className="text-sm font-medium min-w-0 flex-1" style={{ color: S.text }}>{m.description}</p>
+                <span className="text-sm font-mono tabular-nums shrink-0" style={{ color: S.muted }}>
+                  {m.qty}
+                </span>
+                <span className="text-sm font-mono tabular-nums shrink-0 w-24 text-right"
+                  style={{ color: m.unit_price != null ? S.text : S.gold }}>
+                  {m.unit_price != null ? fmtR(m.qty * m.unit_price) : 'Unpriced'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Materials Ordered — requests raised on site, actioned here ── */}
           <div className="rounded-2xl overflow-hidden mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: `1px solid ${S.border}` }}>
-              <p className="text-sm font-semibold" style={{ color: S.text }}>Material Orders</p>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: S.text }}>Materials Ordered</p>
+                <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                  Requested from site. Mark each one ordered, then received.
+                </p>
+              </div>
               {matOrders.filter(o => o.status === 'pending').length > 0 && (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'rgba(217,164,65,0.12)', color: S.gold }}>
                   {matOrders.filter(o => o.status === 'pending').length} pending
@@ -1476,7 +1652,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             {/* Column headers */}
             {(materials.length > 0 || newMat !== null) && (
               <div className="grid px-5 py-2 text-[10px] font-bold uppercase tracking-wider"
-                style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingRight: 76, color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
+                style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 132px', gap: '8px', paddingRight: 76, color: S.muted, background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
                 <span>Description</span>
                 <span className="text-center">Qty</span>
                 <span className="text-right">Cost</span>
@@ -1499,9 +1675,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               const rowTotal = (parseFloat(isEditing ? editingMat.qty : String(m.qty)) || 0) * (parseFloat(isEditing ? editingMat.price : String(m.unit_price ?? 0)) || 0)
               return (
                 <div key={m.id}
-                  className={!isEditing ? 'group cursor-pointer' : ''}
+                  className={!isEditing && editable ? 'group cursor-pointer' : ''}
                   style={{ borderTop: i > 0 ? `1px solid ${S.border}` : undefined, background: isEditing ? 'rgba(58,124,165,0.03)' : undefined, position: 'relative' }}
-                  onClick={!isEditing ? () => startEditMaterial(m) : undefined}
+                  onClick={!isEditing && editable ? () => startEditMaterial(m) : undefined}
                   onBlur={isEditing ? e => {
                     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) void updateMaterial()
                   } : undefined}
@@ -1510,7 +1686,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     if (e.key === 'Escape') { setEditDirty(false); setEditingMatId(null) }
                   } : undefined}>
                   <div className="grid px-5 items-center"
-                    style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
+                    style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 132px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
                     {isEditing ? (
                       <input value={editingMat.desc} autoFocus
                         onClick={e => e.stopPropagation()}
@@ -1584,7 +1760,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                           ? <span className="text-[10px]" style={{ color: S.muted }}>Saving…</span>
                           : <Check size={12} style={{ color: S.green }} />}
                     </div>
-                  ) : (
+                  ) : editable ? (
                     <button onClick={e => { e.stopPropagation(); void deleteMaterial(m.id) }}
                       className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6 rounded-md"
                       style={{ color: S.muted }}
@@ -1592,7 +1768,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = S.muted }}>
                       <Trash2 size={12} />
                     </button>
-                  )}
+                  ) : null}
                 </div>
               )
             })}
@@ -1610,7 +1786,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     if (e.key === 'Escape') setNewMat(null)
                   }}>
                   <div className="grid px-5 items-center"
-                    style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 112px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
+                    style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 132px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
                     <input value={newMat.desc} autoFocus
                       onChange={e => setNewMat(p => p ? { ...p, desc: e.target.value } : p)}
                       placeholder="Description"
@@ -2300,7 +2476,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md rounded-2xl p-6" style={{ background: S.card }}>
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold" style={{ color: S.text }}>Send Job Card</h2>
+              <h2 className="text-base font-bold" style={{ color: S.text }}>
+                {clientSendEnabled ? 'Send Job Card' : 'Send to the Office'}
+              </h2>
               <button onClick={() => { setShowSend(false); setSendResult('') }} style={{ color: S.muted }}><X size={18} /></button>
             </div>
             {sendResult === 'success' ? (
@@ -2317,18 +2495,36 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               </div>
             ) : (
               <div className="space-y-4">
+                {!clientSendEnabled && (
+                  <div className="rounded-xl px-3.5 py-2.5 flex items-start gap-2.5"
+                    style={{ background: 'rgba(58,124,165,0.07)', border: `1px solid rgba(58,124,165,0.3)` }}>
+                    <Lock size={14} style={{ color: S.accent, flexShrink: 0, marginTop: 1 }} />
+                    <p className="text-xs leading-snug" style={{ color: S.text }}>
+                      Sending job cards to clients is switched off for this company, so this goes
+                      to the office only. Change it in{' '}
+                      <Link href="/supplier-portal/quoting/settings" className="font-semibold" style={{ color: S.accent }}>
+                        Settings
+                      </Link>.
+                    </p>
+                  </div>
+                )}
                 <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Client Name</label>
-                  <input value={sendName} onChange={e => setSendName(e.target.value)} placeholder="Client name"
+                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>
+                    {clientSendEnabled ? 'Client Name' : 'Reference Name'}
+                  </label>
+                  <input value={sendName} onChange={e => setSendName(e.target.value)} aria-label="Recipient name"
                     className="w-full px-3 py-2 rounded-xl text-sm outline-none"
                     style={{ border: `1px solid ${S.border}`, color: S.text }} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Email Address *</label>
-                  <input value={sendEmail} onChange={e => setSendEmail(e.target.value)} placeholder="client@example.com"
+                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>
+                    {clientSendEnabled ? 'Email Address *' : 'Office Address *'}
+                  </label>
+                  <input value={sendEmail} onChange={e => setSendEmail(e.target.value)} aria-label="Recipient email"
                     className="w-full px-3 py-2 rounded-xl text-sm outline-none"
                     style={{ border: `1px solid ${S.border}`, color: S.text }} />
                 </div>
+                {clientSendEnabled && (
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: S.muted }}>
                     How to send
@@ -2375,6 +2571,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     </button>
                   </div>
                 </div>
+                )}
                 <div>
                   <label className="text-xs font-semibold mb-1.5 block" style={{ color: S.muted }}>Message (optional)</label>
                   <textarea value={sendMsg} onChange={e => setSendMsg(e.target.value)} rows={3}

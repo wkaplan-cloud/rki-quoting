@@ -100,6 +100,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
 
   // Email notifications
   const [bccAdmins, setBccAdmins]     = useState(settings?.quote_send_bcc_admins ?? false)
+  const [clientSendJobCards, setClientSendJobCards] = useState(settings?.job_card_client_send_enabled !== false)
 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
@@ -173,13 +174,14 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
         email_footer_text:              footer.trim() || null,
         company_code:                   codeToSave,
         quote_send_bcc_admins:          bccAdmins,
+        job_card_client_send_enabled:   clientSendJobCards,
       }),
     })
 
     setSaving(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Save failed'); return }
     setSaved(true)
-  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins])
+  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards])
 
   // Auto-save on any field change — 1.5s debounce, skip on first render
   useEffect(() => {
@@ -187,7 +189,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { void handleSave() }, 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, handleSave])
+  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, handleSave])
 
   return (
     <div className="space-y-6">
@@ -275,11 +277,35 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
             </div>
             <button
               onClick={() => setBccAdmins(v => !v)}
+              aria-label="BCC admin team on quotes"
+              aria-pressed={bccAdmins}
               className="relative flex-shrink-0 w-11 h-6 rounded-full"
               style={{ background: bccAdmins ? S.accent : S.border, transition: 'background 0.2s' }}>
               <span
                 className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
                 style={{ transform: bccAdmins ? 'translateX(20px)' : 'translateX(0)', transition: 'transform 0.2s' }}
+              />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between py-1 mt-4 pt-4" style={{ borderTop: `1px solid ${S.border}` }}>
+            <div className="pr-4">
+              <p className="text-xs font-semibold" style={{ color: S.text }}>Email job cards to clients</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                {clientSendJobCards
+                  ? 'Job cards go to the client, with your team copied in'
+                  : 'Job cards go to your team only — the client is never emailed'}
+              </p>
+            </div>
+            <button
+              onClick={() => setClientSendJobCards(v => !v)}
+              aria-label="Email job cards to clients"
+              aria-pressed={clientSendJobCards}
+              className="relative flex-shrink-0 w-11 h-6 rounded-full"
+              style={{ background: clientSendJobCards ? S.accent : S.border, transition: 'background 0.2s' }}>
+              <span
+                className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
+                style={{ transform: clientSendJobCards ? 'translateX(20px)' : 'translateX(0)', transition: 'transform 0.2s' }}
               />
             </button>
           </div>

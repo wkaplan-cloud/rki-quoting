@@ -48,14 +48,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const account = await resolveAccountOrStaff(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
+    // Some orgs never let a job card reach the client. Enforce it here rather
+    // than in the UI alone — staff send from site through this same route.
+    const { data: settings } = await supabaseAdmin
+      .from('elec_settings').select('job_card_client_send_enabled')
+      .eq('portal_account_id', account.id).maybeSingle()
+    const clientSendEnabled = settings?.job_card_client_send_enabled !== false
+    if (!clientSendEnabled && !account.email) {
+      return NextResponse.json(
+        { error: 'Client sending is off and this company has no office address set.' },
+        { status: 400 })
+    }
+    const recipient = clientSendEnabled ? email : account.email!
+
     const result = await sendJobCardEmail({
       account,
       jobCardId: id,
-      email,
+      email: recipient,
       name,
       message,
       asInvoice: as_invoice ?? false,
-      includeLink: include_link ?? false,
+      // A sign link asks the client to approve — pointless if they never get the mail.
+      includeLink: clientSendEnabled ? (include_link ?? false) : false,
       clientCompany: client_company,
       clientQsName: client_qs_name,
       clientQsEmail: client_qs_email,

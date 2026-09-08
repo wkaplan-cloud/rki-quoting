@@ -27,7 +27,8 @@ const S = {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout', coc: 'C.O.C',
+  maintenance: 'Maintenance', repair: 'Repair', once_off: 'Once-Off', callout: 'Callout',
+  emergency: 'Emergency', coc: 'C.O.C',
 }
 
 function isValidEmail(v: string) {
@@ -94,10 +95,16 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
   useEffect(() => {
     fetch('/api/supplier-portal/staff/punch')
       .then(r => r.json())
-      .then((d: { isClockedIn: boolean; lastPunch: { punch_type: string; job_id: string | null; punched_at: string } | null }) => {
-        if (d.isClockedIn && d.lastPunch?.job_id === card.id) {
+      .then((d: { punches?: { punch_type: string; job_id: string | null; punched_at: string }[] }) => {
+        // Whether THIS job is running is decided by this job's own last punch.
+        // The endpoint's `isClockedIn` is the global (no job_id) state and its
+        // `lastPunch` is the latest punch on any job — using those meant the
+        // timer vanished whenever the tech had since opened another card, while
+        // this job's clock_in stayed open and billed on forever.
+        const lastForThisJob = (d.punches ?? []).find(pu => pu.job_id === card.id)
+        if (lastForThisJob?.punch_type === 'clock_in') {
           setIsClockedIn(true)
-          const since = new Date(d.lastPunch.punched_at)
+          const since = new Date(lastForThisJob.punched_at)
           setClockedInAt(since)
           startTimer(since)
         }
