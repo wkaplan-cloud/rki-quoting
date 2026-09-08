@@ -204,20 +204,32 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
   const vatRate = (settings as ElecSettings | null)?.default_vat_rate ?? 15
   const { total: totalInclVat } = jobCardTotals(card, vatRate)
 
-  const label = asInvoice ? 'Invoice' : 'Job Card'
+  // A sign link is only generated while an approval is still outstanding, so its
+  // presence means this is the client being asked to agree to the work and the
+  // price before it starts — not a record of work already done.
+  const isApprovalRequest = !!signUrl
+  const isReapproval = isApprovalRequest && !!jobCard.approved_at && !!jobCard.amended_at
+
+  const label = asInvoice ? 'Invoice' : isApprovalRequest ? 'For Approval' : 'Job Card'
+  /** What the attachment is called in prose — never the eyebrow label. */
+  const attachmentNoun = asInvoice ? 'invoice' : 'job card'
   const subject = `${subjectPrefix}${asInvoice
     ? `Invoice ${jobCard.job_number} — ${jobCard.title}`
-    : `Job Card ${jobCard.job_number} — ${jobCard.title}`}`
-  // Only an invoice carries money. A job card shows the client what was done,
-  // never what it cost.
+    : isApprovalRequest
+      ? `${isReapproval ? 'Updated for approval' : 'For approval'}: Job Card ${jobCard.job_number} — ${jobCard.title}`
+      : `Job Card ${jobCard.job_number} — ${jobCard.title}`}`
   const totalLine = !hideItems && totalInclVat > 0
     ? `<p style="margin:0 0 16px;font-size:18px;font-weight:700;color:#18181B;">Total: R${totalInclVat.toFixed(2)} <span style="font-size:12px;color:#71717A;">(incl. VAT)</span></p>`
     : ''
-  // Two different documents go out under the same name. The technician's copy on
-  // completion is proof the work was done; the office copy is the priced card.
-  const completedLine = hideItems
-    ? 'The work on this job has been completed on site. The attached job card sets out what was found and what was done, together with the site photos and the signature captured on completion.'
-    : 'The attached job card sets out the work carried out on site and what it comes to, itemised with the materials and charges.'
+  // Three different messages go out under one name: a quote awaiting approval,
+  // a re-approval after the card changed, and the record of completed work.
+  const bodyLine = isReapproval
+    ? 'This job card has changed since you approved it. The updated version is attached, setting out the work and what it will cost. Please approve the new version before we go ahead.'
+    : isApprovalRequest
+      ? 'Please find the job card attached for your approval. It sets out the work to be done and what it will cost, itemised with the materials and charges. Once you have approved it we will book the work in.'
+      : hideItems
+        ? 'The work on this job has been completed on site. The attached job card sets out what was found and what was done, together with the site photos and the signature captured on completion.'
+        : 'The attached job card sets out the work carried out on site and what it comes to, itemised with the materials and charges.'
 
   const companyName = account.company_name ?? 'Your contractor'
   const ccEmails = await resolveOrgCc(account.id, account.email, email)
@@ -242,12 +254,12 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
         <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#18181B;">${jobCard.job_number}</p>
         <p style="margin:0 0 16px;font-size:15px;color:#71717A;">${jobCard.title}</p>
         ${totalLine}
-        ${asInvoice ? '' : `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">${completedLine}</p>`}
+        ${asInvoice ? '' : `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">${bodyLine}</p>`}
         ${message ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">${message}</p>` : ''}
         ${signUrl ? `<p style="margin:0 0 20px;"><a href="${signUrl}" style="display:inline-block;background:#3A7CA5;color:#fff;text-decoration:none;padding:12px 26px;border-radius:8px;font-size:14px;font-weight:600;">Review &amp; Approve Online →</a></p>` : ''}
         <p style="margin:0 0 24px;font-size:13px;color:#71717A;">${signUrl
-          ? `Approve it online using the button above, or review the attached PDF. If you have any questions, reply to this email and we'll get back to you.`
-          : `Please find the ${label.toLowerCase()} attached as a PDF. If you have any questions, reply to this email and we'll get back to you.`}</p>
+          ? `Approve it online using the button above, or review the attached PDF first. If anything needs changing, reply to this email before approving and we'll sort it out.`
+          : `Please find the ${attachmentNoun} attached as a PDF. If you have any questions, reply to this email and we'll get back to you.`}</p>
         <p style="margin:0;font-size:14px;line-height:1.7;color:#18181B;">
           Kind regards,<br>
           <strong>${companyName}</strong><br>
@@ -261,7 +273,7 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
   </td></tr>
 </table>
 </body></html>`,
-    text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${!hideItems && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${asInvoice ? '' : completedLine + '\n\n'}${message ? message + '\n\n' : ''}${signUrl ? `Review and approve online: ${signUrl}\n\n` : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
+    text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${!hideItems && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${asInvoice ? '' : bodyLine + '\n\n'}${message ? message + '\n\n' : ''}${signUrl ? `Review and approve online: ${signUrl}\n\n` : ''}${signUrl ? `The ${attachmentNoun} is attached as a PDF. If anything needs changing, reply to this email before approving and we'll sort it out.` : `Please find the ${attachmentNoun} attached. If you have any questions, reply to this email and we'll get back to you.`}\n\nKind regards,\n${companyName}\n${account.email}`,
   })
 
   return { ok: true, cc: ccEmails, subject }

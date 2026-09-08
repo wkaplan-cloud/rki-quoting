@@ -313,6 +313,26 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [refUploading, setRefUploading] = useState(false)
   const [refErr, setRefErr] = useState('')
 
+  // Money fields are typed, not picked. Binding them straight to a parsed
+  // number meant "2." became 2 on the next render and the decimal point
+  // disappeared as you typed it — so a rate had to be entered several times
+  // before it stuck. Hold the raw string, parse it onto the card alongside.
+  const [chargeDraft, setChargeDraft] = useState({
+    callout: initial.callout_fee  != null ? String(initial.callout_fee)  : '',
+    hours:   initial.labour_hours != null ? String(initial.labour_hours) : '',
+    rate:    initial.labour_rate  != null ? String(initial.labour_rate)  : '',
+  })
+
+  function setCharge(
+    key: 'callout' | 'hours' | 'rate',
+    field: 'callout_fee' | 'labour_hours' | 'labour_rate',
+    raw: string,
+  ) {
+    setChargeDraft(d => ({ ...d, [key]: raw }))
+    const n = parseFloat(raw)
+    setField(field, raw.trim() === '' || Number.isNaN(n) ? null : n)
+  }
+
   // Download / print
   const [downloading, setDownloading] = useState(false)
 
@@ -441,14 +461,21 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
 
   // ── Persist helpers ───────────────────────────────────────────────────────
 
-  async function save(patch: Partial<ElecJobCard>) {
+  /**
+   * `mergeBack` writes the patch onto local state once the save lands. That is
+   * right for a discrete action (a status change, a new job number), but wrong
+   * for the debounced autosave: the patch is a snapshot taken when the timer
+   * fired, so anything typed while the request was in flight got overwritten
+   * with the older value — the field visibly snapped back.
+   */
+  async function save(patch: Partial<ElecJobCard>, mergeBack = true) {
     setSaving(true); setSaveMsg('')
     try {
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
       })
       if (!res.ok) throw new Error()
-      setCard(c => ({ ...c, ...patch }))
+      if (mergeBack) setCard(c => ({ ...c, ...patch }))
       setSaveMsg('Saved')
       setTimeout(() => setSaveMsg(''), 2000)
     } catch { setSaveMsg('Error saving') }
@@ -543,7 +570,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       callout_fee: card.callout_fee,
       labour_hours: card.labour_hours,
       labour_rate: card.labour_rate,
-    })
+    }, false)
     if (card.client_id) {
       const patch: Record<string, string | null> = {}
       if (card.client_email?.trim()) patch.email = card.client_email.trim()
@@ -1886,10 +1913,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-semibold" style={{ color: S.muted }}>R</span>
                 <input
-                  type="number" min="0" step="0.01"
-                  value={card.callout_fee ?? ''}
-                  onChange={e => setField('callout_fee', e.target.value ? parseFloat(e.target.value) : null)}
-                  placeholder="0.00"
+                  type="number" min="0" step="0.01" inputMode="decimal" aria-label="Call-out fee in rand"
+                  value={chargeDraft.callout}
+                  onChange={e => setCharge('callout', 'callout_fee', e.target.value)}
                   className="w-28 px-2.5 py-1.5 rounded-lg text-sm outline-none text-right"
                   style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
               </div>
@@ -1903,22 +1929,21 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               </div>
               <div className="flex items-center gap-2">
                 <input
-                  type="number" min="0" step="0.25"
-                  value={card.labour_hours ?? ''}
-                  onChange={e => setField('labour_hours', e.target.value ? parseFloat(e.target.value) : null)}
-                  placeholder="Hrs"
+                  type="number" min="0" step="0.25" inputMode="decimal" aria-label="Hours worked"
+                  value={chargeDraft.hours}
+                  onChange={e => setCharge('hours', 'labour_hours', e.target.value)}
                   className="w-20 px-2.5 py-1.5 rounded-lg text-sm outline-none text-right"
                   style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
-                <span className="text-xs" style={{ color: S.muted }}>×</span>
+                <span className="text-xs" style={{ color: S.muted }}>hrs ×</span>
                 <div className="flex items-center gap-1">
                   <span className="text-sm font-semibold" style={{ color: S.muted }}>R</span>
                   <input
-                    type="number" min="0" step="1"
-                    value={card.labour_rate ?? ''}
-                    onChange={e => setField('labour_rate', e.target.value ? parseFloat(e.target.value) : null)}
-                    placeholder="Rate/hr"
+                    type="number" min="0" step="1" inputMode="decimal" aria-label="Hourly rate in rand"
+                    value={chargeDraft.rate}
+                    onChange={e => setCharge('rate', 'labour_rate', e.target.value)}
                     className="w-24 px-2.5 py-1.5 rounded-lg text-sm outline-none text-right"
                     style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
+                  <span className="text-xs" style={{ color: S.muted }}>/hr</span>
                 </div>
                 {labourCharge > 0 && (
                   <span className="text-sm font-semibold font-mono w-24 text-right shrink-0" style={{ color: S.text }}>
