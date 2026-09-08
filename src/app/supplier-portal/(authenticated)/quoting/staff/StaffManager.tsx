@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown, Smartphone, Download, MessageCircle } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
-import { calcHourBreakdown, punchesToBreakdown, type HourBreakdown } from '@/lib/sa-overtime'
+import { calcHourBreakdown, punchesToBreakdown, punchesToBreakdownRange, type HourBreakdown } from '@/lib/sa-overtime'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -76,23 +76,10 @@ function escHtml(v: string) {
   return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-// punchesToBreakdown pairs the nth clock_in with the nth clock_out by index.
-// A punch set spanning multiple days must be bucketed by day first, or a single
-// missing/extra punch on one day shifts every pairing after it and silently
-// corrupts totals for the rest of the range.
+// Day bucketing and the nine-hour rule live in the shared payroll calculation,
+// so this screen, the emailed PDF and the clocking dashboard cannot disagree.
 function dayBucketedBreakdown(punches: ElecTimePunch[]): HourBreakdown {
-  const buckets: Record<string, ElecTimePunch[]> = {}
-  for (const p of punches) {
-    const d = p.punched_at.slice(0, 10)
-    if (!buckets[d]) buckets[d] = []
-    buckets[d].push(p)
-  }
-  let normalMs = 0, overtimeMs = 0, totalMs = 0
-  for (const dayPunches of Object.values(buckets)) {
-    const b = punchesToBreakdown(dayPunches)
-    normalMs += b.normalMs; overtimeMs += b.overtimeMs; totalMs += b.totalMs
-  }
-  return { normalMs, overtimeMs, totalMs }
+  return punchesToBreakdownRange(punches)
 }
 
 interface FormState {

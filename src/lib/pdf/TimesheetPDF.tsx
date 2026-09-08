@@ -1,6 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
-import { isSAPublicHoliday } from '@/lib/sa-overtime'
+import { buildDaySessions, saDateKey } from '@/lib/sa-overtime'
 
 const s = StyleSheet.create({
   page: { fontFamily: 'Helvetica', fontSize: 8, color: '#18181B', padding: 28, paddingBottom: 40 },
@@ -52,90 +52,34 @@ function fmtDur(ms: number) {
   return `${h}h ${m}m`
 }
 
-interface Session { in: Punch; out: Punch | null; normalMs: number; overtimeMs: number; totalMs: number }
-
-const NORMAL_DAILY_MS = 9 * 3_600_000
+type Session = { in: Punch; out: Punch | null; normalMs: number; overtimeMs: number; totalMs: number }
 
 /**
- * A technician has two clocks running at once: the working day (no job_id) and
- * whichever job they are on. Pairing every clock_in against the next clock_out
- * regardless of job took a job's start and matched it to the day's end, then
- * counted the same hours again — a nine-hour day could print as thirteen.
- *
- * Sessions are paired within their own timeline, then time already covered by
- * an earlier session that day is not counted twice. The nine-hour normal
- * allowance is spent across the day in order, not granted afresh per session,
- * so the rows add up to the day and the day adds up to the week.
+ * Sessions and totals come from the shared payroll calculation, so this report
+ * cannot drift from the timesheet screen. It used to pair every clock_in with
+ * the next clock_out regardless of job, which counted a job clocked inside a
+ * shift as extra hours.
  */
 function buildSessions(punches: Punch[]) {
-  const pByDay: Record<string, Punch[]> = {}
+  const byDay: Record<string, Punch[]> = {}
   for (const p of punches) {
-    const d = p.punched_at.slice(0, 10)
-    if (!pByDay[d]) pByDay[d] = []
-    pByDay[d].push(p)
+    const d = saDateKey(p.punched_at)
+    if (!byDay[d]) byDay[d] = []
+    byDay[d].push(p)
   }
-
   let totalNormalMs = 0, totalOtMs = 0, totalMs = 0
   const sessions: Session[] = []
-
-  for (const dayKey of Object.keys(pByDay).sort()) {
-    const daySorted = [...pByDay[dayKey]].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-
-    // Pair inside each timeline: the working day and each job separately.
-    const byJob = new Map<string, Punch[]>()
-    for (const p of daySorted) {
-      const k = p.job_id ?? ''
-      const list = byJob.get(k)
-      if (list) list.push(p); else byJob.set(k, [p])
+  for (const dayKey of Object.keys(byDay).sort()) {
+    for (const s of buildDaySessions(byDay[dayKey])) {
+      sessions.push({
+        in: s.in as Punch,
+        out: s.out as Punch | null,
+        normalMs: s.normalMs,
+        overtimeMs: s.overtimeMs,
+        totalMs: s.countedMs,
+      })
+      totalNormalMs += s.normalMs; totalOtMs += s.overtimeMs; totalMs += s.countedMs
     }
-    const daySessions: Session[] = []
-    for (const list of byJob.values()) {
-      let openP: Punch | null = null
-      for (const p of list) {
-        if (p.punch_type === 'clock_in') { if (!openP) openP = p }
-        else if (openP) {
-          daySessions.push({ in: openP, out: p, normalMs: 0, overtimeMs: 0, totalMs: 0 })
-          openP = null
-        }
-      }
-      if (openP) daySessions.push({ in: openP, out: null, normalMs: 0, overtimeMs: 0, totalMs: 0 })
-    }
-    daySessions.sort((a, b) => a.in.punched_at.localeCompare(b.in.punched_at))
-
-    // Count each session only for the time not already covered that day.
-    const covered: [number, number][] = []
-    const isOvertimeDay = (() => {
-      const d = new Date(daySorted[0].punched_at)
-      const sa = new Date(d.getTime() + 2 * 3_600_000)
-      const dow = sa.getUTCDay()
-      return dow === 0 || dow === 6 || isSAPublicHoliday(d)
-    })()
-    let spentNormal = 0
-
-    for (const ses of daySessions) {
-      if (!ses.out) continue
-      const a = new Date(ses.in.punched_at).getTime()
-      const b = new Date(ses.out.punched_at).getTime()
-      let counted = Math.max(0, b - a)
-      for (const [ca, cb] of covered) {
-        const overlap = Math.min(b, cb) - Math.max(a, ca)
-        if (overlap > 0) counted -= overlap
-      }
-      counted = Math.max(0, counted)
-      covered.push([a, b])
-      covered.sort((x, y) => x[0] - y[0])
-
-      ses.totalMs = counted
-      if (isOvertimeDay) { ses.normalMs = 0; ses.overtimeMs = counted }
-      else {
-        const normal = Math.max(0, Math.min(counted, NORMAL_DAILY_MS - spentNormal))
-        ses.normalMs = normal
-        ses.overtimeMs = counted - normal
-        spentNormal += normal
-      }
-      totalNormalMs += ses.normalMs; totalOtMs += ses.overtimeMs; totalMs += ses.totalMs
-    }
-    sessions.push(...daySessions)
   }
   return { sessions, totalNormalMs, totalOtMs, totalMs }
 }

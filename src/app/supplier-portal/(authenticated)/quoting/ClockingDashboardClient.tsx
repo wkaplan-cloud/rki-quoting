@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { MapPin, LogIn, LogOut, Users, Clock, CalendarDays, RefreshCw } from 'lucide-react'
-import { get5pmSASTCutoff } from '@/lib/sa-overtime'
+import { punchesToBreakdownRange, get5pmSASTCutoff } from '@/lib/sa-overtime'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -51,26 +51,18 @@ interface Props {
   weekPunches: Punch[]
 }
 
+// Hours come from one shared calculation — this screen used to key its open
+// sessions on staff_id alone, so clocking onto a job overwrote the open working
+// day and that morning's time was silently dropped.
 function computeHoursMs(punches: Punch[], staffId?: string): number {
   const filtered = staffId ? punches.filter(p => p.staff_id === staffId) : punches
-  const sorted = [...filtered].sort((a, b) => new Date(a.punched_at).getTime() - new Date(b.punched_at).getTime())
+  const byStaff = new Map<string, Punch[]>()
+  for (const p of filtered) {
+    const list = byStaff.get(p.staff_id)
+    if (list) list.push(p); else byStaff.set(p.staff_id, [p])
+  }
   let total = 0
-  const openSessions: Record<string, number> = {}
-  for (const p of sorted) {
-    if (p.punch_type === 'clock_in') {
-      openSessions[p.staff_id] = new Date(p.punched_at).getTime()
-    } else if (openSessions[p.staff_id]) {
-      total += new Date(p.punched_at).getTime() - openSessions[p.staff_id]
-      delete openSessions[p.staff_id]
-    }
-  }
-  // Add open sessions, capped at 5pm SAST only if clocked in before 5pm
-  const nowMs = Date.now()
-  for (const t of Object.values(openSessions)) {
-    const cutoff = get5pmSASTCutoff(new Date(t)).getTime()
-    const effectiveTo = t < cutoff ? Math.min(nowMs, cutoff) : nowMs
-    total += effectiveTo - t
-  }
+  for (const list of byStaff.values()) total += punchesToBreakdownRange(list).totalMs
   return total
 }
 

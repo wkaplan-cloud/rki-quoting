@@ -65,15 +65,19 @@ export async function GET(req: NextRequest) {
     // Today's punches for all relevant staff
     const { data: todayPunches } = await supabaseAdmin
       .from('elec_time_punches')
-      .select('staff_id, punch_type, punched_at')
+      .select('staff_id, punch_type, punched_at, job_id')
       .in('staff_id', allStaffIds)
       .gte('punched_at', todayStart)
       .lte('punched_at', todayEnd)
       .order('punched_at', { ascending: false })
 
     // Latest punch per staff member for today
+    // Only the working day counts here. A job clock-out does not mean the
+    // technician has gone home, and a job clock-in is not clocking on for the
+    // day — matching how on-site status is decided everywhere else.
     const latestToday: Record<string, string> = {}
     for (const p of todayPunches ?? []) {
+      if (p.job_id) continue
       if (!latestToday[p.staff_id]) latestToday[p.staff_id] = p.punch_type
     }
 

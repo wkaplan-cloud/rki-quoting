@@ -92,7 +92,30 @@ export function calcHourBreakdown(clockIn: Date, clockOut: Date): HourBreakdown 
   return { normalMs, overtimeMs: totalMs - normalMs, totalMs }
 }
 
-interface MinimalPunch { punch_type: string; punched_at: string; job_id?: string | null }
+export interface MinimalPunch { punch_type: string; punched_at: string; job_id?: string | null }
+
+/** SAST is UTC+2 year round — no daylight saving. */
+const SAST_OFFSET_MS = 2 * 3_600_000
+
+/**
+ * The South African calendar date a punch falls on, as YYYY-MM-DD.
+ * Bucketing on the raw UTC date files work between midnight and 02:00 SAST
+ * under the previous day, which is the wrong day for both the timesheet and
+ * the weekend / public-holiday test.
+ */
+export function saDateKey(iso: string): string {
+  return new Date(Date.parse(iso) + SAST_OFFSET_MS).toISOString().slice(0, 10)
+}
+
+/** One clocked span, and how much of it counts once overlaps are removed. */
+export interface PunchSession {
+  in: MinimalPunch
+  out: MinimalPunch | null
+  /** Time not already covered by an earlier session that day. */
+  countedMs: number
+  normalMs: number
+  overtimeMs: number
+}
 
 // SAST is always UTC+2 (no DST). 17:00 SAST = 15:00 UTC.
 export function get5pmSASTCutoff(clockIn: Date): Date {
@@ -101,24 +124,27 @@ export function get5pmSASTCutoff(clockIn: Date): Date {
 }
 
 /**
- * Hours actually worked in one day, from that day's punches.
+ * The sessions worked in ONE South African day, with each one's counted time.
  *
- * A person has two kinds of punch running at once: the working day (no job_id)
- * and the job they are on (job_id set). This used to pair the nth clock_in with
- * the nth clock_out across the lot, ignoring job_id — so clocking onto a job
- * inside a shift paired the job's start against the day's end, and the same
- * hours were counted twice. Pairing is now done per job, the resulting spans
- * are merged, and overlapping time counts once.
+ * A technician has two clocks running at once: the working day (no job_id) and
+ * whichever job they are on (job_id set). Pairing every clock_in against the
+ * next clock_out regardless of job matched a job's start to the day's end and
+ * counted the same hours twice. Pairing happens inside each timeline, and time
+ * already covered by an earlier session that day is not counted again — so a
+ * job session nested inside a shift contributes nothing extra, which is right.
  *
- * The normal/overtime split is also applied to the day, not to each span. The
- * old code gave every pair its own nine-hour normal allowance, so a day split
- * across two jobs could book eighteen normal hours with no overtime.
+ * The nine-hour normal allowance is spent across the day in order rather than
+ * granted afresh to each session, so a day split over two jobs cannot book
+ * eighteen normal hours with no overtime.
+ *
+ * Every surface that shows hours — the timesheet screen, the emailed PDF, the
+ * clocking dashboard — goes through here. They each had their own version of
+ * this arithmetic and all three disagreed.
  */
-export function punchesToBreakdown(punches: MinimalPunch[], now = new Date()): HourBreakdown {
+export function buildDaySessions(punches: MinimalPunch[], now = new Date()): PunchSession[] {
   const sorted = [...punches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-  if (sorted.length === 0) return { normalMs: 0, overtimeMs: 0, totalMs: 0 }
+  if (sorted.length === 0) return []
 
-  // Pair within each timeline: the working day and each job are separate.
   const byJob = new Map<string, MinimalPunch[]>()
   for (const p of sorted) {
     const k = p.job_id ?? ''
@@ -126,46 +152,88 @@ export function punchesToBreakdown(punches: MinimalPunch[], now = new Date()): H
     if (list) list.push(p); else byJob.set(k, [p])
   }
 
-  const spans: [number, number][] = []
+  const sessions: PunchSession[] = []
   for (const list of byJob.values()) {
-    let openAt: number | null = null
+    let openP: MinimalPunch | null = null
     for (const p of list) {
       if (p.punch_type === 'clock_in') {
-        if (openAt === null) openAt = Date.parse(p.punched_at)
-      } else if (openAt !== null) {
-        spans.push([openAt, Date.parse(p.punched_at)])
-        openAt = null
+        if (!openP) openP = p
+      } else if (openP) {
+        sessions.push({ in: openP, out: p, countedMs: 0, normalMs: 0, overtimeMs: 0 })
+        openP = null
       }
     }
-    if (openAt !== null) {
-      // Still open. Cap at 5pm SAST when clocked in before 5pm. An after-hours
-      // clock-in is past that cutoff, so it runs to the end of its own SAST day
-      // instead — never to "now", which on a June record would book thousands
-      // of hours against a single shift.
-      const cutoff = get5pmSASTCutoff(new Date(openAt)).getTime()
-      const bound = openAt < cutoff ? cutoff : cutoff + 7 * 3_600_000  // midnight SAST
-      spans.push([openAt, Math.max(openAt, Math.min(now.getTime(), bound))])
-    }
+    if (openP) sessions.push({ in: openP, out: null, countedMs: 0, normalMs: 0, overtimeMs: 0 })
   }
+  sessions.sort((a, b) => a.in.punched_at.localeCompare(b.in.punched_at))
 
-  // Merge overlapping spans so time on a job inside a shift is counted once.
-  spans.sort((a, b) => a[0] - b[0])
-  let totalMs = 0
-  let cur: [number, number] | null = null
-  for (const sp of spans) {
-    if (!cur) { cur = [sp[0], sp[1]]; continue }
-    if (sp[0] <= cur[1]) cur[1] = Math.max(cur[1], sp[1])
-    else { totalMs += cur[1] - cur[0]; cur = [sp[0], sp[1]] }
-  }
-  if (cur) totalMs += cur[1] - cur[0]
-
-  // One normal/overtime split for the whole day, taken from when it started.
   const dayStart = new Date(sorted[0].punched_at)
   const sa = toSALocal(dayStart)
   const dow = sa.getDay()
-  if (dow === 0 || dow === 6 || isSAPublicHoliday(dayStart)) {
-    return { normalMs: 0, overtimeMs: totalMs, totalMs }
+  const allOvertime = dow === 0 || dow === 6 || isSAPublicHoliday(dayStart)
+
+  const covered: [number, number][] = []
+  let spentNormal = 0
+
+  for (const ses of sessions) {
+    const a = Date.parse(ses.in.punched_at)
+    let b: number
+    if (ses.out) {
+      b = Date.parse(ses.out.punched_at)
+    } else {
+      // Still open. Cap at 5pm SAST when clocked in before 5pm; an after-hours
+      // clock-in is already past that, so bound it at midnight SAST instead —
+      // never at "now", which on a June record would book thousands of hours.
+      const cutoff = get5pmSASTCutoff(new Date(a)).getTime()
+      const bound = a < cutoff ? cutoff : cutoff + 7 * 3_600_000
+      b = Math.max(a, Math.min(now.getTime(), bound))
+    }
+
+    let counted = Math.max(0, b - a)
+    for (const [ca, cb] of covered) {
+      const overlap = Math.min(b, cb) - Math.max(a, ca)
+      if (overlap > 0) counted -= overlap
+    }
+    counted = Math.max(0, counted)
+    covered.push([a, b])
+
+    ses.countedMs = counted
+    if (allOvertime) { ses.normalMs = 0; ses.overtimeMs = counted }
+    else {
+      const normal = Math.max(0, Math.min(counted, NORMAL_DAILY_MS - spentNormal))
+      ses.normalMs = normal
+      ses.overtimeMs = counted - normal
+      spentNormal += normal
+    }
   }
-  const normalMs = Math.min(totalMs, NORMAL_DAILY_MS)
-  return { normalMs, overtimeMs: totalMs - normalMs, totalMs }
+  return sessions
+}
+
+/** Totals for ONE South African day. */
+export function punchesToBreakdown(punches: MinimalPunch[], now = new Date()): HourBreakdown {
+  let normalMs = 0, overtimeMs = 0, totalMs = 0
+  for (const s of buildDaySessions(punches, now)) {
+    normalMs += s.normalMs; overtimeMs += s.overtimeMs; totalMs += s.countedMs
+  }
+  return { normalMs, overtimeMs, totalMs }
+}
+
+/**
+ * Totals over any span of days. Punches are bucketed by South African calendar
+ * date first — the nine-hour rule and the weekend test are per day, so a set
+ * spanning several days computed in one go would apply them to the whole range.
+ */
+export function punchesToBreakdownRange(punches: MinimalPunch[], now = new Date()): HourBreakdown {
+  const byDay = new Map<string, MinimalPunch[]>()
+  for (const p of punches) {
+    const k = saDateKey(p.punched_at)
+    const list = byDay.get(k)
+    if (list) list.push(p); else byDay.set(k, [p])
+  }
+  let normalMs = 0, overtimeMs = 0, totalMs = 0
+  for (const day of byDay.values()) {
+    const b = punchesToBreakdown(day, now)
+    normalMs += b.normalMs; overtimeMs += b.overtimeMs; totalMs += b.totalMs
+  }
+  return { normalMs, overtimeMs, totalMs }
 }
