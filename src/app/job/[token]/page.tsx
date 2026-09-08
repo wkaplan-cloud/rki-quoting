@@ -216,7 +216,7 @@ export default function WorkerJobPage() {
                 <div key={i} className="aspect-square rounded-xl overflow-hidden relative"
                   style={{ border: `1px solid ${S.border}` }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.preview} alt="" className="w-full h-full object-cover" style={{ opacity: 0.5 }} />
+                  <img src={p.preview} alt="" className="w-full h-full object-contain" style={{ opacity: 0.5 }} />
                   <div className="absolute inset-0 flex items-center justify-center">
                     {p.status === 'uploading'
                       ? <Loader2 size={20} className="animate-spin text-white" />
@@ -237,9 +237,9 @@ export default function WorkerJobPage() {
               {photos.map(photo => (
                 <button key={photo.id} onClick={() => setLightbox(photo.public_url)}
                   className="aspect-square rounded-xl overflow-hidden relative block"
-                  style={{ border: `1px solid ${S.border}` }}>
+                  style={{ border: `1px solid ${S.border}`, background: S.bg }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.public_url} alt={photo.file_name ?? ''} className="w-full h-full object-cover" />
+                  <img src={photo.public_url} alt={photo.file_name ?? ''} className="w-full h-full object-contain" />
                   {photo.uploaded_by_name && (
                     <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1"
                       style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)' }}>

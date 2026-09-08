@@ -930,9 +930,10 @@ export function StaffJobCard({ jobCard: initial, staffName: _staffName, jobsBadg
             {photos.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
                 {photos.map(p => (
-                  <div key={p.id} className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                  <div key={p.id} className="relative rounded-xl overflow-hidden"
+                    style={{ aspectRatio: '1/1', background: S.bg, border: `1px solid ${S.border}` }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={p.caption ?? 'Photo'} className="w-full h-full object-cover" />
+                    <img src={p.url} alt={p.caption ?? 'Photo'} className="w-full h-full object-contain" />
                     <button onClick={() => void deletePhoto(p.id)}
                       className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-white"
                       style={{ background: S.danger }}>

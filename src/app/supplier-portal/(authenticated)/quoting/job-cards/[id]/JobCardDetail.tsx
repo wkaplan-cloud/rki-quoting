@@ -1360,10 +1360,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             <div className="flex items-start gap-3">
               <a href={card.work_description_image_url} target="_blank" rel="noopener noreferrer"
                 className="block rounded-xl overflow-hidden shrink-0"
-                style={{ border: `1px solid ${S.border}`, width: 132, height: 99 }}>
+                style={{ border: `1px solid ${S.border}`, background: S.bg, width: 132, height: 99 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={card.work_description_image_url} alt="Work description reference"
-                  className="w-full h-full object-cover" />
+                  className="w-full h-full object-contain" />
               </a>
               <div className="flex flex-col items-start gap-1.5 pt-0.5">
                 <p className="text-xs font-semibold" style={{ color: S.text }}>Reference image</p>
@@ -2090,9 +2090,10 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           {photos.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {photos.map(p => (
-                <div key={p.id} className="relative rounded-xl overflow-hidden group" style={{ aspectRatio: '4/3' }}>
+                <div key={p.id} className="relative rounded-xl overflow-hidden group"
+                  style={{ aspectRatio: '1/1', background: S.bg, border: `1px solid ${S.border}` }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.url} alt={p.caption ?? 'Photo'} className="w-full h-full object-cover" />
+                  <img src={p.url} alt={p.caption ?? 'Photo'} className="w-full h-full object-contain" />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end justify-between p-2">
                     {p.caption && (
                       <span className="text-[10px] text-white opacity-0 group-hover:opacity-100 bg-black/50 px-1.5 py-0.5 rounded truncate max-w-[70%]">
