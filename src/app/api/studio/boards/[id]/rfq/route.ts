@@ -10,7 +10,7 @@ import { apiError } from '@/lib/api-error'
 import {
   normalizeMaterial,
   normalizeScatter,
-  scatterFabricSummary,
+  fabricLineSummary,
   normalizeSpecImage,
   type StudioSpecRow,
   type StudioSlideRow,
@@ -256,13 +256,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           width: row.width ?? '',
           depth: row.depth ?? '',
           height: row.height ?? '',
-          materials: (Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : []).map(m => ({
-            type: m.type, description: m.description, supplierName: m.supplierName,
-            colour: m.colour, quantity: m.quantity,
-          })),
+          // A material's extra fabrics print as their own rows beneath it —
+          // the supplier has to see every cloth it is being asked to price,
+          // and the material's Details line says where each one goes.
+          materials: (Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : []).flatMap(m => [
+            {
+              type: m.type, description: m.description, supplierName: m.supplierName,
+              colour: m.colour, quantity: m.quantity, details: m.details,
+            },
+            ...m.extraFabrics.map(f => ({
+              type: m.type, description: f.fabric, supplierName: f.fabricSupplierName,
+              colour: f.colour, quantity: f.fabricQuantity, details: '',
+            })),
+          ]),
           scatters: (Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []).map(sc => ({
             supplierName: sc.supplierName,
-            fabrics: sc.fabrics.map(scatterFabricSummary).filter(Boolean),
+            fabrics: sc.fabrics.map(f => fabricLineSummary(f)).filter(f => f.length > 0),
             size: sc.size, quantity: sc.quantity, details: sc.details,
           })),
           notes: row.notes ?? '',

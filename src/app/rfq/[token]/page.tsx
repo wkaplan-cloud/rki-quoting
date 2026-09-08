@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import {
   normalizeMaterial,
   normalizeScatter,
-  scatterFabricSummary,
+  fabricLineSummary,
   normalizeSpecImage,
   type StudioSpecRow,
   type StudioSlideRow,
@@ -93,26 +93,34 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         quantity: spec.quantity ?? '',
         unit: spec.unit ?? '',
         dimensions: [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
+        // Each extra fabric on a material prints as its own line — the
+        // supplier has to see every cloth, and the material's Details note
+        // says where each one goes.
         materials: (Array.isArray(spec.materials) ? spec.materials.map(normalizeMaterial) : [])
-          .map(m =>
+          .flatMap(m => [
             [
               m.type,
               m.description,
               m.colour,
               m.quantity.trim() ? `${m.quantity.trim()} m` : '',
               m.supplierName ? `via ${m.supplierName}` : '',
+              m.details,
             ]
               .map(v => (v ?? '').trim())
               .filter(Boolean)
-              .join(' · ')
-          )
+              .join(' · '),
+            ...m.extraFabrics.map(f => [m.type, fabricLineSummary(f)]
+              .map(v => (v ?? '').trim())
+              .filter(Boolean)
+              .join(' · ')),
+          ])
           .filter(Boolean),
         scatters: (Array.isArray(spec.scatters) ? spec.scatters.map(normalizeScatter) : [])
           .map(sc =>
             [
               sc.quantity.trim() ? `${sc.quantity.trim()} ×` : '',
               sc.size,
-              ...sc.fabrics.map(scatterFabricSummary),
+              ...sc.fabrics.map(f => fabricLineSummary(f)),
               sc.details,
               sc.supplierName ? `via ${sc.supplierName}` : '',
             ]

@@ -169,6 +169,15 @@ export interface MaterialEntry {
   colour: string | null
   imageUrl: string | null
   widthCm: number | null
+  // A single piece routinely takes more than one fabric — a couch in a body
+  // cloth with a contrast inside back. The fields above are the FIRST fabric;
+  // any further ones live here, each with its own house and yardage so each
+  // is ordered on its own line. Fabric materials only.
+  extraFabrics: FabricLine[]
+  // Free text saying where each fabric goes ("velvet on the outside back").
+  // Deliberately one note for the material rather than a label per fabric —
+  // the designer describes the whole piece in one place.
+  details: string
 }
 
 // Materials saved before the fabric-supplier fields existed are missing them
@@ -185,20 +194,22 @@ export function normalizeMaterial(m: Partial<MaterialEntry> & { id: string; type
     colour: m.colour ?? null,
     imageUrl: m.imageUrl ?? null,
     widthCm: m.widthCm ?? null,
+    extraFabrics: Array.isArray(m.extraFabrics)
+      ? m.extraFabrics.map((f, i) => normalizeFabricLine({ ...f, id: f.id ?? `${m.id}-f${i + 1}` }))
+      : [],
+    details: m.details ?? '',
   }
 }
 
-// One fabric on a scatter. A scatter is routinely covered in more than one:
-// a face fabric, a different back, a contrast piping. Each is bought in its
-// own yardage, often from a different house, and each is quoted on its own
-// line — so each is its own entry rather than one fabric field on the scatter.
-export interface ScatterFabric {
+// One fabric, wherever it is used. A scatter is routinely covered in more
+// than one — a face, a different back, a contrast piping — and so is a couch.
+// Each is bought in its own yardage, often from a different house, and each is
+// quoted and ordered on its own line, so each is its own entry. Where the
+// fabric actually goes is written in the owning item's Details note, not
+// labelled per line.
+export interface FabricLine {
   id: string
-  // Scatter detail — which part of the cushion this fabric is: "Front",
-  // "Back", "Piping", "Trim". Free text; it labels the fabric everywhere the
-  // scatter is printed and becomes the fabric line's description on the quote.
-  label: string
-  // Who supplies this fabric. Separate from the scatter's maker: a scatter is
+  // Who supplies this fabric. Separate from the piece's maker: a scatter is
   // routinely made by one workroom in fabric bought from another house, and it
   // is this supplier's price list the fabric search reads.
   fabricSupplierId: string | null
@@ -229,12 +240,9 @@ interface LegacyScatterFabricFields {
   widthCm?: number | null
 }
 
-export function normalizeScatterFabric(
-  f: Partial<ScatterFabric> & { id: string }
-): ScatterFabric {
+export function normalizeFabricLine(f: Partial<FabricLine> & { id: string }): FabricLine {
   return {
     id: f.id,
-    label: f.label ?? '',
     fabricSupplierId: f.fabricSupplierId ?? null,
     fabricSupplierName: f.fabricSupplierName ?? '',
     fabricQuantity: f.fabricQuantity ?? '',
@@ -244,6 +252,10 @@ export function normalizeScatterFabric(
     imageUrl: f.imageUrl ?? null,
     widthCm: f.widthCm ?? null,
   }
+}
+
+export function emptyFabricLine(id: string): FabricLine {
+  return normalizeFabricLine({ id })
 }
 
 // Scatter cushions specified against a piece. Kept separate from materials
@@ -256,8 +268,9 @@ export interface ScatterEntry {
   // Who makes the scatter — the cushion maker, not the fabric house
   supplierId: string | null
   supplierName: string
-  // One or more fabrics, each with its own scatter detail label and yardage
-  fabrics: ScatterFabric[]
+  // One or more fabrics, each with its own house and yardage. fabrics[0] is
+  // the scatter's main fabric; any beyond it were added under Details.
+  fabrics: FabricLine[]
   size: string // e.g. "600 × 600" — free text, scatters are quoted by nominal size
   quantity: string
   details: string
@@ -267,42 +280,35 @@ export function normalizeScatter(
   sc: Partial<ScatterEntry> & LegacyScatterFabricFields & { id: string }
 ): ScatterEntry {
   const stored = Array.isArray(sc.fabrics) ? sc.fabrics : []
-  // A legacy scatter has no fabrics array at all; one with nothing filled in
-  // yields no fabric line rather than an empty one nobody typed.
-  const legacy: ScatterFabric[] =
-    sc.fabricSupplierId ||
-    (sc.fabricSupplierName ?? '').trim() ||
-    (sc.fabricQuantity ?? '').trim() ||
-    (sc.fabric ?? '').trim()
-      ? [normalizeScatterFabric({ ...sc, id: `${sc.id}-f0`, label: '' })]
-      : []
+  // A legacy scatter has no fabrics array at all — its single fabric sat flat
+  // on the scatter. Fold it into fabrics[0]. Every scatter keeps at least one
+  // fabric slot so the main row always has something to render into.
+  const fabrics = stored.length
+    ? stored.map((f, i) => normalizeFabricLine({ ...f, id: f.id ?? `${sc.id}-f${i}` }))
+    : [normalizeFabricLine({ ...sc, id: `${sc.id}-f0` })]
   return {
     id: sc.id,
     supplierId: sc.supplierId ?? null,
     supplierName: sc.supplierName ?? '',
-    fabrics: stored.length
-      ? stored.map((f, i) => normalizeScatterFabric({ ...f, id: f.id ?? `${sc.id}-f${i}` }))
-      : legacy,
+    fabrics,
     size: sc.size ?? '',
     quantity: sc.quantity ?? '',
     details: sc.details ?? '',
   }
 }
 
-// A one-line human summary of a scatter's fabrics — "Front: 2.5 m Linen —
-// Hertex · Piping: 0.5 m Velvet". Shared by the RFQ PDF and the supplier
-// pricing page so the supplier reads the same string in both.
-export function scatterFabricSummary(f: ScatterFabric): string {
-  const detail = [
+// A one-line human summary of a fabric — "2.5 m Linen Natural — Hertex".
+// Shared by the RFQ PDF and the supplier pricing page so the supplier reads
+// the same string in both.
+export function fabricLineSummary(f: FabricLine): string {
+  return [
     f.fabricQuantity.trim() ? `${f.fabricQuantity.trim()} m` : '',
     f.fabric.trim(),
     f.colour?.trim() ?? '',
-    f.fabricSupplierName.trim(),
+    f.fabricSupplierName.trim() ? `via ${f.fabricSupplierName.trim()}` : '',
   ]
     .filter(Boolean)
     .join(' — ')
-  const label = f.label.trim()
-  return label && detail ? `${label}: ${detail}` : label || detail
 }
 
 // A crop rect in SOURCE pixels — the same shape ImageObject.crop uses, so a

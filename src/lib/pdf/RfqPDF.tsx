@@ -29,6 +29,8 @@ export interface RfqPdfItem {
     supplierName: string
     colour: string | null
     quantity: string
+    // Free text saying where this material's fabrics go on the piece
+    details: string
   }[]
   // Scatter cushions — separately supplied and separately priced. `fabrics`
   // is one already-formatted line per fabric on the cushion ("Front: 2.5 m
@@ -287,6 +289,7 @@ export function RfqPDF(props: RfqPdfProps) {
                           m.colour,
                           m.quantity.trim() ? `${m.quantity.trim()} m` : '',
                           m.supplierName ? `via ${m.supplierName}` : '',
+                          m.details,
                         ]
                           .filter(v => v && v.trim())
                           .join(' · ')}

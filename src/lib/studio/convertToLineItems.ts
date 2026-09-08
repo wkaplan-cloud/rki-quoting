@@ -75,6 +75,7 @@ export async function loadPricingContext(
         .flatMap(s => [
           s.supplier_id,
           ...s.materials.map(m => m.supplierId),
+          ...s.materials.flatMap(m => m.extraFabrics.map(f => f.fabricSupplierId)),
           ...s.scatters.map(sc => sc.supplierId),
           ...s.scatters.flatMap(sc => sc.fabrics.map(f => f.fabricSupplierId)),
         ])
@@ -95,6 +96,7 @@ export async function loadPricingContext(
       [...specByObject.values()]
         .flatMap(s => [
           ...s.materials.map(m => m.twinbruProductId),
+          ...s.materials.flatMap(m => m.extraFabrics.map(f => f.twinbruProductId)),
           ...s.scatters.flatMap(sc => sc.fabrics.map(f => f.twinbruProductId)),
         ])
         .filter((v): v is number => v != null)
@@ -227,7 +229,7 @@ export function buildBoardRows({
       })
       itemCount++
 
-      const materials = (Array.isArray(sp.materials) ? sp.materials : []).map(m => {
+      const materials = (Array.isArray(sp.materials) ? sp.materials : []).flatMap(m => {
         const live = m.twinbruProductId != null ? priceByProductId.get(String(m.twinbruProductId)) : undefined
         // The material's TYPE names the row ("Fabric", "Timber") and the
         // specifics go in the description, which is the column that wraps —
@@ -237,9 +239,10 @@ export function buildBoardRows({
         // nameless, and then has nothing left to repeat in the description.
         const mType = m.type.trim()
         const mDesc = m.description.trim()
-        return {
+        const mDetails = m.details.trim()
+        return [{
           item_name: mType || mDesc || 'Material',
-          description: (mType ? mDesc : '') || null,
+          description: [mType ? mDesc : '', mDetails].filter(Boolean).join('\n') || null,
           quantity: parseFloat(m.quantity) || 1,
           unit: m.twinbruProductId != null ? 'm' : m.quantity.trim() ? 'm' : null,
           supplier_id: m.supplierId,
@@ -257,7 +260,39 @@ export function buildBoardRows({
           sort_order: sortOrder++,
           studio_slide_id: slide.id,
           studio_object_id: obj.id,
-        }
+        },
+        // A second cloth on the same piece is a second order from a possibly
+        // different house, so it is its own priced line rather than a note on
+        // the first. Where it goes is in the material's Details, carried on
+        // the row above.
+        ...m.extraFabrics.map(f => {
+          const fLive =
+            f.twinbruProductId != null ? priceByProductId.get(String(f.twinbruProductId)) : undefined
+          return {
+            item_name: mType || 'Fabric',
+            description: f.fabric.trim() || null,
+            quantity: parseFloat(f.fabricQuantity) || 1,
+            unit: 'm',
+            supplier_id: f.fabricSupplierId,
+            supplier_name: f.fabricSupplierName.trim() || null,
+            cost_price: fLive?.price ?? 0,
+            markup_percentage: f.fabricSupplierId
+              ? (markupBySupplier.get(f.fabricSupplierId) ?? 0)
+              : 0,
+            colour_finish: f.colour,
+            fabric_image_url: fLive?.imageUrl ?? f.imageUrl,
+            twinbru_product_id: f.twinbruProductId,
+            twinbru_cost_price: fLive?.price ?? null,
+            fabric_width_cm: fLive?.widthCm ?? f.widthCm,
+            delivery_address: defaultDeliveryAddress,
+            row_type: 'item',
+            indent_level: 1,
+            sort_order: sortOrder++,
+            studio_slide_id: slide.id,
+            studio_object_id: obj.id,
+          }
+        }),
+        ]
       })
       // Scatters ride under the piece as their own child rows — a scatter is
       // separately made, separately supplied and separately priced, so it has
@@ -271,20 +306,16 @@ export function buildBoardRows({
         const size = sc.size.trim()
         const fabrics = sc.fabrics.filter(f => f.fabric.trim() || f.fabricSupplierId)
         // The workroom has to know what it is sewing, it just isn't billed for
-        // the cloth on this line — so every fabric is named here, by the
-        // scatter detail it covers.
-        const inFabrics = fabrics
-          .map(f => {
-            const label = f.label.trim()
-            const name = f.fabric.trim()
-            if (!name) return label
-            return label ? `${label}: ${name}` : `In ${name}`
-          })
-          .filter(Boolean)
+        // the cloth on this line — so every fabric is named here, followed by
+        // the designer's note saying where each one goes.
+        const inFabrics = fabrics.map(f => f.fabric.trim()).filter(Boolean)
         const rows: LineItemRow[] = [
           {
             item_name: size ? `Scatter ${size}` : 'Scatter',
-            description: [...inFabrics, sc.details.trim()].filter(Boolean).join('\n') || null,
+            description:
+              [inFabrics.length ? `In ${inFabrics.join(', ')}` : '', sc.details.trim()]
+                .filter(Boolean)
+                .join('\n') || null,
             quantity: parseFloat(sc.quantity) || 1,
             unit: null,
             supplier_id: sc.supplierId,
@@ -304,11 +335,9 @@ export function buildBoardRows({
         for (const f of fabrics) {
           const live =
             f.twinbruProductId != null ? priceByProductId.get(String(f.twinbruProductId)) : undefined
-          const label = f.label.trim()
-          const forScatter = size ? `scatter ${size}` : 'scatter'
           rows.push({
             item_name: f.fabric.trim() || 'Scatter fabric',
-            description: label ? `${label} for ${forScatter}` : `Fabric for ${forScatter}`,
+            description: size ? `Fabric for scatter ${size}` : 'Scatter fabric',
             quantity: parseFloat(f.fabricQuantity) || 1,
             unit: 'm',
             supplier_id: f.fabricSupplierId,

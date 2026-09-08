@@ -6,11 +6,12 @@ import toast from 'react-hot-toast'
 import { useStudioStore, newId } from '@/lib/studio/store'
 import { createClient } from '@/lib/supabase/client'
 import { uploadSpecImageFile } from '@/lib/studio/images'
+import { emptyFabricLine } from '@/lib/studio/types'
 import type {
   StudioSpec,
   MaterialEntry,
   ScatterEntry,
-  ScatterFabric,
+  FabricLine,
   SpecImage,
   SpecSupplierOption,
   StudioAsset,
@@ -28,12 +29,6 @@ const ASSET_LABEL_SYNC_DEBOUNCE = 500
 const MATERIAL_TYPES = [
   'Fabric', 'Timber', 'Stone', 'Metal', 'Paint', 'Glass', 'Leather', 'Wallpaper',
   'Laminate', 'Veneer', 'Rattan', 'Marble', 'Ceramic', 'Concrete', 'Other',
-]
-
-// Which part of a scatter a fabric covers. Suggestions only — the field is
-// free text, plenty of scatters are specified in words nobody listed here.
-const SCATTER_DETAILS = [
-  'Front', 'Back', 'Piping', 'Trim', 'Border', 'Flange', 'Gusset', 'Fringe', 'Button',
 ]
 
 const EMPTY_SPEC: Omit<StudioSpec, 'id' | 'objectId' | 'slideId'> = {
@@ -383,6 +378,8 @@ export function SpecsPanel() {
                       colour: null,
                       imageUrl: null,
                       widthCm: null,
+                      extraFabrics: [],
+                      details: '',
                     },
                   ],
                 })
@@ -433,7 +430,7 @@ export function SpecsPanel() {
                       id: newId(),
                       supplierId: null,
                       supplierName: '',
-                      fabrics: [emptyScatterFabric()],
+                      fabrics: [emptyFabricLine(newId())],
                       size: '',
                       quantity: '',
                       details: '',
@@ -452,9 +449,10 @@ export function SpecsPanel() {
             <p className="text-[11px] text-[#8A877F]">No scatters yet — add one per size.</p>
           ) : (
             <div className="space-y-2.5">
-              {spec.scatters.map(sc => (
+              {spec.scatters.map((sc, i) => (
                 <ScatterRow
                   key={sc.id}
+                  index={i}
                   scatter={sc}
                   suppliers={suppliers}
                   activePriceListIds={activePriceListIds}
@@ -464,11 +462,6 @@ export function SpecsPanel() {
               ))}
             </div>
           )}
-          <datalist id="studio-spec-scatter-details">
-            {SCATTER_DETAILS.map(d => (
-              <option key={d} value={d} />
-            ))}
-          </datalist>
         </Section>
       </div>
     </div>
@@ -631,6 +624,21 @@ function MaterialRow({
   onRemove: () => void
 }) {
   const isFabric = material.type.trim().toLowerCase() === 'fabric'
+  const [showDetails, setShowDetails] = useState(
+    () => material.extraFabrics.length > 0 || material.details.trim() !== ''
+  )
+
+  // Same Details tick as a scatter: it opens the note plus a second fabric,
+  // and closing it clears them so nothing invisible reaches the quote.
+  function setDetailsOpen(open: boolean) {
+    setShowDetails(open)
+    if (open) {
+      if (material.extraFabrics.length === 0)
+        onChange({ extraFabrics: [emptyFabricLine(newId())] })
+    } else {
+      onChange({ extraFabrics: [], details: '' })
+    }
+  }
 
   return (
     <div className="pb-2.5 border-b border-[#EDE9E1] last:border-0 last:pb-0 space-y-1.5">
@@ -654,19 +662,39 @@ function MaterialRow({
       </div>
 
       {isFabric ? (
-        <SupplierFabricFields
-          label="Fabric supplier"
-          supplierId={material.supplierId}
-          supplierName={material.supplierName}
-          fabric={material.description}
-          quantity={material.quantity}
-          suppliers={suppliers}
-          activePriceListIds={activePriceListIds}
-          onChange={patch => {
-            const { fabric, ...rest } = patch
-            onChange({ ...rest, ...(fabric !== undefined ? { description: fabric } : {}) })
-          }}
-        />
+        <>
+          <SupplierFabricFields
+            label="Fabric supplier"
+            supplierId={material.supplierId}
+            supplierName={material.supplierName}
+            fabric={material.description}
+            quantity={material.quantity}
+            suppliers={suppliers}
+            activePriceListIds={activePriceListIds}
+            onChange={patch => {
+              const { fabric, ...rest } = patch
+              onChange({ ...rest, ...(fabric !== undefined ? { description: fabric } : {}) })
+            }}
+          />
+          {/* A couch routinely takes two cloths — a body fabric and a contrast
+              inside back. The second one is a separate order from a possibly
+              different house, so it gets its own line rather than a note. */}
+          <DetailsToggle
+            id={`material-details-${material.id}`}
+            checked={showDetails}
+            onChange={setDetailsOpen}
+          />
+          {showDetails ? (
+            <FabricDetails
+              details={material.details}
+              fabrics={material.extraFabrics}
+              suppliers={suppliers}
+              activePriceListIds={activePriceListIds}
+              onChangeDetails={v => onChange({ details: v })}
+              onChangeFabrics={next => onChange({ extraFabrics: next })}
+            />
+          ) : null}
+        </>
       ) : (
         <>
           <Field label="Supplier">
@@ -698,49 +726,160 @@ function MaterialRow({
   )
 }
 
-// A blank fabric line on a scatter — its own supplier, yardage and scatter
-// detail label, so a front / back / piping split is three of these.
-function emptyScatterFabric(): ScatterFabric {
+// The extra-fabrics block revealed by the Details tick box, shared by scatters
+// and by fabric materials. One note saying where each fabric goes, then a
+// fabric line per additional cloth — each with its own house and yardage,
+// because each is ordered separately even when it dresses one piece.
+function FabricDetails({
+  details,
+  fabrics,
+  suppliers,
+  activePriceListIds,
+  onChangeDetails,
+  onChangeFabrics,
+}: {
+  details: string
+  fabrics: FabricLine[]
+  suppliers: SpecSupplierOption[]
+  activePriceListIds: string[]
+  onChangeDetails: (v: string) => void
+  onChangeFabrics: (next: FabricLine[]) => void
+}) {
+  return (
+    <div className="pl-2 border-l-2 border-[#EDE9E1] space-y-2">
+      <Field label="Details">
+        <textarea
+          value={details}
+          onChange={e => onChangeDetails(e.target.value)}
+          rows={2}
+          className={`${FIELD_INPUT_CLASS} resize-y`}
+        />
+      </Field>
+      {fabrics.map((f, i) => (
+        <div key={f.id} className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-[#8A877F]">Fabric {i + 2}</span>
+            <button
+              type="button"
+              onClick={() => onChangeFabrics(fabrics.filter(x => x.id !== f.id))}
+              title="Remove fabric"
+              className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+          <SupplierFabricFields
+            label="Fabric house"
+            supplierId={f.fabricSupplierId}
+            supplierName={f.fabricSupplierName}
+            fabric={f.fabric}
+            quantity={f.fabricQuantity}
+            suppliers={suppliers}
+            activePriceListIds={activePriceListIds}
+            onChange={patch =>
+              onChangeFabrics(
+                fabrics.map(x => (x.id === f.id ? { ...x, ...fabricLinePatch(patch) } : x))
+              )
+            }
+          />
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChangeFabrics([...fabrics, emptyFabricLine(newId())])}
+        className="flex items-center gap-1 text-[10px] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+      >
+        <Plus size={10} /> Add fabric
+      </button>
+    </div>
+  )
+}
+
+// SupplierFabricFields speaks the generic supplierId/supplierName/quantity
+// names; a FabricLine keeps its own prefixed ones so a scatter's cushion count
+// can never be overwritten by a yardage. This is the translation between them.
+function fabricLinePatch(patch: {
+  supplierId?: string | null
+  supplierName?: string
+  fabric?: string
+  quantity?: string
+  colour?: string | null
+  twinbruProductId?: number | null
+  imageUrl?: string | null
+  widthCm?: number | null
+}): Partial<FabricLine> {
+  const { supplierId, supplierName, quantity, ...rest } = patch
   return {
-    id: newId(),
-    label: '',
-    fabricSupplierId: null,
-    fabricSupplierName: '',
-    fabricQuantity: '',
-    fabric: '',
-    twinbruProductId: null,
-    colour: null,
-    imageUrl: null,
-    widthCm: null,
+    ...rest,
+    ...(supplierId !== undefined ? { fabricSupplierId: supplierId } : {}),
+    ...(supplierName !== undefined ? { fabricSupplierName: supplierName } : {}),
+    ...(quantity !== undefined ? { fabricQuantity: quantity } : {}),
   }
 }
 
-// One scatter cushion line: who makes it, what it's covered in, how big, how
-// many, and anything else the maker needs (piping, fill, back fabric…).
-// A scatter takes as many fabrics as it needs — a face, a contrast back, a
-// piping — each labelled with the scatter detail it covers and carrying its
-// own yardage, because each is ordered from its house on its own line.
+// The Details tick box. Ticking it opens the note plus a first extra fabric;
+// unticking clears both, because a fabric that isn't on screen must not be
+// quietly ordered on the quote.
+function DetailsToggle({
+  id,
+  checked,
+  onChange,
+}: {
+  id: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-1.5 text-[10px] text-[#8A877F] cursor-pointer w-fit">
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        className="w-3 h-3 accent-[#9A7B4F] cursor-pointer"
+      />
+      Details
+    </label>
+  )
+}
+
+// One scatter cushion line, auto-numbered in the order it was added: who makes
+// it, how big, how many, and the fabric it is covered in. A scatter that takes
+// more than one cloth — a contrast back, a piping — opens Details and adds
+// them there, saying in the note where each one goes.
 function ScatterRow({
+  index,
   scatter,
   suppliers,
   activePriceListIds,
   onChange,
   onRemove,
 }: {
+  index: number
   scatter: ScatterEntry
   suppliers: SpecSupplierOption[]
   activePriceListIds: string[]
   onChange: (patch: Partial<ScatterEntry>) => void
   onRemove: () => void
 }) {
-  function setFabric(id: string, patch: Partial<ScatterFabric>) {
-    onChange({ fabrics: scatter.fabrics.map(f => (f.id === id ? { ...f, ...patch } : f)) })
+  const [main, ...extras] = scatter.fabrics
+  const [showDetails, setShowDetails] = useState(
+    () => extras.length > 0 || scatter.details.trim() !== ''
+  )
+
+  function setDetailsOpen(open: boolean) {
+    setShowDetails(open)
+    if (open) {
+      if (extras.length === 0) onChange({ fabrics: [...scatter.fabrics, emptyFabricLine(newId())] })
+    } else {
+      onChange({ fabrics: main ? [main] : [], details: '' })
+    }
   }
 
   return (
     <div className="pb-2.5 border-b border-[#EDE9E1] last:border-0 last:pb-0 space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[#8A877F]">Scatter</span>
+        <span className="text-[10px] font-medium text-[#2C2C2A]">{index + 1}.</span>
         <button
           type="button"
           onClick={onRemove}
@@ -748,72 +887,6 @@ function ScatterRow({
           className="w-6 h-6 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
         >
           <Trash2 size={11} />
-        </button>
-      </div>
-
-      {/* Who makes it, then who supplies each fabric — different businesses on
-          most scatters, so they are separate fields. The fabric searches below
-          read each FABRIC house's price list, not the maker's. */}
-      <Field label="Scatter supplier">
-        <Combobox
-          options={suppliers.map(su => ({ id: su.id, label: su.name, isPlatform: su.isPlatform }))}
-          value={scatter.supplierId ?? ''}
-          inputValue={scatter.supplierName}
-          onChange={(id, name) => onChange({ supplierId: id || null, supplierName: name })}
-        />
-      </Field>
-
-      <div className="pl-2 border-l-2 border-[#EDE9E1] space-y-2">
-        {scatter.fabrics.map(f => (
-          <div key={f.id} className="space-y-1.5">
-            <div className="flex items-end gap-1.5">
-              <Field label="Scatter detail" className="flex-1 min-w-0">
-                <input
-                  value={f.label}
-                  onChange={e => setFabric(f.id, { label: e.target.value })}
-                  list="studio-spec-scatter-details"
-                  className={FIELD_INPUT_CLASS}
-                />
-              </Field>
-              <button
-                type="button"
-                onClick={() =>
-                  onChange({ fabrics: scatter.fabrics.filter(x => x.id !== f.id) })
-                }
-                title="Remove fabric"
-                className="w-6 h-6 mb-0.5 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
-              >
-                <Trash2 size={11} />
-              </button>
-            </div>
-            <SupplierFabricFields
-              label="Fabric house"
-              supplierId={f.fabricSupplierId}
-              supplierName={f.fabricSupplierName}
-              fabric={f.fabric}
-              quantity={f.fabricQuantity}
-              suppliers={suppliers}
-              activePriceListIds={activePriceListIds}
-              onChange={({ supplierId, supplierName, quantity, ...rest }) =>
-                setFabric(f.id, {
-                  ...rest,
-                  ...(supplierId !== undefined ? { fabricSupplierId: supplierId } : {}),
-                  ...(supplierName !== undefined ? { fabricSupplierName: supplierName } : {}),
-                  // `quantity` on a scatter is how many cushions — each
-                  // fabric's yardage is its own field, so it must never land
-                  // on that one
-                  ...(quantity !== undefined ? { fabricQuantity: quantity } : {}),
-                })
-              }
-            />
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={() => onChange({ fabrics: [...scatter.fabrics, emptyScatterFabric()] })}
-          className="flex items-center gap-1 text-[10px] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
-        >
-          <Plus size={10} /> Add fabric
         </button>
       </div>
 
@@ -835,14 +908,52 @@ function ScatterRow({
         </Field>
       </div>
 
-      <Field label="Details">
-        <textarea
-          value={scatter.details}
-          onChange={e => onChange({ details: e.target.value })}
-          rows={2}
-          className={`${FIELD_INPUT_CLASS} resize-y`}
+      {/* Who makes it, then who supplies the fabric — two different businesses
+          on most scatters, so they get their own fields. The fabric search
+          reads the FABRIC house's price list, not the maker's. */}
+      <Field label="Scatter supplier">
+        <Combobox
+          options={suppliers.map(su => ({ id: su.id, label: su.name, isPlatform: su.isPlatform }))}
+          value={scatter.supplierId ?? ''}
+          inputValue={scatter.supplierName}
+          onChange={(id, name) => onChange({ supplierId: id || null, supplierName: name })}
         />
       </Field>
+
+      {main ? (
+        <SupplierFabricFields
+          label="Fabric house"
+          supplierId={main.fabricSupplierId}
+          supplierName={main.fabricSupplierName}
+          fabric={main.fabric}
+          quantity={main.fabricQuantity}
+          suppliers={suppliers}
+          activePriceListIds={activePriceListIds}
+          onChange={patch =>
+            onChange({
+              fabrics: scatter.fabrics.map((x, i) =>
+                i === 0 ? { ...x, ...fabricLinePatch(patch) } : x
+              ),
+            })
+          }
+        />
+      ) : null}
+
+      <DetailsToggle
+        id={`scatter-details-${scatter.id}`}
+        checked={showDetails}
+        onChange={setDetailsOpen}
+      />
+      {showDetails ? (
+        <FabricDetails
+          details={scatter.details}
+          fabrics={extras}
+          suppliers={suppliers}
+          activePriceListIds={activePriceListIds}
+          onChangeDetails={v => onChange({ details: v })}
+          onChangeFabrics={next => onChange({ fabrics: main ? [main, ...next] : next })}
+        />
+      ) : null}
     </div>
   )
 }
