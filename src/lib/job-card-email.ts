@@ -57,7 +57,12 @@ export interface SendJobCardEmailOptions {
 async function fetchPhotoForPDF(url: string): Promise<string | null> {
   const m = url.match(/^(https:\/\/[^/]+)\/storage\/v1\/object\/public\/(.+?)(\?.*)?$/)
   if (m) {
-    const renderUrl = `${m[1]}/storage/v1/render/image/public/${m[2]}?width=800&quality=60`
+    // resize=contain is not optional. Supabase's transform defaults to cover,
+    // and cover with a width but no height keeps the original height and slices
+    // the width to match — an 1800x2400 site photo came back 800x2400, a third
+    // of it cut out of the middle. The client's PDF is the one copy that has to
+    // show the whole photo.
+    const renderUrl = `${m[1]}/storage/v1/render/image/public/${m[2]}?width=800&quality=60&resize=contain`
     try {
       const ctrl = new AbortController()
       const t = setTimeout(() => ctrl.abort(), 12000)
@@ -188,10 +193,16 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
       })
       .eq('id', jobCardId)
 
-    // Sync all client details back to the client record
+    // Sync client details back to the client record. The address only fills a
+    // blank — a job at one of the client's other sites must not replace the
+    // address on file. Email is different: it is the address they were just
+    // written to, so keeping it current is the point.
     if (jobCard.client_id) {
+      const { data: existingClient } = await supabaseAdmin
+        .from('elec_clients').select('address').eq('id', jobCard.client_id).maybeSingle()
       const clientPatch: Record<string, string> = { email }
-      if (jobCard.location?.trim()) clientPatch.address = jobCard.location.trim()
+      if (!existingClient?.address?.trim() && jobCard.location?.trim())
+        clientPatch.address = jobCard.location.trim()
       if (clientCompany?.trim()) clientPatch.company = clientCompany.trim()
       if (clientQsName?.trim()) clientPatch.qs_name = clientQsName.trim()
       if (clientQsEmail?.trim()) clientPatch.qs_email = clientQsEmail.trim()

@@ -574,7 +574,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     if (card.client_id) {
       const patch: Record<string, string | null> = {}
       if (card.client_email?.trim()) patch.email = card.client_email.trim()
-      if (card.location?.trim()) patch.address = card.location.trim()
+      // Only when the client has no address yet — see the job card PATCH route.
+      const storedAddress = clients.find(c => c.id === card.client_id)?.address
+      if (!storedAddress?.trim() && card.location?.trim()) patch.address = card.location.trim()
       if (clientCompany.trim()) patch.company = clientCompany.trim()
       patch.vat_number = clientVatNumber.trim() || null
       if (Object.keys(patch).length > 0) {

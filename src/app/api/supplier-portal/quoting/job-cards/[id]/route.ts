@@ -172,13 +172,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }).catch(e => console.error('[job-cards] notify failed', e))
     }
 
-    // Sync email and address back to the client record when present
+    // Fill blanks on the client record — never overwrite what is already there.
+    // A client can have several sites: a call-out at a rental must not replace
+    // the address on file for every future quote and invoice they receive.
     const clientId = typeof body.client_id === 'string' ? body.client_id : data.client_id
     if (clientId) {
+      const { data: client } = await supabaseAdmin
+        .from('elec_clients').select('email, address').eq('id', clientId).maybeSingle()
       const clientPatch: Record<string, string> = {}
-      if (typeof body.client_email === 'string' && body.client_email.trim())
+      if (!client?.email?.trim() && typeof body.client_email === 'string' && body.client_email.trim())
         clientPatch.email = body.client_email.trim()
-      if (typeof body.location === 'string' && body.location.trim())
+      if (!client?.address?.trim() && typeof body.location === 'string' && body.location.trim())
         clientPatch.address = body.location.trim()
       if (Object.keys(clientPatch).length > 0)
         await supabaseAdmin.from('elec_clients').update(clientPatch).eq('id', clientId)
