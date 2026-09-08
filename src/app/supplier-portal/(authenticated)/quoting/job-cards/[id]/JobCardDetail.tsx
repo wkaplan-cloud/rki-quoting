@@ -3,11 +3,11 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, Send, Plus, X, Camera, Pen,
+  ArrowLeft, Send, Plus, X, Camera,
   CheckCircle2, Check, Clock, Play, XCircle, Loader2,
-  MapPin, User, Calendar, Briefcase, FileText, Wrench, Image as ImageIcon,
+  MapPin, User, Calendar, FileText, Wrench, Image as ImageIcon,
   ChevronDown, Upload, MoreHorizontal, ClipboardCheck, Edit2, Trash2,
-  Download, Printer, ShoppingCart, PackageCheck, ReceiptText, FileCheck, Link2, Lock, AlertCircle,
+  Download, Printer, PackageCheck, Link2, Lock, AlertCircle,
 } from 'lucide-react'
 import type {
   ElecJobCard, ElecJobCardMaterial, ElecJobCardPhoto,
@@ -195,26 +195,6 @@ function NotSubmittedYet() {
       style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.muted }}>
       Not submitted yet
     </div>
-  )
-}
-
-/** One section's standing in the strip under the header. Clicking opens its tab. */
-function StatusChip({ sec, onClick }: {
-  sec: { chip: string; state: SectionState }
-  onClick: () => void
-}) {
-  const tone = sec.state === 'done'
-    ? { color: S.green, border: 'rgba(22,163,74,0.32)', bg: 'rgba(22,163,74,0.08)' }
-    : sec.state === 'waiting'
-      ? { color: S.gold, border: 'rgba(217,164,65,0.36)', bg: 'rgba(217,164,65,0.09)' }
-      : { color: S.muted, border: S.border, bg: 'transparent' }
-  return (
-    <button onClick={onClick}
-      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold whitespace-nowrap"
-      style={{ color: tone.color, border: `1px solid ${tone.border}`, background: tone.bg }}>
-      {sec.state === 'done' && <Check size={11} />}
-      {sec.chip}
-    </button>
   )
 }
 
@@ -1010,7 +990,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const officeSections = sections.filter(x => x.owner === 'office')
   const sharedSections = sections.filter(x => x.owner === 'shared')
   const siteSections   = sections.filter(x => x.owner === 'site')
-  const yourChips      = [...officeSections, ...sharedSections]
 
   // Finish job checklist — same source as the strip, spelled out for the modal
   const checklist = [
@@ -1020,16 +999,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     { label: 'Client signature',  done: isSignedOff,          tab: 'signature' as Tab, owner: 'site'   as const },
   ]
   const checklistDoneCount = checklist.filter(c => c.done).length
-
-  const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
-    { key: 'details',   label: 'Details',   icon: Briefcase   },
-    { key: 'report',    label: 'Report',    icon: FileText    },
-    { key: 'materials', label: 'Materials', icon: ShoppingCart },
-    { key: 'job_sheet', label: `Job Sheet${materials.length > 0 ? ` (${materials.length})` : ''}`, icon: ReceiptText },
-    { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`,          icon: ImageIcon  },
-    { key: 'signature', label: 'Signature', icon: Pen         },
-    { key: 'coc',       label: 'COC',       icon: FileCheck   },
-  ]
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1053,6 +1022,22 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
               style={{ background: S.green }}>
               <Check size={13} /> Mark Complete
+            </button>
+          )}
+          {/* Finish Job — the close-out checklist. Its modal had no trigger at all
+              before, so the step was unreachable. */}
+          {canFinish && (
+            <button onClick={() => setShowFinishFlow(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ border: `1px solid ${S.border}`, color: S.text, background: S.card }}>
+              <ClipboardCheck size={13} />
+              Finish
+              {checklistDoneCount < checklist.length && (
+                <span className="ml-0.5 px-1.5 rounded-full text-[10px] font-bold"
+                  style={{ background: 'rgba(217,164,65,0.16)', color: S.gold }}>
+                  {checklist.length - checklistDoneCount}
+                </span>
+              )}
             </button>
           )}
           {/* Download — the most-used action, so not buried in the overflow */}
@@ -1249,23 +1234,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap"
             style={{ background: S.gold }}>
             Assign to {suggestedStaff.name.split(' ')[0]}
-          </button>
-        </div>
-      )}
-
-      {/* ── Where the card stands — what you owe it vs what site owes it ──── */}
-      {canFinish && (
-        <div className="mb-4 rounded-2xl px-4 py-3 flex items-center gap-x-3 gap-y-2 flex-wrap"
-          style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.muted }}>Yours</span>
-          {yourChips.map(sec => <StatusChip key={sec.key} sec={sec} onClick={() => setTab(sec.key)} />)}
-          <span className="w-px h-5 mx-1 hidden sm:block" style={{ background: S.border }} />
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.muted }}>From site</span>
-          {siteSections.map(sec => <StatusChip key={sec.key} sec={sec} onClick={() => setTab(sec.key)} />)}
-          <button onClick={() => setShowFinishFlow(true)}
-            className="sm:ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
-            style={{ background: S.accent }}>
-            <ClipboardCheck size={13} /> Finish Job
           </button>
         </div>
       )}
