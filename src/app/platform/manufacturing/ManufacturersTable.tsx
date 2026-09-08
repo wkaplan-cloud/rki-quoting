@@ -7,6 +7,7 @@ import {
   Edit2, Receipt, BadgeCheck, FileText, ExternalLink,
 } from 'lucide-react'
 import { useNow } from '@/lib/useNow'
+import { PortalTrialNudgeButton } from '../_components/PortalTrialNudgeButton'
 
 const PLAN_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   starter:      { label: 'Starter',      color: 'text-[#0F766E]',    bg: 'bg-teal-50'    },
@@ -48,6 +49,7 @@ export interface ManufacturerRow {
   plan: string | null
   subscription_status: string | null
   trial_ends_at: string | null
+  trial_nudge_sent_at: string | null
   setup_fee_paid: boolean
   created_at: string
   quoteCount: number
@@ -406,9 +408,17 @@ export function ManufacturersTable({ rows: initialRows }: { rows: ManufacturerRo
                 )}
               </div>
 
-              {/* Joined + activate + delete */}
+              {/* Joined + nudge + activate + delete */}
               <div className="text-right space-y-1">
                 <p className="text-[#6E6B63] text-[10px]">{fmtDate(a.created_at)}</p>
+                {a.subscription_status === 'trialing' && (
+                  <PortalTrialNudgeButton
+                    accountId={a.id}
+                    expired={!!isTrialExpired}
+                    lastNudgedAt={a.trial_nudge_sent_at}
+                    className="ml-auto"
+                  />
+                )}
                 {activating === a.id ? (
                   <span className="text-[10px] text-[#6E6B63] flex items-center gap-1 justify-end"><Loader2 size={9} className="animate-spin" /> …</span>
                 ) : a.subscription_status !== 'active' ? (

@@ -4,6 +4,7 @@ import { Store, Globe, Phone, MapPin, BarChart3 } from 'lucide-react'
 import { PortalAccountLinker } from './PortalAccountLinker'
 import { SupplierCategoryBadge } from './SupplierCategoryBadge'
 import { InviteProductSupplier } from './InviteProductSupplier'
+import { PortalTrialNudgeButton } from '../_components/PortalTrialNudgeButton'
 import { one, type Embedded } from '@/lib/supabase/embed'
 
 function fmtDate(iso: string) {
@@ -29,12 +30,13 @@ interface SupplierAccountRow {
   plan: string | null
   subscription_status: string | null
   trial_ends_at: string | null
+  trial_nudge_sent_at: string | null
 }
 
 export default async function PlatformSuppliersPage() {
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category, plan_category, plan, subscription_status, trial_ends_at')
+    .select('id, email, company_name, contact_name, phone, website, address, categories, description, created_at, linked_portal_account_id, supplier_category, plan_category, plan, subscription_status, trial_ends_at, trial_nudge_sent_at')
     .order('created_at', { ascending: false })
 
   const rows = (accounts ?? []) as SupplierAccountRow[]
@@ -290,14 +292,22 @@ export default async function PlatformSuppliersPage() {
                           }
                           if (status === 'trialing' && trialEnd) {
                             const daysLeft = Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000))
-                            if (daysLeft > 0) {
-                              return (
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#7E6036]/10 text-[#7E6036]">
-                                  Trial · {daysLeft}d left
-                                </span>
-                              )
-                            }
-                            return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-[#B91C1C]">Trial expired</span>
+                            return (
+                              <div className="flex flex-col items-start gap-1">
+                                {daysLeft > 0 ? (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#7E6036]/10 text-[#7E6036]">
+                                    Trial &middot; {daysLeft}d left
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-[#B91C1C]">Trial expired</span>
+                                )}
+                                <PortalTrialNudgeButton
+                                  accountId={row.id}
+                                  expired={daysLeft === 0}
+                                  lastNudgedAt={row.trial_nudge_sent_at}
+                                />
+                              </div>
+                            )
                           }
                           if (status === 'cancelled') {
                             return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#EFEBE3] text-[#6E6B63]">Cancelled</span>

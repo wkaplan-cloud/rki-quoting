@@ -11,7 +11,7 @@ export default async function ElectriciansPage() {
   // All trades-category portal accounts
   const { data: accounts } = await supabaseAdmin
     .from('supplier_portal_accounts')
-    .select('id, email, company_name, contact_name, phone, plan, subscription_status, trial_ends_at, setup_fee_paid, created_at')
+    .select('id, email, company_name, contact_name, phone, plan, subscription_status, trial_ends_at, trial_nudge_sent_at, setup_fee_paid, created_at')
     .eq('supplier_category', 'trades')
     .order('created_at', { ascending: false })
 
@@ -64,6 +64,7 @@ export default async function ElectriciansPage() {
     plan: a.plan,
     subscription_status: a.subscription_status,
     trial_ends_at: a.trial_ends_at,
+    trial_nudge_sent_at: a.trial_nudge_sent_at,
     setup_fee_paid: (a as Record<string, unknown>).setup_fee_paid === true,
     created_at: a.created_at,
     quoteCount: quotesByAccount[a.id] ?? 0,
