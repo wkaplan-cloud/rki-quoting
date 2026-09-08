@@ -92,7 +92,7 @@ export function calcHourBreakdown(clockIn: Date, clockOut: Date): HourBreakdown 
   return { normalMs, overtimeMs: totalMs - normalMs, totalMs }
 }
 
-interface MinimalPunch { punch_type: string; punched_at: string }
+interface MinimalPunch { punch_type: string; punched_at: string; job_id?: string | null }
 
 // SAST is always UTC+2 (no DST). 17:00 SAST = 15:00 UTC.
 export function get5pmSASTCutoff(clockIn: Date): Date {
@@ -100,31 +100,72 @@ export function get5pmSASTCutoff(clockIn: Date): Date {
   return new Date(Date.UTC(sa.getFullYear(), sa.getMonth(), sa.getDate(), 15, 0, 0, 0))
 }
 
+/**
+ * Hours actually worked in one day, from that day's punches.
+ *
+ * A person has two kinds of punch running at once: the working day (no job_id)
+ * and the job they are on (job_id set). This used to pair the nth clock_in with
+ * the nth clock_out across the lot, ignoring job_id — so clocking onto a job
+ * inside a shift paired the job's start against the day's end, and the same
+ * hours were counted twice. Pairing is now done per job, the resulting spans
+ * are merged, and overlapping time counts once.
+ *
+ * The normal/overtime split is also applied to the day, not to each span. The
+ * old code gave every pair its own nine-hour normal allowance, so a day split
+ * across two jobs could book eighteen normal hours with no overtime.
+ */
 export function punchesToBreakdown(punches: MinimalPunch[], now = new Date()): HourBreakdown {
   const sorted = [...punches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-  const ins  = sorted.filter(p => p.punch_type === 'clock_in')
-  const outs = sorted.filter(p => p.punch_type === 'clock_out')
-  let normalMs = 0, overtimeMs = 0, totalMs = 0
-  ins.forEach((inP, idx) => {
-    const outP = outs[idx]
-    let clockOut: Date
-    if (outP) {
-      clockOut = new Date(outP.punched_at)
-    } else {
-      // No clock_out yet: cap at 5pm SAST only if clocked in before 5pm
-      // (after-hours clock-ins must not be capped — cutoff is already in the past)
-      const cutoff = get5pmSASTCutoff(new Date(inP.punched_at))
-      const clockInMs = new Date(inP.punched_at).getTime()
-      if (clockInMs < cutoff.getTime()) {
-        clockOut = now < cutoff ? now : cutoff
-      } else {
-        clockOut = now
+  if (sorted.length === 0) return { normalMs: 0, overtimeMs: 0, totalMs: 0 }
+
+  // Pair within each timeline: the working day and each job are separate.
+  const byJob = new Map<string, MinimalPunch[]>()
+  for (const p of sorted) {
+    const k = p.job_id ?? ''
+    const list = byJob.get(k)
+    if (list) list.push(p); else byJob.set(k, [p])
+  }
+
+  const spans: [number, number][] = []
+  for (const list of byJob.values()) {
+    let openAt: number | null = null
+    for (const p of list) {
+      if (p.punch_type === 'clock_in') {
+        if (openAt === null) openAt = Date.parse(p.punched_at)
+      } else if (openAt !== null) {
+        spans.push([openAt, Date.parse(p.punched_at)])
+        openAt = null
       }
     }
-    const b = calcHourBreakdown(new Date(inP.punched_at), clockOut)
-    normalMs   += b.normalMs
-    overtimeMs += b.overtimeMs
-    totalMs    += b.totalMs
-  })
-  return { normalMs, overtimeMs, totalMs }
+    if (openAt !== null) {
+      // Still open. Cap at 5pm SAST when clocked in before 5pm. An after-hours
+      // clock-in is past that cutoff, so it runs to the end of its own SAST day
+      // instead — never to "now", which on a June record would book thousands
+      // of hours against a single shift.
+      const cutoff = get5pmSASTCutoff(new Date(openAt)).getTime()
+      const bound = openAt < cutoff ? cutoff : cutoff + 7 * 3_600_000  // midnight SAST
+      spans.push([openAt, Math.max(openAt, Math.min(now.getTime(), bound))])
+    }
+  }
+
+  // Merge overlapping spans so time on a job inside a shift is counted once.
+  spans.sort((a, b) => a[0] - b[0])
+  let totalMs = 0
+  let cur: [number, number] | null = null
+  for (const sp of spans) {
+    if (!cur) { cur = [sp[0], sp[1]]; continue }
+    if (sp[0] <= cur[1]) cur[1] = Math.max(cur[1], sp[1])
+    else { totalMs += cur[1] - cur[0]; cur = [sp[0], sp[1]] }
+  }
+  if (cur) totalMs += cur[1] - cur[0]
+
+  // One normal/overtime split for the whole day, taken from when it started.
+  const dayStart = new Date(sorted[0].punched_at)
+  const sa = toSALocal(dayStart)
+  const dow = sa.getDay()
+  if (dow === 0 || dow === 6 || isSAPublicHoliday(dayStart)) {
+    return { normalMs: 0, overtimeMs: totalMs, totalMs }
+  }
+  const normalMs = Math.min(totalMs, NORMAL_DAILY_MS)
+  return { normalMs, overtimeMs: totalMs - normalMs, totalMs }
 }

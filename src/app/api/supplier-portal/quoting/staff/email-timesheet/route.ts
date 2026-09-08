@@ -58,6 +58,9 @@ export async function POST(req: NextRequest) {
         punches: (byStaff[s.id] ?? []).map(p => ({
           punch_type: p.punch_type,
           punched_at: p.punched_at,
+          // Needed to pair a session against its own timeline — without it the
+          // report counts a job clocked inside a shift as extra hours.
+          job_id: p.job_id,
           job: p.job && !Array.isArray(p.job) ? p.job as { job_number: string; title: string } : null,
         })),
       }))
