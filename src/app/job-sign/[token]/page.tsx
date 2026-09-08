@@ -9,6 +9,18 @@ const S = {
   danger: '#DC2626', green: '#16A34A',
 }
 
+interface JobPricing {
+  lines: { id: string; description: string; qty: number; unitPrice: number | null; amount: number | null }[]
+  calloutFee: number
+  labourHours: number | null
+  labourRate: number | null
+  labourCharge: number
+  subtotal: number
+  vatRate: number
+  vat: number
+  total: number
+}
+
 interface JobInfo {
   jobNumber: string
   title: string
@@ -18,6 +30,12 @@ interface JobInfo {
   alreadySigned: boolean
   companyName: string
   logoUrl: string | null
+  /** Null when the card carries no charges — then nothing priced is shown. */
+  pricing: JobPricing | null
+}
+
+function fmtR(n: number) {
+  return 'R\u00A0' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function SignPage() {
@@ -207,10 +225,82 @@ function SignPage() {
               )}
             </div>
 
+            {/* What it comes to — the client is signing off on this price */}
+            {job.pricing && (
+              <div className="rounded-2xl overflow-hidden" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+                <div className="px-4 py-3" style={{ borderBottom: `1px solid ${S.border}`, background: S.bg }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted }}>Materials &amp; Charges</p>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" style={{ borderCollapse: 'collapse', minWidth: 320 }}>
+                    <thead>
+                      <tr>
+                        <th className="text-left font-semibold px-4 py-2 text-[10px] uppercase tracking-wider" style={{ color: S.muted }}>Description</th>
+                        <th className="text-right font-semibold px-2 py-2 text-[10px] uppercase tracking-wider" style={{ color: S.muted }}>Qty</th>
+                        <th className="text-right font-semibold px-2 py-2 text-[10px] uppercase tracking-wider whitespace-nowrap" style={{ color: S.muted }}>Unit Price</th>
+                        <th className="text-right font-semibold px-4 py-2 text-[10px] uppercase tracking-wider" style={{ color: S.muted }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {job.pricing.calloutFee > 0 && (
+                        <tr style={{ borderTop: `1px solid ${S.border}` }}>
+                          <td className="px-4 py-2.5" style={{ color: S.text }}>Call-out Fee</td>
+                          <td className="px-2 py-2.5 text-right tabular-nums" style={{ color: S.muted }}>1</td>
+                          <td className="px-2 py-2.5 text-right tabular-nums whitespace-nowrap" style={{ color: S.muted }}>{fmtR(job.pricing.calloutFee)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap" style={{ color: S.text }}>{fmtR(job.pricing.calloutFee)}</td>
+                        </tr>
+                      )}
+                      {job.pricing.labourCharge > 0 && (
+                        <tr style={{ borderTop: `1px solid ${S.border}` }}>
+                          <td className="px-4 py-2.5" style={{ color: S.text }}>
+                            Labour
+                            {job.pricing.labourHours != null && job.pricing.labourRate != null && (
+                              <span style={{ color: S.muted }}> ({job.pricing.labourHours}h × {fmtR(job.pricing.labourRate)}/hr)</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-2.5 text-right tabular-nums" style={{ color: S.muted }}>{job.pricing.labourHours ?? 1}</td>
+                          <td className="px-2 py-2.5 text-right tabular-nums whitespace-nowrap" style={{ color: S.muted }}>{job.pricing.labourRate != null ? fmtR(job.pricing.labourRate) : '—'}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap" style={{ color: S.text }}>{fmtR(job.pricing.labourCharge)}</td>
+                        </tr>
+                      )}
+                      {job.pricing.lines.map(l => (
+                        <tr key={l.id} style={{ borderTop: `1px solid ${S.border}` }}>
+                          <td className="px-4 py-2.5" style={{ color: S.text }}>{l.description}</td>
+                          <td className="px-2 py-2.5 text-right tabular-nums" style={{ color: S.muted }}>{l.qty}</td>
+                          <td className="px-2 py-2.5 text-right tabular-nums whitespace-nowrap" style={{ color: S.muted }}>{l.unitPrice != null ? fmtR(l.unitPrice) : '—'}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums whitespace-nowrap" style={{ color: S.text }}>{l.amount != null ? fmtR(l.amount) : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="px-4 py-3 space-y-1" style={{ borderTop: `1px solid ${S.border}`, background: S.bg }}>
+                  <div className="flex items-center justify-between text-xs" style={{ color: S.muted }}>
+                    <span>Subtotal (excl. VAT)</span>
+                    <span className="tabular-nums whitespace-nowrap">{fmtR(job.pricing.subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs" style={{ color: S.muted }}>
+                    <span>VAT ({job.pricing.vatRate}%)</span>
+                    <span className="tabular-nums whitespace-nowrap">{fmtR(job.pricing.vat)}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1.5" style={{ borderTop: `1px solid ${S.border}` }}>
+                    <span className="text-sm font-bold" style={{ color: S.text }}>Total (incl. VAT)</span>
+                    <span className="text-sm font-bold tabular-nums whitespace-nowrap" style={{ color: S.text }}>{fmtR(job.pricing.total)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Signature area */}
             <div className="rounded-2xl p-4 space-y-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <p className="text-sm font-semibold" style={{ color: S.text }}>Your signature</p>
-              <p className="text-xs" style={{ color: S.muted }}>By signing below you confirm the work described above has been completed to your satisfaction.</p>
+              <p className="text-xs" style={{ color: S.muted }}>
+                {job.pricing
+                  ? 'By signing below you approve the work described above and the amount shown.'
+                  : 'By signing below you confirm the work described above has been completed to your satisfaction.'}
+              </p>
 
               <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${S.border}`, background: '#FAFAFA' }}>
                 <canvas ref={canvasRef} width={600} height={200} className="w-full"

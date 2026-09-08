@@ -9,17 +9,45 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
     const { data: card } = await supabaseAdmin
       .from('elec_job_cards')
-      .select('id, job_number, title, work_found, work_done, resolution, client_signature_url, portal_account_id')
+      .select('id, job_number, title, work_found, work_done, resolution, client_signature_url, portal_account_id, callout_fee, labour_hours, labour_rate')
       .eq('share_token', token)
       .maybeSingle()
 
     if (!card) return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 })
 
-    const { data: account } = await supabaseAdmin
-      .from('supplier_portal_accounts')
-      .select('company_name, logo_url')
-      .eq('id', card.portal_account_id)
-      .maybeSingle()
+    // The client is signing off on a price, so the price belongs on the page —
+    // sell rates only. Cost and markup never leave the portal.
+    const [{ data: account }, { data: materials }, { data: settings }] = await Promise.all([
+      supabaseAdmin
+        .from('supplier_portal_accounts')
+        .select('company_name, logo_url')
+        .eq('id', card.portal_account_id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('elec_job_card_materials')
+        .select('id, description, qty, unit_price')
+        .eq('job_card_id', card.id)
+        .order('created_at'),
+      supabaseAdmin
+        .from('elec_settings')
+        .select('default_vat_rate')
+        .eq('portal_account_id', card.portal_account_id)
+        .maybeSingle(),
+    ])
+
+    const lines = (materials ?? []).map(m => ({
+      id: m.id,
+      description: m.description,
+      qty: m.qty,
+      unitPrice: m.unit_price,
+      amount: m.unit_price != null ? m.qty * m.unit_price : null,
+    }))
+    const calloutFee = card.callout_fee ?? 0
+    const labourCharge = (card.labour_hours ?? 0) * (card.labour_rate ?? 0)
+    const materialsSubtotal = lines.reduce((acc, l) => acc + (l.amount ?? 0), 0)
+    const subtotal = calloutFee + labourCharge + materialsSubtotal
+    const vatRate = settings?.default_vat_rate ?? 15
+    const vat = subtotal * vatRate / 100
 
     return NextResponse.json({
       jobNumber: card.job_number,
@@ -30,6 +58,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       alreadySigned: !!card.client_signature_url,
       companyName: account?.company_name ?? '',
       logoUrl: account?.logo_url ?? null,
+      pricing: subtotal > 0 ? {
+        lines,
+        calloutFee,
+        labourHours: card.labour_hours,
+        labourRate: card.labour_rate,
+        labourCharge,
+        subtotal,
+        vatRate,
+        vat,
+        total: subtotal + vat,
+      } : null,
     })
   } catch (e) { return apiError(e) }
 }

@@ -1672,7 +1672,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   <div className="grid px-5 items-center"
                     style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 132px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
                     {isEditing ? (
-                      <input value={editingMat.desc} autoFocus
+                      <input value={editingMat.desc} autoFocus aria-label="Description"
                         onClick={e => e.stopPropagation()}
                         onChange={e => editMat(p => ({ ...p, desc: e.target.value }))}
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none"
@@ -1681,7 +1681,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       <span className="text-sm font-medium truncate group-hover:text-[#3A7CA5]" style={{ color: S.text }}>{m.description}</span>
                     )}
                     {isEditing ? (
-                      <input type="number" value={editingMat.qty} min="0.01" step="0.01"
+                      <input type="number" value={editingMat.qty} min="0.01" step="0.01" aria-label="Quantity"
                         onClick={e => e.stopPropagation()}
                         onChange={e => editMat(p => ({ ...p, qty: e.target.value }))}
                         className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
@@ -1690,7 +1690,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       <span className="text-sm text-center tabular-nums font-mono whitespace-nowrap" style={{ color: S.muted }}>{m.qty}</span>
                     )}
                     {isEditing ? (
-                      <input type="number" value={editingMat.cost} min="0" step="0.01" placeholder="0"
+                      <input type="number" value={editingMat.cost} min="0" step="0.01" aria-label="Cost price"
                         onClick={e => e.stopPropagation()}
                         onChange={e => {
                           const cost = e.target.value
@@ -1703,7 +1703,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       <span className="text-sm text-right tabular-nums font-mono whitespace-nowrap" style={{ color: S.muted }}>{m.cost_price != null ? fmtR(m.cost_price) : '—'}</span>
                     )}
                     {isEditing ? (
-                      <input type="number" value={editingMat.markup} min="0" step="0.1" placeholder="0"
+                      <input type="number" value={editingMat.markup} min="0" step="0.1" aria-label="Markup percent"
                         onClick={e => e.stopPropagation()}
                         onChange={e => {
                           const markup = e.target.value
@@ -1718,7 +1718,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       </span>
                     )}
                     {isEditing ? (
-                      <input type="number" value={editingMat.price} min="0" step="0.01" placeholder="0"
+                      <input type="number" value={editingMat.price} min="0" step="0.01" aria-label="Rate"
                         onClick={e => e.stopPropagation()}
                         onChange={e => {
                           const price = e.target.value
@@ -1771,17 +1771,15 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                   }}>
                   <div className="grid px-5 items-center"
                     style={{ gridTemplateColumns: 'minmax(0,1fr) 58px 108px 74px 108px 132px', gap: '8px', paddingTop: 10, paddingBottom: 10, paddingRight: 76 }}>
-                    <input value={newMat.desc} autoFocus
+                    <input value={newMat.desc} autoFocus aria-label="Description"
                       onChange={e => setNewMat(p => p ? { ...p, desc: e.target.value } : p)}
-                      placeholder="Description"
                       className="w-full px-2 py-1 rounded-lg text-sm outline-none"
                       style={{ border: `1px solid ${S.green}`, color: S.text, background: '#fff' }} />
-                    <input type="number" value={newMat.qty} min="0.01" step="0.01"
+                    <input type="number" value={newMat.qty} min="0.01" step="0.01" aria-label="Quantity"
                       onChange={e => setNewMat(p => p ? { ...p, qty: e.target.value } : p)}
-                      placeholder="1"
                       className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                       style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
-                    <input type="number" value={newMat.cost} min="0" step="0.01" placeholder="0"
+                    <input type="number" value={newMat.cost} min="0" step="0.01" aria-label="Cost price"
                       onChange={e => {
                         const cost = e.target.value
                         const sell = newMat.markup ? computeSell(cost, newMat.markup) : newMat.price
@@ -1789,7 +1787,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       }}
                       className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                       style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
-                    <input type="number" value={newMat.markup} min="0" step="0.1" placeholder="0"
+                    <input type="number" value={newMat.markup} min="0" step="0.1" aria-label="Markup percent"
                       onChange={e => {
                         const markup = e.target.value
                         const sell = newMat.cost ? computeSell(newMat.cost, markup) : newMat.price
@@ -1797,7 +1795,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       }}
                       className="w-full px-2 py-1 rounded-lg text-sm outline-none text-right"
                       style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
-                    <input type="number" value={newMat.price} min="0" step="0.01" placeholder="0"
+                    <input type="number" value={newMat.price} min="0" step="0.01" aria-label="Rate"
                       onChange={e => {
                         const price = e.target.value
                         const markup = newMat.cost ? computeMarkup(newMat.cost, price) : newMat.markup
@@ -1809,13 +1807,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       {addTotal > 0 ? fmtR(addTotal) : '—'}
                     </span>
                   </div>
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center pr-1">
-                    {matSaving
-                      ? <Loader2 size={12} className="animate-spin" style={{ color: S.muted }} />
-                      : <span className="text-[10px]" style={{ color: S.muted }}>
-                          {newMat.desc.trim() ? 'Saves when you click away' : 'Describe the item'}
-                        </span>}
-                  </div>
+                  {matSaving && (
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center pr-6">
+                      <Loader2 size={12} className="animate-spin" style={{ color: S.muted }} />
+                    </div>
+                  )}
+                  {!matSaving && (
+                    <p className="text-[11px] px-5 pb-2 -mt-1" style={{ color: S.muted }}>
+                      {newMat.desc.trim() ? 'Saves when you click away' : 'Describe the item to save this line'}
+                    </p>
+                  )}
                 </div>
               )
             })()}
