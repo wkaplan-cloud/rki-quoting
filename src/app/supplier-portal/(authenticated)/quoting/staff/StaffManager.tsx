@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Loader2, UserCircle2, Phone, Power, Clock, MapPin, LogIn, LogOut, Copy, CheckCircle2, KeyRound, Briefcase, Printer, Mail, Send, ChevronDown, Smartphone, Download, MessageCircle } from 'lucide-react'
 import type { ElecStaff, ElecStaffRole, ElecTimePunch } from '@/lib/elec-types'
 import { reverseGeocode } from '@/lib/reverse-geocode'
-import { calcHourBreakdown, punchesToBreakdown, punchesToBreakdownRange, type HourBreakdown } from '@/lib/sa-overtime'
+import { punchesToBreakdown, punchesToBreakdownRange, buildDaySessions, saDateKey, type HourBreakdown } from '@/lib/sa-overtime'
 
 const S = {
   bg: '#F0F2F5', card: '#FFFFFF', accent: '#3A7CA5', gold: '#D9A441',
@@ -123,32 +123,29 @@ function printWeek(
     const member = staffMap[staffId]
     if (!member) continue
 
-    // Group by UTC date, then greedy-match within each day to avoid cross-day mispairing
+    // Sessions and hours come from the shared payroll calculation — this used
+    // to greedy-match every clock_in against the next clock_out regardless of
+    // job, which counted a job clocked inside a shift as extra hours and gave
+    // each pair its own nine-hour normal allowance.
     const pByDay: Record<string, ElecTimePunch[]> = {}
     for (const p of staffPunches) {
-      const d = p.punched_at.slice(0, 10)
+      const d = saDateKey(p.punched_at)
       if (!pByDay[d]) pByDay[d] = []
       pByDay[d].push(p)
     }
 
     let totalMs = 0
-    const sessions: { in: ElecTimePunch; out: ElecTimePunch | null; durMs: number | null }[] = []
+    const sessions: { in: ElecTimePunch; out: ElecTimePunch | null; normalMs: number; overtimeMs: number; countedMs: number }[] = []
     for (const dayKey of Object.keys(pByDay).sort()) {
-      const daySorted = [...pByDay[dayKey]].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-      const dayIns  = daySorted.filter(p => p.punch_type === 'clock_in')
-      const dayOuts = daySorted.filter(p => p.punch_type === 'clock_out')
-      let outIdx = 0
-      for (const inP of dayIns) {
-        const clockInMs = new Date(inP.punched_at).getTime()
-        while (outIdx < dayOuts.length && new Date(dayOuts[outIdx].punched_at).getTime() <= clockInMs) outIdx++
-        if (outIdx < dayOuts.length) {
-          const outP = dayOuts[outIdx++]
-          const durMs = new Date(outP.punched_at).getTime() - clockInMs
-          totalMs += durMs
-          sessions.push({ in: inP, out: outP, durMs })
-        } else {
-          sessions.push({ in: inP, out: null, durMs: null })
-        }
+      for (const ses of buildDaySessions(pByDay[dayKey])) {
+        sessions.push({
+          in: ses.in as ElecTimePunch,
+          out: ses.out as ElecTimePunch | null,
+          normalMs: ses.normalMs,
+          overtimeMs: ses.overtimeMs,
+          countedMs: ses.countedMs,
+        })
+        totalMs += ses.countedMs
       }
     }
 
@@ -162,14 +159,13 @@ function printWeek(
       const inDate  = new Date(ses.in.punched_at)
       const outDate = ses.out ? new Date(ses.out.punched_at) : null
       let normalStr = '—', otStr = '—', durStr = '<span class="open">On site</span>'
-      if (ses.durMs != null && outDate) {
-        const b = calcHourBreakdown(inDate, outDate)
-        totalNormalMs += b.normalMs
-        totalOtMs += b.overtimeMs
+      if (outDate) {
+        totalNormalMs += ses.normalMs
+        totalOtMs += ses.overtimeMs
         const fmtMs = (ms: number) => { const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); return `${h}h ${m}m` }
-        normalStr = fmtMs(b.normalMs)
-        otStr     = b.overtimeMs > 0 ? fmtMs(b.overtimeMs) : '—'
-        durStr    = `<b>${fmtMs(b.totalMs)}</b>`
+        normalStr = fmtMs(ses.normalMs)
+        otStr     = ses.overtimeMs > 0 ? fmtMs(ses.overtimeMs) : '—'
+        durStr    = `<b>${fmtMs(ses.countedMs)}</b>`
       }
       const job    = ses.in.job && !Array.isArray(ses.in.job) ? ses.in.job : null
       const inGps  = gpsCell(ses.in, geoAddresses)
@@ -910,7 +906,6 @@ export function StaffManager({ initialStaff, punches }: Props) {
               {Object.entries(dayMap[day]).map(([staffId, staffPunches]) => {
                 const member = staffMap[staffId]
                 const ins = staffPunches.filter(p => p.punch_type === 'clock_in').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
-                const outs = staffPunches.filter(p => p.punch_type === 'clock_out').sort((a, b) => a.punched_at.localeCompare(b.punched_at))
                 const firstIn = ins[0]
                 const allSortedDay = [...staffPunches].sort((a, b) => a.punched_at.localeCompare(b.punched_at))
                 const isOnSite = allSortedDay[allSortedDay.length - 1]?.punch_type === 'clock_in'

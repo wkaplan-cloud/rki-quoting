@@ -415,8 +415,6 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   const days = Object.entries(dayMap).sort((a, b) => b[0].localeCompare(a[0]))
   const today = new Date().toISOString().slice(0, 10)
   const todayPunches = dayMap[today] ?? []
-  const todayIns  = todayPunches.filter(p => p.punch_type === 'clock_in')
-  const todayOuts = todayPunches.filter(p => p.punch_type === 'clock_out')
 
   const clockBusy = clockStatus === 'locating' || clockStatus === 'punching'
 
