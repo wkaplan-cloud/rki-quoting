@@ -1032,6 +1032,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             style={{ border: `1px solid ${S.border}`, color: S.text, background: S.card }}>
             {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} PDF
           </button>
+          <button onClick={() => handlePrint()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+            style={{ border: `1px solid ${S.border}`, color: S.text, background: S.card }}>
+            <Printer size={13} /> Print
+          </button>
           {/* Send */}
           <button onClick={() => { setSendEmail(clientSendEnabled ? (card.client_email ?? card.client?.email ?? '') : (officeEmail ?? '')); setSendMethod(isApproved && !card.amended_at ? 'pdf' : 'link'); setShowSend(true) }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
@@ -1050,11 +1055,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 <div className="fixed inset-0 z-10" onClick={() => setShowMoreMenu(false)} />
                 <div className="absolute right-0 top-full mt-1 z-20 rounded-xl shadow-lg py-1 min-w-[160px]"
                   style={{ background: S.card, border: `1px solid ${S.border}` }}>
-                  <button onClick={() => { setShowMoreMenu(false); handlePrint() }}
-                    className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
-                    style={{ color: S.text }}>
-                    <Printer size={14} /> Print
-                  </button>
                   {sageConnected && (
                     <button onClick={() => { setShowMoreMenu(false); void openSagePush() }}
                       className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2"
@@ -1062,7 +1062,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       <Upload size={14} /> Push to Sage
                     </button>
                   )}
-                  <div style={{ borderTop: `1px solid ${S.border}`, margin: '4px 0' }} />
+                  {sageConnected && <div style={{ borderTop: `1px solid ${S.border}`, margin: '4px 0' }} />}
                   <button onClick={() => { setShowMoreMenu(false); void handleDelete() }} disabled={deleting}
                     className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 disabled:opacity-50"
                     style={{ color: S.danger }}>

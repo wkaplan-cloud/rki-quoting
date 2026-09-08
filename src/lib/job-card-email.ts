@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { renderPdfToBuffer } from '@/lib/pdf/render'
 import { JobCardPDF } from '@/lib/pdf/JobCardPDF'
 import { fetchLogoBase64 } from '@/lib/pdf/fetchLogoBase64'
+import { jobCardTotals } from '@/lib/job-card-totals'
 import type { ElecJobCard, ElecSettings } from '@/lib/elec-types'
 
 /**
@@ -198,12 +199,10 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
     }
   }
 
-  const cardMaterials: { qty: number; unit_price: number | null }[] = card.materials ?? []
-  const totalExclVat = cardMaterials.reduce((s: number, m: { qty: number; unit_price: number | null }) =>
-    s + m.qty * (m.unit_price ?? 0), 0
-  )
+  // Same arithmetic the PDF prints — call-out fee and labour included, not
+  // materials alone.
   const vatRate = (settings as ElecSettings | null)?.default_vat_rate ?? 15
-  const totalInclVat = totalExclVat * (1 + vatRate / 100)
+  const { total: totalInclVat } = jobCardTotals(card, vatRate)
 
   const label = asInvoice ? 'Invoice' : 'Job Card'
   const subject = `${subjectPrefix}${asInvoice
@@ -262,7 +261,7 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
   </td></tr>
 </table>
 </body></html>`,
-    text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${asInvoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${asInvoice ? '' : completedLine + '\n\n'}${message ? message + '\n\n' : ''}${signUrl ? `Review and approve online: ${signUrl}\n\n` : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
+    text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${!hideItems && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${asInvoice ? '' : completedLine + '\n\n'}${message ? message + '\n\n' : ''}${signUrl ? `Review and approve online: ${signUrl}\n\n` : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
   })
 
   return { ok: true, cc: ccEmails, subject }

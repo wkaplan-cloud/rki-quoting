@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
+import { jobCardTotals } from '@/lib/job-card-totals'
 import type { ElecJobCard, ElecSettings } from '@/lib/elec-types'
 
 const ACCENT = '#3A7CA5'
@@ -118,13 +119,9 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
   // not site photos — the reference image prints with the work description.
   const photos = (jobCard.photos ?? []).filter(p =>
     p.url !== jobCard.client_signature_url && p.url !== jobCard.work_description_image_url)
-  const materialsSubtotal = materials.reduce((acc, m) => acc + m.qty * (m.unit_price ?? 0), 0)
-  const labourCharge = (jobCard.labour_hours ?? 0) * (jobCard.labour_rate ?? 0)
-  const calloutFee = jobCard.callout_fee ?? 0
-  const totalExclVat = calloutFee + labourCharge + materialsSubtotal
-  const vatRate = settings?.default_vat_rate ?? 15
-  const vatAmt = totalExclVat * vatRate / 100
-  const totalInclVat = totalExclVat + vatAmt
+  const {
+    calloutFee, labourCharge, subtotal: totalExclVat, vatRate, vat: vatAmt, total: totalInclVat,
+  } = jobCardTotals(jobCard, settings?.default_vat_rate ?? 15)
   const hasCharges = calloutFee > 0 || labourCharge > 0
 
   return (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { apiError } from '@/lib/api-error'
 import { notifyJobCardSigned } from '@/lib/notify-job-card-signed'
+import { jobCardTotals } from '@/lib/job-card-totals'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
@@ -42,12 +43,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
       unitPrice: m.unit_price,
       amount: m.unit_price != null ? m.qty * m.unit_price : null,
     }))
-    const calloutFee = card.callout_fee ?? 0
-    const labourCharge = (card.labour_hours ?? 0) * (card.labour_rate ?? 0)
-    const materialsSubtotal = lines.reduce((acc, l) => acc + (l.amount ?? 0), 0)
-    const subtotal = calloutFee + labourCharge + materialsSubtotal
-    const vatRate = settings?.default_vat_rate ?? 15
-    const vat = subtotal * vatRate / 100
+    const { calloutFee, labourCharge, subtotal, vatRate, vat, total } =
+      jobCardTotals({ ...card, materials: materials ?? [] }, settings?.default_vat_rate ?? 15)
 
     return NextResponse.json({
       jobNumber: card.job_number,
@@ -67,7 +64,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
         subtotal,
         vatRate,
         vat,
-        total: subtotal + vat,
+        total,
       } : null,
     })
   } catch (e) { return apiError(e) }
