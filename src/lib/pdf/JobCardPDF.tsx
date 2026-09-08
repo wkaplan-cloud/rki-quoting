@@ -228,14 +228,6 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
           </View>
         )}
 
-        {/* Notes */}
-        {jobCard.notes && (
-          <View style={{ marginBottom: 12 }}>
-            <Text style={s.secLabel}>Notes</Text>
-            <View style={s.textBox}><Text style={s.textContent}>{jobCard.notes}</Text></View>
-          </View>
-        )}
-
         {/* Materials + Charges */}
         {!hideItems && (materials.length > 0 || hasCharges) && (
           <View style={{ marginBottom: 14 }}>

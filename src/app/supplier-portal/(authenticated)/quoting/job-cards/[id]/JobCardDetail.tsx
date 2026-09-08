@@ -1462,12 +1462,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             )}
             <Inp label="Completed Date" val={toSADateTimeLocal(card.completed_at)} cb={v => setField('completed_at', v || null)} type="datetime-local" />
           </div>
-          <div>
-            <Txt label="Notes" val={card.notes} cb={v => setField('notes', v || null)} rows={2} />
-            <p className="text-[11px] mt-1" style={{ color: S.muted }}>
-              Prints on the client&rsquo;s job card and shows on their online copy. Keep internal remarks out of here.
-            </p>
-          </div>
         </div>
         </fieldset>
       )}

@@ -182,14 +182,6 @@ export default function WorkerJobPage() {
           </div>
         )}
 
-        {/* Notes */}
-        {job.notes && (
-          <div className="rounded-2xl p-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Notes</p>
-            <p className="text-sm" style={{ color: S.text }}>{job.notes}</p>
-          </div>
-        )}
-
         {/* Photos section */}
         <div>
           <div className="flex items-center justify-between mb-2 px-1">
