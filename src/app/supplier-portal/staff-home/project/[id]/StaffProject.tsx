@@ -448,9 +448,10 @@ export function StaffProject({ staffId: _staffId, staffName: _staffName, portalA
             {photos.length > 0 && (
               <div className="grid grid-cols-2 gap-3 mb-3">
                 {photos.map(p => (
-                  <div key={p.id} className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                  <div key={p.id} className="relative rounded-xl overflow-hidden"
+                    style={{ aspectRatio: '1/1', background: S.bg, border: `1px solid ${S.border}` }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={p.caption ?? 'Photo'} className="w-full h-full object-cover" />
+                    <img src={p.url} alt={p.caption ?? 'Photo'} className="w-full h-full object-contain" />
                   </div>
                 ))}
               </div>

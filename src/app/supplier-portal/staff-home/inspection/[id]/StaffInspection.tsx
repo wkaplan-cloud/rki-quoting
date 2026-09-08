@@ -782,7 +782,8 @@ export function StaffInspection({ jobCard, initialCOC, jobsBadge, projectsBadge 
                   <div key={`${p.url}-${i}`} className="flex gap-3 p-3 rounded-xl" style={{ background: S.card, border: `1px solid ${S.border}` }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.url} alt={p.description ?? `Photo ${i + 1}`}
-                      className="w-20 h-20 object-cover rounded-lg flex-shrink-0" style={{ border: `1px solid ${S.border}` }} />
+                      className="w-20 h-20 object-contain rounded-lg flex-shrink-0"
+                      style={{ border: `1px solid ${S.border}`, background: S.bg }} />
                     <div className="flex-1 min-w-0 flex flex-col gap-2">
                       <textarea
                         value={p.description ?? ''}

@@ -1199,9 +1199,9 @@ export function WeekCalendar({
                     {photos.map(p => (
                       <button key={p.id} onClick={() => setLightbox(p.public_url)}
                         className="aspect-square rounded-lg overflow-hidden relative"
-                        style={{ border: `1px solid ${S.border}` }}>
+                        style={{ border: `1px solid ${S.border}`, background: S.bg }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={p.public_url} alt="" className="w-full h-full object-cover" />
+                        <img src={p.public_url} alt="" className="w-full h-full object-contain" />
                       </button>
                     ))}
                   </div>
