@@ -30,13 +30,12 @@ export interface RfqPdfItem {
     colour: string | null
     quantity: string
   }[]
-  // Scatter cushions — separately supplied and separately priced
+  // Scatter cushions — separately supplied and separately priced. `fabrics`
+  // is one already-formatted line per fabric on the cushion ("Front: 2.5 m
+  // Linen — Hertex"), because a scatter routinely takes more than one.
   scatters: {
     supplierName: string
-    fabricSupplierName: string
-    fabricQuantity: string
-    fabric: string
-    colour: string | null
+    fabrics: string[]
     size: string
     quantity: string
     details: string
@@ -308,14 +307,7 @@ export function RfqPDF(props: RfqPdfProps) {
                       <Text style={s.specValue}>
                         {[
                           sc.size.trim(),
-                          [
-                            sc.fabricQuantity.trim() ? `${sc.fabricQuantity.trim()} m` : '',
-                            sc.fabric.trim(),
-                            sc.fabricSupplierName.trim(),
-                          ]
-                            .filter(Boolean)
-                            .join(' — '),
-                          sc.colour?.trim() ?? '',
+                          ...sc.fabrics,
                           sc.details.trim(),
                           sc.supplierName.trim() ? `via ${sc.supplierName.trim()}` : '',
                         ]

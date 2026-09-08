@@ -188,24 +188,24 @@ export function normalizeMaterial(m: Partial<MaterialEntry> & { id: string; type
   }
 }
 
-// Scatter cushions specified against a piece. Kept separate from materials
-// because a scatter is its own quotable thing: it has its own supplier (the
-// scatters on a sofa are routinely made by someone other than the sofa maker),
-// its own fabric, size and quantity. Same no-price rule as MaterialEntry —
-// fabric pricing is looked up live at convert-to-quote time.
-export interface ScatterEntry {
+// One fabric on a scatter. A scatter is routinely covered in more than one:
+// a face fabric, a different back, a contrast piping. Each is bought in its
+// own yardage, often from a different house, and each is quoted on its own
+// line — so each is its own entry rather than one fabric field on the scatter.
+export interface ScatterFabric {
   id: string
-  // Who makes the scatter — the cushion maker, not the fabric house
-  supplierId: string | null
-  supplierName: string
-  // Who supplies the fabric. Separate from the maker above: a scatter is
-  // routinely made by one workroom in a fabric bought from another house,
-  // and it is this supplier's price list the fabric search reads.
+  // Scatter detail — which part of the cushion this fabric is: "Front",
+  // "Back", "Piping", "Trim". Free text; it labels the fabric everywhere the
+  // scatter is printed and becomes the fabric line's description on the quote.
+  label: string
+  // Who supplies this fabric. Separate from the scatter's maker: a scatter is
+  // routinely made by one workroom in fabric bought from another house, and it
+  // is this supplier's price list the fabric search reads.
   fabricSupplierId: string | null
   fabricSupplierName: string
-  // Metres of fabric to order from that house for this scatter — the fabric
-  // is quoted and ordered on its own line, so the designer allocates the
-  // yardage here rather than leaving it to be worked out at ordering time.
+  // Metres to order from that house for this fabric — it is quoted and ordered
+  // on its own line, so the designer allocates the yardage here rather than
+  // leaving it to be worked out at ordering time.
   fabricQuantity: string
   // Fabric: free text, or a platform-catalogue pick (same flow as MaterialEntry)
   fabric: string
@@ -213,30 +213,96 @@ export interface ScatterEntry {
   colour: string | null
   imageUrl: string | null
   widthCm: number | null
+}
+
+// The pre-multi-fabric shape: one fabric flattened onto the scatter itself.
+// Every scatter saved before multi-fabric still carries these, so reads fold
+// them into fabrics[0] rather than migrating the stored JSON.
+interface LegacyScatterFabricFields {
+  fabricSupplierId?: string | null
+  fabricSupplierName?: string
+  fabricQuantity?: string
+  fabric?: string
+  twinbruProductId?: number | null
+  colour?: string | null
+  imageUrl?: string | null
+  widthCm?: number | null
+}
+
+export function normalizeScatterFabric(
+  f: Partial<ScatterFabric> & { id: string }
+): ScatterFabric {
+  return {
+    id: f.id,
+    label: f.label ?? '',
+    fabricSupplierId: f.fabricSupplierId ?? null,
+    fabricSupplierName: f.fabricSupplierName ?? '',
+    fabricQuantity: f.fabricQuantity ?? '',
+    fabric: f.fabric ?? '',
+    twinbruProductId: f.twinbruProductId ?? null,
+    colour: f.colour ?? null,
+    imageUrl: f.imageUrl ?? null,
+    widthCm: f.widthCm ?? null,
+  }
+}
+
+// Scatter cushions specified against a piece. Kept separate from materials
+// because a scatter is its own quotable thing: it has its own supplier (the
+// scatters on a sofa are routinely made by someone other than the sofa maker),
+// its own fabrics, size and quantity. Same no-price rule as MaterialEntry —
+// fabric pricing is looked up live at convert-to-quote time.
+export interface ScatterEntry {
+  id: string
+  // Who makes the scatter — the cushion maker, not the fabric house
+  supplierId: string | null
+  supplierName: string
+  // One or more fabrics, each with its own scatter detail label and yardage
+  fabrics: ScatterFabric[]
   size: string // e.g. "600 × 600" — free text, scatters are quoted by nominal size
   quantity: string
   details: string
 }
 
 export function normalizeScatter(
-  sc: Partial<ScatterEntry> & { id: string }
+  sc: Partial<ScatterEntry> & LegacyScatterFabricFields & { id: string }
 ): ScatterEntry {
+  const stored = Array.isArray(sc.fabrics) ? sc.fabrics : []
+  // A legacy scatter has no fabrics array at all; one with nothing filled in
+  // yields no fabric line rather than an empty one nobody typed.
+  const legacy: ScatterFabric[] =
+    sc.fabricSupplierId ||
+    (sc.fabricSupplierName ?? '').trim() ||
+    (sc.fabricQuantity ?? '').trim() ||
+    (sc.fabric ?? '').trim()
+      ? [normalizeScatterFabric({ ...sc, id: `${sc.id}-f0`, label: '' })]
+      : []
   return {
     id: sc.id,
     supplierId: sc.supplierId ?? null,
     supplierName: sc.supplierName ?? '',
-    fabricSupplierId: sc.fabricSupplierId ?? null,
-    fabricSupplierName: sc.fabricSupplierName ?? '',
-    fabricQuantity: sc.fabricQuantity ?? '',
-    fabric: sc.fabric ?? '',
-    twinbruProductId: sc.twinbruProductId ?? null,
-    colour: sc.colour ?? null,
-    imageUrl: sc.imageUrl ?? null,
-    widthCm: sc.widthCm ?? null,
+    fabrics: stored.length
+      ? stored.map((f, i) => normalizeScatterFabric({ ...f, id: f.id ?? `${sc.id}-f${i}` }))
+      : legacy,
     size: sc.size ?? '',
     quantity: sc.quantity ?? '',
     details: sc.details ?? '',
   }
+}
+
+// A one-line human summary of a scatter's fabrics — "Front: 2.5 m Linen —
+// Hertex · Piping: 0.5 m Velvet". Shared by the RFQ PDF and the supplier
+// pricing page so the supplier reads the same string in both.
+export function scatterFabricSummary(f: ScatterFabric): string {
+  const detail = [
+    f.fabricQuantity.trim() ? `${f.fabricQuantity.trim()} m` : '',
+    f.fabric.trim(),
+    f.colour?.trim() ?? '',
+    f.fabricSupplierName.trim(),
+  ]
+    .filter(Boolean)
+    .join(' — ')
+  const label = f.label.trim()
+  return label && detail ? `${label}: ${detail}` : label || detail
 }
 
 // A crop rect in SOURCE pixels — the same shape ImageObject.crop uses, so a

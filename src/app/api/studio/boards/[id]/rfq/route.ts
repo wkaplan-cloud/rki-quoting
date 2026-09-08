@@ -10,6 +10,7 @@ import { apiError } from '@/lib/api-error'
 import {
   normalizeMaterial,
   normalizeScatter,
+  scatterFabricSummary,
   normalizeSpecImage,
   type StudioSpecRow,
   type StudioSlideRow,
@@ -260,8 +261,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             colour: m.colour, quantity: m.quantity,
           })),
           scatters: (Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []).map(sc => ({
-            supplierName: sc.supplierName, fabricSupplierName: sc.fabricSupplierName,
-            fabricQuantity: sc.fabricQuantity, fabric: sc.fabric, colour: sc.colour,
+            supplierName: sc.supplierName,
+            fabrics: sc.fabrics.map(scatterFabricSummary).filter(Boolean),
             size: sc.size, quantity: sc.quantity, details: sc.details,
           })),
           notes: row.notes ?? '',

@@ -76,7 +76,7 @@ export async function loadPricingContext(
           s.supplier_id,
           ...s.materials.map(m => m.supplierId),
           ...s.scatters.map(sc => sc.supplierId),
-          ...s.scatters.map(sc => sc.fabricSupplierId),
+          ...s.scatters.flatMap(sc => sc.fabrics.map(f => f.fabricSupplierId)),
         ])
         .filter((v): v is string => !!v)
     ),
@@ -95,7 +95,7 @@ export async function loadPricingContext(
       [...specByObject.values()]
         .flatMap(s => [
           ...s.materials.map(m => m.twinbruProductId),
-          ...s.scatters.map(sc => sc.twinbruProductId),
+          ...s.scatters.flatMap(sc => sc.fabrics.map(f => f.twinbruProductId)),
         ])
         .filter((v): v is number => v != null)
     ),
@@ -262,21 +262,29 @@ export function buildBoardRows({
       // Scatters ride under the piece as their own child rows — a scatter is
       // separately made, separately supplied and separately priced, so it has
       // to be its own quotable line rather than a note on the sofa. It splits
-      // in two: the make-up, billed to the workroom that sews it, and the
-      // fabric, billed to the house it is bought from. They are two separate
-      // orders in practice, so they are two separate lines here — the fabric
-      // one carrying the yardage the designer allocated on the spec.
+      // into the make-up, billed to the workroom that sews it, plus one line
+      // per fabric, each billed to the house it is bought from. Those are
+      // separate orders in practice — a scatter with a contrast back and a
+      // piping is three houses — so they are separate lines here, each
+      // carrying the yardage the designer allocated on the spec.
       const scatters = (Array.isArray(sp.scatters) ? sp.scatters : []).flatMap(sc => {
-        const live = sc.twinbruProductId != null ? priceByProductId.get(String(sc.twinbruProductId)) : undefined
         const size = sc.size.trim()
-        const fabric = sc.fabric.trim()
+        const fabrics = sc.fabrics.filter(f => f.fabric.trim() || f.fabricSupplierId)
+        // The workroom has to know what it is sewing, it just isn't billed for
+        // the cloth on this line — so every fabric is named here, by the
+        // scatter detail it covers.
+        const inFabrics = fabrics
+          .map(f => {
+            const label = f.label.trim()
+            const name = f.fabric.trim()
+            if (!name) return label
+            return label ? `${label}: ${name}` : `In ${name}`
+          })
+          .filter(Boolean)
         const rows: LineItemRow[] = [
           {
             item_name: size ? `Scatter ${size}` : 'Scatter',
-            // The fabric is named here too — the workroom has to know what it
-            // is sewing, it just isn't billed for it on this line
-            description:
-              [fabric ? `In ${fabric}` : '', sc.details.trim()].filter(Boolean).join('\n') || null,
+            description: [...inFabrics, sc.details.trim()].filter(Boolean).join('\n') || null,
             quantity: parseFloat(sc.quantity) || 1,
             unit: null,
             supplier_id: sc.supplierId,
@@ -284,7 +292,7 @@ export function buildBoardRows({
             cost_price: 0,
             markup_percentage: sc.supplierId ? (markupBySupplier.get(sc.supplierId) ?? 0) : 0,
             dimensions: size || null,
-            colour_finish: sc.colour,
+            colour_finish: fabrics.find(f => f.colour)?.colour ?? null,
             delivery_address: defaultDeliveryAddress,
             row_type: 'item',
             indent_level: 1,
@@ -293,24 +301,28 @@ export function buildBoardRows({
             studio_object_id: obj.id,
           },
         ]
-        if (fabric || sc.fabricSupplierId) {
+        for (const f of fabrics) {
+          const live =
+            f.twinbruProductId != null ? priceByProductId.get(String(f.twinbruProductId)) : undefined
+          const label = f.label.trim()
+          const forScatter = size ? `scatter ${size}` : 'scatter'
           rows.push({
-            item_name: fabric || 'Scatter fabric',
-            description: size ? `Fabric for scatter ${size}` : 'Scatter fabric',
-            quantity: parseFloat(sc.fabricQuantity) || 1,
+            item_name: f.fabric.trim() || 'Scatter fabric',
+            description: label ? `${label} for ${forScatter}` : `Fabric for ${forScatter}`,
+            quantity: parseFloat(f.fabricQuantity) || 1,
             unit: 'm',
-            supplier_id: sc.fabricSupplierId,
-            supplier_name: sc.fabricSupplierName.trim() || null,
+            supplier_id: f.fabricSupplierId,
+            supplier_name: f.fabricSupplierName.trim() || null,
             cost_price: live?.price ?? 0,
-            markup_percentage: sc.fabricSupplierId
-              ? (markupBySupplier.get(sc.fabricSupplierId) ?? 0)
+            markup_percentage: f.fabricSupplierId
+              ? (markupBySupplier.get(f.fabricSupplierId) ?? 0)
               : 0,
             dimensions: null,
-            colour_finish: sc.colour,
-            fabric_image_url: live?.imageUrl ?? sc.imageUrl,
-            twinbru_product_id: sc.twinbruProductId,
+            colour_finish: f.colour,
+            fabric_image_url: live?.imageUrl ?? f.imageUrl,
+            twinbru_product_id: f.twinbruProductId,
             twinbru_cost_price: live?.price ?? null,
-            fabric_width_cm: live?.widthCm ?? sc.widthCm,
+            fabric_width_cm: live?.widthCm ?? f.widthCm,
             delivery_address: defaultDeliveryAddress,
             row_type: 'item',
             indent_level: 1,

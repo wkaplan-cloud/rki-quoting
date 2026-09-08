@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import {
   normalizeMaterial,
   normalizeScatter,
+  scatterFabricSummary,
   normalizeSpecImage,
   type StudioSpecRow,
   type StudioSlideRow,
@@ -111,14 +112,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
             [
               sc.quantity.trim() ? `${sc.quantity.trim()} ×` : '',
               sc.size,
-              [
-                sc.fabricQuantity.trim() ? `${sc.fabricQuantity.trim()} m` : '',
-                sc.fabric.trim(),
-                sc.fabricSupplierName.trim(),
-              ]
-                .filter(Boolean)
-                .join(' — '),
-              sc.colour,
+              ...sc.fabrics.map(scatterFabricSummary),
               sc.details,
               sc.supplierName ? `via ${sc.supplierName}` : '',
             ]

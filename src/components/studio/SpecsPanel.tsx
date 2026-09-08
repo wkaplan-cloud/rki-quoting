@@ -10,6 +10,7 @@ import type {
   StudioSpec,
   MaterialEntry,
   ScatterEntry,
+  ScatterFabric,
   SpecImage,
   SpecSupplierOption,
   StudioAsset,
@@ -27,6 +28,12 @@ const ASSET_LABEL_SYNC_DEBOUNCE = 500
 const MATERIAL_TYPES = [
   'Fabric', 'Timber', 'Stone', 'Metal', 'Paint', 'Glass', 'Leather', 'Wallpaper',
   'Laminate', 'Veneer', 'Rattan', 'Marble', 'Ceramic', 'Concrete', 'Other',
+]
+
+// Which part of a scatter a fabric covers. Suggestions only — the field is
+// free text, plenty of scatters are specified in words nobody listed here.
+const SCATTER_DETAILS = [
+  'Front', 'Back', 'Piping', 'Trim', 'Border', 'Flange', 'Gusset', 'Fringe', 'Button',
 ]
 
 const EMPTY_SPEC: Omit<StudioSpec, 'id' | 'objectId' | 'slideId'> = {
@@ -426,14 +433,7 @@ export function SpecsPanel() {
                       id: newId(),
                       supplierId: null,
                       supplierName: '',
-                      fabricSupplierId: null,
-                      fabricSupplierName: '',
-                      fabricQuantity: '',
-                      fabric: '',
-                      twinbruProductId: null,
-                      colour: null,
-                      imageUrl: null,
-                      widthCm: null,
+                      fabrics: [emptyScatterFabric()],
                       size: '',
                       quantity: '',
                       details: '',
@@ -449,7 +449,7 @@ export function SpecsPanel() {
           }
         >
           {spec.scatters.length === 0 ? (
-            <p className="text-[11px] text-[#8A877F]">No scatters yet — add one per size or fabric.</p>
+            <p className="text-[11px] text-[#8A877F]">No scatters yet — add one per size.</p>
           ) : (
             <div className="space-y-2.5">
               {spec.scatters.map(sc => (
@@ -464,6 +464,11 @@ export function SpecsPanel() {
               ))}
             </div>
           )}
+          <datalist id="studio-spec-scatter-details">
+            {SCATTER_DETAILS.map(d => (
+              <option key={d} value={d} />
+            ))}
+          </datalist>
         </Section>
       </div>
     </div>
@@ -693,8 +698,28 @@ function MaterialRow({
   )
 }
 
+// A blank fabric line on a scatter — its own supplier, yardage and scatter
+// detail label, so a front / back / piping split is three of these.
+function emptyScatterFabric(): ScatterFabric {
+  return {
+    id: newId(),
+    label: '',
+    fabricSupplierId: null,
+    fabricSupplierName: '',
+    fabricQuantity: '',
+    fabric: '',
+    twinbruProductId: null,
+    colour: null,
+    imageUrl: null,
+    widthCm: null,
+  }
+}
+
 // One scatter cushion line: who makes it, what it's covered in, how big, how
 // many, and anything else the maker needs (piping, fill, back fabric…).
+// A scatter takes as many fabrics as it needs — a face, a contrast back, a
+// piping — each labelled with the scatter detail it covers and carrying its
+// own yardage, because each is ordered from its house on its own line.
 function ScatterRow({
   scatter,
   suppliers,
@@ -708,6 +733,10 @@ function ScatterRow({
   onChange: (patch: Partial<ScatterEntry>) => void
   onRemove: () => void
 }) {
+  function setFabric(id: string, patch: Partial<ScatterFabric>) {
+    onChange({ fabrics: scatter.fabrics.map(f => (f.id === id ? { ...f, ...patch } : f)) })
+  }
+
   return (
     <div className="pb-2.5 border-b border-[#EDE9E1] last:border-0 last:pb-0 space-y-1.5">
       <div className="flex items-center justify-between">
@@ -722,9 +751,9 @@ function ScatterRow({
         </button>
       </div>
 
-      {/* Who makes it, then who supplies its fabric — two different
-          businesses on most scatters, so they get two fields. The fabric
-          search below reads the FABRIC house's price list, not the maker's. */}
+      {/* Who makes it, then who supplies each fabric — different businesses on
+          most scatters, so they are separate fields. The fabric searches below
+          read each FABRIC house's price list, not the maker's. */}
       <Field label="Scatter supplier">
         <Combobox
           options={suppliers.map(su => ({ id: su.id, label: su.name, isPlatform: su.isPlatform }))}
@@ -734,25 +763,59 @@ function ScatterRow({
         />
       </Field>
 
-      <SupplierFabricFields
-        label="Fabric house"
-        supplierId={scatter.fabricSupplierId}
-        supplierName={scatter.fabricSupplierName}
-        fabric={scatter.fabric}
-        quantity={scatter.fabricQuantity}
-        suppliers={suppliers}
-        activePriceListIds={activePriceListIds}
-        onChange={({ supplierId, supplierName, quantity, ...rest }) =>
-          onChange({
-            ...rest,
-            ...(supplierId !== undefined ? { fabricSupplierId: supplierId } : {}),
-            ...(supplierName !== undefined ? { fabricSupplierName: supplierName } : {}),
-            // `quantity` on a scatter is how many cushions — the fabric's
-            // yardage is its own field, so it must never land on that one
-            ...(quantity !== undefined ? { fabricQuantity: quantity } : {}),
-          })
-        }
-      />
+      <div className="pl-2 border-l-2 border-[#EDE9E1] space-y-2">
+        {scatter.fabrics.map(f => (
+          <div key={f.id} className="space-y-1.5">
+            <div className="flex items-end gap-1.5">
+              <Field label="Scatter detail" className="flex-1 min-w-0">
+                <input
+                  value={f.label}
+                  onChange={e => setFabric(f.id, { label: e.target.value })}
+                  list="studio-spec-scatter-details"
+                  className={FIELD_INPUT_CLASS}
+                />
+              </Field>
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({ fabrics: scatter.fabrics.filter(x => x.id !== f.id) })
+                }
+                title="Remove fabric"
+                className="w-6 h-6 mb-0.5 flex-shrink-0 flex items-center justify-center rounded text-[#8A877F] hover:text-red-600 hover:bg-[#EDE9E1] transition-colors cursor-pointer"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+            <SupplierFabricFields
+              label="Fabric house"
+              supplierId={f.fabricSupplierId}
+              supplierName={f.fabricSupplierName}
+              fabric={f.fabric}
+              quantity={f.fabricQuantity}
+              suppliers={suppliers}
+              activePriceListIds={activePriceListIds}
+              onChange={({ supplierId, supplierName, quantity, ...rest }) =>
+                setFabric(f.id, {
+                  ...rest,
+                  ...(supplierId !== undefined ? { fabricSupplierId: supplierId } : {}),
+                  ...(supplierName !== undefined ? { fabricSupplierName: supplierName } : {}),
+                  // `quantity` on a scatter is how many cushions — each
+                  // fabric's yardage is its own field, so it must never land
+                  // on that one
+                  ...(quantity !== undefined ? { fabricQuantity: quantity } : {}),
+                })
+              }
+            />
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange({ fabrics: [...scatter.fabrics, emptyScatterFabric()] })}
+          className="flex items-center gap-1 text-[10px] text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+        >
+          <Plus size={10} /> Add fabric
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Size (mm)">
