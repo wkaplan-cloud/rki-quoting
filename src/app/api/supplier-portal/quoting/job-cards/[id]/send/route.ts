@@ -126,6 +126,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         settings: settings as ElecSettings | null,
         logoBase64,
         asInvoice: as_invoice ?? false,
+        // A job card is proof of work, not a bill — the client copy carries the
+        // write-up, photos and signature, never the costing.
+        hideItems: !as_invoice,
         signatureName,
       })
     )
@@ -180,10 +183,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       : ''
 
     const companyName = account.company_name ?? 'Your contractor'
+
+    // Copy the office in on what the client received — staff send these from
+    // site, so the org otherwise has no record of the mail landing.
+    const { data: orgMembers } = await supabaseAdmin
+      .from('portal_org_members')
+      .select('email')
+      .eq('portal_account_id', account.id)
+      .not('accepted_at', 'is', null)
+    const clientAddr = email.trim().toLowerCase()
+    const ccEmails = Array.from(new Set(
+      [account.email, ...(orgMembers ?? []).map(m => m.email)]
+        .filter((e): e is string => !!e?.trim())
+        .map(e => e.trim())
+    )).filter(e => e.toLowerCase() !== clientAddr)
+
     await sendEmail({
       from: `${companyName} via QuotingHub <noreply@quotinghub.co.za>`,
       replyTo: account.email,
       to: email,
+      ...(ccEmails.length > 0 ? { cc: ccEmails } : {}),
       subject,
       attachments: [{ filename: `${jobCard.job_number}.pdf`, content: pdfBuffer }],
       html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
@@ -199,6 +218,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#18181B;">${jobCard.job_number}</p>
         <p style="margin:0 0 16px;font-size:15px;color:#71717A;">${jobCard.title}</p>
         ${totalLine}
+        ${as_invoice ? '' : `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">The work on this job has been completed on site. The attached job card sets out what was found and what was done, together with the site photos and the signature captured on completion.</p>`}
         ${message ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#18181B;">${message}</p>` : ''}
         ${signUrl ? `<p style="margin:0 0 20px;"><a href="${signUrl}" style="display:inline-block;background:#3A7CA5;color:#fff;text-decoration:none;padding:12px 26px;border-radius:8px;font-size:14px;font-weight:600;">Review &amp; Approve Online →</a></p>` : ''}
         <p style="margin:0 0 24px;font-size:13px;color:#71717A;">${signUrl
@@ -217,7 +237,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   </td></tr>
 </table>
 </body></html>`,
-      text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${as_invoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${message ? message + '\n\n' : ''}${signUrl ? `Review and approve online: ${signUrl}\n\n` : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
+      text: `${label} ${jobCard.job_number} — ${jobCard.title}\n\n${as_invoice && totalInclVat > 0 ? `Total: R${totalInclVat.toFixed(2)} (incl. VAT)\n\n` : ''}${as_invoice ? '' : 'The work on this job has been completed on site. The attached job card sets out what was found and what was done, together with the site photos and the signature captured on completion.\n\n'}${message ? message + '\n\n' : ''}${signUrl ? `Review and approve online: ${signUrl}\n\n` : ''}Please find the ${label.toLowerCase()} attached. If you have any questions, reply to this email and we'll get back to you.\n\nKind regards,\n${companyName}\n${account.email}`,
     })
 
     return NextResponse.json({ ok: true })

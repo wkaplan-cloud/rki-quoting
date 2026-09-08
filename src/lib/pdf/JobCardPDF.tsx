@@ -93,6 +93,12 @@ interface Props {
   settings: ElecSettings | null
   logoBase64: string | null
   asInvoice?: boolean
+  /**
+   * Client copy — drop the Materials & Charges table and all totals.
+   * The client's proof of work is the write-up, photos and signature; costing
+   * stays inside the portal until it goes out as an invoice.
+   */
+  hideItems?: boolean
   /** Name captured next to the signature — falls back to the client's name */
   signatureName?: string | null
 }
@@ -101,7 +107,7 @@ const APPROVAL_METHOD: Record<string, string> = {
   phone: 'by phone', whatsapp: 'by WhatsApp', email: 'by email', in_person: 'in person',
 }
 
-export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoice = false, signatureName = null }: Props) {
+export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoice = false, hideItems = false, signatureName = null }: Props) {
   const statusColor = STATUS_COLOR[jobCard.status] ?? MUTED
   const staffName = (jobCard.staff && !Array.isArray(jobCard.staff)) ? jobCard.staff.name : null
   const clientName = jobCard.client_name ?? ((jobCard.client && !Array.isArray(jobCard.client)) ? jobCard.client.client_name : null)
@@ -220,7 +226,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
         )}
 
         {/* Materials + Charges */}
-        {(materials.length > 0 || hasCharges) && (
+        {!hideItems && (materials.length > 0 || hasCharges) && (
           <View style={{ marginBottom: 14 }}>
             <Text style={s.secLabel}>{asInvoice ? 'Invoice Items' : 'Materials & Charges'}</Text>
             <View style={s.tableHead}>
