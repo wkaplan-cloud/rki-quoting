@@ -289,8 +289,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [clients, setClients] = useState<Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'address' | 'vat_number' | 'qs_name' | 'qs_email'>[]>(initialClients)
   const initClient = initialClients.find(c => c.id === initial.client_id)
   const [clientCompany, setClientCompany] = useState(initClient?.company ?? '')
-  const [clientQsName, setClientQsName] = useState(initClient?.qs_name ?? '')
-  const [clientQsEmail, setClientQsEmail] = useState(initClient?.qs_email ?? '')
   const [clientVatNumber, setClientVatNumber] = useState(initClient?.vat_number ?? '')
   const [tab, setTab] = useState<Tab>('job_sheet')
 
@@ -522,11 +520,11 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   }
 
   // Use a ref so the auto-save timer always calls with the latest data
-  const autoSaveDataRef = useRef({ card, clientCompany, clientQsName, clientQsEmail, clientVatNumber })
-  useEffect(() => { autoSaveDataRef.current = { card, clientCompany, clientQsName, clientQsEmail, clientVatNumber } }, [card, clientCompany, clientQsName, clientQsEmail, clientVatNumber])
+  const autoSaveDataRef = useRef({ card, clientCompany, clientVatNumber })
+  useEffect(() => { autoSaveDataRef.current = { card, clientCompany, clientVatNumber } }, [card, clientCompany, clientVatNumber])
 
   const handleSave = useCallback(async () => {
-    const { card, clientCompany, clientQsName, clientQsEmail, clientVatNumber } = autoSaveDataRef.current
+    const { card, clientCompany, clientVatNumber } = autoSaveDataRef.current
     await save({
       title: card.title,
       job_type: card.job_type,
@@ -551,8 +549,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       if (card.client_email?.trim()) patch.email = card.client_email.trim()
       if (card.location?.trim()) patch.address = card.location.trim()
       if (clientCompany.trim()) patch.company = clientCompany.trim()
-      if (clientQsName.trim()) patch.qs_name = clientQsName.trim()
-      if (clientQsEmail.trim()) patch.qs_email = clientQsEmail.trim()
       patch.vat_number = clientVatNumber.trim() || null
       if (Object.keys(patch).length > 0) {
         fetch(`/api/supplier-portal/quoting/clients/${card.client_id}`, {
@@ -575,7 +571,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     card.client_email, card.location, card.scheduled_at, card.work_description,
     card.work_found, card.work_done, card.resolution, card.notes,
     card.callout_fee, card.labour_hours, card.labour_rate,
-    clientCompany, clientQsName, clientQsEmail, clientVatNumber,
+    clientCompany, clientVatNumber,
   ])
 
   async function handleDelete() {
@@ -813,7 +809,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     try {
       const res = await fetch(`/api/supplier-portal/quoting/job-cards/${card.id}/send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: false, include_link: sendMethod === 'link', client_company: clientCompany.trim() || null, client_qs_name: clientQsName.trim() || null, client_qs_email: clientQsEmail.trim() || null }),
+        body: JSON.stringify({ email: sendEmail, name: sendName || null, message: sendMsg || null, as_invoice: false, include_link: sendMethod === 'link', client_company: clientCompany.trim() || null }),
       })
       setSendResult(res.ok ? 'success' : 'error')
       if (res.ok) setCard(c => ({ ...c, sent_to_email: sendEmail, sent_to_name: sendName || null, sent_at: new Date().toISOString(), client_email: sendEmail }))
@@ -1392,6 +1388,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
           )}
 
           <SectionHeader label="Client & Billing" />
+          <p className="text-xs -mt-2" style={{ color: S.muted }}>
+            Saved onto the client record, not just this job — editing here updates the client everywhere.
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Client">
               <ClientCombobox
@@ -1410,8 +1409,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                     location: prev.location || existing?.address || prev.location,
                   }))
                   setClientCompany(existing?.company ?? '')
-                  setClientQsName(existing?.qs_name ?? '')
-                  setClientQsEmail(existing?.qs_email ?? '')
                   setClientVatNumber(existing?.vat_number ?? '')
                 }}
                 onNewClient={c => setClients(prev => [...prev, { ...c, email: null, address: null, vat_number: null, qs_name: null, qs_email: null }])}
@@ -1429,18 +1426,6 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             <Field label="Tax / VAT Number">
               <input value={clientVatNumber} onChange={e => setClientVatNumber(e.target.value)}
                 placeholder="4123456789"
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
-            </Field>
-            <Field label="QS Name">
-              <input value={clientQsName} onChange={e => setClientQsName(e.target.value)}
-                placeholder="Quantity surveyor"
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
-            </Field>
-            <Field label="QS Email">
-              <input type="email" value={clientQsEmail} onChange={e => setClientQsEmail(e.target.value)}
-                placeholder="qs@example.com"
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none"
                 style={{ border: `1px solid ${S.border}`, color: S.text, background: '#fff' }} />
             </Field>
@@ -1477,7 +1462,12 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
             )}
             <Inp label="Completed Date" val={toSADateTimeLocal(card.completed_at)} cb={v => setField('completed_at', v || null)} type="datetime-local" />
           </div>
-          <Txt label="Notes" val={card.notes} cb={v => setField('notes', v || null)} placeholder="Any additional notes…" rows={2} />
+          <div>
+            <Txt label="Notes" val={card.notes} cb={v => setField('notes', v || null)} rows={2} />
+            <p className="text-[11px] mt-1" style={{ color: S.muted }}>
+              Prints on the client&rsquo;s job card and shows on their online copy. Keep internal remarks out of here.
+            </p>
+          </div>
         </div>
         </fieldset>
       )}
@@ -2486,7 +2476,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                 <CheckCircle2 size={36} style={{ color: S.green }} />
                 <p className="text-sm font-semibold" style={{ color: S.text }}>Sent successfully!</p>
                 <p className="text-xs" style={{ color: S.muted }}>
-                  {sendMethod === 'link' ? 'Sign link and PDF sent to ' : 'Job card PDF sent to '}{sendEmail}
+                  {sendMethod === 'link' ? 'Sign link and priced PDF sent to ' : 'Priced job card PDF sent to '}{sendEmail}
                 </p>
                 <button onClick={() => { setShowSend(false); setSendResult('') }}
                   className="mt-2 px-6 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: S.accent }}>
@@ -2549,7 +2539,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                           ? 'Edited since approval — client re-approves online'
                           : isApproved
                             ? 'Already approved — nothing left to approve'
-                            : 'Client approves online, PDF attached too'}
+                            : 'Client approves online, priced PDF attached too'}
                       </span>
                     </button>
                     <button
@@ -2566,7 +2556,7 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                         </span>
                       </div>
                       <span className="text-[11px] leading-snug" style={{ color: S.muted }}>
-                        Job card PDF attached to the email
+                        Priced job card PDF attached to the email
                       </span>
                     </button>
                   </div>

@@ -41,6 +41,13 @@ export interface SendJobCardEmailOptions {
   persist?: boolean
   /** Prefixed to the subject — used to mark a test resend. */
   subjectPrefix?: string
+  /**
+   * Drop the Materials & Charges table and every total from the PDF.
+   * True for the send the technician fires on completion — that copy is proof
+   * the work was done. The office send is the priced job card, so it is false
+   * there. Defaults to the old behaviour for scripted resends.
+   */
+  hideItems?: boolean
 }
 
 // For public Supabase photos, use the CDN render endpoint (800px wide, 60% quality)
@@ -94,6 +101,7 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
     asInvoice = false, includeLink = false,
     clientCompany, clientQsName, clientQsEmail,
     persist = true, subjectPrefix = '',
+    hideItems = !asInvoice,
   } = opts
 
   const [
@@ -149,9 +157,7 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
       settings: settings as ElecSettings | null,
       logoBase64,
       asInvoice,
-      // A job card is proof of work, not a bill — the client copy carries the
-      // write-up, photos and signature, never the costing.
-      hideItems: !asInvoice,
+      hideItems,
       signatureName,
     })
   )
@@ -205,10 +211,14 @@ export async function sendJobCardEmail(opts: SendJobCardEmailOptions): Promise<
     : `Job Card ${jobCard.job_number} — ${jobCard.title}`}`
   // Only an invoice carries money. A job card shows the client what was done,
   // never what it cost.
-  const totalLine = asInvoice && totalInclVat > 0
+  const totalLine = !hideItems && totalInclVat > 0
     ? `<p style="margin:0 0 16px;font-size:18px;font-weight:700;color:#18181B;">Total: R${totalInclVat.toFixed(2)} <span style="font-size:12px;color:#71717A;">(incl. VAT)</span></p>`
     : ''
-  const completedLine = 'The work on this job has been completed on site. The attached job card sets out what was found and what was done, together with the site photos and the signature captured on completion.'
+  // Two different documents go out under the same name. The technician's copy on
+  // completion is proof the work was done; the office copy is the priced card.
+  const completedLine = hideItems
+    ? 'The work on this job has been completed on site. The attached job card sets out what was found and what was done, together with the site photos and the signature captured on completion.'
+    : 'The attached job card sets out the work carried out on site and what it comes to, itemised with the materials and charges.'
 
   const companyName = account.company_name ?? 'Your contractor'
   const ccEmails = await resolveOrgCc(account.id, account.email, email)
