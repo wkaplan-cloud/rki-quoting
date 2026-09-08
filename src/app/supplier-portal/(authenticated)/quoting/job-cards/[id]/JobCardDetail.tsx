@@ -120,6 +120,129 @@ function ExtraRow({ extra, first }: { extra: ElecJobCardExtra; first: boolean })
   )
 }
 
+// ── Ownership: who fills a section in ─────────────────────────────────────────
+
+/** Where a section stands: filled in, still owed, or not part of this job. */
+type SectionState = 'done' | 'waiting' | 'na'
+
+function StateDot({ state }: { state: SectionState }) {
+  return (
+    <span className="inline-block w-1.5 h-1.5 rounded-full mr-1.5 shrink-0"
+      style={{ background: state === 'done' ? S.green : state === 'waiting' ? S.gold : S.border }} />
+  )
+}
+
+/**
+ * Sits at the top of a tab the technician owns, so an empty box reads as
+ * "waiting on site" rather than as the office's own unfinished work.
+ */
+function OwnerBand({ state, techName, onSite, filledLabel, filledNote, waitingNote, onOverride, overridden }: {
+  state: SectionState
+  techName: string | null
+  onSite: boolean
+  filledLabel: string
+  filledNote?: string
+  waitingNote: string
+  onOverride?: () => void
+  overridden?: boolean
+}) {
+  if (state === 'done') {
+    return (
+      <div className="rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 mb-3"
+        style={{ background: 'rgba(22,163,74,0.07)', border: '1px solid rgba(22,163,74,0.25)' }}>
+        <CheckCircle2 size={15} style={{ color: S.green, flexShrink: 0, marginTop: 1 }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold" style={{ color: S.green }}>{filledLabel}</p>
+          <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+            {filledNote ?? 'Edit it if you need to — the change stays on the card.'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-xl px-3.5 py-2.5 flex items-start gap-2.5 mb-3"
+      style={{ background: 'rgba(217,164,65,0.07)', border: '1px solid rgba(217,164,65,0.3)' }}>
+      <Clock size={15} style={{ color: S.gold, flexShrink: 0, marginTop: 1 }} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold" style={{ color: S.gold }}>Waiting on site</p>
+        <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+          {techName
+            ? `${techName} ${onSite ? 'is on site now' : 'is assigned'}. `
+            : 'No technician assigned yet. '}
+          {waitingNote}
+        </p>
+      </div>
+      {onOverride && !overridden && (
+        <button onClick={onOverride}
+          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap shrink-0"
+          style={{ border: '1px solid rgba(217,164,65,0.45)', color: S.gold, background: 'transparent' }}>
+          Fill it in myself
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Stands in for a field the technician hasn't submitted, so it can't be typed into by mistake. */
+function NotSubmittedYet() {
+  return (
+    <div className="px-3 py-2 rounded-xl text-sm italic"
+      style={{ border: `1px solid ${S.border}`, background: S.bg, color: S.muted }}>
+      Not submitted yet
+    </div>
+  )
+}
+
+/** One section's standing in the strip under the header. Clicking opens its tab. */
+function StatusChip({ sec, onClick }: {
+  sec: { chip: string; state: SectionState }
+  onClick: () => void
+}) {
+  const tone = sec.state === 'done'
+    ? { color: S.green, border: 'rgba(22,163,74,0.32)', bg: 'rgba(22,163,74,0.08)' }
+    : sec.state === 'waiting'
+      ? { color: S.gold, border: 'rgba(217,164,65,0.36)', bg: 'rgba(217,164,65,0.09)' }
+      : { color: S.muted, border: S.border, bg: 'transparent' }
+  return (
+    <button onClick={onClick}
+      className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-semibold whitespace-nowrap"
+      style={{ color: tone.color, border: `1px solid ${tone.border}`, background: tone.bg }}>
+      {sec.state === 'done' && <Check size={11} />}
+      {sec.chip}
+    </button>
+  )
+}
+
+/** A run of tabs under one owner caption, so the row says who owes what. */
+function TabGroup({ caption, sections, tab, onPick }: {
+  caption: string
+  sections: { key: Tab; label: string; state: SectionState }[]
+  tab: Tab
+  onPick: (k: Tab) => void
+}) {
+  return (
+    <div className="flex flex-col shrink-0">
+      <span className="text-[9.5px] font-bold uppercase tracking-widest pl-4 pb-0.5 whitespace-nowrap"
+        style={{ color: '#B0B8C4' }}>{caption}</span>
+      <div className="flex">
+        {sections.map(t => {
+          const active = tab === t.key
+          return (
+            <button key={t.key} onClick={() => onPick(t.key)}
+              className="flex items-center px-4 py-2 text-sm whitespace-nowrap relative"
+              style={{ color: active ? S.text : S.muted, fontWeight: active ? 600 : 500 }}>
+              <StateDot state={t.state} />
+              {t.label}
+              {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: S.accent }} />}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -170,6 +293,9 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [showFinishFlow, setShowFinishFlow] = useState(false)
+  // The report is the technician's to write. The office can take it over, but
+  // only on purpose — an open textarea invites the wrong person to type.
+  const [reportOverride, setReportOverride] = useState(false)
 
   // Download / print
   const [downloading, setDownloading] = useState(false)
@@ -741,12 +867,59 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
     return Object.values(byStaff).map(s => ({ ...s, onSite: s.lastPunchType === 'clock_in' }))
   })()
 
-  // Finish job checklist
+  // ── Who fills what in ─────────────────────────────────────────────────────
+  // Half of these tabs fill themselves in from the technician's phone. The
+  // office needs to read "waiting on site" apart from "I haven't done this yet".
+  const assignedTechName = staffMember?.name ?? staff.find(st => st.id === card.staff_id)?.name ?? null
+  const techOnSite = staffSummary.some(st => st.onSite)
+  const reportDone = !!(card.work_found?.trim() || card.work_done?.trim() || card.resolution?.trim())
+  const hasCharges = materials.length > 0 || (card.callout_fee ?? 0) > 0 || (card.labour_hours ?? 0) > 0
+  const detailsDone = !!((card.client_id || card.client_name) && card.location)
+  const cocRelevant = card.job_type === 'coc' || !!initialCOC
+  const pendingOrders = matOrders.filter(o => o.status === 'pending').length
+
+  type Section = {
+    key: Tab; label: string; chip: string
+    owner: 'office' | 'shared' | 'site'
+    state: SectionState
+  }
+  const sections: Section[] = [
+    { key: 'job_sheet', owner: 'office', label: 'Job Sheet', chip: 'Priced',
+      state: hasCharges ? 'done' : 'waiting' },
+    { key: 'details', owner: 'office', label: 'Details', chip: 'Client & site',
+      state: detailsDone ? 'done' : 'waiting' },
+    { key: 'coc', owner: 'office', label: 'COC', chip: 'COC',
+      state: initialCOC ? 'done' : cocRelevant ? 'waiting' : 'na' },
+    { key: 'materials', owner: 'shared',
+      label: `Orders${matOrders.length > 0 ? ` (${matOrders.length})` : ''}`,
+      chip: pendingOrders > 0 ? `Orders — ${pendingOrders} to action` : 'Orders',
+      state: matOrders.length === 0 ? 'na' : pendingOrders > 0 ? 'waiting' : 'done' },
+    { key: 'report', owner: 'site', label: 'Report', chip: 'Report',
+      state: reportDone ? 'done' : 'waiting' },
+    { key: 'photos', owner: 'site',
+      label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}`,
+      chip: photos.length > 0 ? `Photos ${photos.length}` : 'Photos',
+      state: photos.length > 0 ? 'done' : 'waiting' },
+    ...(extrasEnabled
+      ? [{ key: 'extras' as Tab, owner: 'site' as const,
+          label: `Extra Work${extras.length > 0 ? ` (${extras.length})` : ''}`,
+          chip: extras.length > 0 ? `Extra work ${extras.length}` : 'Extra work — none',
+          state: (extras.length > 0 ? 'done' : 'na') as SectionState }]
+      : []),
+    { key: 'signature', owner: 'site', label: 'Signature', chip: 'Signature',
+      state: isSignedOff ? 'done' : 'waiting' },
+  ]
+  const officeSections = sections.filter(x => x.owner === 'office')
+  const sharedSections = sections.filter(x => x.owner === 'shared')
+  const siteSections   = sections.filter(x => x.owner === 'site')
+  const yourChips      = [...officeSections, ...sharedSections]
+
+  // Finish job checklist — same source as the strip, spelled out for the modal
   const checklist = [
-    { label: 'Report filled in',    done: !!(card.work_found?.trim() || card.work_done?.trim()), tab: 'report'    as Tab },
-    { label: 'Materials logged',     done: materials.length > 0,                                  tab: 'materials' as Tab },
-    { label: 'Photos taken',         done: photos.length > 0,                                     tab: 'photos'    as Tab },
-    { label: 'Client signature',     done: !!card.client_signature_url,                            tab: 'signature' as Tab },
+    { label: 'Report filled in',  done: reportDone,           tab: 'report'    as Tab, owner: 'site'   as const },
+    { label: 'Materials logged',  done: materials.length > 0, tab: 'job_sheet' as Tab, owner: 'office' as const },
+    { label: 'Photos taken',      done: photos.length > 0,    tab: 'photos'    as Tab, owner: 'site'   as const },
+    { label: 'Client signature',  done: isSignedOff,          tab: 'signature' as Tab, owner: 'site'   as const },
   ]
   const checklistDoneCount = checklist.filter(c => c.done).length
 
@@ -952,42 +1125,34 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </div>
       )}
 
-      {/* ── Tabs — flat, clean ───────────────────────────────────────────── */}
-      <div className="flex gap-0 mb-6" style={{ borderBottom: `1px solid ${S.border}` }}>
-        {/* Job Sheet — primary tab, separated from the rest */}
-        {(() => {
-          const active = tab === 'job_sheet'
-          return (
-            <button onClick={() => setTab('job_sheet')}
-              className="px-4 py-2.5 text-sm font-semibold whitespace-nowrap relative mr-8"
-              style={{ color: active ? S.text : S.muted }}>
-              Job Sheet
-              {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: S.accent }} />}
-            </button>
-          )
-        })()}
-        {/* Secondary tabs */}
-        {([
-          { key: 'details',   label: 'Details'   },
-          { key: 'report',    label: 'Report'     },
-          { key: 'materials', label: `Orders${matOrders.length > 0 ? ` (${matOrders.length})` : ''}` },
-          ...(extrasEnabled
-            ? [{ key: 'extras' as Tab, label: `Extra Work${extras.length > 0 ? ` (${extras.length})` : ''}` }]
-            : []),
-          { key: 'photos',    label: `Photos${photos.length > 0 ? ` (${photos.length})` : ''}` },
-          { key: 'signature', label: 'Signature'  },
-          { key: 'coc',       label: 'COC'        },
-        ] as { key: Tab; label: string }[]).map(t => {
-          const active = tab === t.key
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className="px-4 py-2.5 text-sm font-medium whitespace-nowrap relative"
-              style={{ color: active ? S.text : S.muted }}>
-              {t.label}
-              {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t" style={{ background: S.accent }} />}
-            </button>
-          )
-        })}
+      {/* ── Where the card stands — what you owe it vs what site owes it ──── */}
+      {canFinish && (
+        <div className="mb-4 rounded-2xl px-4 py-3 flex items-center gap-x-3 gap-y-2 flex-wrap"
+          style={{ background: S.card, border: `1px solid ${S.border}` }}>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.muted }}>Yours</span>
+          {yourChips.map(sec => <StatusChip key={sec.key} sec={sec} onClick={() => setTab(sec.key)} />)}
+          <span className="w-px h-5 mx-1 hidden sm:block" style={{ background: S.border }} />
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: S.muted }}>From site</span>
+          {siteSections.map(sec => <StatusChip key={sec.key} sec={sec} onClick={() => setTab(sec.key)} />)}
+          <button onClick={() => setShowFinishFlow(true)}
+            className="sm:ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
+            style={{ background: S.accent }}>
+            <ClipboardCheck size={13} /> Finish Job
+          </button>
+        </div>
+      )}
+
+      {/* ── Tabs — grouped by who fills them in ──────────────────────────── */}
+      <div className="flex items-end mb-6 overflow-x-auto" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <TabGroup caption="You fill in" sections={officeSections} tab={tab} onPick={setTab} />
+        {sharedSections.length > 0 && (
+          <>
+            <span className="w-px self-stretch mx-3.5 shrink-0" style={{ background: S.border }} />
+            <TabGroup caption="Site raises, you action" sections={sharedSections} tab={tab} onPick={setTab} />
+          </>
+        )}
+        <span className="w-px self-stretch mx-3.5 shrink-0" style={{ background: S.border }} />
+        <TabGroup caption="Comes from site" sections={siteSections} tab={tab} onPick={setTab} />
       </div>
 
       {/* ── Client copy: sent, approved, or out of date ───────────────────── */}
@@ -1182,14 +1347,34 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
         </fieldset>
       )}
 
-      {/* ── Tab: Report ──────────────────────────────────────────────────── */}
+      {/* ── Tab: Report — the technician's, unless you take it over ─────── */}
       {tab === 'report' && (
-        <fieldset disabled={!editable} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
-        <div className="rounded-2xl p-5 space-y-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
-          <Txt label="What Was Found" val={card.work_found} cb={v => setField('work_found', v || null)} placeholder="Describe what the technician found on site…" rows={5} />
-          <Txt label="Resolution" val={card.resolution} cb={v => setField('resolution', v || null)} placeholder="How was the issue resolved?" rows={5} />
+        <div>
+          <OwnerBand
+            state={reportDone ? 'done' : 'waiting'}
+            techName={assignedTechName}
+            onSite={techOnSite}
+            filledLabel={`Filled in on site${assignedTechName ? ` by ${assignedTechName}` : ''}`}
+            waitingNote="The report comes in from the phone on site."
+            onOverride={() => setReportOverride(true)}
+            overridden={reportOverride}
+          />
+          <fieldset disabled={!editable} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+          <div className="rounded-2xl p-5 space-y-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
+            {reportDone || reportOverride ? (
+              <>
+                <Txt label="What Was Found" val={card.work_found} cb={v => setField('work_found', v || null)} rows={5} />
+                <Txt label="Resolution" val={card.resolution} cb={v => setField('resolution', v || null)} rows={5} />
+              </>
+            ) : (
+              <>
+                <Field label="What Was Found"><NotSubmittedYet /></Field>
+                <Field label="Resolution"><NotSubmittedYet /></Field>
+              </>
+            )}
+          </div>
+          </fieldset>
         </div>
-        </fieldset>
       )}
 
       {/* ── Tab: Materials ───────────────────────────────────────────────── */}
@@ -1656,6 +1841,16 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       {/* ── Tab: Extra Work ──────────────────────────────────────────────── */}
       {tab === 'extras' && (
         <div>
+          {extras.length > 0 && (
+            <OwnerBand
+              state="done"
+              techName={assignedTechName}
+              onSite={techOnSite}
+              filledLabel={`${extras.length} item${extras.length === 1 ? '' : 's'} logged on site`}
+              filledNote="Price each batch on the new job card it creates, then send it to the client."
+              waitingNote=""
+            />
+          )}
           <div className="rounded-2xl overflow-hidden mb-4" style={{ background: S.card, border: `1px solid ${S.border}` }}>
             <div className="px-5 py-3" style={{ borderBottom: `1px solid ${S.border}` }}>
               <p className="text-sm font-semibold" style={{ color: S.text }}>Extra Work Reported On Site</p>
@@ -1723,6 +1918,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
       {/* ── Tab: Photos ──────────────────────────────────────────────────── */}
       {tab === 'photos' && (
         <div>
+          <OwnerBand
+            state={photos.length > 0 ? 'done' : 'waiting'}
+            techName={assignedTechName}
+            onSite={techOnSite}
+            filledLabel={`${photos.length} photo${photos.length === 1 ? '' : 's'} from site`}
+            filledNote="Add your own below if you need to."
+            waitingNote="Photos are taken on the job and upload straight here."
+          />
           {photos.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {photos.map(p => (
@@ -1908,7 +2111,14 @@ export function JobCardDetail({ jobCard: initial, staff, clients: initialClients
                       ? <CheckCircle2 size={12} color="#fff" />
                       : <span className="text-[9px] text-white font-bold">!</span>}
                   </div>
-                  <p className="flex-1 text-sm font-medium" style={{ color: S.text }}>{item.label}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium" style={{ color: S.text }}>{item.label}</p>
+                    {!item.done && (
+                      <p className="text-[11px]" style={{ color: S.muted }}>
+                        {item.owner === 'site' ? 'Waiting on site' : 'Yours to do'}
+                      </p>
+                    )}
+                  </div>
                   {!item.done && (
                     <button
                       onClick={() => { setTab(item.tab); setShowFinishFlow(false) }}
