@@ -7,6 +7,18 @@ import { AssignRepCell } from './AssignRepCell'
 import { IncompleteSignups, type IncompleteSignup } from './IncompleteSignups'
 import { TestNudge } from './TestNudge'
 import { SendWelcomeButton } from './SendWelcomeButton'
+import { TrialNudgeButton } from './TrialNudgeButton'
+
+/**
+ * Whole days left on a trial. 0 means the trial is over (or trial_ends_at is
+ * missing, which is treated as over rather than as an endless trial).
+ *
+ * Server component: renders once per request, so reading the clock here is
+ * stable by construction.
+ */
+function daysLeftOnTrial(trialEndsAt: string | null): number {
+  return trialEndsAt ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000)) : 0
+}
 
 function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string; trialEndsAt: string | null }) {
   if (status === 'active') {
@@ -17,11 +29,7 @@ function PlanBadge({ plan, status, trialEndsAt }: { plan: string; status: string
     )
   }
   if (status === 'trialing') {
-    const days = trialEndsAt
-      // Server component: renders once per request, so reading the clock here is stable by construction.
-      // eslint-disable-next-line react-hooks/purity
-      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 86400000))
-      : 0
+    const days = daysLeftOnTrial(trialEndsAt)
     const expired = days === 0
     return (
       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -91,6 +99,7 @@ interface StudioRow {
   status: string | null
   subscription_status: string | null
   trial_ends_at: string | null
+  trial_nudge_sent_at: string | null
   archived_at: string | null
   assigned_rep: string | null
   created_at: string
@@ -108,7 +117,7 @@ interface StudioRow {
 export default async function StudiosPage() {
   const { data: orgs } = await supabaseAdmin
     .from('organizations')
-    .select('id, name, created_at, plan, trial_ends_at, subscription_status, status, archived_at, assigned_rep, is_internal')
+    .select('id, name, created_at, plan, trial_ends_at, subscription_status, status, archived_at, assigned_rep, is_internal, trial_nudge_sent_at')
     .order('created_at', { ascending: false })
 
   const orgIds = (orgs ?? []).map(o => o.id)
@@ -202,13 +211,9 @@ export default async function StudiosPage() {
 
   const trialCount = activeStudios.filter(o => o.subscription_status === 'trialing').length
   const activeCount = activeStudios.filter(o => o.subscription_status === 'active').length
-  const expiredCount = activeStudios.filter(o => {
-    if (o.subscription_status !== 'trialing') return false
-    // Server component: renders once per request, so reading the clock here is stable by construction.
-    // eslint-disable-next-line react-hooks/purity
-    const days = o.trial_ends_at ? Math.max(0, Math.ceil((new Date(o.trial_ends_at).getTime() - Date.now()) / 86400000)) : 0
-    return days === 0
-  }).length
+  const expiredCount = activeStudios.filter(
+    o => o.subscription_status === 'trialing' && daysLeftOnTrial(o.trial_ends_at) === 0
+  ).length
   const churnRiskCount = activeStudios.filter(o => o.isChurnRisk).length
 
   return (
@@ -352,6 +357,13 @@ function StudioTable({ studios, archived = false, welcomeSentOrgIds }: { studios
                       </Link>
                       {!archived && !welcomeSentOrgIds.has(studio.id) && (
                         <SendWelcomeButton orgId={studio.id} />
+                      )}
+                      {!archived && !studio.isInternal && studio.subscription_status === 'trialing' && (
+                        <TrialNudgeButton
+                          orgId={studio.id}
+                          expired={daysLeftOnTrial(studio.trial_ends_at) === 0}
+                          lastNudgedAt={studio.trial_nudge_sent_at}
+                        />
                       )}
                       {!archived && <QuickDeleteButton orgId={studio.id} studioName={studio.businessName ?? 'Unnamed studio'} />}
                     </div>
