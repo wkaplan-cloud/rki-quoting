@@ -32,6 +32,8 @@ export interface ElecSettings {
   job_card_extras_enabled: boolean
   /** When false, job cards email the org only — never the client. */
   job_card_client_send_enabled: boolean
+  /** When false, the Projects section is hidden from this org's navigation. */
+  projects_enabled: boolean
   // Sage Accounting
   sage_username: string | null
   sage_password: string | null

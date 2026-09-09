@@ -15,19 +15,9 @@ interface Props {
   desktopExpanded: boolean
   onDesktopToggle: () => void
   receivePriceRequests?: boolean
+  /** Off when this org does not use the Projects section. */
+  projectsEnabled?: boolean
 }
-
-const QUOTING_NAV_ITEMS = [
-  { href: '/supplier-portal/quoting/dashboard',     label: 'Dashboard', icon: LayoutDashboard, exact: true,  badge: null           },
-  { href: '/supplier-portal/quoting/quotes',       label: 'Projects',  icon: FileText,        exact: false, badge: 'Long term'    },
-  { href: '/supplier-portal/quoting/job-cards',    label: 'Job Cards', icon: ClipboardList,   exact: false, badge: 'Daily'        },
-  { href: '/supplier-portal/quoting/clients',      label: 'Clients',   icon: Users,           exact: false, badge: null           },
-]
-
-const TEAM_NAV_ITEMS = [
-  { href: '/supplier-portal/quoting/schedule', label: 'Schedule', icon: CalendarDays, exact: false },
-  { href: '/supplier-portal/quoting/staff',    label: 'Staff',    icon: HardHat,      exact: false },
-]
 
 const S = {
   sidebar:      '#1E2A38',
@@ -96,7 +86,7 @@ function NavLink({ nav, href, label, icon: Icon, badge, pendingBadge, exact = fa
   )
 }
 
-export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false }: Props) {
+export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null, supplierCategory = 'manufacturer', notificationCount = 0, pendingMaterialsCount = 0, desktopExpanded, onDesktopToggle, receivePriceRequests = false, projectsEnabled = true }: Props) {
   const isTrades = supplierCategory === 'trades'
   const isManufacturing = hasQuoting && supplierCategory === 'manufacturer'
   const tradesTierRank = isTrades ? ({ starter: 1, professional: 2, business: 3, quoting: 3 }[quotingPlan ?? ''] ?? 0) : 0
@@ -212,7 +202,7 @@ export function SupplierPortalNav({ companyName, hasQuoting, quotingPlan = null,
                 return (
                   <>
                     <NavLink nav={nav} href="/supplier-portal/quoting"           label="Dashboard" icon={LayoutDashboard} exact />
-                    {isBiz && <NavLink nav={nav} href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />}
+                    {isBiz && projectsEnabled && <NavLink nav={nav} href="/supplier-portal/quoting/quotes"    label="Projects"  icon={FileText}        badge="Long term" />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/job-cards" label="Job Cards" icon={ClipboardList}   badge="Daily" />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/coc"       label="COC"       icon={FileCheck} />}
                     {isPro && <NavLink nav={nav} href="/supplier-portal/quoting/materials" label="Materials" icon={ShoppingCart}    pendingBadge={pendingMaterialsCount} />}

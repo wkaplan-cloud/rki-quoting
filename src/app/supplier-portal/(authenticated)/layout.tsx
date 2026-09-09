@@ -52,14 +52,20 @@ export default async function SupplierPortalLayout({
   let setupFeePaid = true
   let staffCount = 0
   let accountCreatedAt: string | null = null
+  // Default on, so an org that has not run the migration keeps today's nav.
+  let projectsEnabled = true
   if (isTrades && active) {
-    const [{ data: acctData }, { count }] = await Promise.all([
+    const [{ data: acctData }, { count }, { data: elecSettings }] = await Promise.all([
       supabaseAdmin.from('supplier_portal_accounts').select('setup_fee_paid, created_at').eq('id', account.id).single(),
       supabaseAdmin.from('elec_staff').select('id', { count: 'exact', head: true }).eq('portal_account_id', account.id).eq('is_active', true),
+      // Guarded on its own — this column arrives with the 2026-09-09 migration.
+      supabaseAdmin.from('elec_settings').select('projects_enabled').eq('portal_account_id', account.id)
+        .maybeSingle().then(res => res.error ? { data: null } : res),
     ])
     setupFeePaid = (acctData as Record<string, unknown> | null)?.setup_fee_paid === true
     accountCreatedAt = (acctData as Record<string, unknown> | null)?.created_at as string | null ?? null
     staffCount   = count ?? 0
+    projectsEnabled = (elecSettings as { projects_enabled?: boolean } | null)?.projects_enabled !== false
   }
 
   return (
@@ -72,6 +78,7 @@ export default async function SupplierPortalLayout({
       staffCount={staffCount}
       accountCreatedAt={accountCreatedAt ?? undefined}
       receivePriceRequests={account.receive_price_requests}
+      projectsEnabled={projectsEnabled}
     >
       <SessionExpiredHandler loginPath="/supplier-portal/login" />
       <NumberInputAutoSelect />

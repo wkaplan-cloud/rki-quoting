@@ -101,6 +101,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
   // Email notifications
   const [bccAdmins, setBccAdmins]     = useState(settings?.quote_send_bcc_admins ?? false)
   const [clientSendJobCards, setClientSendJobCards] = useState(settings?.job_card_client_send_enabled !== false)
+  const [projectsEnabled, setProjectsEnabled] = useState(settings?.projects_enabled !== false)
 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
@@ -175,13 +176,14 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
         company_code:                   codeToSave,
         quote_send_bcc_admins:          bccAdmins,
         job_card_client_send_enabled:   clientSendJobCards,
+        projects_enabled:               projectsEnabled,
       }),
     })
 
     setSaving(false)
     if (!res.ok) { const d = await res.json().catch(() => ({})); setError((d as { error?: string }).error ?? 'Save failed'); return }
     setSaved(true)
-  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards])
+  }, [companyName, vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled])
 
   // Auto-save on any field change — 1.5s debounce, skip on first render
   useEffect(() => {
@@ -189,7 +191,7 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
     clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => { void handleSave() }, 1500)
     return () => clearTimeout(autoSaveTimer.current)
-  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, handleSave])
+  }, [vatRate, retention, paymentTerms, defectsLiability, quotePrefix, claimPrefix, voPrefix, cocPrefix, footer, companyCodeVal, bccAdmins, clientSendJobCards, projectsEnabled, handleSave])
 
   return (
     <div className="space-y-6">
@@ -309,6 +311,35 @@ export function SettingsClient({ portalAccountId: _portalAccountId, companyName,
               />
             </button>
           </div>
+        </Section>
+
+        {/* What this company uses */}
+        <Section title="Sections In Use">
+          <div className="flex items-center justify-between py-1">
+            <div className="pr-4">
+              <p className="text-xs font-semibold" style={{ color: S.text }}>Projects</p>
+              <p className="text-xs mt-0.5" style={{ color: S.muted }}>
+                {projectsEnabled
+                  ? 'Long-term quoted work, claims and variation orders'
+                  : 'Hidden — this company works from job cards only'}
+              </p>
+            </div>
+            <button
+              onClick={() => setProjectsEnabled(v => !v)}
+              aria-label="Show the Projects section"
+              aria-pressed={projectsEnabled}
+              className="relative flex-shrink-0 w-11 h-6 rounded-full"
+              style={{ background: projectsEnabled ? S.accent : S.border, transition: 'background 0.2s' }}>
+              <span
+                className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
+                style={{ transform: projectsEnabled ? 'translateX(20px)' : 'translateX(0)', transition: 'transform 0.2s' }}
+              />
+            </button>
+          </div>
+          <p className="text-[11px] mt-2" style={{ color: S.muted }}>
+            Turning this off only hides the menu. Nothing is deleted, and anything already
+            in Projects is still there when you turn it back on.
+          </p>
         </Section>
 
         {/* PDF Footer */}

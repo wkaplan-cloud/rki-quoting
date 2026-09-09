@@ -32,6 +32,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.company_code                   === 'string' || body.company_code === null)      payload.company_code           = body.company_code
     if (typeof body.quote_send_bcc_admins          === 'boolean') payload.quote_send_bcc_admins = body.quote_send_bcc_admins
     if (typeof body.job_card_client_send_enabled   === 'boolean') payload.job_card_client_send_enabled = body.job_card_client_send_enabled
+    if (typeof body.projects_enabled               === 'boolean') payload.projects_enabled = body.projects_enabled
 
     const { error } = await supabaseAdmin
       .from('elec_settings')
