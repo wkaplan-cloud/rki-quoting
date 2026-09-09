@@ -182,6 +182,7 @@ export function WeekCalendar({
   scheduledJobCardIds = [],
   companyName,
   initialLiveStatuses = [],
+  projectsEnabled = true,
 }: {
   initialJobs: ElecJob[]
   staff: ElecStaff[]
@@ -190,6 +191,8 @@ export function WeekCalendar({
   scheduledJobCardIds?: string[]
   companyName: string
   initialLiveStatuses?: StaffLiveStatus[]
+  /** Off for a contractor who works from job cards only — no project to book against. */
+  projectsEnabled?: boolean
 }) {
   const [currentDay, setCurrentDay] = useState(() => {
     const d = new Date()
@@ -932,8 +935,9 @@ export function WeekCalendar({
             {/* Form */}
             <div className="p-5 space-y-3">
 
-              {/* Source selector (only for new jobs) */}
-              {modal.mode === 'add' && (
+              {/* Source selector (only for new jobs, and only when there are
+                  two sources to choose between) */}
+              {modal.mode === 'add' && projectsEnabled && (
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: S.muted }}>Schedule from</label>
                   <div className="flex gap-2">

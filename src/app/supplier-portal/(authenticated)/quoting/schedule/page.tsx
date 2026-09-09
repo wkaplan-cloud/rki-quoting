@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
+import { getOrgFeatures } from '@/lib/org-features'
 import { WeekCalendar } from './WeekCalendar'
 import type { ElecJob, ElecStaff, ElecJobCard } from '@/lib/elec-types'
 import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
@@ -123,9 +124,12 @@ export default async function SchedulePage() {
     }
   })
 
+  const features = await getOrgFeatures(account.id)
+
   return (
     <div>
       <WeekCalendar
+        projectsEnabled={features.projects}
         initialJobs={(jobs ?? []) as unknown as ElecJob[]}
         staff={(staff ?? []) as ElecStaff[]}
         quotes={(quotes ?? []) as { id: string; quote_number: string; project_name: string; project_address: string | null; staff_id: string | null; additional_staff_ids: string[] | null }[]}

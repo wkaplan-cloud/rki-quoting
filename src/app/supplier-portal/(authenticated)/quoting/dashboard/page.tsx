@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { planRank } from '@/lib/plan-features'
+import { getOrgFeatures } from '@/lib/org-features'
 import type { ElecQuoteStatus } from '@/lib/elec-types'
 import { QuotingDashboardClient } from '../QuotingDashboardClient'
 import { ClockingDashboardClient } from '../ClockingDashboardClient'
@@ -240,8 +241,11 @@ export default async function QuotingDashboardPage() {
   const jcCompleted  = jobCards.filter(jc => jc.status === 'completed')
   const jcRevenue    = jcCompleted.reduce((s, jc) => s + jc.total_charge, 0)
 
+  const features = await getOrgFeatures(account.id)
+
   return (
     <QuotingDashboardClient
+      projectsEnabled={features.projects}
       financial={{ pipelineValue, activeValue, completedValue, outstanding, paidYTD }}
       pipeline={pipeline}
       active={active}

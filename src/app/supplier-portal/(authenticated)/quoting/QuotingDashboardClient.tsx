@@ -56,6 +56,8 @@ interface Props {
   completed: QuoteRow[]
   reconMonths: string[]
   reconMap: Record<string, ReconEntry>
+  /** Off for a contractor who works from job cards only — see elec_settings.projects_enabled. */
+  projectsEnabled?: boolean
   jobCards: {
     pending: JobCardRow[]
     in_progress: JobCardRow[]
@@ -472,8 +474,10 @@ function SectionCard({ title, sub, accentColor, children }: {
 
 // ── Root component ────────────────────────────────────────────────────────────
 
-export function QuotingDashboardClient({ financial, pipeline, active, completed, reconMonths, reconMap, jobCards, jobCardSummary }: Props) {
-  const [activeTab, setActiveTab] = useState<'quotes' | 'job_cards'>('quotes')
+export function QuotingDashboardClient({ financial, pipeline, active, completed, reconMonths, reconMap, jobCards, jobCardSummary, projectsEnabled = true }: Props) {
+  // With Projects switched off there is one tab, and nothing on this page may
+  // send the contractor to a section their menu no longer shows.
+  const [activeTab, setActiveTab] = useState<'quotes' | 'job_cards'>(projectsEnabled ? 'quotes' : 'job_cards')
 
   const totalQuotes = pipeline.length + active.length + completed.length
   const totalJobCards = jobCards.pending.length + jobCards.in_progress.length + jobCards.completed.length
@@ -484,25 +488,31 @@ export function QuotingDashboardClient({ financial, pipeline, active, completed,
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: S.text }}>Quoting Dashboard</h1>
+          <h1 className="text-xl font-bold tracking-tight" style={{ color: S.text }}>
+            {projectsEnabled ? 'Quoting Dashboard' : 'Dashboard'}
+          </h1>
           <p className="text-xs mt-0.5" style={{ color: S.muted }}>
-            {active.length} active · {pipeline.length} in pipeline · {completed.length} completed
+            {projectsEnabled
+              ? `${active.length} active · ${pipeline.length} in pipeline · ${completed.length} completed`
+              : `${jobCardSummary.pendingCount} pending · ${jobCardSummary.inProgressCount} in progress · ${jobCardSummary.completedCount} completed`}
           </p>
         </div>
         <Link
-          href="/supplier-portal/quoting/quotes"
+          href={projectsEnabled ? '/supplier-portal/quoting/quotes' : '/supplier-portal/quoting/job-cards'}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
           style={{ background: S.accent, color: '#fff' }}
         >
-          All Projects
+          {projectsEnabled ? 'All Projects' : 'All Job Cards'}
         </Link>
       </div>
 
       {/* Projects financial strip */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Projects</p>
-        <FinancialStrip financial={financial} />
-      </div>
+      {projectsEnabled && (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: S.muted }}>Projects</p>
+          <FinancialStrip financial={financial} />
+        </div>
+      )}
 
       {/* Job cards strip */}
       <JobCardStrip summary={jobCardSummary} />
@@ -511,7 +521,7 @@ export function QuotingDashboardClient({ financial, pipeline, active, completed,
       <div>
         <div className="flex items-center gap-1 mb-5" style={{ borderBottom: `1px solid ${S.border}` }}>
           {([
-            { id: 'quotes'    as const, label: 'Projects',  Icon: FileText, count: totalQuotes    },
+            ...(projectsEnabled ? [{ id: 'quotes' as const, label: 'Projects', Icon: FileText, count: totalQuotes }] : []),
             { id: 'job_cards' as const, label: 'Job Cards', Icon: Wrench,   count: totalJobCards  },
           ]).map(({ id, label, Icon, count }) => {
             const isActive = activeTab === id
@@ -540,7 +550,7 @@ export function QuotingDashboardClient({ financial, pipeline, active, completed,
           })}
         </div>
 
-        {activeTab === 'quotes' && (
+        {activeTab === 'quotes' && projectsEnabled && (
           <QuotesTab
             pipeline={pipeline}
             active={active}
