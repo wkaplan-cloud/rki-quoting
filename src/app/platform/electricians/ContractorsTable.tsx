@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import {
   Zap, Users, Clock, RotateCcw, Trash2,
   CheckCircle, Loader2, Plus, X, AlertCircle, ShieldCheck, Edit2,
-  Receipt, AlertTriangle, BadgeCheck, CreditCard, ExternalLink,
+  Receipt, AlertTriangle, BadgeCheck, CreditCard, ExternalLink, SlidersHorizontal,
 } from 'lucide-react'
 import { useNow } from '@/lib/useNow'
 import { PortalTrialNudgeButton } from '../_components/PortalTrialNudgeButton'
@@ -417,8 +417,89 @@ function BillingPanel({ accountId }: { accountId: string }) {
   )
 }
 
+/**
+ * Per-org feature switches, set from here so a contractor does not have to be
+ * signed into to turn a section off for them.
+ */
+const FEATURE_LABELS: { key: string; label: string; hint: string }[] = [
+  { key: 'projects_enabled',             label: 'Projects',            hint: 'Long-term quoted work, claims and variation orders' },
+  { key: 'job_card_extras_enabled',      label: 'Extra work on jobs',  hint: 'Technicians can log extra work found on site' },
+  { key: 'job_card_client_send_enabled', label: 'Email job cards to clients', hint: 'Off means job cards reach the office only' },
+]
+
+function FeaturesPanel({ accountId }: { accountId: string }) {
+  const [features, setFeatures] = useState<Record<string, boolean> | null>(null)
+  const [saving, setSaving] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const res = await fetch(`/api/platform/elec-accounts/${accountId}`)
+      const json = await res.json() as { features?: Record<string, boolean>; error?: string }
+      if (cancelled) return
+      if (!res.ok) { setError(json.error ?? 'Could not load features'); return }
+      setFeatures(json.features ?? {})
+    })()
+    return () => { cancelled = true }
+  }, [accountId])
+
+  async function set(key: string, value: boolean) {
+    setSaving(key); setError('')
+    const previous = features
+    setFeatures(f => ({ ...(f ?? {}), [key]: value }))
+    const res = await fetch(`/api/platform/elec-accounts/${accountId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ features: { [key]: value } }),
+    })
+    setSaving(null)
+    if (!res.ok) {
+      setFeatures(previous)
+      const json = await res.json().catch(() => ({})) as { error?: string }
+      setError(json.error ?? 'Could not save — nothing was changed')
+    }
+  }
+
+  return (
+    <div className="px-5 py-4 bg-[#F7F4EE] border-t border-[#EAE5DB]">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-[#8A877F] mb-3">Sections this company uses</p>
+      {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
+      {features === null && !error && <Loader2 size={14} className="animate-spin text-[#8A877F]" />}
+      {features && (
+        <div className="flex flex-col gap-2.5">
+          {FEATURE_LABELS.map(f => {
+            const on = features[f.key] !== false
+            return (
+              <div key={f.key} className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-[#3F3D38]">{f.label}</p>
+                  <p className="text-[11px] text-[#8A877F]">{f.hint}</p>
+                </div>
+                <button
+                  onClick={() => void set(f.key, !on)}
+                  disabled={saving === f.key}
+                  aria-label={f.label}
+                  aria-pressed={on}
+                  className="relative flex-shrink-0 w-10 h-[22px] rounded-full disabled:opacity-50 cursor-pointer"
+                  style={{ background: on ? '#8F5706' : '#DED8CC', transition: 'background .2s' }}>
+                  <span className="absolute top-0.5 left-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-sm"
+                    style={{ transform: on ? 'translateX(18px)' : 'translateX(0)', transition: 'transform .2s' }} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <p className="text-[11px] text-[#8A877F] mt-3">
+        Hiding a section only changes their menu. Nothing is deleted, and it all comes back when switched on.
+      </p>
+    </div>
+  )
+}
+
 // ── Main Table ──────────────────────────────────────────────────────────────────
-type ExpandView = 'plan' | 'admins' | 'billing'
+type ExpandView = 'plan' | 'admins' | 'billing' | 'features'
 
 export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] }) {
   const now = useNow()
@@ -624,6 +705,11 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
                   title="Delete account">
                   {deleting === a.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                 </button>
+                <button onClick={() => toggle(a.id, 'features')}
+                  title="Sections this company uses"
+                  className={`p-1.5 rounded-md cursor-pointer transition-colors ${openView === 'features' ? 'bg-[#EFE7D8] text-[#8F5706]' : 'text-[#8A877F] hover:bg-[#F3EFE8] hover:text-[#5C5A54]'}`}>
+                  <SlidersHorizontal size={11} />
+                </button>
               </div>
             </div>
 
@@ -644,6 +730,11 @@ export function ContractorsTable({ rows: initialRows }: { rows: ContractorRow[] 
             {/* Billing panel */}
             {openView === 'billing' && (
               <BillingPanel accountId={a.id} />
+            )}
+
+            {/* Feature switches */}
+            {openView === 'features' && (
+              <FeaturesPanel accountId={a.id} />
             )}
           </div>
         )
