@@ -31,21 +31,18 @@ interface Props {
   portalAccountId: string
   initialQuotes: (ElecQuote & { client: ElecClient | null })[]
   initialArchivedQuotes: (ElecQuote & { client: ElecClient | null })[]
-  clients: Pick<ElecClient, 'id' | 'client_name' | 'company'>[]
+  clients: ClientOption[]
 }
 
-type ClientOption = Pick<ElecClient, 'id' | 'client_name' | 'company'>
+type ClientOption = Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'contact_number'>
 
-function ClientCombobox({ clients, portalAccountId, value, onChange }: {
+function ClientCombobox({ clients, value, onChange }: {
   clients: ClientOption[]
-  portalAccountId: string
   value: string
-  onChange: (id: string | null, name: string) => void
+  onChange: (client: ClientOption | null, name: string) => void
 }) {
-  const supabase = createClient()
   const [input, setInput] = useState(value)
   const [open, setOpen] = useState(false)
-  const [creating, setCreating] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   const filtered = input.trim().length > 0
@@ -57,16 +54,12 @@ function ClientCombobox({ clients, portalAccountId, value, onChange }: {
 
   const exactMatch = clients.some(c => c.client_name.toLowerCase() === input.trim().toLowerCase())
 
-  async function addNew() {
-    if (!input.trim() || creating) return
-    setCreating(true)
-    const { data, error } = await supabase
-      .from('elec_clients')
-      .insert({ portal_account_id: portalAccountId, client_name: input.trim() })
-      .select('id, client_name')
-      .single()
-    if (!error && data) { onChange(data.id, data.client_name); setOpen(false) }
-    setCreating(false)
+  // The client row itself is created with the project, so the email and phone
+  // typed below travel with it — no need to visit the Clients section first.
+  function addAsNewClient() {
+    if (!input.trim()) return
+    onChange(null, input.trim())
+    setOpen(false)
   }
 
   useEffect(() => {
@@ -80,7 +73,8 @@ function ClientCombobox({ clients, portalAccountId, value, onChange }: {
       <div className="relative">
         <input
           value={input}
-          onChange={e => { setInput(e.target.value); setOpen(true) }}
+          onChange={e => { setInput(e.target.value); setOpen(true); onChange(null, e.target.value) }}
+          aria-label="Client name"
           placeholder="Search or add client…"
           className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none pr-7"
           style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
@@ -88,7 +82,8 @@ function ClientCombobox({ clients, portalAccountId, value, onChange }: {
           onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
         />
         {input && (
-          <button onMouseDown={e => { e.preventDefault(); setInput(''); onChange(null, '') }}
+          <button type="button" aria-label="Clear client"
+            onMouseDown={e => { e.preventDefault(); setInput(''); onChange(null, '') }}
             className="absolute right-2 top-1/2 -translate-y-1/2" style={{ color: S.muted }}>
             <X size={13} />
           </button>
@@ -99,7 +94,7 @@ function ClientCombobox({ clients, portalAccountId, value, onChange }: {
           style={{ background: S.card, border: `1px solid ${S.border}`, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
           {filtered.map(c => (
             <button key={c.id}
-              onMouseDown={e => { e.preventDefault(); setInput(c.client_name); onChange(c.id, c.client_name); setOpen(false) }}
+              onMouseDown={e => { e.preventDefault(); setInput(c.client_name); onChange(c, c.client_name); setOpen(false) }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
               onMouseEnter={e => e.currentTarget.style.background = S.bg}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -115,14 +110,13 @@ function ClientCombobox({ clients, portalAccountId, value, onChange }: {
           ))}
           {input.trim() && !exactMatch && (
             <button
-              onMouseDown={e => { e.preventDefault(); addNew() }}
-              disabled={creating}
+              onMouseDown={e => { e.preventDefault(); addAsNewClient() }}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm"
               style={{ borderTop: filtered.length > 0 ? `1px solid ${S.border}` : undefined }}
               onMouseEnter={e => e.currentTarget.style.background = S.bg}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <Plus size={13} style={{ color: S.accent }} />
-              <span style={{ color: S.accent }}>{creating ? 'Adding…' : `Add "${input.trim()}" as new client`}</span>
+              <span style={{ color: S.accent }}>{`Add "${input.trim()}" as new client`}</span>
             </button>
           )}
           {filtered.length === 0 && !input.trim() && (
@@ -138,15 +132,17 @@ function fmt(n: number) {
   return 'R ' + n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
+function NewQuoteModal({ clients, onClose, onCreated }: {
   clients: Props['clients']
-  portalAccountId: string
   onClose: () => void
   onCreated: (id: string) => void
 }) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [projectName, setProjectName] = useState('')
   const [clientId, setClientId] = useState<string | null>(null)
+  const [clientName, setClientName] = useState('')
+  const [clientEmail, setClientEmail] = useState('')
+  const [clientPhone, setClientPhone] = useState('')
   const [projectType, setProjectType] = useState('')
   const [isQuickJob, setIsQuickJob] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -164,7 +160,15 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
     const res = await fetch('/api/supplier-portal/quoting/quotes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_name: projectName.trim(), client_id: clientId, project_type: projectType || null, is_quick_job: isQuickJob }),
+      body: JSON.stringify({
+        project_name: projectName.trim(),
+        client_id: clientId,
+        client_name: clientName.trim() || null,
+        client_email: clientEmail.trim() || null,
+        client_phone: clientPhone.trim() || null,
+        project_type: projectType || null,
+        is_quick_job: isQuickJob,
+      }),
     })
     const data = await res.json() as { id?: string; error?: string }
     if (!res.ok || !data.id) { setError(data.error ?? 'Failed to create quote'); setLoading(false); return }
@@ -202,11 +206,55 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
             <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Client</label>
             <ClientCombobox
               clients={clients}
-              portalAccountId={portalAccountId}
               value=""
-              onChange={(id) => setClientId(id)}
+              onChange={(client, name) => {
+                setClientName(name)
+                if (client) {
+                  setClientId(client.id)
+                  setClientEmail(client.email ?? '')
+                  setClientPhone(client.contact_number ?? '')
+                  return
+                }
+                // Typing over a picked client drops their details too, so they are
+                // never carried onto a different client.
+                if (clientId) { setClientEmail(''); setClientPhone('') }
+                setClientId(null)
+              }}
             />
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="new-quote-client-email" className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Client Email</label>
+              <input
+                id="new-quote-client-email"
+                type="email" inputMode="email" autoComplete="off"
+                value={clientEmail}
+                onChange={e => setClientEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+                onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+                onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-quote-client-phone" className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Client Number</label>
+              <input
+                id="new-quote-client-phone"
+                type="tel" inputMode="tel" autoComplete="off"
+                value={clientPhone}
+                onChange={e => setClientPhone(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-sm rounded-lg outline-none"
+                style={{ background: S.input, border: `1.5px solid ${S.border}`, color: S.text }}
+                onFocus={e => { e.currentTarget.style.borderColor = S.accent; e.currentTarget.style.background = '#fff' }}
+                onBlur={e => { e.currentTarget.style.borderColor = S.border; e.currentTarget.style.background = S.input }}
+              />
+            </div>
+          </div>
+          <p className="text-xs -mt-1" style={{ color: S.muted }}>
+            {clientId
+              ? 'Saved against this client — leave as is to keep their existing details.'
+              : 'A new client is created with these details when the project is saved.'}
+          </p>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: S.muted }}>Project Type</label>
             <select value={projectType} onChange={e => setProjectType(e.target.value)}
@@ -250,7 +298,7 @@ function NewQuoteModal({ clients, portalAccountId, onClose, onCreated }: {
   )
 }
 
-export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuotes, clients }: Props) {
+export function QuotesList({ initialQuotes, initialArchivedQuotes, clients }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [quotes, setQuotes] = useState(initialQuotes)
@@ -505,7 +553,6 @@ export function QuotesList({ portalAccountId, initialQuotes, initialArchivedQuot
       {showNewModal && (
         <NewQuoteModal
           clients={clients}
-          portalAccountId={portalAccountId}
           onClose={() => setShowNewModal(false)}
           onCreated={id => router.push(`/supplier-portal/quoting/quotes/${id}`)}
         />

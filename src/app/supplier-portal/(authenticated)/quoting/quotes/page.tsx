@@ -28,7 +28,7 @@ export default async function QuotesPage() {
       .order('created_at', { ascending: false }),
     supabaseAdmin
       .from('elec_clients')
-      .select('id, client_name, company')
+      .select('id, client_name, company, email, contact_number')
       .eq('portal_account_id', account.id)
       .order('client_name'),
   ])
@@ -41,7 +41,7 @@ export default async function QuotesPage() {
       portalAccountId={account.id}
       initialQuotes={quotes as (ElecQuote & { client: ElecClient | null })[]}
       initialArchivedQuotes={archivedQuotes as (ElecQuote & { client: ElecClient | null })[]}
-      clients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company'>[]}
+      clients={(clients ?? []) as Pick<ElecClient, 'id' | 'client_name' | 'company' | 'email' | 'contact_number'>[]}
     />
   )
 }

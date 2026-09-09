@@ -70,11 +70,15 @@ function newSection(quoteId: string, sortOrder: number): SectionState {
   return { id: crypto.randomUUID(), quote_id: quoteId, title: '', sort_order: sortOrder, items: [] }
 }
 
+// The sell rate the editor totals from. quoted_unit_rate is the field that is
+// saved and printed, so it wins; cost × markup is only a fallback for older rows
+// that were captured before the sell rate was stored.
 function computeSellRate(item: ItemState): number {
-  if (item.cost_unit_rate != null) {
+  if (item.quoted_unit_rate) return item.quoted_unit_rate
+  if (item.cost_unit_rate) {
     return Math.round(item.cost_unit_rate * (1 + (item.markup_percentage ?? 0) / 100) * 100) / 100
   }
-  return item.quoted_unit_rate ?? 0
+  return 0
 }
 function itemTotal(item: ItemState): number {
   return (item.quoted_quantity ?? 0) * computeSellRate(item) + (item.quoted_quantity ?? 0) * (item.labour_rate ?? 0)
@@ -137,7 +141,7 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
         className="w-full px-2.5 py-1.5 text-sm rounded-lg outline-none"
         style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, minWidth: 180 }}
         onFocus={() => { setFocused(true); if (suggestions.length > 0) setOpen(true) }}
-        onBlur={() => setFocused(false)}
+        onBlur={() => { setFocused(false); setOpen(false) }}
       />
       {open && (
         <div className="absolute top-full left-0 right-0 z-20 rounded-xl overflow-hidden mt-1"
@@ -172,38 +176,42 @@ function DescriptionInput({ value, onChange, onSelect, portalAccountId, locked }
 }
 
 // ─── Numeric rate/qty input ────────────────────────────────────────────────────
-// Uses an uncontrolled <input> while focused (defaultValue set once on focus) so that
-// parent re-renders triggered by onChange never stomp on what the user is mid-typing.
-// A controlled input here would redisplay "0" the instant the field is cleared,
-// forcing users to type in front of/behind a "0" that keeps reappearing.
+// Always a real <input> so Tab moves through Qty → Cost → Markup → Rate → Labour.
+// It is left uncontrolled while the user is typing (React never rewrites the DOM
+// value mid-edit) — a controlled input here would redisplay "0" the instant the
+// field is cleared, forcing users to type in front of a "0" that keeps reappearing.
+// When the field is not focused, an effect pushes the parent's value back into it.
 function RateInput({ value, onChange, placeholder = '0', width = 90, locked, decimals = false }: {
   value: number | null; onChange: (n: number) => void
   placeholder?: string; width?: number; locked?: boolean; decimals?: boolean
 }) {
-  const [focused, setFocused] = useState(false)
+  const ref = useRef<HTMLInputElement>(null)
+  const focusedRef = useRef(false)
   const display = value != null && value !== 0 ? (decimals ? value.toFixed(2) : String(value)) : ''
 
-  if (focused) {
-    return (
-      <input
-        type="text" inputMode="decimal" autoFocus
-        defaultValue={display}
-        onFocus={e => e.target.select()}
-        onChange={e => onChange(parseFloat(e.target.value.replace(',', '.')) || 0)}
-        onBlur={e => { setFocused(false); onChange(parseFloat(e.target.value.replace(',', '.')) || 0) }}
-        placeholder={placeholder}
-        className="px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
-        style={{ background: '#fff', border: `1px solid ${S.border}`, color: S.text, width }}
-      />
-    )
-  }
+  useEffect(() => {
+    const el = ref.current
+    if (el && !focusedRef.current && el.value !== display) el.value = display
+  }, [display])
+
   return (
-    <button type="button" disabled={locked}
-      onClick={() => !locked && setFocused(true)}
-      className="px-2.5 py-1.5 text-sm rounded-lg outline-none text-right"
-      style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: display ? S.text : '#A1A1AA', width, cursor: locked ? 'default' : 'text' }}>
-      {display || placeholder}
-    </button>
+    <input
+      ref={ref}
+      type="text" inputMode="decimal" disabled={locked}
+      defaultValue={display}
+      aria-label={placeholder}
+      onFocus={e => { focusedRef.current = true; e.target.select() }}
+      onChange={e => onChange(parseFloat(e.target.value.replace(',', '.')) || 0)}
+      onBlur={e => {
+        focusedRef.current = false
+        const n = parseFloat(e.target.value.replace(',', '.')) || 0
+        onChange(n)
+        e.target.value = n !== 0 ? (decimals ? n.toFixed(2) : String(n)) : ''
+      }}
+      placeholder={placeholder}
+      className="px-2.5 py-1.5 text-sm rounded-lg outline-none text-right flex-shrink-0"
+      style={{ background: locked ? S.bg : '#fff', border: `1px solid ${S.border}`, color: S.text, width }}
+    />
   )
 }
 
@@ -258,7 +266,10 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
           set({ cost_unit_rate: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, 'Cost', 82, true)}
         {numInput(item.markup_percentage, v => {
-          const sell = (item.cost_unit_rate ?? 0) * (1 + v / 100)
+          // With no cost captured there is nothing to mark up — leave a hand-typed
+          // sell rate alone rather than zeroing it.
+          if (!item.cost_unit_rate) { set({ markup_percentage: v }); return }
+          const sell = item.cost_unit_rate * (1 + v / 100)
           set({ markup_percentage: v, quoted_unit_rate: Math.round(sell * 100) / 100 })
         }, '%', 65)}
         {/* Sell rate per unit — editable; changing it auto-updates markup % */}
