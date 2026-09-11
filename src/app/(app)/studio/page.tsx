@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Activity } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { StudioHome } from './StudioHome'
 
@@ -21,7 +23,7 @@ export default async function StudioPage() {
 
   if (!settings?.studio_enabled) redirect('/dashboard')
 
-  const [{ data: clients }, { data: boards }, { data: assetSizes }] = await Promise.all([
+  const [{ data: clients }, { data: boards }, { data: assetSizes }, { data: slideAuthors }] = await Promise.all([
     supabase.from('clients').select('id, client_name, company').order('client_name'),
     supabase
       .from('studio_boards')
@@ -30,6 +32,13 @@ export default async function StudioPage() {
     // One query for every board's asset sizes, grouped client-side into a
     // map — avoids an N+1 per-board query regardless of how many boards exist
     supabase.from('studio_assets').select('board_id, file_size'),
+    // Author of the last real content change per board. Derived from the
+    // slides rather than stored on the board, because studio_boards.updated_at
+    // also moves on pan/zoom — opening a board and looking at it is not work.
+    supabase
+      .from('studio_slides')
+      .select('board_id, updated_at, last_edited_by_name')
+      .order('updated_at', { ascending: false }),
   ])
 
   const clientRows = (clients ?? []).map(c => ({
@@ -37,6 +46,18 @@ export default async function StudioPage() {
     clientName: c.client_name as string,
     company: (c.company as string | null) ?? '',
   }))
+
+  // Slides arrive newest-first, so the first row seen for a board is its
+  // latest edit — later rows are older and must not overwrite it.
+  const editedByBoard = new Map<string, { at: string; by: string | null }>()
+  for (const sl of slideAuthors ?? []) {
+    const boardId = sl.board_id as string
+    if (editedByBoard.has(boardId)) continue
+    editedByBoard.set(boardId, {
+      at: sl.updated_at as string,
+      by: (sl.last_edited_by_name as string | null) ?? null,
+    })
+  }
 
   const sizeByBoard = new Map<string, number>()
   for (const a of assetSizes ?? []) {
@@ -46,10 +67,14 @@ export default async function StudioPage() {
   const boardRows = (boards ?? []).map(b => {
     // Supabase FK joins come back as an array even for a to-one relation
     const client = Array.isArray(b.clients) ? b.clients[0] : b.clients
+    const edited = editedByBoard.get(b.id as string)
     return {
       id: b.id as string,
       name: b.name as string,
-      updatedAt: b.updated_at as string,
+      // The last content change, falling back to the board row for a board
+      // whose slides pre-date attribution or that has none yet.
+      updatedAt: edited?.at ?? (b.updated_at as string),
+      editedBy: edited?.by ?? null,
       clientId: b.client_id as string,
       clientName: (client?.client_name as string | undefined) ?? '',
       company: (client?.company as string | null | undefined) ?? '',
@@ -59,7 +84,18 @@ export default async function StudioPage() {
 
   return (
     <div>
-      <PageHeader title="Studio" subtitle="Presentation boards for your clients" />
+      <PageHeader
+        title="Studio"
+        subtitle="Presentation boards for your clients"
+        actions={
+          <Link
+            href="/studio/activity"
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-[#D8D3C8] bg-white text-[#2C2C2A] hover:border-[#9A7B4F] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A7B4F]"
+          >
+            <Activity size={14} /> Activity
+          </Link>
+        }
+      />
       <div className="p-6 lg:p-8">
         <StudioHome
           orgId={orgId}

@@ -23,11 +23,21 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
   const { data: orgId } = await supabase.rpc('get_current_org_id')
   if (!orgId) redirect('/dashboard')
 
-  const { data: settings } = await supabaseAdmin
-    .from('settings')
-    .select('studio_enabled, logo_url, studio_logo_url, business_name')
-    .eq('org_id', orgId)
-    .maybeSingle()
+  const [{ data: settings }, { data: member }] = await Promise.all([
+    supabaseAdmin
+      .from('settings')
+      .select('studio_enabled, logo_url, studio_logo_url, business_name')
+      .eq('org_id', orgId)
+      .maybeSingle(),
+    // Name stamped onto every row edited in this session. org_members is the
+    // roster of real people in the org — auth metadata is not reliably set.
+    supabaseAdmin
+      .from('org_members')
+      .select('full_name')
+      .eq('org_id', orgId)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ])
 
   if (!settings?.studio_enabled) redirect('/dashboard')
 
@@ -78,6 +88,8 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
       boardId={board.id}
       projectId={(board.project_id as string | null) ?? null}
       orgId={orgId}
+      userId={user.id}
+      userName={member?.full_name || user.email || null}
       clientId={board.client_id}
       clientName={client?.client_name ?? ''}
       boardName={board.name}

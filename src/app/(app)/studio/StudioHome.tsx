@@ -14,6 +14,9 @@ interface BoardRow {
   id: string
   name: string
   updatedAt: string
+  /** Who last changed the board's content. null for edits made before
+   *  attribution existed, or for a board with no slides yet. */
+  editedBy: string | null
   clientId: string
   clientName: string
   company: string
@@ -140,6 +143,7 @@ function BoardGrid({ boards }: { boards: BoardRow[] }) {
           <p className="text-[11px] text-[#8A877F] mt-4">
             Edited{' '}
             {new Date(b.updatedAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {b.editedBy && <> by {b.editedBy}</>}
             {b.sizeBytes > 0 && <> · {formatSize(b.sizeBytes)}</>}
           </p>
         </div>

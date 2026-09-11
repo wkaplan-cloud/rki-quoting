@@ -67,6 +67,10 @@ export interface EditorShellProps {
   boardId: string
   projectId: string | null
   orgId: string
+  /** Author stamp for everything this session saves. Optional: an older
+   *  caller that omits it simply writes rows with no author, as before. */
+  userId?: string | null
+  userName?: string | null
   clientId: string
   clientName: string
   boardName: string

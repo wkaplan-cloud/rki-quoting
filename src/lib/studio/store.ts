@@ -47,6 +47,9 @@ interface InitProps {
   boardId: string
   projectId: string | null
   orgId: string
+  /** Who is editing. Stamped onto every row this session writes. */
+  userId?: string | null
+  userName?: string | null
   clientId: string
   clientName: string
   boardName: string
@@ -65,6 +68,8 @@ interface InitProps {
 
 interface StudioState {
   boardId: string
+  userId: string | null
+  userName: string | null
   // The quoting project this board has been converted into, if any. null
   // until the first "Create quote"; drives Create vs Update/Open in the
   // Specs panel. Set once at load — a fresh convert navigates away, so it
@@ -385,6 +390,8 @@ function reorderObject(
 
 export const useStudioStore = create<StudioState>((set, get) => ({
   boardId: '',
+  userId: null,
+  userName: null,
   projectId: null,
   orgId: '',
   clientId: '',
@@ -431,6 +438,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       boardId: props.boardId,
       projectId: props.projectId,
       orgId: props.orgId,
+      userId: props.userId ?? null,
+      userName: props.userName ?? null,
       clientId: props.clientId,
       clientName: props.clientName,
       boardName: props.boardName,
@@ -1064,6 +1073,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         objects: sl.objects,
         is_cover: sl.isCover,
         updated_at: new Date().toISOString(),
+        last_edited_by: s.userId,
+        last_edited_by_name: s.userName,
       }))
     const toDelete = dirty.filter(id => !currentIds.has(id))
 
@@ -1120,6 +1131,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
           piece_id: sp.pieceId,
           item_specs: sp.itemSpecs,
           updated_at: new Date().toISOString(),
+          last_edited_by: fresh.userId,
+          last_edited_by_name: fresh.userName,
         }))
         const { error } = await supabase
           .from('studio_specs')
@@ -1172,6 +1185,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         name: r.name,
         heading: r.heading,
         objects: r.objects,
+        edited_by: s.userId,
+        edited_by_name: s.userName,
       }))
     if (revisionRows.length) {
       revisionRows.forEach(r => lastRevisionAt.set(r.slide_id, now))
