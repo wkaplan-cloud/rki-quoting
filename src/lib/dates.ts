@@ -71,3 +71,20 @@ export function monthKeyOffsetSA(back: number): string {
   const d = new Date(Date.UTC(y, m - 1 - back, 1))
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
+
+/**
+ * The instant midnight South African time began for the SAST day `iso` falls in
+ * (default: now), as an ISO string suitable for a `punched_at` range filter.
+ *
+ * `new Date(); d.setHours(0,0,0,0)` is midnight in the *server's* zone, and
+ * Vercel runs in UTC — so a "today" window built that way starts at 02:00 SAST
+ * and runs to 02:00 SAST the next morning, two hours out of step with the day
+ * the crew actually worked.
+ */
+export function startOfSADayISO(iso?: string): string {
+  const day = iso
+    ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' }).format(new Date(iso))
+    : todaySA()
+  // SAST is UTC+2 year-round — no daylight saving.
+  return `${day}T00:00:00+02:00`
+}

@@ -67,7 +67,23 @@ export async function POST(req: NextRequest) {
       .select()
       .single()
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) {
+      // The pre-check above is a read followed by a write, so two replays of the
+      // same punch arriving together can both pass it. idx_time_punches_idempotency
+      // is the real guard — a 23505 here means the other one won, which is a
+      // success for the caller, not a failure. Hand back the row it wrote.
+      if (error.code === '23505' && idempotency_key) {
+        const { data: existing } = await supabaseAdmin
+          .from('elec_time_punches')
+          .select()
+          .eq('idempotency_key', idempotency_key)
+          .maybeSingle()
+        if (existing) {
+          return NextResponse.json({ ok: true, punch: existing, address: existing.address ?? null, deduplicated: true })
+        }
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     // Resolve the address after the punch is safely stored, then write it back to
     // the row so the timesheet never has to geocode at render time.

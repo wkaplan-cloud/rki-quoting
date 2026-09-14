@@ -55,6 +55,16 @@ function jobHeight(start: string, end: string): number {
   return Math.max(((toMins(end) - toMins(start)) / 60) * HOUR_HEIGHT, 28)
 }
 
+// "Thu 11 Sep, 07:39" in SA time — for a clock-in still open from a past day,
+// where an elapsed count ("96h 0m") reads like a real shift.
+function fmtDayTime(iso: string): string {
+  return new Intl.DateTimeFormat('en-ZA', {
+    timeZone: 'Africa/Johannesburg',
+    weekday: 'short', day: 'numeric', month: 'short',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).format(new Date(iso))
+}
+
 function fmtElapsed(fromIso: string, to: Date): string {
   const ms = to.getTime() - new Date(fromIso).getTime()
   if (ms <= 0) return '0m'
@@ -686,11 +696,19 @@ export function WeekCalendar({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-semibold" style={{ color: S.text }}>{s.name}</span>
-                      <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(22,163,74,0.08)', color: S.green }}>
-                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: S.green }} />
-                        On site · {ls.clockedInAt ? fmtElapsed(ls.clockedInAt, now) : '—'}
-                      </span>
+                      {ls.clockedInOnEarlierDay ? (
+                        <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(217,164,65,0.12)', color: S.gold }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: S.gold }} />
+                          Never clocked out · since {ls.clockedInAt ? fmtDayTime(ls.clockedInAt) : '—'}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(22,163,74,0.08)', color: S.green }}>
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: S.green }} />
+                          On site · {ls.clockedInAt ? fmtElapsed(ls.clockedInAt, now) : '—'}
+                        </span>
+                      )}
                     </div>
                     {activity && <p className="text-xs mt-0.5 truncate" style={{ color: S.muted }}>{activity}</p>}
                   </div>
@@ -810,7 +828,7 @@ export function WeekCalendar({
 
               {/* Live punch blocks */}
               {isToday && (() => {
-                const onSiteNow = liveStatuses.filter(ls => ls.isClockedIn && ls.clockedInAt)
+                const onSiteNow = liveStatuses.filter(ls => ls.isClockedIn && ls.clockedInAt && !ls.clockedInOnEarlierDay)
                 if (onSiteNow.length === 0) return null
                 const count = onSiteNow.length
                 return onSiteNow.map((ls, idx) => {

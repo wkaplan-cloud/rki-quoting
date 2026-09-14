@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { resolvePortalAccount } from '@/lib/portal-account'
 import { apiError } from '@/lib/api-error'
+import { startOfSADayISO } from '@/lib/dates'
 
 export interface StaffLiveStatus {
   staffId: string
@@ -14,6 +15,8 @@ export interface StaffLiveStatus {
   currentJobCardId: string | null
   currentProjectName: string | null
   currentProjectId: string | null
+  /** The open session started before today (SAST) — they never clocked out. */
+  clockedInOnEarlierDay: boolean
 }
 
 export async function GET() {
@@ -25,8 +28,14 @@ export async function GET() {
     const account = await resolvePortalAccount(user.id)
     if (!account) return NextResponse.json({ error: 'No account' }, { status: 403 })
 
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
+    // Two separate windows. Attendance is answered from a multi-day lookback,
+    // because a staff member who never clocked out yesterday is still clocked in
+    // this morning — scoping this to today made the office board read "off site"
+    // while the worker's own phone (which looks back a week) read "on site", and
+    // the board is what the office trusts. The day boundary is SAST, not the
+    // server's UTC midnight.
+    const todayStart = startOfSADayISO()
+    const lookback = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
     const [
       { data: staffList },
@@ -41,9 +50,10 @@ export async function GET() {
         .eq('is_active', true),
       supabaseAdmin
         .from('elec_time_punches')
-        .select('staff_id, punch_type, punched_at, latitude, longitude, job_id')
+        .select('staff_id, punch_type, punched_at, latitude, longitude')
         .eq('portal_account_id', account.id)
-        .gte('punched_at', todayStart.toISOString())
+        .is('job_id', null)
+        .gte('punched_at', lookback)
         .order('punched_at', { ascending: false }),
       supabaseAdmin
         .from('elec_job_cards')
@@ -60,15 +70,17 @@ export async function GET() {
     ])
 
     // Latest punch per staff (punches already ordered DESC).
-    // Job-card punches are excluded — they track time against a specific job,
-    // not overall attendance. Matches the worker's own clocked-in status
-    // (see /api/supplier-portal/staff/punch), which is global-punch-only.
+    // Job-card punches are filtered out in the query — they track time against a
+    // specific job, not overall attendance. Matches the worker's own clocked-in
+    // status (see /api/supplier-portal/staff/punch), which is global-punch-only.
+    // Filtering server-side also keeps the read well inside PostgREST's 1000-row
+    // cap; newest-first means a truncated read would still carry every staff
+    // member's most recent punch, which is all this needs.
     const latestPunch = new Map<string, {
       punch_type: string; punched_at: string
       latitude: number | null; longitude: number | null
     }>()
     for (const p of (punches ?? [])) {
-      if (p.job_id) continue
       if (!latestPunch.has(p.staff_id)) latestPunch.set(p.staff_id, p)
     }
 
@@ -77,10 +89,14 @@ export async function GET() {
       const isClockedIn = punch?.punch_type === 'clock_in'
       const jobCard = (jobCards ?? []).find(j => j.staff_id === s.id)
       const project = (projects ?? []).find(p => p.staff_id === s.id)
+      // Flagged when the open session began before today, so the board can show
+      // "still clocked in from <date>" rather than implying they arrived at dawn.
+      const sinceEarlierDay = isClockedIn && (punch?.punched_at ?? '') < todayStart
       return {
         staffId: s.id,
         isClockedIn,
         clockedInAt: isClockedIn ? (punch?.punched_at ?? null) : null,
+        clockedInOnEarlierDay: sinceEarlierDay,
         latitude: isClockedIn ? (punch?.latitude ?? null) : null,
         longitude: isClockedIn ? (punch?.longitude ?? null) : null,
         currentJobCardTitle: jobCard?.title ?? null,

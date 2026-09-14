@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 
-export const maxDuration = 10
+export const maxDuration = 30
 
 // Runs daily at 15:00 UTC = 17:00 SAST.
 // Inserts a clock_out punch for every session still open at 5pm.
@@ -37,13 +38,27 @@ export async function GET(req: NextRequest) {
   // since a punch-less staff member simply never appeared in the query.
   const lookback = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
 
-  const { data: punches, error } = await supabaseAdmin
-    .from('elec_time_punches')
-    .select('staff_id, portal_account_id, punch_type, punched_at, job_id')
-    .gte('punched_at', lookback.toISOString())
-    .order('punched_at', { ascending: true })
+  // PostgREST caps a response at 1000 rows. The walk below reads the window
+  // oldest-first, so a truncated read silently returns the *oldest* 1000 punches
+  // and hides everything recent — the cron then closes sessions that ended weeks
+  // ago and never sees today's. (The earlier version ordered newest-first and only
+  // needed the latest punch per staff, so the cap was harmless; switching to a
+  // forward walk turned it into a data bug.) Page until the window is drained.
+  // `id` is the ordering tiebreaker so page boundaries can't drop or repeat a row.
+  type PunchRow = { staff_id: string; portal_account_id: string; punch_type: string; punched_at: string; job_id: string | null }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { rows: punches, error, truncated } = await fetchAllRows<PunchRow>((from, to) =>
+    supabaseAdmin
+      .from('elec_time_punches')
+      .select('staff_id, portal_account_id, punch_type, punched_at, job_id')
+      .gte('punched_at', lookback.toISOString())
+      .order('punched_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to))
+
+  if (error) return NextResponse.json({ error }, { status: 500 })
+  // Never write clock-outs off a partial read — that is the bug this replaced.
+  if (truncated) return NextResponse.json({ error: 'Punch history read was incomplete; refusing to clock anyone out' }, { status: 500 })
 
   // Walk each (staff, job) timeline forwards and keep whatever is left open.
   // A second clock_in on the same pair supersedes the first, which is how the
@@ -53,7 +68,7 @@ export async function GET(req: NextRequest) {
   const open = new Map<string, Open>()
   const key = (staffId: string, jobId: string | null) => `${staffId}|${jobId ?? ''}`
 
-  for (const p of (punches ?? [])) {
+  for (const p of punches) {
     const k = key(p.staff_id, p.job_id)
     if (p.punch_type === 'clock_in') {
       open.set(k, { portal_account_id: p.portal_account_id, punched_at: p.punched_at, job_id: p.job_id })

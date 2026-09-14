@@ -7,6 +7,7 @@ import { WeekCalendar } from './WeekCalendar'
 import type { ElecJob, ElecStaff, ElecJobCard } from '@/lib/elec-types'
 import type { StaffLiveStatus } from '@/app/api/supplier-portal/quoting/staff-live/route'
 import { JOB_SELECT_FULL, JOB_SELECT_LEGACY, isMissingJobCardLink } from '@/lib/elec-job-select'
+import { startOfSADayISO } from '@/lib/dates'
 
 export const metadata = { title: 'Schedule — QuotingHub' }
 
@@ -36,7 +37,14 @@ export default async function SchedulePage() {
   }
 
   const { start, end } = getWeekBounds()
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  // Attendance is read from a multi-day lookback, not just today: someone who
+  // never clocked out yesterday is still clocked in now. Day boundary is SAST —
+  // Vercel runs in UTC, whose midnight is 02:00 SAST. Must match
+  // /api/supplier-portal/quoting/staff-live, which this seeds and then polls.
+  const todayStart = startOfSADayISO()
+  // Server component: renders once per request, so reading the clock here is stable by construction.
+  // eslint-disable-next-line react-hooks/purity
+  const punchLookback = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
   // job_card is only embeddable once add_job_card_to_elec_jobs.sql has been run
   const fetchJobs = async (select: string) => supabaseAdmin
@@ -64,9 +72,10 @@ export default async function SchedulePage() {
       .limit(50),
     supabaseAdmin
       .from('elec_time_punches')
-      .select('staff_id, punch_type, punched_at, latitude, longitude, job_id')
+      .select('staff_id, punch_type, punched_at, latitude, longitude')
       .eq('portal_account_id', account.id)
-      .gte('punched_at', todayStart.toISOString())
+      .is('job_id', null)
+      .gte('punched_at', punchLookback)
       .order('punched_at', { ascending: false }),
     supabaseAdmin
       .from('elec_job_cards')
@@ -99,11 +108,11 @@ export default async function SchedulePage() {
   ])
 
   // Build initial live statuses server-side.
-  // Job-card punches are excluded — they track time against a specific job,
-  // not overall attendance. Must match /api/supplier-portal/quoting/staff-live.
+  // Job-card punches are filtered out in the query — they track time against a
+  // specific job, not overall attendance. Must match
+  // /api/supplier-portal/quoting/staff-live.
   const latestPunch = new Map<string, { punch_type: string; punched_at: string; latitude: number | null; longitude: number | null }>()
   for (const p of (punches ?? [])) {
-    if (p.job_id) continue
     if (!latestPunch.has(p.staff_id)) latestPunch.set(p.staff_id, p)
   }
   const initialLiveStatuses: StaffLiveStatus[] = (staff ?? []).map(s => {
@@ -115,6 +124,7 @@ export default async function SchedulePage() {
       staffId: s.id,
       isClockedIn,
       clockedInAt: isClockedIn ? (punch?.punched_at ?? null) : null,
+      clockedInOnEarlierDay: isClockedIn && (punch?.punched_at ?? '') < todayStart,
       latitude: isClockedIn ? (punch?.latitude ?? null) : null,
       longitude: isClockedIn ? (punch?.longitude ?? null) : null,
       currentJobCardTitle: jobCard?.title ?? null,

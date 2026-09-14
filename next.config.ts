@@ -9,6 +9,9 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  // Lets a verification build write somewhere other than .next, so it doesn't
+  // wipe the output a running dev server is serving from.
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   async redirects() {
     return [
       { source: '/supplier-portal', destination: '/supplier-portal/login', permanent: true },

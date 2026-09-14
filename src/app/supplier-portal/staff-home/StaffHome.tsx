@@ -26,6 +26,11 @@ function fmtTime(iso: string) {
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })
 }
+// YYYY-MM-DD in South African time (en-CA formats as YYYY-MM-DD).
+const SA_DAY_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Johannesburg' })
+function saDay(iso: string) {
+  return SA_DAY_FMT.format(new Date(iso))
+}
 function fmtDuration(from: string, to: string) {
   const ms = new Date(to).getTime() - new Date(from).getTime()
   const h = Math.floor(ms / 3600000)
@@ -263,6 +268,11 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
   async function handlePunch() {
     const punchType = isClockedIn ? 'clock_out' : 'clock_in'
     const punchedAt = new Date().toISOString()
+    // Minted before the request goes out so the online attempt and any offline
+    // replay of it are the same punch. Without it, a request that reached the
+    // server but whose response was lost (site signal drops mid-punch) fell into
+    // the catch below and was queued again, landing as a second clock-in.
+    const idempotencyKey = crypto.randomUUID()
     setClockStatus('locating')
     setClockMsg('Getting your location…')
 
@@ -312,7 +322,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
       const res = await fetch('/api/supplier-portal/staff/punch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ punch_type: punchType, punched_at: punchedAt, latitude, longitude }),
+        body: JSON.stringify({ punch_type: punchType, punched_at: punchedAt, latitude, longitude, idempotency_key: idempotencyKey }),
       })
       const data = await res.json() as { ok?: boolean; punch?: ElecTimePunch; address?: string | null; locationSource?: 'gps' | 'ip' | 'none'; error?: string }
       if (!res.ok || !data.ok) { setClockStatus('error'); setClockMsg(data.error ?? 'Failed'); return }
@@ -327,7 +337,7 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
       setTimeout(() => { setClockStatus('idle'); setClockMsg('') }, 3000)
     } catch {
       // No internet — save to local queue with the exact timestamp
-      enqueue({ punch_type: punchType, punched_at: punchedAt, latitude, longitude })
+      enqueue({ id: idempotencyKey, punch_type: punchType, punched_at: punchedAt, latitude, longitude })
       setOfflinePending(pendingCount())
       // Optimistically update UI so the worker knows their action was captured
       setIsClockedIn(punchType === 'clock_in')
@@ -405,15 +415,17 @@ export function StaffHome({ staff, companyName, portalAccountId: _portalAccountI
     router.push(`/supplier-portal/staff-home/inspection/${data.id}`)
   }
 
-  // Timesheet data
+  // Timesheet data. Days are bucketed in South African time — slicing the raw
+  // ISO string gives the UTC date, which puts anything punched between 00:00 and
+  // 02:00 SAST (a late callout finishing after midnight) on the previous day.
   const dayMap: Record<string, ElecTimePunch[]> = {}
   for (const p of punches) {
-    const day = p.punched_at.slice(0, 10)
+    const day = saDay(p.punched_at)
     if (!dayMap[day]) dayMap[day] = []
     dayMap[day].push(p)
   }
   const days = Object.entries(dayMap).sort((a, b) => b[0].localeCompare(a[0]))
-  const today = new Date().toISOString().slice(0, 10)
+  const today = saDay(new Date().toISOString())
   const todayPunches = dayMap[today] ?? []
 
   const clockBusy = clockStatus === 'locating' || clockStatus === 'punching'
