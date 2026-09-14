@@ -78,6 +78,8 @@ export default async function StaffHomePage({ searchParams }: { searchParams: Pr
       .eq('portal_account_id', staff.portal_account_id)
       .or(`staff_id.eq.${staff.id},additional_staff_ids.cs.{${staff.id}}`)
       .eq('status', 'completed')
+      // Server component: renders once per request, so reading the clock here is stable by construction.
+      // eslint-disable-next-line react-hooks/purity
       .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('completed_at', { ascending: false })
       .limit(20),

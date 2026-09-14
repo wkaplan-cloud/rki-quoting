@@ -1,0 +1,43 @@
+# Runs on every push and pull request to main.
+#
+# The payroll tests in src/lib/__tests__ existed for months but nothing ever ran
+# them, so a change that broke the overtime arithmetic would have shipped green.
+# This is the thing that stops that.
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push supersedes an in-flight run on the same branch.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Tests first — they are the fastest signal and the one that guards wages.
+      - name: Tests
+        run: npm test
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
