@@ -107,11 +107,46 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, clocked_out: 0 })
   }
 
+  // Drop rows already written by an earlier run. A stale session keeps the same
+  // key every day until it is closed, so without this the insert re-offers a key
+  // that exists — and because Postgres aborts the whole statement on a unique
+  // violation, one repeat used to take every legitimate clock-out in the batch
+  // down with it and return a 500. That is what killed the cron outright from
+  // 11 Sep: it wrote nothing at all for two days.
+  const keys = toClockOut.map(r => r.idempotency_key)
+  const { data: existingRows, error: existingError } = await supabaseAdmin
+    .from('elec_time_punches')
+    .select('idempotency_key')
+    .in('idempotency_key', keys)
+
+  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 })
+
+  const already = new Set((existingRows ?? []).map(r => r.idempotency_key))
+  const pending = toClockOut.filter(r => !already.has(r.idempotency_key))
+
+  if (pending.length === 0) {
+    return NextResponse.json({ ok: true, clocked_out: 0, skipped: toClockOut.length })
+  }
+
   const { error: insertError } = await supabaseAdmin
     .from('elec_time_punches')
-    .insert(toClockOut)
+    .insert(pending)
 
-  if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 })
+  // The pre-filter is a read then a write, so a concurrent run can still collide.
+  // Fall back to one row at a time rather than losing the whole batch to it.
+  if (insertError) {
+    let inserted = 0
+    const failures: string[] = []
+    for (const row of pending) {
+      const { error } = await supabaseAdmin.from('elec_time_punches').insert(row)
+      if (!error) inserted++
+      else if (error.code !== '23505') failures.push(error.message)
+    }
+    if (failures.length > 0) {
+      return NextResponse.json({ error: failures[0], clocked_out: inserted, failed: failures.length }, { status: 500 })
+    }
+    return NextResponse.json({ ok: true, clocked_out: inserted, skipped: toClockOut.length - inserted })
+  }
 
-  return NextResponse.json({ ok: true, clocked_out: toClockOut.length })
+  return NextResponse.json({ ok: true, clocked_out: pending.length, skipped: toClockOut.length - pending.length })
 }
