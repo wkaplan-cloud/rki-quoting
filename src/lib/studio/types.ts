@@ -352,6 +352,23 @@ export interface RfqRecipientStamp {
   at: string // ISO timestamp
 }
 
+/**
+ * How far one quote request got, as served by
+ * /api/studio/boards/[id]/rfq-status and shown per item in the Procurement
+ * panel. A recipient stamp (above) records only that an email was sent;
+ * this is what came back.
+ */
+export interface RfqStatusRequest {
+  id: string
+  supplierName: string
+  supplierEmail: string
+  sentAt: string
+  /** Supplier loaded the pricing page in a browser. Never an email open. */
+  openedAt: string | null
+  submittedAt: string | null
+  expiresAt: string
+}
+
 export interface StudioSpec {
   id: string
   objectId: string
@@ -409,6 +426,18 @@ export interface StudioSpecRow {
   piece_id?: string | null
   item_specs?: Record<string, string> | null
 }
+
+/**
+ * Every column specFromRow reads, as one list both spec queries select through.
+ *
+ * It was previously spelled out at each call site, and both copies had drifted:
+ * neither selected rfq_sent_at/rfq_sent_to, so specFromRow fell back to null and
+ * no "RFQ sent" line ever survived a reload — the data was in the table the
+ * whole time. A list that silently blanks whatever it forgot only stays correct
+ * if there is one of it.
+ */
+export const STUDIO_SPEC_COLUMNS =
+  'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, scatters, images, status, rfq_sent_at, rfq_sent_to, piece_id, item_specs'
 
 export function specFromRow(row: StudioSpecRow): StudioSpec {
   return {

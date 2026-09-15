@@ -14,7 +14,7 @@ import type {
   StudioSlideRow,
   StudioSpecRow,
 } from './types'
-import { DEFAULT_MASTER_LAYOUT, assetFromRow, slideFromRow, specFromRow } from './types'
+import { DEFAULT_MASTER_LAYOUT, assetFromRow, slideFromRow, specFromRow, STUDIO_SPEC_COLUMNS } from './types'
 import {
   MAX_HISTORY,
   SAVE_DEBOUNCE,
@@ -523,9 +523,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         .order('sort_order'),
       supabase
         .from('studio_specs')
-        .select(
-          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, scatters, images, status, piece_id, item_specs'
-        )
+        .select(STUDIO_SPEC_COLUMNS)
         .eq('board_id', s.boardId),
     ])
     if (slideRes.error || specRes.error) return { ok: false, slidesSkipped: true }

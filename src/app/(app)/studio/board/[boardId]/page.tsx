@@ -7,6 +7,7 @@ import {
   slideFromRow,
   assetFromRow,
   specFromRow,
+  STUDIO_SPEC_COLUMNS,
   masterLayoutFromJson,
   type StudioSlideRow,
   type StudioAssetRow,
@@ -64,9 +65,7 @@ export default async function StudioBoardPage({ params }: { params: Promise<{ bo
         .order('created_at', { ascending: false }),
       supabase
         .from('studio_specs')
-        .select(
-          'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, scatters, images, status, piece_id, item_specs'
-        )
+        .select(STUDIO_SPEC_COLUMNS)
         .eq('board_id', board.id),
       supabase.from('suppliers').select('id, supplier_name, is_platform, price_list_id').order('supplier_name'),
       supabaseAdmin.from('price_list_access').select('price_list_id').eq('org_id', orgId).eq('status', 'active'),

@@ -9,6 +9,7 @@ import {
   type StudioSlideRow,
 } from '@/lib/studio/types'
 import { RfqPricingForm, type RfqFormItem, type RfqFormImage } from './RfqPricingForm'
+import { RfqOpenPing } from './RfqOpenPing'
 import { CATEGORY_FIELDS, categoryLabel, type CategoryKey } from '@/lib/sourcing-categories'
 import { Clock } from 'lucide-react'
 
@@ -188,6 +189,10 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
             expiryLabel={expiryLabel}
           />
         )}
+
+        {/* Stamps rfq_requests.opened_at — mounted outside the expiry branch so
+            a late arrival still counts as the supplier having looked. */}
+        <RfqOpenPing token={token} />
 
         <p className="text-center text-xs mt-6" style={{ color: '#C4BFB5' }}>
           Powered by <span style={{ color: '#8A877F' }}>QuotingHub</span>

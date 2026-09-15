@@ -1,10 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShoppingCart, Type, Square, Circle, Minus, MoveUpRight, X, FileText, Send, RefreshCw, ExternalLink } from 'lucide-react'
 import { CroppedImage } from '@/components/shared/CroppedImage'
 import { useStudioStore } from '@/lib/studio/store'
-import type { StudioObject, StudioSpec, StudioSlide } from '@/lib/studio/types'
+import type { StudioObject, StudioSpec, StudioSlide, RfqStatusRequest } from '@/lib/studio/types'
 import { ConvertToQuoteModal } from './ConvertToQuoteModal'
 import { SyncQuoteModal } from './SyncQuoteModal'
 
@@ -20,10 +20,33 @@ export function ProcurementPanel() {
   const slides = useStudioStore(s => s.slides)
   const specs = useStudioStore(s => s.specs)
   const projectId = useStudioStore(s => s.projectId)
+  const boardId = useStudioStore(s => s.boardId)
+  // Closing the send modal is exactly when a fresh send needs to appear here,
+  // and there is nothing to learn while it is still open.
+  const rfqModalOpen = useStudioStore(s => s.rfqObjectIds !== null)
+  // Per-item RFQ progress. Null until it arrives, so the status half of the
+  // line stays absent rather than flashing a misleading "0 of 0".
+  const [rfqByObject, setRfqByObject] = useState<Record<string, RfqStatusRequest[]> | null>(null)
   const [converting, setConverting] = useState(false)
   const [syncing, setSyncing] = useState(false)
   // Ticked items for "Request quotes" (RFQ) — object ids
   const [checked, setChecked] = useState<Set<string>>(new Set())
+
+  // Read live rather than from the board load: a supplier can open their link
+  // or submit pricing while the designer has this board sitting open.
+  useEffect(() => {
+    if (!boardId || rfqModalOpen) return
+    let cancelled = false
+    fetch(`/api/studio/boards/${boardId}/rfq-status`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(json => {
+        if (!cancelled && json?.byObject) setRfqByObject(json.byObject as Record<string, RfqStatusRequest[]>)
+      })
+      .catch(() => {}) // status is a nicety; the panel works without it
+    return () => {
+      cancelled = true
+    }
+  }, [boardId, rfqModalOpen])
 
   // Only specs whose object is still live on a slide — deleted objects keep
   // their spec in memory for undo, but shouldn't appear in the overview
@@ -102,6 +125,7 @@ export function ProcurementPanel() {
                   slideId={g.slide.id}
                   obj={obj}
                   spec={spec}
+                  requests={rfqByObject?.[obj.id] ?? null}
                   checked={checked.has(obj.id)}
                   onToggle={() => toggle(obj.id)}
                 />
@@ -169,6 +193,54 @@ export function ProcurementPanel() {
   )
 }
 
+function shortDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+}
+
+/**
+ * The one-line RFQ story for an item: when it went out, to how many, and how
+ * far those requests got. Null if it has never been sent.
+ *
+ * The "sent" half reads off the spec's own stamp so it is correct immediately,
+ * before the live status call returns — and stays correct for sends made
+ * before rfq_requests existed, which have no rows to report on.
+ */
+function rfqSummary(spec: StudioSpec, requests: RfqStatusRequest[] | null) {
+  if (!spec.rfqSentAt) return null
+
+  const count = requests?.length || new Set(spec.rfqSentTo.map(r => r.email.trim().toLowerCase())).size || 1
+  const sent = `Sent ${shortDate(spec.rfqSentAt)} · ${count} supplier${count === 1 ? '' : 's'}`
+
+  // Opened means the supplier loaded the pricing page in a browser, not that an
+  // email was opened — see the /api/rfq/[token]/opened route for why only one
+  // of those is worth showing. Submitting requires the form, so a reply counts
+  // as an open even on rows stamped before open tracking existed.
+  let progress: { text: string; color: string } | null = null
+  if (requests?.length) {
+    const replied = requests.filter(r => r.submittedAt).length
+    const opened = requests.filter(r => r.openedAt || r.submittedAt).length
+    progress =
+      replied ? { text: `${replied} of ${requests.length} replied`, color: '#059669' }
+      : opened ? { text: `${opened} of ${requests.length} opened`, color: '#9A7B4F' }
+      : { text: 'awaiting reply', color: '#8A877F' }
+  }
+
+  const tooltip = requests?.length
+    ? requests
+        .map(r => {
+          const who = r.supplierName === r.supplierEmail ? r.supplierEmail : `${r.supplierName} — ${r.supplierEmail}`
+          const state =
+            r.submittedAt ? `priced ${shortDate(r.submittedAt)}`
+            : r.openedAt ? `opened ${shortDate(r.openedAt)}`
+            : 'not opened yet'
+          return `${who} · ${state}`
+        })
+        .join('\n')
+    : spec.rfqSentTo.map(r => `${r.supplierName || r.email} — ${r.email}`).join('\n')
+
+  return { sent, progress, tooltip }
+}
+
 function slideLabel(slide: StudioSlide, index: number) {
   return slide.heading.trim() || slide.name.trim() || `Slide ${index + 1}`
 }
@@ -177,22 +249,21 @@ function SpecEntry({
   slideId,
   obj,
   spec,
+  requests,
   checked,
   onToggle,
 }: {
   slideId: string
   obj: StudioObject
   spec: StudioSpec
+  /** Live RFQ progress for this item; null until loaded, or never sent. */
+  requests: RfqStatusRequest[] | null
   checked: boolean
   onToggle: () => void
 }) {
   const approved = spec.status === 'approved'
   const subtitle = spec.supplierName.trim()
-  const rfqLine = spec.rfqSentAt
-    ? `RFQ sent · ${new Set(spec.rfqSentTo.map(r => r.email)).size || 1} supplier${
-        (new Set(spec.rfqSentTo.map(r => r.email)).size || 1) === 1 ? '' : 's'
-      } · ${new Date(spec.rfqSentAt).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}`
-    : null
+  const rfq = rfqSummary(spec, requests)
 
   function open() {
     const store = useStudioStore.getState()
@@ -224,12 +295,12 @@ function SpecEntry({
           {subtitle && (
             <span className="block text-[10px] text-[#8A877F] truncate">{subtitle}</span>
           )}
-          {rfqLine && (
-            <span
-              className="block text-[9px] text-[#9A7B4F] truncate"
-              title={spec.rfqSentTo.map(r => `${r.supplierName || r.email} — ${r.email}`).join('\n')}
-            >
-              {rfqLine}
+          {rfq && (
+            <span className="block text-[9px] truncate" title={rfq.tooltip}>
+              <span style={{ color: '#9A7B4F' }}>{rfq.sent}</span>
+              {rfq.progress && (
+                <span style={{ color: rfq.progress.color }}> · {rfq.progress.text}</span>
+              )}
             </span>
           )}
         </span>
