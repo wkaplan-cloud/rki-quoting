@@ -230,7 +230,6 @@ export function RequestQuotesModal() {
       ])
       if (!saved) {
         setErrors(['Could not save your latest spec changes — check your connection and try again.'])
-        setSending(false)
         return
       }
       const payload = {
@@ -258,11 +257,9 @@ export function RequestQuotesModal() {
       if (!res.ok) {
         if (json.error === 'duplicate_rfq' && Array.isArray(json.dupes)) {
           setDuplicates(json.dupes)
-          setSending(false)
           return
         }
         setErrors([json.error ?? 'Sending failed — please try again'])
-        setSending(false)
         return
       }
       const results = (json.results ?? []) as { email: string; supplierName: string; ok: boolean; error?: string }[]
@@ -275,7 +272,6 @@ export function RequestQuotesModal() {
       } else {
         if (sent > 0) toast.success(`Sent to ${sent} supplier${sent === 1 ? '' : 's'}`)
         setErrors(failed.map(f => `${f.supplierName || f.email}: ${f.error ?? 'send failed'}`))
-        setSending(false)
       }
     } catch (e) {
       // A timeout is not a failed send: the route may still be working through
@@ -285,6 +281,14 @@ export function RequestQuotesModal() {
           ? ['Still sending after two minutes — some emails may already have gone out. Check with your suppliers, or reopen this and resend only the ones that missed it.']
           : ['Sending failed — please check your connection and try again']
       )
+    } finally {
+      // Every exit re-enables the button, including the successful one — which
+      // used to return through close() without doing so. That mattered because
+      // the modal stayed mounted and merely rendered null when closed, so
+      // `sending` outlived the send: the next open came up with Send already
+      // spinning and both Cancel and close disabled by it, and a page reload
+      // was the only way out. It unmounts while closed now; this keeps the
+      // invariant true either way.
       setSending(false)
     }
   }

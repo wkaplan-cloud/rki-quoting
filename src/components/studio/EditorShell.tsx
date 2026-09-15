@@ -105,6 +105,7 @@ export default function EditorShell(props: EditorShellProps) {
   // The board-wide specs list yields to the per-object spec editor while
   // it's open, and comes back when the editor closes
   const specEditorOpen = useStudioStore(s => !!s.specPanelObjectId)
+  const rfqOpen = useStudioStore(s => s.rfqObjectIds !== null)
   const selectedIds = useStudioStore(s => s.selectedIds)
   const boardAssets = useStudioStore(s => s.assets)
   const boardSizeLabel = useMemo(() => {
@@ -539,7 +540,11 @@ export default function EditorShell(props: EditorShellProps) {
       </div>
 
       {presenting && <PresentationMode />}
-      <RequestQuotesModal />{/* self-gates on store.rfqObjectIds */}
+      {/* Mounted only while open. It holds the whole send in local state —
+          recipients, per-item supplier overrides, the covering message, errors
+          — and leaving it permanently mounted (it rendered null when closed)
+          carried every one of those from a finished send into the next one. */}
+      {rfqOpen && <RequestQuotesModal />}
       {printPicker && (
         <PrintSlidesModal
           onCancel={() => setPrintPicker(false)}
