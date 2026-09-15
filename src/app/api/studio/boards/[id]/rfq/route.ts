@@ -256,7 +256,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           description: row.description ?? '',
           category: row.category ?? '',
           quantity: row.quantity ?? '',
-          unit: row.unit ?? '',
           width: row.width ?? '',
           depth: row.depth ?? '',
           height: row.height ?? '',

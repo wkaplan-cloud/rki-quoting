@@ -380,7 +380,6 @@ export interface StudioSpec {
   supplierName: string
   category: string
   quantity: string
-  unit: string
   width: string
   depth: string
   height: string
@@ -413,7 +412,6 @@ export interface StudioSpecRow {
   supplier_name: string
   category: string
   quantity: string
-  unit: string
   width: string
   depth: string
   height: string
@@ -437,7 +435,7 @@ export interface StudioSpecRow {
  * if there is one of it.
  */
 export const STUDIO_SPEC_COLUMNS =
-  'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, unit, width, depth, height, materials, scatters, images, status, rfq_sent_at, rfq_sent_to, piece_id, item_specs'
+  'id, board_id, org_id, slide_id, object_id, spec_name, description, notes, supplier_id, supplier_name, category, quantity, width, depth, height, materials, scatters, images, status, rfq_sent_at, rfq_sent_to, piece_id, item_specs'
 
 export function specFromRow(row: StudioSpecRow): StudioSpec {
   return {
@@ -451,7 +449,6 @@ export function specFromRow(row: StudioSpecRow): StudioSpec {
     supplierName: row.supplier_name,
     category: row.category,
     quantity: row.quantity,
-    unit: row.unit,
     width: row.width,
     depth: row.depth,
     height: row.height,

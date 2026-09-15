@@ -19,7 +19,6 @@ export interface RfqPdfItem {
   description: string
   category: string
   quantity: string
-  unit: string
   width: string
   depth: string
   height: string
@@ -251,7 +250,7 @@ export function RfqPDF(props: RfqPdfProps) {
               {item.quantity.trim() ? (
                 <View style={s.specRow} wrap={false}>
                   <Text style={s.specLabel}>Quantity</Text>
-                  <Text style={s.specValue}>{item.quantity}{item.unit.trim() ? ` ${item.unit}` : ''}</Text>
+                  <Text style={s.specValue}>{item.quantity}</Text>
                 </View>
               ) : null}
               {dims(item) ? (

@@ -23,7 +23,6 @@ export interface ConvertSpecRow {
   supplier_id: string | null
   supplier_name: string
   quantity: string
-  unit: string
   width: string
   depth: string
   height: string
@@ -213,7 +212,7 @@ export function buildBoardRows({
         item_name: sp.spec_name.trim() || 'Untitled item',
         description,
         quantity: parseFloat(sp.quantity) || 1,
-        unit: sp.unit.trim() || null,
+        unit: null,
         supplier_id: sp.supplier_id,
         supplier_name: sp.supplier_name.trim() || null,
         cost_price: 0,

@@ -23,7 +23,6 @@ export interface RfqFormItem {
   category: string
   description: string
   quantity: string
-  unit: string
   dimensions: string
   materials: string[]
   scatters: string[]
@@ -230,7 +229,7 @@ export function RfqPricingForm({
                 {it.description && <p className="text-sm mt-2 whitespace-pre-line" style={{ color: '#4A4A47' }}>{it.description}</p>}
 
                 <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  {(it.quantity || it.unit) && <SpecPair label="Qty" value={[it.quantity, it.unit].filter(Boolean).join(' ')} />}
+                  {it.quantity && <SpecPair label="Qty" value={it.quantity} />}
                   {it.dimensions && <SpecPair label="Dimensions" value={it.dimensions} />}
                   {it.itemSpecs.map(sp => (
                     <SpecPair key={sp.label} label={sp.label} value={sp.value} />

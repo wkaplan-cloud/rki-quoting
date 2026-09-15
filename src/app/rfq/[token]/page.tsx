@@ -92,7 +92,6 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         category: categoryLabel(spec.category),
         description: spec.description ?? '',
         quantity: spec.quantity ?? '',
-        unit: spec.unit ?? '',
         dimensions: [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
         // Each extra fabric on a material prints as its own line — the
         // supplier has to see every cloth, and the material's Details note

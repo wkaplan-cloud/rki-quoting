@@ -39,7 +39,6 @@ const EMPTY_SPEC: Omit<StudioSpec, 'id' | 'objectId' | 'slideId'> = {
   supplierName: '',
   category: '',
   quantity: '',
-  unit: '',
   width: '',
   depth: '',
   height: '',
@@ -263,19 +262,14 @@ export function SpecsPanel() {
           <Field label="Description">
             <TextArea value={spec.description} onChange={v => update({ description: v })} rows={2} />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="Quantity">
-              {/* Number-only: this pulls straight into quote line item quantity */}
-              <TextInput
-                value={spec.quantity}
-                onChange={v => update({ quantity: v.replace(/[^0-9.]/g, '') })}
-                inputMode="decimal"
-              />
-            </Field>
-            <Field label="Unit">
-              <TextInput value={spec.unit} onChange={v => update({ unit: v })} />
-            </Field>
-          </div>
+          <Field label="Quantity">
+            {/* Number-only: this pulls straight into quote line item quantity */}
+            <TextInput
+              value={spec.quantity}
+              onChange={v => update({ quantity: v.replace(/[^0-9.]/g, '') })}
+              inputMode="decimal"
+            />
+          </Field>
         </Section>
 
         {/* Category */}
