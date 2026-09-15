@@ -117,13 +117,15 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i))
   }
 
-  function renderGroup(title: string | null, groupItems: ElecQuoteLineItem[]) {
+  // `key` is only needed by the callsite that renders one group per section;
+  // the standalone groups pass nothing.
+  function renderGroup(title: string | null, groupItems: ElecQuoteLineItem[], key?: string) {
     if (groupItems.length === 0) return null
     const contractGroup = groupItems.reduce((s, i) => s + itemContractVal(i), 0)
     const asBuiltGroup  = groupItems.reduce((s, i) => s + itemAsBuiltVal(i), 0)
 
     return (
-      <div className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
+      <div key={key} className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
         {title && (
           <div className="flex items-center justify-between px-4 py-3"
             style={{ background: 'rgba(58,124,165,0.04)', borderBottom: `1px solid ${S.border}` }}>
@@ -289,7 +291,7 @@ export function AsBuiltTab({ quoteId, sections, items: initialItems, contractTot
         <div className="mb-1">
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: S.muted }}>Quote Items</p>
           {freeItems.length > 0 && renderGroup(null, freeItems)}
-          {sections.map(s => renderGroup(s.title || 'Untitled Section', quoteItems.filter(i => i.section_id === s.id)))}
+          {sections.map(s => renderGroup(s.title || 'Untitled Section', quoteItems.filter(i => i.section_id === s.id), s.id))}
         </div>
       )}
 

@@ -64,6 +64,12 @@ export async function proxy(request: NextRequest) {
     pathname === '/sitemap.xml' ||
     pathname === '/robots.txt' ||
     pathname === '/llms.txt' ||
+    // Browsers fetch the manifest without credentials and register the service
+    // worker before there is a session, so gating these redirects them to the
+    // login page: the manifest then fails to parse as JSON and the service
+    // worker fails to register on an HTML response.
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js' ||
     pathname.startsWith('/api/contact') ||
     // One-click unsubscribe: Gmail and Yahoo POST here with no session, and the
     // request must succeed outright — a redirect to /login means the recipient
