@@ -216,6 +216,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const linkExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
     const results: { email: string; supplierName: string; ok: boolean; error?: string }[] = []
+    // Addresses typed into the send modal for linked suppliers whose record has
+    // none saved. Backfilled once the send succeeds, so the same address never
+    // has to be typed twice. Keyed by supplier, first one typed wins.
+    const typedEmailBySupplier = new Map<string, string>()
     const stampsByObject = new Map<string, RfqRecipientStamp[]>()
     // rfq_requests rows to persist — one per email that actually sent. Built
     // during the loop, inserted once at the end so a failed send leaves no
@@ -356,6 +360,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           if (error) throw new Error(error.message)
 
           results.push({ email, supplierName, ok: true })
+          if (recipient.supplierId && !typedEmailBySupplier.has(recipient.supplierId)) {
+            typedEmailBySupplier.set(recipient.supplierId, email)
+          }
           // Persist the self-serve link only now that the email is out — a
           // failed send leaves no dangling token. Only the specs that exist
           // are quotable, so filter object_ids to real specs.
@@ -405,6 +412,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (rfqRequestRows.length) {
       const { error: rfqErr } = await supabase.from('rfq_requests').insert(rfqRequestRows)
       if (rfqErr) console.error('[rfq] failed to persist pricing links', rfqErr.message)
+    }
+
+    // Save addresses typed here onto supplier records that had none, so the
+    // next request to that supplier is pre-filled. Guarded three ways:
+    //  - this org's own rows only;
+    //  - never a platform supplier — those rows carry an org_id like any other,
+    //    but are shared with every org they are gated to, so an address typed
+    //    by one studio would appear in all of them;
+    //  - only where the record is still blank, checked here rather than trusted
+    //    from the client, so a typo in the modal can never overwrite a good
+    //    address that someone else maintains.
+    // Never fails the send: the emails have already gone out by this point.
+    if (typedEmailBySupplier.size) {
+      const { data: supplierRows, error: readErr } = await supabase
+        .from('suppliers')
+        .select('id, email')
+        .in('id', [...typedEmailBySupplier.keys()])
+        .eq('org_id', orgId)
+        .eq('is_platform', false)
+      if (readErr) console.error('[rfq] failed to read suppliers for email backfill', readErr.message)
+      for (const row of (supplierRows ?? []) as { id: string; email: string | null }[]) {
+        if ((row.email ?? '').trim()) continue
+        const email = typedEmailBySupplier.get(row.id)
+        if (!email) continue
+        const { error } = await supabase.from('suppliers').update({ email }).eq('id', row.id)
+        if (error) console.error('[rfq] failed to save supplier email', error.message)
+      }
     }
 
     return NextResponse.json({ results, stamps })
