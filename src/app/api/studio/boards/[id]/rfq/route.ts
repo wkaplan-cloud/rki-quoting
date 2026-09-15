@@ -305,9 +305,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           const subject = `Request for quote — ${board.name}${clientName ? ` (${clientName})` : ''}`
           const filename = `${slug(businessName)}_RFQ_${slug(board.name)}.pdf`
           const intro = (body.message ?? '').trim()
+          // The sender is copied on every one of these: a supplier's word that
+          // they never got it is hard to argue with otherwise, and the copy in
+          // the designer's own inbox is the proof it went. CC rather than BCC —
+          // the supplier already sees this address as the Reply-To, so it
+          // reveals nothing, and it still never exposes the other suppliers
+          // being asked to price the same items.
+          const ccSender = replyTo && replyTo.toLowerCase() !== email.toLowerCase() ? replyTo : null
           const { error } = await sendEmail({
             from: `${businessName} <noreply@quotinghub.co.za>`,
             to: email,
+            ...(ccSender ? { cc: ccSender } : {}),
             ...(replyTo ? { replyTo } : {}),
             subject,
             text: [

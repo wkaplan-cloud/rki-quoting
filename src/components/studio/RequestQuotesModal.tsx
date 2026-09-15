@@ -467,7 +467,8 @@ export function RequestQuotesModal() {
 
           <p className="text-[10px] text-[#8A877F] leading-relaxed">
             Each recipient gets their own email with a PDF of only their items — comparison suppliers
-            are never CC&apos;d together. Replies come to your email address.
+            are never CC&apos;d together. You are copied on every one, so a sent request is always in
+            your inbox too, and replies come to your email address.
           </p>
 
           {duplicates && duplicates.length > 0 && (
