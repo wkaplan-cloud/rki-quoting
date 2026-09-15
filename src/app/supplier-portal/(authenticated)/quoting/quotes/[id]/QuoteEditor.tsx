@@ -234,10 +234,13 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
             button over the grip made the grip unclickable: opacity-0 still takes
             the pointer, so hovering a row to drag it hit the button instead. */}
         <div className="flex items-center" style={{ flexShrink: 0, gap: 2 }}>
-          <div {...(dragHandleProps ?? {})}
+          {/* Locked quotes cannot be reordered, so no grip is drawn — showing an
+              inert one just looks like dragging is broken. The box stays for
+              column alignment. */}
+          <div {...(locked ? {} : (dragHandleProps ?? {}))}
             className="flex items-center justify-center"
             style={{ width: 14, height: 14, cursor: locked ? 'default' : 'grab' }}>
-            <GripVertical size={14} style={{ color: S.border }} />
+            {!locked && <GripVertical size={14} style={{ color: S.border }} />}
           </div>
           <div className="flex items-center justify-center" style={{ width: 14, height: 14 }}>
             {!locked && onInsertBelow && (
@@ -328,8 +331,11 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
   return (
     <div className="rounded-2xl overflow-hidden mb-3" style={{ border: `1px solid ${S.border}`, background: S.card }}>
       <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(58,124,165,0.04)', borderBottom: collapsed ? 'none' : `1px solid ${S.border}` }}>
-        <div {...(dragHandleProps ?? {})} style={{ flexShrink: 0, display: 'flex', cursor: locked ? 'default' : 'grab' }}>
-          <GripVertical size={14} style={{ color: S.border }} />
+        {/* As on line items: no grip on a locked quote, but keep its width so
+            the header row does not shift. */}
+        <div {...(locked ? {} : (dragHandleProps ?? {}))}
+          style={{ flexShrink: 0, display: 'flex', width: 14, cursor: locked ? 'default' : 'grab' }}>
+          {!locked && <GripVertical size={14} style={{ color: S.border }} />}
         </div>
         <button onClick={() => setCollapsed(c => !c)} style={{ color: S.muted, flexShrink: 0 }}>
           {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
@@ -357,7 +363,8 @@ function SectionBlock({ section, onChange, onDelete, onAddItem, onInsertItemAt, 
         <div className="p-3">
           {section.items.length > 0 && (
             <div className="flex items-center gap-2 px-2 mb-1.5">
-              <div style={{ width: 14 }} />
+              {/* matches the grip + insert-button column on each row */}
+              <div style={{ width: 30 }} />
               <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 160 }}>Description</div>
               {colHdr('Unit', 60, 'center')}
               {colHdr('Qty', 72, 'right')}
@@ -1458,7 +1465,8 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
           {freeItems.length > 0 && (
             <div className="rounded-2xl p-3 mb-3" style={{ background: S.card, border: `1px solid ${S.border}` }}>
               <div className="flex items-center gap-2 px-2 mb-1.5">
-                <div style={{ width: 14 }} />
+                {/* matches the grip + insert-button column on each row */}
+                <div style={{ width: 30 }} />
                 <div className="flex-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: S.muted, minWidth: 160 }}>Description</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-center" style={{ color: S.muted, width: 60 }}>Unit</div>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-right" style={{ color: S.muted, width: 72 }}>Qty</div>
