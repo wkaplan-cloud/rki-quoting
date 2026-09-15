@@ -738,6 +738,11 @@ export function QuoteEditor({ portalAccountId, quote: initialQuote, sections: in
 
   function deleteSection(sectionId: string) {
     const section = sections.find(s => s.id === sectionId)
+    const count = section?.items.length ?? 0
+    if (count > 0) {
+      const name = section?.title?.trim() ? `"${section.title.trim()}"` : 'this section'
+      if (!confirm(`Delete ${name} and its ${count} line item${count === 1 ? '' : 's'}? This cannot be undone.`)) return
+    }
     if (section) setDeletedItemIds(ids => [...ids, ...section.items.map(i => i.id)])
     setDeletedSectionIds(ids => [...ids, sectionId])
     setSections(ss => ss.filter(s => s.id !== sectionId))
