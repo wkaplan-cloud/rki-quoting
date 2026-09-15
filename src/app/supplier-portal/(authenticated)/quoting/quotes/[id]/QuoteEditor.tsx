@@ -230,19 +230,24 @@ function LineItemRow({ item, onChange, onDelete, onInsertBelow, portalAccountId,
   return (
     <div className="rounded-xl mb-1.5 group" style={{ background: S.bg, border: `1px solid ${S.border}` }}>
       <div className="flex items-center gap-2 p-2">
-        <div className="relative flex items-center justify-center" style={{ flexShrink: 0, width: 14, height: 14 }}>
+        {/* The grip and the insert button each get their own slot. Stacking the
+            button over the grip made the grip unclickable: opacity-0 still takes
+            the pointer, so hovering a row to drag it hit the button instead. */}
+        <div className="flex items-center" style={{ flexShrink: 0, gap: 2 }}>
           <div {...(dragHandleProps ?? {})}
-            className="transition-opacity group-hover:opacity-0"
-            style={{ display: 'flex', cursor: locked ? 'default' : 'grab' }}>
+            className="flex items-center justify-center"
+            style={{ width: 14, height: 14, cursor: locked ? 'default' : 'grab' }}>
             <GripVertical size={14} style={{ color: S.border }} />
           </div>
-          {!locked && onInsertBelow && (
-            <button type="button" onClick={onInsertBelow} title="Insert row below"
-              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ color: S.accent }}>
-              <Plus size={12} />
-            </button>
-          )}
+          <div className="flex items-center justify-center" style={{ width: 14, height: 14 }}>
+            {!locked && onInsertBelow && (
+              <button type="button" onClick={onInsertBelow} title="Insert row below"
+                className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ width: 14, height: 14, color: S.accent }}>
+                <Plus size={12} />
+              </button>
+            )}
+          </div>
         </div>
         <DescriptionInput value={item.description} onChange={v => set({ description: v })}
           onSelect={s => {
