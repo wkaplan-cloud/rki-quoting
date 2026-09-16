@@ -93,14 +93,15 @@ export function RfqPricingForm({
   // A submission with no prices on it is almost always a mistake, so it takes
   // a deliberate second press. See noPriceAck below.
   const [noPriceAck, setNoPriceAck] = useState(false)
-  // A sheet that has already been sent opens read-only. Changing a price the
-  // studio may have quoted a client on should be a deliberate act, not
-  // something that happens by tapping a field.
-  const [unlocked, setUnlocked] = useState(!alreadySubmitted)
+  // Only an amount is worth protecting. A sheet that came back with notes and
+  // no prices is an unfinished one, not a quote the studio could have acted
+  // on, so it opens ready to type in — locking it would ask a supplier to
+  // justify filling in the blanks they left.
+  const anyPriceOnRecord = items.some(it => it.prefill.price != null)
+  const [unlocked, setUnlocked] = useState(false)
   const [revisionReason, setRevisionReason] = useState('')
-  const locked = !unlocked
-  /** Revising a sent sheet — the studio is told what changed and why. */
-  const isRevising = alreadySubmitted && unlocked
+  const lockable = alreadySubmitted && anyPriceOnRecord
+  const locked = lockable && !unlocked
 
   function update(specId: string, patch: Partial<Entry>) {
     setEntries(prev => ({ ...prev, [specId]: { ...prev[specId], ...patch } }))
@@ -138,6 +139,33 @@ export function RfqPricingForm({
       ).length,
     [entries, parsed]
   )
+  /**
+   * Items the supplier has already put a price against. Those are the ones
+   * locked — anything they left blank stays editable, so finishing an
+   * incomplete sheet never needs unlocking.
+   */
+  const isItemLocked = (it: RfqFormItem) => locked && it.prefill.price != null
+
+  /** True once a price already on record has actually been altered. */
+  const changedAnExistingPrice = useMemo(
+    () =>
+      items.some(it => {
+        if (it.prefill.price == null) return false
+        const e = entries[it.specId]
+        if (!e) return false
+        return (
+          parsed[it.specId]?.value !== it.prefill.price ||
+          e.leadTime !== it.prefill.leadTime ||
+          e.note !== it.prefill.note ||
+          e.unableToQuote !== it.prefill.unableToQuote
+        )
+      }),
+    [items, entries, parsed]
+  )
+  // Say why only when something already quoted on has moved. Adding prices to
+  // items left blank is not a revision.
+  const needsReason = changedAnExistingPrice
+
   // Nothing priced, while at least one item was still open to be priced. A
   // sheet where every item is declined is a complete answer; one where the
   // supplier declined a single item and wrote notes against the rest is the
@@ -160,7 +188,7 @@ export function RfqPricingForm({
   }, [lightbox])
 
   async function submit() {
-    if (isRevising && !revisionReason.trim()) {
+    if (needsReason && !revisionReason.trim()) {
       setError('Please say what changed before resubmitting.')
       document.getElementById('revision-reason')?.focus()
       return
@@ -244,14 +272,14 @@ export function RfqPricingForm({
             {message.trim()}
           </p>
         )}
-        {alreadySubmitted && locked && (
+        {locked && (
           <div className="mt-3 rounded-lg px-3 py-3" style={{ backgroundColor: '#F5EFE4' }}>
             <p className="text-xs flex items-start gap-1.5" style={{ color: '#9A7B4F' }}>
               <Lock size={13} className="flex-shrink-0 mt-0.5" />
               <span>
-                You&apos;ve already sent this pricing, so it&apos;s locked.{' '}
+                The prices you&apos;ve already sent are locked, because{' '}
                 {businessName}{' '}
-                may have quoted their client on it — unlock only if something has genuinely changed.
+                may have quoted their client on them. Anything you left blank is still open to fill in.
               </span>
             </p>
             <button
@@ -260,16 +288,21 @@ export function RfqPricingForm({
               className="mt-2.5 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
               style={{ backgroundColor: '#9A7B4F', color: '#ffffff' }}
             >
-              <Unlock size={13} /> Revise my pricing
+              <Unlock size={13} /> Change a price I&apos;ve sent
             </button>
           </div>
         )}
-        {isRevising && (
+        {lockable && unlocked && (
           <p className="text-xs mt-3 rounded-lg px-3 py-2" style={{ color: '#9A7B4F', backgroundColor: '#F5EFE4' }}>
-            Editing unlocked. Change what you need and submit again — anything you leave alone stays exactly as
-            it is, and{' '}
+            Everything is editable. Anything you leave alone stays exactly as it is, and{' '}
             {businessName}{' '}
-            is told what changed.
+            is told what you changed.
+          </p>
+        )}
+        {alreadySubmitted && !lockable && (
+          <p className="text-xs mt-3 rounded-lg px-3 py-2" style={{ color: '#9A7B4F', backgroundColor: '#F5EFE4' }}>
+            Everything you sent last time is filled in below. You haven&apos;t priced anything yet — add your
+            amounts in the <strong>Your price</strong> boxes and submit again.
           </p>
         )}
       </div>
@@ -278,8 +311,8 @@ export function RfqPricingForm({
       {items.map(it => {
         const e = entries[it.specId]
         const disabled = e.unableToQuote
-        // Locked covers everything; "can't quote" only greys that item's inputs
-        const fieldsDisabled = locked || e.unableToQuote
+        // Only a price already on record is locked; blanks stay editable
+        const fieldsDisabled = isItemLocked(it) || e.unableToQuote
         const priceState = parsed[it.specId] ?? { value: null, error: null }
         return (
           <div key={it.specId} className="rounded-2xl bg-white border overflow-hidden" style={{ borderColor: '#EDE9E1' }}>
@@ -489,7 +522,7 @@ export function RfqPricingForm({
         />
       </div>
 
-      {isRevising && (
+      {needsReason && (
         <div className="rounded-2xl bg-white border px-5 py-5" style={{ borderColor: '#E8D3A8' }}>
           <label htmlFor="revision-reason" className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: '#9A7B4F' }}>
             What&apos;s changed? (required)
@@ -540,11 +573,11 @@ export function RfqPricingForm({
         )}
         {locked && (
           <p className="text-center text-[11px] mb-2" style={{ color: '#8A877F' }}>
-            Submitted &mdash; use <strong style={{ color: '#4A4A47' }}>Revise my pricing</strong> at the top to
-            change anything
+            Prices you&apos;ve sent are locked &mdash; use{' '}
+            <strong style={{ color: '#4A4A47' }}>Change a price I&apos;ve sent</strong> at the top
           </p>
         )}
-        {!locked && supplierEmail.trim() && (
+        {supplierEmail.trim() && (
           // Above the button, not below it: knowing a receipt is coming is
           // what makes a supplier check it against what they meant to send,
           // and that only helps before the press.
@@ -556,7 +589,7 @@ export function RfqPricingForm({
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={submitting || answeredCount === 0 || locked}
+          disabled={submitting || answeredCount === 0}
           className="w-full flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           style={{ backgroundColor: noPriceAck && needsNoPriceConfirm ? '#8A877F' : '#9A7B4F', color: '#ffffff' }}
         >
