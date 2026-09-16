@@ -35,6 +35,15 @@ interface ProjectOption {
   id: string
   project_number: string | null
   project_name: string
+  // Supabase returns a joined row as an object or a single-element array
+  clients: { client_name: string } | { client_name: string }[] | null
+}
+
+// Supabase hands a joined row back as an object or a single-element array
+// depending on how it infers the relationship — take the first either way.
+function one<T>(v: T | T[] | null | undefined): T | null {
+  if (!v) return null
+  return Array.isArray(v) ? v[0] ?? null : v
 }
 
 interface LineItemOption {
@@ -226,7 +235,7 @@ function ApplyQuoteModal({
       const supabase = createClient()
       const { data } = await supabase
         .from('projects')
-        .select('id, project_number, project_name')
+        .select('id, project_number, project_name, clients(client_name)')
         .order('created_at', { ascending: false })
       if (!cancelled) setProjects((data ?? []) as ProjectOption[])
     })()
@@ -341,12 +350,20 @@ function ApplyQuoteModal({
               className="w-full text-sm px-2.5 py-2 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] transition-colors text-[#2C2C2A] cursor-pointer"
             >
               <option value="">Choose a quote…</option>
-              {(projects ?? []).map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.project_number ? `${p.project_number} · ` : ''}
-                  {p.project_name}
-                </option>
-              ))}
+              {(projects ?? []).map(p => {
+                // Client first — across a dozen live jobs "Lounge" or "Phase 2"
+                // is not enough to pick the right quote by
+                const client = one(p.clients)?.client_name?.trim()
+                const label = [p.project_number, client, p.project_name]
+                  .map(v => v?.trim())
+                  .filter(Boolean)
+                  .join(' · ')
+                return (
+                  <option key={p.id} value={p.id}>
+                    {label}
+                  </option>
+                )
+              })}
             </select>
             {quote.boardProjectId && projectId === quote.boardProjectId && (
               <p className="text-[10px] text-emerald-700 mt-1">
