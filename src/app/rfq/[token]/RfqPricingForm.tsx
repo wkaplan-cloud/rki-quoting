@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Loader2, AlertTriangle, Ban, X } from 'lucide-react'
 import { CroppedImage } from '@/components/shared/CroppedImage'
+import { parsePriceInput, formatZar } from '@/lib/rfq/price'
 import type { ImageCropRect } from '@/lib/studio/types'
 
 // One picture of the item, already reduced to what the designer actually
@@ -83,18 +84,51 @@ export function RfqPricingForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  // A submission with no prices on it is almost always a mistake, so it takes
+  // a deliberate second press. See noPriceAck below.
+  const [noPriceAck, setNoPriceAck] = useState(false)
 
   function update(specId: string, patch: Partial<Entry>) {
     setEntries(prev => ({ ...prev, [specId]: { ...prev[specId], ...patch } }))
+    setNoPriceAck(false)
   }
 
-  const filledCount = useMemo(
-    () =>
-      Object.values(entries).filter(
-        e => e.unableToQuote || e.price.trim() || e.leadTime.trim() || e.note.trim()
-      ).length,
+  // Every price read through the same parser the server uses, so the amount
+  // shown under the field is the amount that will be stored — no guessing.
+  const parsed = useMemo(() => {
+    const out: Record<string, ReturnType<typeof parsePriceInput>> = {}
+    for (const [specId, e] of Object.entries(entries)) {
+      out[specId] = e.unableToQuote ? { value: null, error: null } : parsePriceInput(e.price)
+    }
+    return out
+  }, [entries])
+
+  /** Items carrying an actual amount — the only sense in which this form is "done". */
+  const pricedCount = useMemo(
+    () => Object.values(parsed).filter(p => p.value !== null).length,
+    [parsed]
+  )
+  const unableCount = useMemo(
+    () => Object.values(entries).filter(e => e.unableToQuote).length,
     [entries]
   )
+  /** Anything typed that we can't read as money blocks the submit outright. */
+  const badPriceCount = useMemo(
+    () => Object.values(parsed).filter(p => p.error).length,
+    [parsed]
+  )
+  const answeredCount = useMemo(
+    () =>
+      Object.entries(entries).filter(
+        ([id, e]) => e.unableToQuote || parsed[id]?.value !== null || e.leadTime.trim() || e.note.trim()
+      ).length,
+    [entries, parsed]
+  )
+  // Nothing priced, while at least one item was still open to be priced. A
+  // sheet where every item is declined is a complete answer; one where the
+  // supplier declined a single item and wrote notes against the rest is the
+  // case that went out as a finished quote with no money on it.
+  const needsNoPriceConfirm = pricedCount === 0 && unableCount < items.length
 
   // Escape closes the lightbox, and the page behind it stays put while open
   useEffect(() => {
@@ -112,6 +146,18 @@ export function RfqPricingForm({
   }, [lightbox])
 
   async function submit() {
+    if (badPriceCount > 0) {
+      setError(
+        `Check the ${badPriceCount === 1 ? 'highlighted price' : `${badPriceCount} highlighted prices`} — ${badPriceCount === 1 ? "it can't" : "they can't"} be read as an amount.`
+      )
+      return
+    }
+    // First press on an all-blank sheet asks rather than sends
+    if (needsNoPriceConfirm && !noPriceAck) {
+      setNoPriceAck(true)
+      setError(null)
+      return
+    }
     setError(null)
     setSubmitting(true)
     try {
@@ -148,8 +194,9 @@ export function RfqPricingForm({
         <CheckCircle2 size={44} className="mx-auto mb-4" style={{ color: '#16A34A' }} />
         <h1 className="text-lg font-semibold mb-1" style={{ color: '#2C2C2A' }}>Thank you — your pricing is in</h1>
         <p className="text-sm max-w-sm mx-auto" style={{ color: '#8A877F' }}>
-          {businessName} has your quote. You can revisit this link and resubmit any time before {expiryLabel} if
-          anything changes — your latest submission replaces the previous one.
+          {businessName} has your quote, and we&apos;ve emailed you a copy of exactly what you submitted. You can
+          come back to this link any time before {expiryLabel} to add or change prices — your answers stay filled
+          in, and nothing you&apos;ve already sent is lost.
         </p>
       </div>
     )
@@ -173,7 +220,8 @@ export function RfqPricingForm({
         )}
         {alreadySubmitted && (
           <p className="text-xs mt-3 rounded-lg px-3 py-2" style={{ color: '#9A7B4F', backgroundColor: '#F5EFE4' }}>
-            You&apos;ve submitted before — your previous prices are filled in. Submitting again replaces them.
+            You&apos;ve submitted before — everything you sent is filled in below. Change what you need and submit
+            again; anything you leave alone stays exactly as it is.
           </p>
         )}
       </div>
@@ -182,6 +230,7 @@ export function RfqPricingForm({
       {items.map(it => {
         const e = entries[it.specId]
         const disabled = e.unableToQuote
+        const priceState = parsed[it.specId] ?? { value: null, error: null }
         return (
           <div key={it.specId} className="rounded-2xl bg-white border overflow-hidden" style={{ borderColor: '#EDE9E1' }}>
             <div className="flex gap-4 p-5">
@@ -290,14 +339,38 @@ export function RfqPricingForm({
                       inputMode="decimal"
                       value={e.price}
                       disabled={disabled}
-                      onChange={ev => update(it.specId, { price: ev.target.value.replace(/[^\d.]/g, '') })}
-                      className={`w-full py-2 pl-12 pr-3 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:border-[#9A7B4F] focus:ring-2 focus:ring-[#9A7B4F]/25 ${
-                        disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]'
+                      // Spaces, commas and dots all survive typing — a price is
+                      // written "12 500,00" here, and the line under the field
+                      // shows how it was read. Only genuinely impossible
+                      // characters are dropped as you go.
+                      onChange={ev => update(it.specId, { price: ev.target.value.replace(/[^\d.,\s]/g, '') })}
+                      aria-invalid={priceState.error ? true : undefined}
+                      aria-describedby={`price-read-${it.specId}`}
+                      className={`w-full py-2 pl-12 pr-3 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:ring-2 ${
+                        priceState.error
+                          ? 'border-[#D98A72] focus:border-[#B4472F] focus:ring-[#B4472F]/25'
+                          : 'focus:border-[#9A7B4F] focus:ring-[#9A7B4F]/25 ' +
+                            (disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]')
                       }`}
                       style={{ color: '#2C2C2A' }}
                       aria-label={`Price for ${it.name} in Rand, excluding VAT`}
                     />
                   </div>
+                  {/* Reading the amount back is the whole safety net: a price
+                      that can't be stored can never look accepted again. */}
+                  <p
+                    id={`price-read-${it.specId}`}
+                    className="text-[11px] mt-1 min-h-[15px]"
+                    style={{ color: priceState.error ? '#B4472F' : '#8A877F' }}
+                  >
+                    {disabled
+                      ? ''
+                      : priceState.error
+                        ? priceState.error
+                        : priceState.value !== null
+                          ? `Reads as ${formatZar(priceState.value)}`
+                          : ''}
+                  </p>
                 </div>
                 <div>
                   <label htmlFor={`lead-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
@@ -373,21 +446,35 @@ export function RfqPricingForm({
 
       {/* Submit */}
       <div className="sticky bottom-0 pt-2 pb-3" style={{ background: 'linear-gradient(to top, #F5F2EC 70%, transparent)' }}>
+        {noPriceAck && needsNoPriceConfirm && (
+          <div className="flex items-start gap-2 rounded-lg border px-3 py-2.5 mb-2" style={{ borderColor: '#E8D3A8', backgroundColor: '#FBF4E4' }}>
+            <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" style={{ color: '#9A7B4F' }} />
+            <p className="text-sm" style={{ color: '#7A5F35' }}>
+              You haven&apos;t entered a price on any item. Notes and lead times on their own aren&apos;t a
+              quote — add an amount in the <strong>Your price</strong> box, or press again to send without pricing.
+            </p>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={submitting || filledCount === 0}
+          disabled={submitting || answeredCount === 0}
           className="w-full flex items-center justify-center gap-2 h-12 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          style={{ backgroundColor: '#9A7B4F', color: '#ffffff' }}
+          style={{ backgroundColor: noPriceAck && needsNoPriceConfirm ? '#8A877F' : '#9A7B4F', color: '#ffffff' }}
         >
           {submitting ? (
             <><Loader2 size={16} className="animate-spin" /> Submitting…</>
+          ) : noPriceAck && needsNoPriceConfirm ? (
+            <>Send without pricing</>
           ) : (
-            <>Submit pricing{filledCount > 0 ? ` · ${filledCount}/${items.length}` : ''}</>
+            <>
+              Submit pricing
+              {pricedCount > 0 ? ` · ${pricedCount} of ${items.length} priced` : ''}
+            </>
           )}
         </button>
         <p className="text-center text-[11px] mt-2" style={{ color: '#8A877F' }}>
-          Link valid until {expiryLabel} · you can resubmit if anything changes
+          Link valid until {expiryLabel} · come back any time to add or change prices
         </p>
       </div>
 

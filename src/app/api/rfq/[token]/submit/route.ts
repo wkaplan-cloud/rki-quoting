@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { parsePriceInput, formatZar } from '@/lib/rfq/price'
 
 
 // Guardrails on free text a public, unauthenticated supplier can send.
@@ -8,15 +9,6 @@ const MAX_NOTE = 2000
 const MAX_LEAD = 300
 const MAX_MESSAGE = 2000
 const clip = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
-
-// A price is optional per item, but when given it must be a sane, non-negative
-// number. Anything else becomes null (treated as "not priced").
-function parsePrice(v: unknown): number | null {
-  if (v === null || v === undefined || v === '') return null
-  const n = typeof v === 'number' ? v : Number(String(v).replace(/[^\d.-]/g, ''))
-  if (!Number.isFinite(n) || n < 0 || n > 1_000_000_000) return null
-  return Math.round(n * 100) / 100
-}
 
 interface SubmitItem {
   specId: string
@@ -28,8 +20,11 @@ interface SubmitItem {
 
 // POST /api/rfq/[token]/submit
 // Public — no auth. A supplier submits pricing for the items on their RFQ.
-// Overwrite model: this request's prior link-submitted quotes are cleared and
-// replaced, so there is one current quote per supplier per RFQ.
+//
+// Merge model: a submission updates the items it carries and leaves every other
+// item's answer untouched. It replaced a delete-then-insert overwrite, which
+// meant a supplier coming back to correct one price briefly had no quote at all
+// and lost the lot if the insert failed.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params
@@ -51,51 +46,85 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // quote for. Scoped to the request's org (supabaseAdmin bypasses RLS).
     const { data: specs } = await supabaseAdmin
       .from('studio_specs')
-      .select('id, object_id')
+      .select('id, object_id, spec_name')
       .eq('org_id', request.org_id)
       .eq('board_id', request.board_id)
       .in('object_id', (request.object_ids as string[]) ?? [])
-    const allowedSpecIds = new Set(((specs ?? []) as { id: string }[]).map(s => s.id))
+    const specRows = (specs ?? []) as { id: string; spec_name: string | null }[]
+    const allowedSpecIds = new Set(specRows.map(s => s.id))
+    const nameBySpec = new Map(specRows.map(s => [s.id, s.spec_name?.trim() || 'Untitled item']))
 
-    // Build the replacement rows — one per item the supplier engaged with
-    // (priced, marked unable, or left a note/lead time). Blank items are
-    // skipped so they don't clutter the log.
-    const rows = submittedItems
+    // Whatever the supplier typed, exactly as it arrived. Stored before any
+    // parsing so a disputed submission can always be settled from the record.
+    const rawPayload = submittedItems.map(it => ({
+      specId: String(it?.specId ?? ''),
+      price: typeof it?.price === 'string' || typeof it?.price === 'number' ? it.price : null,
+      leadTime: typeof it?.leadTime === 'string' ? it.leadTime : null,
+      note: typeof it?.note === 'string' ? it.note : null,
+      unableToQuote: it?.unableToQuote === true,
+    }))
+
+    const parsedItems = submittedItems
       .filter(it => allowedSpecIds.has(it.specId))
       .map(it => {
-        const price = parsePrice(it.price)
         const unable = it.unableToQuote === true
-        const lead = clip(it.leadTime, MAX_LEAD)
-        const note = clip(it.note, MAX_NOTE)
-        return { specId: it.specId, price, unable, lead, note }
+        const price = unable ? { value: null, error: null } : parsePriceInput(it.price)
+        return {
+          specId: it.specId,
+          price: price.value,
+          priceError: price.error,
+          unable,
+          lead: clip(it.leadTime, MAX_LEAD),
+          note: clip(it.note, MAX_NOTE),
+        }
       })
-      .filter(it => it.price !== null || it.unable || it.lead || it.note)
-      .map(it => ({
-        org_id: request.org_id,
-        studio_spec_id: it.specId,
-        supplier_id: request.supplier_id,
-        supplier_name: request.supplier_name,
-        price: it.unable ? null : it.price,
-        lead_time: it.lead,
-        notes: it.note,
-        source: 'link',
-        rfq_request_id: request.id,
-        unable_to_quote: it.unable,
-      }))
 
-    if (!rows.length) {
+    // A price we can't read is never quietly dropped — the submission is
+    // refused and the supplier is told which items to fix.
+    const unreadable = parsedItems.filter(it => it.priceError)
+    if (unreadable.length) {
+      await logSubmission(request, rawPayload, parsedItems, unreadable.length, 0)
+      const names = unreadable.map(it => nameBySpec.get(it.specId) ?? 'an item')
+      return NextResponse.json(
+        {
+          error: `We couldn't read the price on ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''}. Please check ${names.length === 1 ? 'it' : 'them'} and submit again.`,
+          invalidSpecIds: unreadable.map(it => it.specId),
+        },
+        { status: 400 }
+      )
+    }
+
+    // One row per item the supplier engaged with (priced, declined, or left a
+    // note/lead time). Blank items are skipped so they don't clutter the log.
+    const engaged = parsedItems.filter(it => it.price !== null || it.unable || it.lead || it.note)
+
+    if (!engaged.length) {
       return NextResponse.json({ error: 'Add a price, lead time or note to at least one item.' }, { status: 400 })
     }
 
-    // Overwrite: clear this request's previous link submissions, then insert.
-    await supabaseAdmin
-      .from('spec_quotes')
-      .delete()
-      .eq('org_id', request.org_id)
-      .eq('rfq_request_id', request.id)
+    const rows = engaged.map(it => ({
+      org_id: request.org_id,
+      studio_spec_id: it.specId,
+      supplier_id: request.supplier_id,
+      supplier_name: request.supplier_name,
+      price: it.price,
+      lead_time: it.lead,
+      notes: it.note,
+      source: 'link',
+      rfq_request_id: request.id,
+      unable_to_quote: it.unable,
+    }))
 
-    const { error: insErr } = await supabaseAdmin.from('spec_quotes').insert(rows)
+    // Merge on (rfq_request_id, studio_spec_id) — see
+    // supabase/rfq_submission_merge.sql for the unique index this relies on.
+    // Untouched items keep whatever they already had.
+    const { error: insErr } = await supabaseAdmin
+      .from('spec_quotes')
+      .upsert(rows, { onConflict: 'rfq_request_id,studio_spec_id' })
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
+
+    const pricedCount = engaged.filter(it => it.price !== null).length
+    await logSubmission(request, rawPayload, parsedItems, 0, pricedCount)
 
     const now = new Date().toISOString()
     await supabaseAdmin
@@ -103,13 +132,187 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .update({ submitted_at: now, submission_message: clip(body.message, MAX_MESSAGE) })
       .eq('id', request.id)
 
-    await notifyDesigner(request, rows.length)
+    const lines = engaged.map(it => ({
+      name: nameBySpec.get(it.specId) ?? 'Untitled item',
+      price: it.price,
+      lead: it.lead,
+      note: it.note,
+      unable: it.unable,
+    }))
 
-    return NextResponse.json({ ok: true, count: rows.length })
+    await notifyDesigner(request, engaged.length, pricedCount)
+    await sendSupplierCopy(request, lines, clip(body.message, MAX_MESSAGE))
+
+    return NextResponse.json({ ok: true, count: engaged.length, priced: pricedCount })
   } catch (e) {
     console.error('[rfq submit]', e)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
+}
+
+// Every submission is recorded verbatim — what arrived, and what we made of it.
+// Never let a logging failure sink the supplier's submission.
+async function logSubmission(
+  request: { id: string; org_id: string; supplier_name: string; supplier_email: string | null },
+  rawPayload: unknown,
+  parsedItems: unknown,
+  rejectedCount: number,
+  acceptedCount: number
+) {
+  try {
+    await supabaseAdmin.from('rfq_submission_log').insert({
+      rfq_request_id: request.id,
+      org_id: request.org_id,
+      supplier_name: request.supplier_name,
+      supplier_email: request.supplier_email,
+      raw_payload: rawPayload,
+      parsed_items: parsedItems,
+      rejected_count: rejectedCount,
+      accepted_count: acceptedCount,
+    })
+  } catch (e) {
+    console.error('[rfq submit] log failed', e)
+  }
+}
+
+interface SubmittedLine {
+  name: string
+  price: number | null
+  lead: string
+  note: string
+  unable: boolean
+}
+
+// The supplier gets back exactly what we stored, so "I did send prices" is
+// something either side can check instead of argue about.
+async function sendSupplierCopy(
+  request: { org_id: string; board_id: string; supplier_email: string | null; supplier_name: string },
+  lines: SubmittedLine[],
+  message: string
+) {
+  try {
+    const to = request.supplier_email?.trim()
+    if (!to) return
+
+    const [{ data: board }, { data: settings }] = await Promise.all([
+      supabaseAdmin
+        .from('studio_boards')
+        .select('name')
+        .eq('id', request.board_id)
+        .eq('org_id', request.org_id)
+        .maybeSingle(),
+      supabaseAdmin.from('settings').select('business_name').eq('org_id', request.org_id).maybeSingle(),
+    ])
+    const studioName = settings?.business_name ?? 'The studio'
+    const boardName = board?.name ?? 'your quote request'
+    const priced = lines.filter(l => l.price !== null).length
+
+    await sendEmail({
+      from: 'QuotingHub <noreply@quotinghub.co.za>',
+      replyTo: 'hello@quotinghub.co.za',
+      to,
+      subject: `Copy of your pricing for ${studioName} — ${boardName}`,
+      html: buildSupplierCopyEmail({ studioName, boardName, lines, priced, message }),
+      text:
+        `Here's a copy of the pricing you submitted to ${studioName} for ${boardName}.\n\n` +
+        lines
+          .map(
+            l =>
+              `${l.name}: ${l.unable ? "couldn't quote" : l.price !== null ? formatZar(l.price).replace(/ /g, ' ') : 'no price given'}` +
+              `${l.lead ? ` · lead time ${l.lead}` : ''}${l.note ? ` · ${l.note}` : ''}`
+          )
+          .join('\n') +
+        `\n\n${priced} of ${lines.length} items have a price on them.` +
+        `\n\nIf anything is wrong, open your pricing link again and resubmit.`,
+    })
+  } catch (e) {
+    console.error('[rfq submit] supplier copy failed', e)
+  }
+}
+
+function buildSupplierCopyEmail({
+  studioName,
+  boardName,
+  lines,
+  priced,
+  message,
+}: {
+  studioName: string
+  boardName: string
+  lines: SubmittedLine[]
+  priced: number
+  message: string
+}) {
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+  const rows = lines
+    .map(l => {
+      const amount = l.unable
+        ? '<span style="color:#B08968;font-style:italic;">Couldn&rsquo;t quote</span>'
+        : l.price !== null
+          ? `<strong style="color:#2C2C2A;">${esc(formatZar(l.price))}</strong>`
+          : '<span style="color:#B4472F;">No price given</span>'
+      const extras = [l.lead ? `Lead time: ${esc(l.lead)}` : '', l.note ? esc(l.note) : '']
+        .filter(Boolean)
+        .join(' · ')
+      return `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid #EDE9E1;font-size:13px;color:#4A4A47;">
+          ${esc(l.name)}
+          ${extras ? `<div style="font-size:11px;color:#8A877F;margin-top:3px;">${extras}</div>` : ''}
+        </td>
+        <td style="padding:10px 0;border-bottom:1px solid #EDE9E1;font-size:13px;text-align:right;white-space:nowrap;">${amount}</td>
+      </tr>`
+    })
+    .join('')
+
+  const missing = lines.length - priced
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#F5F2EC;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F2EC;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+        <tr>
+          <td style="background-color:#4A4A47;padding:28px 36px;border-radius:8px 8px 0 0;">
+            <p style="margin:0;font-size:20px;font-weight:600;color:#F5F2EC;">Your pricing</p>
+            <p style="margin:5px 0 0;font-size:11px;color:#C4A46B;letter-spacing:0.08em;text-transform:uppercase;">Copy for your records</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#ffffff;padding:32px 36px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
+            <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#2C2C2A;">
+              This is what you submitted to <strong>${esc(studioName)}</strong> for <strong>${esc(boardName)}</strong>.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+            ${
+              missing > 0
+                ? `<p style="margin:20px 0 0;padding:12px 14px;background-color:#FBF4E4;border-radius:6px;font-size:13px;line-height:1.6;color:#7A5F35;">
+                     <strong>${missing} of ${lines.length} ${missing === 1 ? 'item has' : 'items have'} no price.</strong>
+                     If that wasn&rsquo;t intended, open your pricing link again and add the amounts &mdash; everything
+                     else you sent stays as it is.
+                   </p>`
+                : `<p style="margin:20px 0 0;font-size:13px;color:#8A877F;">All ${lines.length} items are priced.</p>`
+            }
+            ${
+              message
+                ? `<p style="margin:20px 0 0;padding-top:16px;border-top:1px solid #EDE9E1;font-size:13px;line-height:1.7;color:#4A4A47;white-space:pre-line;">${esc(message)}</p>`
+                : ''
+            }
+          </td>
+        </tr>
+        <tr>
+          <td style="background-color:#F5F2EC;border:1px solid #EDE9E1;border-top:none;border-radius:0 0 8px 8px;padding:16px 36px;">
+            <p style="margin:0;font-size:11px;color:#C4BFB5;">Sent via QuotingHub &middot; you can resubmit from your pricing link at any time</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
 }
 
 // Let the designer know pricing came in — in-app notification + email. Never
@@ -123,7 +326,8 @@ async function notifyDesigner(
     created_by: string | null
     created_by_email: string | null
   },
-  count: number
+  count: number,
+  pricedCount: number
 ) {
   try {
     const [{ data: board }, { data: settings }] = await Promise.all([
@@ -145,14 +349,19 @@ async function notifyDesigner(
     // "Sandra Louw · Lounge" where there's a client, plain board name otherwise
     const forLabel = clientName ? `${clientName} · ${boardName}` : boardName
     const supplier = request.supplier_name || 'A supplier'
-    const itemLabel = `${count} item${count === 1 ? '' : 's'}`
+    // Say what was actually priced — "14 items" read as a full quote once when
+    // all fourteen had notes on them and not one had an amount.
+    const itemLabel =
+      pricedCount === 0
+        ? `${count} item${count === 1 ? '' : 's'}, none with a price`
+        : `${pricedCount} of ${count} item${count === 1 ? '' : 's'}`
 
     await supabaseAdmin.from('org_notifications').insert({
       org_id: request.org_id,
       type: 'rfq_quote_submitted',
-      title: `${supplier} submitted pricing`,
+      title: pricedCount === 0 ? `${supplier} replied without pricing` : `${supplier} submitted pricing`,
       body: `${supplier} priced ${itemLabel} for ${forLabel}.`,
-      metadata: { board_id: request.board_id, rfq_request_id: request.id, count },
+      metadata: { board_id: request.board_id, rfq_request_id: request.id, count, priced: pricedCount },
     })
 
     const to = request.created_by_email || settings?.email_from?.trim()
@@ -162,7 +371,10 @@ async function notifyDesigner(
         from: 'QuotingHub <noreply@quotinghub.co.za>',
         replyTo: 'hello@quotinghub.co.za',
         to,
-        subject: `${supplier} submitted pricing — ${forLabel}`,
+        subject:
+          pricedCount === 0
+            ? `${supplier} replied without pricing — ${forLabel}`
+            : `${supplier} submitted pricing — ${forLabel}`,
         html: buildNotificationEmail({ supplier, boardName, clientName, itemLabel, studioName }),
         text: `${supplier} submitted pricing for ${itemLabel} on ${forLabel}.\n\nOpen Quotes in QuotingHub to see the prices and apply them to a quote.`,
       })
