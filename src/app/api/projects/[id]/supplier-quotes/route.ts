@@ -216,6 +216,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .maybeSingle()
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       if (data) updated.push(data)
+
+      // Same record as the Quotes-section apply: applied_price going out of
+      // step with price is what makes a stale quote detectable later.
+      await supabase
+        .from('spec_quotes')
+        .update({
+          applied_to_line_item_id: lineItemId,
+          applied_at: new Date().toISOString(),
+          applied_price: quote.price,
+        })
+        .eq('id', quote.id)
     }
 
     return NextResponse.json({ updated: updated.length, lineItems: updated })

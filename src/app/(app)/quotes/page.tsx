@@ -33,7 +33,18 @@ interface SpecQuoteRow {
   // anything covering the quote rather than one item. Written on every RFQ
   // but, until now, only ever read back to the supplier's own form.
   rfq_requests: { submission_message: string | null } | { submission_message: string | null }[] | null
+  applied_to_line_item_id: string | null
+  applied_at: string | null
+  applied_price: number | null
+  line_items: AppliedLineItem | AppliedLineItem[] | null
 }
+
+type AppliedProject = {
+  project_number: string | null
+  project_name: string
+  clients: { client_name: string } | { client_name: string }[] | null
+}
+type AppliedLineItem = { item_name: string; projects: AppliedProject | AppliedProject[] | null }
 
 function one<T>(v: T | T[] | null | undefined): T | null {
   if (!v) return null
@@ -63,7 +74,9 @@ export default async function QuotesPage() {
       `id, supplier_id, supplier_name, price, notes, lead_time, unable_to_quote, source, created_at, studio_spec_id, piece_id,
        studio_specs ( spec_name, board_id, studio_boards ( name, client_id, project_id, clients ( client_name ) ) ),
        pieces ( name ),
-       rfq_requests ( submission_message )`
+       rfq_requests ( submission_message ),
+       applied_to_line_item_id, applied_at, applied_price,
+       line_items ( item_name, projects ( project_number, project_name, clients ( client_name ) ) )`
     )
     .order('created_at', { ascending: false })
 
@@ -73,6 +86,15 @@ export default async function QuotesPage() {
     const client = one(board?.clients)
     const piece = one(row.pieces)
     const rfq = one(row.rfq_requests)
+    const appliedItem = one(row.line_items)
+    const appliedProject = one(appliedItem?.projects)
+    const appliedClient = one(appliedProject?.clients)?.client_name?.trim()
+    // "26075 · Gianna · Lounge sofa" — enough to know which quote moved
+    const appliedTo = appliedItem
+      ? [appliedProject?.project_number?.trim(), appliedClient, appliedItem.item_name?.trim()]
+          .filter(Boolean)
+          .join(' · ')
+      : null
     return {
       id: row.id,
       itemName: spec?.spec_name || piece?.name || 'Untitled item',
@@ -88,6 +110,15 @@ export default async function QuotesPage() {
       source: row.source,
       unableToQuote: row.unable_to_quote,
       supplierMessage: rfq?.submission_message?.trim() || null,
+      appliedToLineItemId: row.applied_to_line_item_id,
+      appliedTo,
+      appliedPrice: row.applied_price === null ? null : Number(row.applied_price),
+      // The quote carries applied_price; the supplier's current answer is
+      // price. Out of step means someone is quoting a client a stale number.
+      stale:
+        row.applied_at != null &&
+        row.applied_price !== null &&
+        Number(row.applied_price) !== (row.price === null ? null : Number(row.price)),
       createdAt: row.created_at,
     }
   })

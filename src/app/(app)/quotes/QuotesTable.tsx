@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Loader2, ArrowRight, Check, MessageSquare } from 'lucide-react'
+import { X, Loader2, ArrowRight, Check, MessageSquare, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 
@@ -28,6 +28,14 @@ export interface QuoteRow {
   unableToQuote: boolean
   /** Whole-submission note from the supplier (terms, validity), not per item. */
   supplierMessage: string | null
+  /** Set once this price has been carried onto a quote's line item. */
+  appliedToLineItemId: string | null
+  /** "26075 · Gianna · Lounge sofa" — the quote it went onto. */
+  appliedTo: string | null
+  /** The amount as applied, which is what the quote still carries. */
+  appliedPrice: number | null
+  /** The supplier has since changed a price the studio already used. */
+  stale: boolean
   createdAt: string
 }
 
@@ -63,6 +71,34 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
   // Applied in this session — the row shows a tick straight away rather than
   // looking untouched until the next reload
   const [applied, setApplied] = useState<Record<string, string>>({})
+  const [reapplying, setReapplying] = useState<string | null>(null)
+  const router = useRouter()
+
+  // Carry the supplier's revised price onto the line item it was already
+  // applied to. Deliberate, never automatic: a quote that has been sent to a
+  // client should not change value because a supplier edited their form.
+  async function reapply(row: QuoteRow) {
+    if (!row.appliedToLineItemId || row.price == null) return
+    setReapplying(row.id)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('line_items')
+        .update({ cost_price: row.price })
+        .eq('id', row.appliedToLineItemId)
+      if (error) throw new Error(error.message)
+      await supabase
+        .from('spec_quotes')
+        .update({ applied_price: row.price, applied_at: new Date().toISOString() })
+        .eq('id', row.id)
+      toast.success(`${row.appliedTo ?? 'The quote'} updated to R${row.price.toLocaleString()}`)
+      router.refresh()
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not update that line item')
+    } finally {
+      setReapplying(null)
+    }
+  }
 
   return (
     <>
@@ -122,10 +158,22 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
                     {row.unableToQuote ? (
                       <span className="text-[#B08968] font-normal italic">Couldn&apos;t quote</span>
                     ) : row.price != null ? (
-                      <span className="text-[#2C2C2A]">R{row.price.toLocaleString()}</span>
+                      <span className={row.stale ? 'text-[#B4472F]' : 'text-[#2C2C2A]'}>
+                        R{row.price.toLocaleString()}
+                      </span>
                     ) : (
                       <span className="text-[#8A877F]">—</span>
                     )}
+                    {/* The quote still holds applied_price. Saying so is the
+                        whole point — the number on the client's quote is the
+                        one that can be wrong. */}
+                    {row.stale ? (
+                      <span className="block text-[10px] font-normal text-[#B4472F] mt-0.5">
+                        quote still at R{(row.appliedPrice ?? 0).toLocaleString()}
+                      </span>
+                    ) : row.appliedTo ? (
+                      <span className="block text-[10px] font-normal text-[#8A877F] mt-0.5">applied</span>
+                    ) : null}
                   </td>
                   <td className="px-4 py-2.5 text-[#8A877F] whitespace-nowrap">{row.leadTime || '—'}</td>
                   <td className="px-4 py-2.5 text-[#8A877F] max-w-[240px] truncate">{row.notes || '—'}</td>
@@ -141,13 +189,29 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
                         <Check size={13} /> {applied[row.id]}
                       </span>
+                    ) : row.stale && row.appliedToLineItemId && row.price != null ? (
+                      // The target is already known, so this needs no picker —
+                      // one press moves the quote onto the supplier's new price
+                      <button
+                        type="button"
+                        disabled={reapplying === row.id}
+                        onClick={() => void reapply(row)}
+                        title={`Update ${row.appliedTo ?? 'the quote'} to R${row.price.toLocaleString()}`}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#B4472F] hover:text-[#8A3A26] transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {reapplying === row.id ? (
+                          <><Loader2 size={12} className="animate-spin" /> Updating…</>
+                        ) : (
+                          <><AlertTriangle size={12} /> Re-apply</>
+                        )}
+                      </button>
                     ) : canApply ? (
                       <button
                         type="button"
                         onClick={() => setApplying(row)}
                         className="inline-flex items-center gap-1 text-xs font-medium text-[#9A7B4F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
                       >
-                        Add to quote <ArrowRight size={12} />
+                        {row.appliedTo ? 'Add to another' : 'Add to quote'} <ArrowRight size={12} />
                       </button>
                     ) : null}
                   </td>
@@ -289,6 +353,19 @@ function ApplyQuoteModal({
       }
       const { error } = await supabase.from('line_items').update(patch).eq('id', lineItemId)
       if (error) throw new Error(error.message)
+
+      // Record that this price was used. applied_price is the amount as
+      // applied, so if the supplier later revises their quote the two go out
+      // of step and the row can say so — without this the quote silently
+      // carries a number nobody knows is stale.
+      await supabase
+        .from('spec_quotes')
+        .update({
+          applied_to_line_item_id: lineItemId,
+          applied_at: new Date().toISOString(),
+          applied_price: quote.price,
+        })
+        .eq('id', quote.id)
 
       const item = lineItems?.find(l => l.id === lineItemId)
       toast.success(`R${quote.price.toLocaleString()} applied to ${item?.item_name ?? 'the line item'}`)

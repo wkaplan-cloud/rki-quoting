@@ -10,6 +10,35 @@ const MAX_LEAD = 300
 const MAX_MESSAGE = 2000
 const clip = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
+/** A spec_quotes row as it stood before this submission. */
+interface PreviousRow {
+  studio_spec_id: string
+  price: number | string | null
+  lead_time: string | null
+  notes: string | null
+  unable_to_quote: boolean | null
+  applied_at: string | null
+  applied_price: number | string | null
+}
+
+/** One difference between the last submission and this one. */
+export interface PriceChange {
+  name: string
+  kind: 'price' | 'lead' | 'note' | 'unable' | 'added'
+  from?: number | null
+  to?: number | null
+  fromText?: string
+  toText?: string
+  /** True when the studio had already carried this price onto a quote. */
+  wasApplied: boolean
+  appliedPrice?: number | null
+  nowUnable?: boolean
+}
+
+// numeric comes back from PostgREST as a string
+const num = (v: number | string | null | undefined): number | null =>
+  v === null || v === undefined || v === '' ? null : Number(v)
+
 interface SubmitItem {
   specId: string
   price: unknown
@@ -28,8 +57,13 @@ interface SubmitItem {
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params
-    const body = (await req.json().catch(() => ({}))) as { items?: SubmitItem[]; message?: string }
+    const body = (await req.json().catch(() => ({}))) as {
+      items?: SubmitItem[]
+      message?: string
+      revisionReason?: string
+    }
     const submittedItems = Array.isArray(body.items) ? body.items : []
+    const revisionReason = clip(body.revisionReason, MAX_MESSAGE)
 
     const { data: request } = await supabaseAdmin
       .from('rfq_requests')
@@ -83,7 +117,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // refused and the supplier is told which items to fix.
     const unreadable = parsedItems.filter(it => it.priceError)
     if (unreadable.length) {
-      await logSubmission(request, rawPayload, parsedItems, unreadable.length, 0)
+      await logSubmission(request, rawPayload, parsedItems, unreadable.length, 0, revisionReason)
       const names = unreadable.map(it => nameBySpec.get(it.specId) ?? 'an item')
       return NextResponse.json(
         {
@@ -102,6 +136,53 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       return NextResponse.json({ error: 'Add a price, lead time or note to at least one item.' }, { status: 400 })
     }
 
+    // What is already on record for this request. Read before the upsert so a
+    // revision can be reported as a difference rather than as a fresh
+    // submission — the two used to arrive looking identical.
+    const { data: previousRows } = await supabaseAdmin
+      .from('spec_quotes')
+      .select('studio_spec_id, price, lead_time, notes, unable_to_quote, applied_at, applied_price')
+      .eq('org_id', request.org_id)
+      .eq('rfq_request_id', request.id)
+    const previous = new Map(
+      ((previousRows ?? []) as PreviousRow[]).map(r => [r.studio_spec_id, r])
+    )
+    const isRevision = previous.size > 0
+
+    const changes: PriceChange[] = []
+    for (const it of engaged) {
+      const before = previous.get(it.specId)
+      if (!before) {
+        if (isRevision) {
+          changes.push({ name: nameBySpec.get(it.specId) ?? 'Untitled item', kind: 'added', to: it.price, wasApplied: false })
+        }
+        continue
+      }
+      const wasApplied = before.applied_at != null
+      if (num(before.price) !== it.price) {
+        changes.push({
+          name: nameBySpec.get(it.specId) ?? 'Untitled item',
+          kind: 'price',
+          from: num(before.price),
+          to: it.price,
+          wasApplied,
+          appliedPrice: num(before.applied_price),
+        })
+      }
+      if ((before.lead_time ?? '') !== it.lead) {
+        changes.push({ name: nameBySpec.get(it.specId) ?? 'Untitled item', kind: 'lead', fromText: before.lead_time ?? '', toText: it.lead, wasApplied })
+      }
+      if ((before.notes ?? '') !== it.note) {
+        changes.push({ name: nameBySpec.get(it.specId) ?? 'Untitled item', kind: 'note', fromText: before.notes ?? '', toText: it.note, wasApplied })
+      }
+      if (!!before.unable_to_quote !== it.unable) {
+        changes.push({ name: nameBySpec.get(it.specId) ?? 'Untitled item', kind: 'unable', to: null, wasApplied, nowUnable: it.unable })
+      }
+    }
+    // A price the studio has already carried onto a quote moving underneath
+    // them is the case this whole flow exists to catch.
+    const touchedApplied = changes.some(c => c.kind === 'price' && c.wasApplied)
+
     const rows = engaged.map(it => ({
       org_id: request.org_id,
       studio_spec_id: it.specId,
@@ -117,14 +198,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
     // Merge on (rfq_request_id, studio_spec_id) — see
     // supabase/rfq_submission_merge.sql for the unique index this relies on.
-    // Untouched items keep whatever they already had.
+    // Untouched items keep whatever they already had. applied_at /
+    // applied_price are deliberately absent from the payload so an upsert
+    // never clears the record of a price having been used.
     const { error: insErr } = await supabaseAdmin
       .from('spec_quotes')
       .upsert(rows, { onConflict: 'rfq_request_id,studio_spec_id' })
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
 
     const pricedCount = engaged.filter(it => it.price !== null).length
-    await logSubmission(request, rawPayload, parsedItems, 0, pricedCount)
+    await logSubmission(request, rawPayload, parsedItems, 0, pricedCount, revisionReason)
 
     const now = new Date().toISOString()
     await supabaseAdmin
@@ -140,7 +223,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       unable: it.unable,
     }))
 
-    await notifyDesigner(request, engaged.length, pricedCount, clip(body.message, MAX_MESSAGE))
+    await notifyDesigner(request, engaged.length, pricedCount, clip(body.message, MAX_MESSAGE), {
+      isRevision,
+      changes,
+      touchedApplied,
+      revisionReason,
+      unchangedCount: engaged.length - new Set(changes.map(c => c.name)).size,
+    })
     // Reported back so the confirmation screen only claims a copy was sent
     // when one actually was.
     const emailedCopy = await sendSupplierCopy(request, lines, clip(body.message, MAX_MESSAGE))
@@ -159,7 +248,8 @@ async function logSubmission(
   rawPayload: unknown,
   parsedItems: unknown,
   rejectedCount: number,
-  acceptedCount: number
+  acceptedCount: number,
+  revisionReason: string
 ) {
   try {
     await supabaseAdmin.from('rfq_submission_log').insert({
@@ -171,6 +261,7 @@ async function logSubmission(
       parsed_items: parsedItems,
       rejected_count: rejectedCount,
       accepted_count: acceptedCount,
+      revision_reason: revisionReason || null,
     })
   } catch (e) {
     console.error('[rfq submit] log failed', e)
@@ -327,6 +418,60 @@ function buildSupplierCopyEmail({
 </html>`
 }
 
+
+const money = (n: number | null | undefined) =>
+  n === null || n === undefined ? 'no price' : formatZar(n).replace(/\u00a0/g, ' ')
+
+/** One change as a line of plain text, for the text/plain part. */
+function changeAsText(c: PriceChange): string {
+  switch (c.kind) {
+    case 'price':
+      return `${c.name}: ${money(c.from)} → ${money(c.to)}${pctLabel(c.from, c.to)}${c.wasApplied ? `  [already applied at ${money(c.appliedPrice)}]` : ''}`
+    case 'lead':
+      return `${c.name}: lead time ${c.fromText || 'none'} → ${c.toText || 'none'}`
+    case 'note':
+      return `${c.name}: note ${c.fromText || 'none'} → ${c.toText || 'none'}`
+    case 'unable':
+      return `${c.name}: ${c.nowUnable ? 'now marked as cannot quote' : 'no longer marked as cannot quote'}`
+    case 'added':
+      return `${c.name}: added, ${money(c.to)}`
+  }
+}
+
+/** One change as a table row in the notification email. */
+function changeAsRow(c: PriceChange): string {
+  const esc = (t: string) =>
+    t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const rise = c.kind === 'price' && (c.to ?? 0) > (c.from ?? 0)
+  const detail =
+    c.kind === 'price'
+      ? `<span style="color:#8A877F;text-decoration:line-through;">${esc(money(c.from))}</span>
+         <span style="color:#4A4A47;">&rarr;</span>
+         <strong style="color:${rise ? '#B4472F' : '#2C7A4B'};">${esc(money(c.to))}${esc(pctLabel(c.from, c.to))}</strong>`
+      : c.kind === 'lead'
+        ? `<span style="color:#8A877F;">lead time</span> ${esc(c.fromText || 'none')} <span style="color:#4A4A47;">&rarr;</span> <strong style="color:#2C2C2A;">${esc(c.toText || 'none')}</strong>`
+        : c.kind === 'note'
+          ? `<span style="color:#8A877F;">note</span> <strong style="color:#2C2C2A;">${esc(c.toText || 'removed')}</strong>`
+          : c.kind === 'unable'
+            ? `<strong style="color:#B08968;">${c.nowUnable ? 'Now marked cannot quote' : 'No longer marked cannot quote'}</strong>`
+            : `<strong style="color:#2C2C2A;">Added &middot; ${esc(money(c.to))}</strong>`
+  return `<tr>
+    <td style="padding:9px 0;border-bottom:1px solid #EDE9E1;font-size:13px;color:#4A4A47;">
+      ${esc(c.name)}
+      ${c.wasApplied && c.kind === 'price' ? `<div style="font-size:11px;color:#B4472F;margin-top:3px;">Already applied to a quote at ${esc(money(c.appliedPrice))}</div>` : ''}
+    </td>
+    <td style="padding:9px 0;border-bottom:1px solid #EDE9E1;font-size:13px;text-align:right;white-space:nowrap;">${detail}</td>
+  </tr>`
+}
+
+/** "(+20%)" — the number that makes a change land at a glance. */
+function pctLabel(from: number | null | undefined, to: number | null | undefined): string {
+  if (!from || to === null || to === undefined) return ''
+  const pct = Math.round(((to - from) / from) * 100)
+  if (!Number.isFinite(pct) || pct === 0) return ''
+  return ` (${pct > 0 ? '+' : ''}${pct}%)`
+}
+
 // Let the designer know pricing came in — in-app notification + email. Never
 // let a notification failure sink the supplier's submission.
 async function notifyDesigner(
@@ -342,7 +487,14 @@ async function notifyDesigner(
   pricedCount: number,
   // The supplier's "Anything else?" — terms, validity, general conditions.
   // Surfaced here because it covers the submission, not any one line item.
-  supplierMessage: string
+  supplierMessage: string,
+  revision: {
+    isRevision: boolean
+    changes: PriceChange[]
+    touchedApplied: boolean
+    revisionReason: string
+    unchangedCount: number
+  }
 ) {
   try {
     const [{ data: board }, { data: settings }] = await Promise.all([
@@ -371,12 +523,38 @@ async function notifyDesigner(
         ? `${count} item${count === 1 ? '' : 's'}, none with a price`
         : `${pricedCount} of ${count} item${count === 1 ? '' : 's'}`
 
+    const { isRevision, changes, touchedApplied, revisionReason, unchangedCount } = revision
+    const changedCount = new Set(changes.map(c => c.name)).size
+
+    // A revision must never again be indistinguishable from a first
+    // submission, and one that moves a price already carried onto a quote is
+    // louder still.
+    const title = touchedApplied
+      ? `${supplier} changed a price you have already used`
+      : isRevision
+        ? `${supplier} revised their pricing`
+        : pricedCount === 0
+          ? `${supplier} replied without pricing`
+          : `${supplier} submitted pricing`
+    const notifBody = isRevision
+      ? `${supplier} changed ${changedCount} item${changedCount === 1 ? '' : 's'} on ${forLabel}.` +
+        (touchedApplied ? ' At least one is a price you have already applied to a quote.' : '')
+      : `${supplier} priced ${itemLabel} for ${forLabel}.`
+
     await supabaseAdmin.from('org_notifications').insert({
       org_id: request.org_id,
-      type: 'rfq_quote_submitted',
-      title: pricedCount === 0 ? `${supplier} replied without pricing` : `${supplier} submitted pricing`,
-      body: `${supplier} priced ${itemLabel} for ${forLabel}.`,
-      metadata: { board_id: request.board_id, rfq_request_id: request.id, count, priced: pricedCount },
+      type: isRevision ? 'rfq_quote_revised' : 'rfq_quote_submitted',
+      title,
+      body: notifBody,
+      metadata: {
+        board_id: request.board_id,
+        rfq_request_id: request.id,
+        count,
+        priced: pricedCount,
+        revision: isRevision,
+        changed: changedCount,
+        touched_applied: touchedApplied,
+      },
     })
 
     const to = request.created_by_email || settings?.email_from?.trim()
@@ -386,15 +564,39 @@ async function notifyDesigner(
         from: 'QuotingHub <noreply@quotinghub.co.za>',
         replyTo: 'hello@quotinghub.co.za',
         to,
-        subject:
-          pricedCount === 0
-            ? `${supplier} replied without pricing — ${forLabel}`
-            : `${supplier} submitted pricing — ${forLabel}`,
-        html: buildNotificationEmail({ supplier, boardName, clientName, itemLabel, studioName, supplierMessage }),
-        text:
-          `${supplier} submitted pricing for ${itemLabel} on ${forLabel}.` +
-          (supplierMessage ? `\n\nThey added: ${supplierMessage}` : '') +
-          `\n\nOpen Quotes in QuotingHub to see the prices and apply them to a quote.`,
+        subject: touchedApplied
+          ? `Price changed after you used it — ${supplier} · ${forLabel}`
+          : isRevision
+            ? `${supplier} revised their pricing — ${forLabel}`
+            : pricedCount === 0
+              ? `${supplier} replied without pricing — ${forLabel}`
+              : `${supplier} submitted pricing — ${forLabel}`,
+        html: buildNotificationEmail({
+          supplier,
+          boardName,
+          clientName,
+          itemLabel,
+          studioName,
+          supplierMessage,
+          isRevision,
+          changes,
+          touchedApplied,
+          revisionReason,
+          unchangedCount,
+        }),
+        text: isRevision
+          ? `${supplier} revised their pricing on ${forLabel}.` +
+            (touchedApplied
+              ? `\n\nWARNING: this changes at least one price you have already applied to a quote.`
+              : '') +
+            (revisionReason ? `\n\nReason given: ${revisionReason}` : '') +
+            `\n\n` +
+            changes.map(changeAsText).join('\n') +
+            (unchangedCount > 0 ? `\n\n${unchangedCount} other item${unchangedCount === 1 ? '' : 's'} unchanged.` : '') +
+            `\n\nOpen Quotes in QuotingHub to review and re-apply.`
+          : `${supplier} submitted pricing for ${itemLabel} on ${forLabel}.` +
+            (supplierMessage ? `\n\nThey added: ${supplierMessage}` : '') +
+            `\n\nOpen Quotes in QuotingHub to see the prices and apply them to a quote.`,
       })
     }
   } catch (e) {
@@ -402,13 +604,30 @@ async function notifyDesigner(
   }
 }
 
-function buildNotificationEmail({ supplier, boardName, clientName, itemLabel, studioName, supplierMessage }: {
+function buildNotificationEmail({
+  supplier,
+  boardName,
+  clientName,
+  itemLabel,
+  studioName,
+  supplierMessage,
+  isRevision,
+  changes,
+  touchedApplied,
+  revisionReason,
+  unchangedCount,
+}: {
   supplier: string
   boardName: string
   clientName: string
   itemLabel: string
   studioName: string
   supplierMessage: string
+  isRevision: boolean
+  changes: PriceChange[]
+  touchedApplied: boolean
+  revisionReason: string
+  unchangedCount: number
 }) {
   const esc = (t: string) =>
     t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -427,9 +646,44 @@ function buildNotificationEmail({ supplier, boardName, clientName, itemLabel, st
         </tr>
         <tr>
           <td style="background-color:#ffffff;padding:36px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
+            ${
+              touchedApplied
+                ? `<div style="margin:0 0 20px;padding:14px 16px;background-color:#FBEDEA;border-left:3px solid #B4472F;border-radius:4px;">
+                     <p style="margin:0;font-size:13px;line-height:1.7;color:#8A3A26;">
+                       <strong>This changes a price you have already applied to a quote.</strong>
+                       The quote still carries the old amount — nothing has been altered for you.
+                       Review it in Quotes and re-apply if you accept the new price.
+                     </p>
+                   </div>`
+                : ''
+            }
             <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#2C2C2A;">
-              <strong style="color:#9A7B4F;">${supplier}</strong> submitted pricing for <strong>${itemLabel}</strong> on <strong>${boardName}</strong>${clientName ? ` for <strong>${clientName}</strong>` : ''}.
+              ${
+                isRevision
+                  ? `<strong style="color:#9A7B4F;">${supplier}</strong> revised pricing they had already submitted for <strong>${boardName}</strong>${clientName ? ` for <strong>${clientName}</strong>` : ''}.`
+                  : `<strong style="color:#9A7B4F;">${supplier}</strong> submitted pricing for <strong>${itemLabel}</strong> on <strong>${boardName}</strong>${clientName ? ` for <strong>${clientName}</strong>` : ''}.`
+              }
             </p>
+            ${
+              isRevision && revisionReason
+                ? `<div style="margin:0 0 16px;padding:14px 16px;background-color:#FBF4E4;border-radius:6px;">
+                     <p style="margin:0 0 6px;font-size:10px;font-weight:bold;color:#9A7B4F;letter-spacing:0.08em;text-transform:uppercase;">Reason they gave</p>
+                     <p style="margin:0;font-size:13px;line-height:1.7;color:#7A5F35;white-space:pre-line;">${esc(revisionReason)}</p>
+                   </div>`
+                : ''
+            }
+            ${
+              isRevision && changes.length
+                ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+                     ${changes.map(changeAsRow).join('')}
+                   </table>
+                   ${
+                     unchangedCount > 0
+                       ? `<p style="margin:0 0 16px;font-size:12px;color:#8A877F;">${unchangedCount} other item${unchangedCount === 1 ? '' : 's'} unchanged.</p>`
+                       : ''
+                   }`
+                : ''
+            }
             ${
               supplierMessage
                 ? `<div style="margin:0 0 16px;padding:14px 16px;background-color:#FBF4E4;border-radius:6px;">
