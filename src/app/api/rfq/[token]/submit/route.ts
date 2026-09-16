@@ -140,7 +140,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       unable: it.unable,
     }))
 
-    await notifyDesigner(request, engaged.length, pricedCount)
+    await notifyDesigner(request, engaged.length, pricedCount, clip(body.message, MAX_MESSAGE))
     // Reported back so the confirmation screen only claims a copy was sent
     // when one actually was.
     const emailedCopy = await sendSupplierCopy(request, lines, clip(body.message, MAX_MESSAGE))
@@ -331,7 +331,10 @@ async function notifyDesigner(
     created_by_email: string | null
   },
   count: number,
-  pricedCount: number
+  pricedCount: number,
+  // The supplier's "Anything else?" — terms, validity, general conditions.
+  // Surfaced here because it covers the submission, not any one line item.
+  supplierMessage: string
 ) {
   try {
     const [{ data: board }, { data: settings }] = await Promise.all([
@@ -379,8 +382,11 @@ async function notifyDesigner(
           pricedCount === 0
             ? `${supplier} replied without pricing — ${forLabel}`
             : `${supplier} submitted pricing — ${forLabel}`,
-        html: buildNotificationEmail({ supplier, boardName, clientName, itemLabel, studioName }),
-        text: `${supplier} submitted pricing for ${itemLabel} on ${forLabel}.\n\nOpen Quotes in QuotingHub to see the prices and apply them to a quote.`,
+        html: buildNotificationEmail({ supplier, boardName, clientName, itemLabel, studioName, supplierMessage }),
+        text:
+          `${supplier} submitted pricing for ${itemLabel} on ${forLabel}.` +
+          (supplierMessage ? `\n\nThey added: ${supplierMessage}` : '') +
+          `\n\nOpen Quotes in QuotingHub to see the prices and apply them to a quote.`,
       })
     }
   } catch (e) {
@@ -388,13 +394,16 @@ async function notifyDesigner(
   }
 }
 
-function buildNotificationEmail({ supplier, boardName, clientName, itemLabel, studioName }: {
+function buildNotificationEmail({ supplier, boardName, clientName, itemLabel, studioName, supplierMessage }: {
   supplier: string
   boardName: string
   clientName: string
   itemLabel: string
   studioName: string
+  supplierMessage: string
 }) {
+  const esc = (t: string) =>
+    t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -413,6 +422,14 @@ function buildNotificationEmail({ supplier, boardName, clientName, itemLabel, st
             <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#2C2C2A;">
               <strong style="color:#9A7B4F;">${supplier}</strong> submitted pricing for <strong>${itemLabel}</strong> on <strong>${boardName}</strong>${clientName ? ` for <strong>${clientName}</strong>` : ''}.
             </p>
+            ${
+              supplierMessage
+                ? `<div style="margin:0 0 16px;padding:14px 16px;background-color:#FBF4E4;border-radius:6px;">
+                     <p style="margin:0 0 6px;font-size:10px;font-weight:bold;color:#9A7B4F;letter-spacing:0.08em;text-transform:uppercase;">They added</p>
+                     <p style="margin:0;font-size:13px;line-height:1.7;color:#7A5F35;white-space:pre-line;">${esc(supplierMessage)}</p>
+                   </div>`
+                : ''
+            }
             <p style="margin:0;font-size:13px;line-height:1.7;color:#8A877F;">Open <strong style="color:#4A4A47;">Quotes</strong> in QuotingHub to see what they quoted and apply it to a quote's line item. Prices are not shown on the board itself.</p>
           </td>
         </tr>

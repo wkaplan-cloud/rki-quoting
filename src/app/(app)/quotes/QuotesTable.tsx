@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Loader2, ArrowRight, Check } from 'lucide-react'
+import { X, Loader2, ArrowRight, Check, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 
@@ -26,6 +26,8 @@ export interface QuoteRow {
   notes: string
   source: string
   unableToQuote: boolean
+  /** Whole-submission note from the supplier (terms, validity), not per item. */
+  supplierMessage: string | null
   createdAt: string
 }
 
@@ -44,6 +46,11 @@ interface LineItemOption {
 
 export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
   const [applying, setApplying] = useState<QuoteRow | null>(null)
+  // The supplier's submission note, opened from the row it belongs to. Shown
+  // on demand rather than inline: one note covers every item in a submission,
+  // so printing it down the Notes column would repeat the same paragraph on
+  // a dozen rows.
+  const [reading, setReading] = useState<QuoteRow | null>(null)
   // Applied in this session — the row shows a tick straight away rather than
   // looking untouched until the next reload
   const [applied, setApplied] = useState<Record<string, string>>({})
@@ -89,6 +96,17 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
                           via link
                         </span>
                       )}
+                      {row.supplierMessage && (
+                        <button
+                          type="button"
+                          onClick={() => setReading(row)}
+                          title="Note the supplier sent with this submission"
+                          aria-label={`Read the note ${row.supplierName || 'the supplier'} sent with this submission`}
+                          className="text-[#9A7B4F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+                        >
+                          <MessageSquare size={13} />
+                        </button>
+                      )}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap">
@@ -131,6 +149,10 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
         </table>
       </div>
 
+      {reading?.supplierMessage && (
+        <SupplierNoteModal quote={reading} onClose={() => setReading(null)} />
+      )}
+
       {applying && (
         <ApplyQuoteModal
           quote={applying}
@@ -142,6 +164,41 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
         />
       )}
     </>
+  )
+}
+
+// What the supplier wrote in "Anything else?" on their pricing form — delivery
+// terms, quote validity, general conditions. It covers the whole submission,
+// so it is read here rather than copied onto any one line item.
+function SupplierNoteModal({ quote, onClose }: { quote: QuoteRow; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md max-h-[85vh] flex flex-col rounded-xl bg-[#F5F2EC] border border-[#D8D3C8] shadow-xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#D8D3C8]">
+          <span className="text-[10px] font-medium text-[#8A877F] uppercase tracking-widest">
+            {/* {' '} explicitly: JSX trims each line of a multi-line text node */}
+            {quote.supplierName || 'Supplier'}{' '}&middot; note with this submission
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close"
+            className="w-6 h-6 flex items-center justify-center rounded-md text-[#8A877F] hover:text-[#2C2C2A] hover:bg-[#EDE9E1] transition-colors cursor-pointer"
+          >
+            <X size={13} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <p className="text-sm leading-relaxed text-[#2C2C2A] whitespace-pre-line">{quote.supplierMessage}</p>
+          <p className="text-[11px] text-[#8A877F] mt-3">
+            Applies to every item {quote.supplierName || 'the supplier'} priced in this submission, not just this one.
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -262,6 +319,17 @@ function ApplyQuoteModal({
               {quote.leadTime ? ` · lead time ${quote.leadTime}` : ''}
             </p>
           </div>
+
+          {/* Terms and validity are exactly what you want in front of you at
+              the moment a price is carried onto a quote. */}
+          {quote.supplierMessage && (
+            <div className="rounded-lg border border-[#E8D3A8] bg-[#FBF4E4] px-3 py-2.5">
+              <p className="text-[10px] font-medium text-[#9A7B4F] uppercase tracking-widest mb-1">
+                {quote.supplierName || 'Supplier'} sent this with their pricing
+              </p>
+              <p className="text-xs leading-relaxed text-[#7A5F35] whitespace-pre-line">{quote.supplierMessage}</p>
+            </div>
+          )}
 
           <label className="block">
             <span className="block text-[11px] font-medium text-[#8A877F] uppercase tracking-wide mb-1">

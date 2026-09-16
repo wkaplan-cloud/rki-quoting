@@ -29,6 +29,10 @@ interface SpecQuoteRow {
     | { spec_name: string; board_id: string; studio_boards: BoardRel | BoardRel[] | null }[]
     | null
   pieces: { name: string } | { name: string }[] | null
+  // The supplier's whole-submission note — delivery terms, quote validity,
+  // anything covering the quote rather than one item. Written on every RFQ
+  // but, until now, only ever read back to the supplier's own form.
+  rfq_requests: { submission_message: string | null } | { submission_message: string | null }[] | null
 }
 
 function one<T>(v: T | T[] | null | undefined): T | null {
@@ -58,7 +62,8 @@ export default async function QuotesPage() {
     .select(
       `id, supplier_id, supplier_name, price, notes, lead_time, unable_to_quote, source, created_at, studio_spec_id, piece_id,
        studio_specs ( spec_name, board_id, studio_boards ( name, client_id, project_id, clients ( client_name ) ) ),
-       pieces ( name )`
+       pieces ( name ),
+       rfq_requests ( submission_message )`
     )
     .order('created_at', { ascending: false })
 
@@ -67,6 +72,7 @@ export default async function QuotesPage() {
     const board = one(spec?.studio_boards)
     const client = one(board?.clients)
     const piece = one(row.pieces)
+    const rfq = one(row.rfq_requests)
     return {
       id: row.id,
       itemName: spec?.spec_name || piece?.name || 'Untitled item',
@@ -81,6 +87,7 @@ export default async function QuotesPage() {
       notes: row.notes ?? '',
       source: row.source,
       unableToQuote: row.unable_to_quote,
+      supplierMessage: rfq?.submission_message?.trim() || null,
       createdAt: row.created_at,
     }
   })
