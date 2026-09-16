@@ -141,9 +141,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     }))
 
     await notifyDesigner(request, engaged.length, pricedCount)
-    await sendSupplierCopy(request, lines, clip(body.message, MAX_MESSAGE))
+    // Reported back so the confirmation screen only claims a copy was sent
+    // when one actually was.
+    const emailedCopy = await sendSupplierCopy(request, lines, clip(body.message, MAX_MESSAGE))
 
-    return NextResponse.json({ ok: true, count: engaged.length, priced: pricedCount })
+    return NextResponse.json({ ok: true, count: engaged.length, priced: pricedCount, emailedCopy })
   } catch (e) {
     console.error('[rfq submit]', e)
     return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
@@ -189,10 +191,10 @@ async function sendSupplierCopy(
   request: { org_id: string; board_id: string; supplier_email: string | null; supplier_name: string },
   lines: SubmittedLine[],
   message: string
-) {
+): Promise<boolean> {
   try {
     const to = request.supplier_email?.trim()
-    if (!to) return
+    if (!to) return false
 
     const [{ data: board }, { data: settings }] = await Promise.all([
       supabaseAdmin
@@ -225,8 +227,10 @@ async function sendSupplierCopy(
         `\n\n${priced} of ${lines.length} items have a price on them.` +
         `\n\nIf anything is wrong, open your pricing link again and resubmit.`,
     })
+    return true
   } catch (e) {
     console.error('[rfq submit] supplier copy failed', e)
+    return false
   }
 }
 

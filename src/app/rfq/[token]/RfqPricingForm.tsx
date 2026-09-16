@@ -43,8 +43,9 @@ interface Entry {
 
 // Public, no-login pricing form a supplier fills in from their RFQ email link.
 // Read-only spec on top of each card; price / lead time / note inputs below,
-// plus a "can't quote this" toggle. Overwrite model — resubmitting replaces
-// the last submission, so we prefill from whatever they last sent.
+// plus a "can't quote this" toggle. Merge model — a resubmission updates the
+// items it carries and leaves the rest alone, so we prefill from what they
+// last sent and coming back to fix one price can't cost them the others.
 export function RfqPricingForm({
   token,
   businessName,
@@ -84,6 +85,8 @@ export function RfqPricingForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  // Whether the endpoint actually sent the supplier their copy
+  const [emailedCopy, setEmailedCopy] = useState(false)
   // A submission with no prices on it is almost always a mistake, so it takes
   // a deliberate second press. See noPriceAck below.
   const [noPriceAck, setNoPriceAck] = useState(false)
@@ -181,6 +184,7 @@ export function RfqPricingForm({
         setSubmitting(false)
         return
       }
+      setEmailedCopy(json.emailedCopy === true)
       setDone(true)
     } catch {
       setError('Could not reach the server. Please check your connection and try again.')
@@ -194,9 +198,14 @@ export function RfqPricingForm({
         <CheckCircle2 size={44} className="mx-auto mb-4" style={{ color: '#16A34A' }} />
         <h1 className="text-lg font-semibold mb-1" style={{ color: '#2C2C2A' }}>Thank you — your pricing is in</h1>
         <p className="text-sm max-w-sm mx-auto" style={{ color: '#8A877F' }}>
-          {businessName} has your quote, and we&apos;ve emailed you a copy of exactly what you submitted. You can
-          come back to this link any time before {expiryLabel} to add or change prices — your answers stay filled
-          in, and nothing you&apos;ve already sent is lost.
+          {/* Explicit {' '} either side: JSX trims every line of a text node
+              that spans lines, so a space touching an expression is lost. */}
+          {businessName}{' '}
+          {/* A literal entity inside a JS string stays literal — real character. */}
+          has your quote{emailedCopy ? ', and we’ve emailed you a copy of exactly what you submitted' : ''}.
+          You can come back to this link any time before{' '}
+          {expiryLabel}{' '}
+          to add or change prices — your answers stay filled in, and nothing you&apos;ve already sent is lost.
         </p>
       </div>
     )
