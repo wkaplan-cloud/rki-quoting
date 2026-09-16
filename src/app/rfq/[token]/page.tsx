@@ -20,7 +20,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
 
   const { data: request } = await supabaseAdmin
     .from('rfq_requests')
-    .select('id, org_id, board_id, supplier_name, object_ids, message, expires_at, submitted_at, submission_message')
+    .select('id, org_id, board_id, supplier_name, supplier_email, object_ids, message, expires_at, submitted_at, submission_message')
     .eq('token', token)
     .maybeSingle()
 
@@ -181,6 +181,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
             businessName={businessName}
             boardName={board?.name ?? ''}
             supplierName={request.supplier_name ?? ''}
+            supplierEmail={request.supplier_email ?? ''}
             message={request.message ?? ''}
             items={items}
             initialSubmissionMessage={request.submission_message ?? ''}

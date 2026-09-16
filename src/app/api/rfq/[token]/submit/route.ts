@@ -199,7 +199,7 @@ async function sendSupplierCopy(
     const [{ data: board }, { data: settings }] = await Promise.all([
       supabaseAdmin
         .from('studio_boards')
-        .select('name')
+        .select('name, clients(client_name)')
         .eq('id', request.board_id)
         .eq('org_id', request.org_id)
         .maybeSingle(),
@@ -207,6 +207,13 @@ async function sendSupplierCopy(
     ])
     const studioName = settings?.business_name ?? 'The studio'
     const boardName = board?.name ?? 'your quote request'
+    // Supabase returns a joined row as an object or a single-element array
+    const clientRel = (board as { clients?: { client_name: string } | { client_name: string }[] } | null)?.clients
+    const clientName =
+      (Array.isArray(clientRel) ? clientRel[0]?.client_name : clientRel?.client_name)?.trim() || ''
+    // "Gianna · HOME" — the supplier knows the job by the client, not by
+    // whatever the board happens to be called
+    const forLabel = clientName ? `${clientName} · ${boardName}` : boardName
     const priced = lines.filter(l => l.price !== null).length
 
     await sendEmail({
@@ -214,9 +221,9 @@ async function sendSupplierCopy(
       replyTo: 'hello@quotinghub.co.za',
       to,
       subject: `Copy of your pricing for ${studioName} — ${boardName}`,
-      html: buildSupplierCopyEmail({ studioName, boardName, lines, priced, message }),
+      html: buildSupplierCopyEmail({ studioName, forLabel, lines, priced, message }),
       text:
-        `Here's a copy of the pricing you submitted to ${studioName} for ${boardName}.\n\n` +
+        `Here's a copy of the pricing you submitted to ${studioName} for ${forLabel}.\n\n` +
         lines
           .map(
             l =>
@@ -236,13 +243,14 @@ async function sendSupplierCopy(
 
 function buildSupplierCopyEmail({
   studioName,
-  boardName,
+  forLabel,
   lines,
   priced,
   message,
 }: {
   studioName: string
-  boardName: string
+  /** "Gianna · HOME" — client first, board second. */
+  forLabel: string
   lines: SubmittedLine[]
   priced: number
   message: string
@@ -288,7 +296,7 @@ function buildSupplierCopyEmail({
         <tr>
           <td style="background-color:#ffffff;padding:32px 36px;border-left:1px solid #EDE9E1;border-right:1px solid #EDE9E1;">
             <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#2C2C2A;">
-              This is what you submitted to <strong>${esc(studioName)}</strong> for <strong>${esc(boardName)}</strong>.
+              This is what you submitted to <strong>${esc(studioName)}</strong> for <strong>${esc(forLabel)}</strong>.
             </p>
             <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
             ${

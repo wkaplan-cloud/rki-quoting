@@ -51,6 +51,7 @@ export function RfqPricingForm({
   businessName,
   boardName,
   supplierName,
+  supplierEmail,
   message,
   items,
   initialSubmissionMessage,
@@ -61,6 +62,8 @@ export function RfqPricingForm({
   businessName: string
   boardName: string
   supplierName: string
+  /** Where the confirmation copy goes — blank if the RFQ has no address. */
+  supplierEmail: string
   message: string
   items: RfqFormItem[]
   initialSubmissionMessage: string
@@ -463,6 +466,15 @@ export function RfqPricingForm({
               quote — add an amount in the <strong>Your price</strong> box, or press again to send without pricing.
             </p>
           </div>
+        )}
+        {supplierEmail.trim() && (
+          // Above the button, not below it: knowing a receipt is coming is
+          // what makes a supplier check it against what they meant to send,
+          // and that only helps before the press.
+          <p className="text-center text-[11px] mb-2" style={{ color: '#8A877F' }}>
+            A copy of the pricing above will be emailed to you at{' '}
+            <span style={{ color: '#4A4A47' }}>{supplierEmail.trim()}</span>
+          </p>
         )}
         <button
           type="button"
