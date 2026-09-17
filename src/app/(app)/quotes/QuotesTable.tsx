@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Loader2, ArrowRight, Check, MessageSquare, AlertTriangle } from 'lucide-react'
+import { X, Loader2, ArrowRight, Check, MessageSquare, AlertTriangle, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 
@@ -121,6 +121,9 @@ interface LineItemOption {
 export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
   const sections = groupRows(rows)
   const [applying, setApplying] = useState<QuoteRow | null>(null)
+  // The row a designer has asked to remove, held until they confirm
+  const [deleting, setDeleting] = useState<QuoteRow | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   // The supplier's submission note, opened from the row it belongs to. Shown
   // on demand rather than inline: one note covers every item in a submission,
   // so printing it down the Notes column would repeat the same paragraph on
@@ -158,6 +161,24 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
     }
   }
 
+  async function confirmDelete(row: QuoteRow) {
+    setDeletingId(row.id)
+    try {
+      const supabase = createClient()
+      // spec_quote_applications cascades, so the record of which parts were
+      // used goes with it rather than being left pointing at nothing.
+      const { error } = await supabase.from('spec_quotes').delete().eq('id', row.id)
+      if (error) throw new Error(error.message)
+      toast.success(`${row.supplierName || 'That'} price removed`)
+      setDeleting(null)
+      router.refresh()
+    } catch (e) {
+      toast.error((e as Error).message || 'Could not remove that price')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <>
       <div className="overflow-x-auto rounded-xl border border-[#D8D3C8]">
@@ -186,6 +207,7 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
                   onRead={setReading}
                   onApply={setApplying}
                   onReapply={reapply}
+                  onDelete={setDeleting}
                 />
               )
             )}
@@ -194,6 +216,15 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
 
       {reading?.supplierMessage && (
         <SupplierNoteModal quote={reading} onClose={() => setReading(null)} />
+      )}
+
+      {deleting && (
+        <DeleteQuoteDialog
+          quote={deleting}
+          busy={deletingId === deleting.id}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => void confirmDelete(deleting)}
+        />
       )}
 
       {applying && (
@@ -218,6 +249,7 @@ function SectionRows({
   onRead,
   onApply,
   onReapply,
+  onDelete,
 }: {
   section: Section
   applied: Record<string, string>
@@ -225,6 +257,7 @@ function SectionRows({
   onRead: (row: QuoteRow) => void
   onApply: (row: QuoteRow) => void
   onReapply: (row: QuoteRow) => void
+  onDelete: (row: QuoteRow) => void
 }) {
   return (
     <tbody className="border-t border-[#D8D3C8] first:border-t-0">
@@ -248,6 +281,7 @@ function SectionRows({
           onRead={onRead}
           onApply={onApply}
           onReapply={onReapply}
+          onDelete={onDelete}
         />
       ))}
     </tbody>
@@ -261,6 +295,7 @@ function QuoteRowLine({
   onRead,
   onApply,
   onReapply,
+  onDelete,
 }: {
   row: QuoteRow
   applied: Record<string, string>
@@ -268,6 +303,7 @@ function QuoteRowLine({
   onRead: (row: QuoteRow) => void
   onApply: (row: QuoteRow) => void
   onReapply: (row: QuoteRow) => void
+  onDelete: (row: QuoteRow) => void
 }) {
   const setReading = onRead
   const setApplying = onApply
@@ -281,7 +317,7 @@ function QuoteRowLine({
               : '—'
           const canApply = !row.unableToQuote && row.price != null
           return (
-            <tr key={row.id} className="border-b border-[#EDE9E1] last:border-0">
+            <tr key={row.id} className="group/row border-b border-[#EDE9E1] last:border-0">
               <td className="px-4 py-2.5 text-[#2C2C2A]">{row.itemName}</td>
               <td className="px-4 py-2.5 text-[#8A877F]">{boardLabel}</td>
               <td className="px-4 py-2.5 text-[#2C2C2A]">
@@ -384,9 +420,99 @@ function QuoteRowLine({
                     {row.appliedTo ? 'Add to another' : 'Add to quote'} <ArrowRight size={12} />
                   </button>
                 ) : null}
+                {/* Hidden until the row is hovered: this list is mostly read,
+                    and a delete sitting permanently beside every price invites
+                    the one press nobody wants. */}
+                <button
+                  type="button"
+                  onClick={() => onDelete(row)}
+                  title={`Remove ${row.supplierName || 'this supplier'}'s price for ${row.itemName}`}
+                  aria-label={`Remove ${row.supplierName || 'this supplier'}'s price for ${row.itemName}`}
+                  className="ml-2 p-1 rounded align-middle text-[#C4BFB5] opacity-0 group-hover/row:opacity-100 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                >
+                  <Trash2 size={12} />
+                </button>
               </td>
             </tr>
           )
+}
+
+/**
+ * Removing a price is not the same act in both halves of this page, so the
+ * dialog does not pretend it is.
+ *
+ * An unused price is clutter, and deleting it costs nothing. One that has been
+ * carried onto a quote is the record of where a number on a client's document
+ * came from — the line keeps its price either way, but the trail back to the
+ * supplier goes, and so does the warning if they later change their mind. That
+ * is worth saying out loud rather than discovering afterwards.
+ */
+function DeleteQuoteDialog({
+  quote,
+  busy,
+  onCancel,
+  onConfirm,
+}: {
+  quote: QuoteRow
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const used = !!quote.appliedToLineItemId || quote.staleComponents.length > 0
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+        <h3 className="text-base font-semibold text-[#2C2C2A] mb-1">
+          Remove this price?
+        </h3>
+        <p className="text-sm text-[#4A4A47] mb-3">
+          {quote.supplierName || 'A supplier'}&rsquo;s price for{' '}
+          <strong className="text-[#2C2C2A]">{quote.itemName}</strong>
+          {quote.price != null ? `, ${`R${quote.price.toLocaleString()}`}` : ''}.
+        </p>
+
+        {used ? (
+          <div className="rounded-lg border border-[#E8D3A8] bg-[#FBF4E4] px-3 py-2.5 mb-4">
+            <p className="text-xs leading-relaxed text-[#7A5F35]">
+              This one is already on{' '}
+              <strong>{quote.appliedTo ?? 'a quote'}</strong>. That line keeps its
+              price — but you lose the record of where the number came from, and
+              you will not be warned if {quote.supplierName || 'the supplier'} changes it later.
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-[#8A877F] mb-4">
+            It has not been used on any quote, so nothing else changes.
+          </p>
+        )}
+
+        {quote.source === 'link' && (
+          <p className="text-xs text-[#8A877F] mb-4">
+            Their pricing link still works: if they submit again, this comes back.
+          </p>
+        )}
+
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 text-sm text-[#8A877F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            {busy ? <><Loader2 size={14} className="animate-spin" /> Removing…</> : <><Trash2 size={14} /> Remove</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // What the supplier wrote in "Anything else?" on their pricing form — delivery
