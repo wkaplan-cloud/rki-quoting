@@ -18,11 +18,15 @@ interface ClientOption {
 // a client" and "name the board" into a single step.
 export function NewBoardModal({
   orgId,
+  userId,
+  userName,
   logoUrl,
   clients,
   onClose,
 }: {
   orgId: string
+  userId: string
+  userName: string | null
   logoUrl: string | null
   clients: ClientOption[]
   onClose: () => void
@@ -37,10 +41,9 @@ export function NewBoardModal({
 
   async function handleCreateClient(name: string) {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase
       .from('clients')
-      .insert({ user_id: user!.id, org_id: orgId, client_name: name })
+      .insert({ user_id: userId, org_id: orgId, client_name: name })
       .select()
       .single()
     if (error) {
@@ -71,6 +74,8 @@ export function NewBoardModal({
         clientName: client?.clientName ?? clientLabel,
         boardName: boardName.trim(),
         logoUrl,
+        createdBy: userId,
+        createdByName: userName,
       })
       router.push(`/studio/board/${boardId}`)
     } catch (e) {

@@ -31,11 +31,15 @@ const RECENT_COUNT = 6
 
 export function StudioHome({
   orgId,
+  userId,
+  userName,
   logoUrl,
   clients,
   boards,
 }: {
   orgId: string
+  userId: string
+  userName: string | null
   logoUrl: string | null
   clients: ClientOption[]
   boards: BoardRow[]
@@ -108,7 +112,14 @@ export function StudioHome({
       )}
 
       {creating && (
-        <NewBoardModal orgId={orgId} logoUrl={logoUrl} clients={clients} onClose={() => setCreating(false)} />
+        <NewBoardModal
+          orgId={orgId}
+          userId={userId}
+          userName={userName}
+          logoUrl={logoUrl}
+          clients={clients}
+          onClose={() => setCreating(false)}
+        />
       )}
     </div>
   )

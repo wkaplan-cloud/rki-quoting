@@ -15,11 +15,21 @@ export default async function StudioPage() {
   const { data: orgId } = await supabase.rpc('get_current_org_id')
   if (!orgId) redirect('/dashboard')
 
-  const { data: settings } = await supabaseAdmin
-    .from('settings')
-    .select('studio_enabled, logo_url, studio_logo_url')
-    .eq('org_id', orgId)
-    .maybeSingle()
+  const [{ data: settings }, { data: member }] = await Promise.all([
+    supabaseAdmin
+      .from('settings')
+      .select('studio_enabled, logo_url, studio_logo_url')
+      .eq('org_id', orgId)
+      .maybeSingle(),
+    // Stamped onto any board created here. org_members is the roster of real
+    // people in the org — auth metadata is not reliably set.
+    supabaseAdmin
+      .from('org_members')
+      .select('full_name')
+      .eq('org_id', orgId)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ])
 
   if (!settings?.studio_enabled) redirect('/dashboard')
 
@@ -99,6 +109,8 @@ export default async function StudioPage() {
       <div className="p-6 lg:p-8">
         <StudioHome
           orgId={orgId}
+          userId={user.id}
+          userName={member?.full_name || user.email || null}
           logoUrl={settings.studio_logo_url ?? settings.logo_url ?? null}
           clients={clientRows}
           boards={boardRows}

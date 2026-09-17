@@ -11,19 +11,30 @@ export async function createStudioBoard({
   clientName,
   boardName,
   logoUrl,
+  createdBy,
+  createdByName,
 }: {
   orgId: string
   clientId: string
   clientName: string
   boardName: string
   logoUrl: string | null
+  createdBy: string
+  createdByName: string | null
 }): Promise<string> {
   const supabase = createClient()
   const boardId = crypto.randomUUID()
 
-  const { error: boardError } = await supabase
-    .from('studio_boards')
-    .insert({ id: boardId, org_id: orgId, client_id: clientId, name: boardName })
+  const { error: boardError } = await supabase.from('studio_boards').insert({
+    id: boardId,
+    org_id: orgId,
+    client_id: clientId,
+    name: boardName,
+    // Stamped once, here, and never rewritten — a board is filed under a
+    // client at this moment and this is the only record of who filed it
+    created_by: createdBy,
+    created_by_name: createdByName,
+  })
   if (boardError) throw new Error(boardError.message)
 
   const coverObjects = await buildCoverSlideObjects({
