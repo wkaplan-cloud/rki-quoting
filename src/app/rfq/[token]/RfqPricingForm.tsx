@@ -424,6 +424,18 @@ export function RfqPricingForm({
           — where an item is needed more than once, its quantity is shown beside the box. Where an item
           takes fabric, leather or stone, please also give the quantity it takes of each.
         </p>
+        {supplierEmail.trim() && (
+          // Also said above the submit button. Here because a supplier wants
+          // to know there will be a record of what they sent BEFORE they start
+          // typing prices, not after they have committed to them.
+          <p className="text-xs mt-3 rounded-lg px-3 py-2" style={{ color: '#4A4A47', backgroundColor: '#F5F2EC' }}>
+            Once you submit, we&apos;ll email a copy of everything you entered to{' '}
+            <span style={{ color: '#2C2C2A', fontWeight: 600 }}>{supplierEmail.trim()}</span>{' '}
+            so you have a record of it — and you can reopen this link any time before{' '}
+            {expiryLabel}{' '}
+            to change anything.
+          </p>
+        )}
         {message.trim() && (
           <p className="text-sm mt-3 pt-3 border-t whitespace-pre-line" style={{ color: '#4A4A47', borderColor: '#EDE9E1' }}>
             {message.trim()}
@@ -965,22 +977,30 @@ export function RfqPricingForm({
           // into a width cap so the picture scales down instead of clipping.
           className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8 bg-black/80 cursor-zoom-out [--crop-avail-h:calc(100vh-2rem)] sm:[--crop-avail-h:calc(100vh-4rem)]"
         >
+          {/* z-10 is load-bearing: a cropped picture renders through
+              CroppedImage as a POSITIONED span, which paints in the same layer
+              as this absolutely-positioned button and, coming later in the
+              DOM, on top of it. The close button was therefore unclickable on
+              every image the designer had framed — which is most of them. */}
           <button
             type="button"
             onClick={() => setLightbox(null)}
             aria-label="Close image"
             autoFocus
-            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white transition-colors cursor-pointer"
+            className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white transition-colors cursor-pointer"
           >
             <X size={20} />
           </button>
           {/* Definite width AND height, not shrink-to-fit: the image inside
               sizes itself against this box, so a percentage max-height has to
-              have something real to resolve against */}
-          <span
-            onClick={ev => ev.stopPropagation()}
-            className="w-full h-full flex items-center justify-center cursor-default"
-          >
+              have something real to resolve against.
+
+              It deliberately does NOT swallow clicks. It fills the overlay, so
+              stopping propagation here stopped it everywhere — the dark margin
+              around the picture looked dismissable, carried the zoom-out
+              cursor, and did nothing. Clicking anywhere closes now, which is
+              what the cursor has been promising all along. */}
+          <span className="w-full h-full flex items-center justify-center">
             <CroppedImage
               src={lightbox.image.url}
               alt={lightbox.name}

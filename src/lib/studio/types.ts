@@ -96,11 +96,16 @@ export interface StudioSlide {
   isCover: boolean
 }
 
+/**
+ * What a board remembers between visits: the slide you were on, and nothing
+ * else. Zoom and pan used to be stored here too, and reopening a board dropped
+ * you back at whatever magnification you happened to leave it at — mid-detail
+ * on one corner of a slide, with no sense of the page. A board now always
+ * opens fit to the page. Rows written before this still carry the old zoom
+ * and pan keys; they are simply ignored.
+ */
 export interface BoardLastState {
   slideId: string | null
-  zoom: number
-  panX: number
-  panY: number
 }
 
 // Every image imported into a board is registered as an asset (deduplicated

@@ -120,7 +120,8 @@ interface StudioState {
   editingHeading: boolean
   cropTargetId: string | null
   viewport: Viewport
-  viewportRestored: boolean
+  /** False until the page has been fitted to the container on this open. */
+  viewportFitted: boolean
   clipboard: StudioObject[]
   guides: { v: number[]; h: number[] }
   presenting: boolean
@@ -261,12 +262,7 @@ function scheduleStateSave() {
 async function saveLastState() {
   const s = useStudioStore.getState()
   if (!s.boardId) return
-  const lastState: BoardLastState = {
-    slideId: s.currentSlideId || null,
-    zoom: s.viewport.zoom,
-    panX: s.viewport.x,
-    panY: s.viewport.y,
-  }
+  const lastState: BoardLastState = { slideId: s.currentSlideId || null }
   try {
     const supabase = createClient()
     await supabase
@@ -420,7 +416,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   editingHeading: false,
   cropTargetId: null,
   viewport: { zoom: 1, x: 0, y: 0 },
-  viewportRestored: false,
+  viewportFitted: false,
   clipboard: [],
   guides: { v: [], h: [] },
   presenting: false,
@@ -463,8 +459,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       pendingUploads: 0,
       failedUploadIds: [],
       currentSlideId: slideExists ? restored!.slideId! : (props.slides[0]?.id ?? ''),
-      viewport: restored ? { zoom: restored.zoom, x: restored.panX, y: restored.panY } : { zoom: 1, x: 0, y: 0 },
-      viewportRestored: !!restored,
+      // A placeholder until the canvas knows how big it is: the real viewport
+      // is the fit, applied in CanvasArea as soon as the container is measured.
+      viewport: { zoom: 1, x: 0, y: 0 },
+      viewportFitted: false,
       selectedIds: [],
       past: [],
       future: [],

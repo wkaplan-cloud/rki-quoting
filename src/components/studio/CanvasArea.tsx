@@ -27,7 +27,7 @@ export function CanvasArea() {
   const [dragOver, setDragOver] = useState(false)
   // Hold Space for a momentary pan; the hand tool latches it on
   const panMode = spaceDown || handTool
-  const viewportRestored = useStudioStore(s => s.viewportRestored)
+  const viewportFitted = useStudioStore(s => s.viewportFitted)
 
   // Track container size
   useEffect(() => {
@@ -39,11 +39,13 @@ export function CanvasArea() {
     return () => ro.disconnect()
   }, [])
 
-  // First open (no saved state): fit the page in the container, centred
+  // Every open starts fit to the page, centred — the whole slide in view
+  // before anything else. Runs once per board load, as soon as the container
+  // has a size; after that the designer's zoom is theirs to keep.
   useEffect(() => {
-    if (viewportRestored || size.w === 0 || size.h === 0) return
-    useStudioStore.setState({ viewport: fitViewport(size), viewportRestored: true })
-  }, [viewportRestored, size])
+    if (viewportFitted || size.w === 0 || size.h === 0) return
+    useStudioStore.setState({ viewport: fitViewport(size), viewportFitted: true })
+  }, [viewportFitted, size])
 
   // Viewport keys: Space held = momentary pan, V/H switch tool, ⌘± / ⌘0 / ⌘1
   // zoom. These live here rather than in EditorShell because fitting the page
