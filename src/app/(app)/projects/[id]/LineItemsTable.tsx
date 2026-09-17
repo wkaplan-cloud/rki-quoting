@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { computeLineItem, formatZAR } from '@/lib/quoting'
 import type { LineItem } from '@/lib/types'
-import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, Upload, X, Loader2 } from 'lucide-react'
+import { Plus, Trash2, GripVertical, CornerDownRight, LayoutList, ImageOff, HelpCircle, ChevronDown, ChevronUp, AlertTriangle, Link2, Unlink2, ImagePlus, Upload, X, Loader2, LayoutGrid, Check } from 'lucide-react'
 import { Combobox } from '@/components/ui/Combobox'
 import { FabricSearch } from '@/components/ui/FabricSearch'
 import { compressImage } from '@/lib/compressImage'
@@ -184,6 +184,33 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
   // Per-line-item images
   const [imageModal, setImageModal] = useState<{ lineItemId: string; itemName: string } | null>(null)
+  // id of the line currently being saved to Our Pieces, then the piece it became
+  const [savingPiece, setSavingPiece] = useState<string | null>(null)
+  const [savedPieces, setSavedPieces] = useState<Record<string, string>>({})
+
+  // Keep the finished article. Deliberately a copy, not a link: a piece has to
+  // outlive the quote it came from.
+  async function saveAsPiece(lineItemId: string, itemName: string) {
+    setSavingPiece(lineItemId)
+    try {
+      const res = await fetch('/api/pieces/from-line-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineItemId }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(json.error ?? 'Could not save that to Our Pieces')
+        return
+      }
+      setSavedPieces(prev => ({ ...prev, [lineItemId]: json.piece?.id ?? '' }))
+      toast.success(`${itemName || 'The item'} saved to Our Pieces`)
+    } catch {
+      toast.error('Could not save that to Our Pieces')
+    } finally {
+      setSavingPiece(null)
+    }
+  }
   const [uploadingImages, setUploadingImages] = useState(false)
   const imageFileRef = useRef<HTMLInputElement>(null)
   const lineItemsRef = useRef(lineItems)
@@ -1431,6 +1458,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
               </div>
               <p className="text-xs text-[#8A877F] mb-4">
                 The first image appears next to this item on the quote and invoice.
+                {locked && ' This quote is paid and locked — images stay open, because the real photograph of a piece usually only exists once it has been made and delivered.'}
               </p>
 
               {uploaded.length > 0 && (
@@ -1442,15 +1470,13 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                       {i === 0 && (
                         <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[9px] rounded">On quote</span>
                       )}
-                      {!locked && (
-                        <button
-                          onClick={() => deleteLineItemImage(imageModal.lineItemId, url)}
-                          aria-label={`Remove image ${i + 1}`}
-                          className="absolute top-1 right-1 p-1 rounded bg-black/60 text-white opacity-0 group-hover/img:opacity-100 hover:bg-red-600 transition-colors cursor-pointer"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => deleteLineItemImage(imageModal.lineItemId, url)}
+                        aria-label={`Remove image ${i + 1}`}
+                        className="absolute top-1 right-1 p-1 rounded bg-black/60 text-white opacity-0 group-hover/img:opacity-100 hover:bg-red-600 transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -1470,27 +1496,61 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                 <p className="text-xs text-[#A8A39B] mb-4">No images on this item yet.</p>
               )}
 
-              {!locked && (
-                <>
-                  <input
-                    ref={imageFileRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/svg+xml"
-                    multiple
-                    className="hidden"
-                    onChange={e => { uploadLineItemImages(imageModal.lineItemId, e.target.files); e.target.value = '' }}
-                  />
-                  <button
-                    onClick={() => imageFileRef.current?.click()}
-                    disabled={uploadingImages || uploaded.length >= 6}
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#D8D3C8] rounded-lg text-sm text-[#8A877F] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {uploadingImages ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                    {uploadingImages ? 'Uploading…' : uploaded.length >= 6 ? 'Maximum 6 images' : 'Upload images'}
-                  </button>
-                  <p className="text-xs text-[#A8A39B] mt-2">JPG, PNG, WebP or SVG — up to 5 MB each, 6 per item. Images are compressed automatically.</p>
-                </>
-              )}
+              {/* Deliberately NOT gated on `locked`. The lock protects the
+                  priced content of a paid quote — an image changes no price,
+                  and the real photograph of a piece only exists once it has
+                  been made, which is usually at or after final payment.
+                  Locking it out would mean never capturing the one picture
+                  worth keeping. */}
+                <input
+                  ref={imageFileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                  multiple
+                  className="hidden"
+                  onChange={e => { uploadLineItemImages(imageModal.lineItemId, e.target.files); e.target.value = '' }}
+                />
+                <button
+                  onClick={() => imageFileRef.current?.click()}
+                  disabled={uploadingImages || uploaded.length >= 6}
+                  className="flex items-center gap-2 px-4 py-2 border border-dashed border-[#D8D3C8] rounded-lg text-sm text-[#8A877F] hover:border-[#9A7B4F] hover:text-[#9A7B4F] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingImages ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                  {uploadingImages ? 'Uploading…' : uploaded.length >= 6 ? 'Maximum 6 images' : 'Upload images'}
+                </button>
+                <p className="text-xs text-[#A8A39B] mt-2">JPG, PNG, WebP or SVG — up to 5 MB each, 6 per item. Images are compressed automatically.</p>
+
+              {/* The end of the loop. Pieces already flow INTO boards; this is
+                  how a finished one comes back out — with the specs it was made
+                  to, the price actually paid, and the photograph above, which
+                  only exists once the thing has been delivered. It sits here
+                  rather than on the row because this is the moment the real
+                  picture is in front of you. */}
+              <div className="mt-5 pt-4 border-t border-[#EDE9E1]">
+                {savedPieces[imageModal.lineItemId] !== undefined ? (
+                  <p className="flex items-center gap-1.5 text-sm text-emerald-700">
+                    <Check size={14} /> Saved to Our Pieces
+                    <Link href="/pieces" className="ml-1 text-[#9A7B4F] hover:underline">View</Link>
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => void saveAsPiece(imageModal.lineItemId, imageModal.itemName)}
+                      disabled={savingPiece === imageModal.lineItemId}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#9A7B4F] text-white hover:bg-[#7d6340] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {savingPiece === imageModal.lineItemId
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <LayoutGrid size={14} />}
+                      {savingPiece === imageModal.lineItemId ? 'Saving…' : 'Add to Our Pieces'}
+                    </button>
+                    <p className="text-xs text-[#A8A39B] mt-2">
+                      Keeps this item — its specs, its dimensions, the supplier, what it actually
+                      cost and the images above — so you can drop it onto a future board.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )
