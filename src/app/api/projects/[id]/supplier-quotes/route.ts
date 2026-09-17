@@ -40,6 +40,7 @@ interface LineItemRow {
 
 interface QuoteRow {
   id: string
+  org_id: string
   studio_spec_id: string
   supplier_id: string | null
   supplier_name: string
@@ -170,7 +171,7 @@ async function loadQuotableItems(
 
   const { data: rawQuotes } = await supabase
     .from('spec_quotes')
-    .select('id, studio_spec_id, supplier_id, supplier_name, price, lead_time, notes, source, unable_to_quote, created_at, material_quantities')
+    .select('id, org_id, studio_spec_id, supplier_id, supplier_name, price, lead_time, notes, source, unable_to_quote, created_at, material_quantities')
     .in('studio_spec_id', specIds)
     .order('created_at', { ascending: false })
 
@@ -396,9 +397,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const children = childrenByParent.get(
         target.kind === 'item' ? target.lineItemId : target.parentId
       ) ?? []
-      // What this apply actually put on a line, for the stale-quote check below
-      let appliedPrice: number | null = null
-
       if (target.kind === 'item') {
         // The piece itself, onto the parent line
         const data = await write(target.lineItemId, {
@@ -406,7 +404,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           ...supplierPatch(quote),
         })
         if (data) pricedCount++
-        appliedPrice = quote.price
 
         // Cloth this supplier measured but did not price: the linen comes
         // from its own house at its own price, and only the quantity is
@@ -430,7 +427,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           ...supplierPatch(quote),
         })
         if (data) pricedCount++
-        appliedPrice = answer.price
+
+        // A record per part, not per supplier. spec_quotes carries one
+        // applied_price, which a workroom quoting two sizes of scatter
+        // overwrites with whichever was applied last — so a figure already
+        // carried onto a client quote could move underneath the studio with
+        // nothing able to say so.
+        const { error: appErr } = await supabase
+          .from('spec_quote_applications')
+          .upsert(
+            {
+              org_id: quote.org_id,
+              spec_quote_id: quote.id,
+              material_key: child.studio_material_key,
+              line_item_id: child.id,
+              applied_price: answer.price,
+              applied_quantity: answer.quantity,
+              applied_at: new Date().toISOString(),
+            },
+            { onConflict: 'spec_quote_id,material_key' }
+          )
+        if (appErr) throw new Error(appErr.message)
 
         // Its own cloth, which the same supplier measured — the velvet on
         // the scatter they are sewing. Those rows hang off the same parent,
@@ -444,16 +461,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
       }
 
-      // Same record as the Quotes-section apply: applied_price going out of
-      // step with price is what makes a stale quote detectable later.
-      await supabase
-        .from('spec_quotes')
-        .update({
-          applied_to_line_item_id: target.lineItemId,
-          applied_at: new Date().toISOString(),
-          applied_price: appliedPrice,
-        })
-        .eq('id', quote.id)
+      // The item's own stamp, which the Quotes section reads. Only an item
+      // apply touches it: a component's record lives per part, above, and
+      // overwriting this with a scatter price would tell the Quotes page the
+      // sofa had been quoted at R450.
+      if (target.kind === 'item') {
+        await supabase
+          .from('spec_quotes')
+          .update({
+            applied_to_line_item_id: target.lineItemId,
+            applied_at: new Date().toISOString(),
+            applied_price: quote.price,
+          })
+          .eq('id', quote.id)
+      }
     }
 
 

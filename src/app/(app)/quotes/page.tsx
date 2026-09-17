@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { QuotesTable, type QuoteRow } from './QuotesTable'
+import { normalizeSupplierQuantity, type SupplierMaterialQuantity } from '@/lib/studio/types'
 
 type BoardRel = {
   name: string
@@ -36,6 +37,8 @@ interface SpecQuoteRow {
   applied_to_line_item_id: string | null
   applied_at: string | null
   applied_price: number | null
+  /** Per-component answers — the components' prices live here, not in `price`. */
+  material_quantities: SupplierMaterialQuantity[] | null
   line_items: AppliedLineItem | AppliedLineItem[] | null
 }
 
@@ -75,10 +78,44 @@ export default async function QuotesPage() {
        studio_specs ( spec_name, board_id, studio_boards ( name, client_id, project_id, clients ( client_name ) ) ),
        pieces ( name ),
        rfq_requests ( submission_message ),
-       applied_to_line_item_id, applied_at, applied_price,
+       applied_to_line_item_id, applied_at, applied_price, material_quantities,
        line_items ( item_name, projects ( project_number, project_name, clients ( client_name ) ) )`
     )
     .order('created_at', { ascending: false })
+
+  // Components are applied per part, so a supplier who quoted two sizes of
+  // scatter has an application record for each. Their stale check cannot come
+  // from the row's single applied_price, which only ever holds the item's.
+  const quoteIds = ((data ?? []) as unknown as SpecQuoteRow[]).map(r => r.id)
+  const staleComponents = new Map<string, string[]>()
+  if (quoteIds.length) {
+    const { data: applications } = await supabase
+      .from('spec_quote_applications')
+      .select('spec_quote_id, material_key, applied_price')
+      .in('spec_quote_id', quoteIds)
+    const answersByQuote = new Map(
+      ((data ?? []) as unknown as SpecQuoteRow[]).map(r => [
+        r.id,
+        new Map(
+          (r.material_quantities ?? [])
+            .map(normalizeSupplierQuantity)
+            .map(q => [q.key, q])
+        ),
+      ])
+    )
+    for (const a of (applications ?? []) as {
+      spec_quote_id: string
+      material_key: string
+      applied_price: number | string
+    }[]) {
+      const answer = answersByQuote.get(a.spec_quote_id)?.get(a.material_key)
+      if (!answer || answer.price === null) continue
+      if (Number(a.applied_price) === answer.price) continue
+      const list = staleComponents.get(a.spec_quote_id) ?? []
+      list.push(answer.label || 'a component')
+      staleComponents.set(a.spec_quote_id, list)
+    }
+  }
 
   const rows: QuoteRow[] = ((data ?? []) as unknown as SpecQuoteRow[]).map(row => {
     const spec = one(row.studio_specs)
@@ -116,9 +153,12 @@ export default async function QuotesPage() {
       // The quote carries applied_price; the supplier's current answer is
       // price. Out of step means someone is quoting a client a stale number.
       stale:
-        row.applied_at != null &&
-        row.applied_price !== null &&
-        Number(row.applied_price) !== (row.price === null ? null : Number(row.price)),
+        (row.applied_at != null &&
+          row.applied_price !== null &&
+          Number(row.applied_price) !== (row.price === null ? null : Number(row.price))) ||
+        (staleComponents.get(row.id)?.length ?? 0) > 0,
+      /** Which parts moved, when the staleness is in the components. */
+      staleComponents: staleComponents.get(row.id) ?? [],
       createdAt: row.created_at,
     }
   })

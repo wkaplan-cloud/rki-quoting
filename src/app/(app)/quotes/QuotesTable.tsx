@@ -34,6 +34,12 @@ export interface QuoteRow {
   appliedTo: string | null
   /** The amount as applied, which is what the quote still carries. */
   appliedPrice: number | null
+  /**
+   * Parts whose applied price has since moved, for a supplier who quoted
+   * components rather than the piece — the row's own appliedPrice is the
+   * item's and says nothing about a scatter.
+   */
+  staleComponents: string[]
   /** The supplier has since changed a price the studio already used. */
   stale: boolean
   createdAt: string
@@ -167,7 +173,16 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
                     {/* The quote still holds applied_price. Saying so is the
                         whole point — the number on the client's quote is the
                         one that can be wrong. */}
-                    {row.stale ? (
+                    {row.staleComponents.length > 0 ? (
+                      // A component supplier's money is on their parts, so
+                      // name the ones that moved rather than quoting a
+                      // single figure that belongs to the item.
+                      <span className="block text-[10px] font-normal text-[#B4472F] mt-0.5">
+                        {row.staleComponents.length === 1
+                          ? `${row.staleComponents[0]} has changed since it was applied`
+                          : `${row.staleComponents.length} parts changed since they were applied`}
+                      </span>
+                    ) : row.stale ? (
                       <span className="block text-[10px] font-normal text-[#B4472F] mt-0.5">
                         quote still at R{(row.appliedPrice ?? 0).toLocaleString()}
                       </span>
@@ -188,6 +203,13 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
                     {applied[row.id] ? (
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
                         <Check size={13} /> {applied[row.id]}
+                      </span>
+                    ) : row.staleComponents.length > 0 ? (
+                      // Re-applying a component means choosing per part, which
+                      // is what the project's Supplier quotes dialog is for.
+                      // Offering a one-press fix here would have to guess.
+                      <span className="text-[10px] text-[#8A877F]">
+                        re-apply from the quote
                       </span>
                     ) : row.stale && row.appliedToLineItemId && row.price != null ? (
                       // The target is already known, so this needs no picker —

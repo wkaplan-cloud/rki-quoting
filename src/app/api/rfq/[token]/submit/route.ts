@@ -21,6 +21,7 @@ const clip = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slic
 
 /** A spec_quotes row as it stood before this submission. */
 interface PreviousRow {
+  id: string
   studio_spec_id: string
   price: number | string | null
   lead_time: string | null
@@ -277,13 +278,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // submission — the two used to arrive looking identical.
     const { data: previousRows } = await supabaseAdmin
       .from('spec_quotes')
-      .select('studio_spec_id, price, lead_time, notes, unable_to_quote, applied_at, applied_price, material_quantities')
+      .select('id, studio_spec_id, price, lead_time, notes, unable_to_quote, applied_at, applied_price, material_quantities')
       .eq('org_id', request.org_id)
       .eq('rfq_request_id', request.id)
     const previous = new Map(
       ((previousRows ?? []) as PreviousRow[]).map(r => [r.studio_spec_id, r])
     )
     const isRevision = previous.size > 0
+
+    // Which of this supplier's components the studio has already carried onto
+    // a quote, and at what. Keyed per part: a workroom quoting two sizes of
+    // scatter has two of these, and only one of them may have been used.
+    const appliedByKey = new Map<string, number>()
+    const previousIds = ((previousRows ?? []) as PreviousRow[]).map(r => r.id).filter(Boolean)
+    if (previousIds.length) {
+      const { data: applications } = await supabaseAdmin
+        .from('spec_quote_applications')
+        .select('material_key, applied_price')
+        .in('spec_quote_id', previousIds)
+      for (const a of (applications ?? []) as { material_key: string; applied_price: number | string }[]) {
+        appliedByKey.set(a.material_key, Number(a.applied_price))
+      }
+    }
 
     const changes: PriceChange[] = []
     for (const it of engaged) {
@@ -316,23 +332,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       }
       // Metres moving matters as much as money moving: cloth may already be
       // on order against the figure this supplier gave last time.
-      const beforeQty = new Map(
-        (before.material_quantities ?? [])
-          .map(normalizeSupplierQuantity)
-          .map(q => [q.key, q.quantity])
-      )
+      const beforeAnswers = (before.material_quantities ?? []).map(normalizeSupplierQuantity)
+      const beforeQty = new Map(beforeAnswers.map(q => [q.key, q.quantity]))
+      const beforePrice = new Map(beforeAnswers.map(q => [q.key, q.price]))
       for (const q of it.quantities) {
         const was = beforeQty.get(q.key) ?? null
-        if (was === q.quantity) continue
-        changes.push({
-          name: nameBySpec.get(it.specId) ?? 'Untitled item',
-          kind: 'quantity',
-          label: q.label,
-          unit: q.unit,
-          from: was,
-          to: q.quantity,
-          wasApplied,
-        })
+        if (was !== q.quantity) {
+          changes.push({
+            name: nameBySpec.get(it.specId) ?? 'Untitled item',
+            kind: 'quantity',
+            label: q.label,
+            unit: q.unit,
+            from: was,
+            to: q.quantity,
+            wasApplied,
+          })
+        }
+        // And the component's own price, against its own applied record —
+        // the sofa's stamp says nothing about what a scatter was used at.
+        const wasPrice = beforePrice.get(q.key) ?? null
+        if (wasPrice !== q.price) {
+          const usedAt = appliedByKey.get(q.key)
+          changes.push({
+            name: nameBySpec.get(it.specId) ?? 'Untitled item',
+            kind: 'price',
+            label: q.label,
+            from: wasPrice,
+            to: q.price,
+            wasApplied: usedAt !== undefined,
+            appliedPrice: usedAt ?? null,
+          })
+        }
       }
     }
     // A price the studio has already carried onto a quote moving underneath
@@ -625,7 +655,9 @@ const money = (n: number | null | undefined) =>
 function changeAsText(c: PriceChange): string {
   switch (c.kind) {
     case 'price':
-      return `${c.name}: ${money(c.from)} → ${money(c.to)}${pctLabel(c.from, c.to)}${c.wasApplied ? `  [already applied at ${money(c.appliedPrice)}]` : ''}`
+      // A component change names the part too — "the sofa went up" and "the
+      // 600 scatter went up" are not the same message to act on.
+      return `${c.name}${c.label ? ` — ${c.label}` : ''}: ${money(c.from)} → ${money(c.to)}${pctLabel(c.from, c.to)}${c.wasApplied ? `  [already applied at ${money(c.appliedPrice)}]` : ''}`
     case 'lead':
       return `${c.name}: lead time ${c.fromText || 'none'} → ${c.toText || 'none'}`
     case 'note':
@@ -668,6 +700,7 @@ function changeAsRow(c: PriceChange): string {
   return `<tr>
     <td style="padding:9px 0;border-bottom:1px solid #EDE9E1;font-size:13px;color:#4A4A47;">
       ${esc(c.name)}
+      ${c.kind === 'price' && c.label ? `<div style="font-size:11px;color:#8A877F;margin-top:2px;">${esc(c.label)}</div>` : ''}
       ${c.wasApplied && c.kind === 'price' ? `<div style="font-size:11px;color:#B4472F;margin-top:3px;">Already applied to a quote at ${esc(money(c.appliedPrice))}</div>` : ''}
     </td>
     <td style="padding:9px 0;border-bottom:1px solid #EDE9E1;font-size:13px;text-align:right;white-space:nowrap;">${detail}</td>
