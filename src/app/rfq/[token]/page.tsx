@@ -108,6 +108,13 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         prefill: answered.get(ask.key)?.quantity ?? null,
       })
 
+      // A component supplier is not sent the item's spec AT ALL, rather than
+      // sent it and shown none of it. Props cross to the browser inside the
+      // page payload whether they are rendered or not, so leaving them in
+      // would put the piece's dimensions, its cloth and the designer's notes
+      // in the page source of someone who is only sewing its cushions.
+      const itemOnly = <T,>(value: T, blank: T): T => (sheet.ownsItem ? value : blank)
+
       return {
         specId: spec.id,
         name: spec.spec_name || 'Untitled item',
@@ -123,14 +130,18 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
           })),
         ].filter((img): img is RfqFormImage => !!img),
         ownsItem: sheet.ownsItem,
-        category: categoryLabel(spec.category),
-        description: spec.description ?? '',
-        quantity: spec.quantity ?? '',
-        dimensions: [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
+        category: itemOnly(categoryLabel(spec.category), ''),
+        description: itemOnly(spec.description ?? '', ''),
+        quantity: itemOnly(spec.quantity ?? '', ''),
+        dimensions: itemOnly(
+          [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
+          ''
+        ),
         // Read-only context for whoever is making the piece. Stone is absent:
         // it has moved onto its own yard's sheet, and leaving it here would
         // invite the upholsterer to price a marble top they never cut.
-        materials: materials
+        materials: itemOnly(
+          materials
           .filter(m => !isSupplierPricedMaterial(m.type))
           .flatMap(m => [
             [
@@ -151,7 +162,9 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
               .filter(Boolean)
               .join(' · ')),
           ])
-          .filter(Boolean),
+            .filter(Boolean),
+          []
+        ),
         itemMaterials: sheet.itemMaterials.map(withPrefill),
         components: sheet.components.map(c => ({
           ...c,
@@ -161,13 +174,16 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         })),
         // Resolved to labels + units here, not in the form — the supplier must
         // read "Overall Width 1800 mm", never the raw "overall_width" key.
-        itemSpecs: (CATEGORY_FIELDS[spec.category as CategoryKey] ?? [])
-          .filter(f => (spec.item_specs?.[f.key] ?? '').trim())
-          .map(f => ({
-            label: f.label,
-            value: `${spec.item_specs![f.key].trim()}${f.unit ? ` ${f.unit}` : ''}`,
-          })),
-        specNotes: spec.notes ?? '',
+        itemSpecs: itemOnly(
+          (CATEGORY_FIELDS[spec.category as CategoryKey] ?? [])
+            .filter(f => (spec.item_specs?.[f.key] ?? '').trim())
+            .map(f => ({
+              label: f.label,
+              value: `${spec.item_specs![f.key].trim()}${f.unit ? ` ${f.unit}` : ''}`,
+            })),
+          [] as { label: string; value: string }[]
+        ),
+        specNotes: itemOnly(spec.notes ?? '', ''),
         prefill: {
           price: pre?.price ?? null,
           leadTime: pre?.lead_time ?? '',

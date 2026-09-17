@@ -21,11 +21,18 @@ interface OrgSupplier {
   email_cc: string | null
 }
 
-interface Recipient {
+export interface Recipient {
   key: string
   supplierId: string | null
   supplierName: string
   email: string
+  /**
+   * Off means "not this time". Component suppliers are added automatically,
+   * and the designer often has the scatters already priced or ordered — so
+   * skipping one has to be a tick rather than a delete, or they lose the
+   * address and have to find it again next time.
+   */
+  include: boolean
 }
 
 interface Group {
@@ -34,6 +41,21 @@ interface Group {
   objectIds: string[]
   specs: StudioSpec[]
   defaultSupplierIds: string[]
+}
+
+/**
+ * Who a group's email actually goes to. Unticking a supplier keeps them on the
+ * list with their address intact but takes them out of the send — the scatters
+ * are often already priced or ordered, and losing the address to skip one send
+ * means finding it again next time.
+ */
+export function recipientsToSend(list: Recipient[]): Recipient[] {
+  return list.filter(r => r.include && r.email.trim())
+}
+
+/** Ticked recipients still missing an address — these block the send. */
+export function recipientsMissingEmail(list: Recipient[]): Recipient[] {
+  return list.filter(r => r.include && !r.email.trim())
 }
 
 /**
@@ -189,6 +211,7 @@ export function RequestQuotesModal() {
             supplierId: sid,
             supplierName: sup?.supplier_name ?? g.label,
             email: sup?.email ?? '',
+            include: true,
           }
         })
       }
@@ -204,13 +227,28 @@ export function RequestQuotesModal() {
     setRecipients(prev => {
       const list = prev[groupKey] ?? []
       if (value === 'custom') {
-        return { ...prev, [groupKey]: [...list, { key: `r${recipientSeq++}`, supplierId: null, supplierName: '', email: '' }] }
+        return {
+          ...prev,
+          [groupKey]: [
+            ...list,
+            { key: `r${recipientSeq++}`, supplierId: null, supplierName: '', email: '', include: true },
+          ],
+        }
       }
       const sup = suppliers?.find(s => s.id === value)
       if (!sup || list.some(r => r.supplierId === sup.id)) return prev
       return {
         ...prev,
-        [groupKey]: [...list, { key: `r${recipientSeq++}`, supplierId: sup.id, supplierName: sup.supplier_name, email: sup.email ?? '' }],
+        [groupKey]: [
+          ...list,
+          {
+            key: `r${recipientSeq++}`,
+            supplierId: sup.id,
+            supplierName: sup.supplier_name,
+            email: sup.email ?? '',
+            include: true,
+          },
+        ],
       }
     })
   }
@@ -233,14 +271,18 @@ export function RequestQuotesModal() {
     setRecipients(prev => ({ ...prev, [groupKey]: (prev[groupKey] ?? []).filter(r => r.key !== key) }))
   }
 
-  const totalRecipients = groups.reduce((n, g) => n + (recipients[g.key]?.length ?? 0), 0)
+  const totalRecipients = groups.reduce(
+    (n, g) => n + recipientsToSend(recipients[g.key] ?? []).length,
+    0
+  )
   // Named, not counted: a comparison supplier added with no email on their
   // record disables Send, and "some recipients" leaves the designer hunting
   // for which row in a modal that may be scrolled well past it.
   const missingEmailNames = groups.flatMap(g =>
-    (recipients[g.key] ?? [])
-      .filter(r => !r.email.trim())
-      .map(r => r.supplierName.trim() || 'a typed-in recipient')
+    // A skipped recipient with no address is not a problem to solve
+    recipientsMissingEmail(recipients[g.key] ?? []).map(
+      r => r.supplierName.trim() || 'a typed-in recipient'
+    )
   )
   const missingEmails = missingEmailNames.length > 0
 
@@ -268,9 +310,11 @@ export function RequestQuotesModal() {
         groups: groups
           .map(g => ({
             objectIds: g.objectIds,
-            recipients: (recipients[g.key] ?? [])
-              .filter(r => r.email.trim())
-              .map(r => ({ supplierId: r.supplierId, supplierName: r.supplierName, email: r.email.trim() })),
+            recipients: recipientsToSend(recipients[g.key] ?? []).map(r => ({
+              supplierId: r.supplierId,
+              supplierName: r.supplierName,
+              email: r.email.trim(),
+            })),
           }))
           .filter(g => g.recipients.length > 0),
       }
@@ -425,18 +469,51 @@ export function RequestQuotesModal() {
                   </p>
                 )}
 
-                <p className="text-[10px] text-[#8A877F] mb-1">Send to:</p>
+                <p className="text-[10px] text-[#8A877F] mb-1">
+                  Send to:
+                  {(() => {
+                    const skipped = list.filter(r => !r.include).length
+                    return skipped ? (
+                      <span className="ml-1 text-[#9A7B4F]">
+                        {skipped} skipped
+                      </span>
+                    ) : null
+                  })()}
+                </p>
                 <div className="space-y-1.5">
                   {list.map(r => (
-                    <div key={r.key} className="flex items-center gap-1.5">
+                    <div
+                      key={r.key}
+                      className={`flex items-center gap-1.5 transition-opacity ${
+                        r.include ? '' : 'opacity-45'
+                      }`}
+                    >
+                      {/* Skipping a supplier is a tick, not a delete: the
+                          scatters may already be priced, and next time the
+                          designer shouldn't have to find the address again. */}
+                      <input
+                        type="checkbox"
+                        checked={r.include}
+                        onChange={e => patchRecipient(g.key, r.key, { include: e.target.checked })}
+                        title={r.include ? 'Sending to this supplier' : 'Not sending to this supplier'}
+                        aria-label={`Send to ${r.supplierName.trim() || 'this recipient'}`}
+                        className="w-3.5 h-3.5 flex-shrink-0 rounded accent-[#9A7B4F] cursor-pointer"
+                      />
                       {r.supplierId ? (
-                        <span className="flex-shrink-0 max-w-[120px] truncate text-[11px] text-[#2C2C2A]">{r.supplierName}</span>
+                        <span
+                          className={`flex-shrink-0 max-w-[120px] truncate text-[11px] ${
+                            r.include ? 'text-[#2C2C2A]' : 'text-[#8A877F] line-through'
+                          }`}
+                        >
+                          {r.supplierName}
+                        </span>
                       ) : (
                         <input
                           value={r.supplierName}
                           onChange={e => patchRecipient(g.key, r.key, { supplierName: e.target.value })}
                           placeholder="Name"
-                          className="w-[110px] text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A]"
+                          disabled={!r.include}
+                          className="w-[110px] text-[11px] px-2 py-1.5 rounded-md border border-[#D8D3C8] bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A] disabled:bg-[#F5F2EC]"
                         />
                       )}
                       <input
@@ -444,8 +521,9 @@ export function RequestQuotesModal() {
                         onChange={e => patchRecipient(g.key, r.key, { email: e.target.value })}
                         placeholder="email@supplier.co.za"
                         type="email"
-                        className={`flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-md border bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A] ${
-                          r.email.trim() ? 'border-[#D8D3C8]' : 'border-amber-400'
+                        disabled={!r.include}
+                        className={`flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-md border bg-white outline-none focus:border-[#9A7B4F] text-[#2C2C2A] disabled:bg-[#F5F2EC] ${
+                          !r.include || r.email.trim() ? 'border-[#D8D3C8]' : 'border-amber-400'
                         }`}
                       />
                       <button

@@ -559,7 +559,12 @@ export function RfqPricingForm({
 
             {/* Pricing inputs */}
             <div className="px-5 py-4 border-t" style={{ borderColor: '#EDE9E1', backgroundColor: '#FAFAF8' }}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* The piece's own price, for whoever is making the piece. A
+                  component supplier is not quoting it, so they are not given a
+                  box for it — being asked for a sofa price is exactly the
+                  mistake this whole split exists to prevent. */}
+              <div className={it.ownsItem ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''}>
+                {it.ownsItem && (
                 <div>
                   <label htmlFor={`price-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
                     Your price each (excl. VAT)
@@ -632,6 +637,7 @@ export function RfqPricingForm({
                           : ''}
                   </p>
                 </div>
+                )}
                 <div>
                   <label htmlFor={`lead-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
                     Lead time / availability
