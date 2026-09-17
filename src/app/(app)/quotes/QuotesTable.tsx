@@ -40,9 +40,60 @@ export interface QuoteRow {
    * item's and says nothing about a scatter.
    */
   staleComponents: string[]
+  /** How many of this quote's parts are already on a line item. */
+  appliedComponentCount: number
   /** The supplier has since changed a price the studio already used. */
   stale: boolean
   createdAt: string
+}
+
+/**
+ * The three states a received price can be in, in the order they need a
+ * designer's attention.
+ *
+ * Two sections would have been the obvious split — used and not used — but a
+ * price that WAS used and has since been changed by the supplier belongs in
+ * neither: filed under "on a quote" it reads as settled, and that is the one
+ * case that quietly costs money, because a client is holding a quote at the
+ * old number. So it gets a section of its own, at the top.
+ */
+interface Section {
+  key: string
+  title: string
+  blurb: string
+  tone: string
+  rows: QuoteRow[]
+}
+
+function groupRows(rows: QuoteRow[]): Section[] {
+  // Used at all: the item's price carried onto a line, or any of its parts
+  const used = (r: QuoteRow) => !!r.appliedToLineItemId || r.appliedComponentCount > 0
+  const changed = rows.filter(r => r.stale)
+  const waiting = rows.filter(r => !r.stale && !used(r))
+  const onQuote = rows.filter(r => !r.stale && used(r))
+  return [
+    {
+      key: 'changed',
+      title: 'Changed since you used them',
+      blurb: 'The supplier has moved a price you have already put on a quote — the client is holding the old number.',
+      tone: '#B4472F',
+      rows: changed,
+    },
+    {
+      key: 'waiting',
+      title: 'Not on a quote yet',
+      blurb: 'Prices that have come in and have not been used anywhere.',
+      tone: '#9A7B4F',
+      rows: waiting,
+    },
+    {
+      key: 'applied',
+      title: 'On a quote',
+      blurb: 'Already carried onto a line item, and still matching what the supplier last sent.',
+      tone: '#8A877F',
+      rows: onQuote,
+    },
+  ]
 }
 
 interface ProjectOption {
@@ -68,6 +119,7 @@ interface LineItemOption {
 }
 
 export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
+  const sections = groupRows(rows)
   const [applying, setApplying] = useState<QuoteRow | null>(null)
   // The supplier's submission note, opened from the row it belongs to. Shown
   // on demand rather than inline: one note covers every item in a submission,
@@ -122,125 +174,21 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
               <th className="px-4 py-2.5 font-medium" />
             </tr>
           </thead>
-          <tbody>
-            {rows.map(row => {
-              const boardLabel = row.boardName
-                ? row.clientName
-                  ? `${row.clientName} · ${row.boardName}`
-                  : row.boardName
-                : row.fromPieces
-                  ? 'Pieces catalog'
-                  : '—'
-              const canApply = !row.unableToQuote && row.price != null
-              return (
-                <tr key={row.id} className="border-b border-[#EDE9E1] last:border-0">
-                  <td className="px-4 py-2.5 text-[#2C2C2A]">{row.itemName}</td>
-                  <td className="px-4 py-2.5 text-[#8A877F]">{boardLabel}</td>
-                  <td className="px-4 py-2.5 text-[#2C2C2A]">
-                    <span className="inline-flex items-center gap-1.5">
-                      {row.supplierName || '—'}
-                      {row.source === 'link' && (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#F5EFE4] text-[#9A7B4F] uppercase tracking-wide"
-                          title="Submitted by the supplier via a self-serve link"
-                        >
-                          via link
-                        </span>
-                      )}
-                      {row.supplierMessage && (
-                        <button
-                          type="button"
-                          onClick={() => setReading(row)}
-                          title="Note the supplier sent with this submission"
-                          aria-label={`Read the note ${row.supplierName || 'the supplier'} sent with this submission`}
-                          className="text-[#9A7B4F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
-                        >
-                          <MessageSquare size={13} />
-                        </button>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap">
-                    {row.unableToQuote ? (
-                      <span className="text-[#B08968] font-normal italic">Couldn&apos;t quote</span>
-                    ) : row.price != null ? (
-                      <span className={row.stale ? 'text-[#B4472F]' : 'text-[#2C2C2A]'}>
-                        R{row.price.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-[#8A877F]">—</span>
-                    )}
-                    {/* The quote still holds applied_price. Saying so is the
-                        whole point — the number on the client's quote is the
-                        one that can be wrong. */}
-                    {row.staleComponents.length > 0 ? (
-                      // A component supplier's money is on their parts, so
-                      // name the ones that moved rather than quoting a
-                      // single figure that belongs to the item.
-                      <span className="block text-[10px] font-normal text-[#B4472F] mt-0.5">
-                        {row.staleComponents.length === 1
-                          ? `${row.staleComponents[0]} has changed since it was applied`
-                          : `${row.staleComponents.length} parts changed since they were applied`}
-                      </span>
-                    ) : row.stale ? (
-                      <span className="block text-[10px] font-normal text-[#B4472F] mt-0.5">
-                        quote still at R{(row.appliedPrice ?? 0).toLocaleString()}
-                      </span>
-                    ) : row.appliedTo ? (
-                      <span className="block text-[10px] font-normal text-[#8A877F] mt-0.5">applied</span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-2.5 text-[#8A877F] whitespace-nowrap">{row.leadTime || '—'}</td>
-                  <td className="px-4 py-2.5 text-[#8A877F] max-w-[240px] truncate">{row.notes || '—'}</td>
-                  <td className="px-4 py-2.5 text-[#8A877F] whitespace-nowrap">
-                    {new Date(row.createdAt).toLocaleDateString('en-ZA', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                    {applied[row.id] ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-                        <Check size={13} /> {applied[row.id]}
-                      </span>
-                    ) : row.staleComponents.length > 0 ? (
-                      // Re-applying a component means choosing per part, which
-                      // is what the project's Supplier quotes dialog is for.
-                      // Offering a one-press fix here would have to guess.
-                      <span className="text-[10px] text-[#8A877F]">
-                        re-apply from the quote
-                      </span>
-                    ) : row.stale && row.appliedToLineItemId && row.price != null ? (
-                      // The target is already known, so this needs no picker —
-                      // one press moves the quote onto the supplier's new price
-                      <button
-                        type="button"
-                        disabled={reapplying === row.id}
-                        onClick={() => void reapply(row)}
-                        title={`Update ${row.appliedTo ?? 'the quote'} to R${row.price.toLocaleString()}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#B4472F] hover:text-[#8A3A26] transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        {reapplying === row.id ? (
-                          <><Loader2 size={12} className="animate-spin" /> Updating…</>
-                        ) : (
-                          <><AlertTriangle size={12} /> Re-apply</>
-                        )}
-                      </button>
-                    ) : canApply ? (
-                      <button
-                        type="button"
-                        onClick={() => setApplying(row)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#9A7B4F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
-                      >
-                        {row.appliedTo ? 'Add to another' : 'Add to quote'} <ArrowRight size={12} />
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
+            {/* Nothing is hidden and nothing is filtered away — the rows
+                are only put in the order a designer works in. */}
+            {sections.map(section =>
+              section.rows.length === 0 ? null : (
+                <SectionRows
+                  key={section.key}
+                  section={section}
+                  applied={applied}
+                  reapplying={reapplying}
+                  onRead={setReading}
+                  onApply={setApplying}
+                  onReapply={reapply}
+                />
               )
-            })}
-          </tbody>
+            )}
         </table>
       </div>
 
@@ -260,6 +208,185 @@ export function QuotesTable({ rows }: { rows: QuoteRow[] }) {
       )}
     </>
   )
+}
+
+/** One section's heading row, then its prices. */
+function SectionRows({
+  section,
+  applied,
+  reapplying,
+  onRead,
+  onApply,
+  onReapply,
+}: {
+  section: Section
+  applied: Record<string, string>
+  reapplying: string | null
+  onRead: (row: QuoteRow) => void
+  onApply: (row: QuoteRow) => void
+  onReapply: (row: QuoteRow) => void
+}) {
+  return (
+    <tbody className="border-t border-[#D8D3C8] first:border-t-0">
+      <tr>
+        <td colSpan={8} className="px-4 pt-4 pb-1.5 bg-white">
+          <span className="text-xs font-semibold" style={{ color: section.tone }}>
+            {section.title}
+          </span>
+          <span className="ml-2 text-xs text-[#8A877F]">
+            {section.rows.length}
+          </span>
+          <span className="block text-[11px] text-[#8A877F] mt-0.5">{section.blurb}</span>
+        </td>
+      </tr>
+      {section.rows.map(row => (
+        <QuoteRowLine
+          key={row.id}
+          row={row}
+          applied={applied}
+          reapplying={reapplying}
+          onRead={onRead}
+          onApply={onApply}
+          onReapply={onReapply}
+        />
+      ))}
+    </tbody>
+  )
+}
+
+function QuoteRowLine({
+  row,
+  applied,
+  reapplying,
+  onRead,
+  onApply,
+  onReapply,
+}: {
+  row: QuoteRow
+  applied: Record<string, string>
+  reapplying: string | null
+  onRead: (row: QuoteRow) => void
+  onApply: (row: QuoteRow) => void
+  onReapply: (row: QuoteRow) => void
+}) {
+  const setReading = onRead
+  const setApplying = onApply
+  const reapply = onReapply
+          const boardLabel = row.boardName
+            ? row.clientName
+              ? `${row.clientName} · ${row.boardName}`
+              : row.boardName
+            : row.fromPieces
+              ? 'Pieces catalog'
+              : '—'
+          const canApply = !row.unableToQuote && row.price != null
+          return (
+            <tr key={row.id} className="border-b border-[#EDE9E1] last:border-0">
+              <td className="px-4 py-2.5 text-[#2C2C2A]">{row.itemName}</td>
+              <td className="px-4 py-2.5 text-[#8A877F]">{boardLabel}</td>
+              <td className="px-4 py-2.5 text-[#2C2C2A]">
+                <span className="inline-flex items-center gap-1.5">
+                  {row.supplierName || '—'}
+                  {row.source === 'link' && (
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#F5EFE4] text-[#9A7B4F] uppercase tracking-wide"
+                      title="Submitted by the supplier via a self-serve link"
+                    >
+                      via link
+                    </span>
+                  )}
+                  {row.supplierMessage && (
+                    <button
+                      type="button"
+                      onClick={() => setReading(row)}
+                      title="Note the supplier sent with this submission"
+                      aria-label={`Read the note ${row.supplierName || 'the supplier'} sent with this submission`}
+                      className="text-[#9A7B4F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+                    >
+                      <MessageSquare size={13} />
+                    </button>
+                  )}
+                </span>
+              </td>
+              <td className="px-4 py-2.5 text-right font-medium whitespace-nowrap">
+                {row.unableToQuote ? (
+                  <span className="text-[#B08968] font-normal italic">Couldn&apos;t quote</span>
+                ) : row.price != null ? (
+                  <span className={row.stale ? 'text-[#B4472F]' : 'text-[#2C2C2A]'}>
+                    R{row.price.toLocaleString()}
+                  </span>
+                ) : (
+                  <span className="text-[#8A877F]">—</span>
+                )}
+                {/* The quote still holds applied_price. Saying so is the
+                    whole point — the number on the client's quote is the
+                    one that can be wrong. */}
+                {row.staleComponents.length > 0 ? (
+                  // A component supplier's money is on their parts, so
+                  // name the ones that moved rather than quoting a
+                  // single figure that belongs to the item.
+                  <span className="block text-[10px] font-normal text-[#B4472F] mt-0.5">
+                    {row.staleComponents.length === 1
+                      ? `${row.staleComponents[0]} has changed since it was applied`
+                      : `${row.staleComponents.length} parts changed since they were applied`}
+                  </span>
+                ) : row.stale ? (
+                  <span className="block text-[10px] font-normal text-[#B4472F] mt-0.5">
+                    quote still at R{(row.appliedPrice ?? 0).toLocaleString()}
+                  </span>
+                ) : row.appliedTo ? (
+                  <span className="block text-[10px] font-normal text-[#8A877F] mt-0.5">applied</span>
+                ) : null}
+              </td>
+              <td className="px-4 py-2.5 text-[#8A877F] whitespace-nowrap">{row.leadTime || '—'}</td>
+              <td className="px-4 py-2.5 text-[#8A877F] max-w-[240px] truncate">{row.notes || '—'}</td>
+              <td className="px-4 py-2.5 text-[#8A877F] whitespace-nowrap">
+                {new Date(row.createdAt).toLocaleDateString('en-ZA', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </td>
+              <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                {applied[row.id] ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                    <Check size={13} /> {applied[row.id]}
+                  </span>
+                ) : row.staleComponents.length > 0 ? (
+                  // Re-applying a component means choosing per part, which
+                  // is what the project's Supplier quotes dialog is for.
+                  // Offering a one-press fix here would have to guess.
+                  <span className="text-[10px] text-[#8A877F]">
+                    re-apply from the quote
+                  </span>
+                ) : row.stale && row.appliedToLineItemId && row.price != null ? (
+                  // The target is already known, so this needs no picker —
+                  // one press moves the quote onto the supplier's new price
+                  <button
+                    type="button"
+                    disabled={reapplying === row.id}
+                    onClick={() => void reapply(row)}
+                    title={`Update ${row.appliedTo ?? 'the quote'} to R${row.price.toLocaleString()}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#B4472F] hover:text-[#8A3A26] transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {reapplying === row.id ? (
+                      <><Loader2 size={12} className="animate-spin" /> Updating…</>
+                    ) : (
+                      <><AlertTriangle size={12} /> Re-apply</>
+                    )}
+                  </button>
+                ) : canApply ? (
+                  <button
+                    type="button"
+                    onClick={() => setApplying(row)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#9A7B4F] hover:text-[#2C2C2A] transition-colors cursor-pointer"
+                  >
+                    {row.appliedTo ? 'Add to another' : 'Add to quote'} <ArrowRight size={12} />
+                  </button>
+                ) : null}
+              </td>
+            </tr>
+          )
 }
 
 // What the supplier wrote in "Anything else?" on their pricing form — delivery

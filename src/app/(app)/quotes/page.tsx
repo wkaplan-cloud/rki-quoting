@@ -88,6 +88,11 @@ export default async function QuotesPage() {
   // from the row's single applied_price, which only ever holds the item's.
   const quoteIds = ((data ?? []) as unknown as SpecQuoteRow[]).map(r => r.id)
   const staleComponents = new Map<string, string[]>()
+  // Which quotes have had ANY part of them carried onto a line item. A
+  // component supplier never stamps applied_to_line_item_id — that column is
+  // the item's — so without this their scatters would file under "not used"
+  // for ever, however many times they had been applied.
+  const appliedComponentCount = new Map<string, number>()
   if (quoteIds.length) {
     const { data: applications } = await supabase
       .from('spec_quote_applications')
@@ -108,6 +113,10 @@ export default async function QuotesPage() {
       material_key: string
       applied_price: number | string
     }[]) {
+      appliedComponentCount.set(
+        a.spec_quote_id,
+        (appliedComponentCount.get(a.spec_quote_id) ?? 0) + 1
+      )
       const answer = answersByQuote.get(a.spec_quote_id)?.get(a.material_key)
       if (!answer || answer.price === null) continue
       if (Number(a.applied_price) === answer.price) continue
@@ -159,6 +168,7 @@ export default async function QuotesPage() {
         (staleComponents.get(row.id)?.length ?? 0) > 0,
       /** Which parts moved, when the staleness is in the components. */
       staleComponents: staleComponents.get(row.id) ?? [],
+      appliedComponentCount: appliedComponentCount.get(row.id) ?? 0,
       createdAt: row.created_at,
     }
   })
