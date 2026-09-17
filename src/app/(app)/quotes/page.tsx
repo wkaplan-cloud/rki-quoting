@@ -165,7 +165,7 @@ export default async function QuotesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Quotes" subtitle="Every price a supplier has given, in one place" count={rows.length} />
+      <PageHeader title="Prices Received" subtitle="Every price a supplier has given, in one place" count={rows.length} />
       <div className="p-8">
         {rows.length === 0 ? (
           <p className="text-sm text-[#8A877F]">

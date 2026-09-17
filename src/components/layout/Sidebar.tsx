@@ -19,7 +19,10 @@ const secondaryLinks = [
   { href: '/clients',     label: 'Clients',     icon: Users,     tourId: 'nav-clients' },
   { href: '/suppliers',   label: 'Suppliers',   icon: Truck,     tourId: 'nav-suppliers' },
   { href: '/price-lists', label: 'Price Lists', icon: BookOpen },
-  { href: '/quotes',      label: 'Quotes',      icon: ReceiptText, soloLocked: true, requiresStudio: true },
+  // Not "Quotes": the quotes this studio SENDS live under Projects, and two
+  // things called the same name one click apart is how a designer ends up in
+  // the wrong list. This one is what came back from suppliers.
+  { href: '/quotes',      label: 'Prices Received', icon: ReceiptText, soloLocked: true, requiresStudio: true },
 ]
 
 interface Props {
