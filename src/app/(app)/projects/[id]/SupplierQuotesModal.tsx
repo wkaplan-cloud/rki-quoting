@@ -26,12 +26,36 @@ interface Quote {
   materialQuantities: { key: string; label: string; quantity: number; unit: string }[]
 }
 
+/**
+ * One part of an item its own supplier quoted — a scatter, a stone top. It is
+ * a choice of its own: the workroom pricing the cushions and the upholsterer
+ * pricing the sofa are not alternatives to each other, so applying one must
+ * never mean giving up the other.
+ */
+interface QuotableComponent {
+  lineItemId: string
+  label: string
+  currentCost: number
+  quotes: {
+    id: string
+    supplierName: string
+    supplierId: string | null
+    price: number
+    quantity: number | null
+    unit: string
+    leadTime: string
+    notes: string
+    createdAt: string
+  }[]
+}
+
 interface QuotableItem {
   lineItemId: string
   itemName: string
   currentCost: number
   currentSupplierName: string | null
   quotes: Quote[]
+  components: QuotableComponent[]
 }
 
 const KEEP = 'keep'
@@ -66,16 +90,25 @@ export function SupplierQuotesModal({
         setItems(loaded)
         // Pre-select the cheapest usable price per item — the common case, and
         // still shown as a choice rather than applied behind the designer's back
+        // Cheapest usable price pre-selected per line — the common case, and
+        // still shown as a choice rather than applied behind the designer's
+        // back. Components choose separately, because they are separate lines.
+        const cheapestOf = <T extends { id: string; price: number | null }>(list: T[]) =>
+          list.reduce<T | null>(
+            (best, q) => (best === null || (q.price ?? 0) < (best.price ?? 0) ? q : best),
+            null
+          )
         setChoices(
           Object.fromEntries(
-            loaded.map(it => {
-              const priced = it.quotes.filter(q => !q.unableToQuote && q.price != null)
-              const cheapest = priced.reduce<Quote | null>(
-                (best, q) => (best === null || (q.price ?? 0) < (best.price ?? 0) ? q : best),
-                null
-              )
-              return [it.lineItemId, cheapest?.id ?? KEEP]
-            })
+            loaded.flatMap(it => [
+              [
+                it.lineItemId,
+                cheapestOf(it.quotes.filter(q => !q.unableToQuote && q.price != null))?.id ?? KEEP,
+              ] as [string, string],
+              ...it.components.map(
+                c => [c.lineItemId, cheapestOf(c.quotes)?.id ?? KEEP] as [string, string]
+              ),
+            ])
           )
         )
       } catch {
@@ -88,12 +121,16 @@ export function SupplierQuotesModal({
   }, [projectId])
 
   const applyCount = items
-    ? items.filter(it => {
+    ? items.reduce((n, it) => {
         const chosen = choices[it.lineItemId]
-        if (!chosen || chosen === KEEP) return false
-        const q = it.quotes.find(x => x.id === chosen)
-        return !!q && !q.unableToQuote && q.price != null
-      }).length
+        const q = chosen && chosen !== KEEP ? it.quotes.find(x => x.id === chosen) : undefined
+        const itemCount = q && !q.unableToQuote && q.price != null ? 1 : 0
+        const componentCount = it.components.filter(c => {
+          const pick = choices[c.lineItemId]
+          return pick && pick !== KEEP && c.quotes.some(x => x.id === pick)
+        }).length
+        return n + itemCount + componentCount
+      }, 0)
     : 0
 
   async function apply() {
@@ -181,6 +218,11 @@ export function SupplierQuotesModal({
                   </div>
 
                   <div className="space-y-1">
+                    {it.quotes.length === 0 && it.components.length > 0 && (
+                      <p className="px-2 py-1 text-[11px] text-[#8A877F]">
+                        Nobody has quoted the item itself — only the parts below.
+                      </p>
+                    )}
                     {it.quotes.map(q => {
                       const usable = !q.unableToQuote && q.price != null
                       return (
@@ -234,18 +276,73 @@ export function SupplierQuotesModal({
                       )
                     })}
 
-                    <label className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-[#F5F2EC]">
-                      <input
-                        type="radio"
-                        name={`quote-${it.lineItemId}`}
-                        value={KEEP}
-                        checked={(choices[it.lineItemId] ?? KEEP) === KEEP}
-                        onChange={() => setChoices(prev => ({ ...prev, [it.lineItemId]: KEEP }))}
-                        className="flex-shrink-0 accent-[#9A7B4F] cursor-pointer"
-                      />
-                      <span className="flex-1 text-xs text-[#8A877F]">Leave this line as it is</span>
-                    </label>
+                    {it.quotes.length > 0 && (
+                      <label className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-[#F5F2EC]">
+                        <input
+                          type="radio"
+                          name={`quote-${it.lineItemId}`}
+                          value={KEEP}
+                          checked={(choices[it.lineItemId] ?? KEEP) === KEEP}
+                          onChange={() => setChoices(prev => ({ ...prev, [it.lineItemId]: KEEP }))}
+                          className="flex-shrink-0 accent-[#9A7B4F] cursor-pointer"
+                        />
+                        <span className="flex-1 text-xs text-[#8A877F]">Leave this line as it is</span>
+                      </label>
+                    )}
                   </div>
+
+                  {/* Parts of the item, each with its own supplier and its own
+                      choice. Nested under the item because that is where they
+                      sit on the quote, but chosen independently of it. */}
+                  {it.components.map(c => (
+                    <div key={c.lineItemId} className="mt-2 pt-2 border-t border-[#F0EDE6]">
+                      <div className="flex items-baseline justify-between gap-3 mb-1">
+                        <span className="text-xs font-medium text-[#4A4A47] truncate">{c.label}</span>
+                        <span className="flex-shrink-0 text-[11px] text-[#8A877F]">
+                          now {formatZAR(c.currentCost)}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {c.quotes.map(q => (
+                          <label
+                            key={q.id}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-[#F5F2EC]"
+                          >
+                            <input
+                              type="radio"
+                              name={`component-${c.lineItemId}`}
+                              value={q.id}
+                              checked={choices[c.lineItemId] === q.id}
+                              onChange={() => setChoices(prev => ({ ...prev, [c.lineItemId]: q.id }))}
+                              className="flex-shrink-0 accent-[#9A7B4F] cursor-pointer"
+                            />
+                            <span className="flex-1 min-w-0 text-xs text-[#2C2C2A] truncate">
+                              {q.supplierName || 'Unnamed supplier'}
+                              {q.leadTime && <span className="ml-1.5 text-[#8A877F]">· {q.leadTime}</span>}
+                            </span>
+                            <span className="flex-shrink-0 text-xs font-medium text-[#2C2C2A]">
+                              {formatZAR(q.price)}
+                              <span className="font-normal text-[#8A877F]">
+                                {q.unit && q.unit !== 'each' ? ` / ${q.unit}` : ' each'}
+                                {q.quantity != null ? ` × ${q.quantity}` : ''}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                        <label className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-[#F5F2EC]">
+                          <input
+                            type="radio"
+                            name={`component-${c.lineItemId}`}
+                            value={KEEP}
+                            checked={(choices[c.lineItemId] ?? KEEP) === KEEP}
+                            onChange={() => setChoices(prev => ({ ...prev, [c.lineItemId]: KEEP }))}
+                            className="flex-shrink-0 accent-[#9A7B4F] cursor-pointer"
+                          />
+                          <span className="flex-1 text-xs text-[#8A877F]">Leave this line as it is</span>
+                        </label>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

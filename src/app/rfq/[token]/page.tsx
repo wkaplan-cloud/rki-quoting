@@ -5,8 +5,9 @@ import {
   normalizeScatter,
   fabricLineSummary,
   normalizeSpecImage,
-  materialQuantityAsks,
-  asksForSupplier,
+  buildSpecSheet,
+  isSupplierPricedMaterial,
+  normalizeSupplierQuantity,
   type StudioSpecRow,
   type StudioSlideRow,
   type SupplierMaterialQuantity,
@@ -81,9 +82,32 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
     }[]).map(r => [r.studio_spec_id, r])
   )
 
+  // Who this link belongs to. Everything below is narrowed to the slice of
+  // each spec they are actually responsible for.
+  const audience = {
+    supplierId: request.supplier_id as string | null,
+    supplierName: (request.supplier_name as string | null) ?? '',
+  }
+
   const items: RfqFormItem[] = ((specRows ?? []) as StudioSpecRow[])
     .map(spec => {
       const pre = prefillBySpec.get(spec.id)
+      const answered = new Map(
+        (pre?.material_quantities ?? []).map(normalizeSupplierQuantity).map(q => [q.key, q])
+      )
+      const materials = (Array.isArray(spec.materials) ? spec.materials : []).map(normalizeMaterial)
+      const scatters = (Array.isArray(spec.scatters) ? spec.scatters : []).map(normalizeScatter)
+      const sheet = buildSpecSheet(
+        materials,
+        scatters,
+        { supplierId: spec.supplier_id, supplierName: spec.supplier_name ?? '' },
+        audience
+      )
+      const withPrefill = <T extends { key: string }>(ask: T) => ({
+        ...ask,
+        prefill: answered.get(ask.key)?.quantity ?? null,
+      })
+
       return {
         specId: spec.id,
         name: spec.spec_name || 'Untitled item',
@@ -98,35 +122,16 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
             naturalHeight: img.naturalHeight,
           })),
         ].filter((img): img is RfqFormImage => !!img),
+        ownsItem: sheet.ownsItem,
         category: categoryLabel(spec.category),
         description: spec.description ?? '',
         quantity: spec.quantity ?? '',
         dimensions: [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
-        // One quantity box per cloth. The supplier is the only one who knows
-        // the yardage, so the boxes are generated from the spec rather than
-        // waiting for the designer to fill a number in that they rarely have.
-        fabricQuantities: (() => {
-          const answered = new Map(
-            (pre?.material_quantities ?? []).map(q => [q.key, q.quantity])
-          )
-          // Only the cloths this supplier actually makes something out of —
-          // the sofa's upholsterer is never asked about the cushion maker's
-          // scatter fabrics.
-          return asksForSupplier(
-            materialQuantityAsks(
-              (Array.isArray(spec.materials) ? spec.materials : []).map(normalizeMaterial),
-              (Array.isArray(spec.scatters) ? spec.scatters : []).map(normalizeScatter)
-            ),
-            { supplierId: request.supplier_id, supplierName: request.supplier_name ?? '' }
-          ).map(ask => ({
-            ...ask,
-            prefill: answered.get(ask.key) ?? null,
-          }))
-        })(),
-        // Each extra fabric on a material prints as its own line — the
-        // supplier has to see every cloth, and the material's Details note
-        // says where each one goes.
-        materials: (Array.isArray(spec.materials) ? spec.materials.map(normalizeMaterial) : [])
+        // Read-only context for whoever is making the piece. Stone is absent:
+        // it has moved onto its own yard's sheet, and leaving it here would
+        // invite the upholsterer to price a marble top they never cut.
+        materials: materials
+          .filter(m => !isSupplierPricedMaterial(m.type))
           .flatMap(m => [
             [
               m.type,
@@ -139,26 +144,21 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
               .map(v => (v ?? '').trim())
               .filter(Boolean)
               .join(' · '),
+            // Each extra fabric prints as its own line — the supplier has to
+            // see every cloth, and the material's Details says where each goes
             ...m.extraFabrics.map(f => [m.type, fabricLineSummary(f)]
               .map(v => (v ?? '').trim())
               .filter(Boolean)
               .join(' · ')),
           ])
           .filter(Boolean),
-        scatters: (Array.isArray(spec.scatters) ? spec.scatters.map(normalizeScatter) : [])
-          .map(sc =>
-            [
-              sc.quantity.trim() ? `${sc.quantity.trim()} ×` : '',
-              sc.size,
-              ...sc.fabrics.map(f => fabricLineSummary(f)),
-              sc.details,
-              sc.supplierName ? `via ${sc.supplierName}` : '',
-            ]
-              .map(v => (v ?? '').trim())
-              .filter(Boolean)
-              .join(' · ')
-          )
-          .filter(Boolean),
+        itemMaterials: sheet.itemMaterials.map(withPrefill),
+        components: sheet.components.map(c => ({
+          ...c,
+          materials: c.materials.map(withPrefill),
+          prefillPrice: answered.get(c.key)?.price ?? null,
+          prefillQuantity: answered.get(c.key)?.quantity ?? null,
+        })),
         // Resolved to labels + units here, not in the form — the supplier must
         // read "Overall Width 1800 mm", never the raw "overall_width" key.
         itemSpecs: (CATEGORY_FIELDS[spec.category as CategoryKey] ?? [])

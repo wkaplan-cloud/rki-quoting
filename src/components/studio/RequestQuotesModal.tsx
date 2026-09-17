@@ -4,7 +4,7 @@ import { X, Send, Loader2, AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useStudioStore } from '@/lib/studio/store'
 import { createClient } from '@/lib/supabase/client'
-import type { StudioSpec } from '@/lib/studio/types'
+import { isSupplierPricedMaterial, type StudioSpec } from '@/lib/studio/types'
 
 // Send quote-request emails to suppliers for the selected spec'd items.
 // Items start grouped by the supplier named on their spec (that supplier is
@@ -34,6 +34,24 @@ interface Group {
   objectIds: string[]
   specs: StudioSpec[]
   defaultSupplierIds: string[]
+}
+
+/**
+ * Suppliers named against a PART of an item rather than the item itself — the
+ * workroom that sews its scatters, the yard that cuts its stone. They are
+ * added to the request alongside the item's own maker, because otherwise the
+ * only person ever asked about the cushions is the person not making them.
+ * Each one's sheet is narrowed to their own part when it is sent.
+ */
+function componentSupplierIds(specs: StudioSpec[]): string[] {
+  const ids = new Set<string>()
+  for (const sp of specs) {
+    for (const sc of sp.scatters) if (sc.supplierId) ids.add(sc.supplierId)
+    for (const m of sp.materials) {
+      if (isSupplierPricedMaterial(m.type) && m.supplierId) ids.add(m.supplierId)
+    }
+  }
+  return [...ids]
 }
 
 // 'by-supplier': items split per the supplier on their spec — each supplier
@@ -94,7 +112,12 @@ export function RequestQuotesModal() {
           specs,
           // Suppliers already named on the specs are pre-added as recipients
           // (removable) — each one chosen gets EVERY item below
-          defaultSupplierIds: [...new Set(specs.map(sp => sp.supplierId).filter((v): v is string => !!v))],
+          defaultSupplierIds: [
+            ...new Set([
+              ...specs.map(sp => sp.supplierId).filter((v): v is string => !!v),
+              ...componentSupplierIds(specs),
+            ]),
+          ],
         },
       ]
     }
@@ -123,6 +146,13 @@ export function RequestQuotesModal() {
       }
       g.objectIds.push(objectId)
       g.specs.push(spec)
+    }
+    // Component suppliers are added once the group's specs are all in, since
+    // they come from the parts of the items rather than from the grouping key
+    for (const g of map.values()) {
+      g.defaultSupplierIds = [
+        ...new Set([...g.defaultSupplierIds, ...componentSupplierIds(g.specs)]),
+      ]
     }
     return Array.from(map.values())
     // eslint-disable-next-line react-hooks/exhaustive-deps

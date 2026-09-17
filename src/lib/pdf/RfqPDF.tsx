@@ -31,26 +31,36 @@ export interface RfqPdfItem {
     // Free text saying where this material's fabrics go on the piece
     details: string
   }[]
-  // Scatter cushions — separately supplied and separately priced. `fabrics`
-  // is one already-formatted line per fabric on the cushion ("Front: 2.5 m
-  // Linen — Hertex"), because a scatter routinely takes more than one.
-  scatters: {
-    supplierName: string
-    fabrics: string[]
-    size: string
-    quantity: string
-    details: string
-  }[]
   notes: string
   // Category-specific fields (seat height, wood type, IP rating, etc.) —
   // the supplier needs these to price accurately, not just a photo and
   // rough dimensions.
   itemSpecs: Record<string, string>
-  // Every material on the item the supplier is asked to measure, as a line to
-  // write the figure on. Built from the same asks as the online pricing form,
-  // so a supplier working off the printed sheet answers exactly the same
-  // questions, in the same order, as one working off the screen.
-  fabricQuantities: { label: string; supplierName: string; unit: string }[]
+  /**
+   * Whether this sheet is for the person making the piece. False for a
+   * component supplier — the cushion workroom, the stone yard — who gets the
+   * picture, the name and their own part, and none of the item's spec.
+   */
+  ownsItem: boolean
+  // Material on the item to measure, as a rule to write the figure on. Built
+  // from the same sheet as the online form, so a supplier working off paper
+  // answers exactly the same questions, in the same order, as one on screen.
+  itemMaterials: PdfMeasure[]
+  /** What this supplier makes: priced, counted, and measured for its cloth. */
+  components: {
+    label: string
+    details: string
+    unit: string
+    designerQuantity: string
+    materials: PdfMeasure[]
+  }[]
+}
+
+/** One "how much of this?" rule on the completion box. */
+export interface PdfMeasure {
+  label: string
+  supplierName: string
+  unit: string
 }
 
 export interface RfqPdfProps {
@@ -117,6 +127,8 @@ const s = StyleSheet.create({
   fillLabel: { flex: 1, paddingRight: 10, color: '#8A877F' },
   fillRule: { width: 132, textAlign: 'right' },
   fillNote: { fontSize: 7, color: '#8A877F', marginTop: 5, lineHeight: 1.4 },
+  // A component's name, heading the two or three rules that belong to it
+  componentHead: { fontFamily: 'Helvetica-Bold', color: '#2C2C2A', marginBottom: 2 },
   footer: { position: 'absolute', bottom: 24, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: '#8A877F' },
 })
 
@@ -199,44 +211,53 @@ function heightWithoutImage(item: RfqPdfItem, d: Density): number {
     h += d.font * LINE + 4 + Math.ceil(item.extraImageUrls.length / perRow) * (d.thumb + 6) + 12
   }
 
-  for (const v of [item.description, categoryLabel(item.category), item.quantity, dims(item)]) {
-    if (v.trim()) h += rowH(v, d)
+  // The item's own spec, which only its maker is shown
+  if (item.ownsItem) {
+    for (const v of [item.description, categoryLabel(item.category), item.quantity, dims(item)]) {
+      if (v.trim()) h += rowH(v, d)
+    }
+
+    const specFields = (CATEGORY_FIELDS[item.category as CategoryKey] ?? []).filter(f =>
+      item.itemSpecs[f.key]?.trim()
+    )
+    if (specFields.length) {
+      h += sectionH(d)
+      for (const f of specFields) h += rowH(item.itemSpecs[f.key], d)
+    }
+
+    if (item.materials.length) {
+      h += sectionH(d)
+      for (const m of item.materials) h += rowH(materialLine(m), d)
+    }
+
+    if (item.notes.trim()) {
+      h += sectionH(d) + linesOf(item.notes, d.font, CONTENT_W) * d.font * d.noteLine
+    }
+  } else {
+    h += linesOf(componentIntro(item), d.font, CONTENT_W) * d.font * d.noteLine
   }
 
-  const specFields = (CATEGORY_FIELDS[item.category as CategoryKey] ?? []).filter(f =>
-    item.itemSpecs[f.key]?.trim()
-  )
-  if (specFields.length) {
-    h += sectionH(d)
-    for (const f of specFields) h += rowH(item.itemSpecs[f.key], d)
-  }
-
-  if (item.materials.length) {
-    h += sectionH(d)
-    for (const m of item.materials) h += rowH(materialLine(m), d)
-  }
-
-  if (item.scatters.length) {
-    h += sectionH(d)
-    for (const sc of item.scatters) h += rowH(scatterLine(sc), d)
-  }
-
-  if (item.notes.trim()) {
-    h += sectionH(d) + linesOf(item.notes, d.font, CONTENT_W) * d.font * d.noteLine
-  }
-
-  // The completion box: a rule for the price, one per material, and the note
+  // The completion box
   const fillW = CONTENT_W - 16 - 132 - 10
-  h += 12 + 16 + 2 + (d.font * LINE + 4)
-  h +=
-    Math.max(1, linesOf('Unit price (excl. VAT) — for one of 00', d.font, fillW)) * d.font * LINE +
-    d.fillPad * 2 +
-    0.5
-  for (const f of item.fabricQuantities) {
-    const label = `${f.label}${f.supplierName ? ` (from ${f.supplierName})` : ''}`
-    h += Math.max(1, linesOf(label, d.font, fillW)) * d.font * LINE + d.fillPad * 2 + 0.5
+  const fillLine = (label: string) =>
+    Math.max(1, linesOf(label, d.font, fillW)) * d.font * LINE + d.fillPad * 2 + 0.5
+  const measureLine = (m: PdfMeasure) =>
+    fillLine(`${m.label}${m.supplierName ? ` (from ${m.supplierName})` : ''}`)
+
+  h += 12 + 16 + 2 + (d.font * LINE + 4) // margin, padding, border, its heading
+  if (item.ownsItem) {
+    h += fillLine('Unit price (excl. VAT) — for one of 00')
+    for (const m of item.itemMaterials) h += measureLine(m)
   }
-  if (item.fabricQuantities.length) h += 7 * 1.4 + 5
+  for (const c of item.components) {
+    // Its name, then price, then count, then a rule per cloth on it
+    h += Math.max(1, linesOf(`${c.label} · ${c.details}`, d.font, CONTENT_W - 16)) * d.font * LINE
+    h += d.fillPad + 4 + 2
+    h += fillLine(`Price ${c.unit === 'each' ? 'each' : `per ${c.unit}`} (excl. VAT)`)
+    h += fillLine(`${c.unit === 'each' ? 'How many' : 'Area needed'} (spec says 00)`)
+    for (const m of c.materials) h += measureLine(m)
+  }
+  if (item.itemMaterials.length + item.components.length > 0) h += 7 * 1.4 + 5
 
   return h
 }
@@ -266,11 +287,27 @@ function materialLine(m: RfqPdfItem['materials'][number]): string {
     .join(' · ')
 }
 
-/** The Scatters row text — shared with the estimate so both agree. */
-function scatterLine(sc: RfqPdfItem['scatters'][number]): string {
-  return [sc.size.trim(), ...sc.fabrics, sc.details.trim(), sc.supplierName.trim() ? `via ${sc.supplierName.trim()}` : '']
-    .filter(Boolean)
-    .join(' · ')
+/**
+ * What a component supplier is looking at, in one line. Deliberately does not
+ * name the parts: they are listed in full below with their own rules, and a
+ * label like "Stone · Nero Marquina top" does not survive being folded into a
+ * sentence.
+ */
+function componentIntro(item: RfqPdfItem): string {
+  if (item.components.length === 0) return ''
+  return 'Someone else is making this piece. You are being asked only for the parts listed below — the picture above is for context.'
+}
+
+/** One "how much of this?" rule, wherever it hangs. */
+function MeasureLine({ measure, d, last }: { measure: PdfMeasure; d: Density; last: boolean }) {
+  return (
+    <View style={[s.priceLine, { paddingVertical: d.fillPad }, last ? { borderBottomWidth: 0 } : {}]}>
+      <Text style={[s.fillLabel, { fontSize: d.font }]}>
+        {measure.label}{measure.supplierName ? ` (from ${measure.supplierName})` : ''}
+      </Text>
+      <Text style={[s.fillRule, { fontSize: d.font }]}>____________ {measure.unit}</Text>
+    </View>
+  )
 }
 
 /**
@@ -348,11 +385,17 @@ export function RfqPDF(props: RfqPdfProps) {
         <Text style={s.refNote}>
           Please note: images may be reference pictures or drawings of custom pieces — quote per the
           specifications given for each item on the following pages.
-          {items.some(it => it.fabricQuantities.length > 0)
-            ? ' Prices are for one of each item, not for the whole quantity. Where an item takes fabric,' +
-              ' leather or stone, please also fill in the quantity it takes of each — every material is' +
-              ' ordered separately, so we need them one by one rather than as a total.'
-            : ' Prices are for one of each item, not for the whole quantity.'}
+          {' '}
+          {/* Says what this particular sheet is asking for. A cushion workroom
+              is not quoting the sofa, so telling them prices are per item
+              would be telling them the wrong thing. */}
+          {items.every(it => !it.ownsItem)
+            ? 'You are being asked for the parts listed on each page, not for the pieces they go on.'
+            : 'Prices are for one of each item, not for the whole quantity.'}
+          {items.some(it => it.itemMaterials.length + it.components.length > 0)
+            ? ' Where a page asks for a quantity, please fill it in — every material is ordered' +
+              ' separately, so we need them one by one rather than as a total.'
+            : ''}
         </Text>
 
         <View style={{ flexGrow: 1 }} />
@@ -428,7 +471,13 @@ export function RfqPDF(props: RfqPdfProps) {
               </View>
             </View>
           ) : null}
+          {/* A component supplier is shown the picture and the name so they
+              know what their part goes on, and nothing else: they are not
+              quoting the piece, and its dimensions, cloth and notes are not
+              theirs to answer for. */}
           <View style={s.specs}>
+              {item.ownsItem ? (
+                <>
               {item.description.trim() ? (
                 <View style={[s.specRow, { paddingVertical: d.rowPad }]} wrap={false}>
                   <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>Description</Text>
@@ -484,61 +533,101 @@ export function RfqPDF(props: RfqPdfProps) {
                 </>
               ) : null}
 
-              {item.scatters.length > 0 ? (
-                <>
-                  <Text style={[s.sectionHead, { marginTop: d.sectionTop, fontSize: d.font - 1 }]} minPresenceAhead={30}>Scatters</Text>
-                  {item.scatters.map((sc, j) => (
-                    <View key={j} style={s.specRow} wrap={false}>
-                      <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>
-                        {sc.quantity.trim() ? `${sc.quantity.trim()} ×` : 'Scatter'}
-                      </Text>
-                      <Text style={[s.specValue, { fontSize: d.font }]}>{scatterLine(sc)}</Text>
-                    </View>
-                  ))}
-                </>
-              ) : null}
-
               {item.notes.trim() ? (
                 <>
                   <Text style={[s.sectionHead, { marginTop: d.sectionTop, fontSize: d.font - 1 }]} minPresenceAhead={30}>Notes</Text>
                   <Text style={[s.notes, { lineHeight: d.noteLine, fontSize: d.font }]}>{item.notes}</Text>
                 </>
               ) : null}
+                </>
+              ) : (
+                <Text style={[s.notes, { fontSize: d.font, lineHeight: d.noteLine }]}>
+                  {componentIntro(item)}
+                </Text>
+              )}
 
               <View style={s.priceBox} wrap={false}>
                 <Text style={[s.sectionHead, { marginTop: 0, fontSize: d.font - 1 }]}>For supplier completion</Text>
-                <View
-                  style={[
-                    s.priceLine,
-                    { paddingVertical: d.fillPad },
-                    item.fabricQuantities.length === 0 ? { borderBottomWidth: 0 } : {},
-                  ]}
-                >
-                  <Text style={[s.fillLabel, { fontSize: d.font }]}>
-                    Unit price (excl. VAT){unitCountLabel(item.quantity)}
-                  </Text>
-                  <Text style={[s.fillRule, { fontSize: d.font }]}>R ____________________</Text>
-                </View>
-                {/* One rule per material. The designer names it; only the
-                    supplier knows how much the piece takes, and a single
-                    combined figure can't be ordered — each is bought from
-                    its own house on its own line. */}
-                {item.fabricQuantities.map((f, j) => (
-                  <View
-                    key={j}
-                    style={[
-                      s.priceLine,
-                      { paddingVertical: d.fillPad },
-                      j === item.fabricQuantities.length - 1 ? { borderBottomWidth: 0 } : {},
-                    ]}
-                  >
-                    <Text style={[s.fillLabel, { fontSize: d.font }]}>
-                      {f.label}{f.supplierName ? ` (from ${f.supplierName})` : ''}
-                    </Text>
-                    <Text style={[s.fillRule, { fontSize: d.font }]}>____________ {f.unit}</Text>
-                  </View>
-                ))}
-                {item.fabricQuantities.length > 0 ? (
+                {/* The piece itself, priced per unit, then a rule for each
+                    material the maker measures. */}
+                {item.ownsItem ? (
+                  <>
+                    <View
+                      style={[
+                        s.priceLine,
+                        { paddingVertical: d.fillPad },
+                        item.itemMaterials.length === 0 && item.components.length === 0
+                          ? { borderBottomWidth: 0 }
+                          : {},
+                      ]}
+                    >
+                      <Text style={[s.fillLabel, { fontSize: d.font }]}>
+                        Unit price (excl. VAT){unitCountLabel(item.quantity)}
+                      </Text>
+                      <Text style={[s.fillRule, { fontSize: d.font }]}>R ____________________</Text>
+                    </View>
+                    {item.itemMaterials.map((m, j) => (
+                      <MeasureLine
+                        key={j}
+                        measure={m}
+                        d={d}
+                        last={j === item.itemMaterials.length - 1 && item.components.length === 0}
+                      />
+                    ))}
+                  </>
+                ) : null}
+
+                {/* Each component priced by the size it is made in and counted
+                    on its own: two sizes of scatter are two different things to
+                    order, not one line with an average price. */}
+                {item.components.map((c, j) => {
+                  const perOne = c.unit === 'each' ? 'each' : `per ${c.unit}`
+                  const lastComponent = j === item.components.length - 1
+                  return (
+                    <View key={j}>
+                      <Text
+                        style={[
+                          s.componentHead,
+                          { fontSize: d.font, marginTop: j === 0 && !item.ownsItem ? 4 : d.fillPad + 4 },
+                        ]}
+                      >
+                        {c.label}
+                        {c.details.trim() ? <Text style={s.muted}>  ·  {c.details.trim()}</Text> : null}
+                      </Text>
+                      <View style={[s.priceLine, { paddingVertical: d.fillPad }]}>
+                        <Text style={[s.fillLabel, { fontSize: d.font }]}>Price {perOne} (excl. VAT)</Text>
+                        <Text style={[s.fillRule, { fontSize: d.font }]}>R ____________________</Text>
+                      </View>
+                      <View
+                        style={[
+                          s.priceLine,
+                          { paddingVertical: d.fillPad },
+                          lastComponent && c.materials.length === 0 ? { borderBottomWidth: 0 } : {},
+                        ]}
+                      >
+                        <Text style={[s.fillLabel, { fontSize: d.font }]}>
+                          {c.unit === 'each' ? 'How many' : 'Area needed'}
+                          {c.designerQuantity.trim() ? (
+                            <Text style={s.muted}>  (spec says {c.designerQuantity.trim()})</Text>
+                          ) : null}
+                        </Text>
+                        <Text style={[s.fillRule, { fontSize: d.font }]}>
+                          ____________ {c.unit === 'each' ? '' : c.unit}
+                        </Text>
+                      </View>
+                      {c.materials.map((m, k) => (
+                        <MeasureLine
+                          key={k}
+                          measure={m}
+                          d={d}
+                          last={lastComponent && k === c.materials.length - 1}
+                        />
+                      ))}
+                    </View>
+                  )
+                })}
+
+                {item.itemMaterials.length + item.components.length > 0 ? (
                   <Text style={s.fillNote}>
                     Each is ordered on its own — please give every quantity separately.
                   </Text>

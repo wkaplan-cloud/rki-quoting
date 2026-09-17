@@ -10,10 +10,9 @@ import { apiError } from '@/lib/api-error'
 import {
   normalizeMaterial,
   normalizeScatter,
-  fabricLineSummary,
-  materialQuantityAsks,
-  asksForSupplier,
-  type MaterialQuantityAsk,
+  buildSpecSheet,
+  isSupplierPricedMaterial,
+  type SupplierRef,
   normalizeSpecImage,
   type StudioSpecRow,
   type StudioSlideRow,
@@ -242,63 +241,80 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }[] = []
 
     for (const group of groups) {
-      const items: RfqPdfItem[] = []
-      // Every cloth on each item, in step with `items` by index. Kept whole
-      // here and narrowed per recipient below: which cloths a supplier is
-      // asked to measure depends on who they are, and the PDF is rendered
-      // once per recipient anyway.
-      const asksByItem: MaterialQuantityAsk[][] = []
-      for (const objectId of group.objectIds) {
-        const row = specByObject.get(objectId)
-        if (!row) continue
-        const placed = imageByObject.get(objectId)
-        items.push({
-          name: row.spec_name || '',
-          area: areaByObject.get(objectId) ?? '',
-          imageUrl: placed
-            ? pdfImageByKey.get(cropKey(placed.url, placed.crop)) ?? placed.url
-            : null,
-          extraImageUrls: (Array.isArray(row.images) ? row.images.map(normalizeSpecImage) : []).map(
-            img => pdfImageByKey.get(cropKey(img.url, null)) ?? img.url
-          ),
-          description: row.description ?? '',
-          category: row.category ?? '',
-          quantity: row.quantity ?? '',
-          width: row.width ?? '',
-          depth: row.depth ?? '',
-          height: row.height ?? '',
-          // A material's extra fabrics print as their own rows beneath it —
-          // the supplier has to see every cloth it is being asked to price,
-          // and the material's Details line says where each one goes.
-          materials: (Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : []).flatMap(m => [
-            {
-              type: m.type, description: m.description, supplierName: m.supplierName,
-              colour: m.colour, quantity: m.quantity, details: m.details,
-            },
-            ...m.extraFabrics.map(f => ({
-              type: m.type, description: f.fabric, supplierName: f.fabricSupplierName,
-              colour: f.colour, quantity: f.fabricQuantity, details: '',
-            })),
-          ]),
-          scatters: (Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []).map(sc => ({
-            supplierName: sc.supplierName,
-            fabrics: sc.fabrics.map(f => fabricLineSummary(f)).filter(f => f.length > 0),
-            size: sc.size, quantity: sc.quantity, details: sc.details,
-          })),
-          notes: row.notes ?? '',
-          itemSpecs: row.item_specs ?? {},
-          // Filled in per recipient just below — the printed sheet and the
-          // screen must never ask a supplier for different cloths.
-          fabricQuantities: [],
-        })
-        asksByItem.push(
-          materialQuantityAsks(
-            Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : [],
-            Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []
+      // The specs in this group, in order. The SHEET is built per recipient
+      // rather than per group: a component supplier is shown the picture, the
+      // name and their own part, where the item's maker is shown the piece —
+      // so what goes on the page depends on who is reading it.
+      const rows = group.objectIds
+        .map(objectId => ({ objectId, row: specByObject.get(objectId) }))
+        .filter((r): r is { objectId: string; row: StudioSpecRow } => !!r.row)
+
+      const buildItems = (audience: SupplierRef): RfqPdfItem[] =>
+        rows.map(({ objectId, row }) => {
+          const placed = imageByObject.get(objectId)
+          const materials = Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : []
+          const scatters = Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []
+          const sheet = buildSpecSheet(
+            materials,
+            scatters,
+            { supplierId: row.supplier_id, supplierName: row.supplier_name ?? '' },
+            audience
           )
-        )
-      }
-      if (!items.length) continue
+          return {
+            name: row.spec_name || '',
+            area: areaByObject.get(objectId) ?? '',
+            imageUrl: placed
+              ? pdfImageByKey.get(cropKey(placed.url, placed.crop)) ?? placed.url
+              : null,
+            extraImageUrls: (Array.isArray(row.images) ? row.images.map(normalizeSpecImage) : []).map(
+              img => pdfImageByKey.get(cropKey(img.url, null)) ?? img.url
+            ),
+            ownsItem: sheet.ownsItem,
+            description: row.description ?? '',
+            category: row.category ?? '',
+            quantity: row.quantity ?? '',
+            width: row.width ?? '',
+            depth: row.depth ?? '',
+            height: row.height ?? '',
+            // Read-only context for whoever is making the piece. A material
+            // priced by its own yard is absent: it has moved onto that yard's
+            // sheet, and leaving it here invites a price for somebody else's
+            // work. Each extra fabric prints as its own row beneath its
+            // material, with the Details line saying where each one goes.
+            materials: materials
+              .filter(m => !isSupplierPricedMaterial(m.type))
+              .flatMap(m => [
+                {
+                  type: m.type, description: m.description, supplierName: m.supplierName,
+                  colour: m.colour, quantity: m.quantity, details: m.details,
+                },
+                ...m.extraFabrics.map(f => ({
+                  type: m.type, description: f.fabric, supplierName: f.fabricSupplierName,
+                  colour: f.colour, quantity: f.fabricQuantity, details: '',
+                })),
+              ]),
+            notes: row.notes ?? '',
+            itemSpecs: row.item_specs ?? {},
+            itemMaterials: sheet.itemMaterials.map(m => ({
+              label: m.label,
+              supplierName: m.supplierName,
+              unit: m.unit,
+            })),
+            components: sheet.components.map(c => ({
+              label: c.label,
+              details: c.details,
+              unit: c.unit,
+              designerQuantity: c.designerQuantity,
+              materials: c.materials.map(m => ({
+                label: m.label,
+                supplierName: m.supplierName,
+                unit: m.unit,
+              })),
+            })),
+          }
+        })
+
+      if (!rows.length) continue
 
       for (const recipient of group.recipients) {
         const email = recipient.email.trim()
@@ -319,17 +335,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             message: (body.message ?? '').trim(),
             replyTo,
             printDate,
-            // Only what this recipient is actually the maker of: a sofa's
-            // upholsterer must not be handed rules for the cushion maker's
-            // scatter fabrics, nor for the stone yard's marble.
-            items: items.map((it, k) => ({
-              ...it,
-              fabricQuantities: asksForSupplier(asksByItem[k] ?? [], recipient).map(ask => ({
-                label: ask.label,
-                supplierName: ask.supplierName,
-                unit: ask.unit,
-              })),
-            })),
+            // Built for this recipient: a sofa's upholsterer is shown the
+            // piece, the cushion workroom is shown the cushions, and neither
+            // is handed the other's work to price.
+            items: buildItems(recipient),
           }))
 
           const subject = `Request for quote — ${board.name}${clientName ? ` (${clientName})` : ''}`
@@ -351,9 +360,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             text: [
               `Hi ${supplierName},`,
               '',
-              intro || `Please could you quote on the ${items.length === 1 ? 'item' : `${items.length} items`} in the attached document.`,
+              intro || `Please could you quote on the ${rows.length === 1 ? 'item' : `${rows.length} items`} in the attached document.`,
               '',
-              'Enter your pricing online — one price per item, plus lead time and notes:',
+              'Enter your pricing online — prices are for one of each item, plus the quantities of any material we need from you:',
               pricingUrl,
               '(link valid for 30 days)',
               '',
@@ -370,7 +379,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                   <p style="margin:0 0 4px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#9A7B4F;font-weight:bold;">Request for quote</p>
                   <h1 style="margin:0 0 16px;font-size:20px;color:#1A1A18;">${board.name}${clientName ? ` — ${clientName}` : ''}</h1>
                   <p style="margin:0 0 12px;font-size:14px;color:#4A4A47;line-height:1.6;">Hi ${supplierName},</p>
-                  <p style="margin:0 0 12px;font-size:14px;color:#4A4A47;line-height:1.6;">${intro ? intro.replace(/\n/g, '<br/>') : `Please could you quote on the ${items.length === 1 ? 'item' : `${items.length} items`} in the attached document.`}</p>
+                  <p style="margin:0 0 12px;font-size:14px;color:#4A4A47;line-height:1.6;">${intro ? intro.replace(/\n/g, '<br/>') : `Please could you quote on the ${rows.length === 1 ? 'item' : `${rows.length} items`} in the attached document.`}</p>
                   <p style="margin:0 0 12px;font-size:13px;color:#8A877F;line-height:1.6;">Full specifications and images are in the attached PDF. Images may be reference pictures or drawings of custom pieces — please quote per the specs.</p>
                   <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 8px;"><tr><td style="border-radius:8px;background:#9A7B4F;">
                     <a href="${pricingUrl}" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:8px;">Enter your pricing online &rarr;</a>

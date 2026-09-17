@@ -351,6 +351,9 @@ export function buildBoardRows({
             sort_order: sortOrder++,
             studio_slide_id: slide.id,
             studio_object_id: obj.id,
+            // The make-up itself is what the cushion workroom quotes, so it
+            // needs a key of its own for their price and count to land on
+            studio_material_key: materialQuantityKey.scatter(sc.id),
           },
         ]
         for (const f of fabrics) {

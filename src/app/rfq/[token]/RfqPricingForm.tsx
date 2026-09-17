@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Loader2, AlertTriangle, Ban, X, Lock, Unlock } from 'lucide-react'
 import { CroppedImage } from '@/components/shared/CroppedImage'
 import { parsePriceInput, parseQuantityInput, formatZar, formatQuantity } from '@/lib/rfq/price'
-import type { ImageCropRect, MaterialQuantityAsk } from '@/lib/studio/types'
+import type { ImageCropRect, MaterialQuantityAsk, ComponentAsk } from '@/lib/studio/types'
 
 // One picture of the item, already reduced to what the designer actually
 // framed: `crop` is the source-pixel rect the board shows, and the natural
@@ -21,38 +21,69 @@ export interface RfqFormItem {
   area: string
   // The board image (cropped as framed) first, then any extra views
   images: RfqFormImage[]
+  /**
+   * Whether this supplier is being asked for the piece itself. False for a
+   * component supplier — the cushion workroom, the stone yard — who gets the
+   * picture and the name, and then only their own part. They are not quoting
+   * the sofa, and showing them its spec only invites them to price it.
+   */
+  ownsItem: boolean
+  // Everything from here to specNotes describes the item, and is shown only
+  // when ownsItem
   category: string
   description: string
   quantity: string
   dimensions: string
   materials: string[]
-  scatters: string[]
-  /** One quantity box per cloth on the item — see fabricQuantities below. */
-  fabricQuantities: RfqFabricAsk[]
   /** Category specs, already resolved to their human labels + units. */
   itemSpecs: { label: string; value: string }[]
   specNotes: string
+  /** Cloth on the item to measure. Empty unless ownsItem. */
+  itemMaterials: RfqAsk[]
+  /** Things this supplier makes, prices and counts. */
+  components: RfqComponent[]
   prefill: { price: number | null; leadTime: string; note: string; unableToQuote: boolean }
   sort: number
 }
 
 /**
- * A cloth the supplier is asked to measure, plus whatever they last said.
- * The designer specifies which fabric goes on a piece; only the maker knows
- * how many metres it takes, and they normally leave it blank on the board.
+ * A material the supplier is asked to measure, plus whatever they last said.
+ * The designer specifies which cloth goes on a piece; only the maker knows how
+ * much it takes, and they normally leave it blank on the board.
  */
-export interface RfqFabricAsk extends MaterialQuantityAsk {
-  /** Metres from this supplier's last submission, or null if never answered. */
+export interface RfqAsk extends MaterialQuantityAsk {
+  /** From this supplier's last submission, or null if never answered. */
   prefill: number | null
 }
 
+/** One thing this supplier makes: priced, counted, and measured for cloth. */
+export interface RfqComponent extends Omit<ComponentAsk, 'materials'> {
+  materials: RfqAsk[]
+  prefillPrice: number | null
+  prefillQuantity: number | null
+}
+
 interface Entry {
+  /** The item's own price. Unused on a component supplier's sheet. */
   price: string
   leadTime: string
   note: string
   unableToQuote: boolean
-  /** Typed metres, keyed by the ask's key. Kept as text until parsed. */
+  /** Typed amounts, keyed by ask key — cloth measures and component counts. */
   quantities: Record<string, string>
+  /** Typed prices, keyed by component key. */
+  prices: Record<string, string>
+}
+
+/** Every key on an item that takes a quantity, in the order they are shown. */
+function quantityKeys(it: RfqFormItem): { key: string; unit: string; prefill: number | null }[] {
+  return [
+    ...it.itemMaterials.map(m => ({ key: m.key, unit: m.unit, prefill: m.prefill })),
+    ...it.components.flatMap(c => [
+      { key: c.key, unit: c.unit, prefill: c.prefillQuantity },
+      ...c.materials.map(m => ({ key: m.key, unit: m.unit, prefill: m.prefill })),
+    ]),
+  ]
 }
 
 // Public, no-login pricing form a supplier fills in from their RFQ email link.
@@ -95,7 +126,10 @@ export function RfqPricingForm({
           note: it.prefill.note,
           unableToQuote: it.prefill.unableToQuote,
           quantities: Object.fromEntries(
-            it.fabricQuantities.map(f => [f.key, f.prefill != null ? String(f.prefill) : ''])
+            quantityKeys(it).map(q => [q.key, q.prefill != null ? String(q.prefill) : ''])
+          ),
+          prices: Object.fromEntries(
+            it.components.map(c => [c.key, c.prefillPrice != null ? String(c.prefillPrice) : ''])
           ),
         },
       ])
@@ -133,6 +167,14 @@ export function RfqPricingForm({
     setNoPriceAck(false)
   }
 
+  function updateComponentPrice(specId: string, key: string, value: string) {
+    setEntries(prev => ({
+      ...prev,
+      [specId]: { ...prev[specId], prices: { ...prev[specId].prices, [key]: value } },
+    }))
+    setNoPriceAck(false)
+  }
+
   // Every price read through the same parser the server uses, so the amount
   // shown under the field is the amount that will be stored — no guessing.
   const parsed = useMemo(() => {
@@ -149,10 +191,25 @@ export function RfqPricingForm({
     const out: Record<string, ReturnType<typeof parseQuantityInput>> = {}
     for (const it of items) {
       const e = entries[it.specId]
-      for (const f of it.fabricQuantities) {
-        out[`${it.specId}|${f.key}`] = e?.unableToQuote
+      for (const q of quantityKeys(it)) {
+        out[`${it.specId}|${q.key}`] = e?.unableToQuote
           ? { value: null, error: null }
-          : parseQuantityInput(e?.quantities[f.key] ?? '')
+          : parseQuantityInput(e?.quantities[q.key] ?? '')
+      }
+    }
+    return out
+  }, [items, entries])
+
+  // A component's price reads through the same parser as the item's, so a
+  // scatter quoted at "R 450,00" is stored as the amount shown back on screen.
+  const parsedComponentPrice = useMemo(() => {
+    const out: Record<string, ReturnType<typeof parsePriceInput>> = {}
+    for (const it of items) {
+      const e = entries[it.specId]
+      for (const c of it.components) {
+        out[`${it.specId}|${c.key}`] = e?.unableToQuote
+          ? { value: null, error: null }
+          : parsePriceInput(e?.prices[c.key] ?? '')
       }
     }
     return out
@@ -163,10 +220,19 @@ export function RfqPricingForm({
     [parsedQty]
   )
 
-  /** Items carrying an actual amount — the only sense in which this form is "done". */
+  /**
+   * Items carrying an actual amount — the only sense in which this form is
+   * "done". A component supplier's amount is on their components, not on the
+   * item, so both count.
+   */
   const pricedCount = useMemo(
-    () => Object.values(parsed).filter(p => p.value !== null).length,
-    [parsed]
+    () =>
+      items.filter(
+        it =>
+          parsed[it.specId]?.value !== null ||
+          it.components.some(c => parsedComponentPrice[`${it.specId}|${c.key}`]?.value !== null)
+      ).length,
+    [items, parsed, parsedComponentPrice]
   )
   const unableCount = useMemo(
     () => Object.values(entries).filter(e => e.unableToQuote).length,
@@ -174,8 +240,10 @@ export function RfqPricingForm({
   )
   /** Anything typed that we can't read as money blocks the submit outright. */
   const badPriceCount = useMemo(
-    () => Object.values(parsed).filter(p => p.error).length,
-    [parsed]
+    () =>
+      Object.values(parsed).filter(p => p.error).length +
+      Object.values(parsedComponentPrice).filter(p => p.error).length,
+    [parsed, parsedComponentPrice]
   )
   const answeredCount = useMemo(
     () =>
@@ -185,9 +253,10 @@ export function RfqPricingForm({
           parsed[id]?.value !== null ||
           e.leadTime.trim() ||
           e.note.trim() ||
-          // Metres on their own are an answer: a maker who can't price until
-          // the cloth is costed can still send back what the piece takes.
-          Object.values(e.quantities).some(v => v.trim())
+          // Quantities on their own are an answer: a maker who can't price
+          // until the cloth is costed can still send back what the piece takes.
+          Object.values(e.quantities).some(v => v.trim()) ||
+          Object.values(e.prices).some(v => v.trim())
       ).length,
     [entries, parsed]
   )
@@ -199,12 +268,11 @@ export function RfqPricingForm({
   const isItemLocked = (it: RfqFormItem) => locked && it.prefill.price != null
 
   /**
-   * Same rule one level down: a quantity already sent is locked, an empty box
+   * Same rule one level down: an answer already sent is locked, an empty box
    * stays open. A supplier who priced the piece and forgot the yardage can
    * come back and add it without unlocking anything.
    */
-  const isQuantityLocked = (it: RfqFormItem, ask: RfqFabricAsk) =>
-    locked && ask.prefill != null
+  const isAnswerLocked = (prefill: number | null) => locked && prefill != null
 
   /** True once a price already on record has actually been altered. */
   const changedAnExistingPrice = useMemo(
@@ -212,12 +280,19 @@ export function RfqPricingForm({
       items.some(it => {
         const e = entries[it.specId]
         if (!e) return false
-        // A yardage already sent that has since moved is a revision in its own
-        // right — the studio may have ordered cloth against it.
-        const movedAQuantity = it.fabricQuantities.some(
-          f => f.prefill != null && parsedQty[`${it.specId}|${f.key}`]?.value !== f.prefill
+        // Anything already sent that has since moved is a revision in its own
+        // right — the studio may have ordered cloth, or quoted a client,
+        // against the figure this supplier gave last time.
+        const movedAQuantity = quantityKeys(it).some(
+          q => q.prefill != null && parsedQty[`${it.specId}|${q.key}`]?.value !== q.prefill
         )
         if (movedAQuantity) return true
+        const movedAComponentPrice = it.components.some(
+          c =>
+            c.prefillPrice != null &&
+            parsedComponentPrice[`${it.specId}|${c.key}`]?.value !== c.prefillPrice
+        )
+        if (movedAComponentPrice) return true
         if (it.prefill.price == null) return false
         return (
           parsed[it.specId]?.value !== it.prefill.price ||
@@ -226,7 +301,7 @@ export function RfqPricingForm({
           e.unableToQuote !== it.prefill.unableToQuote
         )
       }),
-    [items, entries, parsed, parsedQty]
+    [items, entries, parsed, parsedQty, parsedComponentPrice]
   )
   // Say why only when something already quoted on has moved. Adding prices to
   // items left blank is not a revision.
@@ -292,11 +367,12 @@ export function RfqPricingForm({
             leadTime: entries[it.specId].leadTime,
             note: entries[it.specId].note,
             unableToQuote: entries[it.specId].unableToQuote,
-            // Every box on the item, answered or not: the server stores the
-            // set as it stands, so clearing a yardage clears it there too.
-            quantities: it.fabricQuantities.map(f => ({
-              key: f.key,
-              quantity: entries[it.specId].quantities[f.key] ?? '',
+            // Every box on the sheet, answered or not: the server stores the
+            // set as it stands, so clearing an answer clears it there too.
+            lines: quantityKeys(it).map(q => ({
+              key: q.key,
+              quantity: entries[it.specId].quantities[q.key] ?? '',
+              price: entries[it.specId].prices[q.key] ?? '',
             })),
           })),
         }),
@@ -443,36 +519,40 @@ export function RfqPricingForm({
                     <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ color: '#9A7B4F', backgroundColor: '#F5EFE4' }}>{it.area}</span>
                   )}
                 </div>
-                {it.category && <p className="text-xs mt-0.5" style={{ color: '#8A877F' }}>{it.category}</p>}
-                {it.description && <p className="text-sm mt-2 whitespace-pre-line" style={{ color: '#4A4A47' }}>{it.description}</p>}
-
-                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  {it.quantity && <SpecPair label="Qty" value={it.quantity} />}
-                  {it.dimensions && <SpecPair label="Dimensions" value={it.dimensions} />}
-                  {it.itemSpecs.map(sp => (
-                    <SpecPair key={sp.label} label={sp.label} value={sp.value} />
-                  ))}
-                </dl>
-
-                {it.materials.length > 0 && (
-                  <ul className="mt-2 space-y-0.5">
-                    {it.materials.map((m, i) => (
-                      <li key={i} className="text-xs" style={{ color: '#4A4A47' }}>• {m}</li>
-                    ))}
-                  </ul>
-                )}
-                {it.scatters.length > 0 && (
+                {/* The item's own spec, for whoever is making the item. A
+                    component supplier is shown the picture and the name so
+                    they know what their part goes on, and nothing more: they
+                    are not quoting the piece, and its dimensions, its cloth
+                    and its notes are not theirs to answer for. */}
+                {it.ownsItem ? (
                   <>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide mt-2" style={{ color: '#8A877F' }}>Scatters</p>
-                    <ul className="space-y-0.5">
-                      {it.scatters.map((sc, i) => (
-                        <li key={i} className="text-xs" style={{ color: '#4A4A47' }}>• {sc}</li>
+                    {it.category && <p className="text-xs mt-0.5" style={{ color: '#8A877F' }}>{it.category}</p>}
+                    {it.description && <p className="text-sm mt-2 whitespace-pre-line" style={{ color: '#4A4A47' }}>{it.description}</p>}
+
+                    <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      {it.quantity && <SpecPair label="Qty" value={it.quantity} />}
+                      {it.dimensions && <SpecPair label="Dimensions" value={it.dimensions} />}
+                      {it.itemSpecs.map(sp => (
+                        <SpecPair key={sp.label} label={sp.label} value={sp.value} />
                       ))}
-                    </ul>
+                    </dl>
+
+                    {it.materials.length > 0 && (
+                      <ul className="mt-2 space-y-0.5">
+                        {it.materials.map((m, i) => (
+                          <li key={i} className="text-xs" style={{ color: '#4A4A47' }}>• {m}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {it.specNotes.trim() && (
+                      <p className="text-xs mt-2 italic" style={{ color: '#8A877F' }}>{it.specNotes.trim()}</p>
+                    )}
                   </>
-                )}
-                {it.specNotes.trim() && (
-                  <p className="text-xs mt-2 italic" style={{ color: '#8A877F' }}>{it.specNotes.trim()}</p>
+                ) : (
+                  <p className="text-xs mt-1" style={{ color: '#8A877F' }}>
+                    Someone else is making this piece. You&apos;re being asked only for the parts below
+                    — the picture is for context.
+                  </p>
                 )}
               </div>
             </div>
@@ -569,13 +649,13 @@ export function RfqPricingForm({
                   />
                 </div>
               </div>
-              {/* Fabric & leather quantities. One box per cloth, generated
-                  from the spec: the designer says WHICH cloth, the maker is
-                  the only one who knows how much of it the piece eats. Two
-                  fabrics on one piece are two orders from two possibly
-                  different houses, so a single combined figure is unorderable
-                  — hence a box each rather than one field per item. */}
-              {it.fabricQuantities.length > 0 && (
+              {/* Material quantities. One box per cloth, generated from the
+                  spec: the designer says WHICH cloth, the maker is the only
+                  one who knows how much of it the piece eats. Two fabrics on
+                  one piece are two orders from two possibly different houses,
+                  so a single combined figure is unorderable — hence a box
+                  each rather than one field per item. */}
+              {it.itemMaterials.length > 0 && (
                 <div className="mt-4 pt-4 border-t" style={{ borderColor: '#EDE9E1' }}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#8A877F' }}>
                     Quantities needed
@@ -585,80 +665,146 @@ export function RfqPricingForm({
                     please give them separately rather than as one total.
                   </p>
                   <div className="space-y-2.5">
-                    {it.fabricQuantities.map(f => {
-                      const qState = parsedQty[`${it.specId}|${f.key}`] ?? { value: null, error: null }
-                      const qDisabled = isQuantityLocked(it, f) || e.unableToQuote
-                      const designer = f.designerQuantity.trim()
-                      const designerNum = parseFloat(designer)
-                      // The designer usually leaves the yardage blank. When
-                      // they have put one down, saying so beats silently
-                      // overwriting it — and a gap between the two is worth
-                      // one line of amber, not a blocked submission.
-                      const over =
-                        Number.isFinite(designerNum) && qState.value !== null && qState.value !== designerNum
-                      // Colons and dots in the key are fine in an id but not
-                      // in a selector, and this one is addressed by label
-                      const domId = `qty-${it.specId}-${f.key.replace(/[^a-zA-Z0-9]/g, '-')}`
+                    {it.itemMaterials.map(m => (
+                      <QuantityRow
+                        key={m.key}
+                        domId={askDomId(it.specId, m.key)}
+                        label={m.label}
+                        hint={m.supplierName ? `From ${m.supplierName}` : ''}
+                        unit={m.unit}
+                        designerQuantity={m.designerQuantity}
+                        value={e.quantities[m.key] ?? ''}
+                        state={parsedQty[`${it.specId}|${m.key}`] ?? EMPTY_PARSE}
+                        disabled={isAnswerLocked(m.prefill) || e.unableToQuote}
+                        dimmed={disabled}
+                        onChange={v => updateQuantity(it.specId, m.key, v)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* The supplier's own components — the scatters they sew, the
+                  stone they cut. Each is priced by the size it is made in and
+                  counted on its own, because that is how it is ordered: two
+                  sizes of scatter are two different things, not one line with
+                  an average price. */}
+              {it.components.length > 0 && (
+                <div className="mt-4 pt-4 border-t" style={{ borderColor: '#EDE9E1' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#8A877F' }}>
+                    {it.ownsItem ? 'Also on this piece' : 'What we need from you'}
+                  </p>
+                  <div className="mt-2.5 space-y-3">
+                    {it.components.map(c => {
+                      const pState = parsedComponentPrice[`${it.specId}|${c.key}`] ?? EMPTY_PARSE
+                      const countState = parsedQty[`${it.specId}|${c.key}`] ?? EMPTY_PARSE
+                      const priceDisabled = isAnswerLocked(c.prefillPrice) || e.unableToQuote
+                      const priceId = `cprice-${askDomId(it.specId, c.key)}`
+                      const perOne = c.unit === 'each' ? 'each' : `per ${c.unit}`
                       return (
-                        <div key={f.key} className="sm:flex sm:items-start sm:gap-3">
-                          <div className="min-w-0 flex-1">
-                            <label htmlFor={domId} className="block text-xs sm:pt-2" style={{ color: '#2C2C2A' }}>
-                              {f.label}
-                            </label>
-                            {(f.supplierName || designer) && (
-                              <p className="text-[11px] mt-0.5" style={{ color: '#8A877F' }}>
-                                {f.supplierName ? `From ${f.supplierName}` : ''}
-                                {f.supplierName && designer ? ' · ' : ''}
-                                {designer ? `${designer} ${f.unit} allowed on the spec` : ''}
-                              </p>
-                            )}
-                          </div>
-                          <div className="mt-1 sm:mt-0 w-full sm:w-40 flex-shrink-0">
-                            <div className="relative">
-                              <input
-                                id={domId}
-                                inputMode="decimal"
-                                value={e.quantities[f.key] ?? ''}
-                                disabled={qDisabled}
-                                onChange={ev =>
-                                  updateQuantity(it.specId, f.key, ev.target.value.replace(/[^\d.,\s]/g, ''))
-                                }
-                                aria-invalid={qState.error ? true : undefined}
-                                aria-describedby={`${domId}-read`}
-                                className={`w-full py-2 pl-3 pr-10 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:ring-2 ${
-                                  qState.error
-                                    ? 'border-[#D98A72] focus:border-[#B4472F] focus:ring-[#B4472F]/25'
-                                    : 'focus:border-[#9A7B4F] focus:ring-[#9A7B4F]/25 ' +
-                                      (disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]')
-                                }`}
-                                style={{ color: '#2C2C2A' }}
-                              />
-                              <span
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none ${
-                                  qDisabled ? 'opacity-40' : ''
-                                }`}
+                        <div
+                          key={c.key}
+                          className="rounded-xl border px-3 py-3"
+                          style={{ borderColor: '#EDE9E1', backgroundColor: '#ffffff' }}
+                        >
+                          <p className="text-sm font-medium" style={{ color: '#2C2C2A' }}>{c.label}</p>
+                          {c.details.trim() && (
+                            <p className="text-xs mt-0.5" style={{ color: '#8A877F' }}>{c.details.trim()}</p>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2.5">
+                            <div>
+                              <label
+                                htmlFor={priceId}
+                                className="block text-[11px] font-semibold uppercase tracking-wide mb-1"
                                 style={{ color: '#8A877F' }}
-                                aria-hidden="true"
                               >
-                                {f.unit}
-                              </span>
-                            </div>
-                            <p
-                              id={`${domId}-read`}
-                              className="text-[11px] mt-1 min-h-[15px]"
-                              style={{ color: qState.error ? '#B4472F' : over ? '#9A7B4F' : '#8A877F' }}
-                            >
-                              {disabled
-                                ? ''
-                                : qState.error
-                                  ? qState.error
-                                  : over
-                                    ? `Reads as ${formatQuantity(qState.value!, f.unit)} — the spec allowed ${designer} ${f.unit}`
-                                    : qState.value !== null
-                                      ? `Reads as ${formatQuantity(qState.value, f.unit)}`
+                                Your price {perOne} (excl. VAT)
+                              </label>
+                              <div className="relative">
+                                <span
+                                  className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none ${
+                                    priceDisabled ? 'opacity-40' : ''
+                                  }`}
+                                  style={{ color: '#8A877F' }}
+                                >
+                                  R
+                                </span>
+                                <input
+                                  id={priceId}
+                                  inputMode="decimal"
+                                  value={e.prices[c.key] ?? ''}
+                                  disabled={priceDisabled}
+                                  onChange={ev =>
+                                    updateComponentPrice(
+                                      it.specId,
+                                      c.key,
+                                      ev.target.value.replace(/[^\d.,\s]/g, '')
+                                    )
+                                  }
+                                  aria-invalid={pState.error ? true : undefined}
+                                  aria-describedby={`${priceId}-read`}
+                                  className={`w-full py-2 pl-12 pr-3 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:ring-2 ${
+                                    pState.error
+                                      ? 'border-[#D98A72] focus:border-[#B4472F] focus:ring-[#B4472F]/25'
+                                      : 'focus:border-[#9A7B4F] focus:ring-[#9A7B4F]/25 ' +
+                                        (disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]')
+                                  }`}
+                                  style={{ color: '#2C2C2A' }}
+                                  aria-label={`Price ${perOne} for ${c.label}, excluding VAT`}
+                                />
+                              </div>
+                              <p
+                                id={`${priceId}-read`}
+                                className="text-[11px] mt-1 min-h-[15px]"
+                                style={{ color: pState.error ? '#B4472F' : '#8A877F' }}
+                              >
+                                {disabled
+                                  ? ''
+                                  : pState.error
+                                    ? pState.error
+                                    : pState.value !== null
+                                      ? `Reads as ${formatZar(pState.value)} ${perOne}`
                                       : ''}
-                            </p>
+                              </p>
+                            </div>
+                            <QuantityRow
+                              stacked
+                              domId={askDomId(it.specId, c.key)}
+                              label={c.unit === 'each' ? 'How many' : 'Area needed'}
+                              hint=""
+                              unit={c.unit === 'each' ? '' : c.unit}
+                              designerQuantity={c.designerQuantity}
+                              value={e.quantities[c.key] ?? ''}
+                              state={countState}
+                              disabled={isAnswerLocked(c.prefillQuantity) || e.unableToQuote}
+                              dimmed={disabled}
+                              onChange={v => updateQuantity(it.specId, c.key, v)}
+                            />
                           </div>
+
+                          {c.materials.length > 0 && (
+                            <div className="mt-3 pt-3 border-t space-y-2.5" style={{ borderColor: '#F0EDE6' }}>
+                              <p className="text-[11px]" style={{ color: '#8A877F' }}>
+                                Cloth for this — how much it takes of each:
+                              </p>
+                              {c.materials.map(m => (
+                                <QuantityRow
+                                  key={m.key}
+                                  domId={askDomId(it.specId, m.key)}
+                                  label={m.label}
+                                  hint={m.supplierName ? `From ${m.supplierName}` : ''}
+                                  unit={m.unit}
+                                  designerQuantity={m.designerQuantity}
+                                  value={e.quantities[m.key] ?? ''}
+                                  state={parsedQty[`${it.specId}|${m.key}`] ?? EMPTY_PARSE}
+                                  disabled={isAnswerLocked(m.prefill) || e.unableToQuote}
+                                  dimmed={disabled}
+                                  onChange={v => updateQuantity(it.specId, m.key, v)}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -844,6 +990,143 @@ export function RfqPricingForm({
           </p>
         </div>
       )}
+    </div>
+  )
+}
+
+const EMPTY_PARSE = { value: null, error: null } as const
+
+/** Colons and dots in a key are fine in an id but not in a selector. */
+const askDomId = (specId: string, key: string) =>
+  `qty-${specId}-${key.replace(/[^a-zA-Z0-9]/g, '-')}`
+
+/**
+ * One "how much of this?" box: label on the left, figure and its unit on the
+ * right, and the reading back underneath. Shared by the cloth on an item, the
+ * cloth on a scatter, and the count of the scatters themselves, so a supplier
+ * meets the same control wherever they are asked for a number.
+ */
+function QuantityRow({
+  domId,
+  label,
+  hint,
+  unit,
+  designerQuantity,
+  value,
+  state,
+  disabled,
+  dimmed,
+  stacked,
+  onChange,
+}: {
+  domId: string
+  label: string
+  hint: string
+  /** Blank for a plain count — "4 each" is not how anyone writes four. */
+  unit: string
+  designerQuantity: string
+  value: string
+  state: { value: number | null; error: string | null }
+  disabled: boolean
+  /** The whole item is off ("can't quote"), so the reading is hidden. */
+  dimmed: boolean
+  /** Label above the field instead of beside it, for narrow columns. */
+  stacked?: boolean
+  onChange: (value: string) => void
+}) {
+  const designer = designerQuantity.trim()
+  const designerNum = parseFloat(designer)
+  // The designer usually leaves the figure blank. When they have put one
+  // down, saying so beats silently overwriting it — and a gap between the two
+  // is worth one line of amber, not a blocked submission.
+  const over = Number.isFinite(designerNum) && state.value !== null && state.value !== designerNum
+
+  const field = (
+    <>
+      <div className="relative">
+        <input
+          id={domId}
+          inputMode="decimal"
+          value={value}
+          disabled={disabled}
+          onChange={ev => onChange(ev.target.value.replace(/[^\d.,\s]/g, ''))}
+          aria-invalid={state.error ? true : undefined}
+          aria-describedby={`${domId}-read`}
+          className={`w-full py-2 pl-3 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:ring-2 ${
+            unit ? 'pr-10' : 'pr-3'
+          } ${
+            state.error
+              ? 'border-[#D98A72] focus:border-[#B4472F] focus:ring-[#B4472F]/25'
+              : 'focus:border-[#9A7B4F] focus:ring-[#9A7B4F]/25 ' +
+                (dimmed ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]')
+          }`}
+          style={{ color: '#2C2C2A' }}
+        />
+        {unit && (
+          <span
+            className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none ${
+              disabled ? 'opacity-40' : ''
+            }`}
+            style={{ color: '#8A877F' }}
+            aria-hidden="true"
+          >
+            {unit}
+          </span>
+        )}
+      </div>
+      <p
+        id={`${domId}-read`}
+        className="text-[11px] mt-1 min-h-[15px]"
+        style={{ color: state.error ? '#B4472F' : over ? '#9A7B4F' : '#8A877F' }}
+      >
+        {dimmed
+          ? ''
+          : state.error
+            ? state.error
+            : over
+              ? `Reads as ${formatQuantity(state.value!, unit)} — the spec allowed ${designer} ${unit}`.trim()
+              : state.value !== null
+                ? `Reads as ${formatQuantity(state.value, unit)}`.trim()
+                : ''}
+      </p>
+    </>
+  )
+
+  if (stacked) {
+    return (
+      <div>
+        <label
+          htmlFor={domId}
+          className="block text-[11px] font-semibold uppercase tracking-wide mb-1"
+          style={{ color: '#8A877F' }}
+        >
+          {label}
+          {designer && (
+            <span className="ml-1.5 normal-case tracking-normal font-medium" style={{ color: '#9A7B4F' }}>
+              — spec says {designer}
+            </span>
+          )}
+        </label>
+        {field}
+      </div>
+    )
+  }
+
+  return (
+    <div className="sm:flex sm:items-start sm:gap-3">
+      <div className="min-w-0 flex-1">
+        <label htmlFor={domId} className="block text-xs sm:pt-2" style={{ color: '#2C2C2A' }}>
+          {label}
+        </label>
+        {(hint || designer) && (
+          <p className="text-[11px] mt-0.5" style={{ color: '#8A877F' }}>
+            {hint}
+            {hint && designer ? ' · ' : ''}
+            {designer ? `${designer} ${unit} allowed on the spec`.trim() : ''}
+          </p>
+        )}
+      </div>
+      <div className="mt-1 sm:mt-0 w-full sm:w-40 flex-shrink-0">{field}</div>
     </div>
   )
 }

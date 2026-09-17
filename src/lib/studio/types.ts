@@ -297,108 +297,202 @@ export function normalizeScatter(
   }
 }
 
-// ── Fabric & leather quantities ─────────────────────────────────────────────
-// A designer specifies WHICH cloth goes on a piece; only the maker knows how
-// much of it the piece eats. So the yardage is asked of the supplier on the
-// pricing form rather than guessed on the board — one box per cloth, because
-// a sofa in a body fabric with a contrast inside back is two separate orders
-// from two possibly different houses, and one lumped figure can't be ordered.
+// ── Who is asked what ───────────────────────────────────────────────────────
+// A spec is written as one item, but it is bought from several people. A sofa
+// is built by an upholsterer, its scatters are sewn by a cushion workroom, its
+// marble top is cut by a stone yard — and each of those is named on the spec
+// against the part they supply. So a quote request is never the whole spec: it
+// is the slice of it one supplier is responsible for.
 //
-// Timber, stone and paint are deliberately excluded: they are quoted into the
-// maker's own price, not bought by the metre against this spec.
-
-/** A material on the item itself, which whoever quotes the item measures. */
-const ITEMS_OWN_MATERIAL = { ownerSupplierId: null, ownerSupplierName: '' }
+// Two kinds of thing get asked for:
+//
+//   A COMPONENT is priced by its own supplier — a scatter, a stone top. They
+//   quote it, say how many they are making, and measure whatever cloth it
+//   takes. It never appears on anyone else's sheet.
+//
+//   A MATERIAL QUANTITY is measured but not priced by the person answering.
+//   Cloth is the case: the linen comes from Hertex at Hertex's price, but only
+//   the upholsterer knows how many metres the piece eats. So these ride along
+//   with whoever is making the thing they go on.
+//
+// Timber, metal, paint and glass are asked for at all — they are quoted into
+// the maker's own price rather than bought by measure against this spec.
 
 /**
- * Cloth: bought by the metre from a house, but measured by the MAKER. The
- * upholsterer is the one who knows what the piece eats, even though the linen
- * comes from Hertex — so these boxes go to whoever is quoting the item.
+ * Cloth: bought by the metre from a house, measured by whoever makes the thing
+ * it covers. Never priced by them.
  */
 const MAKER_MEASURED_TYPES = new Set(['fabric', 'leather'])
 
 /**
- * Stone: cut, fabricated and supplied by its own yard, which measures it
- * itself off the drawing. So unlike cloth, this box belongs to the material's
- * own supplier and never reaches the item's maker — the same rule scatters
- * follow. Sold by area, not by the running metre.
+ * Stone: cut, fabricated, measured and priced by its own yard, off the
+ * drawing. A component in its own right, not a cloth on somebody else's piece.
  */
-const SUPPLIER_MEASURED_TYPES = new Set(['stone'])
+const SUPPLIER_PRICED_TYPES = new Set(['stone'])
 
 export function isQuantityMaterial(type: string): boolean {
   const t = type.trim().toLowerCase()
-  return MAKER_MEASURED_TYPES.has(t) || SUPPLIER_MEASURED_TYPES.has(t)
+  return MAKER_MEASURED_TYPES.has(t) || SUPPLIER_PRICED_TYPES.has(t)
+}
+
+/** True for a material the supplier named on it prices, rather than measures. */
+export function isSupplierPricedMaterial(type: string): boolean {
+  return SUPPLIER_PRICED_TYPES.has(type.trim().toLowerCase())
 }
 
 /** How a material is sold: cloth by the running metre, stone by area. */
 export function materialQuantityUnit(type: string): QuantityUnit {
-  return SUPPLIER_MEASURED_TYPES.has(type.trim().toLowerCase()) ? 'm²' : 'm'
+  return isSupplierPricedMaterial(type) ? 'm²' : 'm'
 }
 
 export type QuantityUnit = 'm' | 'm²'
 
 /**
- * The key that ties one cloth to its own line on the quote, all the way from
- * the spec through the supplier's form to the child line item. Stable by
- * construction: every part of it is an id already stored on the spec, so it
- * survives renaming a fabric, swapping its house or re-ordering the list.
+ * The key that ties one line on a supplier's sheet to its own line on the
+ * quote, all the way from the spec through the form to the child line item.
+ * Stable by construction: every part is an id already stored on the spec, so
+ * it survives renaming a fabric, swapping its house or reordering the list.
  */
 export const materialQuantityKey = {
   material: (materialId: string) => `m:${materialId}`,
   extraFabric: (materialId: string, fabricId: string) => `m:${materialId}:f:${fabricId}`,
+  scatter: (scatterId: string) => `sc:${scatterId}`,
   scatterFabric: (scatterId: string, fabricId: string) => `sc:${scatterId}:f:${fabricId}`,
 }
 
-/** One quantity box on the supplier's form, and the line it will land on. */
+/** Who supplies a thing, as named on the spec. */
+export interface SupplierRef {
+  supplierId: string | null
+  supplierName: string
+}
+
+/** Matched on id where both sides have one, on name otherwise — either side
+ *  can be a name typed into the send modal that was never linked to a record. */
+export function sameSupplier(a: SupplierRef, b: SupplierRef): boolean {
+  if (a.supplierId && b.supplierId) return a.supplierId === b.supplierId
+  const an = a.supplierName.trim().toLowerCase()
+  const bn = b.supplierName.trim().toLowerCase()
+  return !!an && an === bn
+}
+
+/** Nobody named against it — it falls to whoever makes the item. */
+const unassigned = (ref: SupplierRef) => !ref.supplierId && !ref.supplierName.trim()
+
+/** One box asking how much of a material the piece takes. Never a price. */
 export interface MaterialQuantityAsk {
   key: string
-  /** What the supplier is being asked about — "Fabric · Linen Natural". */
+  /** What is being measured — "Fabric · Linen Natural". */
   label: string
   /** The house it comes from, shown so the maker prices make-up, not cloth. */
   supplierName: string
   /** Metres for cloth, square metres for stone. */
   unit: QuantityUnit
-  /** Metres the designer allocated, if any. Usually blank — see above. */
+  /** What the designer allocated, if anything. Usually blank. */
   designerQuantity: string
-  /**
-   * Who makes the thing this cloth goes on, when that is somebody other than
-   * the maker of the item itself. Scatters are the case this exists for: they
-   * sit on the sofa's spec but are routinely made by a different workroom, so
-   * the sofa's upholsterer must never be asked how much velvet the cushions
-   * take. Blank means the cloth belongs to the item, and so to whoever is
-   * being asked to quote it.
-   */
-  ownerSupplierId: string | null
-  ownerSupplierName: string
 }
 
 /**
- * Every cloth on a spec the supplier should be asked to measure, in the order
- * they appear on the item. Shared by the supplier's pricing page and the
- * submit endpoint, so the boxes a supplier is shown are exactly the keys the
- * server will accept — a form built from one list and validated against
- * another is how a quantity goes missing without anybody being told.
+ * One thing this supplier makes, prices and counts — a scatter, a stone top.
+ * Its own cloth hangs beneath it, because the person sewing the cushion is the
+ * one who knows how much velvet it takes.
  */
-export function materialQuantityAsks(
+export interface ComponentAsk {
+  key: string
+  /** "Scatter 600 × 600" / "Stone · Nero Marquina top". */
+  label: string
+  /** Free text off the spec — where it goes, what is in it. */
+  details: string
+  /**
+   * What one of them is. 'each' counts them (four cushions), an area unit
+   * measures them (2,4 m² of marble) — so the price box reads "price each" or
+   * "price per m²" accordingly.
+   */
+  unit: 'each' | QuantityUnit
+  /** The count or area the designer put down, if any. Either side may fill it. */
+  designerQuantity: string
+  /** Cloth on this component, measured by whoever makes it. */
+  materials: MaterialQuantityAsk[]
+}
+
+/**
+ * Everything one recipient is asked about on one spec.
+ *
+ * `ownsItem` is what separates the two kinds of sheet. The item's maker gets
+ * the piece itself — its specs, its dimensions, its cloth — and a price for
+ * it. A component supplier gets the picture, the name, and nothing but their
+ * own part: they are not quoting the sofa, and a sheet full of somebody else's
+ * spec only invites them to price it.
+ */
+export interface SpecSheet {
+  ownsItem: boolean
+  /** Cloth on the item itself. Empty unless `ownsItem`. */
+  itemMaterials: MaterialQuantityAsk[]
+  /** Components this recipient makes. */
+  components: ComponentAsk[]
+}
+
+/** Everything anyone could be asked on this spec, before it is narrowed. */
+function allComponents(
   materials: MaterialEntry[],
   scatters: ScatterEntry[]
-): MaterialQuantityAsk[] {
-  const asks: MaterialQuantityAsk[] = []
+): { owner: SupplierRef; ask: ComponentAsk }[] {
+  const out: { owner: SupplierRef; ask: ComponentAsk }[] = []
 
   for (const m of materials) {
-    if (!isQuantityMaterial(m.type)) continue
+    if (!isSupplierPricedMaterial(m.type)) continue
+    const type = m.type.trim() || 'Stone'
+    out.push({
+      owner: { supplierId: m.supplierId, supplierName: m.supplierName },
+      ask: {
+        key: materialQuantityKey.material(m.id),
+        label: [type, m.description.trim(), m.colour?.trim() ?? ''].filter(Boolean).join(' · '),
+        details: m.details.trim(),
+        unit: materialQuantityUnit(type),
+        designerQuantity: m.quantity.trim(),
+        materials: [],
+      },
+    })
+  }
+
+  for (const sc of scatters) {
+    const size = sc.size.trim()
+    out.push({
+      owner: { supplierId: sc.supplierId, supplierName: sc.supplierName },
+      ask: {
+        key: materialQuantityKey.scatter(sc.id),
+        // Priced per size, so the size is the headline, not a detail
+        label: size ? `Scatter ${size}` : 'Scatter',
+        details: sc.details.trim(),
+        unit: 'each',
+        designerQuantity: sc.quantity.trim(),
+        materials: sc.fabrics
+          .filter(f => f.fabric.trim() || f.fabricSupplierId)
+          .map(f => ({
+            key: materialQuantityKey.scatterFabric(sc.id, f.id),
+            label: [f.fabric.trim() || 'Fabric', f.colour?.trim() ?? ''].filter(Boolean).join(' · '),
+            supplierName: f.fabricSupplierName.trim(),
+            unit: 'm' as QuantityUnit,
+            designerQuantity: f.fabricQuantity.trim(),
+          })),
+      },
+    })
+  }
+
+  return out
+}
+
+/** The cloth on the item itself — the item maker's to measure. */
+function itemCloth(materials: MaterialEntry[]): MaterialQuantityAsk[] {
+  const asks: MaterialQuantityAsk[] = []
+  for (const m of materials) {
+    if (!MAKER_MEASURED_TYPES.has(m.type.trim().toLowerCase())) continue
     const type = m.type.trim() || 'Fabric'
-    const supplierMeasured = materialQuantityUnit(type) === 'm²'
     asks.push({
       key: materialQuantityKey.material(m.id),
       label: [type, m.description.trim(), m.colour?.trim() ?? ''].filter(Boolean).join(' · '),
       supplierName: m.supplierName.trim(),
-      unit: materialQuantityUnit(type),
+      unit: 'm',
       designerQuantity: m.quantity.trim(),
-      // Stone answers to its own yard; cloth answers to whoever makes the item
-      ...(supplierMeasured
-        ? { ownerSupplierId: m.supplierId, ownerSupplierName: m.supplierName.trim() }
-        : ITEMS_OWN_MATERIAL),
     })
     // A second cloth on the same piece is its own order, so its own box
     for (const f of m.extraFabrics) {
@@ -408,81 +502,80 @@ export function materialQuantityAsks(
         supplierName: f.fabricSupplierName.trim(),
         unit: 'm',
         designerQuantity: f.fabricQuantity.trim(),
-        ...ITEMS_OWN_MATERIAL,
       })
     }
   }
-
-  for (const sc of scatters) {
-    const size = sc.size.trim()
-    for (const f of sc.fabrics) {
-      // A blank slot on a scatter is not a cloth anybody can measure
-      if (!f.fabric.trim() && !f.fabricSupplierId) continue
-      asks.push({
-        key: materialQuantityKey.scatterFabric(sc.id, f.id),
-        label: [size ? `Scatter ${size}` : 'Scatter', f.fabric.trim(), f.colour?.trim() ?? '']
-          .filter(Boolean)
-          .join(' · '),
-        supplierName: f.fabricSupplierName.trim(),
-        unit: 'm',
-        designerQuantity: f.fabricQuantity.trim(),
-        // The cushion maker, not the sofa's upholsterer — see asksForSupplier
-        ownerSupplierId: sc.supplierId,
-        ownerSupplierName: sc.supplierName.trim(),
-      })
-    }
-  }
-
   return asks
 }
 
 /**
- * Narrow a spec's asks to the ones this recipient is actually the maker of.
+ * Narrow a spec to the slice one recipient is responsible for.
  *
- * A scatter lives on the sofa's spec but is its own quotable thing with its
- * own workroom. Asking the sofa's upholsterer how much velvet the cushions
- * take invites an answer from someone who will never buy that cloth, and a
- * figure nobody should order against. So a scatter's cloths reach only the
- * supplier named on the scatter; a scatter with no supplier of its own falls
- * to whoever makes the item, and the item's own cloths always do.
+ * Owning a component is what makes a sheet a component sheet: a recipient who
+ * supplies one of the scatters is there for the scatters, not the sofa. Anyone
+ * else on the request is being asked about the item — including a second
+ * upholsterer added for comparison, who is not the supplier named on the spec
+ * but is certainly quoting the piece.
  *
- * Matched on supplier id where both sides have one, and on name otherwise —
- * either side can be a name typed into the send modal that was never linked to
- * a supplier record. Name matching is the deliberate choice for that case: the
- * cost of one extra box is a supplier leaving it blank, while the cost of a
- * missing one is a cushion coming back with no yardage at all.
+ * Anything with nobody named against it falls to the item's maker, so a
+ * half-filled spec still reaches someone rather than silently reaching nobody.
  */
-export function asksForSupplier(
-  asks: MaterialQuantityAsk[],
-  audience: { supplierId: string | null; supplierName: string }
-): MaterialQuantityAsk[] {
-  const audienceName = audience.supplierName.trim().toLowerCase()
-  return asks.filter(ask => {
-    const ownerName = ask.ownerSupplierName.trim().toLowerCase()
-    // No maker of its own — it belongs to the item, and so to whoever is
-    // being asked to quote the item
-    if (!ask.ownerSupplierId && !ownerName) return true
-    if (ask.ownerSupplierId && audience.supplierId) {
-      return ask.ownerSupplierId === audience.supplierId
-    }
-    return !!audienceName && ownerName === audienceName
-  })
+export function buildSpecSheet(
+  materials: MaterialEntry[],
+  scatters: ScatterEntry[],
+  itemSupplier: SupplierRef,
+  audience: SupplierRef
+): SpecSheet {
+  const components = allComponents(materials, scatters)
+  const ownsAComponent = components.some(c => !unassigned(c.owner) && sameSupplier(c.owner, audience))
+  const ownsItem = sameSupplier(itemSupplier, audience) || !ownsAComponent
+
+  return {
+    ownsItem,
+    itemMaterials: ownsItem ? itemCloth(materials) : [],
+    components: components
+      .filter(c =>
+        unassigned(c.owner) ? ownsItem : sameSupplier(c.owner, audience)
+      )
+      .map(c => c.ask),
+  }
 }
 
 /**
- * One quantity as the supplier submitted it, stored on their spec_quotes row.
+ * One answer as the supplier submitted it, stored on their spec_quotes row.
  * `label` and `designerQuantity` are snapshots taken at submission time: the
- * spec can be edited afterwards, and what the supplier was actually looking at
- * when they answered is the only thing worth keeping a record of.
+ * spec can be edited afterwards, and what the supplier was looking at when
+ * they answered is the only thing worth keeping a record of.
  */
 export interface SupplierMaterialQuantity {
   key: string
   label: string
   /** The figure, or null where the supplier left the box empty. */
   quantity: number | null
+  /** Set only on a component the supplier prices — cloth carries no price. */
+  price: number | null
   /** What it is measured in — snapshot, same reasoning as `label`. */
-  unit: QuantityUnit
+  unit: string
   designerQuantity: string
+}
+
+/**
+ * Answers stored before components existed have no `price` key at all, and an
+ * absent price is not a price: `undefined !== null` reads as one, which would
+ * write `undefined` onto a cost. Every read of the stored JSON goes through
+ * here so a missing field can only ever mean "not answered".
+ */
+export function normalizeSupplierQuantity(
+  q: Partial<SupplierMaterialQuantity> & { key: string }
+): SupplierMaterialQuantity {
+  return {
+    key: q.key,
+    label: q.label ?? '',
+    quantity: q.quantity ?? null,
+    price: q.price ?? null,
+    unit: q.unit ?? 'm',
+    designerQuantity: q.designerQuantity ?? '',
+  }
 }
 
 // A one-line human summary of a fabric — "2.5 m Linen Natural — Hertex".

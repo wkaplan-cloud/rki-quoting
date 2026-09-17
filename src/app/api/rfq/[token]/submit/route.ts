@@ -5,8 +5,8 @@ import { parsePriceInput, parseQuantityInput, formatZar, formatQuantity } from '
 import {
   normalizeMaterial,
   normalizeScatter,
-  materialQuantityAsks,
-  asksForSupplier,
+  buildSpecSheet,
+  normalizeSupplierQuantity,
   type MaterialEntry,
   type ScatterEntry,
   type SupplierMaterialQuantity,
@@ -58,8 +58,27 @@ interface SubmitItem {
   leadTime: unknown
   note: unknown
   unableToQuote: unknown
-  /** Metres per cloth, keyed by the ask key the form was built from. */
-  quantities?: unknown
+  /** One per box on the sheet, keyed by the ask key the form was built from. */
+  lines?: unknown
+}
+
+/** One answered box as it arrives over the wire. Nothing here is trusted. */
+interface SubmitLine {
+  key: string
+  quantity?: unknown
+  price?: unknown
+}
+
+/** A box on one recipient's sheet, flattened for validation and storage. */
+interface SheetAsk {
+  key: string
+  label: string
+  supplierName: string
+  unit: string
+  designerQuantity: string
+  details: string
+  /** True for a component this supplier quotes; false for cloth they measure. */
+  priced: boolean
 }
 
 // POST /api/rfq/[token]/submit
@@ -95,38 +114,58 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // quote for. Scoped to the request's org (supabaseAdmin bypasses RLS).
     const { data: specs } = await supabaseAdmin
       .from('studio_specs')
-      .select('id, object_id, spec_name, materials, scatters')
+      .select('id, object_id, spec_name, supplier_id, supplier_name, materials, scatters')
       .eq('org_id', request.org_id)
       .eq('board_id', request.board_id)
       .in('object_id', (request.object_ids as string[]) ?? [])
     const specRows = (specs ?? []) as {
       id: string
       spec_name: string | null
+      supplier_id: string | null
+      supplier_name: string | null
       materials: MaterialEntry[] | null
       scatters: ScatterEntry[] | null
     }[]
     const allowedSpecIds = new Set(specRows.map(s => s.id))
     const nameBySpec = new Map(specRows.map(s => [s.id, s.spec_name?.trim() || 'Untitled item']))
 
-    // The quantity boxes this RFQ actually has, rebuilt from the spec rather
-    // than trusted from the payload — the form is public, and a key that
-    // isn't on the spec has no line to land on. Built by the same function
-    // that built the form, so the two can't drift apart.
+    // Every box this recipient's sheet actually has, rebuilt from the spec
+    // rather than trusted from the payload — the form is public, and a key
+    // that isn't on their sheet has no line to land on. Built by the same
+    // function that built the form, narrowed by the same rule, so a supplier
+    // can never write a price or a yardage onto another supplier's line.
+    const audience = {
+      supplierId: request.supplier_id as string | null,
+      supplierName: (request.supplier_name as string | null) ?? '',
+    }
     const asksBySpec = new Map(
-      specRows.map(sp => [
-        sp.id,
-        // Narrowed to this recipient by exactly the same rule the form was
-        // built with: a box they were never shown is a box we must not accept
-        // an answer for, or one supplier could write a yardage onto another
-        // supplier's cloth.
-        asksForSupplier(
-          materialQuantityAsks(
-            (sp.materials ?? []).map(normalizeMaterial),
-            (sp.scatters ?? []).map(normalizeScatter)
-          ),
-          { supplierId: request.supplier_id, supplierName: request.supplier_name ?? '' }
-        ),
-      ])
+      specRows.map(sp => {
+        const sheet = buildSpecSheet(
+          (sp.materials ?? []).map(normalizeMaterial),
+          (sp.scatters ?? []).map(normalizeScatter),
+          { supplierId: sp.supplier_id, supplierName: sp.supplier_name ?? '' },
+          audience
+        )
+        // One flat list in the order the form shows them. `priced` is what
+        // separates a component the supplier quotes from cloth they only
+        // measure — a price arriving against cloth is dropped, not stored.
+        const asks: SheetAsk[] = [
+          ...sheet.itemMaterials.map(m => ({ ...m, priced: false, details: '' })),
+          ...sheet.components.flatMap(c => [
+            {
+              key: c.key,
+              label: c.label,
+              supplierName: '',
+              unit: c.unit,
+              designerQuantity: c.designerQuantity,
+              details: c.details,
+              priced: true,
+            },
+            ...c.materials.map(m => ({ ...m, priced: false, details: '' })),
+          ]),
+        ]
+        return [sp.id, { sheet, asks }] as const
+      })
     )
 
     // Whatever the supplier typed, exactly as it arrived. Stored before any
@@ -137,7 +176,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       leadTime: typeof it?.leadTime === 'string' ? it.leadTime : null,
       note: typeof it?.note === 'string' ? it.note : null,
       unableToQuote: it?.unableToQuote === true,
-      quantities: Array.isArray(it?.quantities) ? it.quantities : null,
+      lines: Array.isArray(it?.lines) ? it.lines : null,
     }))
 
     const parsedItems = submittedItems
@@ -146,24 +185,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         const unable = it.unableToQuote === true
         const price = unable ? { value: null, error: null } : parsePriceInput(it.price)
         const typed = new Map(
-          (Array.isArray(it.quantities) ? it.quantities : [])
-            .filter((q): q is { key: string; quantity: unknown } => typeof (q as { key?: unknown })?.key === 'string')
-            .map(q => [q.key, q.quantity])
+          (Array.isArray(it.lines) ? it.lines : [])
+            .filter((q): q is SubmitLine => typeof (q as { key?: unknown })?.key === 'string')
+            .map(q => [q.key, q])
         )
         // Driven by the asks, not by what arrived: a box the form shows is a
         // box the answer has a slot for, and a key that arrived without one
         // is dropped rather than stored against nothing.
-        const quantities = (asksBySpec.get(it.specId) ?? []).map(ask => {
-          const parsed = unable
+        const quantities = (asksBySpec.get(it.specId)?.asks ?? []).map(ask => {
+          const line = typed.get(ask.key)
+          const amount = unable
             ? { value: null, error: null }
-            : parseQuantityInput(typed.get(ask.key))
+            : parseQuantityInput(line?.quantity)
+          // Only a component carries a price. A price typed against cloth is
+          // not a field the form offers, so it is ignored rather than stored.
+          const price =
+            unable || !ask.priced
+              ? { value: null, error: null }
+              : parsePriceInput(line?.price)
           return {
             key: ask.key,
             label: ask.label,
-            quantity: parsed.value,
+            quantity: amount.value,
+            price: price.value,
             unit: ask.unit,
             designerQuantity: ask.designerQuantity,
-            error: parsed.error,
+            error: amount.error ?? price.error,
           }
         })
         return {
@@ -215,7 +262,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         it.unable ||
         it.lead ||
         it.note ||
-        it.quantities.some(q => q.quantity !== null)
+        it.quantities.some(q => q.quantity !== null || q.price !== null)
     )
 
     if (!engaged.length) {
@@ -270,7 +317,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       // Metres moving matters as much as money moving: cloth may already be
       // on order against the figure this supplier gave last time.
       const beforeQty = new Map(
-        (before.material_quantities ?? []).map(q => [q.key, q.quantity])
+        (before.material_quantities ?? [])
+          .map(normalizeSupplierQuantity)
+          .map(q => [q.key, q.quantity])
       )
       for (const q of it.quantities) {
         const was = beforeQty.get(q.key) ?? null
@@ -305,10 +354,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       // cleared yardage has to clear here too rather than linger as a stale
       // figure the studio would order against.
       material_quantities: it.quantities.map(
-        ({ key, label, quantity, unit, designerQuantity }): SupplierMaterialQuantity => ({
+        ({ key, label, quantity, price, unit, designerQuantity }): SupplierMaterialQuantity => ({
           key,
           label,
           quantity,
+          price,
           unit,
           designerQuantity,
         })
@@ -325,7 +375,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .upsert(rows, { onConflict: 'rfq_request_id,studio_spec_id' })
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
 
-    const pricedCount = engaged.filter(it => it.price !== null).length
+    // A component supplier's money is on their components, not on the item
+    const pricedCount = engaged.filter(
+      it => it.price !== null || it.quantities.some(q => q.price !== null)
+    ).length
     await logSubmission(request, rawPayload, parsedItems, 0, pricedCount, revisionReason)
 
     const now = new Date().toISOString()
@@ -341,8 +394,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       note: it.note,
       unable: it.unable,
       quantities: it.quantities
-        .filter(q => q.quantity !== null)
-        .map(q => ({ label: q.label, quantity: q.quantity as number, unit: q.unit })),
+        .filter(q => q.quantity !== null || q.price !== null)
+        .map(q => ({ label: q.label, quantity: q.quantity, price: q.price, unit: q.unit })),
     }))
 
     await notifyDesigner(request, engaged.length, pricedCount, clip(body.message, MAX_MESSAGE), {
@@ -390,14 +443,26 @@ async function logSubmission(
   }
 }
 
+/**
+ * One answered box in words — "2 × R 450,00 each", "14 m", "R 1 200,00 per m²".
+ * A component carries both a price and a count and the receipt has to show
+ * both, or the supplier cannot check it against what they meant to send.
+ */
+function answerText(q: { quantity: number | null; price: number | null; unit: string }): string {
+  const amount = q.quantity !== null ? formatQuantity(q.quantity, q.unit === 'each' ? '' : q.unit).trim() : ''
+  if (q.price === null) return amount || 'not given'
+  const per = q.unit === 'each' ? 'each' : `per ${q.unit}`
+  return amount ? `${amount} × ${formatZar(q.price)} ${per}` : `${formatZar(q.price)} ${per}`
+}
+
 interface SubmittedLine {
   name: string
   price: number | null
   lead: string
   note: string
   unable: boolean
-  /** Only what they actually measured — blanks are not an answer. */
-  quantities: { label: string; quantity: number; unit: string }[]
+  /** Only what they actually answered — blanks are not an answer. */
+  quantities: { label: string; quantity: number | null; price: number | null; unit: string }[]
 }
 
 // The supplier gets back exactly what we stored, so "I did send prices" is
@@ -444,7 +509,7 @@ async function sendSupplierCopy(
             l =>
               `${l.name}: ${l.unable ? "couldn't quote" : l.price !== null ? formatZar(l.price).replace(/ /g, ' ') : 'no price given'}` +
               `${l.lead ? ` · lead time ${l.lead}` : ''}${l.note ? ` · ${l.note}` : ''}` +
-              l.quantities.map(q => `\n    ${q.label}: ${formatQuantity(q.quantity, q.unit)}`).join('')
+              l.quantities.map(q => `\n    ${q.label}: ${answerText(q)}`).join('')
           )
           .join('\n') +
         `\n\n${priced} of ${lines.length} items have a price on them.` +
@@ -489,7 +554,7 @@ function buildSupplierCopyEmail({
       const metres = l.quantities
         .map(
           q =>
-            `<div style="font-size:11px;color:#8A877F;margin-top:3px;">${esc(q.label)}: <strong style="color:#4A4A47;">${esc(formatQuantity(q.quantity, q.unit))}</strong></div>`
+            `<div style="font-size:11px;color:#8A877F;margin-top:3px;">${esc(q.label)}: <strong style="color:#4A4A47;">${esc(answerText(q))}</strong></div>`
         )
         .join('')
       return `<tr>
