@@ -11,6 +11,7 @@ import {
   normalizeMaterial,
   normalizeScatter,
   fabricLineSummary,
+  materialQuantityAsks,
   normalizeSpecImage,
   type StudioSpecRow,
   type StudioSlideRow,
@@ -279,6 +280,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           })),
           notes: row.notes ?? '',
           itemSpecs: row.item_specs ?? {},
+          // Same asks as the online pricing form, from the same builder — the
+          // printed sheet and the screen must never ask for different cloths.
+          fabricQuantities: materialQuantityAsks(
+            Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : [],
+            Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []
+          ).map(ask => ({ label: ask.label, supplierName: ask.supplierName })),
         })
       }
       if (!items.length) continue

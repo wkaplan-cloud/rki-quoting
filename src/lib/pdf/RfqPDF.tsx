@@ -46,6 +46,11 @@ export interface RfqPdfItem {
   // the supplier needs these to price accurately, not just a photo and
   // rough dimensions.
   itemSpecs: Record<string, string>
+  // Every fabric and leather on the item, as a line for the supplier to write
+  // metres against. Built from the same asks as the online pricing form, so a
+  // supplier working off the printed sheet is answering exactly the same
+  // questions in exactly the same order as one working off the screen.
+  fabricQuantities: { label: string; supplierName: string }[]
 }
 
 export interface RfqPdfProps {
@@ -101,10 +106,31 @@ const s = StyleSheet.create({
   notes: { fontSize: 9, lineHeight: 1.5, color: '#4A4A47' },
   contHeader: { position: 'absolute', top: 22, left: 40, right: 40, fontSize: 8, color: '#8A877F', textTransform: 'uppercase', letterSpacing: 1 },
   area: { fontSize: 9, color: '#9A7B4F', marginBottom: 10, marginTop: -8 },
-  priceBox: { marginTop: 16, borderWidth: 1, borderColor: '#D8D3C8', padding: 10 },
-  priceLine: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
+  // Tight on purpose: this box holds a rule per cloth now, and at roomier
+  // spacing a sofa in three fabrics pushed the whole thing onto a page of its
+  // own — leaving the item's own page a quarter empty and the supplier
+  // writing metres with the spec no longer in front of them.
+  priceBox: { marginTop: 12, borderWidth: 1, borderColor: '#D8D3C8', padding: 8 },
+  priceLine: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: '#EDE9E1' },
+  // A cloth's name can run long ("Fabric · Cotswold Weave Oatmeal"), so its
+  // label takes the slack and the rule it writes on stays put on the right
+  fillLabel: { flex: 1, paddingRight: 10, color: '#8A877F' },
+  fillRule: { width: 132, textAlign: 'right' },
+  fillNote: { fontSize: 7, color: '#8A877F', marginTop: 5, lineHeight: 1.4 },
   footer: { position: 'absolute', bottom: 24, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: '#8A877F' },
 })
+
+/**
+ * " — for one of 4", or nothing. A supplier reading "Quantity: 4" in the specs
+ * and a bare "Unit price" at the bottom has every reason to write the total
+ * for all four on the rule, which is the mistake this says out loud. Only a
+ * plain count qualifies: "4 off" reads as four, anything unparseable is left
+ * alone rather than asserted.
+ */
+function unitCountLabel(quantity: string): string {
+  const n = parseFloat(quantity)
+  return Number.isFinite(n) && n > 1 ? ` — for one of ${n}` : ''
+}
 
 function dims(item: RfqPdfItem): string {
   const parts = [item.width, item.depth, item.height].map(v => v.trim())
@@ -169,6 +195,11 @@ export function RfqPDF(props: RfqPdfProps) {
         <Text style={s.refNote}>
           Please note: images may be reference pictures or drawings of custom pieces — quote per the
           specifications given for each item on the following pages.
+          {items.some(it => it.fabricQuantities.length > 0)
+            ? ' Prices are for one of each item, not for the whole quantity. Where an item takes fabric or' +
+              ' leather, please also fill in the metres it takes of each cloth — every cloth is ordered' +
+              ' separately, so we need them one by one rather than as a total.'
+            : ' Prices are for one of each item, not for the whole quantity.'}
         </Text>
 
         <View style={{ flexGrow: 1 }} />
@@ -330,10 +361,40 @@ export function RfqPDF(props: RfqPdfProps) {
 
               <View style={s.priceBox} wrap={false}>
                 <Text style={[s.sectionHead, { marginTop: 0 }]}>For supplier completion</Text>
-                <View style={[s.priceLine, { borderBottomWidth: 0 }]}>
-                  <Text style={s.muted}>Unit price (excl. VAT)</Text>
-                  <Text>R ____________________</Text>
+                <View
+                  style={[
+                    s.priceLine,
+                    item.fabricQuantities.length === 0 ? { borderBottomWidth: 0 } : {},
+                  ]}
+                >
+                  <Text style={s.fillLabel}>
+                    Unit price (excl. VAT){unitCountLabel(item.quantity)}
+                  </Text>
+                  <Text style={s.fillRule}>R ____________________</Text>
                 </View>
+                {/* One rule per cloth. The designer names the fabric; only the
+                    maker knows how many metres the piece takes, and a single
+                    combined figure can't be ordered — each cloth is bought
+                    from its own house on its own line. */}
+                {item.fabricQuantities.map((f, j) => (
+                  <View
+                    key={j}
+                    style={[
+                      s.priceLine,
+                      j === item.fabricQuantities.length - 1 ? { borderBottomWidth: 0 } : {},
+                    ]}
+                  >
+                    <Text style={s.fillLabel}>
+                      {f.label}{f.supplierName ? ` (from ${f.supplierName})` : ''}
+                    </Text>
+                    <Text style={s.fillRule}>____________ m</Text>
+                  </View>
+                ))}
+                {item.fabricQuantities.length > 0 ? (
+                  <Text style={s.fillNote}>
+                    Each cloth is ordered on its own — please give its metres separately.
+                  </Text>
+                ) : null}
               </View>
             </View>
           <View style={s.footer} fixed>
