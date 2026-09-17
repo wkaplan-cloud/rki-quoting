@@ -12,6 +12,8 @@ import {
   normalizeScatter,
   fabricLineSummary,
   materialQuantityAsks,
+  asksForSupplier,
+  type MaterialQuantityAsk,
   normalizeSpecImage,
   type StudioSpecRow,
   type StudioSlideRow,
@@ -241,6 +243,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     for (const group of groups) {
       const items: RfqPdfItem[] = []
+      // Every cloth on each item, in step with `items` by index. Kept whole
+      // here and narrowed per recipient below: which cloths a supplier is
+      // asked to measure depends on who they are, and the PDF is rendered
+      // once per recipient anyway.
+      const asksByItem: MaterialQuantityAsk[][] = []
       for (const objectId of group.objectIds) {
         const row = specByObject.get(objectId)
         if (!row) continue
@@ -280,13 +287,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           })),
           notes: row.notes ?? '',
           itemSpecs: row.item_specs ?? {},
-          // Same asks as the online pricing form, from the same builder — the
-          // printed sheet and the screen must never ask for different cloths.
-          fabricQuantities: materialQuantityAsks(
+          // Filled in per recipient just below — the printed sheet and the
+          // screen must never ask a supplier for different cloths.
+          fabricQuantities: [],
+        })
+        asksByItem.push(
+          materialQuantityAsks(
             Array.isArray(row.materials) ? row.materials.map(normalizeMaterial) : [],
             Array.isArray(row.scatters) ? row.scatters.map(normalizeScatter) : []
-          ).map(ask => ({ label: ask.label, supplierName: ask.supplierName })),
-        })
+          )
+        )
       }
       if (!items.length) continue
 
@@ -309,7 +319,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             message: (body.message ?? '').trim(),
             replyTo,
             printDate,
-            items,
+            // Only the cloths this recipient makes something out of: a sofa's
+            // upholsterer must not be handed rules for the cushion maker's
+            // scatter fabrics.
+            items: items.map((it, k) => ({
+              ...it,
+              fabricQuantities: asksForSupplier(asksByItem[k] ?? [], recipient).map(ask => ({
+                label: ask.label,
+                supplierName: ask.supplierName,
+              })),
+            })),
           }))
 
           const subject = `Request for quote — ${board.name}${clientName ? ` (${clientName})` : ''}`

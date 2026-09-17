@@ -6,6 +6,7 @@ import {
   normalizeMaterial,
   normalizeScatter,
   materialQuantityAsks,
+  asksForSupplier,
   type MaterialEntry,
   type ScatterEntry,
   type SupplierMaterialQuantity,
@@ -113,9 +114,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const asksBySpec = new Map(
       specRows.map(sp => [
         sp.id,
-        materialQuantityAsks(
-          (sp.materials ?? []).map(normalizeMaterial),
-          (sp.scatters ?? []).map(normalizeScatter)
+        // Narrowed to this recipient by exactly the same rule the form was
+        // built with: a box they were never shown is a box we must not accept
+        // an answer for, or one supplier could write a yardage onto another
+        // supplier's cloth.
+        asksForSupplier(
+          materialQuantityAsks(
+            (sp.materials ?? []).map(normalizeMaterial),
+            (sp.scatters ?? []).map(normalizeScatter)
+          ),
+          { supplierId: request.supplier_id, supplierName: request.supplier_name ?? '' }
         ),
       ])
     )

@@ -6,6 +6,7 @@ import {
   fabricLineSummary,
   normalizeSpecImage,
   materialQuantityAsks,
+  asksForSupplier,
   type StudioSpecRow,
   type StudioSlideRow,
   type SupplierMaterialQuantity,
@@ -22,7 +23,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
 
   const { data: request } = await supabaseAdmin
     .from('rfq_requests')
-    .select('id, org_id, board_id, supplier_name, supplier_email, object_ids, message, expires_at, submitted_at, submission_message')
+    .select('id, org_id, board_id, supplier_id, supplier_name, supplier_email, object_ids, message, expires_at, submitted_at, submission_message')
     .eq('token', token)
     .maybeSingle()
 
@@ -108,9 +109,15 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
           const answered = new Map(
             (pre?.material_quantities ?? []).map(q => [q.key, q.quantity])
           )
-          return materialQuantityAsks(
-            (Array.isArray(spec.materials) ? spec.materials : []).map(normalizeMaterial),
-            (Array.isArray(spec.scatters) ? spec.scatters : []).map(normalizeScatter)
+          // Only the cloths this supplier actually makes something out of —
+          // the sofa's upholsterer is never asked about the cushion maker's
+          // scatter fabrics.
+          return asksForSupplier(
+            materialQuantityAsks(
+              (Array.isArray(spec.materials) ? spec.materials : []).map(normalizeMaterial),
+              (Array.isArray(spec.scatters) ? spec.scatters : []).map(normalizeScatter)
+            ),
+            { supplierId: request.supplier_id, supplierName: request.supplier_name ?? '' }
           ).map(ask => ({
             ...ask,
             prefill: answered.get(ask.key) ?? null,

@@ -307,6 +307,9 @@ export function normalizeScatter(
 // Timber, stone and paint are deliberately excluded: they are quoted into the
 // maker's own price, not bought by the metre against this spec.
 
+/** A cloth on the item itself, which whoever quotes the item measures. */
+const ITEMS_OWN_CLOTH = { ownerSupplierId: null, ownerSupplierName: '' }
+
 /** Material types the supplier is asked to put a quantity against. */
 const QUANTITY_MATERIAL_TYPES = new Set(['fabric', 'leather'])
 
@@ -335,6 +338,16 @@ export interface MaterialQuantityAsk {
   supplierName: string
   /** Metres the designer allocated, if any. Usually blank — see above. */
   designerQuantity: string
+  /**
+   * Who makes the thing this cloth goes on, when that is somebody other than
+   * the maker of the item itself. Scatters are the case this exists for: they
+   * sit on the sofa's spec but are routinely made by a different workroom, so
+   * the sofa's upholsterer must never be asked how much velvet the cushions
+   * take. Blank means the cloth belongs to the item, and so to whoever is
+   * being asked to quote it.
+   */
+  ownerSupplierId: string | null
+  ownerSupplierName: string
 }
 
 /**
@@ -358,6 +371,7 @@ export function materialQuantityAsks(
       label: [type, m.description.trim(), m.colour?.trim() ?? ''].filter(Boolean).join(' · '),
       supplierName: m.supplierName.trim(),
       designerQuantity: m.quantity.trim(),
+      ...ITEMS_OWN_CLOTH,
     })
     // A second cloth on the same piece is its own order, so its own box
     for (const f of m.extraFabrics) {
@@ -366,6 +380,7 @@ export function materialQuantityAsks(
         label: [type, f.fabric.trim(), f.colour?.trim() ?? ''].filter(Boolean).join(' · '),
         supplierName: f.fabricSupplierName.trim(),
         designerQuantity: f.fabricQuantity.trim(),
+        ...ITEMS_OWN_CLOTH,
       })
     }
   }
@@ -382,11 +397,47 @@ export function materialQuantityAsks(
           .join(' · '),
         supplierName: f.fabricSupplierName.trim(),
         designerQuantity: f.fabricQuantity.trim(),
+        // The cushion maker, not the sofa's upholsterer — see asksForSupplier
+        ownerSupplierId: sc.supplierId,
+        ownerSupplierName: sc.supplierName.trim(),
       })
     }
   }
 
   return asks
+}
+
+/**
+ * Narrow a spec's asks to the ones this recipient is actually the maker of.
+ *
+ * A scatter lives on the sofa's spec but is its own quotable thing with its
+ * own workroom. Asking the sofa's upholsterer how much velvet the cushions
+ * take invites an answer from someone who will never buy that cloth, and a
+ * figure nobody should order against. So a scatter's cloths reach only the
+ * supplier named on the scatter; a scatter with no supplier of its own falls
+ * to whoever makes the item, and the item's own cloths always do.
+ *
+ * Matched on supplier id where both sides have one, and on name otherwise —
+ * either side can be a name typed into the send modal that was never linked to
+ * a supplier record. Name matching is the deliberate choice for that case: the
+ * cost of one extra box is a supplier leaving it blank, while the cost of a
+ * missing one is a cushion coming back with no yardage at all.
+ */
+export function asksForSupplier(
+  asks: MaterialQuantityAsk[],
+  audience: { supplierId: string | null; supplierName: string }
+): MaterialQuantityAsk[] {
+  const audienceName = audience.supplierName.trim().toLowerCase()
+  return asks.filter(ask => {
+    const ownerName = ask.ownerSupplierName.trim().toLowerCase()
+    // No maker of its own — it belongs to the item, and so to whoever is
+    // being asked to quote the item
+    if (!ask.ownerSupplierId && !ownerName) return true
+    if (ask.ownerSupplierId && audience.supplierId) {
+      return ask.ownerSupplierId === audience.supplierId
+    }
+    return !!audienceName && ownerName === audienceName
+  })
 }
 
 /**
