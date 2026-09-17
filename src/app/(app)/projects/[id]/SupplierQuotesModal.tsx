@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Loader2, ReceiptText, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formatZAR } from '@/lib/quoting'
-import { formatMetres } from '@/lib/rfq/price'
+import { formatQuantity } from '@/lib/rfq/price'
 import type { LineItem } from '@/lib/types'
 
 // Pull supplier pricing onto the quote. Board items convert unpriced and RFQ
@@ -22,8 +22,8 @@ interface Quote {
   source: string
   unableToQuote: boolean
   createdAt: string
-  /** Metres the supplier measured, per cloth on the item. */
-  materialQuantities: { key: string; label: string; quantity: number }[]
+  /** What the supplier measured, per material on the item. */
+  materialQuantities: { key: string; label: string; quantity: number; unit: string }[]
 }
 
 interface QuotableItem {
@@ -138,9 +138,9 @@ export function SupplierQuotesModal({
           <p className="text-xs text-[#8A877F]">
             Prices suppliers have given for the board items on this quote. Pick one per item — it
             becomes that line&apos;s cost, and the line moves onto that supplier with their default
-            markup. Where a supplier measured the fabric or leather, those metres go onto the
-            cloth&apos;s own line at the same time &mdash; the price on it stays as it is, because the
-            cloth is bought from its own house.
+            markup. Where a supplier measured a material, that quantity goes onto the
+            material&apos;s own line at the same time &mdash; the price on it stays as it is, because
+            the material is bought from its own house.
           </p>
         </div>
 
@@ -212,11 +212,11 @@ export function SupplierQuotesModal({
                             {q.leadTime && <span className="ml-1.5 text-[#8A877F]">· {q.leadTime}</span>}
                             {q.notes && <span className="ml-1.5 text-[#8A877F] italic">· {q.notes}</span>}
                             {q.materialQuantities.length > 0 && (
-                              // truncate above would hide these, and a metreage
+                              // truncate above would hide these, and a quantity
                               // the designer can't see is one they can't check
                               <span className="block whitespace-normal text-[11px] text-[#8A877F] mt-0.5">
                                 {q.materialQuantities
-                                  .map(m => `${m.label} — ${formatMetres(m.quantity)}`)
+                                  .map(m => `${m.label} — ${formatQuantity(m.quantity, m.unit)}`)
                                   .join(' · ')}
                               </span>
                             )}

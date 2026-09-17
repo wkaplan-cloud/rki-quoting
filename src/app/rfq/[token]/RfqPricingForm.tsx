@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Loader2, AlertTriangle, Ban, X, Lock, Unlock } from 'lucide-react'
 import { CroppedImage } from '@/components/shared/CroppedImage'
-import { parsePriceInput, parseQuantityInput, formatZar, formatMetres } from '@/lib/rfq/price'
+import { parsePriceInput, parseQuantityInput, formatZar, formatQuantity } from '@/lib/rfq/price'
 import type { ImageCropRect, MaterialQuantityAsk } from '@/lib/studio/types'
 
 // One picture of the item, already reduced to what the designer actually
@@ -267,7 +267,7 @@ export function RfqPricingForm({
     }
     if (badQtyCount > 0) {
       setError(
-        `Check the ${badQtyCount === 1 ? 'highlighted quantity' : `${badQtyCount} highlighted quantities`} — ${badQtyCount === 1 ? "it can't" : "they can't"} be read as a number of metres.`
+        `Check the ${badQtyCount === 1 ? 'highlighted quantity' : `${badQtyCount} highlighted quantities`} — ${badQtyCount === 1 ? "it can't" : "they can't"} be read as a number.`
       )
       return
     }
@@ -346,7 +346,7 @@ export function RfqPricingForm({
           {items.length === 1 ? ' item' : ' items'} below. Prices are{' '}
           <strong style={{ color: '#4A4A47' }}>for one of each item</strong>, not for the whole quantity
           — where an item is needed more than once, its quantity is shown beside the box. Where an item
-          takes fabric or leather, please also give the metres it takes.
+          takes fabric, leather or stone, please also give the quantity it takes of each.
         </p>
         {message.trim() && (
           <p className="text-sm mt-3 pt-3 border-t whitespace-pre-line" style={{ color: '#4A4A47', borderColor: '#EDE9E1' }}>
@@ -578,10 +578,10 @@ export function RfqPricingForm({
               {it.fabricQuantities.length > 0 && (
                 <div className="mt-4 pt-4 border-t" style={{ borderColor: '#EDE9E1' }}>
                   <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#8A877F' }}>
-                    Fabric &amp; leather — metres needed
+                    Quantities needed
                   </p>
                   <p className="text-[11px] mt-1 mb-2.5" style={{ color: '#8A877F' }}>
-                    How many metres this item takes of each cloth. Each one is ordered on its own, so
+                    How much this item takes of each material below. Each one is ordered on its own, so
                     please give them separately rather than as one total.
                   </p>
                   <div className="space-y-2.5">
@@ -607,9 +607,9 @@ export function RfqPricingForm({
                             </label>
                             {(f.supplierName || designer) && (
                               <p className="text-[11px] mt-0.5" style={{ color: '#8A877F' }}>
-                                {f.supplierName ? `Cloth from ${f.supplierName}` : ''}
+                                {f.supplierName ? `From ${f.supplierName}` : ''}
                                 {f.supplierName && designer ? ' · ' : ''}
-                                {designer ? `${designer} m allowed on the spec` : ''}
+                                {designer ? `${designer} ${f.unit} allowed on the spec` : ''}
                               </p>
                             )}
                           </div>
@@ -625,7 +625,7 @@ export function RfqPricingForm({
                                 }
                                 aria-invalid={qState.error ? true : undefined}
                                 aria-describedby={`${domId}-read`}
-                                className={`w-full py-2 pl-3 pr-8 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:ring-2 ${
+                                className={`w-full py-2 pl-3 pr-10 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:ring-2 ${
                                   qState.error
                                     ? 'border-[#D98A72] focus:border-[#B4472F] focus:ring-[#B4472F]/25'
                                     : 'focus:border-[#9A7B4F] focus:ring-[#9A7B4F]/25 ' +
@@ -640,7 +640,7 @@ export function RfqPricingForm({
                                 style={{ color: '#8A877F' }}
                                 aria-hidden="true"
                               >
-                                m
+                                {f.unit}
                               </span>
                             </div>
                             <p
@@ -653,9 +653,9 @@ export function RfqPricingForm({
                                 : qState.error
                                   ? qState.error
                                   : over
-                                    ? `Reads as ${formatMetres(qState.value!)} — the spec allowed ${designer} m`
+                                    ? `Reads as ${formatQuantity(qState.value!, f.unit)} — the spec allowed ${designer} ${f.unit}`
                                     : qState.value !== null
-                                      ? `Reads as ${formatMetres(qState.value)}`
+                                      ? `Reads as ${formatQuantity(qState.value, f.unit)}`
                                       : ''}
                             </p>
                           </div>

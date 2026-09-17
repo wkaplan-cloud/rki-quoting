@@ -307,15 +307,35 @@ export function normalizeScatter(
 // Timber, stone and paint are deliberately excluded: they are quoted into the
 // maker's own price, not bought by the metre against this spec.
 
-/** A cloth on the item itself, which whoever quotes the item measures. */
-const ITEMS_OWN_CLOTH = { ownerSupplierId: null, ownerSupplierName: '' }
+/** A material on the item itself, which whoever quotes the item measures. */
+const ITEMS_OWN_MATERIAL = { ownerSupplierId: null, ownerSupplierName: '' }
 
-/** Material types the supplier is asked to put a quantity against. */
-const QUANTITY_MATERIAL_TYPES = new Set(['fabric', 'leather'])
+/**
+ * Cloth: bought by the metre from a house, but measured by the MAKER. The
+ * upholsterer is the one who knows what the piece eats, even though the linen
+ * comes from Hertex — so these boxes go to whoever is quoting the item.
+ */
+const MAKER_MEASURED_TYPES = new Set(['fabric', 'leather'])
+
+/**
+ * Stone: cut, fabricated and supplied by its own yard, which measures it
+ * itself off the drawing. So unlike cloth, this box belongs to the material's
+ * own supplier and never reaches the item's maker — the same rule scatters
+ * follow. Sold by area, not by the running metre.
+ */
+const SUPPLIER_MEASURED_TYPES = new Set(['stone'])
 
 export function isQuantityMaterial(type: string): boolean {
-  return QUANTITY_MATERIAL_TYPES.has(type.trim().toLowerCase())
+  const t = type.trim().toLowerCase()
+  return MAKER_MEASURED_TYPES.has(t) || SUPPLIER_MEASURED_TYPES.has(t)
 }
+
+/** How a material is sold: cloth by the running metre, stone by area. */
+export function materialQuantityUnit(type: string): QuantityUnit {
+  return SUPPLIER_MEASURED_TYPES.has(type.trim().toLowerCase()) ? 'm²' : 'm'
+}
+
+export type QuantityUnit = 'm' | 'm²'
 
 /**
  * The key that ties one cloth to its own line on the quote, all the way from
@@ -336,6 +356,8 @@ export interface MaterialQuantityAsk {
   label: string
   /** The house it comes from, shown so the maker prices make-up, not cloth. */
   supplierName: string
+  /** Metres for cloth, square metres for stone. */
+  unit: QuantityUnit
   /** Metres the designer allocated, if any. Usually blank — see above. */
   designerQuantity: string
   /**
@@ -366,12 +388,17 @@ export function materialQuantityAsks(
   for (const m of materials) {
     if (!isQuantityMaterial(m.type)) continue
     const type = m.type.trim() || 'Fabric'
+    const supplierMeasured = materialQuantityUnit(type) === 'm²'
     asks.push({
       key: materialQuantityKey.material(m.id),
       label: [type, m.description.trim(), m.colour?.trim() ?? ''].filter(Boolean).join(' · '),
       supplierName: m.supplierName.trim(),
+      unit: materialQuantityUnit(type),
       designerQuantity: m.quantity.trim(),
-      ...ITEMS_OWN_CLOTH,
+      // Stone answers to its own yard; cloth answers to whoever makes the item
+      ...(supplierMeasured
+        ? { ownerSupplierId: m.supplierId, ownerSupplierName: m.supplierName.trim() }
+        : ITEMS_OWN_MATERIAL),
     })
     // A second cloth on the same piece is its own order, so its own box
     for (const f of m.extraFabrics) {
@@ -379,8 +406,9 @@ export function materialQuantityAsks(
         key: materialQuantityKey.extraFabric(m.id, f.id),
         label: [type, f.fabric.trim(), f.colour?.trim() ?? ''].filter(Boolean).join(' · '),
         supplierName: f.fabricSupplierName.trim(),
+        unit: 'm',
         designerQuantity: f.fabricQuantity.trim(),
-        ...ITEMS_OWN_CLOTH,
+        ...ITEMS_OWN_MATERIAL,
       })
     }
   }
@@ -396,6 +424,7 @@ export function materialQuantityAsks(
           .filter(Boolean)
           .join(' · '),
         supplierName: f.fabricSupplierName.trim(),
+        unit: 'm',
         designerQuantity: f.fabricQuantity.trim(),
         // The cushion maker, not the sofa's upholsterer — see asksForSupplier
         ownerSupplierId: sc.supplierId,
@@ -449,8 +478,10 @@ export function asksForSupplier(
 export interface SupplierMaterialQuantity {
   key: string
   label: string
-  /** Metres, or null where the supplier left the box empty. */
+  /** The figure, or null where the supplier left the box empty. */
   quantity: number | null
+  /** What it is measured in — snapshot, same reasoning as `label`. */
+  unit: QuantityUnit
   designerQuantity: string
 }
 

@@ -58,8 +58,8 @@ export interface QuotableItem {
     source: string
     unableToQuote: boolean
     createdAt: string
-    /** Shown in the modal, and applied to the cloth's own line on apply. */
-    materialQuantities: { key: string; label: string; quantity: number }[]
+    /** Shown in the modal, and applied to the material's own line on apply. */
+    materialQuantities: { key: string; label: string; quantity: number; unit: string }[]
   }[]
 }
 
@@ -132,11 +132,11 @@ async function loadQuotableItems(
         source: q.source,
         unableToQuote: q.unable_to_quote,
         createdAt: q.created_at,
-        // Only the cloths they actually measured — a blank box is not a
-        // quantity, and writing one as zero would empty the order.
+        // Only what they actually measured — a blank box is not a quantity,
+        // and writing one as zero would empty the order.
         materialQuantities: (q.material_quantities ?? [])
           .filter((m): m is SupplierMaterialQuantity & { quantity: number } => m.quantity !== null)
-          .map(m => ({ key: m.key, label: m.label, quantity: m.quantity })),
+          .map(m => ({ key: m.key, label: m.label, quantity: m.quantity, unit: m.unit ?? 'm' })),
       })),
     })
   }
@@ -259,21 +259,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         pricedCount++
       }
 
-      // The metres the supplier measured, onto the cloth's own line. Only the
-      // quantity moves: the cloth is bought from its house at its own price,
-      // which this supplier never quoted and must not overwrite.
+      // What the supplier measured, onto that material's own line. Only the
+      // quantity moves: the material is bought from its house at its own
+      // price, which this supplier never quoted and must not overwrite.
       const qtyByKey = new Map(
         (quote.material_quantities ?? [])
           .filter(m => m.quantity !== null)
-          .map(m => [m.key, m.quantity as number])
+          .map(m => [m.key, { amount: m.quantity as number, unit: m.unit ?? 'm' }])
       )
       if (qtyByKey.size) {
         for (const child of childrenByParent.get(lineItemId) ?? []) {
-          const metres = qtyByKey.get(child.studio_material_key)
-          if (metres === undefined) continue
+          const measured = qtyByKey.get(child.studio_material_key)
+          if (measured === undefined) continue
           const { data: childData } = await supabase
             .from('line_items')
-            .update({ quantity: metres, unit: child.unit ?? 'm' })
+            .update({ quantity: measured.amount, unit: child.unit ?? measured.unit })
             .eq('id', child.id)
             .eq('project_id', id)
             .select('*')

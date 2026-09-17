@@ -319,14 +319,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             message: (body.message ?? '').trim(),
             replyTo,
             printDate,
-            // Only the cloths this recipient makes something out of: a sofa's
+            // Only what this recipient is actually the maker of: a sofa's
             // upholsterer must not be handed rules for the cushion maker's
-            // scatter fabrics.
+            // scatter fabrics, nor for the stone yard's marble.
             items: items.map((it, k) => ({
               ...it,
               fabricQuantities: asksForSupplier(asksByItem[k] ?? [], recipient).map(ask => ({
                 label: ask.label,
                 supplierName: ask.supplierName,
+                unit: ask.unit,
               })),
             })),
           }))

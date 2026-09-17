@@ -4,6 +4,7 @@ import {
   normalizeScatter,
   materialQuantityKey,
   isQuantityMaterial,
+  materialQuantityUnit,
   type StudioObject,
   type MaterialEntry,
   type ScatterEntry,
@@ -245,7 +246,15 @@ export function buildBoardRows({
           item_name: mType || mDesc || 'Material',
           description: [mType ? mDesc : '', mDetails].filter(Boolean).join('\n') || null,
           quantity: parseFloat(m.quantity) || 1,
-          unit: m.twinbruProductId != null ? 'm' : m.quantity.trim() ? 'm' : null,
+          // Stone is sold by area, cloth by the running metre — the supplier
+          // measures it in that unit on their RFQ, so the line carries it
+          unit: m.twinbruProductId != null
+            ? 'm'
+            : m.quantity.trim()
+              ? isQuantityMaterial(mType)
+                ? materialQuantityUnit(mType)
+                : 'm'
+              : null,
           supplier_id: m.supplierId,
           supplier_name: m.supplierName.trim() || null,
           cost_price: live?.price ?? 0,

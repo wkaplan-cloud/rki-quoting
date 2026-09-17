@@ -27,8 +27,8 @@ export function parsePriceInput(raw: unknown): ParsedPrice {
 }
 
 /**
- * Read a typed quantity — metres of fabric or leather off a supplier's own
- * measure. Same South African number handling as a price (a supplier writes
+ * Read a typed quantity — metres of cloth or square metres of stone off a
+ * supplier's own measure. Same South African number handling as a price (a supplier writes
  * "2,5" as readily as "2.5"), with its own wording and ceiling, and a trailing
  * unit forgiven: "14 m" and "14m" are a quantity, not a syntax error.
  */
@@ -150,10 +150,10 @@ function parseDecimal(raw: unknown, kind: NumberKind): ParsedPrice {
   return { value: round2(n), error: null }
 }
 
-/** "2,5 m" — the same hand-built formatting as formatZar, for a quantity. */
-export function formatMetres(n: number): string {
+/** "2,5 m" / "1,8 m²" — the same hand-built formatting as formatZar. */
+export function formatQuantity(n: number, unit: string = 'm'): string {
   const s = Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0$/, '')
-  return `${s.replace('.', ',')} m`
+  return `${s.replace('.', ',')} ${unit}`
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { parsePriceInput, parseQuantityInput, formatZar, formatMetres } from '@/lib/rfq/price'
+import { parsePriceInput, parseQuantityInput, formatZar, formatQuantity } from '@/lib/rfq/price'
 import {
   normalizeMaterial,
   normalizeScatter,
@@ -35,8 +35,9 @@ interface PreviousRow {
 export interface PriceChange {
   name: string
   kind: 'price' | 'lead' | 'note' | 'unable' | 'added' | 'quantity'
-  /** For a quantity change: which cloth moved. */
+  /** For a quantity change: which material moved, and in what unit. */
   label?: string
+  unit?: string
   from?: number | null
   to?: number | null
   fromText?: string
@@ -160,6 +161,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
             key: ask.key,
             label: ask.label,
             quantity: parsed.value,
+            unit: ask.unit,
             designerQuantity: ask.designerQuantity,
             error: parsed.error,
           }
@@ -198,7 +200,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       const names = badQty.map(it => nameBySpec.get(it.specId) ?? 'an item')
       return NextResponse.json(
         {
-          error: `We couldn't read a fabric quantity on ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''}. Please check ${names.length === 1 ? 'it' : 'them'} and submit again.`,
+          error: `We couldn't read a quantity on ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''}. Please check ${names.length === 1 ? 'it' : 'them'} and submit again.`,
           invalidSpecIds: badQty.map(it => it.specId),
         },
         { status: 400 }
@@ -277,6 +279,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           name: nameBySpec.get(it.specId) ?? 'Untitled item',
           kind: 'quantity',
           label: q.label,
+          unit: q.unit,
           from: was,
           to: q.quantity,
           wasApplied,
@@ -302,10 +305,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       // cleared yardage has to clear here too rather than linger as a stale
       // figure the studio would order against.
       material_quantities: it.quantities.map(
-        ({ key, label, quantity, designerQuantity }): SupplierMaterialQuantity => ({
+        ({ key, label, quantity, unit, designerQuantity }): SupplierMaterialQuantity => ({
           key,
           label,
           quantity,
+          unit,
           designerQuantity,
         })
       ),
@@ -338,7 +342,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       unable: it.unable,
       quantities: it.quantities
         .filter(q => q.quantity !== null)
-        .map(q => ({ label: q.label, quantity: q.quantity as number })),
+        .map(q => ({ label: q.label, quantity: q.quantity as number, unit: q.unit })),
     }))
 
     await notifyDesigner(request, engaged.length, pricedCount, clip(body.message, MAX_MESSAGE), {
@@ -392,8 +396,8 @@ interface SubmittedLine {
   lead: string
   note: string
   unable: boolean
-  /** Only the cloths they actually measured — blanks are not an answer. */
-  quantities: { label: string; quantity: number }[]
+  /** Only what they actually measured — blanks are not an answer. */
+  quantities: { label: string; quantity: number; unit: string }[]
 }
 
 // The supplier gets back exactly what we stored, so "I did send prices" is
@@ -440,7 +444,7 @@ async function sendSupplierCopy(
             l =>
               `${l.name}: ${l.unable ? "couldn't quote" : l.price !== null ? formatZar(l.price).replace(/ /g, ' ') : 'no price given'}` +
               `${l.lead ? ` · lead time ${l.lead}` : ''}${l.note ? ` · ${l.note}` : ''}` +
-              l.quantities.map(q => `\n    ${q.label}: ${formatMetres(q.quantity)}`).join('')
+              l.quantities.map(q => `\n    ${q.label}: ${formatQuantity(q.quantity, q.unit)}`).join('')
           )
           .join('\n') +
         `\n\n${priced} of ${lines.length} items have a price on them.` +
@@ -480,12 +484,12 @@ function buildSupplierCopyEmail({
       const extras = [l.lead ? `Lead time: ${esc(l.lead)}` : '', l.note ? esc(l.note) : '']
         .filter(Boolean)
         .join(' · ')
-      // The metres are half of what they sent — a receipt that only echoes
+      // The quantities are half of what they sent — a receipt that only echoes
       // the money is not a receipt they can check an order against.
       const metres = l.quantities
         .map(
           q =>
-            `<div style="font-size:11px;color:#8A877F;margin-top:3px;">${esc(q.label)}: <strong style="color:#4A4A47;">${esc(formatMetres(q.quantity))}</strong></div>`
+            `<div style="font-size:11px;color:#8A877F;margin-top:3px;">${esc(q.label)}: <strong style="color:#4A4A47;">${esc(formatQuantity(q.quantity, q.unit))}</strong></div>`
         )
         .join('')
       return `<tr>
@@ -566,13 +570,13 @@ function changeAsText(c: PriceChange): string {
     case 'added':
       return `${c.name}: added, ${money(c.to)}`
     case 'quantity':
-      return `${c.name} — ${c.label ?? 'fabric'}: ${metres(c.from)} → ${metres(c.to)}`
+      return `${c.name} — ${c.label ?? 'material'}: ${qty(c.from, c.unit)} → ${qty(c.to, c.unit)}`
   }
 }
 
-/** A yardage for the change log, where "none" is a real answer. */
-const metres = (n: number | null | undefined) =>
-  n === null || n === undefined ? 'not given' : formatMetres(n)
+/** A quantity for the change log, where "not given" is a real answer. */
+const qty = (n: number | null | undefined, unit: string | undefined) =>
+  n === null || n === undefined ? 'not given' : formatQuantity(n, unit ?? 'm')
 
 /** One change as a table row in the notification email. */
 function changeAsRow(c: PriceChange): string {
@@ -591,10 +595,10 @@ function changeAsRow(c: PriceChange): string {
           : c.kind === 'unable'
             ? `<strong style="color:#B08968;">${c.nowUnable ? 'Now marked cannot quote' : 'No longer marked cannot quote'}</strong>`
             : c.kind === 'quantity'
-              ? `<span style="color:#8A877F;">${esc(c.label ?? 'fabric')}</span>
-                 <span style="color:#8A877F;text-decoration:line-through;">${esc(metres(c.from))}</span>
+              ? `<span style="color:#8A877F;">${esc(c.label ?? 'material')}</span>
+                 <span style="color:#8A877F;text-decoration:line-through;">${esc(qty(c.from, c.unit))}</span>
                  <span style="color:#4A4A47;">&rarr;</span>
-                 <strong style="color:#2C2C2A;">${esc(metres(c.to))}</strong>`
+                 <strong style="color:#2C2C2A;">${esc(qty(c.to, c.unit))}</strong>`
               : `<strong style="color:#2C2C2A;">Added &middot; ${esc(money(c.to))}</strong>`
   return `<tr>
     <td style="padding:9px 0;border-bottom:1px solid #EDE9E1;font-size:13px;color:#4A4A47;">

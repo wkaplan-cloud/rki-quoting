@@ -46,11 +46,11 @@ export interface RfqPdfItem {
   // the supplier needs these to price accurately, not just a photo and
   // rough dimensions.
   itemSpecs: Record<string, string>
-  // Every fabric and leather on the item, as a line for the supplier to write
-  // metres against. Built from the same asks as the online pricing form, so a
-  // supplier working off the printed sheet is answering exactly the same
-  // questions in exactly the same order as one working off the screen.
-  fabricQuantities: { label: string; supplierName: string }[]
+  // Every material on the item the supplier is asked to measure, as a line to
+  // write the figure on. Built from the same asks as the online pricing form,
+  // so a supplier working off the printed sheet answers exactly the same
+  // questions, in the same order, as one working off the screen.
+  fabricQuantities: { label: string; supplierName: string; unit: string }[]
 }
 
 export interface RfqPdfProps {
@@ -119,6 +119,159 @@ const s = StyleSheet.create({
   fillNote: { fontSize: 7, color: '#8A877F', marginTop: 5, lineHeight: 1.4 },
   footer: { position: 'absolute', bottom: 24, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, color: '#8A877F' },
 })
+
+// ── One item, one page ──────────────────────────────────────────────────────
+// An item that spills onto a second page splits the brief in half: the
+// supplier writes their metres on a rule with the spec no longer in front of
+// them, and a "(continued)" page reads as a second item at a glance. So the
+// page is treated as a fixed budget — the photo gives up whatever height the
+// specs need, and if that is not enough the spacing tightens before anything
+// is allowed to overflow.
+
+// A4 at 72dpi is 595.28 × 841.89pt. The item page pads 40 all round, and the
+// footer sits 24pt off the bottom, so this is what the flow actually has.
+const PAGE_W = 595.28
+const PAGE_H = 841.89
+const PAGE_PAD = 40
+const FOOTER_CLEARANCE = 18
+const CONTENT_W = PAGE_W - PAGE_PAD * 2
+const CONTENT_H = PAGE_H - PAGE_PAD * 2 - FOOTER_CLEARANCE
+
+// Below the floor a photo stops being a brief and becomes a stamp, so that is
+// where shrinking it stops and the spacing gives way instead.
+const IMAGE_MAX = 300
+const IMAGE_MIN = 120
+// Where the photo ends up on an item whose spec fills the page on its own —
+// small, but enough to tell the supplier which piece they are costing.
+const IMAGE_FLOOR = 64
+
+// Helvetica averages a little over half its point size per character across
+// mixed-case text. Deliberately generous: over-estimating a line costs a few
+// points of photo, under-estimating costs the whole guarantee.
+const CHAR_W = 0.54
+const LINE = 1.25
+
+/** How many lines `text` takes at `fontSize` in a column `width` wide. */
+function linesOf(text: string, fontSize: number, width: number): number {
+  if (!text.trim()) return 0
+  return Math.max(1, Math.ceil((text.length * fontSize * CHAR_W) / width))
+}
+
+/** The spacing and type size that give way when an item's specs won't fit. */
+interface Density {
+  rowPad: number
+  sectionTop: number
+  noteLine: number
+  fillPad: number
+  thumb: number
+  headGap: number
+  /** Body type size. Shrinks last, and never below what a workshop can read. */
+  font: number
+  labelWidth: number
+}
+
+// Tried in order. Spacing goes first because nobody misses it; type size only
+// when an item is genuinely long, and 7.5pt is the floor — below that the
+// sheet stops being something a supplier can work off a workbench.
+const DENSITIES: Density[] = [
+  { rowPad: 4, sectionTop: 12, noteLine: 1.5, fillPad: 4, thumb: 96, headGap: 10, font: 9, labelWidth: 80 },
+  { rowPad: 2, sectionTop: 7, noteLine: 1.3, fillPad: 2.5, thumb: 70, headGap: 6, font: 9, labelWidth: 80 },
+  { rowPad: 2, sectionTop: 6, noteLine: 1.3, fillPad: 2, thumb: 60, headGap: 5, font: 8, labelWidth: 72 },
+  { rowPad: 1.5, sectionTop: 5, noteLine: 1.25, fillPad: 1.5, thumb: 52, headGap: 4, font: 7.5, labelWidth: 66 },
+]
+
+/** One spec row's height, including a value that wraps. */
+const rowH = (value: string, d: Density) =>
+  Math.max(1, linesOf(value, d.font, CONTENT_W - d.labelWidth)) * d.font * LINE + d.rowPad * 2 + 0.5
+
+const sectionH = (d: Density) => d.font * LINE + d.sectionTop + 4
+
+/** Everything on the page except the photo, at a given density. */
+function heightWithoutImage(item: RfqPdfItem, d: Density): number {
+  let h = 0
+  h += 8 * LINE + 8 // "ITEM n OF m"
+  h += Math.max(1, linesOf(item.name || 'Item', 14, CONTENT_W)) * 14 * LINE + d.headGap
+  if (item.area.trim()) h += d.font * LINE + 10 - (d.headGap - 2) // .area pulls up under the name
+  h += 12 // the image box's own bottom margin
+
+  if (item.extraImageUrls.length > 0) {
+    const perRow = Math.max(1, Math.floor(CONTENT_W / (d.thumb + 6)))
+    h += d.font * LINE + 4 + Math.ceil(item.extraImageUrls.length / perRow) * (d.thumb + 6) + 12
+  }
+
+  for (const v of [item.description, categoryLabel(item.category), item.quantity, dims(item)]) {
+    if (v.trim()) h += rowH(v, d)
+  }
+
+  const specFields = (CATEGORY_FIELDS[item.category as CategoryKey] ?? []).filter(f =>
+    item.itemSpecs[f.key]?.trim()
+  )
+  if (specFields.length) {
+    h += sectionH(d)
+    for (const f of specFields) h += rowH(item.itemSpecs[f.key], d)
+  }
+
+  if (item.materials.length) {
+    h += sectionH(d)
+    for (const m of item.materials) h += rowH(materialLine(m), d)
+  }
+
+  if (item.scatters.length) {
+    h += sectionH(d)
+    for (const sc of item.scatters) h += rowH(scatterLine(sc), d)
+  }
+
+  if (item.notes.trim()) {
+    h += sectionH(d) + linesOf(item.notes, d.font, CONTENT_W) * d.font * d.noteLine
+  }
+
+  // The completion box: a rule for the price, one per material, and the note
+  const fillW = CONTENT_W - 16 - 132 - 10
+  h += 12 + 16 + 2 + (d.font * LINE + 4)
+  h +=
+    Math.max(1, linesOf('Unit price (excl. VAT) — for one of 00', d.font, fillW)) * d.font * LINE +
+    d.fillPad * 2 +
+    0.5
+  for (const f of item.fabricQuantities) {
+    const label = `${f.label}${f.supplierName ? ` (from ${f.supplierName})` : ''}`
+    h += Math.max(1, linesOf(label, d.font, fillW)) * d.font * LINE + d.fillPad * 2 + 0.5
+  }
+  if (item.fabricQuantities.length) h += 7 * 1.4 + 5
+
+  return h
+}
+
+/**
+ * The photo height and spacing this item gets, so that it lands on one page.
+ * Roomy first; tighten only when the specs actually demand it, so a short item
+ * is never squeezed for the sake of a long one elsewhere in the document.
+ */
+function fitItemToPage(item: RfqPdfItem): { imageHeight: number; d: Density } {
+  // Pass one: keep a photo worth looking at, spending spacing then type size
+  for (const d of DENSITIES) {
+    const room = CONTENT_H - heightWithoutImage(item, d)
+    if (room >= IMAGE_MIN) return { imageHeight: Math.min(IMAGE_MAX, room), d }
+  }
+  // Pass two: an item this long has to give up the photo's size as well. A
+  // thumbnail still says which piece this is, and the page stays whole.
+  const tightest = DENSITIES[DENSITIES.length - 1]
+  const room = CONTENT_H - heightWithoutImage(item, tightest)
+  return { imageHeight: Math.max(IMAGE_FLOOR, Math.min(IMAGE_MAX, room)), d: tightest }
+}
+
+/** The Materials row text — shared with the estimate so both agree. */
+function materialLine(m: RfqPdfItem['materials'][number]): string {
+  return [m.description, m.colour, m.quantity.trim() ? `${m.quantity.trim()} m` : '', m.supplierName ? `via ${m.supplierName}` : '', m.details]
+    .filter(v => v && v.trim())
+    .join(' · ')
+}
+
+/** The Scatters row text — shared with the estimate so both agree. */
+function scatterLine(sc: RfqPdfItem['scatters'][number]): string {
+  return [sc.size.trim(), ...sc.fabrics, sc.details.trim(), sc.supplierName.trim() ? `via ${sc.supplierName.trim()}` : '']
+    .filter(Boolean)
+    .join(' · ')
+}
 
 /**
  * " — for one of 4", or nothing. A supplier reading "Quantity: 4" in the specs
@@ -196,9 +349,9 @@ export function RfqPDF(props: RfqPdfProps) {
           Please note: images may be reference pictures or drawings of custom pieces — quote per the
           specifications given for each item on the following pages.
           {items.some(it => it.fabricQuantities.length > 0)
-            ? ' Prices are for one of each item, not for the whole quantity. Where an item takes fabric or' +
-              ' leather, please also fill in the metres it takes of each cloth — every cloth is ordered' +
-              ' separately, so we need them one by one rather than as a total.'
+            ? ' Prices are for one of each item, not for the whole quantity. Where an item takes fabric,' +
+              ' leather or stone, please also fill in the quantity it takes of each — every material is' +
+              ' ordered separately, so we need them one by one rather than as a total.'
             : ' Prices are for one of each item, not for the whole quantity.'}
         </Text>
 
@@ -234,7 +387,10 @@ export function RfqPDF(props: RfqPdfProps) {
       </Page>
 
       {/* One page per item */}
-      {items.map((item, i) => (
+      {items.map((item, i) => {
+        // The photo yields height to the specs so the item stays on one page
+        const { imageHeight, d } = fitItemToPage(item)
+        return (
         <Page key={i} size="A4" style={s.itemPage}>
           {/* Only visible on this item's overflow pages, so a spilled spec
               clearly reads as a continuation, not a new item */}
@@ -246,60 +402,69 @@ export function RfqPDF(props: RfqPdfProps) {
             }
           />
           <Text style={s.itemHeader}>Item {i + 1} of {items.length}</Text>
-          <Text style={s.itemName}>{item.name || `Item ${i + 1}`}</Text>
-          {item.area.trim() ? <Text style={s.area}>{item.area}</Text> : null}
-          <View style={s.imageBox}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            {item.imageUrl ? <Image src={item.imageUrl} style={s.image} /> : <Text style={s.muted}>No image</Text>}
+          <Text style={[s.itemName, { marginBottom: d.headGap }]}>{item.name || `Item ${i + 1}`}</Text>
+          {/* .area pulls itself up under the name; the pull has to track the
+              gap it is closing, or at tight spacing it lands in the name's
+              descenders */}
+          {item.area.trim() ? (
+            <Text style={[s.area, { fontSize: d.font, marginTop: -(d.headGap - 2) }]}>{item.area}</Text>
+          ) : null}
+          <View style={[s.imageBox, { height: imageHeight }]}>
+            {item.imageUrl ? (
+              // eslint-disable-next-line jsx-a11y/alt-text
+              <Image src={item.imageUrl} style={[s.image, { maxHeight: imageHeight - 10 }]} />
+            ) : (
+              <Text style={s.muted}>No image</Text>
+            )}
           </View>
           {item.extraImageUrls.length > 0 ? (
             <View wrap={false}>
-              <Text style={[s.sectionHead, { marginTop: 0 }]}>More views</Text>
+              <Text style={[s.sectionHead, { marginTop: 0, fontSize: d.font - 1 }]}>More views</Text>
               <View style={s.extraStrip}>
                 {item.extraImageUrls.map((u, j) => (
                   // eslint-disable-next-line jsx-a11y/alt-text
-                  <Image key={j} src={u} style={s.extraThumb} />
+                  <Image key={j} src={u} style={[s.extraThumb, { width: d.thumb, height: d.thumb }]} />
                 ))}
               </View>
             </View>
           ) : null}
           <View style={s.specs}>
               {item.description.trim() ? (
-                <View style={s.specRow} wrap={false}>
-                  <Text style={s.specLabel}>Description</Text>
-                  <Text style={s.specValue}>{item.description}</Text>
+                <View style={[s.specRow, { paddingVertical: d.rowPad }]} wrap={false}>
+                  <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>Description</Text>
+                  <Text style={[s.specValue, { fontSize: d.font }]}>{item.description}</Text>
                 </View>
               ) : null}
               {/* item.category stays the raw key — CATEGORY_FIELDS is keyed by
                   it below — so the label is resolved here at the point of print */}
               {categoryLabel(item.category) ? (
-                <View style={s.specRow} wrap={false}>
-                  <Text style={s.specLabel}>Category</Text>
-                  <Text style={s.specValue}>{categoryLabel(item.category)}</Text>
+                <View style={[s.specRow, { paddingVertical: d.rowPad }]} wrap={false}>
+                  <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>Category</Text>
+                  <Text style={[s.specValue, { fontSize: d.font }]}>{categoryLabel(item.category)}</Text>
                 </View>
               ) : null}
               {item.quantity.trim() ? (
-                <View style={s.specRow} wrap={false}>
-                  <Text style={s.specLabel}>Quantity</Text>
-                  <Text style={s.specValue}>{item.quantity}</Text>
+                <View style={[s.specRow, { paddingVertical: d.rowPad }]} wrap={false}>
+                  <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>Quantity</Text>
+                  <Text style={[s.specValue, { fontSize: d.font }]}>{item.quantity}</Text>
                 </View>
               ) : null}
               {dims(item) ? (
-                <View style={s.specRow} wrap={false}>
-                  <Text style={s.specLabel}>Dimensions</Text>
-                  <Text style={s.specValue}>{dims(item)}</Text>
+                <View style={[s.specRow, { paddingVertical: d.rowPad }]} wrap={false}>
+                  <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>Dimensions</Text>
+                  <Text style={[s.specValue, { fontSize: d.font }]}>{dims(item)}</Text>
                 </View>
               ) : null}
 
               {(CATEGORY_FIELDS[item.category as CategoryKey] ?? []).some(f => item.itemSpecs[f.key]?.trim()) ? (
                 <>
-                  <Text style={s.sectionHead} minPresenceAhead={30}>Specifications</Text>
+                  <Text style={[s.sectionHead, { marginTop: d.sectionTop, fontSize: d.font - 1 }]} minPresenceAhead={30}>Specifications</Text>
                   {(CATEGORY_FIELDS[item.category as CategoryKey] ?? [])
                     .filter(f => item.itemSpecs[f.key]?.trim())
                     .map(f => (
                       <View key={f.key} style={s.specRow} wrap={false}>
-                        <Text style={s.specLabel}>{f.label}</Text>
-                        <Text style={s.specValue}>
+                        <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>{f.label}</Text>
+                        <Text style={[s.specValue, { fontSize: d.font }]}>
                           {item.itemSpecs[f.key]}{f.unit ? ` ${f.unit}` : ''}
                         </Text>
                       </View>
@@ -309,21 +474,11 @@ export function RfqPDF(props: RfqPdfProps) {
 
               {item.materials.length > 0 ? (
                 <>
-                  <Text style={s.sectionHead} minPresenceAhead={30}>Materials</Text>
+                  <Text style={[s.sectionHead, { marginTop: d.sectionTop, fontSize: d.font - 1 }]} minPresenceAhead={30}>Materials</Text>
                   {item.materials.map((m, j) => (
                     <View key={j} style={s.specRow} wrap={false}>
-                      <Text style={s.specLabel}>{m.type || 'Material'}</Text>
-                      <Text style={s.specValue}>
-                        {[
-                          m.description,
-                          m.colour,
-                          m.quantity.trim() ? `${m.quantity.trim()} m` : '',
-                          m.supplierName ? `via ${m.supplierName}` : '',
-                          m.details,
-                        ]
-                          .filter(v => v && v.trim())
-                          .join(' · ')}
-                      </Text>
+                      <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>{m.type || 'Material'}</Text>
+                      <Text style={[s.specValue, { fontSize: d.font }]}>{materialLine(m)}</Text>
                     </View>
                   ))}
                 </>
@@ -331,22 +486,13 @@ export function RfqPDF(props: RfqPdfProps) {
 
               {item.scatters.length > 0 ? (
                 <>
-                  <Text style={s.sectionHead} minPresenceAhead={30}>Scatters</Text>
+                  <Text style={[s.sectionHead, { marginTop: d.sectionTop, fontSize: d.font - 1 }]} minPresenceAhead={30}>Scatters</Text>
                   {item.scatters.map((sc, j) => (
                     <View key={j} style={s.specRow} wrap={false}>
-                      <Text style={s.specLabel}>
+                      <Text style={[s.specLabel, { width: d.labelWidth, fontSize: d.font - 1 }]}>
                         {sc.quantity.trim() ? `${sc.quantity.trim()} ×` : 'Scatter'}
                       </Text>
-                      <Text style={s.specValue}>
-                        {[
-                          sc.size.trim(),
-                          ...sc.fabrics,
-                          sc.details.trim(),
-                          sc.supplierName.trim() ? `via ${sc.supplierName.trim()}` : '',
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </Text>
+                      <Text style={[s.specValue, { fontSize: d.font }]}>{scatterLine(sc)}</Text>
                     </View>
                   ))}
                 </>
@@ -354,45 +500,47 @@ export function RfqPDF(props: RfqPdfProps) {
 
               {item.notes.trim() ? (
                 <>
-                  <Text style={s.sectionHead} minPresenceAhead={30}>Notes</Text>
-                  <Text style={s.notes}>{item.notes}</Text>
+                  <Text style={[s.sectionHead, { marginTop: d.sectionTop, fontSize: d.font - 1 }]} minPresenceAhead={30}>Notes</Text>
+                  <Text style={[s.notes, { lineHeight: d.noteLine, fontSize: d.font }]}>{item.notes}</Text>
                 </>
               ) : null}
 
               <View style={s.priceBox} wrap={false}>
-                <Text style={[s.sectionHead, { marginTop: 0 }]}>For supplier completion</Text>
+                <Text style={[s.sectionHead, { marginTop: 0, fontSize: d.font - 1 }]}>For supplier completion</Text>
                 <View
                   style={[
                     s.priceLine,
+                    { paddingVertical: d.fillPad },
                     item.fabricQuantities.length === 0 ? { borderBottomWidth: 0 } : {},
                   ]}
                 >
-                  <Text style={s.fillLabel}>
+                  <Text style={[s.fillLabel, { fontSize: d.font }]}>
                     Unit price (excl. VAT){unitCountLabel(item.quantity)}
                   </Text>
-                  <Text style={s.fillRule}>R ____________________</Text>
+                  <Text style={[s.fillRule, { fontSize: d.font }]}>R ____________________</Text>
                 </View>
-                {/* One rule per cloth. The designer names the fabric; only the
-                    maker knows how many metres the piece takes, and a single
-                    combined figure can't be ordered — each cloth is bought
-                    from its own house on its own line. */}
+                {/* One rule per material. The designer names it; only the
+                    supplier knows how much the piece takes, and a single
+                    combined figure can't be ordered — each is bought from
+                    its own house on its own line. */}
                 {item.fabricQuantities.map((f, j) => (
                   <View
                     key={j}
                     style={[
                       s.priceLine,
+                      { paddingVertical: d.fillPad },
                       j === item.fabricQuantities.length - 1 ? { borderBottomWidth: 0 } : {},
                     ]}
                   >
-                    <Text style={s.fillLabel}>
+                    <Text style={[s.fillLabel, { fontSize: d.font }]}>
                       {f.label}{f.supplierName ? ` (from ${f.supplierName})` : ''}
                     </Text>
-                    <Text style={s.fillRule}>____________ m</Text>
+                    <Text style={[s.fillRule, { fontSize: d.font }]}>____________ {f.unit}</Text>
                   </View>
                 ))}
                 {item.fabricQuantities.length > 0 ? (
                   <Text style={s.fillNote}>
-                    Each cloth is ordered on its own — please give its metres separately.
+                    Each is ordered on its own — please give every quantity separately.
                   </Text>
                 ) : null}
               </View>
@@ -402,7 +550,8 @@ export function RfqPDF(props: RfqPdfProps) {
             <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
           </View>
         </Page>
-      ))}
+        )
+      })}
     </Document>
   )
 }
