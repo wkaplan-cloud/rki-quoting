@@ -2,6 +2,8 @@ import type { createClient } from '@/lib/supabase/server'
 import {
   normalizeMaterial,
   normalizeScatter,
+  materialQuantityKey,
+  isQuantityMaterial,
   type StudioObject,
   type MaterialEntry,
   type ScatterEntry,
@@ -259,6 +261,14 @@ export function buildBoardRows({
           sort_order: sortOrder++,
           studio_slide_id: slide.id,
           studio_object_id: obj.id,
+          // Fabric and leather get a key so the metres the supplier gives back
+          // on their RFQ can find this exact row. Every child under a piece
+          // carries the same studio_object_id, so nothing else can tell the
+          // cloth apart from the timber. Anything not bought by the metre has
+          // no key and is never quantity-updated.
+          studio_material_key: isQuantityMaterial(mType)
+            ? materialQuantityKey.material(m.id)
+            : null,
         },
         // A second cloth on the same piece is a second order from a possibly
         // different house, so it is its own priced line rather than a note on
@@ -289,6 +299,9 @@ export function buildBoardRows({
             sort_order: sortOrder++,
             studio_slide_id: slide.id,
             studio_object_id: obj.id,
+            studio_material_key: isQuantityMaterial(mType)
+              ? materialQuantityKey.extraFabric(m.id, f.id)
+              : null,
           }
         }),
         ]
@@ -357,6 +370,7 @@ export function buildBoardRows({
             sort_order: sortOrder++,
             studio_slide_id: slide.id,
             studio_object_id: obj.id,
+            studio_material_key: materialQuantityKey.scatterFabric(sc.id, f.id),
           })
         }
         return rows

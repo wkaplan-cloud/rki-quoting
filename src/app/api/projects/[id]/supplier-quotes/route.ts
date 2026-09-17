@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { apiError } from '@/lib/api-error'
+import type { SupplierMaterialQuantity } from '@/lib/studio/types'
 
 // Supplier pricing → quote line items.
 //
@@ -38,6 +39,8 @@ interface QuoteRow {
   source: string
   unable_to_quote: boolean
   created_at: string
+  /** Metres per cloth, as the supplier measured them on their RFQ form. */
+  material_quantities: SupplierMaterialQuantity[] | null
 }
 
 export interface QuotableItem {
@@ -55,6 +58,8 @@ export interface QuotableItem {
     source: string
     unableToQuote: boolean
     createdAt: string
+    /** Shown in the modal, and applied to the cloth's own line on apply. */
+    materialQuantities: { key: string; label: string; quantity: number }[]
   }[]
 }
 
@@ -93,7 +98,7 @@ async function loadQuotableItems(
 
   const { data: rawQuotes } = await supabase
     .from('spec_quotes')
-    .select('id, studio_spec_id, supplier_id, supplier_name, price, lead_time, notes, source, unable_to_quote, created_at')
+    .select('id, studio_spec_id, supplier_id, supplier_name, price, lead_time, notes, source, unable_to_quote, created_at, material_quantities')
     .in('studio_spec_id', specIds)
     .order('created_at', { ascending: false })
 
@@ -127,6 +132,11 @@ async function loadQuotableItems(
         source: q.source,
         unableToQuote: q.unable_to_quote,
         createdAt: q.created_at,
+        // Only the cloths they actually measured — a blank box is not a
+        // quantity, and writing one as zero would empty the order.
+        materialQuantities: (q.material_quantities ?? [])
+          .filter((m): m is SupplierMaterialQuantity & { quantity: number } => m.quantity !== null)
+          .map(m => ({ key: m.key, label: m.label, quantity: m.quantity })),
       })),
     })
   }
@@ -199,7 +209,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       for (const s of sups ?? []) markupBySupplier.set(s.id as string, (s.markup_percentage as number) ?? 0)
     }
 
+    // The cloth lines under every item being priced. A returned yardage lands
+    // on the child row carrying that ask's key — children all share their
+    // parent's studio_object_id, so the key is the only thing that tells the
+    // fabric apart from the leather beside it. Rows converted before the key
+    // existed have none, and are left alone rather than guessed at.
+    const parentIds = toApply.map(t => t.lineItemId)
+    const { data: childRows } = await supabase
+      .from('line_items')
+      .select('id, parent_item_id, studio_material_key, unit')
+      .eq('project_id', id)
+      .in('parent_item_id', parentIds)
+      .not('studio_material_key', 'is', null)
+    const childrenByParent = new Map<string, { id: string; studio_material_key: string; unit: string | null }[]>()
+    for (const row of (childRows ?? []) as {
+      id: string
+      parent_item_id: string
+      studio_material_key: string
+      unit: string | null
+    }[]) {
+      const list = childrenByParent.get(row.parent_item_id) ?? []
+      list.push({ id: row.id, studio_material_key: row.studio_material_key, unit: row.unit })
+      childrenByParent.set(row.parent_item_id, list)
+    }
+
+    // Two different tallies on purpose: `updated` is every row the table has
+    // to redraw (cloth lines included), `pricedCount` is what the designer is
+    // told they applied. Counting cloth lines as priced items would report
+    // three applied prices for one chair.
     const updated: Record<string, unknown>[] = []
+    let pricedCount = 0
     for (const { lineItemId, quote } of toApply) {
       const patch: Record<string, unknown> = { cost_price: quote.price }
       if (quote.supplier_id) {
@@ -215,7 +254,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .select('*')
         .maybeSingle()
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-      if (data) updated.push(data)
+      if (data) {
+        updated.push(data)
+        pricedCount++
+      }
+
+      // The metres the supplier measured, onto the cloth's own line. Only the
+      // quantity moves: the cloth is bought from its house at its own price,
+      // which this supplier never quoted and must not overwrite.
+      const qtyByKey = new Map(
+        (quote.material_quantities ?? [])
+          .filter(m => m.quantity !== null)
+          .map(m => [m.key, m.quantity as number])
+      )
+      if (qtyByKey.size) {
+        for (const child of childrenByParent.get(lineItemId) ?? []) {
+          const metres = qtyByKey.get(child.studio_material_key)
+          if (metres === undefined) continue
+          const { data: childData } = await supabase
+            .from('line_items')
+            .update({ quantity: metres, unit: child.unit ?? 'm' })
+            .eq('id', child.id)
+            .eq('project_id', id)
+            .select('*')
+            .maybeSingle()
+          if (childData) updated.push(childData)
+        }
+      }
 
       // Same record as the Quotes-section apply: applied_price going out of
       // step with price is what makes a stale quote detectable later.
@@ -229,7 +294,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         .eq('id', quote.id)
     }
 
-    return NextResponse.json({ updated: updated.length, lineItems: updated })
+    return NextResponse.json({ updated: pricedCount, lineItems: updated })
   } catch (e) {
     return apiError(e)
   }

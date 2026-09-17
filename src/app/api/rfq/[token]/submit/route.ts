@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/email'
 import { supabaseAdmin } from '@/lib/supabase/admin'
-import { parsePriceInput, formatZar } from '@/lib/rfq/price'
+import { parsePriceInput, parseQuantityInput, formatZar, formatMetres } from '@/lib/rfq/price'
+import {
+  normalizeMaterial,
+  normalizeScatter,
+  materialQuantityAsks,
+  type MaterialEntry,
+  type ScatterEntry,
+  type SupplierMaterialQuantity,
+} from '@/lib/studio/types'
 
 
 // Guardrails on free text a public, unauthenticated supplier can send.
@@ -19,12 +27,15 @@ interface PreviousRow {
   unable_to_quote: boolean | null
   applied_at: string | null
   applied_price: number | string | null
+  material_quantities: SupplierMaterialQuantity[] | null
 }
 
 /** One difference between the last submission and this one. */
 export interface PriceChange {
   name: string
-  kind: 'price' | 'lead' | 'note' | 'unable' | 'added'
+  kind: 'price' | 'lead' | 'note' | 'unable' | 'added' | 'quantity'
+  /** For a quantity change: which cloth moved. */
+  label?: string
   from?: number | null
   to?: number | null
   fromText?: string
@@ -45,6 +56,8 @@ interface SubmitItem {
   leadTime: unknown
   note: unknown
   unableToQuote: unknown
+  /** Metres per cloth, keyed by the ask key the form was built from. */
+  quantities?: unknown
 }
 
 // POST /api/rfq/[token]/submit
@@ -80,13 +93,32 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // quote for. Scoped to the request's org (supabaseAdmin bypasses RLS).
     const { data: specs } = await supabaseAdmin
       .from('studio_specs')
-      .select('id, object_id, spec_name')
+      .select('id, object_id, spec_name, materials, scatters')
       .eq('org_id', request.org_id)
       .eq('board_id', request.board_id)
       .in('object_id', (request.object_ids as string[]) ?? [])
-    const specRows = (specs ?? []) as { id: string; spec_name: string | null }[]
+    const specRows = (specs ?? []) as {
+      id: string
+      spec_name: string | null
+      materials: MaterialEntry[] | null
+      scatters: ScatterEntry[] | null
+    }[]
     const allowedSpecIds = new Set(specRows.map(s => s.id))
     const nameBySpec = new Map(specRows.map(s => [s.id, s.spec_name?.trim() || 'Untitled item']))
+
+    // The quantity boxes this RFQ actually has, rebuilt from the spec rather
+    // than trusted from the payload — the form is public, and a key that
+    // isn't on the spec has no line to land on. Built by the same function
+    // that built the form, so the two can't drift apart.
+    const asksBySpec = new Map(
+      specRows.map(sp => [
+        sp.id,
+        materialQuantityAsks(
+          (sp.materials ?? []).map(normalizeMaterial),
+          (sp.scatters ?? []).map(normalizeScatter)
+        ),
+      ])
+    )
 
     // Whatever the supplier typed, exactly as it arrived. Stored before any
     // parsing so a disputed submission can always be settled from the record.
@@ -96,6 +128,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       leadTime: typeof it?.leadTime === 'string' ? it.leadTime : null,
       note: typeof it?.note === 'string' ? it.note : null,
       unableToQuote: it?.unableToQuote === true,
+      quantities: Array.isArray(it?.quantities) ? it.quantities : null,
     }))
 
     const parsedItems = submittedItems
@@ -103,6 +136,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       .map(it => {
         const unable = it.unableToQuote === true
         const price = unable ? { value: null, error: null } : parsePriceInput(it.price)
+        const typed = new Map(
+          (Array.isArray(it.quantities) ? it.quantities : [])
+            .filter((q): q is { key: string; quantity: unknown } => typeof (q as { key?: unknown })?.key === 'string')
+            .map(q => [q.key, q.quantity])
+        )
+        // Driven by the asks, not by what arrived: a box the form shows is a
+        // box the answer has a slot for, and a key that arrived without one
+        // is dropped rather than stored against nothing.
+        const quantities = (asksBySpec.get(it.specId) ?? []).map(ask => {
+          const parsed = unable
+            ? { value: null, error: null }
+            : parseQuantityInput(typed.get(ask.key))
+          return {
+            key: ask.key,
+            label: ask.label,
+            quantity: parsed.value,
+            designerQuantity: ask.designerQuantity,
+            error: parsed.error,
+          }
+        })
         return {
           specId: it.specId,
           price: price.value,
@@ -110,6 +163,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
           unable,
           lead: clip(it.leadTime, MAX_LEAD),
           note: clip(it.note, MAX_NOTE),
+          quantities,
         }
       })
 
@@ -128,12 +182,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       )
     }
 
+    // A yardage is as refusable as a price: storing an unreadable one as
+    // "no answer" is how a sofa gets ordered with no cloth behind it.
+    const badQty = parsedItems.filter(it => it.quantities.some(q => q.error))
+    if (badQty.length) {
+      await logSubmission(request, rawPayload, parsedItems, badQty.length, 0, revisionReason)
+      const names = badQty.map(it => nameBySpec.get(it.specId) ?? 'an item')
+      return NextResponse.json(
+        {
+          error: `We couldn't read a fabric quantity on ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''}. Please check ${names.length === 1 ? 'it' : 'them'} and submit again.`,
+          invalidSpecIds: badQty.map(it => it.specId),
+        },
+        { status: 400 }
+      )
+    }
+
     // One row per item the supplier engaged with (priced, declined, or left a
     // note/lead time). Blank items are skipped so they don't clutter the log.
-    const engaged = parsedItems.filter(it => it.price !== null || it.unable || it.lead || it.note)
+    const engaged = parsedItems.filter(
+      it =>
+        it.price !== null ||
+        it.unable ||
+        it.lead ||
+        it.note ||
+        it.quantities.some(q => q.quantity !== null)
+    )
 
     if (!engaged.length) {
-      return NextResponse.json({ error: 'Add a price, lead time or note to at least one item.' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Add a price, quantity, lead time or note to at least one item.' },
+        { status: 400 }
+      )
     }
 
     // What is already on record for this request. Read before the upsert so a
@@ -141,7 +220,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     // submission — the two used to arrive looking identical.
     const { data: previousRows } = await supabaseAdmin
       .from('spec_quotes')
-      .select('studio_spec_id, price, lead_time, notes, unable_to_quote, applied_at, applied_price')
+      .select('studio_spec_id, price, lead_time, notes, unable_to_quote, applied_at, applied_price, material_quantities')
       .eq('org_id', request.org_id)
       .eq('rfq_request_id', request.id)
     const previous = new Map(
@@ -178,6 +257,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       if (!!before.unable_to_quote !== it.unable) {
         changes.push({ name: nameBySpec.get(it.specId) ?? 'Untitled item', kind: 'unable', to: null, wasApplied, nowUnable: it.unable })
       }
+      // Metres moving matters as much as money moving: cloth may already be
+      // on order against the figure this supplier gave last time.
+      const beforeQty = new Map(
+        (before.material_quantities ?? []).map(q => [q.key, q.quantity])
+      )
+      for (const q of it.quantities) {
+        const was = beforeQty.get(q.key) ?? null
+        if (was === q.quantity) continue
+        changes.push({
+          name: nameBySpec.get(it.specId) ?? 'Untitled item',
+          kind: 'quantity',
+          label: q.label,
+          from: was,
+          to: q.quantity,
+          wasApplied,
+        })
+      }
     }
     // A price the studio has already carried onto a quote moving underneath
     // them is the case this whole flow exists to catch.
@@ -194,6 +290,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       source: 'link',
       rfq_request_id: request.id,
       unable_to_quote: it.unable,
+      // The whole set, every time — the form always posts every box, so a
+      // cleared yardage has to clear here too rather than linger as a stale
+      // figure the studio would order against.
+      material_quantities: it.quantities.map(
+        ({ key, label, quantity, designerQuantity }): SupplierMaterialQuantity => ({
+          key,
+          label,
+          quantity,
+          designerQuantity,
+        })
+      ),
     }))
 
     // Merge on (rfq_request_id, studio_spec_id) — see
@@ -221,6 +328,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       lead: it.lead,
       note: it.note,
       unable: it.unable,
+      quantities: it.quantities
+        .filter(q => q.quantity !== null)
+        .map(q => ({ label: q.label, quantity: q.quantity as number })),
     }))
 
     await notifyDesigner(request, engaged.length, pricedCount, clip(body.message, MAX_MESSAGE), {
@@ -274,6 +384,8 @@ interface SubmittedLine {
   lead: string
   note: string
   unable: boolean
+  /** Only the cloths they actually measured — blanks are not an answer. */
+  quantities: { label: string; quantity: number }[]
 }
 
 // The supplier gets back exactly what we stored, so "I did send prices" is
@@ -319,7 +431,8 @@ async function sendSupplierCopy(
           .map(
             l =>
               `${l.name}: ${l.unable ? "couldn't quote" : l.price !== null ? formatZar(l.price).replace(/ /g, ' ') : 'no price given'}` +
-              `${l.lead ? ` · lead time ${l.lead}` : ''}${l.note ? ` · ${l.note}` : ''}`
+              `${l.lead ? ` · lead time ${l.lead}` : ''}${l.note ? ` · ${l.note}` : ''}` +
+              l.quantities.map(q => `\n    ${q.label}: ${formatMetres(q.quantity)}`).join('')
           )
           .join('\n') +
         `\n\n${priced} of ${lines.length} items have a price on them.` +
@@ -359,10 +472,19 @@ function buildSupplierCopyEmail({
       const extras = [l.lead ? `Lead time: ${esc(l.lead)}` : '', l.note ? esc(l.note) : '']
         .filter(Boolean)
         .join(' · ')
+      // The metres are half of what they sent — a receipt that only echoes
+      // the money is not a receipt they can check an order against.
+      const metres = l.quantities
+        .map(
+          q =>
+            `<div style="font-size:11px;color:#8A877F;margin-top:3px;">${esc(q.label)}: <strong style="color:#4A4A47;">${esc(formatMetres(q.quantity))}</strong></div>`
+        )
+        .join('')
       return `<tr>
         <td style="padding:10px 0;border-bottom:1px solid #EDE9E1;font-size:13px;color:#4A4A47;">
           ${esc(l.name)}
           ${extras ? `<div style="font-size:11px;color:#8A877F;margin-top:3px;">${extras}</div>` : ''}
+          ${metres}
         </td>
         <td style="padding:10px 0;border-bottom:1px solid #EDE9E1;font-size:13px;text-align:right;white-space:nowrap;">${amount}</td>
       </tr>`
@@ -435,8 +557,14 @@ function changeAsText(c: PriceChange): string {
       return `${c.name}: ${c.nowUnable ? 'now marked as cannot quote' : 'no longer marked as cannot quote'}`
     case 'added':
       return `${c.name}: added, ${money(c.to)}`
+    case 'quantity':
+      return `${c.name} — ${c.label ?? 'fabric'}: ${metres(c.from)} → ${metres(c.to)}`
   }
 }
+
+/** A yardage for the change log, where "none" is a real answer. */
+const metres = (n: number | null | undefined) =>
+  n === null || n === undefined ? 'not given' : formatMetres(n)
 
 /** One change as a table row in the notification email. */
 function changeAsRow(c: PriceChange): string {
@@ -454,7 +582,12 @@ function changeAsRow(c: PriceChange): string {
           ? `<span style="color:#8A877F;">note</span> <strong style="color:#2C2C2A;">${esc(c.toText || 'removed')}</strong>`
           : c.kind === 'unable'
             ? `<strong style="color:#B08968;">${c.nowUnable ? 'Now marked cannot quote' : 'No longer marked cannot quote'}</strong>`
-            : `<strong style="color:#2C2C2A;">Added &middot; ${esc(money(c.to))}</strong>`
+            : c.kind === 'quantity'
+              ? `<span style="color:#8A877F;">${esc(c.label ?? 'fabric')}</span>
+                 <span style="color:#8A877F;text-decoration:line-through;">${esc(metres(c.from))}</span>
+                 <span style="color:#4A4A47;">&rarr;</span>
+                 <strong style="color:#2C2C2A;">${esc(metres(c.to))}</strong>`
+              : `<strong style="color:#2C2C2A;">Added &middot; ${esc(money(c.to))}</strong>`
   return `<tr>
     <td style="padding:9px 0;border-bottom:1px solid #EDE9E1;font-size:13px;color:#4A4A47;">
       ${esc(c.name)}

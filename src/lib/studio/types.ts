@@ -297,6 +297,112 @@ export function normalizeScatter(
   }
 }
 
+// ── Fabric & leather quantities ─────────────────────────────────────────────
+// A designer specifies WHICH cloth goes on a piece; only the maker knows how
+// much of it the piece eats. So the yardage is asked of the supplier on the
+// pricing form rather than guessed on the board — one box per cloth, because
+// a sofa in a body fabric with a contrast inside back is two separate orders
+// from two possibly different houses, and one lumped figure can't be ordered.
+//
+// Timber, stone and paint are deliberately excluded: they are quoted into the
+// maker's own price, not bought by the metre against this spec.
+
+/** Material types the supplier is asked to put a quantity against. */
+const QUANTITY_MATERIAL_TYPES = new Set(['fabric', 'leather'])
+
+export function isQuantityMaterial(type: string): boolean {
+  return QUANTITY_MATERIAL_TYPES.has(type.trim().toLowerCase())
+}
+
+/**
+ * The key that ties one cloth to its own line on the quote, all the way from
+ * the spec through the supplier's form to the child line item. Stable by
+ * construction: every part of it is an id already stored on the spec, so it
+ * survives renaming a fabric, swapping its house or re-ordering the list.
+ */
+export const materialQuantityKey = {
+  material: (materialId: string) => `m:${materialId}`,
+  extraFabric: (materialId: string, fabricId: string) => `m:${materialId}:f:${fabricId}`,
+  scatterFabric: (scatterId: string, fabricId: string) => `sc:${scatterId}:f:${fabricId}`,
+}
+
+/** One quantity box on the supplier's form, and the line it will land on. */
+export interface MaterialQuantityAsk {
+  key: string
+  /** What the supplier is being asked about — "Fabric · Linen Natural". */
+  label: string
+  /** The house it comes from, shown so the maker prices make-up, not cloth. */
+  supplierName: string
+  /** Metres the designer allocated, if any. Usually blank — see above. */
+  designerQuantity: string
+}
+
+/**
+ * Every cloth on a spec the supplier should be asked to measure, in the order
+ * they appear on the item. Shared by the supplier's pricing page and the
+ * submit endpoint, so the boxes a supplier is shown are exactly the keys the
+ * server will accept — a form built from one list and validated against
+ * another is how a quantity goes missing without anybody being told.
+ */
+export function materialQuantityAsks(
+  materials: MaterialEntry[],
+  scatters: ScatterEntry[]
+): MaterialQuantityAsk[] {
+  const asks: MaterialQuantityAsk[] = []
+
+  for (const m of materials) {
+    if (!isQuantityMaterial(m.type)) continue
+    const type = m.type.trim() || 'Fabric'
+    asks.push({
+      key: materialQuantityKey.material(m.id),
+      label: [type, m.description.trim(), m.colour?.trim() ?? ''].filter(Boolean).join(' · '),
+      supplierName: m.supplierName.trim(),
+      designerQuantity: m.quantity.trim(),
+    })
+    // A second cloth on the same piece is its own order, so its own box
+    for (const f of m.extraFabrics) {
+      asks.push({
+        key: materialQuantityKey.extraFabric(m.id, f.id),
+        label: [type, f.fabric.trim(), f.colour?.trim() ?? ''].filter(Boolean).join(' · '),
+        supplierName: f.fabricSupplierName.trim(),
+        designerQuantity: f.fabricQuantity.trim(),
+      })
+    }
+  }
+
+  for (const sc of scatters) {
+    const size = sc.size.trim()
+    for (const f of sc.fabrics) {
+      // A blank slot on a scatter is not a cloth anybody can measure
+      if (!f.fabric.trim() && !f.fabricSupplierId) continue
+      asks.push({
+        key: materialQuantityKey.scatterFabric(sc.id, f.id),
+        label: [size ? `Scatter ${size}` : 'Scatter', f.fabric.trim(), f.colour?.trim() ?? '']
+          .filter(Boolean)
+          .join(' · '),
+        supplierName: f.fabricSupplierName.trim(),
+        designerQuantity: f.fabricQuantity.trim(),
+      })
+    }
+  }
+
+  return asks
+}
+
+/**
+ * One quantity as the supplier submitted it, stored on their spec_quotes row.
+ * `label` and `designerQuantity` are snapshots taken at submission time: the
+ * spec can be edited afterwards, and what the supplier was actually looking at
+ * when they answered is the only thing worth keeping a record of.
+ */
+export interface SupplierMaterialQuantity {
+  key: string
+  label: string
+  /** Metres, or null where the supplier left the box empty. */
+  quantity: number | null
+  designerQuantity: string
+}
+
 // A one-line human summary of a fabric — "2.5 m Linen Natural — Hertex".
 // Shared by the RFQ PDF and the supplier pricing page so the supplier reads
 // the same string in both.

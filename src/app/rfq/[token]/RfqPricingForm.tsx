@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Loader2, AlertTriangle, Ban, X, Lock, Unlock } from 'lucide-react'
 import { CroppedImage } from '@/components/shared/CroppedImage'
-import { parsePriceInput, formatZar } from '@/lib/rfq/price'
-import type { ImageCropRect } from '@/lib/studio/types'
+import { parsePriceInput, parseQuantityInput, formatZar, formatMetres } from '@/lib/rfq/price'
+import type { ImageCropRect, MaterialQuantityAsk } from '@/lib/studio/types'
 
 // One picture of the item, already reduced to what the designer actually
 // framed: `crop` is the source-pixel rect the board shows, and the natural
@@ -27,6 +27,8 @@ export interface RfqFormItem {
   dimensions: string
   materials: string[]
   scatters: string[]
+  /** One quantity box per cloth on the item — see fabricQuantities below. */
+  fabricQuantities: RfqFabricAsk[]
   /** Category specs, already resolved to their human labels + units. */
   itemSpecs: { label: string; value: string }[]
   specNotes: string
@@ -34,11 +36,23 @@ export interface RfqFormItem {
   sort: number
 }
 
+/**
+ * A cloth the supplier is asked to measure, plus whatever they last said.
+ * The designer specifies which fabric goes on a piece; only the maker knows
+ * how many metres it takes, and they normally leave it blank on the board.
+ */
+export interface RfqFabricAsk extends MaterialQuantityAsk {
+  /** Metres from this supplier's last submission, or null if never answered. */
+  prefill: number | null
+}
+
 interface Entry {
   price: string
   leadTime: string
   note: string
   unableToQuote: boolean
+  /** Typed metres, keyed by the ask's key. Kept as text until parsed. */
+  quantities: Record<string, string>
 }
 
 // Public, no-login pricing form a supplier fills in from their RFQ email link.
@@ -80,6 +94,9 @@ export function RfqPricingForm({
           leadTime: it.prefill.leadTime,
           note: it.prefill.note,
           unableToQuote: it.prefill.unableToQuote,
+          quantities: Object.fromEntries(
+            it.fabricQuantities.map(f => [f.key, f.prefill != null ? String(f.prefill) : ''])
+          ),
         },
       ])
     )
@@ -108,6 +125,14 @@ export function RfqPricingForm({
     setNoPriceAck(false)
   }
 
+  function updateQuantity(specId: string, key: string, value: string) {
+    setEntries(prev => ({
+      ...prev,
+      [specId]: { ...prev[specId], quantities: { ...prev[specId].quantities, [key]: value } },
+    }))
+    setNoPriceAck(false)
+  }
+
   // Every price read through the same parser the server uses, so the amount
   // shown under the field is the amount that will be stored — no guessing.
   const parsed = useMemo(() => {
@@ -117,6 +142,26 @@ export function RfqPricingForm({
     }
     return out
   }, [entries])
+
+  // Same read-it-back safety net as the price: a quantity that can't be
+  // stored must never look accepted.
+  const parsedQty = useMemo(() => {
+    const out: Record<string, ReturnType<typeof parseQuantityInput>> = {}
+    for (const it of items) {
+      const e = entries[it.specId]
+      for (const f of it.fabricQuantities) {
+        out[`${it.specId}|${f.key}`] = e?.unableToQuote
+          ? { value: null, error: null }
+          : parseQuantityInput(e?.quantities[f.key] ?? '')
+      }
+    }
+    return out
+  }, [items, entries])
+
+  const badQtyCount = useMemo(
+    () => Object.values(parsedQty).filter(q => q.error).length,
+    [parsedQty]
+  )
 
   /** Items carrying an actual amount — the only sense in which this form is "done". */
   const pricedCount = useMemo(
@@ -135,7 +180,14 @@ export function RfqPricingForm({
   const answeredCount = useMemo(
     () =>
       Object.entries(entries).filter(
-        ([id, e]) => e.unableToQuote || parsed[id]?.value !== null || e.leadTime.trim() || e.note.trim()
+        ([id, e]) =>
+          e.unableToQuote ||
+          parsed[id]?.value !== null ||
+          e.leadTime.trim() ||
+          e.note.trim() ||
+          // Metres on their own are an answer: a maker who can't price until
+          // the cloth is costed can still send back what the piece takes.
+          Object.values(e.quantities).some(v => v.trim())
       ).length,
     [entries, parsed]
   )
@@ -146,13 +198,27 @@ export function RfqPricingForm({
    */
   const isItemLocked = (it: RfqFormItem) => locked && it.prefill.price != null
 
+  /**
+   * Same rule one level down: a quantity already sent is locked, an empty box
+   * stays open. A supplier who priced the piece and forgot the yardage can
+   * come back and add it without unlocking anything.
+   */
+  const isQuantityLocked = (it: RfqFormItem, ask: RfqFabricAsk) =>
+    locked && ask.prefill != null
+
   /** True once a price already on record has actually been altered. */
   const changedAnExistingPrice = useMemo(
     () =>
       items.some(it => {
-        if (it.prefill.price == null) return false
         const e = entries[it.specId]
         if (!e) return false
+        // A yardage already sent that has since moved is a revision in its own
+        // right — the studio may have ordered cloth against it.
+        const movedAQuantity = it.fabricQuantities.some(
+          f => f.prefill != null && parsedQty[`${it.specId}|${f.key}`]?.value !== f.prefill
+        )
+        if (movedAQuantity) return true
+        if (it.prefill.price == null) return false
         return (
           parsed[it.specId]?.value !== it.prefill.price ||
           e.leadTime !== it.prefill.leadTime ||
@@ -160,7 +226,7 @@ export function RfqPricingForm({
           e.unableToQuote !== it.prefill.unableToQuote
         )
       }),
-    [items, entries, parsed]
+    [items, entries, parsed, parsedQty]
   )
   // Say why only when something already quoted on has moved. Adding prices to
   // items left blank is not a revision.
@@ -199,6 +265,12 @@ export function RfqPricingForm({
       )
       return
     }
+    if (badQtyCount > 0) {
+      setError(
+        `Check the ${badQtyCount === 1 ? 'highlighted quantity' : `${badQtyCount} highlighted quantities`} — ${badQtyCount === 1 ? "it can't" : "they can't"} be read as a number of metres.`
+      )
+      return
+    }
     // First press on an all-blank sheet asks rather than sends
     if (needsNoPriceConfirm && !noPriceAck) {
       setNoPriceAck(true)
@@ -220,6 +292,12 @@ export function RfqPricingForm({
             leadTime: entries[it.specId].leadTime,
             note: entries[it.specId].note,
             unableToQuote: entries[it.specId].unableToQuote,
+            // Every box on the item, answered or not: the server stores the
+            // set as it stands, so clearing a yardage clears it there too.
+            quantities: it.fabricQuantities.map(f => ({
+              key: f.key,
+              quantity: entries[it.specId].quantities[f.key] ?? '',
+            })),
           })),
         }),
       })
@@ -265,7 +343,10 @@ export function RfqPricingForm({
         </h1>
         <p className="text-sm mt-1" style={{ color: '#8A877F' }}>
           {supplierName ? `Hi ${supplierName} — ` : ''}please add your pricing for the {items.length}
-          {items.length === 1 ? ' item' : ' items'} below. Enter a price per item, plus lead time and any notes.
+          {items.length === 1 ? ' item' : ' items'} below. Prices are{' '}
+          <strong style={{ color: '#4A4A47' }}>for one of each item</strong>, not for the whole quantity
+          — where an item is needed more than once, its quantity is shown beside the box. Where an item
+          takes fabric or leather, please also give the metres it takes.
         </p>
         {message.trim() && (
           <p className="text-sm mt-3 pt-3 border-t whitespace-pre-line" style={{ color: '#4A4A47', borderColor: '#EDE9E1' }}>
@@ -314,6 +395,11 @@ export function RfqPricingForm({
         // Only a price already on record is locked; blanks stay editable
         const fieldsDisabled = isItemLocked(it) || e.unableToQuote
         const priceState = parsed[it.specId] ?? { value: null, error: null }
+        // "4", "4 off" and "4 required" all mean four. Anything that isn't a
+        // plain count is treated as one, because multiplying a price by a
+        // number nobody can read is worse than not showing a total at all.
+        const unitCount = parseFloat(it.quantity)
+        const multiple = Number.isFinite(unitCount) && unitCount > 1 ? unitCount : null
         return (
           <div key={it.specId} className="rounded-2xl bg-white border overflow-hidden" style={{ borderColor: '#EDE9E1' }}>
             <div className="flex gap-4 p-5">
@@ -396,7 +482,16 @@ export function RfqPricingForm({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label htmlFor={`price-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
-                    Your price (excl. VAT)
+                    Your price each (excl. VAT)
+                    {multiple && (
+                      // Right where they are about to type, not in the spec
+                      // list above it: a supplier reading "Qty 4" at the top of
+                      // the card and a bare "Your price" down here has been
+                      // given every reason to send one number for all four.
+                      <span className="ml-1.5 normal-case tracking-normal font-medium" style={{ color: '#9A7B4F' }}>
+                        — for one of {unitCount}
+                      </span>
+                    )}
                   </label>
                   {/* pl-12 is deliberate, not a guess: the text caret starts
                       where the padding ends, and at pl-7 it sat a few pixels
@@ -451,7 +546,9 @@ export function RfqPricingForm({
                       : priceState.error
                         ? priceState.error
                         : priceState.value !== null
-                          ? `Reads as ${formatZar(priceState.value)}`
+                          ? multiple
+                            ? `Reads as ${formatZar(priceState.value)} each · ${formatZar(priceState.value * multiple)} for ${unitCount}`
+                            : `Reads as ${formatZar(priceState.value)}`
                           : ''}
                   </p>
                 </div>
@@ -472,6 +569,102 @@ export function RfqPricingForm({
                   />
                 </div>
               </div>
+              {/* Fabric & leather quantities. One box per cloth, generated
+                  from the spec: the designer says WHICH cloth, the maker is
+                  the only one who knows how much of it the piece eats. Two
+                  fabrics on one piece are two orders from two possibly
+                  different houses, so a single combined figure is unorderable
+                  — hence a box each rather than one field per item. */}
+              {it.fabricQuantities.length > 0 && (
+                <div className="mt-4 pt-4 border-t" style={{ borderColor: '#EDE9E1' }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: '#8A877F' }}>
+                    Fabric &amp; leather — metres needed
+                  </p>
+                  <p className="text-[11px] mt-1 mb-2.5" style={{ color: '#8A877F' }}>
+                    How many metres this item takes of each cloth. Each one is ordered on its own, so
+                    please give them separately rather than as one total.
+                  </p>
+                  <div className="space-y-2.5">
+                    {it.fabricQuantities.map(f => {
+                      const qState = parsedQty[`${it.specId}|${f.key}`] ?? { value: null, error: null }
+                      const qDisabled = isQuantityLocked(it, f) || e.unableToQuote
+                      const designer = f.designerQuantity.trim()
+                      const designerNum = parseFloat(designer)
+                      // The designer usually leaves the yardage blank. When
+                      // they have put one down, saying so beats silently
+                      // overwriting it — and a gap between the two is worth
+                      // one line of amber, not a blocked submission.
+                      const over =
+                        Number.isFinite(designerNum) && qState.value !== null && qState.value !== designerNum
+                      // Colons and dots in the key are fine in an id but not
+                      // in a selector, and this one is addressed by label
+                      const domId = `qty-${it.specId}-${f.key.replace(/[^a-zA-Z0-9]/g, '-')}`
+                      return (
+                        <div key={f.key} className="sm:flex sm:items-start sm:gap-3">
+                          <div className="min-w-0 flex-1">
+                            <label htmlFor={domId} className="block text-xs sm:pt-2" style={{ color: '#2C2C2A' }}>
+                              {f.label}
+                            </label>
+                            {(f.supplierName || designer) && (
+                              <p className="text-[11px] mt-0.5" style={{ color: '#8A877F' }}>
+                                {f.supplierName ? `Cloth from ${f.supplierName}` : ''}
+                                {f.supplierName && designer ? ' · ' : ''}
+                                {designer ? `${designer} m allowed on the spec` : ''}
+                              </p>
+                            )}
+                          </div>
+                          <div className="mt-1 sm:mt-0 w-full sm:w-40 flex-shrink-0">
+                            <div className="relative">
+                              <input
+                                id={domId}
+                                inputMode="decimal"
+                                value={e.quantities[f.key] ?? ''}
+                                disabled={qDisabled}
+                                onChange={ev =>
+                                  updateQuantity(it.specId, f.key, ev.target.value.replace(/[^\d.,\s]/g, ''))
+                                }
+                                aria-invalid={qState.error ? true : undefined}
+                                aria-describedby={`${domId}-read`}
+                                className={`w-full py-2 pl-3 pr-8 text-sm rounded-lg border bg-white outline-none transition-colors disabled:opacity-40 focus:ring-2 ${
+                                  qState.error
+                                    ? 'border-[#D98A72] focus:border-[#B4472F] focus:ring-[#B4472F]/25'
+                                    : 'focus:border-[#9A7B4F] focus:ring-[#9A7B4F]/25 ' +
+                                      (disabled ? 'border-[#EDE9E1]' : 'border-[#D8D3C8]')
+                                }`}
+                                style={{ color: '#2C2C2A' }}
+                              />
+                              <span
+                                className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none ${
+                                  qDisabled ? 'opacity-40' : ''
+                                }`}
+                                style={{ color: '#8A877F' }}
+                                aria-hidden="true"
+                              >
+                                m
+                              </span>
+                            </div>
+                            <p
+                              id={`${domId}-read`}
+                              className="text-[11px] mt-1 min-h-[15px]"
+                              style={{ color: qState.error ? '#B4472F' : over ? '#9A7B4F' : '#8A877F' }}
+                            >
+                              {disabled
+                                ? ''
+                                : qState.error
+                                  ? qState.error
+                                  : over
+                                    ? `Reads as ${formatMetres(qState.value!)} — the spec allowed ${designer} m`
+                                    : qState.value !== null
+                                      ? `Reads as ${formatMetres(qState.value)}`
+                                      : ''}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="mt-3">
                 <label htmlFor={`note-${it.specId}`} className="block text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: '#8A877F' }}>
                   Note (optional)

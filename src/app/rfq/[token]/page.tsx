@@ -5,8 +5,10 @@ import {
   normalizeScatter,
   fabricLineSummary,
   normalizeSpecImage,
+  materialQuantityAsks,
   type StudioSpecRow,
   type StudioSlideRow,
+  type SupplierMaterialQuantity,
 } from '@/lib/studio/types'
 import { RfqPricingForm, type RfqFormItem, type RfqFormImage } from './RfqPricingForm'
 import { RfqOpenPing } from './RfqOpenPing'
@@ -37,7 +39,7 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
       supabaseAdmin.from('studio_boards').select('name').eq('id', request.board_id).eq('org_id', request.org_id).maybeSingle(),
       supabaseAdmin.from('studio_specs').select('*').eq('org_id', request.org_id).eq('board_id', request.board_id).in('object_id', objectIds),
       supabaseAdmin.from('studio_slides').select('id, name, heading, sort_order, objects').eq('org_id', request.org_id).eq('board_id', request.board_id).order('sort_order'),
-      supabaseAdmin.from('spec_quotes').select('studio_spec_id, price, lead_time, notes, unable_to_quote').eq('org_id', request.org_id).eq('rfq_request_id', request.id),
+      supabaseAdmin.from('spec_quotes').select('studio_spec_id, price, lead_time, notes, unable_to_quote, material_quantities').eq('org_id', request.org_id).eq('rfq_request_id', request.id),
     ])
 
   const businessName = settings?.business_name ?? 'The studio'
@@ -68,8 +70,14 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
   }
 
   const prefillBySpec = new Map(
-    ((existing ?? []) as { studio_spec_id: string; price: number | null; lead_time: string; notes: string; unable_to_quote: boolean }[])
-      .map(r => [r.studio_spec_id, r])
+    ((existing ?? []) as {
+      studio_spec_id: string
+      price: number | null
+      lead_time: string
+      notes: string
+      unable_to_quote: boolean
+      material_quantities: SupplierMaterialQuantity[] | null
+    }[]).map(r => [r.studio_spec_id, r])
   )
 
   const items: RfqFormItem[] = ((specRows ?? []) as StudioSpecRow[])
@@ -93,6 +101,21 @@ export default async function RfqPricingPage({ params }: { params: Promise<{ tok
         description: spec.description ?? '',
         quantity: spec.quantity ?? '',
         dimensions: [spec.width, spec.depth, spec.height].map(v => (v ?? '').trim()).filter(Boolean).join(' × '),
+        // One quantity box per cloth. The supplier is the only one who knows
+        // the yardage, so the boxes are generated from the spec rather than
+        // waiting for the designer to fill a number in that they rarely have.
+        fabricQuantities: (() => {
+          const answered = new Map(
+            (pre?.material_quantities ?? []).map(q => [q.key, q.quantity])
+          )
+          return materialQuantityAsks(
+            (Array.isArray(spec.materials) ? spec.materials : []).map(normalizeMaterial),
+            (Array.isArray(spec.scatters) ? spec.scatters : []).map(normalizeScatter)
+          ).map(ask => ({
+            ...ask,
+            prefill: answered.get(ask.key) ?? null,
+          }))
+        })(),
         // Each extra fabric on a material prints as its own line — the
         // supplier has to see every cloth, and the material's Details note
         // says where each one goes.
