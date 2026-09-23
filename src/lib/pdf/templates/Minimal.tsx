@@ -98,8 +98,11 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
             </View>
           </View>
 
-          {/* Table — no boxes, just lines */}
-          <View style={{ marginBottom: 28 }}>
+          {/* Table — no boxes, just lines. The gap below it lives on the totals
+              block: a bottom margin here counts towards the table's own height
+              when react-pdf decides whether it fits, so a table that fills the
+              page gets pushed whole onto the next one and leaves page 1 bare. */}
+          <View>
             <View style={{ flexDirection: 'row', paddingBottom: 7, borderBottomWidth: 1, borderBottomColor: theme.primary }}>
               <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, width: 22 }}>#</Text>
               <Text style={{ fontSize: 7.5, color: theme.muted, letterSpacing: 1, flex: 1 }}>ITEM</Text>
@@ -140,7 +143,7 @@ export function MinimalTemplate({ project, client, lineItems, type, theme, vatRa
           </View>
 
           {/* Totals — right-aligned, minimal */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 28 }}>
             {/* Banking — plain text, no box */}
             {bankName || bankAccount ? (
               <View style={{ width: 200 }}>

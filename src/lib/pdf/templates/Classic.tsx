@@ -77,8 +77,11 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
             </View>
           </View>
 
-          {/* Line items table */}
-          <View style={{ marginBottom: 20 }}>
+          {/* Line items table. The gap below it lives on the totals block: a
+              bottom margin here counts towards the table's own height when
+              react-pdf decides whether it fits, so a table that fills the page
+              gets pushed whole onto the next one and leaves page 1 bare. */}
+          <View>
             <View style={{ marginTop: 8 }}>
               <View style={{ flexDirection: 'row', backgroundColor: theme.surface, paddingVertical: 6, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.border }}>
                 <Text style={{ fontSize: 9, color: theme.muted, fontFamily: 'Helvetica-Bold', width: 20 }}>#</Text>
@@ -121,7 +124,7 @@ export function ClassicTemplate({ project, client, lineItems, type, theme, vatRa
           </View>
 
           {/* Totals row */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'stretch', marginTop: 36 }}>
             {bankName || bankAccount ? (
               <View style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 4, padding: 12, width: 220 }}>
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.muted, marginBottom: 6, borderBottomWidth: 0.5, borderBottomColor: theme.border, paddingBottom: 4 }}>BANKING DETAILS</Text>

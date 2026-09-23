@@ -96,8 +96,11 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
             </View>
           </View>
 
-          {/* Table */}
-          <View style={{ marginBottom: 20 }}>
+          {/* Table. The gap below it lives on the totals block: a bottom margin
+              here counts towards the table's own height when react-pdf decides
+              whether it fits, so a table that fills the page gets pushed whole
+              onto the next one and leaves page 1 bare. */}
+          <View>
             {/* Header */}
             <View style={{ flexDirection: 'row', backgroundColor: theme.primary, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 3 }}>
               <Text style={{ fontSize: 8, color: theme.headerText, fontFamily: 'Helvetica-Bold', width: 22 }}>#</Text>
@@ -139,7 +142,7 @@ export function BoldTemplate({ project, client, lineItems, type, theme, vatRate 
           </View>
 
           {/* Totals + banking */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 8 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 28 }}>
             {bankName || bankAccount ? (
               <View style={{ width: 200 }}>
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: theme.accent, letterSpacing: 1, marginBottom: 8 }}>BANKING DETAILS</Text>
