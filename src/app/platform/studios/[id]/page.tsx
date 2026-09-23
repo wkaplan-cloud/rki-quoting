@@ -217,7 +217,7 @@ export default async function StudioDetailPage({ params }: { params: Promise<{ i
 
       {/* Feature toggles */}
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <FeatureTogglesPanel orgId={id} studioEnabled={(settings as any)?.studio_enabled ?? false} lineItemImagesEnabled={(settings as any)?.line_item_images_enabled ?? false} />
+      <FeatureTogglesPanel orgId={id} studioEnabled={(settings as any)?.studio_enabled ?? false} lineItemImagesEnabled={(settings as any)?.line_item_images_enabled ?? false} jobCostSheetEnabled={(settings as any)?.job_cost_sheet_enabled ?? false} plan={org.plan ?? 'trial'} />
 
       {/* Internal notes */}
       <StudioNotes orgId={id} initial={(org as OrgDetailRow).platform_notes ?? null} />

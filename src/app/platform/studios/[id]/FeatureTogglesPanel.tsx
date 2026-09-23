@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Presentation, Images } from 'lucide-react'
+import { Presentation, Images, Printer } from 'lucide-react'
 
 function FeatureToggle({
   orgId,
@@ -73,11 +73,18 @@ export function FeatureTogglesPanel({
   orgId,
   studioEnabled,
   lineItemImagesEnabled = false,
+  jobCostSheetEnabled = false,
+  plan = 'trial',
 }: {
   orgId: string
   studioEnabled: boolean
   lineItemImagesEnabled?: boolean
+  jobCostSheetEnabled?: boolean
+  plan?: string
 }) {
+  // The cost sheet ships with Studio and Agency, so the override only means
+  // anything on Solo. Say so rather than showing a toggle that does nothing.
+  const costSheetIsPlanIncluded = plan !== 'solo'
   return (
     <div className="bg-[#FDFCF9] border border-[#DED8CC] rounded-xl p-5 mb-6">
       <h2 className="text-xs text-[#6E6B63] uppercase tracking-wider mb-4">Feature Toggles</h2>
@@ -97,6 +104,18 @@ export function FeatureTogglesPanel({
           icon={<Images size={16} className="text-[#7E6036]" />}
           title="Line item images"
           description="Upload images per line item and show them on quotes & invoices"
+        />
+        <FeatureToggle
+          orgId={orgId}
+          field="job_cost_sheet_enabled"
+          initial={jobCostSheetEnabled}
+          icon={<Printer size={16} className="text-[#7E6036]" />}
+          title="Job Cost Sheet"
+          description={
+            costSheetIsPlanIncluded
+              ? 'Included on this plan already — this override only applies to Solo studios'
+              : 'Goodwill override: unlock the Studio-tier Job Cost Sheet on this Solo plan'
+          }
         />
       </div>
     </div>

@@ -54,9 +54,14 @@ interface Props {
   createdByName: string | null
   /** Platform feature flag for per-line-item images. */
   imagesEnabled?: boolean
+  /**
+   * Per-org override that unlocks the Job Cost Sheet on the Solo plan.
+   * Additive only — Studio and Agency always have it regardless.
+   */
+  jobCostSheetEnabled?: boolean
 }
 
-export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false }: Props) {
+export function ProjectDetail({ project: initial, initialLineItems, clients, suppliers: initialSuppliers, items, officeAddress, businessName, vatRate: initialVatRate, depositPct: initialDepositPct, initialStages, initialEmailLogs, initialApprovalLogs, quoteApproval, emailTemplateQuote, emailTemplateInvoice, productionSheetEmail: initialProductionSheetEmail, sageConnected, xeroConnected, activePriceListIds, plan, members, isAdmin, createdByName, imagesEnabled = false, jobCostSheetEnabled = false }: Props) {
   const [project, setProject] = useState(initial)
   const [lineItems, setLineItems] = useState<LineItem[]>(initialLineItems)
   const [suppliers, setSuppliers] = useState(initialSuppliers)
@@ -754,6 +759,13 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
         )]
         const poSuppliers = poSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean) as typeof suppliers
 
+        // The internal sheets are Studio-tier features. `jobCostSheetEnabled` is a
+        // per-org override that grants an individual Solo studio the cost sheet on
+        // goodwill; it only ever adds access. The installation sheet has no such
+        // override and stays Studio-only.
+        const canDownloadCostSheet = plan !== 'solo' || jobCostSheetEnabled
+        const canDownloadInstallationSheet = plan !== 'solo'
+
         return (
           <div className="flex flex-wrap items-center gap-2 px-4 md:px-6 py-2.5 border-b border-[#D8D3C8] bg-[#F5F2EC]">
 
@@ -798,32 +810,33 @@ export function ProjectDetail({ project: initial, initialLineItems, clients, sup
                   )}
                   <div className="border-t border-[#EDE9E1] my-1" />
                   <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-[#8A877F] uppercase tracking-wider">Internal</p>
-                  {plan !== 'solo' ? (
-                    <>
-                      <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                        <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Job Cost Sheet
-                      </button>
-                      <button onClick={() => { handleGeneratePDF('installation'); setPoMenuOpen(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                        <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Installation Sheet
-                      </button>
-                      <button onClick={() => { handleOpenProdSheetModal(); setPoMenuOpen(false) }}
-                        className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
-                        <Mail size={13} className="text-[#9A7B4F] flex-shrink-0" /> Email Job Cost Sheet
-                      </button>
-                    </>
+                  {canDownloadCostSheet ? (
+                    <button onClick={() => { handleGeneratePDF('production'); setPoMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                      <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Job Cost Sheet
+                    </button>
                   ) : (
-                    <>
-                      <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
-                        <Printer size={13} className="flex-shrink-0" /> Job Cost Sheet
-                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio</span>
-                      </div>
-                      <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
-                        <Printer size={13} className="flex-shrink-0" /> Installation Sheet
-                        <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio</span>
-                      </div>
-                    </>
+                    <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
+                      <Printer size={13} className="flex-shrink-0" /> Job Cost Sheet
+                      <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio</span>
+                    </div>
+                  )}
+                  {canDownloadInstallationSheet ? (
+                    <button onClick={() => { handleGeneratePDF('installation'); setPoMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                      <Printer size={13} className="text-[#9A7B4F] flex-shrink-0" /> Installation Sheet
+                    </button>
+                  ) : (
+                    <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
+                      <Printer size={13} className="flex-shrink-0" /> Installation Sheet
+                      <span className="ml-auto text-[10px] text-[#9A7B4F] font-medium">Studio</span>
+                    </div>
+                  )}
+                  {canDownloadCostSheet && (
+                    <button onClick={() => { handleOpenProdSheetModal(); setPoMenuOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-sm text-[#2C2C2A] hover:bg-[#F5F2EC] flex items-center gap-2.5">
+                      <Mail size={13} className="text-[#9A7B4F] flex-shrink-0" /> Email Job Cost Sheet
+                    </button>
                   )}
                   {plan !== 'agency' && (
                     <div className="px-3 py-2 flex items-center gap-2.5 opacity-40 cursor-default select-none">
