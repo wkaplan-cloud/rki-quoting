@@ -22,6 +22,42 @@ interface PaystackEvent {
   }
 }
 
+/** Tables keyed by a Paystack subscription, in the order we try them. */
+const SUBSCRIBER_TABLES = ['organizations', 'supplier_portal_accounts'] as const
+
+/**
+ * Set subscription_status on whichever subscriber row this event belongs to.
+ *
+ * Matches on paystack_subscription_code first. When nothing matches — the code
+ * is missing from the payload, or subscription.create never landed and the row
+ * was left with a null code — falls back to paystack_customer_code, so a
+ * cancellation can't be silently swallowed.
+ */
+async function setSubscriptionStatus(
+  status: string,
+  subscriptionCode: string | undefined,
+  customerCode: string | undefined,
+) {
+  for (const table of SUBSCRIBER_TABLES) {
+    let matched = 0
+
+    if (subscriptionCode) {
+      const { data } = await supabaseAdmin.from(table)
+        .update({ subscription_status: status })
+        .eq('paystack_subscription_code', subscriptionCode)
+        .select('id')
+      matched = data?.length ?? 0
+    }
+
+    if (matched === 0 && customerCode) {
+      await supabaseAdmin.from(table)
+        .update({ subscription_status: status })
+        .eq('paystack_customer_code', customerCode)
+        .select('id')
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY
   if (!secretKey) return NextResponse.json({ error: 'Not configured' }, { status: 500 })
@@ -107,40 +143,23 @@ export async function POST(req: NextRequest) {
 
     // ── Monthly renewal succeeded — keep org active ───────────────────────────
     case 'invoice.update': {
-      const subscriptionCode = data?.subscription?.subscription_code
       const paid = data?.status === 'success' && data?.paid_at
-      if (!subscriptionCode || !paid) break
+      if (!paid) break
 
-      await supabaseAdmin.from('organizations')
-        .update({ subscription_status: 'active' })
-        .eq('paystack_subscription_code', subscriptionCode)
+      await setSubscriptionStatus('active', data?.subscription?.subscription_code, data?.customer?.customer_code)
       break
     }
 
     // ── Monthly renewal failed — mark as past_due ─────────────────────────────
     case 'invoice.payment_failed': {
-      const subscriptionCode = data?.subscription?.subscription_code
-      if (!subscriptionCode) break
-
-      await supabaseAdmin.from('organizations')
-        .update({ subscription_status: 'past_due' })
-        .eq('paystack_subscription_code', subscriptionCode)
+      await setSubscriptionStatus('past_due', data?.subscription?.subscription_code, data?.customer?.customer_code)
       break
     }
 
     // ── Subscription cancelled/disabled — deactivate org + supplier ──────────
     case 'subscription.disable':
     case 'subscription.not_renew': {
-      const subscriptionCode = data?.subscription_code
-      if (!subscriptionCode) break
-
-      await supabaseAdmin.from('organizations')
-        .update({ subscription_status: 'cancelled' })
-        .eq('paystack_subscription_code', subscriptionCode)
-
-      await supabaseAdmin.from('supplier_portal_accounts')
-        .update({ subscription_status: 'cancelled' })
-        .eq('paystack_subscription_code', subscriptionCode)
+      await setSubscriptionStatus('cancelled', data?.subscription_code, data?.customer?.customer_code)
       break
     }
   }
