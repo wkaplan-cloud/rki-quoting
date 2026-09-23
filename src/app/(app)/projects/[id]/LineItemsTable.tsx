@@ -70,7 +70,7 @@ const FIT_WIDTH = `field-sizing-content w-auto ${FIT_MIN_W} max-w-full`
 const INPUT_FIT = INPUT.replace('w-full', FIT_WIDTH)
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
-// The Item column is declared w-[280px], but `table-layout: auto` treats a
+// The Item column is declared w-[300px], but `table-layout: auto` treats a
 // declared width as a hint and sizes to max-content instead — so the column
 // stretched well past its declared width and shoved Description off screen.
 // Both of the cell's rows push it wide: the field-sized name reports its whole
@@ -78,7 +78,7 @@ const NUM_INPUT = INPUT + ' text-right tabular-nums'
 // intrinsic width. Pinning the cell's contents to a real width makes the
 // declared width binding and gives `max-w-full` something to resolve against,
 // so the name wraps and clamps to three lines the way Description already does.
-const ITEM_CELL_W = 'w-[264px]' // 280px column less COL's px-2 on both sides
+const ITEM_CELL_W = 'w-[284px]' // 300px column less COL's px-2 on both sides
 
 // leading-snug = 1.375, text-sm = 14px → 3 lines ≈ 57.75px
 const DESC_CLAMP_PX = 14 * 1.375 * 3
@@ -631,12 +631,12 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
       </div>
 
       <div className="bg-[#FDFCFB] rounded-xl overflow-x-auto overflow-y-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_4px_24px_rgba(0,0,0,0.06)]">
-        <table className="w-full text-sm min-w-[1200px]">
+        <table className="w-full text-sm min-w-[1220px]">
           <thead>
             <tr className="border-b border-[#E8E4DC] bg-[#F7F4EF] text-xs text-[#8A877F] uppercase tracking-wider">
               <th className="w-6 px-2 py-2 sticky left-0 z-10 bg-[#F7F4EF]" />
               <th className="w-7 px-2 py-2 sticky left-6 z-10 bg-[#F7F4EF]" title="Received" />
-              <th className="text-left px-2 py-2 w-[280px] min-w-[280px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
+              <th className="text-left px-2 py-2 w-[300px] min-w-[300px] sticky left-[52px] z-10 bg-[#F7F4EF] border-r border-[#E8E4DC]">Item</th>
               <th className="text-left px-2 py-2 min-w-[160px] border-r border-[#EDEBE6]">Description</th>
               <th className="text-right px-2 py-2 w-[86px] min-w-[86px] max-w-[86px] whitespace-nowrap">Qty / Unit</th>
               <th className="text-left px-2 py-2 min-w-[120px]">Supplier</th>
@@ -763,7 +763,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
                   </td>
 
                   {/* Item name — with link toggle + dimensions/colour */}
-                  <td className={COL + ` w-[280px] min-w-[280px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'}`}>
+                  <td className={COL + ` w-[300px] min-w-[300px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'}`}>
                     <div className={ITEM_CELL_W + (isLinked ? ' pl-4' : '')}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
