@@ -225,9 +225,12 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
           </View>
         )}
 
-        {/* Materials + Charges */}
+        {/* Materials + Charges. No bottom margin: react-pdf counts a block's
+            bottom margin as part of its height when deciding whether it fits the
+            page, so a long items table would be pushed whole onto the next page
+            instead of splitting at a row. The sections below carry the gap. */}
         {!hideItems && (materials.length > 0 || hasCharges) && (
-          <View style={{ marginBottom: 14 }}>
+          <View>
             <Text style={s.secLabel}>{asInvoice ? 'Invoice Items' : 'Materials & Charges'}</Text>
             <View style={s.tableHead}>
               <Text style={[s.tableHdTxt, { flex: 3 }]}>Description</Text>
@@ -288,7 +291,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
 
         {/* Photos */}
         {photos.length > 0 && (
-          <View style={{ marginBottom: 14 }} wrap={false}>
+          <View style={{ marginTop: 14 }} wrap={false}>
             <Text style={s.secLabel}>Site Photos</Text>
             <View style={s.photoGrid}>
               {photos.slice(0, 9).map(p => (
@@ -303,7 +306,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
 
         {/* Quote approved — the client agreeing to the work before it started */}
         {jobCard.approved_at && (
-          <View style={{ marginBottom: 14 }} wrap={false}>
+          <View style={{ marginTop: 14 }} wrap={false}>
             <Text style={s.secLabel}>Quote Approved</Text>
             <View style={s.sigBox}>
               {jobCard.approval_signature_url && <Image src={jobCard.approval_signature_url} style={s.sigImg} />}
@@ -320,7 +323,7 @@ export function JobCardPDF({ jobCard, companyName, settings, logoBase64, asInvoi
 
         {/* Work signed off — the client confirming it was done */}
         {jobCard.client_signature_url && (
-          <View style={{ marginBottom: 14 }} wrap={false}>
+          <View style={{ marginTop: 14 }} wrap={false}>
             <Text style={s.secLabel}>Work Signed Off</Text>
             <View style={s.sigBox}>
               <Image src={jobCard.client_signature_url} style={s.sigImg} />
