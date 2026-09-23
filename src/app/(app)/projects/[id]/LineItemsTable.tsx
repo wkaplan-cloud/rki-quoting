@@ -63,6 +63,16 @@ const FIT_WIDTH = 'field-sizing-content w-auto min-w-[3rem] max-w-full'
 const INPUT_FIT = INPUT.replace('w-full', FIT_WIDTH)
 const NUM_INPUT = INPUT + ' text-right tabular-nums'
 
+// The Item column is declared w-[200px], but `table-layout: auto` treats a
+// declared width as a hint and sizes to max-content instead — so the column
+// stretched well past 200px and shoved Description off screen. Both of the
+// cell's rows push it wide: the field-sized name (FIT_WIDTH) reports its whole
+// one-line value, and the dimensions/colour inputs report their default
+// intrinsic width. Pinning the cell's contents to a real width makes the 200px
+// binding and gives `max-w-full` something to resolve against, so the name
+// wraps and clamps to three lines the way Description already does.
+const ITEM_CELL_W = 'w-[184px]' // 200px column less COL's px-2 on both sides
+
 // leading-snug = 1.375, text-sm = 14px → 3 lines ≈ 57.75px
 const DESC_CLAMP_PX = 14 * 1.375 * 3
 
@@ -747,7 +757,7 @@ export function LineItemsTable({ projectId, lineItems, suppliers, items, officeA
 
                   {/* Item name — with link toggle + dimensions/colour */}
                   <td className={COL + ` w-[200px] min-w-[200px] sticky left-[52px] z-10 border-r border-[#E8E4DC] ${item.highlight_color === 'blue' ? 'bg-blue-50' : item.highlight_color === 'green' ? 'bg-green-50' : 'bg-[#FDFCFB]'}`}>
-                    <div className={isLinked ? 'pl-4' : ''}>
+                    <div className={ITEM_CELL_W + (isLinked ? ' pl-4' : '')}>
                       <div className="flex items-center gap-1">
                         {isLinked && (
                           <CornerDownRight size={11} className="text-[#9A7B4F] flex-shrink-0 -mt-0.5" />
