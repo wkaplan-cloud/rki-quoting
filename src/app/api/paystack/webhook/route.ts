@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { disablePaystackSubscription } from '@/lib/paystack'
 
 /** The parts of a Paystack webhook payload this handler reads. */
 interface PaystackEvent {
@@ -32,6 +33,10 @@ const SUBSCRIBER_TABLES = ['organizations', 'supplier_portal_accounts'] as const
  * is missing from the payload, or subscription.create never landed and the row
  * was left with a null code — falls back to paystack_customer_code, so a
  * cancellation can't be silently swallowed.
+ *
+ * The fallback only touches rows with NO subscription code. A row already
+ * holding a different code is on a newer subscription (a plan change cancels the
+ * one it replaces), and must not be cancelled by that older subscription's event.
  */
 async function setSubscriptionStatus(
   status: string,
@@ -53,6 +58,7 @@ async function setSubscriptionStatus(
       await supabaseAdmin.from(table)
         .update({ subscription_status: status })
         .eq('paystack_customer_code', customerCode)
+        .is('paystack_subscription_code', null)
         .select('id')
     }
   }
@@ -104,13 +110,22 @@ export async function POST(req: NextRequest) {
       const orgId = data?.metadata?.org_id
       const planId = data?.metadata?.plan
       if (!orgId) break
-      const { data: org } = await supabaseAdmin.from('organizations').select('subscription_status, paystack_pending_plan').eq('id', orgId).single()
+      const { data: org } = await supabaseAdmin.from('organizations')
+        .select('subscription_status, paystack_pending_plan, paystack_previous_subscription_code')
+        .eq('id', orgId).single()
       // Apply on new subscription OR on plan-change (upgrade/downgrade)
       if (org && (org.subscription_status !== 'active' || org.paystack_pending_plan)) {
+        // Backup for the callback: cancel the subscription this payment replaces.
+        const oldSubCode: string | null = org.paystack_previous_subscription_code ?? null
+        if (oldSubCode && oldSubCode !== data?.subscription_code) {
+          await disablePaystackSubscription(oldSubCode, secretKey)
+        }
+
         await supabaseAdmin.from('organizations').update({
           subscription_status: 'active',
           plan: planId ?? org.paystack_pending_plan,
           paystack_pending_plan: null,
+          paystack_previous_subscription_code: null,
           paystack_reference: data.reference,
         }).eq('id', orgId)
       }

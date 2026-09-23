@@ -37,28 +37,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'You are already on this plan.' }, { status: 400 })
   }
 
-  // Upgrade/downgrade: cancel existing Paystack subscription before creating a new one
-  if (org?.paystack_subscription_code && org.subscription_status === 'active') {
-    const subRes = await fetch(`https://api.paystack.co/subscription/${org.paystack_subscription_code}`, {
-      headers: { Authorization: `Bearer ${secretKey}` },
-    })
-    const subData = await subRes.json()
-    const emailToken = subData?.data?.email_token
-
-    if (emailToken) {
-      await fetch('https://api.paystack.co/subscription/disable', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: org.paystack_subscription_code, token: emailToken }),
-      })
-    }
-
-    // Clear old subscription code — new code arrives via subscription.create webhook
-    await supabaseAdmin
-      .from('organizations')
-      .update({ paystack_subscription_code: null })
-      .eq('id', orgId)
-  }
+  // Upgrade/downgrade: remember the subscription being replaced. It is cancelled
+  // only once the new payment succeeds — cancelling it here would leave a paying
+  // customer with nothing if they abandon the checkout.
+  const previousSubCode = org?.subscription_status === 'active'
+    ? org.paystack_subscription_code ?? null
+    : null
 
   // Enforce user limits per plan
   if (planId === 'solo' || planId === 'studio') {
@@ -82,7 +66,11 @@ export async function POST(req: NextRequest) {
   // Store pending reference on org
   await supabaseAdmin
     .from('organizations')
-    .update({ paystack_reference: reference, paystack_pending_plan: planId })
+    .update({
+      paystack_reference: reference,
+      paystack_pending_plan: planId,
+      paystack_previous_subscription_code: previousSubCode,
+    })
     .eq('id', orgId)
 
   // Initialize transaction with plan code — Paystack auto-creates subscription after first payment
